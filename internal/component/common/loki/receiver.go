@@ -1,5 +1,7 @@
 package loki
 
+import "sync"
+
 // LogReceiverOption is an option argument passed to NewLogsReceiver.
 type LogReceiverOption func(*logsReceiver)
 
@@ -64,4 +66,49 @@ type logsBatchReceiver struct {
 
 func (l *logsBatchReceiver) Chan() chan []Entry {
 	return l.c
+}
+
+func NewCollectingBatchReciver() *CollectingBatchReciver {
+	c := &CollectingBatchReciver{
+		entries: make(chan []Entry),
+	}
+	c.wg.Go(func() {
+		for batch := range c.entries {
+			c.mtx.Lock()
+			c.received = append(c.received, batch...)
+			c.mtx.Unlock()
+		}
+	})
+	return c
+
+}
+
+type CollectingBatchReciver struct {
+	entries  chan []Entry
+	received []Entry
+	mtx      sync.Mutex
+	wg       sync.WaitGroup
+}
+
+func (c *CollectingBatchReciver) Chan() chan []Entry {
+	return c.entries
+}
+
+func (c *CollectingBatchReciver) Received() []Entry {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	cpy := make([]Entry, len(c.received))
+	copy(cpy, c.received)
+	return cpy
+}
+
+func (c *CollectingBatchReciver) Clear() {
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+	c.received = []Entry{}
+}
+
+func (c *CollectingBatchReciver) Stop() {
+	close(c.entries)
+	c.wg.Wait()
 }

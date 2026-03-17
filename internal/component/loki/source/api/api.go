@@ -139,8 +139,8 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			return fmt.Errorf("failed to create embedded server: %v", err)
 		}
-		err = c.server.Run()
-		if err != nil {
+
+		if err = c.server.Run(); err != nil {
 			return fmt.Errorf("failed to run embedded server: %v", err)
 		}
 	}

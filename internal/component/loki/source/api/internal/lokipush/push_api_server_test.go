@@ -37,37 +37,6 @@ type fakeBatchReceiver struct {
 	wg       sync.WaitGroup
 }
 
-func newFakeBatchReceiver() *fakeBatchReceiver {
-	c := &fakeBatchReceiver{
-		entries: make(chan []loki.Entry),
-	}
-	c.wg.Go(func() {
-		for batch := range c.entries {
-			c.mtx.Lock()
-			c.received = append(c.received, batch...)
-			c.mtx.Unlock()
-		}
-	})
-	return c
-}
-
-func (c *fakeBatchReceiver) Chan() chan []loki.Entry {
-	return c.entries
-}
-
-func (c *fakeBatchReceiver) Received() []loki.Entry {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-	cpy := make([]loki.Entry, len(c.received))
-	copy(cpy, c.received)
-	return cpy
-}
-
-func (c *fakeBatchReceiver) Stop() {
-	close(c.entries)
-	c.wg.Wait()
-}
-
 const localhost = "127.0.0.1"
 
 func TestLokiPushTarget(t *testing.T) {
@@ -319,7 +288,7 @@ regex = "dropme"
 func TestPlaintextPushTarget(t *testing.T) {
 	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
-	eh := newFakeBatchReceiver()
+	eh := loki.NewCollectingBatchReciver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -389,7 +358,7 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
 
-	eh := newFakeBatchReceiver()
+	eh := loki.NewCollectingBatchReciver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -526,9 +495,9 @@ func getFreePort(t *testing.T) int {
 	return port
 }
 
-func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fakeBatchReceiver) {
+func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *loki.CollectingBatchReciver) {
 	//Create PushAPIServerOld
-	eh := newFakeBatchReceiver()
+	eh := loki.NewCollectingBatchReciver()
 	t.Cleanup(func() {
 		eh.Stop()
 	})
