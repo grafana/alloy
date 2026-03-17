@@ -101,9 +101,10 @@ The `tls` block configures TLS for the HTTP server.
 The following are some of the metrics that are exposed when this component is used.
 The metrics include labels such as `status_code` where relevant, which can be used to measure request success rates.
 
-* `loki_source_api_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
-* `loki_source_api_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
-* `loki_source_api_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
+* `loki_source_api_request_duration_seconds` (histogram): HTTP request handling time, in seconds.
+* `loki_source_api_inflight_requests` (gauge): Current number of inflight requests.
+* `loki_source_api_request_message_bytes` (histogram): Request message size, in bytes.
+* `loki_source_api_response_message_bytes` (histogram): Response message size, in bytes.
 * `loki_source_api_tcp_connections` (gauge): Current number of accepted TCP connections.
 * `loki_source_api_entries_written` (counter): Total number of log entries forwarded.
 
