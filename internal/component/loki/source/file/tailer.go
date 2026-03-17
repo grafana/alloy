@@ -182,8 +182,10 @@ func (t *tailer) initRun() (int64, error) {
 
 // readLines reads lines from the tailed file by calling Next() in a loop.
 // It processes each line by sending it to the receiver's channel and updates
-// position tracking periodically. It exits when Next() returns an error,
-// this happens when the tail.File is stopped or or we have a unrecoverable error.
+// position tracking periodically. It exits either when Next() returns an error
+// (for example, when the tail.File is stopped, we have an unrecoverable error, or EOF
+// is reached for a fully consumed compressed file) or when the context is canceled,
+// including while a send to the receiver's channel is blocked.
 func (t *tailer) readLines(ctx context.Context, pos int64) {
 	level.Info(t.logger).Log("msg", "start tailing file")
 
