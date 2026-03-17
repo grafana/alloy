@@ -259,6 +259,6 @@ func newRegexp() alloy_relabel.Regexp {
 	return alloy_relabel.Regexp{Regexp: re}
 }
 
-func getEndpoint(target *herokutarget.HerokuTarget) string {
+func getEndpoint(target *herokutarget.HerokuServer) string {
 	return fmt.Sprintf("http://%s%s", target.HTTPListenAddress(), target.DrainEndpoint())
 }

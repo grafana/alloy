@@ -58,7 +58,7 @@ type Component struct {
 	args Arguments
 
 	fanout *loki.Fanout
-	target *ht.HerokuTarget
+	server *ht.HerokuServer
 
 	handler loki.LogsBatchReceiver
 }
@@ -92,8 +92,8 @@ func (c *Component) Run(ctx context.Context) error {
 		defer c.mut.Unlock()
 
 		level.Info(c.opts.Logger).Log("msg", "loki.source.heroku component shutting down, stopping listener")
-		if c.target != nil {
-			c.target.ForceShutdown()
+		if c.server != nil {
+			c.server.ForceShutdown()
 		}
 	}()
 
@@ -120,8 +120,8 @@ func (c *Component) Update(args component.Arguments) error {
 		c.args.UseIncomingTimestamp != newArgs.UseIncomingTimestamp
 
 	if restartRequired {
-		if c.target != nil {
-			c.target.Shutdown()
+		if c.server != nil {
+			c.server.Shutdown()
 		}
 
 		// [ht.NewHerokuTarget] registers new metrics every time it is called. To
@@ -131,18 +131,18 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		t, err := ht.NewHerokuTarget(c.metrics, c.opts.Logger, c.handler, rcs, newArgs.Convert(), registry)
+		server, err := ht.NewHerokuServer(c.metrics, c.opts.Logger, c.handler, rcs, newArgs.Convert(), registry)
 		if err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create heroku server", "err", err)
 			return err
 		}
 
-		if err := t.Run(); err != nil {
+		if err := server.Run(); err != nil {
 			level.Error(c.opts.Logger).Log("msg", "failed to create run heroku server", "err", err)
 			return err
 		}
 
-		c.target = t
+		c.server = server
 		c.args = newArgs
 	}
 
@@ -150,13 +150,13 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 // Convert is used to bridge between the Alloy and Promtail types.
-func (args *Arguments) Convert() *ht.HerokuDrainTargetConfig {
+func (args *Arguments) Convert() *ht.HerokuConfig {
 	lbls := make(model.LabelSet, len(args.Labels))
 	for k, v := range args.Labels {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	return &ht.HerokuDrainTargetConfig{
+	return &ht.HerokuConfig{
 		Server:               args.Server,
 		Labels:               lbls,
 		UseIncomingTimestamp: args.UseIncomingTimestamp,
@@ -169,8 +169,8 @@ func (c *Component) DebugInfo() any {
 	defer c.mut.RUnlock()
 
 	var res = readerDebugInfo{
-		Ready:   c.target.Ready(),
-		Address: c.target.HTTPListenAddress(),
+		Ready:   c.server.Ready(),
+		Address: c.server.HTTPListenAddress(),
 	}
 
 	return res

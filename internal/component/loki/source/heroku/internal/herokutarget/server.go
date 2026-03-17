@@ -27,8 +27,8 @@ import (
 
 const ReservedLabelTenantID = "__tenant_id__"
 
-// HerokuDrainTargetConfig describes a scrape config to listen and consume heroku logs, in the HTTPS drain manner.
-type HerokuDrainTargetConfig struct {
+// HerokuConfig describes a scrape config to listen and consume heroku log.
+type HerokuConfig struct {
 	Server *fnet.ServerConfig
 
 	// Labels optionally holds labels to associate with each record received on the push api.
@@ -39,40 +39,40 @@ type HerokuDrainTargetConfig struct {
 	UseIncomingTimestamp bool
 }
 
-type HerokuTarget struct {
+type HerokuServer struct {
 	logger  log.Logger
 	handler loki.LogsBatchReceiver
 
 	once          sync.Once
 	forceShutdown chan struct{}
 
-	config         *HerokuDrainTargetConfig
+	config         *HerokuConfig
 	metrics        *Metrics
 	relabelConfigs []*relabel.Config
 	server         *fnet.TargetServer
 }
 
-// NewHerokuTarget creates a brand new Heroku Drain target, capable of receiving logs from a Heroku application through an HTTP drain.
-func NewHerokuTarget(
+// NewHerokuServer creates a new Heroku server, capable of receiving logs from a Heroku application through an HTTP drain endpoint.
+func NewHerokuServer(
 	metrics *Metrics,
 	logger log.Logger,
 	handler loki.LogsBatchReceiver,
 	relabel []*relabel.Config,
-	config *HerokuDrainTargetConfig,
+	config *HerokuConfig,
 	reg prometheus.Registerer,
-) (*HerokuTarget, error) {
+) (*HerokuServer, error) {
 
-	wrappedLogger := log.With(logger, "component", "heroku_drain")
+	logger = log.With(logger, "component", "heroku_drain")
 
-	srv, err := fnet.NewTargetServer(wrappedLogger, "loki_source_heroku_drain_target", reg, config.Server)
+	srv, err := fnet.NewTargetServer(logger, "loki_source_heroku_drain_target", reg, config.Server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create loki server: %w", err)
 	}
 
-	return &HerokuTarget{
+	return &HerokuServer{
 		server:         srv,
 		metrics:        metrics,
-		logger:         wrappedLogger,
+		logger:         logger,
 		handler:        handler,
 		forceShutdown:  make(chan struct{}),
 		config:         config,
@@ -80,14 +80,14 @@ func NewHerokuTarget(
 	}, nil
 }
 
-func (h *HerokuTarget) Run() error {
+func (h *HerokuServer) Run() error {
 	return h.server.MountAndRun(func(router *mux.Router) {
 		router.Path(h.DrainEndpoint()).Methods("POST").Handler(http.HandlerFunc(h.drain))
 		router.Path(h.HealthyEndpoint()).Methods("GET").Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 	})
 }
 
-func (h *HerokuTarget) drain(w http.ResponseWriter, r *http.Request) {
+func (h *HerokuServer) drain(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	herokuScanner := herokuEncoding.NewDrainScanner(r.Body)
 
@@ -168,23 +168,23 @@ func (h *HerokuTarget) drain(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *HerokuTarget) Labels() model.LabelSet {
+func (h *HerokuServer) Labels() model.LabelSet {
 	return h.config.Labels
 }
 
-func (h *HerokuTarget) HTTPListenAddress() string {
+func (h *HerokuServer) HTTPListenAddress() string {
 	return h.server.HTTPListenAddr()
 }
 
-func (h *HerokuTarget) DrainEndpoint() string {
+func (h *HerokuServer) DrainEndpoint() string {
 	return "/heroku/api/v1/drain"
 }
 
-func (h *HerokuTarget) HealthyEndpoint() string {
+func (h *HerokuServer) HealthyEndpoint() string {
 	return "/healthy"
 }
 
-func (h *HerokuTarget) Ready() bool {
+func (h *HerokuServer) Ready() bool {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", h.HTTPListenAddress(), h.HealthyEndpoint()), nil)
 	if err != nil {
 		return false
@@ -198,11 +198,11 @@ func (h *HerokuTarget) Ready() bool {
 	return true
 }
 
-func (h *HerokuTarget) Details() any {
+func (h *HerokuServer) Details() any {
 	return map[string]string{}
 }
 
-func (h *HerokuTarget) Shutdown() {
+func (h *HerokuServer) Shutdown() {
 	level.Info(h.logger).Log("msg", "stopping heroku server")
 	// StopAndShutdown tries to gracefully shutdown.
 	// It will stop idle and incoming connections
@@ -217,7 +217,7 @@ func (h *HerokuTarget) Shutdown() {
 }
 
 // ForceShutdown will cancel all in-flight before starting server shutdown.
-func (h *HerokuTarget) ForceShutdown() {
+func (h *HerokuServer) ForceShutdown() {
 	level.Info(h.logger).Log("msg", "force shutdown of heroku server")
 	h.once.Do(func() { close(h.forceShutdown) })
 	h.server.StopAndShutdown()

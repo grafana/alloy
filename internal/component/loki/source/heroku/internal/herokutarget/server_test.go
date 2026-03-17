@@ -60,7 +60,7 @@ func makeDrainRequest(host string, params map[string][]string, bodies ...string)
 	return req, nil
 }
 
-func TestHerokuDrainTarget(t *testing.T) {
+func TestHerokuServer(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
@@ -280,7 +280,7 @@ func TestHerokuDrainTarget(t *testing.T) {
 
 			serverConfig, port, err := getServerConfigWithAvailablePort()
 			require.NoError(t, err, "error generating server config or finding open port")
-			config := &HerokuDrainTargetConfig{
+			config := &HerokuConfig{
 				Server:               serverConfig,
 				Labels:               tc.args.Labels,
 				UseIncomingTimestamp: false,
@@ -288,7 +288,7 @@ func TestHerokuDrainTarget(t *testing.T) {
 
 			prometheus.DefaultRegisterer = prometheus.NewRegistry()
 			metrics := NewMetrics(prometheus.DefaultRegisterer)
-			pt, err := NewHerokuTarget(metrics, logger, eh, tc.args.RelabelConfigs, config, prometheus.DefaultRegisterer)
+			pt, err := NewHerokuServer(metrics, logger, eh, tc.args.RelabelConfigs, config, prometheus.DefaultRegisterer)
 			require.NoError(t, err)
 			require.NoError(t, pt.Run())
 			defer pt.Shutdown()
@@ -330,7 +330,7 @@ func TestHerokuDrainTarget(t *testing.T) {
 	}
 }
 
-func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
+func TestHerokuServer_UseIncomingTimestamp(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
@@ -339,7 +339,7 @@ func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
 	require.NoError(t, err, "error generating server config or finding open port")
-	config := &HerokuDrainTargetConfig{
+	config := &HerokuConfig{
 		Server:               serverConfig,
 		Labels:               nil,
 		UseIncomingTimestamp: true,
@@ -347,7 +347,7 @@ func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
 
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	metrics := NewMetrics(prometheus.DefaultRegisterer)
-	pt, err := NewHerokuTarget(metrics, logger, eh, nil, config, prometheus.DefaultRegisterer)
+	pt, err := NewHerokuServer(metrics, logger, eh, nil, config, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 	require.NoError(t, pt.Run())
 	defer pt.Shutdown()
@@ -371,7 +371,7 @@ func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
 	require.Equal(t, expectedTs, eh.Received()[0].Timestamp, "expected entry timestamp to be overridden by received one")
 }
 
-func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
+func TestHerokuServer_UseTenantIDHeaderIfPresent(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
@@ -381,7 +381,7 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
 	require.NoError(t, err, "error generating server config or finding open port")
-	config := &HerokuDrainTargetConfig{
+	config := &HerokuConfig{
 		Server:               serverConfig,
 		Labels:               nil,
 		UseIncomingTimestamp: true,
@@ -399,7 +399,7 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 			NameValidationScheme: model.LegacyValidation,
 		},
 	}
-	pt, err := NewHerokuTarget(metrics, logger, eh, tenantIDRelabelConfig, config, prometheus.DefaultRegisterer)
+	pt, err := NewHerokuServer(metrics, logger, eh, tenantIDRelabelConfig, config, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
 	require.NoError(t, pt.Run())
 
