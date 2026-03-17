@@ -20,6 +20,7 @@ import (
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
+	"go.opentelemetry.io/ebpf-profiler/interpreter/ruby"
 
 	"go.opentelemetry.io/ebpf-profiler/interpreter/python"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
@@ -52,7 +53,8 @@ func init() {
 			return New(opts.Logger, opts.Registerer, opts.ID, arguments)
 		},
 	})
-	python.NoContinueWithNextUnwinder.Store(true)
+	python.NoContinueWithNextUnwinder.Store(true) // todo rename to ReturnToNative
+	ruby.ReturnToNative.Store(false)
 	// Disable ebpf profiler metrics
 	ebpfmetrics.Start(metricnoop.Meter{})
 }
