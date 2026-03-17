@@ -116,9 +116,11 @@ configuration.
 
 ## Debug metrics
 
-* `loki_source_heroku_drain_target_inflight_requests`: Gauge metric for the current number of inflight requests.
-* `loki_source_heroku_drain_target_request_duration_seconds`: Histogram metric for HTTP request handling time, in seconds.
-* `loki_source_heroku_drain_target_request_message_bytes`: Histogram metric for request message size, in bytes.
+* `loki_source_heroku_drain_target_inflight_requests` (gauge): Current number of inflight requests.
+* `loki_source_heroku_drain_target_request_duration_seconds` (histogram): HTTP request handling time, in seconds.
+* `loki_source_heroku_drain_target_request_message_bytes` (histogram): Request message size, in bytes.
+* `loki_source_heroku_drain_target_response_message_bytes` (histogram): Response message size, in bytes.
+* `loki_source_heroku_drain_target_tcp_connections` (gauge): Current number of accepted TCP connections.
 * `loki_source_heroku_drain_entries_total` (counter): Number of successful entries received by the Heroku target.
 * `loki_source_heroku_drain_parsing_errors_total` (counter): Number of parsing errors while receiving Heroku messages.
 
