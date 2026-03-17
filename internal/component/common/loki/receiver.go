@@ -82,7 +82,7 @@ func NewCollectingBatchReceiver() *CollectingBatchReceiver {
 	return c
 }
 
-// CollectingBatchReceiver is a LogsBatchReciver that will
+// CollectingBatchReceiver is a LogsBatchReceiver that will
 // collect all received entries so it can later be inspected.
 // Used in tests.
 type CollectingBatchReceiver struct {
