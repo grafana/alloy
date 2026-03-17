@@ -97,7 +97,7 @@ replaces:
 
   - comment: Replace OpenTelemetry eBPF profiler with Grafana fork
     dependency: go.opentelemetry.io/ebpf-profiler
-    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260317053932-fcf9f3cb4b65
+    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260317060035-9369e0503d97
 
   - comment: Update openshift/client-go to version compatible with structured-merge-diff v6
     dependency: github.com/openshift/client-go

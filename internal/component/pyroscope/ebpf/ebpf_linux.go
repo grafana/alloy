@@ -53,7 +53,7 @@ func init() {
 			return New(opts.Logger, opts.Registerer, opts.ID, arguments)
 		},
 	})
-	python.NoContinueWithNextUnwinder.Store(true) // todo rename to ReturnToNative
+	python.NoContinueWithNextUnwinder.Store(true) // todo rename to ReturnToNativere
 	ruby.ReturnToNative.Store(false)
 	// Disable ebpf profiler metrics
 	ebpfmetrics.Start(metricnoop.Meter{})
