@@ -275,7 +275,7 @@ func TestHerokuDrainTarget(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			eh := loki.NewCollectingHandler()
+			eh := loki.NewCollectingBatchReciver()
 			defer eh.Stop()
 
 			serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -290,9 +290,8 @@ func TestHerokuDrainTarget(t *testing.T) {
 			metrics := NewMetrics(prometheus.DefaultRegisterer)
 			pt, err := NewHerokuTarget(metrics, logger, eh, tc.args.RelabelConfigs, config, prometheus.DefaultRegisterer)
 			require.NoError(t, err)
-			defer func() {
-				_ = pt.Stop()
-			}()
+			require.NoError(t, pt.Run())
+			defer pt.Shutdown()
 
 			// Clear received lines after test case is ran
 			defer eh.Clear()
@@ -335,7 +334,7 @@ func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	eh := loki.NewCollectingHandler()
+	eh := loki.NewCollectingBatchReciver()
 	defer eh.Stop()
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -350,9 +349,8 @@ func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
 	metrics := NewMetrics(prometheus.DefaultRegisterer)
 	pt, err := NewHerokuTarget(metrics, logger, eh, nil, config, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
-	defer func() {
-		_ = pt.Stop()
-	}()
+	require.NoError(t, pt.Run())
+	defer pt.Shutdown()
 
 	// Clear received lines after test case is ran
 	defer eh.Clear()
@@ -378,7 +376,7 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	logger := log.NewLogfmtLogger(w)
 
 	// Create fake promtail client
-	eh := loki.NewCollectingHandler()
+	eh := loki.NewCollectingBatchReciver()
 	defer eh.Stop()
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -403,9 +401,9 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	}
 	pt, err := NewHerokuTarget(metrics, logger, eh, tenantIDRelabelConfig, config, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
-	defer func() {
-		_ = pt.Stop()
-	}()
+	require.NoError(t, pt.Run())
+
+	defer pt.Shutdown()
 
 	// Clear received lines after test case is ran
 	defer eh.Clear()
@@ -426,7 +424,7 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels["tenant_id"])
 }
 
-func waitForMessages(eh *loki.CollectingHandler) {
+func waitForMessages(eh *loki.CollectingBatchReciver) {
 	countdown := 1000
 	for len(eh.Received()) != 1 && countdown > 0 {
 		time.Sleep(1 * time.Millisecond)

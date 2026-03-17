@@ -146,7 +146,7 @@ func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
 			defer func() {
 				// in order to cleanly shutdown, we want to make sure the server is running first.
 				waitForServerToBeReady(t, comp)
-				require.NoError(t, comp.target.Stop())
+				comp.target.Shutdown()
 			}()
 
 			// in order to cleanly update, we want to make sure the server is running first.
