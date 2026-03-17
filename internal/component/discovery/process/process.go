@@ -12,9 +12,12 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	gopsutil "github.com/shirou/gopsutil/v3/process"
 )
 
 func init() {
+	gopsutil.EnableBootTimeCache(true)
+
 	component.Register(component.Registration{
 		Name:      "discovery.process",
 		Stability: featuregate.StabilityGenerallyAvailable,
