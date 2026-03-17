@@ -1202,8 +1202,8 @@ github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v
 github.com/grafana/opentelemetry-collector-contrib/receiver/prometheusreceiver v0.0.0-20260209185749-2202e1443a98/go.mod h1:Ua8tMv8erMLb50kiUSRK7UfeTnscC42TKgueLUaZ+yY=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11 h1:Pi46xuPzRjAeB6XB4PzdF8kV93jl4NB58OZj08Bi33U=
 github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11/go.mod h1:rrgRM6X22UVa3bKaoNz43ab59Qx0CNrVOc2uiCVfBwU=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260317035705-87cd1d867994 h1:Lun4q13jrPUo9usOELZTt4QHfjpEH6Ac2gbbrgbgKgA=
-github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260317035705-87cd1d867994/go.mod h1:eQmRkLkJq8g6VmqV4qZb0aWiHDqVc5M1sj6M0iSR40s=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260317060035-9369e0503d97 h1:kNSnGi8D6m7XK0xgakUW2+rudJXeYOz2imQpRjaiwJk=
+github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260317060035-9369e0503d97/go.mod h1:eQmRkLkJq8g6VmqV4qZb0aWiHDqVc5M1sj6M0iSR40s=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
 github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a h1:uT3vXB+E1dAMfvrgwQR6PwQbNmgLe6cyvTxHnHcmuns=
