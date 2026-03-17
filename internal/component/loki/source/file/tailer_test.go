@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -233,6 +234,60 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("tailer deadlocked")
 	}
+}
+
+func TestTailerCancelWhileSendBlocked(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	l := logging.NewNop()
+	recv := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+
+	file, err := os.CreateTemp(tempDir, "example")
+	require.NoError(t, err)
+	_, err = file.Write([]byte("line that will block on send\n"))
+	require.NoError(t, err)
+	file.Close()
+
+	positionsFile, err := positions.New(l, positions.Config{
+		SyncPeriod:        50 * time.Millisecond,
+		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+		IgnoreInvalidYaml: false,
+		ReadOnly:          false,
+	})
+	require.NoError(t, err)
+	defer positionsFile.Stop()
+
+	tailer := newTailer(
+		newMetrics(nil),
+		l,
+		recv,
+		positionsFile,
+		func() bool { return true },
+		sourceOptions{
+			path: file.Name(),
+			labels: model.LabelSet{
+				"filename": model.LabelValue(file.Name()),
+				"foo":      "bar",
+			},
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+		},
+	)
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		tailer.Run(ctx)
+	})
+
+	time.Sleep(100 * time.Millisecond)
+	cancel()
+	wg.Wait()
 }
 
 func TestTailerCorruptedPositions(t *testing.T) {
