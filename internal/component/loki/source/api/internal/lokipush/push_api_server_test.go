@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -29,13 +28,6 @@ import (
 	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax"
 )
-
-type fakeBatchReceiver struct {
-	entries  chan []loki.Entry
-	received []loki.Entry
-	mtx      sync.Mutex
-	wg       sync.WaitGroup
-}
 
 const localhost = "127.0.0.1"
 
