@@ -35,6 +35,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	alloydiscovery "github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
+	rargs "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -107,6 +108,9 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 		SamplesPerSecond:          int64(cfg.SamplesPerSecond),
 		Demangle:                  args.Demangle,
 		ReporterUnsymbolizedStubs: args.ReporterUnsymbolizedStubs,
+		PIDLabel:                  args.PIDLabel,
+		CommMode:                  rargs.CommMode(args.Comm),
+		KernelFrames:              args.KernelFrames,
 	}, discovery,
 		symbols,
 		func(ctx context.Context, ps []reporter.PPROF) {
@@ -326,6 +330,9 @@ func NewDefaultArguments() Arguments {
 		UProbeLinks:     []string{},
 		VerboseMode:     false,
 		LazyMode:        false,
+
+		Comm:         string(rargs.CommModeNone),
+		KernelFrames: true,
 
 		// undocumented
 		PyroscopeDynamicProfilingPolicy: true,
