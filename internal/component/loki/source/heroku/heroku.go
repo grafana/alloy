@@ -2,6 +2,7 @@ package heroku
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -133,13 +134,11 @@ func (c *Component) Update(args component.Arguments) error {
 
 		server, err := ht.NewHerokuServer(c.metrics, c.opts.Logger, c.handler, rcs, newArgs.Convert(), registry)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create heroku server", "err", err)
-			return err
+			return fmt.Errorf("failed to create heroku server", err)
 		}
 
 		if err := server.Run(); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create run heroku server", "err", err)
-			return err
+			return fmt.Errorf("failed to run heroku server", err)
 		}
 
 		c.server = server
