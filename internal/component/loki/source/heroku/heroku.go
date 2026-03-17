@@ -134,11 +134,11 @@ func (c *Component) Update(args component.Arguments) error {
 
 		server, err := ht.NewHerokuServer(c.metrics, c.opts.Logger, c.handler, rcs, newArgs.Convert(), registry)
 		if err != nil {
-			return fmt.Errorf("failed to create heroku server", err)
+			return fmt.Errorf("failed to create heroku server: %w", err)
 		}
 
 		if err := server.Run(); err != nil {
-			return fmt.Errorf("failed to run heroku server", err)
+			return fmt.Errorf("failed to run heroku server: %w", err)
 		}
 
 		c.server = server
