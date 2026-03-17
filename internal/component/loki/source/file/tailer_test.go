@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"sync"
 	"testing"
 	"time"
 
@@ -287,10 +286,11 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 
-	var wg sync.WaitGroup
-	wg.Go(func() {
+	done := make(chan struct{})
+	go func() {
 		tailer.Run(ctx)
-	})
+		close(done)
+	}()
 
 	// Read first line.
 	entry := <-recv.Chan()
@@ -299,8 +299,11 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	// Stop tailer without reading from recv.
 	cancel()
 
-	// Wait for tailer to finish.
-	wg.Wait()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tailer deadlocked while send was blocked")
+	}
 	pos, err := positionsFile.Get(path, labels.String())
 	require.NoError(t, err)
 	require.Equal(t, int64(2), pos)
