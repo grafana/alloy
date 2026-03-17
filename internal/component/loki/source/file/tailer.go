@@ -104,19 +104,19 @@ func (t *tailer) Run(ctx context.Context) {
 
 	t.metrics.filesActive.Add(1.)
 
-	done := make(chan struct{})
 	ctx, cancel := context.WithCancel(ctx)
-	go func() {
-		// readLines closes done on exit
-		t.readLines(pos, done)
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		t.readLines(ctx, pos)
 		cancel()
-	}()
+	})
 
 	t.running.Store(true)
 	defer t.running.Store(false)
 
 	<-ctx.Done()
-	t.stop(done)
+	t.stop(&wg)
 }
 
 func (t *tailer) initRun() (int64, error) {
@@ -184,7 +184,7 @@ func (t *tailer) initRun() (int64, error) {
 // It processes each line by sending it to the receiver's channel and updates
 // position tracking periodically. It exits when Next() returns an error,
 // this happens when the tail.File is stopped or or we have a unrecoverable error.
-func (t *tailer) readLines(pos int64, done chan struct{}) {
+func (t *tailer) readLines(ctx context.Context, pos int64) {
 	level.Info(t.logger).Log("msg", "start tailing file")
 
 	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
@@ -202,7 +202,6 @@ func (t *tailer) readLines(pos int64, done chan struct{}) {
 	defer func() {
 		size, _ := t.file.Size()
 		t.updateStats(lastOffset, size)
-		close(done)
 	}()
 
 	for {
@@ -219,16 +218,20 @@ func (t *tailer) readLines(pos int64, done chan struct{}) {
 		}
 
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
-		entries <- loki.NewEntry(t.labels, push.Entry{
+
+		select {
+		case <-ctx.Done():
+			return
+		case entries <- loki.NewEntry(t.labels, push.Entry{
 			Timestamp: line.Time,
 			Line:      line.Text,
-		})
-
-		lastOffset = line.Offset
-		if time.Since(lastUpdatedPosition) >= positionInterval {
-			lastUpdatedPosition = time.Now()
-			size, _ := t.file.Size()
-			t.updateStats(lastOffset, size)
+		}):
+			lastOffset = line.Offset
+			if time.Since(lastUpdatedPosition) >= positionInterval {
+				lastUpdatedPosition = time.Now()
+				size, _ := t.file.Size()
+				t.updateStats(lastOffset, size)
+			}
 		}
 	}
 }
@@ -240,7 +243,7 @@ func (t *tailer) updateStats(offset int64, size int64) {
 	t.positions.Put(t.key.Path, t.key.Labels, offset)
 }
 
-func (t *tailer) stop(done chan struct{}) {
+func (t *tailer) stop(wg *sync.WaitGroup) {
 	if err := t.file.Stop(); err != nil {
 		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
@@ -254,12 +257,12 @@ func (t *tailer) stop(done chan struct{}) {
 
 	level.Debug(t.logger).Log("msg", "waiting for readLines to exit")
 
-	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
-	<-done
+	// Wait for readLines() to exit.
+	wg.Wait()
 
 	level.Info(t.logger).Log("msg", "stopped tailing file")
 
-	// We need to cleanup created metrics
+	// We need to cleanup created metrics.
 	t.cleanupMetrics()
 
 	if !t.shouldKeepPosition() {
