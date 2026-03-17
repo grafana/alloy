@@ -37,7 +37,7 @@ func TestPush(t *testing.T) {
 	waitForServerToBeReady(t, c)
 
 	// Create a Heroku Drain Request and send it to the launched server.
-	req, err := http.NewRequest(http.MethodPost, getEndpoint(c.target), strings.NewReader(testPayload))
+	req, err := http.NewRequest(http.MethodPost, getEndpoint(c.server), strings.NewReader(testPayload))
 	require.NoError(t, err)
 
 	res, err := http.DefaultClient.Do(req)
@@ -146,17 +146,17 @@ func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
 			defer func() {
 				// in order to cleanly shutdown, we want to make sure the server is running first.
 				waitForServerToBeReady(t, comp)
-				comp.target.Shutdown()
+				comp.server.Shutdown()
 			}()
 
 			// in order to cleanly update, we want to make sure the server is running first.
 			waitForServerToBeReady(t, comp)
 
-			targetBefore := comp.target
+			targetBefore := comp.server
 			err = comp.Update(tc.newArgs)
 			require.NoError(t, err)
 
-			restarted := targetBefore != comp.target
+			restarted := targetBefore != comp.server
 			require.Equal(t, restarted, tc.restartRequired)
 		})
 	}
@@ -239,7 +239,7 @@ func waitForServerToBeReady(t *testing.T, comp *Component) {
 	require.Eventuallyf(t, func() bool {
 		resp, err := http.Get(fmt.Sprintf(
 			"http://%v/wrong/url",
-			comp.target.HTTPListenAddress(),
+			comp.server.HTTPListenAddress(),
 		))
 		return err == nil && resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
