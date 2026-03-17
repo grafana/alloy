@@ -316,4 +316,4 @@ We have documentation for our components. If we have new arguments / blocks they
 
 ### Step 10: Note down important changes
 
-It's important to list changes done in dependecis. Especcialy breaking changes and changes to default config values. What we note down here should only be user facing changes and not internal implementaiton details.
+It's important to list changes done in dependencies. Especially breaking changes and changes to default config values. What we note down here should only be user facing changes and not internal implementation details.
