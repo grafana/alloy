@@ -288,7 +288,7 @@ regex = "dropme"
 func TestPlaintextPushTarget(t *testing.T) {
 	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
-	eh := loki.NewCollectingBatchReciver()
+	eh := loki.NewCollectingBatchReceiver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -358,7 +358,7 @@ func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 	logger := log.NewNopLogger()
 	//Create PushAPIServerOld
 
-	eh := loki.NewCollectingBatchReciver()
+	eh := loki.NewCollectingBatchReceiver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -495,9 +495,9 @@ func getFreePort(t *testing.T) int {
 	return port
 }
 
-func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *loki.CollectingBatchReciver) {
+func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *loki.CollectingBatchReceiver) {
 	//Create PushAPIServerOld
-	eh := loki.NewCollectingBatchReciver()
+	eh := loki.NewCollectingBatchReceiver()
 	t.Cleanup(func() {
 		eh.Stop()
 	})

@@ -275,7 +275,7 @@ func TestHerokuServer(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			eh := loki.NewCollectingBatchReciver()
+			eh := loki.NewCollectingBatchReceiver()
 			defer eh.Stop()
 
 			serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -334,7 +334,7 @@ func TestHerokuServer_UseIncomingTimestamp(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	eh := loki.NewCollectingBatchReciver()
+	eh := loki.NewCollectingBatchReceiver()
 	defer eh.Stop()
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -376,7 +376,7 @@ func TestHerokuServer_UseTenantIDHeaderIfPresent(t *testing.T) {
 	logger := log.NewLogfmtLogger(w)
 
 	// Create fake promtail client
-	eh := loki.NewCollectingBatchReciver()
+	eh := loki.NewCollectingBatchReceiver()
 	defer eh.Stop()
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
@@ -424,7 +424,7 @@ func TestHerokuServer_UseTenantIDHeaderIfPresent(t *testing.T) {
 	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels["tenant_id"])
 }
 
-func waitForMessages(eh *loki.CollectingBatchReciver) {
+func waitForMessages(eh *loki.CollectingBatchReceiver) {
 	countdown := 1000
 	for len(eh.Received()) != 1 && countdown > 0 {
 		time.Sleep(1 * time.Millisecond)

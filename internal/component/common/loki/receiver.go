@@ -68,8 +68,8 @@ func (l *logsBatchReceiver) Chan() chan []Entry {
 	return l.c
 }
 
-func NewCollectingBatchReciver() *CollectingBatchReciver {
-	c := &CollectingBatchReciver{
+func NewCollectingBatchReceiver() *CollectingBatchReceiver {
+	c := &CollectingBatchReceiver{
 		entries: make(chan []Entry),
 	}
 	c.wg.Go(func() {
@@ -83,18 +83,21 @@ func NewCollectingBatchReciver() *CollectingBatchReciver {
 
 }
 
-type CollectingBatchReciver struct {
+// CollectingBatchReceiver is a LogsBatchReciver that will
+// collect all received entries so it can later be inspected.
+// Used in tests.
+type CollectingBatchReceiver struct {
 	entries  chan []Entry
 	received []Entry
 	mtx      sync.Mutex
 	wg       sync.WaitGroup
 }
 
-func (c *CollectingBatchReciver) Chan() chan []Entry {
+func (c *CollectingBatchReceiver) Chan() chan []Entry {
 	return c.entries
 }
 
-func (c *CollectingBatchReciver) Received() []Entry {
+func (c *CollectingBatchReceiver) Received() []Entry {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	cpy := make([]Entry, len(c.received))
@@ -102,13 +105,13 @@ func (c *CollectingBatchReciver) Received() []Entry {
 	return cpy
 }
 
-func (c *CollectingBatchReciver) Clear() {
+func (c *CollectingBatchReceiver) Clear() {
 	c.mtx.Lock()
 	defer c.mtx.Unlock()
 	c.received = []Entry{}
 }
 
-func (c *CollectingBatchReciver) Stop() {
+func (c *CollectingBatchReceiver) Stop() {
 	close(c.entries)
 	c.wg.Wait()
 }
