@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.14.1](https://github.com/grafana/alloy/compare/v1.14.0...v1.14.1) (2026-03-17)
+
+
+### Bug Fixes 🐛
+
+* Correctly handle the deprecated topic field in otelcol.receiver.kafka configuration [backport] ([#5730](https://github.com/grafana/alloy/issues/5730)) ([4393054](https://github.com/grafana/alloy/commit/43930547d5f63b6983716a06dbe4fbd9ea435ebc))
+* **deps:** Update module golang.org/x/net to v0.51.0 [SECURITY] [backport] ([#5690](https://github.com/grafana/alloy/issues/5690)) ([9e8616c](https://github.com/grafana/alloy/commit/9e8616c97899caacd9e63ffe265a968250644fe4))
+* **loki.process:** Protect against json that does not look like docker json format [backport] ([#5773](https://github.com/grafana/alloy/issues/5773)) ([a0f1f8a](https://github.com/grafana/alloy/commit/a0f1f8acb96d3864d30e59ba6f8f1594c672849b))
+* **loki.source.file:** Keep positions for compressed files when reading is finished [backport] ([#5741](https://github.com/grafana/alloy/issues/5741)) ([4f6d548](https://github.com/grafana/alloy/commit/4f6d5488c95511e26cfcd965ed2cf51ae30a673d))
+* **otelcol.receiver.datadog:** Expose intake proxy and trace_id_cache_size settings [backport] ([#5785](https://github.com/grafana/alloy/issues/5785)) ([6d99ab5](https://github.com/grafana/alloy/commit/6d99ab55a0c80cea9cdaf27289c68323673014c6))
+* **prometheus.scrape:** Update arguments and targets even if `scrape_native_histograms` and `extra_metrics` are updated [backport] ([#5792](https://github.com/grafana/alloy/issues/5792)) ([76d398f](https://github.com/grafana/alloy/commit/76d398f54cd23a8feff94b6479e736accbb94283))
+
 ## [1.14.0](https://github.com/grafana/alloy/compare/v1.13.0...v1.14.0) (2026-03-06)
 
 
