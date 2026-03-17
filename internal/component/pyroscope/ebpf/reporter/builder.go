@@ -53,7 +53,6 @@ func NewProfileBuilders(options BuildersOptions) *ProfileBuilders {
 }
 
 func (b *ProfileBuilders) BuilderForSample(target *discovery.Target, pid uint32, key samples.TraceAndMetaKey) *ProfileBuilder {
-
 	labelsHash, _ := target.Labels()
 
 	k := builderHashKey{labelsHash: labelsHash}
