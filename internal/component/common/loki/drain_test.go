@@ -1,23 +1,22 @@
-package source
+package loki
 
 import (
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDrain(t *testing.T) {
-	recv := loki.NewLogsReceiver()
+	recv := NewLogsReceiver()
 
 	var wg sync.WaitGroup
 	wg.Go(func() {
 		for range 10 {
-			entry := loki.Entry{
+			entry := Entry{
 				Labels: model.LabelSet{"test": "label"},
 				Entry: push.Entry{
 					Timestamp: time.Now(),

@@ -264,7 +264,7 @@ func (c *Component) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	// Start consume and fanout loop
-	wg.Go(func() { source.Consume(ctx, c.handler, c.fanout) })
+	wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
 
 	wg.Go(func() {
 		for {
