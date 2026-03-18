@@ -120,7 +120,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 	c.args = newConfig.(Arguments)
 	nextLogs := c.args.Output.Logs
-	fanout := fanoutconsumer.Logs(nextLogs)
+	fanout := fanoutconsumer.Logs(nextLogs, c.opts.Registerer)
 	logsInterceptor := interceptconsumer.Logs(fanout,
 		func(ctx context.Context, ld plog.Logs) error {
 			livedebuggingpublisher.PublishLogsIfActive(c.debugDataPublisher, c.opts.ID, ld, otelcol.GetComponentMetadata(nextLogs))

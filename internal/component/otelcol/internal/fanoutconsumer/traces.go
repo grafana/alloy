@@ -10,17 +10,32 @@ import (
 	"context"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/prometheus/client_golang/prometheus"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.uber.org/multierr"
 )
 
 // Traces creates a new fanout consumer for traces.
-func Traces(in []otelcol.Consumer) otelconsumer.Traces {
+func Traces(in []otelcol.Consumer, reg prometheus.Registerer) otelconsumer.Traces {
+	counter := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "otelcol_forwarded_spans_total",
+		Help: "Total number of spans forwarded to downstream components.",
+	}, []string{"destination"})
+	if err := reg.Register(counter); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			counter = are.ExistingCollector.(*prometheus.CounterVec)
+		}
+	}
+
 	if len(in) == 0 {
-		return &tracesFanout{}
+		return &tracesFanout{spansCounter: counter}
 	} else if len(in) == 1 {
-		return in[0]
+		return &tracesPassthrough{
+			consumer:     in[0],
+			destID:       componentID(in[0]),
+			spansCounter: counter,
+		}
 	}
 
 	var passthrough, clone []otelconsumer.Traces
@@ -50,14 +65,36 @@ func Traces(in []otelcol.Consumer) otelconsumer.Traces {
 	}
 
 	return &tracesFanout{
-		passthrough: passthrough,
-		clone:       clone,
+		passthrough:  passthrough,
+		clone:        clone,
+		spansCounter: counter,
 	}
 }
 
+type tracesPassthrough struct {
+	consumer     otelconsumer.Traces
+	destID       string
+	spansCounter *prometheus.CounterVec
+}
+
+func (p *tracesPassthrough) Capabilities() otelconsumer.Capabilities {
+	return p.consumer.Capabilities()
+}
+
+func (p *tracesPassthrough) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
+	if err := p.consumer.ConsumeTraces(ctx, td); err != nil {
+		return err
+	}
+	p.spansCounter.WithLabelValues(p.destID).Add(float64(td.SpanCount()))
+	return nil
+}
+
 type tracesFanout struct {
-	passthrough []otelconsumer.Traces // Consumers where data can be passed through directly
-	clone       []otelconsumer.Traces // Consumes which require cloning data
+	passthrough    []otelconsumer.Traces // Consumers where data can be passed through directly
+	passthroughIDs []string
+	clone          []otelconsumer.Traces // Consumes which require cloning data
+	cloneIDs       []string
+	spansCounter   *prometheus.CounterVec
 }
 
 func (f *tracesFanout) Capabilities() otelconsumer.Capabilities {
@@ -68,16 +105,26 @@ func (f *tracesFanout) Capabilities() otelconsumer.Capabilities {
 func (f *tracesFanout) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 	var errs error
 
+	spanCount := td.SpanCount()
+
 	// Initially pass to clone exporter to avoid the case where the optimization
 	// of sending the incoming data to a mutating consumer is used that may
 	// change the incoming data before cloning.
-	for _, f := range f.clone {
+	for _, c := range f.clone {
 		newTraces := ptrace.NewTraces()
 		td.CopyTo(newTraces)
-		errs = multierr.Append(errs, f.ConsumeTraces(ctx, newTraces))
+		if err := c.ConsumeTraces(ctx, newTraces); err != nil {
+			errs = multierr.Append(errs, err)
+		} else {
+			f.spansCounter.WithLabelValues(componentID(c)).Add(float64(spanCount))
+		}
 	}
-	for _, f := range f.passthrough {
-		errs = multierr.Append(errs, f.ConsumeTraces(ctx, td))
+	for _, c := range f.passthrough {
+		if err := c.ConsumeTraces(ctx, td); err != nil {
+			errs = multierr.Append(errs, err)
+		} else {
+			f.spansCounter.WithLabelValues(componentID(c)).Add(float64(spanCount))
+		}
 	}
 
 	return errs

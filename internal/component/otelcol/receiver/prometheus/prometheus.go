@@ -149,7 +149,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	settings.TelemetrySettings.Resource = resource
 
 	nextMetrics := cfg.Output.Metrics
-	fanout := fanoutconsumer.Metrics(nextMetrics)
+	fanout := fanoutconsumer.Metrics(nextMetrics, c.opts.Registerer)
 	metricsInterceptor := interceptconsumer.Metrics(fanout,
 		func(ctx context.Context, md pmetric.Metrics) error {
 			livedebuggingpublisher.PublishMetricsIfActive(c.debugDataPublisher, c.opts.ID, md, otelcol.GetComponentMetadata(nextMetrics))

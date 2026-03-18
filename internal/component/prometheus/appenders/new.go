@@ -6,7 +6,7 @@ import (
 )
 
 // New returns an appropriate appender based on the number of children.
-func New(children []storage.Appender, store *SeriesRefMappingStore, deadRefThreshold storage.SeriesRef, writeLatency prometheus.Histogram, samplesForwarded prometheus.Counter) storage.Appender {
+func New(children []storage.Appender, store *SeriesRefMappingStore, deadRefThreshold storage.SeriesRef, writeLatency prometheus.Histogram, samplesForwarded *prometheus.CounterVec) storage.Appender {
 	// No destination, no work to do.
 	if len(children) == 0 {
 		return Noop{}

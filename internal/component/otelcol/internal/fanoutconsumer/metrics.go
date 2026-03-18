@@ -10,17 +10,32 @@ import (
 	"context"
 
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/prometheus/client_golang/prometheus"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.uber.org/multierr"
 )
 
 // Metrics creates a new fanout consumer for metrics.
-func Metrics(in []otelcol.Consumer) otelconsumer.Metrics {
+func Metrics(in []otelcol.Consumer, reg prometheus.Registerer) otelconsumer.Metrics {
+	counter := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "otelcol_forwarded_metric_points_total",
+		Help: "Total number of metric data points forwarded to downstream components.",
+	}, []string{"destination"})
+	if err := reg.Register(counter); err != nil {
+		if are, ok := err.(prometheus.AlreadyRegisteredError); ok {
+			counter = are.ExistingCollector.(*prometheus.CounterVec)
+		}
+	}
+
 	if len(in) == 0 {
-		return &metricsFanout{}
+		return &metricsFanout{metricPointsCounter: counter}
 	} else if len(in) == 1 {
-		return in[0]
+		return &metricsPassthrough{
+			consumer:            in[0],
+			destID:              componentID(in[0]),
+			metricPointsCounter: counter,
+		}
 	}
 
 	var passthrough, clone []otelconsumer.Metrics
@@ -50,14 +65,34 @@ func Metrics(in []otelcol.Consumer) otelconsumer.Metrics {
 	}
 
 	return &metricsFanout{
-		passthrough: passthrough,
-		clone:       clone,
+		passthrough:         passthrough,
+		clone:               clone,
+		metricPointsCounter: counter,
 	}
 }
 
+type metricsPassthrough struct {
+	consumer            otelconsumer.Metrics
+	destID              string
+	metricPointsCounter *prometheus.CounterVec
+}
+
+func (p *metricsPassthrough) Capabilities() otelconsumer.Capabilities {
+	return p.consumer.Capabilities()
+}
+
+func (p *metricsPassthrough) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
+	if err := p.consumer.ConsumeMetrics(ctx, md); err != nil {
+		return err
+	}
+	p.metricPointsCounter.WithLabelValues(p.destID).Add(float64(md.DataPointCount()))
+	return nil
+}
+
 type metricsFanout struct {
-	passthrough []otelconsumer.Metrics // Consumers where data can be passed through directly
-	clone       []otelconsumer.Metrics // Consumes which require cloning data
+	passthrough         []otelconsumer.Metrics // Consumers where data can be passed through directly
+	clone               []otelconsumer.Metrics // Consumes which require cloning data
+	metricPointsCounter *prometheus.CounterVec
 }
 
 func (f *metricsFanout) Capabilities() otelconsumer.Capabilities {
@@ -68,16 +103,26 @@ func (f *metricsFanout) Capabilities() otelconsumer.Capabilities {
 func (f *metricsFanout) ConsumeMetrics(ctx context.Context, md pmetric.Metrics) error {
 	var errs error
 
+	dataPointCount := md.DataPointCount()
+
 	// Initially pass to clone exporter to avoid the case where the optimization
 	// of sending the incoming data to a mutating consumer is used that may
 	// change the incoming data before cloning.
-	for _, f := range f.clone {
+	for _, c := range f.clone {
 		newMetrics := pmetric.NewMetrics()
 		md.CopyTo(newMetrics)
-		errs = multierr.Append(errs, f.ConsumeMetrics(ctx, newMetrics))
+		if err := c.ConsumeMetrics(ctx, newMetrics); err != nil {
+			errs = multierr.Append(errs, err)
+		} else {
+			f.metricPointsCounter.WithLabelValues(componentID(c)).Add(float64(dataPointCount))
+		}
 	}
-	for _, f := range f.passthrough {
-		errs = multierr.Append(errs, f.ConsumeMetrics(ctx, md))
+	for _, c := range f.passthrough {
+		if err := c.ConsumeMetrics(ctx, md); err != nil {
+			errs = multierr.Append(errs, err)
+		} else {
+			f.metricPointsCounter.WithLabelValues(componentID(c)).Add(float64(dataPointCount))
+		}
 	}
 
 	return errs
