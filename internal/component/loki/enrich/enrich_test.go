@@ -1,6 +1,7 @@
 package enrich
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -22,11 +23,10 @@ func TestEnricher(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		args           Arguments
-		inputLog       *push.Entry
-		inputLabels    model.LabelSet
-		expectedLabels model.LabelSet
+		name     string
+		args     Arguments
+		input    loki.Entry
+		expected loki.Entry
 	}{
 		{
 			name: "label enrichment with target_labels and logs_match_label",
@@ -43,18 +43,25 @@ func TestEnricher(t *testing.T) {
 				LogsMatchLabel:   "service_name",
 				LabelsToCopy:     []string{"env", "owner"},
 			},
-			inputLog: &push.Entry{
-				Timestamp: time.Now(),
-				Line:      "test log",
-			},
-			inputLabels: model.LabelSet{
-				"service_name": "test-service",
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"service_name": "test-service",
+				},
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      "test log",
+				},
 			},
 			// foo:bar is not added as it is not in the target labels.
-			expectedLabels: model.LabelSet{
-				"service_name": "test-service",
-				"env":          "prod",
-				"owner":        "team-a",
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"service_name": "test-service",
+					"env":          "prod",
+					"owner":        "team-a",
+				},
+				Entry: push.Entry{
+					Line: "test log",
+				},
 			},
 		},
 		{
@@ -70,17 +77,24 @@ func TestEnricher(t *testing.T) {
 				LogsMatchLabel:   "service_name",
 				LabelsToCopy:     []string{"env"},
 			},
-			inputLog: &push.Entry{
-				Timestamp: time.Now(),
-				Line:      "test log",
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"service_name": "test-service",
+					"foo":          "bar",
+				},
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      "test log",
+				},
 			},
-			inputLabels: model.LabelSet{
-				"service_name": "test-service",
-				"foo":          "bar",
-			},
-			expectedLabels: model.LabelSet{
-				"service_name": "test-service",
-				"foo":          "bar",
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"service_name": "test-service",
+					"foo":          "bar",
+				},
+				Entry: push.Entry{
+					Line: "test log",
+				},
 			},
 		},
 		{
@@ -97,18 +111,25 @@ func TestEnricher(t *testing.T) {
 				TargetMatchLabel: "service",
 				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
 			},
-			inputLog: &push.Entry{
-				Timestamp: time.Now(),
-				Line:      "test log",
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"service": "test-service",
+				},
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      "test log",
+				},
 			},
-			inputLabels: model.LabelSet{
-				"service": "test-service",
-			},
-			expectedLabels: model.LabelSet{
-				"service": "test-service",
-				"env":     "prod",
-				"owner":   "team-b",
-				"region":  "us-west",
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"service": "test-service",
+					"env":     "prod",
+					"owner":   "team-b",
+					"region":  "us-west",
+				},
+				Entry: push.Entry{
+					Line: "test log",
+				},
 			},
 		},
 		{
@@ -125,53 +146,61 @@ func TestEnricher(t *testing.T) {
 				// LogsMatchLabel intentionally omitted as 'service' label exists in both.
 				LabelsToCopy: []string{"env", "owner"},
 			},
-			inputLog: &push.Entry{
-				Timestamp: time.Now(),
-				Line:      "test log",
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"service":  "test-service", // matches target_match_label
+					"original": "label",
+				},
+				Entry: push.Entry{
+					Timestamp: time.Now(),
+					Line:      "test log",
+				},
 			},
-			inputLabels: model.LabelSet{
-				"service":  "test-service", // matches target_match_label
-				"original": "label",
-			},
-			expectedLabels: model.LabelSet{
-				"service":  "test-service",
-				"original": "label",
-				"env":      "prod",
-				"owner":    "team-c",
+			expected: loki.Entry{
+				Labels: model.LabelSet{
+					"service":  "test-service",
+					"original": "label",
+					"env":      "prod",
+					"owner":    "team-c",
+				},
+				Entry: push.Entry{
+					Line: "test log",
+				},
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a channel to receive enriched logs
-			receivedCh := make(chan loki.Entry, 1)
-			receiver := loki.NewLogsReceiver()
+			collector := loki.NewCollectingHandler()
+			defer collector.Stop()
+
+			var exports Exports
 
 			// Create the component
-			tt.args.ForwardTo = []loki.LogsReceiver{receiver}
+			tt.args.ForwardTo = []loki.LogsReceiver{collector.Receiver()}
+			opts.OnStateChange = func(e component.Exports) {
+				exports = e.(Exports)
+			}
 			comp, err := New(opts, tt.args)
 			require.NoError(t, err)
+			require.NotNil(t, exports.Receiver)
 
-			// Start a goroutine to forward logs to our test channel
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
 			go func() {
-				for entry := range receiver.Chan() {
-					receivedCh <- entry
-				}
+				_ = comp.Run(ctx)
 			}()
 
-			// Process a log entry
-			err = comp.processLog(tt.inputLog, tt.inputLabels)
-			require.NoError(t, err)
+			exports.Receiver.Chan() <- tt.input
 
-			// Verify the enriched log
-			select {
-			case received := <-receivedCh:
-				require.Equal(t, tt.expectedLabels, received.Labels)
-				require.Equal(t, tt.inputLog.Line, received.Entry.Line)
-			case <-time.After(time.Second):
-				t.Fatal("timeout waiting for log entry")
-			}
+			require.Eventually(t, func() bool {
+				return len(collector.Received()) == 1
+			}, time.Second, 10*time.Millisecond)
+
+			received := collector.Received()[0]
+			require.Equal(t, tt.expected.Labels, received.Labels)
+			require.Equal(t, tt.expected.Line, received.Line)
 		})
 	}
 }
@@ -198,13 +227,4 @@ func TestUpdate(t *testing.T) {
 		LabelsToCopy:     []string{"env"},
 	})
 	require.NoError(t, err)
-}
-
-func TestName(t *testing.T) {
-	comp, err := New(component.Options{
-		Logger:        log.NewNopLogger(),
-		OnStateChange: func(e component.Exports) {},
-	}, Arguments{})
-	require.NoError(t, err)
-	require.Equal(t, "loki.enrich", comp.Name())
 }
