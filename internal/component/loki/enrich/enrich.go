@@ -78,8 +78,8 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(e loki.Entry) loki.Entry {
-		return c.processLog(e)
+	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
+		return c.processLog(e), true
 	})
 	return nil
 }
