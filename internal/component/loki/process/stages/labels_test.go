@@ -118,7 +118,7 @@ func TestLabels(t *testing.T) {
 	tests := map[string]struct {
 		config       LabelsConfig
 		err          error
-		expectedCfgs map[string]*string
+		expectedCfgs map[string]string
 	}{
 		"missing config": {
 			config:       emptyLabelsConfig,
@@ -149,10 +149,10 @@ func TestLabels(t *testing.T) {
 					"l3": &lv3,
 				}},
 			err: nil,
-			expectedCfgs: map[string]*string{
-				"l1": &lv1,
-				"l2": ptr("l2"),
-				"l3": ptr("l3"),
+			expectedCfgs: map[string]string{
+				"l1": lv1,
+				"l2": "l2",
+				"l3": "l3",
 			},
 		},
 		"label value is set from name for structured_metadata": {
@@ -164,10 +164,10 @@ func TestLabels(t *testing.T) {
 					"l3": &lv3,
 				}},
 			err: nil,
-			expectedCfgs: map[string]*string{
-				"l1": &lv1,
-				"l2": ptr("l2"),
-				"l3": ptr("l3"),
+			expectedCfgs: map[string]string{
+				"l1": lv1,
+				"l2": "l2",
+				"l3": "l3",
 			},
 		},
 	}
@@ -175,7 +175,7 @@ func TestLabels(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			err := validateLabelsConfig(&test.config)
+			actual, err := validateLabelsConfig(&test.config)
 			if (err != nil) != (test.err != nil) {
 				t.Errorf("validateLabelsConfig() expected error = %v, actual error = %v", test.err, err)
 				return
@@ -185,7 +185,7 @@ func TestLabels(t *testing.T) {
 				return
 			}
 			if test.expectedCfgs != nil {
-				assert.Equal(t, test.expectedCfgs, test.config.Values)
+				assert.Equal(t, test.expectedCfgs, actual)
 			}
 		})
 	}

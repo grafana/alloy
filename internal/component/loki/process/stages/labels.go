@@ -28,9 +28,9 @@ type LabelsConfig struct {
 }
 
 // validateLabelsConfig validates the Label stage configuration
-func validateLabelsConfig(cfg *LabelsConfig) error {
+func validateLabelsConfig(cfg *LabelsConfig) (map[string]string, error) {
 	if cfg.Values == nil {
-		return errors.New(ErrEmptyLabelStageConfig)
+		return nil, errors.New(ErrEmptyLabelStageConfig)
 	}
 
 	if cfg.SourceType == "" {
@@ -40,44 +40,49 @@ func validateLabelsConfig(cfg *LabelsConfig) error {
 	switch cfg.SourceType {
 	case SourceTypeExtractedMap, SourceTypeStructuredMetadata:
 	default:
-		return fmt.Errorf(ErrInvalidSourceType, cfg.SourceType)
+		return nil, fmt.Errorf(ErrInvalidSourceType, cfg.SourceType)
 	}
 
 	// We must not mutate the c.Values, create a copy with changes we need.
-	returnValues := map[string]*string{}
+	ret := map[string]string{}
+	if cfg.Values == nil {
+		return nil, errors.New(ErrEmptyLabelStageConfig)
+	}
 	for labelName, labelSrc := range cfg.Values {
 		// TODO: add support for different validation schemes.
 		//nolint:staticcheck
 		if !model.LabelName(labelName).IsValid() {
-			return fmt.Errorf(ErrInvalidLabelName, labelName)
+			return nil, fmt.Errorf(ErrInvalidLabelName, labelName)
 		}
 		// If no label source was specified, use the key name
 		if labelSrc == nil || *labelSrc == "" {
-			returnValues[labelName] = &labelName
+			ret[labelName] = labelName
 		} else {
-			returnValues[labelName] = labelSrc
+			ret[labelName] = *labelSrc
 		}
 	}
-	cfg.Values = returnValues
-	return nil
+
+	return ret, nil
 }
 
 // newLabelStage creates a new label stage to set labels from extracted data
 func newLabelStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
-	err := validateLabelsConfig(&configs)
+	labelsConfig, err := validateLabelsConfig(&configs)
 	if err != nil {
 		return nil, err
 	}
 	return &labelStage{
-		cfg:    &configs,
-		logger: logger,
+		cfg:          &configs,
+		labelsConfig: labelsConfig,
+		logger:       logger,
 	}, nil
 }
 
 // labelStage sets labels from extracted data
 type labelStage struct {
-	cfg    *LabelsConfig
-	logger log.Logger
+	cfg          *LabelsConfig
+	labelsConfig map[string]string
+	logger       log.Logger
 }
 
 // Run implements Stage
@@ -99,8 +104,8 @@ func (l *labelStage) Run(in chan Entry) chan Entry {
 }
 
 func (l *labelStage) addLabelFromExtractedMap(labels model.LabelSet, extracted map[string]any) {
-	for lName, lSrc := range l.cfg.Values {
-		if lValue, ok := extracted[*lSrc]; ok {
+	for lName, lSrc := range l.labelsConfig {
+		if lValue, ok := extracted[lSrc]; ok {
 			s, err := getString(lValue)
 			if err != nil {
 				if Debug {
@@ -122,9 +127,9 @@ func (l *labelStage) addLabelFromExtractedMap(labels model.LabelSet, extracted m
 }
 
 func (l *labelStage) addLabelsFromStructuredMetadata(labels model.LabelSet, metadata push.LabelsAdapter) {
-	for lName, lSrc := range l.cfg.Values {
+	for lName, lSrc := range l.labelsConfig {
 		for _, kv := range metadata {
-			if kv.Name != *lSrc {
+			if kv.Name != lSrc {
 				continue
 			}
 
