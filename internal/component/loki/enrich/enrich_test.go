@@ -16,18 +16,26 @@ import (
 )
 
 func TestEnricher(t *testing.T) {
-	// Create basic component options
-	opts := component.Options{
-		Logger:        log.NewNopLogger(),
-		OnStateChange: func(e component.Exports) {},
-	}
+	var (
+		now        = time.Now()
+		inputEntry = push.Entry{
+			Timestamp: now,
+			Line:      "test log",
+		}
+		expectedEntry = push.Entry{
+			Line:      "test log",
+			Timestamp: now,
+		}
+	)
 
-	tests := []struct {
+	type testCase struct {
 		name     string
 		args     Arguments
 		input    loki.Entry
 		expected loki.Entry
-	}{
+	}
+
+	tests := []testCase{
 		{
 			name: "label enrichment with target_labels and logs_match_label",
 			args: Arguments{
@@ -47,10 +55,7 @@ func TestEnricher(t *testing.T) {
 				Labels: model.LabelSet{
 					"service_name": "test-service",
 				},
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      "test log",
-				},
+				Entry: inputEntry,
 			},
 			// foo:bar is not added as it is not in the target labels.
 			expected: loki.Entry{
@@ -59,9 +64,7 @@ func TestEnricher(t *testing.T) {
 					"env":          "prod",
 					"owner":        "team-a",
 				},
-				Entry: push.Entry{
-					Line: "test log",
-				},
+				Entry: expectedEntry,
 			},
 		},
 		{
@@ -82,19 +85,14 @@ func TestEnricher(t *testing.T) {
 					"service_name": "test-service",
 					"foo":          "bar",
 				},
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      "test log",
-				},
+				Entry: inputEntry,
 			},
 			expected: loki.Entry{
 				Labels: model.LabelSet{
 					"service_name": "test-service",
 					"foo":          "bar",
 				},
-				Entry: push.Entry{
-					Line: "test log",
-				},
+				Entry: expectedEntry,
 			},
 		},
 		{
@@ -115,10 +113,7 @@ func TestEnricher(t *testing.T) {
 				Labels: model.LabelSet{
 					"service": "test-service",
 				},
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      "test log",
-				},
+				Entry: inputEntry,
 			},
 			expected: loki.Entry{
 				Labels: model.LabelSet{
@@ -127,9 +122,7 @@ func TestEnricher(t *testing.T) {
 					"owner":   "team-b",
 					"region":  "us-west",
 				},
-				Entry: push.Entry{
-					Line: "test log",
-				},
+				Entry: expectedEntry,
 			},
 		},
 		{
@@ -151,10 +144,7 @@ func TestEnricher(t *testing.T) {
 					"service":  "test-service", // matches target_match_label
 					"original": "label",
 				},
-				Entry: push.Entry{
-					Timestamp: time.Now(),
-					Line:      "test log",
-				},
+				Entry: inputEntry,
 			},
 			expected: loki.Entry{
 				Labels: model.LabelSet{
@@ -163,9 +153,7 @@ func TestEnricher(t *testing.T) {
 					"env":      "prod",
 					"owner":    "team-c",
 				},
-				Entry: push.Entry{
-					Line: "test log",
-				},
+				Entry: expectedEntry,
 			},
 		},
 	}
@@ -179,6 +167,11 @@ func TestEnricher(t *testing.T) {
 
 			// Create the component
 			tt.args.ForwardTo = []loki.LogsReceiver{collector.Receiver()}
+
+			opts := component.Options{
+				Logger:        log.NewNopLogger(),
+				OnStateChange: func(e component.Exports) {},
+			}
 			opts.OnStateChange = func(e component.Exports) {
 				exports = e.(Exports)
 			}
