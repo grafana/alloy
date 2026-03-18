@@ -2,6 +2,7 @@ package enrich
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -180,10 +181,10 @@ func TestEnricher(t *testing.T) {
 			require.NotNil(t, exports.Receiver)
 
 			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
-			go func() {
+			var wg sync.WaitGroup
+			wg.Go(func() {
 				_ = comp.Run(ctx)
-			}()
+			})
 
 			exports.Receiver.Chan() <- tt.input
 
@@ -194,6 +195,9 @@ func TestEnricher(t *testing.T) {
 			received := collector.Received()[0]
 			require.Equal(t, tt.expected.Labels, received.Labels)
 			require.Equal(t, tt.expected.Line, received.Line)
+
+			cancel()
+			wg.Wait()
 		})
 	}
 }
