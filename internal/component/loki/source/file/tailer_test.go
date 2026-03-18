@@ -235,6 +235,80 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 	}
 }
 
+func TestTailerCancelWhileSendBlocked(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	l := logging.NewNop()
+	recv := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+
+	file, err := os.CreateTemp(tempDir, "example")
+	require.NoError(t, err)
+	_, err = file.Write([]byte("1\n"))
+	require.NoError(t, err)
+	_, err = file.Write([]byte("2\n"))
+	require.NoError(t, err)
+	file.Close()
+
+	positionsFile, err := positions.New(l, positions.Config{
+		SyncPeriod:        50 * time.Millisecond,
+		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+		IgnoreInvalidYaml: false,
+		ReadOnly:          false,
+	})
+	require.NoError(t, err)
+	defer positionsFile.Stop()
+
+	var (
+		path   = file.Name()
+		labels = model.LabelSet{
+			"filename": model.LabelValue(file.Name()),
+			"foo":      "bar",
+		}
+	)
+
+	tailer := newTailer(
+		newMetrics(nil),
+		l,
+		recv,
+		positionsFile,
+		func() bool { return true },
+		sourceOptions{
+			path:   path,
+			labels: labels,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+		},
+	)
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	done := make(chan struct{})
+	go func() {
+		tailer.Run(ctx)
+		close(done)
+	}()
+
+	// Read first line.
+	entry := <-recv.Chan()
+	require.Equal(t, "1", entry.Line)
+
+	// Stop tailer without reading from recv.
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tailer deadlocked while send was blocked")
+	}
+	pos, err := positionsFile.Get(path, labels.String())
+	require.NoError(t, err)
+	require.Equal(t, int64(2), pos)
+}
+
 func TestTailerCorruptedPositions(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 	l := util.TestLogger(t)
