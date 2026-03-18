@@ -18,7 +18,7 @@ import (
 func OpenFile(name string) (file *os.File, err error) {
 	f, e := open(name, os.O_RDONLY|syscall.O_CLOEXEC, 0)
 	if e != nil {
-		return nil, e
+		return nil, &os.PathError{Op: "open", Path: name, Err: e}
 	}
 	return os.NewFile(uintptr(f), name), nil
 }
