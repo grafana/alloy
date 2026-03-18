@@ -537,6 +537,7 @@ The `metrics` block configures which metrics Beyla collects.
 | `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
 | `extra_resource_labels`               | `list(string)` | List of OTEL resource labels to include on `target_info`.  | `[]`              | no       |
 | `extra_span_resource_labels`          | `list(string)` | List of OTEL resource labels to include on span metrics.   | `["k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"]`           | no       |
+| `native_histograms`                   | `bool`         | Use Prometheus native histograms.                          | `false` | no |
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
@@ -572,7 +573,7 @@ on the service, that you want to include on the span metrics. The default list i
 * `service.version`
 * `deployment.environment`
 
-The default list of `extra_span_resource_labels` is set to match the defaults chosen by Application Observability plugin in 
+The default list of `extra_span_resource_labels` is set to match the defaults chosen by Application Observability plugin in
 Grafana Cloud.
 
 #### `network` metrics
