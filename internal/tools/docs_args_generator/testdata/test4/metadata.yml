@@ -1,0 +1,6 @@
+arguments:
+  type: object
+  description: "Test component importing blocks with different tls sub-blocks from a subschema."
+  allOf:
+    - "$ref": "./subschema/schema.yml"
+  properties: {}

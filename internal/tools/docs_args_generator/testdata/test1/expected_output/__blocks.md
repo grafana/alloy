@@ -1,5 +1,5 @@
 | Block | Description | Required |
 | ----- | ----------- | -------- |
-| [`http`][http] | Configures the HTTP server that receives requests. | no |
+| [`http`][net--http] | Configures the HTTP server that receives requests. | no |
 
-[http]: #http
+[net--http]: #net--http
