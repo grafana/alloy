@@ -2,32 +2,51 @@ package loki
 
 import (
 	"context"
+	"sync"
+	"time"
 )
 
-// Drain consumes log entries from recv in a background goroutine while f executes.
-// This prevents deadlocks that can occur when stopping components that may still be
-// sending entries to the receiver channel. The draining goroutine will continue
-// consuming entries until f returns, at which point the context is cancelled and
-// the goroutine exits.
+const DefaultDrainTimeout = 2 * time.Minute
+
+// Drain forwards log entries from recv to fanout in a background goroutine while
+// fn executes. If forwarding blocks for longer than timeout, Drain falls back
+// to discarding entries from recv until fn returns. This prevents deadlocks in
+// shutdown paths where component may still send to recv while fn is stopping them.
 //
 // This is typically used during component shutdown to drain any remaining entries
 // from a receiver channel while performing cleanup operations.
-func Drain(recv LogsReceiver, f func()) {
+func Drain(recv LogsReceiver, fanout *Fanout, timeout time.Duration, fn func()) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case _, ok := <-recv.Chan():
-				// Consume and discard entries to prevent channel blocking
-				if !ok {
-					return
-				}
-			}
-		}
+	var wg sync.WaitGroup
+
+	defer func() {
+		cancel()
+		wg.Wait()
 	}()
 
-	f()
+	wg.Go(func() {
+		consumeCtx, consumeCancel := context.WithTimeout(ctx, timeout)
+		Consume(consumeCtx, recv, fanout)
+		consumeCancel()
+
+		// NOTE: If we could not forward entries within fallbackDuration we drain to nothing.
+		// This is just to gaurd against deadlock. If/when fn finish sucessfully this will stop.
+		discard(ctx, recv)
+	})
+
+	fn()
+}
+
+func discard(ctx context.Context, recv LogsReceiver) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case _, ok := <-recv.Chan():
+			// Consume and discard entries to prevent channel blocking
+			if !ok {
+				return
+			}
+		}
+	}
 }

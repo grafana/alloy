@@ -11,28 +11,60 @@ import (
 )
 
 func TestDrain(t *testing.T) {
-	recv := NewLogsReceiver()
+	t.Run("forwards while fn runs", func(t *testing.T) {
+		recv := NewLogsReceiver()
+		collector := NewCollectingHandler()
+		defer collector.Stop()
 
-	var wg sync.WaitGroup
-	wg.Go(func() {
-		for range 10 {
-			entry := Entry{
+		var producer sync.WaitGroup
+		producer.Go(func() {
+			recv.Chan() <- Entry{
 				Labels: model.LabelSet{"test": "label"},
 				Entry: push.Entry{
 					Timestamp: time.Now(),
-					Line:      "test log entry",
+					Line:      "forwarded",
 				},
 			}
-			recv.Chan() <- entry
-		}
+		})
+
+		completed := false
+		Drain(recv, NewFanout([]LogsReceiver{collector.Receiver()}), time.Second, func() {
+			require.Eventually(t, func() bool {
+				return len(collector.Received()) == 1
+			}, time.Second, 10*time.Millisecond)
+			completed = true
+		})
+
+		producer.Wait()
+		require.True(t, completed)
+		require.Len(t, collector.Received(), 1)
+		require.Equal(t, "forwarded", collector.Received()[0].Line)
 	})
 
-	completed := false
-	Drain(recv, func() {
-		time.Sleep(100 * time.Millisecond)
-		completed = true
-	})
+	t.Run("falls back to discard when forwarding blocks", func(t *testing.T) {
+		recv := NewLogsReceiver()
+		blockedRecv := NewLogsReceiver()
 
-	wg.Wait()
-	require.True(t, completed, "Drain should complete without deadlock")
+		var producer sync.WaitGroup
+		producer.Go(func() {
+			for range 2 {
+				recv.Chan() <- Entry{
+					Labels: model.LabelSet{"test": "label"},
+					Entry: push.Entry{
+						Timestamp: time.Now(),
+						Line:      "blocked",
+					},
+				}
+			}
+		})
+
+		completed := false
+		Drain(recv, NewFanout([]LogsReceiver{blockedRecv}), 20*time.Millisecond, func() {
+			time.Sleep(100 * time.Millisecond)
+			completed = true
+		})
+
+		producer.Wait()
+		require.True(t, completed)
+	})
 }
