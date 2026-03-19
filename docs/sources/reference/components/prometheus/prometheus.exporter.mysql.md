@@ -26,14 +26,15 @@ prometheus.exporter.mysql "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.mysql`:
 
-| Name                 | Type           | Description                                                                                                         | Default | Required |
-| -------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `data_source_name`   | `secret`       | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to. |         | yes      |
-| `disable_collectors` | `list(string)` | A list of [collectors][] to disable from the default set.                                                           |         | no       |
-| `enable_collectors`  | `list(string)` | A list of [collectors][] to enable on top of the default set.                                                       |         | no       |
-| `lock_wait_timeout`  | `int`          | Timeout, in seconds, to acquire a metadata lock.                                                                    | `2`     | no       |
-| `log_slow_filter`    | `bool`         | Used to avoid queries from scrapes being logged in the slow query log.                                              | `false` | no       |
-| `set_collectors`     | `list(string)` | A list of [collectors][] to run. Fully overrides the default set.                                                   |         | no       |
+| Name                       | Type           | Description                                                                                                         | Default | Required |
+| -------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `data_source_name`         | `secret`       | [Data Source Name](https://github.com/go-sql-driver/mysql#dsn-data-source-name) for the MySQL server to connect to. |         | yes      |
+| `disable_collectors`       | `list(string)` | A list of [collectors][] to disable from the default set.                                                           |         | no       |
+| `enable_collectors`        | `list(string)` | A list of [collectors][] to enable on top of the default set.                                                       |         | no       |
+| `enable_lock_wait_timeout` | `bool`         | Whether to enable the `lock_wait_timeout` parameter.                                                             | `true`  | no       |
+| `lock_wait_timeout`        | `int`          | Timeout, in seconds, to acquire a metadata lock.                                                                    | `2`     | no       |
+| `log_slow_filter`          | `bool`         | Used to avoid queries from scrapes being logged in the slow query log.                                              | `false` | no       |
+| `set_collectors`           | `list(string)` | A list of [collectors][] to run. Fully overrides the default set.                                                   |         | no       |
 
 Set a `lock_wait_timeout` on the connection to avoid potentially long wait times for metadata locks.
 For more information, refer to the `lock_wait_timeout` [in the MySQL documentation](https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_lock_wait_timeout).
@@ -84,9 +85,9 @@ You can use the following blocks with `prometheus.exporter.mysql`:
 
 ### `info_schema.tables`
 
-| Name                           | Type     | Description                                                       | Default | Required |
-| ------------------------------ | -------- | ----------------------------------------------------------------- | ------- | -------- |
-| `info_schema_tables_databases` | `string` | Regular expression to match databases to collect table stats for. | `"*"`   | no       |
+| Name        | Type     | Description                                                         | Default | Required |
+| ----------- | -------- | ------------------------------------------------------------------- | ------- | -------- |
+| `databases` | `string` | The list of databases to collect table stats for, or `"*"` for all. | `"*"`   | no       |
 
 ### `mysql.user`
 
@@ -96,11 +97,12 @@ You can use the following blocks with `prometheus.exporter.mysql`:
 
 ### `perf_schema.eventsstatements`
 
-| Name         | Type  | Description                                                                        | Default | Required |
-| ------------ | ----- | ---------------------------------------------------------------------------------- | ------- | -------- |
-| `limit`      | `int` | Limit the number of events statements digests, in descending order by `last_seen`. | `250`   | no       |
-| `text_limit` | `int` | Maximum length of the normalized statement text.                                   | `120`   | no       |
-| `time_limit` | `int` | Limit how old, in seconds, the `last_seen` events statements can be.               | `86400` | no       |
+| Name               | Type           | Description                                                                        | Default | Required |
+| ------------------ | -------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
+| `exclude_schemas`  | `list(string)` | List of schemas to exclude from events statements collection.                      |         | no       |
+| `limit`            | `int`          | Limit the number of events statements digests, in descending order by `last_seen`. | `250`   | no       |
+| `text_limit`       | `int`          | Maximum length of the normalized statement text.                                   | `120`   | no       |
+| `time_limit`       | `int`          | Limit how old, in seconds, the `last_seen` events statements can be.               | `86400` | no       |
 
 ### `perf_schema.file_instances`
 
@@ -125,8 +127,8 @@ The full list of supported collectors is:
 | -------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------ |
 | `global_status`                                    | Collect metrics from `SHOW GLOBAL STATUS`.                                                   | yes                |
 | `global_variables`                                 | Collect metrics from `SHOW GLOBAL VARIABLES`.                                                | yes                |
+| `info_schema.innodb_cmp`                           | Collect metrics from `information_schema.innodb_cmp`.                                        | yes                |
 | `info_schema.innodb_cmpmem`                        | Collect metrics from `information_schema.innodb_cmpmem`.                                     | yes                |
-| `info_schema.innodb_metric`s                       | Collect metrics from `information_schema.innodb_metrics`.                                    | yes                |
 | `info_schema.query_response_time`                  | Collect query response time distribution if `query_response_time_stats` is ON.               | yes                |
 | `slave_status`                                     | Scrape information from `SHOW SLAVE STATUS`.                                                 | yes                |
 | `auto_increment.columns`                           | Collect `auto_increment` columns and max values from `information_schema`.                   | no                 |
@@ -135,6 +137,7 @@ The full list of supported collectors is:
 | `engine_tokudb_status`                             | Collect metrics from `SHOW ENGINE TOKUDB STATUS`.                                            | no                 |
 | `heartbeat`                                        | Collect metrics from heartbeat database and tables.                                          | no                 |
 | `info_schema.clientstats`                          | If running with userstat=1, enable to collect client statistics.                             | no                 |
+| `info_schema.innodb_metrics`                       | Collect metrics from `information_schema.innodb_metrics`.                                    | no                 |
 | `info_schema.innodb_tablespaces`                   | Collect metrics from `information_schema.innodb_sys_tablespaces`.                            | no                 |
 | `info_schema.processlist`                          | Collect current thread state counts from the `information_schema.processlist`.               | no                 |
 | `info_schema.replica_host`                         | Collect metrics from `information_schema.replica_host_status`.                               | no                 |
@@ -156,6 +159,7 @@ The full list of supported collectors is:
 | `perf_schema.tableiowaits`                         | Collect metrics from `performance_schema.table_io_waits_summary_by_table`.                   | no                 |
 | `perf_schema.tablelocks`                           | Collect metrics from `performance_schema.table_lock_waits_summary_by_table`.                 | no                 |
 | `slave_hosts`                                      | Scrape information from `SHOW SLAVE HOSTS`.                                                  | no                 |
+| `sys.user_summary`                                 | Collect per-user metrics from `sys.x$user_summary`.                                         | no                 |
 
 ## Exported fields
 

@@ -14,12 +14,13 @@ func (b *ConfigBuilder) appendMysqldExporter(config *mysqld_exporter.Config, ins
 
 func toMysqldExporter(config *mysqld_exporter.Config) *mysql.Arguments {
 	return &mysql.Arguments{
-		DataSourceName:    alloytypes.Secret(config.DataSourceName),
-		EnableCollectors:  config.EnableCollectors,
-		DisableCollectors: config.DisableCollectors,
-		SetCollectors:     config.SetCollectors,
-		LockWaitTimeout:   config.LockWaitTimeout,
-		LogSlowFilter:     config.LogSlowFilter,
+		DataSourceName:        alloytypes.Secret(config.DataSourceName),
+		EnableCollectors:      config.EnableCollectors,
+		DisableCollectors:     config.DisableCollectors,
+		SetCollectors:         config.SetCollectors,
+		EnableLockWaitTimeout: config.EnableLockWaitTimeout,
+		LockWaitTimeout:       config.LockWaitTimeout,
+		LogSlowFilter:         config.LogSlowFilter,
 		InfoSchemaProcessList: mysql.InfoSchemaProcessList{
 			MinTime:         config.InfoSchemaProcessListMinTime,
 			ProcessesByUser: config.InfoSchemaProcessListProcessesByUser,
@@ -29,9 +30,10 @@ func toMysqldExporter(config *mysqld_exporter.Config) *mysql.Arguments {
 			Databases: config.InfoSchemaTablesDatabases,
 		},
 		PerfSchemaEventsStatements: mysql.PerfSchemaEventsStatements{
-			Limit:     config.PerfSchemaEventsStatementsLimit,
-			TimeLimit: config.PerfSchemaEventsStatementsTimeLimit,
-			TextLimit: config.PerfSchemaEventsStatementsTextLimit,
+			Limit:          config.PerfSchemaEventsStatementsLimit,
+			TimeLimit:      config.PerfSchemaEventsStatementsTimeLimit,
+			TextLimit:      config.PerfSchemaEventsStatementsTextLimit,
+			ExcludeSchemas: config.PerfSchemaEventsStatementsExcludeSchemas,
 		},
 		PerfSchemaFileInstances: mysql.PerfSchemaFileInstances{
 			Filter:       config.PerfSchemaFileInstancesFilter,
