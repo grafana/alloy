@@ -238,10 +238,10 @@ For more details on available contexts, refer to [filterprocessor context docume
 
 The `log_conditions` block specifies inferred-context OTTL conditions for logs.
 
-| Name         | Type           | Description                              | Default | Required |
-|--------------|----------------|------------------------------------------|---------|----------|
-| `context`    | `string`       | OTTL context for evaluating conditions.  |         | no       |
-| `conditions` | `list(string)` | List of OTTL conditions.                 |         | yes      |
+| Name         | Type           | Description                             | Default | Required |
+| ------------ | -------------- | --------------------------------------- | ------- | -------- |
+| `conditions` | `list(string)` | List of OTTL conditions.                |         | yes      |
+| `context`    | `string`       | OTTL context for evaluating conditions. |         | no       |
 
 Supported `context` values are:
 
