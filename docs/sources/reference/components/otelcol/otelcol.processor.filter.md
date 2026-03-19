@@ -204,10 +204,10 @@ If all span events for a span are dropped, the span will be left intact.
 
 The `trace_conditions` block specifies inferred-context OTTL conditions for traces.
 
-| Name         | Type           | Description                              | Default | Required |
-|--------------|----------------|------------------------------------------|---------|----------|
-| `context`    | `string`       | OTTL context for evaluating conditions.  |         | no       |
-| `conditions` | `list(string)` | List of OTTL conditions.                 |         | yes      |
+| Name         | Type           | Description                             | Default | Required |
+| ------------ | -------------- | --------------------------------------- | ------- | -------- |
+| `conditions` | `list(string)` | List of OTTL conditions.                |         | yes      |
+| `context`    | `string`       | OTTL context for evaluating conditions. |         | no       |
 
 Supported `context` values are:
 
