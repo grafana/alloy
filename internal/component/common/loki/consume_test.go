@@ -1,4 +1,4 @@
-package source
+package loki
 
 import (
 	"context"
@@ -7,14 +7,12 @@ import (
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/stretchr/testify/require"
-
-	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 func TestConsume(t *testing.T) {
-	consumer := loki.NewLogsReceiver()
-	producer := loki.NewLogsReceiver()
-	fanout := loki.NewFanout([]loki.LogsReceiver{consumer})
+	consumer := NewLogsReceiver()
+	producer := NewLogsReceiver()
+	fanout := NewFanout([]LogsReceiver{consumer})
 
 	t.Run("should fanout any consumed entries", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -24,7 +22,7 @@ func TestConsume(t *testing.T) {
 			Consume(ctx, producer, fanout)
 		})
 
-		producer.Chan() <- loki.Entry{Entry: push.Entry{Line: "1"}}
+		producer.Chan() <- Entry{Entry: push.Entry{Line: "1"}}
 		e := <-consumer.Chan()
 		require.Equal(t, "1", e.Entry.Line)
 		cancel()
@@ -38,21 +36,21 @@ func TestConsume(t *testing.T) {
 			Consume(ctx, producer, fanout)
 		})
 
-		producer.Chan() <- loki.Entry{Entry: push.Entry{Line: "1"}}
+		producer.Chan() <- Entry{Entry: push.Entry{Line: "1"}}
 		cancel()
 		wg.Wait()
 	})
 }
 
 func TestConsumeAndProcess(t *testing.T) {
-	consumer := loki.NewLogsReceiver()
-	producer := loki.NewLogsReceiver()
-	fanout := loki.NewFanout([]loki.LogsReceiver{consumer})
+	consumer := NewLogsReceiver()
+	producer := NewLogsReceiver()
+	fanout := NewFanout([]LogsReceiver{consumer})
 
 	t.Run("should process and fanout any consumed entries", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		processFn := func(e loki.Entry) loki.Entry {
+		processFn := func(e Entry) Entry {
 			e.Entry.Line = "processed: " + e.Entry.Line
 			return e
 		}
@@ -62,7 +60,7 @@ func TestConsumeAndProcess(t *testing.T) {
 			ConsumeAndProcess(ctx, producer, fanout, processFn)
 		})
 
-		producer.Chan() <- loki.Entry{Entry: push.Entry{Line: "1"}}
+		producer.Chan() <- Entry{Entry: push.Entry{Line: "1"}}
 		e := <-consumer.Chan()
 		require.Equal(t, "processed: 1", e.Entry.Line)
 		cancel()
@@ -71,7 +69,7 @@ func TestConsumeAndProcess(t *testing.T) {
 
 	t.Run("should stop if context is canceled while trying to fanout", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		processFn := func(e loki.Entry) loki.Entry {
+		processFn := func(e Entry) Entry {
 			return e
 		}
 		wg := sync.WaitGroup{}
@@ -79,16 +77,16 @@ func TestConsumeAndProcess(t *testing.T) {
 			ConsumeAndProcess(ctx, producer, fanout, processFn)
 		})
 
-		producer.Chan() <- loki.Entry{Entry: push.Entry{Line: "1"}}
+		producer.Chan() <- Entry{Entry: push.Entry{Line: "1"}}
 		cancel()
 		wg.Wait()
 	})
 }
 
 func TestConsumeBatch(t *testing.T) {
-	consumer := loki.NewLogsReceiver()
-	producer := loki.NewLogsBatchReceiver()
-	fanout := loki.NewFanout([]loki.LogsReceiver{consumer})
+	consumer := NewLogsReceiver()
+	producer := NewLogsBatchReceiver()
+	fanout := NewFanout([]LogsReceiver{consumer})
 
 	t.Run("should fanout any consumed entries", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -98,7 +96,7 @@ func TestConsumeBatch(t *testing.T) {
 			ConsumeBatch(ctx, producer, fanout)
 		})
 
-		producer.Chan() <- []loki.Entry{{Entry: push.Entry{Line: "1"}}, {Entry: push.Entry{Line: "2"}}}
+		producer.Chan() <- []Entry{{Entry: push.Entry{Line: "1"}}, {Entry: push.Entry{Line: "2"}}}
 		e := <-consumer.Chan()
 		require.Equal(t, "1", e.Entry.Line)
 		e = <-consumer.Chan()
@@ -114,7 +112,7 @@ func TestConsumeBatch(t *testing.T) {
 			ConsumeBatch(ctx, producer, fanout)
 		})
 
-		producer.Chan() <- []loki.Entry{{Entry: push.Entry{Line: "1"}}, {Entry: push.Entry{Line: "2"}}}
+		producer.Chan() <- []Entry{{Entry: push.Entry{Line: "1"}}, {Entry: push.Entry{Line: "2"}}}
 		cancel()
 		wg.Wait()
 	})

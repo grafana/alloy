@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -94,7 +93,7 @@ func (c *Component) Run(ctx context.Context) error {
 		// We need to stop posFile first so we don't record entries we are draining
 		c.positions.Stop()
 
-		source.Drain(c.recv, func() {
+		loki.Drain(c.recv, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			if c.tailer != nil {
@@ -106,7 +105,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var wg sync.WaitGroup
-	wg.Go(func() { source.Consume(ctx, c.recv, c.fanout) })
+	wg.Go(func() { loki.Consume(ctx, c.recv, c.fanout) })
 	wg.Go(func() {
 		for {
 			select {

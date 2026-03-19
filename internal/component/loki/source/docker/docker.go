@@ -161,7 +161,7 @@ func (c *Component) Run(ctx context.Context) error {
 		c.posFile.Stop()
 
 		// Start black hole drain routine to prevent deadlock when we call c.scheduler.Stop().
-		source.Drain(c.handler, func() {
+		loki.Drain(c.handler, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			c.scheduler.Stop()
@@ -169,7 +169,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	// Start consume and fanout loop
-	source.Consume(ctx, c.handler, c.fanout)
+	loki.Consume(ctx, c.handler, c.fanout)
 	return nil
 }
 
