@@ -1,7 +1,8 @@
 beyla.ebpf "default" {
   discovery {
     instrument {
-      exe_path = "main" // this is instrumenting the otel-metrics-gen app
+      open_ports      = "9009"
+      containers_only = true
     }
   }
   debug = true
