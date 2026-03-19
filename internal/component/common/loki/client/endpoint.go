@@ -66,7 +66,8 @@ func (e *endpoint) enqueue(entry loki.Entry, segmentNum int) error {
 	tenantID := getTenantID(e.cfg, entry)
 	for !e.shards.enqueue(tenantID, entry, segmentNum) {
 		if !e.cfg.QueueConfig.BlockOnOverflow {
-			level.Warn(e.logger).Log("msg", "dropping entry", "err", errQueueIsFull)
+			// This log is really noisy and we have metrics to cover it so keep this a debug level.
+			level.Debug(e.logger).Log("msg", "dropping entry", "err", errQueueIsFull)
 			e.metrics.droppedEntries.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Inc()
 			e.metrics.droppedBytes.WithLabelValues(e.cfg.URL.Host, tenantID, reasonQueueIsFull).Add(float64(entry.Size()))
 			return errQueueIsFull
