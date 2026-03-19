@@ -18,30 +18,46 @@ type ArgTableRow struct {
 
 type ArgTable struct {
 	Name string
-	Rows []ArgTableRow
+	// SourceSchemaID is non-empty when this table was generated from a block
+	// imported from a subschema (e.g. the net schema). It is used to route
+	// the output file to the shared docs directory for that schema.
+	SourceSchemaID string
+	Rows           []ArgTableRow
 }
 
-func newArgumentsTables(propName string, schema *jsonschema.Schema) []*ArgTable {
+// newArgumentsTables recursively builds argument tables for schema and all of
+// its nested block properties. inheritedSourceID propagates the source schema
+// ID of the nearest imported ancestor so that nested blocks are attributed to
+// the same schema as their parent.
+func newArgumentsTables(propName string, schema *jsonschema.Schema, inheritedSourceID string) []*ArgTable {
 	var tables []*ArgTable
-
-	curPropTable := &ArgTable{Name: propName}
 
 	if schema == nil {
 		return tables
 	}
 
+	sourceID := schema.SourceID
+	if sourceID == "" {
+		sourceID = inheritedSourceID
+	}
+
+	curPropTable := &ArgTable{Name: propName, SourceSchemaID: sourceID}
+
 	for name, prop := range schema.Properties {
 		isPropRequired := slices.Contains(schema.Required, name)
 
 		if prop.IsBlock() {
-			propTables := newArgumentsTables(name, prop)
+			childSourceID := prop.SourceID
+			if childSourceID == "" {
+				childSourceID = sourceID
+			}
+			propTables := newArgumentsTables(name, prop, childSourceID)
 			tables = append(tables, propTables...)
 			continue
 		}
 
 		curPropTable.Rows = append(curPropTable.Rows, ArgTableRow{
-			Name: name,
-			// The names of toAlloyType and determineDefault should be consistent
+			Name:         name,
 			Type:         prop.ToAlloyType(),
 			Description:  prop.Description,
 			DefaultValue: prop.DetermineDefault(),

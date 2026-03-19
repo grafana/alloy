@@ -69,7 +69,7 @@ For example, `http` > `tls` refers to a `tls` block defined inside an `http` blo
 
 ### `http`
 
-{{< docs/shared lookup="generated/components/loki/source/api/http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="generated/common/net/http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 

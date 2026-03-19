@@ -14,7 +14,11 @@ func NewCommand() *cobra.Command {
 		Use:          "docs_args_generator",
 		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return generate(args[0], args[1])
+			docsBase := ""
+			if len(args) >= 3 {
+				docsBase = args[2]
+			}
+			return generate(args[0], args[1], docsBase)
 		},
 	}
 

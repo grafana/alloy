@@ -323,9 +323,10 @@ else
 		if [ -f "$$dir/metadata.yml" ]; then \
 			component_name=$$(echo $$dir | sed 's|.*/internal/component/||'); \
 			output_dir="docs/sources/shared/generated/components/$$component_name"; \
+			shared_base="docs/sources/shared/generated"; \
 			echo "Generating docs for component: $$component_name"; \
 			mkdir -p "$$output_dir"; \
-			go run ./internal/tools/docs_args_generator/ "$$dir/metadata.yml" "$$output_dir"; \
+			go run ./internal/tools/docs_args_generator/ "$$dir/metadata.yml" "$$output_dir" "$$shared_base"; \
 		fi; \
 	done
 endif
