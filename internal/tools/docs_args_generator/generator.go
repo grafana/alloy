@@ -9,9 +9,18 @@ import (
 	"github.com/grafana/alloy/internal/tools/docs_args_generator/jsonschema"
 )
 
-// Generate markdown files with tables listing all of the arguments, blocks, and exports.
-// Read a YAML schema from ymlPath, merge subschemas, and write markdown files to outputPath.
-func generate(ymlPath string, outputPath string) error {
+// generate reads the YAML schema at ymlPath, merges subschemas, and writes
+// markdown documentation files to outputPath.
+//
+// outputPath is the component-specific output directory
+// (e.g. docs/sources/shared/generated/components/loki/source/api).
+//
+// docsBase, when non-empty, is the root of the shared generated-docs tree
+// (e.g. docs/sources/shared/generated). Argument tables that originate from
+// an imported subschema are written to docsBase/{schema-relative-path}/
+// instead of outputPath. When docsBase is empty all files go to outputPath
+// (backward-compatible behaviour used by tests).
+func generate(ymlPath string, outputPath string, docsBase string) error {
 	log.Printf("Processing YAML schema: %s", ymlPath)
 	log.Printf("Output directory: %s", outputPath)
 
@@ -23,7 +32,7 @@ func generate(ymlPath string, outputPath string) error {
 		return nil // File doesn't exist, skip
 	}
 
-	argumentsTables := newArgumentsTables("__arguments", schema.Arguments)
+	argumentsTables := newArgumentsTables("__arguments", schema.Arguments, "")
 	blocksTable := newBlocksTable([]string{}, "", schema.Arguments)
 	exportsTable := newExportsTable(schema.Exports)
 
@@ -33,49 +42,54 @@ func generate(ymlPath string, outputPath string) error {
 	blocksTable.sort()
 	exportsTable.sort()
 
-	markdownTables := generateMarkdownTables(argumentsTables, blocksTable, exportsTable)
+	files := buildOutputFiles(argumentsTables, blocksTable, exportsTable, outputPath, docsBase)
 
-	err = writeFiles(markdownTables, outputPath)
-	if err != nil {
+	if err := writeFiles(files); err != nil {
 		return fmt.Errorf("failed to write markdown tables: %w", err)
 	}
-
 	return nil
 }
 
-// generateMarkdownTables generates a markdown table from the schema
-func generateMarkdownTables(arguments []*ArgTable, blocks *BlocksTable, exports *ExportsTable) map[string]string {
-	res := make(map[string]string)
-	for _, table := range arguments {
-		res[table.Name] = table.markdown()
+// buildOutputFiles computes the full output file path for every generated
+// markdown table. Argument tables from imported subschemas are routed to
+// docsBase/{schema-relative-path}/ when docsBase is non-empty; all other
+// files land in outputPath.
+func buildOutputFiles(args []*ArgTable, blocks *BlocksTable, exports *ExportsTable, outputPath, docsBase string) map[string]string {
+	files := make(map[string]string)
+
+	for _, t := range args {
+		dir := tableOutputDir(t.SourceSchemaID, outputPath, docsBase)
+		files[filepath.Join(dir, t.Name+".md")] = t.markdown()
 	}
 
-	// TODO: Generate blocks link refs
-	res["__blocks"] = blocks.markdown()
+	files[filepath.Join(outputPath, "__blocks.md")] = blocks.markdown()
+	files[filepath.Join(outputPath, "__exports.md")] = exports.markdown()
 
-	res["__exports"] = exports.markdown()
-
-	return res
+	return files
 }
 
-func writeFiles(markdownTables map[string]string, outputPath string) error {
-	if err := os.MkdirAll(outputPath, 0755); err != nil {
-		return err
+// tableOutputDir returns the directory into which the argument table for a
+// block with the given sourceSchemaID should be written.
+func tableOutputDir(sourceSchemaID, componentOutputPath, docsBase string) string {
+	if sourceSchemaID == "" || docsBase == "" {
+		return componentOutputPath
 	}
+	return filepath.Join(docsBase, schemaIDToRelPath(sourceSchemaID))
+}
 
-	for name, table := range markdownTables {
-		textFilePath := filepath.Join(outputPath, name+".md")
-		file, err := os.Create(textFilePath)
+func writeFiles(files map[string]string) error {
+	for path, content := range files {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return err
+		}
+		file, err := os.Create(path)
 		if err != nil {
 			return err
 		}
 		defer file.Close()
-
-		_, err = file.WriteString(table)
-		if err != nil {
+		if _, err = file.WriteString(content); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }

@@ -18,7 +18,7 @@ func TestMultipleTlsBlocks(t *testing.T) {
 	outputDir := t.TempDir()
 	t.Logf("Output directory: %s", outputDir)
 
-	require.NoError(t, generate(testDataSchemaPath, outputDir))
+	require.NoError(t, generate(testDataSchemaPath, outputDir, ""))
 
 	expectedOutputDir := filepath.Join("testdata", "test2", "expected_output")
 	compareDirectories(t, expectedOutputDir, outputDir)
@@ -37,7 +37,7 @@ func TestDuplicateBlockNamesWithDifferentContent(t *testing.T) {
 	outputDir := t.TempDir()
 	t.Logf("Output directory: %s", outputDir)
 
-	require.NoError(t, generate(testDataSchemaPath, outputDir))
+	require.NoError(t, generate(testDataSchemaPath, outputDir, ""))
 
 	actualContent, err := os.ReadFile(filepath.Join(outputDir, "__blocks.md"))
 	require.NoError(t, err, "Failed to read actual __blocks.md")
@@ -64,7 +64,7 @@ func TestImportedBlocksWithSameSubBlockName(t *testing.T) {
 	outputDir := t.TempDir()
 	t.Logf("Output directory: %s", outputDir)
 
-	require.NoError(t, generate(testDataSchemaPath, outputDir))
+	require.NoError(t, generate(testDataSchemaPath, outputDir, ""))
 
 	actualContent, err := os.ReadFile(filepath.Join(outputDir, "__blocks.md"))
 	require.NoError(t, err, "Failed to read actual __blocks.md")
@@ -84,7 +84,7 @@ func TestRunWithRealSchemaFile(t *testing.T) {
 	t.Logf("Output directory: %s", outputDir)
 
 	// Run the function with the schema in the output directory
-	require.NoError(t, generate(testDataSchemaPath, outputDir))
+	require.NoError(t, generate(testDataSchemaPath, outputDir, ""))
 
 	// Compare the actual output with the expected output
 	expectedOutputDir := filepath.Join("testdata", "test1", "expected_output")

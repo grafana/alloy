@@ -69,7 +69,7 @@ You can use the following blocks with `loki.source.api`:
 
 ### `http`
 
-{{< docs/shared lookup="generated/components/loki/source/api/http.md" source="alloy" version="<ALLOY_VERSION>" >}}
+{{< docs/shared lookup="generated/common/net/http.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `tls`
 
