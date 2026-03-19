@@ -78,12 +78,17 @@ func blockHierarchyChain(row BlocksTableRow) string {
 
 // printHierarchyWithLinkID renders the hierarchy path for a block as a markdown
 // reference. name is the displayed label; linkID is the link target identifier.
+// Each parent segment is wrapped in backticks for consistent inline-code styling.
 func printHierarchyWithLinkID(parentBlocks []string, name string, linkID string) string {
 	ref := fmt.Sprintf("[`%s`][%s]", name, linkID)
 	if len(parentBlocks) == 0 {
 		return ref
 	}
-	return strings.Join(parentBlocks, " > ") + " > " + ref
+	parents := make([]string, len(parentBlocks))
+	for i, p := range parentBlocks {
+		parents[i] = fmt.Sprintf("`%s`", p)
+	}
+	return strings.Join(parents, " > ") + " > " + ref
 }
 
 func (t *BlocksTable) sort() {
