@@ -55,7 +55,15 @@ func newArgumentsTables(propName string, schema *jsonschema.Schema) []*ArgTable 
 
 func (t *ArgTable) sort() {
 	slices.SortStableFunc(t.Rows, func(i, j ArgTableRow) int {
-		// TODO: Sort by required arguments first
+		// Required arguments come first; within each group sort alphabetically.
+		iRequired := i.Required == "yes"
+		jRequired := j.Required == "yes"
+		if iRequired != jRequired {
+			if iRequired {
+				return -1
+			}
+			return 1
+		}
 		return strings.Compare(i.Name, j.Name)
 	})
 }
