@@ -10,7 +10,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/loki/source"
 	ht "github.com/grafana/alloy/internal/component/loki/source/heroku/internal/herokutarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -98,7 +97,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	source.ConsumeBatch(ctx, c.handler, c.fanout)
+	loki.ConsumeBatch(ctx, c.handler, c.fanout)
 	return nil
 }
 
