@@ -362,7 +362,7 @@ otelcol.processor.filter "default" {
 [HasAttrOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/processor/filterprocessor/README.md#hasattrondatapoint
 [OTTL booleans]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl#booleans
 [OTTL math expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl#math-expressions
-[Filterprocessor context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/42194051df3a0f79f715f02dbf5023396b68573e/processor/filterprocessor#context
+[Filterprocessor context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/processor/filterprocessor#context
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
