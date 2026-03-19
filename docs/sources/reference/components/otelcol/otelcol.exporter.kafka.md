@@ -144,7 +144,7 @@ The `traces` block configures how to send traces to Kafka brokers.
 
 | Name                      | Type     | Description                                                                                                                                        | Default        | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding`                | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                                                                       | `"otlp_proto"` | no       |
+| `encoding`                | `string` | The encoding for traces. Refer to [Supported encodings](#supported-encodings).                                                                     | `"otlp_proto"` | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which traces will be exported.                                                                                      | `"otlp_spans"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
