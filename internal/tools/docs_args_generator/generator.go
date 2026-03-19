@@ -9,18 +9,6 @@ import (
 	"github.com/grafana/alloy/internal/tools/docs_args_generator/jsonschema"
 )
 
-type MarkdownLink struct {
-	Definition string // For example: [header]: #header
-	Reference  string // For example: [`header`][header]
-}
-
-func markdownLink(name string) MarkdownLink {
-	return MarkdownLink{
-		Definition: fmt.Sprintf("[%s](#%s)", name, name),
-		Reference:  fmt.Sprintf("[`%s`][%s]", name, name),
-	}
-}
-
 // Generate markdown files with tables listing all of the arguments, blocks, and exports.
 // Read a YAML schema from ymlPath, merge subschemas, and write markdown files to outputPath.
 func generate(ymlPath string, outputPath string) error {
