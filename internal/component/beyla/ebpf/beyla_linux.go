@@ -86,7 +86,9 @@ func (args Routes) Convert() *transform.RoutesConfig {
 		routes.Unmatch = transform.UnmatchType(args.Unmatch)
 	}
 	routes.Patterns = args.Patterns
+	//nolint:staticcheck // OBI does not expose a replacement API for ignored route patterns yet.
 	routes.IgnorePatterns = args.IgnorePatterns
+	//nolint:staticcheck // OBI does not expose a replacement API for ignored route modes yet.
 	routes.IgnoredEvents = transform.IgnoreMode(args.IgnoredEvents)
 	if args.WildcardChar != "" {
 		routes.WildcardChar = args.WildcardChar
@@ -452,9 +454,6 @@ func convertKubernetesGlob(args KubernetesService) (map[string]*services.GlobAtt
 
 func (args Metrics) Convert() prom.PrometheusConfig {
 	p := beyla.DefaultConfig().Prometheus
-	if args.Features != nil {
-		p.DeprFeatures = export.LoadFeatures(args.Features)
-	}
 	if args.Instrumentations != nil {
 		p.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	}
@@ -511,7 +510,6 @@ func (args Metrics) Validate() error {
 
 func (args Network) Convert(enable bool) obi.NetworkConfig {
 	networks := beyla.DefaultConfig().NetworkFlows
-	networks.Enable = enable
 	if args.Source != "" {
 		networks.Source = args.Source
 	}

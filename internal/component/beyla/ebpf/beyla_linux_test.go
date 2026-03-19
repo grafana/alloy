@@ -161,7 +161,9 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 
 	require.Equal(t, transform.UnmatchType("wildcard"), cfg.Routes.Unmatch)
 	require.Equal(t, []string{"/api/v1/*"}, cfg.Routes.Patterns)
+	//nolint:staticcheck // OBI does not expose a replacement API for ignored route patterns yet.
 	require.Equal(t, []string{"/api/v1/health"}, cfg.Routes.IgnorePatterns)
+	//nolint:staticcheck // OBI does not expose a replacement API for ignored route modes yet.
 	require.Equal(t, transform.IgnoreMode("all"), cfg.Routes.IgnoredEvents)
 	require.Equal(t, "*", cfg.Routes.WildcardChar)
 
@@ -178,7 +180,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, []string{"*"}, sel.Include)
 	require.Equal(t, []string{"db_statement"}, sel.Exclude)
 
-	require.True(t, cfg.NetworkFlows.Enable)
 	require.Equal(t, "0.0.0.0", cfg.NetworkFlows.AgentIP)
 	require.Equal(t, []string{"eth0"}, cfg.NetworkFlows.Interfaces)
 	require.Equal(t, []string{"TCP", "UDP"}, cfg.NetworkFlows.Protocols)
@@ -193,8 +194,6 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Empty(t, cfg.NetworkFlows.ExcludeInterfaces)
 
 	require.Len(t, cfg.Discovery.Instrument, 2)
-	require.Equal(t, "test", cfg.Discovery.Instrument[0].Name)
-	require.Equal(t, "default", cfg.Discovery.Instrument[0].Namespace)
 	require.True(t, cfg.Discovery.Instrument[0].Path.IsSet())
 	require.True(t, cfg.Discovery.Instrument[0].CmdArgs.IsSet())
 	require.True(t, cfg.Discovery.Instrument[0].Metadata[services.AttrNamespace].IsSet())
@@ -208,16 +207,13 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Len(t, cfg.Discovery.ExcludeInstrument, 1)
 	require.True(t, cfg.Discovery.ExcludeInstrument[0].Path.IsSet())
 	require.True(t, cfg.Discovery.ExcludeInstrument[0].CmdArgs.IsSet())
-	require.Equal(t, "default", cfg.Discovery.ExcludeInstrument[0].Namespace)
 
 	require.Len(t, cfg.Discovery.Survey, 1)
 	require.True(t, cfg.Discovery.Survey[0].Path.IsSet())
 	require.True(t, cfg.Discovery.Survey[0].CmdArgs.IsSet())
-	require.Equal(t, "microservice", cfg.Discovery.Survey[0].Name)
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportMetrics())
 	require.True(t, cfg.Discovery.Survey[0].ExportModes.CanExportTraces())
 
-	require.Equal(t, export.LoadFeatures([]string{"application", "network"}), cfg.Prometheus.DeprFeatures)
 	require.Equal(t, export.LoadFeatures([]string{"application", "network"}), cfg.Metrics.Features)
 	require.True(t, cfg.Metrics.Features.AnyAppO11yMetric())
 	require.True(t, cfg.Metrics.Features.AnyNetwork())
@@ -812,8 +808,6 @@ func TestConvert_Discovery(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, config.Instrument, 3)
-	require.Equal(t, "test", config.Instrument[0].Name)
-	require.Equal(t, "default", config.Instrument[0].Namespace)
 	require.Equal(t, services.IntEnum{Ranges: []services.IntRange{{Start: 80, End: 0}}}, config.Instrument[0].OpenPorts)
 	require.True(t, config.Instrument[0].CmdArgs.IsSet())
 	require.True(t, config.Instrument[0].ContainersOnly)
@@ -835,8 +829,6 @@ func TestConvert_Discovery(t *testing.T) {
 	require.True(t, config.Instrument[2].PodAnnotations["test"].IsSet())
 	require.NoError(t, config.Instrument.Validate())
 	require.Len(t, config.ExcludeInstrument, 1)
-	require.Equal(t, "test", config.ExcludeInstrument[0].Name)
-	require.Equal(t, "default", config.ExcludeInstrument[0].Namespace)
 	require.Equal(t, true, config.ExcludeOTelInstrumentedServices)
 }
 
@@ -850,7 +842,6 @@ func TestConvert_Prometheus(t *testing.T) {
 	}
 
 	expectedConfig := beyla.DefaultConfig().Prometheus
-	expectedConfig.DeprFeatures = export.LoadFeatures(args.Features)
 	expectedConfig.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	expectedConfig.AllowServiceGraphSelfReferences = true
 	expectedConfig.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
@@ -867,7 +858,6 @@ func TestConvert_Prometheus(t *testing.T) {
 	}
 
 	expectedConfig = beyla.DefaultConfig().Prometheus
-	expectedConfig.DeprFeatures = export.LoadFeatures(args.Features)
 	expectedConfig.Instrumentations = stringsToInstrumentations(args.Instrumentations)
 	expectedConfig.AllowServiceGraphSelfReferences = true
 	expectedConfig.ExtraResourceLabels = args.ExtraResourceLabels
@@ -888,7 +878,6 @@ func TestConvert_Network(t *testing.T) {
 	}
 
 	expectedConfig := beyla.DefaultConfig().NetworkFlows
-	expectedConfig.Enable = true
 	expectedConfig.AgentIP = "0.0.0.0"
 	expectedConfig.Interfaces = args.Interfaces
 	expectedConfig.Protocols = args.Protocols
