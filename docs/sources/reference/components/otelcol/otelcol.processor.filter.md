@@ -97,12 +97,12 @@ You can use the following blocks with `otelcol.processor.filter`:
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`trace_conditions`][trace_conditions] | Inferred-context conditions for traces.                              | no       |
-| [`metric_conditions`][metric_conditions] | Inferred-context conditions for metrics.                            | no       |
-| [`log_conditions`][log_conditions] | Inferred-context conditions for logs.                                    | no       |
-| [`logs`][logs]                   | Deprecated. Statements which filter logs. Use [`log_conditions`][log_conditions] instead.         | no       |
-| [`metrics`][metrics]             | Deprecated. Statements which filter metrics. Use [`metric_conditions`][metric_conditions] instead. | no       |
-| [`traces`][traces]               | Deprecated. Statements which filter traces. Use [`trace_conditions`][trace_conditions] instead.    | no       |
+| [`log_conditions`][log_conditions]       | Inferred-context conditions for logs.                                                              | no |
+| [`logs`][logs]                           | Deprecated. Statements which filter logs. Use [`log_conditions`][log_conditions] instead.          | no |
+| [`metric_conditions`][metric_conditions] | Inferred-context conditions for metrics.                                                           | no |
+| [`metrics`][metrics]                     | Deprecated. Statements which filter metrics. Use [`metric_conditions`][metric_conditions] instead. | no |
+| [`trace_conditions`][trace_conditions]   | Inferred-context conditions for traces.                                                            | no |
+| [`traces`][traces]                       | Deprecated. Statements which filter traces. Use [`trace_conditions`][trace_conditions] instead.    | no |
 
 [traces]: #traces
 [metrics]: #metrics
