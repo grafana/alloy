@@ -26,9 +26,161 @@ import (
 	"github.com/grafana/loki/pkg/push"
 )
 
+func TestComponent(t *testing.T) {
+	type testCase struct {
+		name       string
+		rules      []*alloy_relabel.Config
+		input      loki.Entry
+		wantLabels model.LabelSet
+		dropped    bool
+	}
+
+	newRule := func(configure func(*alloy_relabel.Config)) *alloy_relabel.Config {
+		rule := &alloy_relabel.Config{}
+		rule.SetToDefault()
+		configure(rule)
+		return rule
+	}
+
+	now := time.Now()
+
+	tests := []testCase{
+		{
+			name: "relabels and forwards entries",
+			rules: []*alloy_relabel.Config{
+				newRule(func(rule *alloy_relabel.Config) {
+					rule.Regex = alloy_relabel.Regexp(relabel.MustNewRegexp("kubernetes_(.*)"))
+					rule.Replacement = "$1"
+					rule.Action = alloy_relabel.LabelMap
+				}),
+				newRule(func(rule *alloy_relabel.Config) {
+					rule.Regex = alloy_relabel.Regexp(relabel.MustNewRegexp("kubernetes_(.*)"))
+					rule.Action = alloy_relabel.LabelDrop
+				}),
+				newRule(func(rule *alloy_relabel.Config) {
+					rule.SourceLabels = []string{"namespace"}
+					rule.TargetLabel = "environment"
+					rule.Action = alloy_relabel.Replace
+				}),
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"filename":             "/var/log/pods/agent/agent/1.log",
+					"kubernetes_namespace": "dev",
+					"kubernetes_pod_name":  "agent",
+					"foo":                  "bar",
+				},
+				Entry: push.Entry{
+					Timestamp: now,
+					Line:      "very important log",
+				},
+			},
+			wantLabels: model.LabelSet{
+				"filename":    "/var/log/pods/agent/agent/1.log",
+				"namespace":   "dev",
+				"pod_name":    "agent",
+				"environment": "dev",
+				"foo":         "bar",
+			},
+		},
+		{
+			name: "drops entries with drop rule",
+			rules: []*alloy_relabel.Config{
+				newRule(func(rule *alloy_relabel.Config) {
+					rule.SourceLabels = []string{"foo"}
+					rule.Regex = alloy_relabel.Regexp(relabel.MustNewRegexp("bar"))
+					rule.Action = alloy_relabel.Drop
+				}),
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"filename": "/var/log/pods/agent/agent/1.log",
+					"foo":      "bar",
+				},
+				Entry: push.Entry{
+					Timestamp: now,
+					Line:      "very important log",
+				},
+			},
+			dropped: true,
+		},
+		{
+			name: "drops entries when all labels are removed",
+			rules: []*alloy_relabel.Config{
+				newRule(func(rule *alloy_relabel.Config) {
+					rule.Regex = alloy_relabel.Regexp(relabel.MustNewRegexp(".*"))
+					rule.Action = alloy_relabel.LabelDrop
+				}),
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"filename": "/var/log/pods/agent/agent/1.log",
+					"foo":      "bar",
+				},
+				Entry: push.Entry{
+					Timestamp: now,
+					Line:      "very important log",
+				},
+			},
+			dropped: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			collector1 := loki.NewCollectingHandler()
+			defer collector1.Stop()
+			collector2 := loki.NewCollectingHandler()
+			defer collector2.Stop()
+
+			opts := component.Options{
+				Logger:         util.TestAlloyLogger(t),
+				Registerer:     prometheus.NewRegistry(),
+				OnStateChange:  func(e component.Exports) {},
+				GetServiceData: getServiceData,
+			}
+			args := Arguments{
+				ForwardTo:      []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()},
+				RelabelConfigs: tt.rules,
+				MaxCacheSize:   10,
+			}
+
+			c, err := New(opts, args)
+			require.NoError(t, err)
+			go c.Run(t.Context())
+
+			c.receiver.Chan() <- tt.input
+
+			if tt.dropped {
+				require.Never(t, func() bool {
+					return len(collector1.Received()) > 0 || len(collector2.Received()) > 0
+				}, time.Second, 10*time.Millisecond)
+				return
+			}
+
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				received1 := collector1.Received()
+				received2 := collector2.Received()
+
+				require.Len(c, received1, 1)
+				require.Len(c, received2, 1)
+
+				require.Equal(t, now, received1[0].Timestamp)
+				require.Equal(c, tt.input.Line, received1[0].Line)
+				require.Equal(c, tt.wantLabels, received1[0].Labels)
+
+				require.Equal(t, now, received2[0].Timestamp)
+				require.Equal(c, tt.input.Line, received2[0].Line)
+				require.Equal(c, tt.wantLabels, received2[0].Labels)
+			}, 5*time.Second, 10*time.Millisecond)
+		})
+	}
+}
+
 // Rename the kubernetes_(.*) labels without the suffix and remove them,
 // then set the `environment` label to the value of the namespace.
-var rc = `rule {
+
+const rc = `rule {
          regex        = "kubernetes_(.*)"
          replacement  = "$1"
          action       = "labelmap"
@@ -41,74 +193,8 @@ var rc = `rule {
          source_labels = ["namespace"]
          target_label  = "environment"
          action        = "replace"
-       }`
-
-func TestRelabeling(t *testing.T) {
-	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
-	// an easy way to refer to a loki.LogsReceiver value for the forward_to
-	// argument.
-	type cfg struct {
-		Rcs []*alloy_relabel.Config `alloy:"rule,block,optional"`
-	}
-	var relabelConfigs cfg
-	err := syntax.Unmarshal([]byte(rc), &relabelConfigs)
-	require.NoError(t, err)
-
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-
-	// Create and run the component, so that it relabels and forwards logs.
-	opts := component.Options{
-		Logger:         util.TestAlloyLogger(t),
-		Registerer:     prometheus.NewRegistry(),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
-	}
-	args := Arguments{
-		ForwardTo:      []loki.LogsReceiver{ch1, ch2},
-		RelabelConfigs: relabelConfigs.Rcs,
-		MaxCacheSize:   10,
-	}
-
-	c, err := New(opts, args)
-	require.NoError(t, err)
-	go c.Run(t.Context())
-
-	// Send a log entry to the component's receiver.
-	logEntry := loki.Entry{
-		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "kubernetes_namespace": "dev", "kubernetes_pod_name": "agent", "foo": "bar"},
-		Entry: push.Entry{
-			Timestamp: time.Now(),
-			Line:      "very important log",
-		},
-	}
-
-	c.receiver.Chan() <- logEntry
-
-	wantLabelSet := model.LabelSet{
-		"filename":    "/var/log/pods/agent/agent/1.log",
-		"namespace":   "dev",
-		"pod_name":    "agent",
-		"environment": "dev",
-		"foo":         "bar",
-	}
-
-	// The log entry should be received in both channels, with the relabeling
-	// rules correctly applied.
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "very important log", logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "very important log", logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
-}
+       }
+`
 
 func BenchmarkRelabelComponent(b *testing.B) {
 	type cfg struct {

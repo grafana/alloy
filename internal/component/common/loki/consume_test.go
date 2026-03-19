@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/stretchr/testify/require"
@@ -50,9 +51,9 @@ func TestConsumeAndProcess(t *testing.T) {
 	t.Run("should process and fanout any consumed entries", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		processFn := func(e Entry) Entry {
+		processFn := func(e Entry) (Entry, bool) {
 			e.Entry.Line = "processed: " + e.Entry.Line
-			return e
+			return e, true
 		}
 
 		wg := sync.WaitGroup{}
@@ -69,8 +70,8 @@ func TestConsumeAndProcess(t *testing.T) {
 
 	t.Run("should stop if context is canceled while trying to fanout", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		processFn := func(e Entry) Entry {
-			return e
+		processFn := func(e Entry) (Entry, bool) {
+			return e, true
 		}
 		wg := sync.WaitGroup{}
 		wg.Go(func() {
@@ -78,6 +79,30 @@ func TestConsumeAndProcess(t *testing.T) {
 		})
 
 		producer.Chan() <- Entry{Entry: push.Entry{Line: "1"}}
+		cancel()
+		wg.Wait()
+	})
+
+	t.Run("should drop entries when process function returns false", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		processFn := func(e Entry) (Entry, bool) {
+			return e, false
+		}
+
+		wg := sync.WaitGroup{}
+		wg.Go(func() {
+			ConsumeAndProcess(ctx, producer, fanout, processFn)
+		})
+
+		producer.Chan() <- Entry{Entry: push.Entry{Line: "1"}}
+
+		select {
+		case e := <-consumer.Chan():
+			t.Fatalf("expected entry to be dropped, got %q", e.Entry.Line)
+		case <-time.After(100 * time.Millisecond):
+		}
+
 		cancel()
 		wg.Wait()
 	})

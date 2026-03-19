@@ -102,7 +102,7 @@ func (c *Component) Run(ctx context.Context) error {
 	wg.Go(func() { c.handleIn(ctx) })
 
 	wg.Go(func() {
-		loki.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) loki.Entry {
+		loki.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
 			// The log entry is the same for every fanout,
 			// so we can publish it only once.
 			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -125,7 +125,7 @@ func (c *Component) Run(ctx context.Context) error {
 				},
 			))
 
-			return e
+			return e, true
 		})
 	})
 
