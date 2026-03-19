@@ -50,56 +50,7 @@ id: grafana/alloy/internal/component/common/net
           type_override: "duration"
 
       tls:
-        description: >-
-          Configures TLS for the HTTP server.
-        type: object
-        properties:
-          cert_pem:
-            description: >-
-              Client certificate in PEM format.
-            type: string
-
-          key_pem:
-            description: >-
-              Client key in PEM format.
-            type: string
-            alloy:
-              type_override: "secret"
-
-          cert_file:
-            description: >-
-              Path to client certificate file.
-            type: string
-
-          key_file:
-            description: >-
-              Path to client key file.
-            type: string
-
-          client_auth_type:
-            description: >-
-              Client authentication type.
-            type: string
-
-          client_ca_file:
-            description: >-
-              Path to client CA file.
-            type: string
-
-          client_ca:
-            description: >-
-              Client CA in PEM format.
-            type: string
-
-          cipher_suites:
-            description: >-
-              Cipher suites to use.
-            type: string
-
-          min_version:
-            description: >-
-              Minimum TLS version.
-            type: string
+        $ref: "#/$defs/tls"
 
   grpc:
     description: >-
@@ -166,56 +117,7 @@ id: grafana/alloy/internal/component/common/net
         default: 100
 
       tls:
-        description: >-
-          Configures TLS for the gRPC server.
-        type: object
-        properties:
-          cert_pem:
-            description: >-
-              Client certificate in PEM format.
-            type: string
-
-          key_pem:
-            description: >-
-              Client key in PEM format.
-            type: string
-            alloy:
-              type_override: "secret"
-
-          cert_file:
-            description: >-
-              Path to client certificate file.
-            type: string
-
-          key_file:
-            description: >-
-              Path to client key file.
-            type: string
-
-          client_auth_type:
-            description: >-
-              Client authentication type.
-            type: string
-
-          client_ca_file:
-            description: >-
-              Path to client CA file.
-            type: string
-
-          client_ca:
-            description: >-
-              Client CA in PEM format.
-            type: string
-
-          cipher_suites:
-            description: >-
-              Cipher suites to use.
-            type: string
-
-          min_version:
-            description: >-
-              Minimum TLS version.
-            type: string
+        $ref: "#/$defs/tls"
 
   tls:
     description: >-

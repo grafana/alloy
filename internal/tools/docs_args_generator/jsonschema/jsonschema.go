@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -51,6 +52,36 @@ func LoadMetadata(ymlPath string) (*Metadata, error) {
 	return meta, nil
 }
 
+// resolveInternalRefs replaces properties whose $ref points to a $defs entry
+// within the same schema file (e.g. "$ref: \"#/$defs/tls\"") with a copy of
+// that definition, setting DefName so callers can identify the canonical name.
+// It recurses into nested properties and $defs entries.
+func resolveInternalRefs(schema *Schema, rootDefs map[string]*Schema) {
+	if schema == nil || len(rootDefs) == 0 {
+		return
+	}
+
+	for name, prop := range schema.Properties {
+		if prop == nil {
+			continue
+		}
+		if strings.HasPrefix(prop.Ref, "#/$defs/") {
+			defName := strings.TrimPrefix(prop.Ref, "#/$defs/")
+			if def, ok := rootDefs[defName]; ok {
+				resolved := *def // copy to avoid mutating the shared $defs entry
+				resolved.DefName = defName
+				schema.Properties[name] = &resolved
+			}
+		} else {
+			resolveInternalRefs(prop, rootDefs)
+		}
+	}
+
+	for _, def := range schema.Definitions {
+		resolveInternalRefs(def, rootDefs)
+	}
+}
+
 // mergeSubschemas resolves and merges subschemas referenced via allOf into the given schema.
 // ymlPathDir is the directory used to resolve relative $ref paths (e.g. subschema/schema.yml).
 // schema is the parent schema that will be updated in place; its allOf entries are loaded
@@ -75,8 +106,11 @@ func mergeSubschemas(ymlPathDir string, schema *Schema) error {
 				return err
 			}
 
-			for name, prop := range parsedProp.Definitions {
-				schema.Properties[name] = prop
+			resolveInternalRefs(parsedProp, parsedProp.Definitions)
+
+			for name, def := range parsedProp.Definitions {
+				def.SourceID = parsedProp.ID
+				schema.Properties[name] = def
 			}
 		}
 	}
@@ -91,6 +125,7 @@ type Metadata struct {
 
 // Schema represents a property in the YAML schema
 type Schema struct {
+	ID                   string             `yaml:"id,omitempty"`
 	Ref                  string             `yaml:"$ref,omitempty"`
 	Description          string             `yaml:"description,omitempty"`
 	Type                 string             `yaml:"type,omitempty"`
@@ -102,6 +137,15 @@ type Schema struct {
 	Properties           map[string]*Schema `yaml:"properties,omitempty"`
 	Definitions          map[string]*Schema `yaml:"$defs,omitempty"`
 	AdditionalProperties *Schema            `yaml:"additionalProperties,omitempty"`
+
+	// SourceID is the ID of the schema file this definition was imported from.
+	// It is not read from YAML; it is set programmatically during subschema merging.
+	SourceID string `yaml:"-"`
+
+	// DefName is the $defs key this schema was resolved from when a property used
+	// an internal $ref (e.g. "$ref: \"#/$defs/tls\"" sets DefName to "tls").
+	// It is not read from YAML; it is set programmatically during ref resolution.
+	DefName string `yaml:"-"`
 }
 
 // AlloyOverrides represents the alloy-specific configuration

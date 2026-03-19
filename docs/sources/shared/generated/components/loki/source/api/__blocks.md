@@ -1,13 +1,11 @@
 | Block | Description | Required |
 | ----- | ----------- | -------- |
-| [`grpc`][grpc] | Configures the gRPC server that receives requests. | no |
-| [`http`][http] | Configures the HTTP server that receives requests. | no |
-| [`tls`][tls] | Configures TLS for the server. | no |
-| grpc > [`tls`][tls] | Configures TLS for the gRPC server. | no |
-| http > [`tls`][tls] | Configures TLS for the HTTP server. | no |
+| [`grpc`][net--grpc] | Configures the gRPC server that receives requests. | no |
+| [`http`][net--http] | Configures the HTTP server that receives requests. | no |
+| [`tls`][net--tls] | Configures TLS for the server. | no |
+| grpc > [`tls`][net--tls] | Configures TLS for the server. | no |
+| http > [`tls`][net--tls] | Configures TLS for the server. | no |
 
-[grpc]: #grpc
-[http]: #http
-[tls]: #tls
-[tls]: #tls
-[tls]: #tls
+[net--grpc]: #net--grpc
+[net--http]: #net--http
+[net--tls]: #net--tls

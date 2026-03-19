@@ -36,7 +36,7 @@ func generate(ymlPath string, outputPath string) error {
 	}
 
 	argumentsTables := newArgumentsTables("__arguments", schema.Arguments)
-	blocksTable := newBlocksTable([]string{}, schema.Arguments)
+	blocksTable := newBlocksTable([]string{}, "", schema.Arguments)
 	exportsTable := newExportsTable(schema.Exports)
 
 	for _, t := range argumentsTables {
