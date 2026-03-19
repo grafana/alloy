@@ -76,7 +76,7 @@ If `maximum_trace_size_bytes` is greater than `0`, traces over this size are dro
 
 - `sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache, persisting the "keep" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
-- `non_sampled_cache_size`: Configures number of trace IDs to be kept in an LRU cache, persisting the "drop" decisions for traces that may have already been released from memory.
+- `non_sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache, persisting the "drop" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
 
 You may want to vary the size of the `decision_cache` depending on how many "keep" vs "drop" decisions you expect from your policies.
