@@ -8,9 +8,12 @@ import (
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 )
 
 func TestDrain(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
 	t.Run("forwards while fn runs", func(t *testing.T) {
 		recv := NewLogsReceiver()
 		collector := NewCollectingHandler()

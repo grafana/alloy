@@ -26,8 +26,8 @@ func Drain(recv LogsReceiver, fanout *Fanout, timeout time.Duration, fn func()) 
 
 	wg.Go(func() {
 		consumeCtx, consumeCancel := context.WithTimeout(ctx, timeout)
+		defer consumeCancel()
 		Consume(consumeCtx, recv, fanout)
-		consumeCancel()
 
 		// NOTE: If we could not forward entries within fallbackDuration we drain to nothing.
 		// This is just to guard against deadlock. If/when fn finish sucessfully this will stop.
