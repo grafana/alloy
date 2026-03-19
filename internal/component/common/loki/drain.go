@@ -9,7 +9,7 @@ import (
 const DefaultDrainTimeout = 2 * time.Minute
 
 // Drain forwards log entries from recv to fanout in a background goroutine while
-// fn executes. If forwarding blocks for longer than timeout, Drain falls back
+// fn executes. It will continue to forward up to the timeout and then falls back
 // to discarding entries from recv until fn returns. This prevents deadlocks in
 // shutdown paths where component may still send to recv while fn is stopping them.
 //
