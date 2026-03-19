@@ -30,7 +30,7 @@ func Drain(recv LogsReceiver, fanout *Fanout, timeout time.Duration, fn func()) 
 		consumeCancel()
 
 		// NOTE: If we could not forward entries within fallbackDuration we drain to nothing.
-		// This is just to gaurd against deadlock. If/when fn finish sucessfully this will stop.
+		// This is just to guard against deadlock. If/when fn finish sucessfully this will stop.
 		discard(ctx, recv)
 	})
 
