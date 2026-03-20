@@ -1,7 +1,7 @@
 package wal
 
 // This code is copied from
-// prometheus/prometheus@7c2de14b0bd74303c2ca6f932b71d4585a29ca75, with only
+// prometheus/prometheus@920ee7f99dea5a774a22419f53600ff133abda9a, with only
 // minor changes for metric names.
 
 import (

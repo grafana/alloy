@@ -178,7 +178,7 @@ func (s *stripeSeries) gc(mint int64) map[chunks.HeadSeriesRef]struct{} {
 
 		// The series is stale. We need to obtain a second lock for the
 		// ref if it's different than the hash lock.
-		refLock := int(series.ref) & (s.size - 1)
+		refLock := int(s.refLock(series.ref))
 		if hashLock != refLock {
 			s.locks[refLock].Lock()
 		}
