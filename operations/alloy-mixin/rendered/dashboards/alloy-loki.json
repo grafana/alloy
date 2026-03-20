@@ -192,7 +192,7 @@
       },
       {
          "datasource": "${datasource}",
-         "description": "Bytes dropped per second.\n",
+         "description": "Percentile write latency\n",
          "fieldConfig": {
             "defaults": {
                "unit": "s"
@@ -272,7 +272,7 @@
                   "fillOpacity": 20,
                   "gradientMode": "hue",
                   "stacking": {
-                     "mode": "normal"
+                     "mode": "off"
                   }
                },
                "unit": "Bps"
@@ -287,9 +287,9 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by(${groupby}) (rate(loki_write_dropped_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n",
+               "expr": "sum by(${groupby}, reason) (rate(loki_write_dropped_bytes_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n",
                "instant": false,
-               "legendFormat": "__auto",
+               "legendFormat": "{{${groupby}}}: {{reason}}",
                "range": true
             }
          ],

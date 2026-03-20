@@ -94,7 +94,7 @@ local filename = 'alloy-loki.json';
     (
       panel.new(title='Write latency in $cluster', type='timeseries') +
       panel.withDescription(|||
-        Bytes dropped per second.
+        Percentile write latency
       |||) +
       panel.withUnit('s') +
       panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
@@ -159,14 +159,15 @@ local filename = 'alloy-loki.json';
       panel.withDescription(|||
         Bytes dropped per second.
       |||) +
-      panel.withStacked() +
       panel.withUnit('Bps') +
+      panel.withStacked(stackingMode='off') +
       panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by(${groupby}) (rate(loki_write_dropped_bytes_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+            sum by(${groupby}, reason) (rate(loki_write_dropped_bytes_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
           ||| % $._config,
+          legendFormat='{{${groupby}}}: {{reason}}'
         ),
       ])
     ),
