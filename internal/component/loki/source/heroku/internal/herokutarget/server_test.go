@@ -60,7 +60,7 @@ func makeDrainRequest(host string, params map[string][]string, bodies ...string)
 	return req, nil
 }
 
-func TestHerokuDrainTarget(t *testing.T) {
+func TestHerokuServer(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
@@ -275,12 +275,12 @@ func TestHerokuDrainTarget(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			eh := loki.NewCollectingHandler()
+			eh := loki.NewCollectingBatchReceiver()
 			defer eh.Stop()
 
 			serverConfig, port, err := getServerConfigWithAvailablePort()
 			require.NoError(t, err, "error generating server config or finding open port")
-			config := &HerokuDrainTargetConfig{
+			config := &HerokuConfig{
 				Server:               serverConfig,
 				Labels:               tc.args.Labels,
 				UseIncomingTimestamp: false,
@@ -288,11 +288,10 @@ func TestHerokuDrainTarget(t *testing.T) {
 
 			prometheus.DefaultRegisterer = prometheus.NewRegistry()
 			metrics := NewMetrics(prometheus.DefaultRegisterer)
-			pt, err := NewHerokuTarget(metrics, logger, eh, tc.args.RelabelConfigs, config, prometheus.DefaultRegisterer)
+			pt, err := NewHerokuServer(metrics, logger, eh, tc.args.RelabelConfigs, config, prometheus.DefaultRegisterer)
 			require.NoError(t, err)
-			defer func() {
-				_ = pt.Stop()
-			}()
+			require.NoError(t, pt.Run())
+			defer pt.Shutdown()
 
 			// Clear received lines after test case is ran
 			defer eh.Clear()
@@ -331,16 +330,16 @@ func TestHerokuDrainTarget(t *testing.T) {
 	}
 }
 
-func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
+func TestHerokuServer_UseIncomingTimestamp(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
-	eh := loki.NewCollectingHandler()
+	eh := loki.NewCollectingBatchReceiver()
 	defer eh.Stop()
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
 	require.NoError(t, err, "error generating server config or finding open port")
-	config := &HerokuDrainTargetConfig{
+	config := &HerokuConfig{
 		Server:               serverConfig,
 		Labels:               nil,
 		UseIncomingTimestamp: true,
@@ -348,11 +347,10 @@ func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
 
 	prometheus.DefaultRegisterer = prometheus.NewRegistry()
 	metrics := NewMetrics(prometheus.DefaultRegisterer)
-	pt, err := NewHerokuTarget(metrics, logger, eh, nil, config, prometheus.DefaultRegisterer)
+	pt, err := NewHerokuServer(metrics, logger, eh, nil, config, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
-	defer func() {
-		_ = pt.Stop()
-	}()
+	require.NoError(t, pt.Run())
+	defer pt.Shutdown()
 
 	// Clear received lines after test case is ran
 	defer eh.Clear()
@@ -373,17 +371,17 @@ func TestHerokuDrainTarget_UseIncomingTimestamp(t *testing.T) {
 	require.Equal(t, expectedTs, eh.Received()[0].Timestamp, "expected entry timestamp to be overridden by received one")
 }
 
-func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
+func TestHerokuServer_UseTenantIDHeaderIfPresent(t *testing.T) {
 	w := log.NewSyncWriter(os.Stderr)
 	logger := log.NewLogfmtLogger(w)
 
 	// Create fake promtail client
-	eh := loki.NewCollectingHandler()
+	eh := loki.NewCollectingBatchReceiver()
 	defer eh.Stop()
 
 	serverConfig, port, err := getServerConfigWithAvailablePort()
 	require.NoError(t, err, "error generating server config or finding open port")
-	config := &HerokuDrainTargetConfig{
+	config := &HerokuConfig{
 		Server:               serverConfig,
 		Labels:               nil,
 		UseIncomingTimestamp: true,
@@ -401,11 +399,11 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 			NameValidationScheme: model.LegacyValidation,
 		},
 	}
-	pt, err := NewHerokuTarget(metrics, logger, eh, tenantIDRelabelConfig, config, prometheus.DefaultRegisterer)
+	pt, err := NewHerokuServer(metrics, logger, eh, tenantIDRelabelConfig, config, prometheus.DefaultRegisterer)
 	require.NoError(t, err)
-	defer func() {
-		_ = pt.Stop()
-	}()
+	require.NoError(t, pt.Run())
+
+	defer pt.Shutdown()
 
 	// Clear received lines after test case is ran
 	defer eh.Clear()
@@ -426,7 +424,7 @@ func TestHerokuDrainTarget_UseTenantIDHeaderIfPresent(t *testing.T) {
 	require.Equal(t, model.LabelValue("42"), eh.Received()[0].Labels["tenant_id"])
 }
 
-func waitForMessages(eh *loki.CollectingHandler) {
+func waitForMessages(eh *loki.CollectingBatchReceiver) {
 	countdown := 1000
 	for len(eh.Received()) != 1 && countdown > 0 {
 		time.Sleep(1 * time.Millisecond)
