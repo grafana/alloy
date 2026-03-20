@@ -295,6 +295,83 @@
          ],
          "title": "Bytes dropped in $cluster",
          "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Shows distribution of write request sizes over time.\n",
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 23
+         },
+         "maxDataPoints": 30,
+         "options": {
+            "calculate": false,
+            "cellGap": 0,
+            "color": {
+               "scheme": "Spectral"
+            },
+            "exemplars": {
+               "color": "rgba(255,0,255,0.7)"
+            },
+            "filterValues": {
+               "le": 0.10000000000000001
+            },
+            "tooltip": {
+               "show": true,
+               "yHistogram": true
+            },
+            "yAxis": {
+               "unit": "bytes"
+            }
+         },
+         "pluginVersion": "9.0.6",
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum(increase(loki_write_request_size_bytes{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\nor ignoring (le)\nsum by (le) (increase(loki_write_request_size_bytes_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval]))\n",
+               "format": "heatmap",
+               "instant": false,
+               "legendFormat": "{{le}}",
+               "range": true
+            }
+         ],
+         "title": "Write request size distribution in $cluster",
+         "type": "heatmap"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "p99 and p50 of entry propagation latency. Prefers native histogram, falls back to classic histogram when native is unavailable.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "s"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 23
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(\n  0.99,\n  sum by (${groupby}) (\n\trate(loki_write_entry_propagation_latency_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n  )\n)\nor ignoring(le)\nhistogram_quantile(\n  0.99,\n  sum by (le, ${groupby}) (\n\trate(loki_write_entry_propagation_latency_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n  )\n)\n",
+               "instant": false,
+               "legendFormat": "{{${groupby}}} p99",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "histogram_quantile(\n  0.50,\n  sum by (${groupby}) (\n\trate(loki_write_entry_propagation_latency_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n  )\n)\nor ignoring(le)\nhistogram_quantile(\n  0.50,\n  sum by (le, ${groupby}) (\n\trate(loki_write_entry_propagation_latency_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\"}[$__rate_interval])\n  )\n)\n",
+               "instant": false,
+               "legendFormat": "{{${groupby}}} p50",
+               "range": true
+            }
+         ],
+         "title": "Entry propagation latency in $cluster",
+         "type": "timeseries"
       }
    ],
    "refresh": "30s",
