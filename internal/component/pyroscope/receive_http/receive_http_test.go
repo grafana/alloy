@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/phayes/freeport"
@@ -547,7 +547,7 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
-func (a *testAppender) Client() debuginfogrpc.DebuginfoServiceClient {
+func (a *testAppender) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
 	return nil
 }
 

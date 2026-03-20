@@ -17,8 +17,6 @@ require (
 )
 
 require (
-	buf.build/gen/go/parca-dev/parca/grpc/go v1.6.1-20260206050007-a47b093e4fe5.1 // indirect
-	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20260206050007-a47b093e4fe5.1 // indirect
 	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
@@ -456,7 +454,7 @@ require (
 	github.com/grafana/loki/v3 v3.6.5 // indirect
 	github.com/grafana/otel-profiling-go v0.5.1 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.9 // indirect
-	github.com/grafana/pyroscope/api v1.3.0 // indirect
+	github.com/grafana/pyroscope/api v1.3.2 // indirect
 	github.com/grafana/pyroscope/ebpf v0.4.11 // indirect
 	github.com/grafana/pyroscope/lidia v0.0.2 // indirect
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
