@@ -1,9 +1,7 @@
-package source
+package loki
 
 import (
 	"context"
-
-	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 // Consume continuously reads log entries from recv and forwards them to the fanout f.
@@ -12,8 +10,8 @@ import (
 // This function is typically used in component Run methods to handle the forwarding
 // of log entries from a component's internal handler to downstream receivers.
 // The fanout allows entries to be sent to multiple receivers concurrently.
-func Consume(ctx context.Context, recv loki.LogsReceiver, f *loki.Fanout) {
-	consume(ctx, recv, f, func(e loki.Entry) loki.Entry { return e })
+func Consume(ctx context.Context, recv LogsReceiver, f *Fanout) {
+	consume(ctx, recv, f, func(e Entry) (Entry, bool) { return e, true })
 }
 
 // ConsumeAndProcess continuously reads log entries from recv, processes them using processFn,
@@ -24,12 +22,12 @@ func Consume(ctx context.Context, recv loki.LogsReceiver, f *loki.Fanout) {
 // of log entries from a component's internal handler to downstream receivers.
 // The fanout allows entries to be sent to multiple receivers concurrently.
 // The processFn is applied to each entry before forwarding, allowing for transformation
-// or enrichment of log entries.
+// or enrichment of log entries. If processFn returns false, the entry is dropped.
 func ConsumeAndProcess(
 	ctx context.Context,
-	recv loki.LogsReceiver,
-	f *loki.Fanout,
-	processFn func(e loki.Entry) loki.Entry,
+	recv LogsReceiver,
+	f *Fanout,
+	processFn func(e Entry) (Entry, bool),
 ) {
 
 	consume(ctx, recv, f, processFn)
@@ -37,9 +35,9 @@ func ConsumeAndProcess(
 
 func consume(
 	ctx context.Context,
-	recv loki.LogsReceiver,
-	f *loki.Fanout,
-	processFn func(e loki.Entry) loki.Entry,
+	recv LogsReceiver,
+	f *Fanout,
+	processFn func(e Entry) (Entry, bool),
 ) {
 
 	for {
@@ -47,8 +45,12 @@ func consume(
 		case <-ctx.Done():
 			return
 		case entry := <-recv.Chan():
+			entry, ok := processFn(entry)
+			if !ok {
+				continue
+			}
 			// NOTE: the only error we can get is context.Canceled.
-			if err := f.Send(ctx, processFn(entry)); err != nil {
+			if err := f.Send(ctx, entry); err != nil {
 				return
 			}
 		}
@@ -61,7 +63,7 @@ func consume(
 // This function is typically used in component Run methods to handle the forwarding
 // of log entries from a component's internal handler to downstream receivers.
 // The fanout allows entries to be sent to multiple receivers concurrently.
-func ConsumeBatch(ctx context.Context, recv loki.LogsBatchReceiver, f *loki.Fanout) {
+func ConsumeBatch(ctx context.Context, recv LogsBatchReceiver, f *Fanout) {
 	for {
 		select {
 		case <-ctx.Done():

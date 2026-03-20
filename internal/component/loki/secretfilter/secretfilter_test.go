@@ -28,6 +28,15 @@ func TestSecretFiltering(t *testing.T) {
 	RunTestCases(t, testhelper.TestConfigs["default"], DefaultTestCases())
 }
 
+// TestDefaultRate_Unmarshalled verifies that when rate is not set in config, the default (1.0) is used.
+// The syntax package calls SetToDefault() before decoding, so omitted optional fields keep their default.
+func TestDefaultRate_Unmarshalled(t *testing.T) {
+	var args Arguments
+	config := `forward_to = []`
+	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+	require.Equal(t, defaultRate, args.Rate, "rate should default to 1.0 when not set in config")
+}
+
 // TestGitleaksConfig_InvalidPath checks that a missing config path returns an error.
 // Valid custom config file loading (and [extend] useDefault) is tested in the
 // extend package so it runs in a separate process and avoids gitleaks global state.
@@ -91,6 +100,46 @@ func TestRate_ZeroBypassesAll(t *testing.T) {
 	received := <-downstream.Chan()
 	require.Equal(t, line, received.Line, "entry should be forwarded unchanged when rate=0")
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.entriesBypassedTotal))
+}
+
+// TestRate_OneForwardsProcessedEntry verifies that when rate=1 (all entries processed), the
+// entry forwarded to downstream is the processed (redacted) entry, not an empty or zero value.
+// This guards against bugs where the Run loop assigns to a shadowed variable and forwards
+// the wrong value.
+func TestRate_OneForwardsProcessedEntry(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	downstream := loki.NewLogsReceiver()
+	args := Arguments{
+		ForwardTo:     []loki.LogsReceiver{downstream},
+		Rate:          1,
+		RedactPercent: 100,
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = c.Run(ctx) }()
+
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	lineWithSecret := "log with secret " + secret + " end"
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: lineWithSecret},
+	}
+	c.receiver.Chan() <- entry
+	received := <-downstream.Chan()
+
+	require.NotEmpty(t, received.Line, "processed entry must not be empty when forwarded")
+	require.NotContains(t, received.Line, secret, "forwarded entry must contain redacted content, not the raw secret")
+	require.Contains(t, received.Line, "REDACTED", "forwarded entry should contain redaction placeholder")
+	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.entriesBypassedTotal), "no entries should be bypassed when rate=1")
 }
 
 // TestRate_Half approximates that with rate=0.5 about half of entries are processed and half bypassed.

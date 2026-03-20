@@ -397,8 +397,9 @@ func TestLogsCollector_StartStop(t *testing.T) {
 	require.False(t, collector.Stopped())
 
 	collector.Stop()
-	time.Sleep(10 * time.Millisecond)
-	require.True(t, collector.Stopped())
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
 }
 
 func TestExtractSeverity(t *testing.T) {

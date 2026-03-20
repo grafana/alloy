@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
 	gt "github.com/grafana/alloy/internal/component/loki/source/gcplog/internal/gcplogtarget"
 	"github.com/grafana/alloy/internal/util"
@@ -99,7 +98,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	source.Consume(ctx, c.handler, c.fanout)
+	loki.Consume(ctx, c.handler, c.fanout)
 	return nil
 }
 
