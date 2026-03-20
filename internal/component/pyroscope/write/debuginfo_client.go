@@ -19,9 +19,9 @@ func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (*grpc.ClientConn, e
 	var creds credentials.TransportCredentials
 	var auth *basicAuthCredential
 	switch u.Scheme {
-	case "http":
+	case SchemeHTTP:
 		creds = insecure.NewCredentials()
-	case "https":
+	case SchemeHTTPS:
 		if promTLSConfig := e.HTTPClientConfig.TLSConfig.Convert(); promTLSConfig != nil {
 			tlsConf, err := commonconfig.NewTLSConfig(promTLSConfig)
 			if err != nil {
@@ -48,7 +48,7 @@ func newDebugInfoGRPCClient(u *url.URL, e *EndpointOptions) (*grpc.ClientConn, e
 	target := u.Host
 	if u.Port() == "" {
 		defaultPort := "80"
-		if u.Scheme == "https" {
+		if u.Scheme == SchemeHTTPS {
 			defaultPort = "443"
 		}
 		target = fmt.Sprintf("%s:%s", u.Hostname(), defaultPort)
