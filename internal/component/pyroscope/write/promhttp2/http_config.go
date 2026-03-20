@@ -28,6 +28,13 @@ import (
 	"golang.org/x/net/http2"
 )
 
+// HTTPClientConfigMirror wraps commonconfig.HTTPClientConfig with
+// extra fields that cannot be expressed via the upstream type.
+type HTTPClientConfigMirror struct {
+	commonconfig.HTTPClientConfig
+	H2C bool // use HTTP/2 cleartext (h2c) instead of standard transport
+}
+
 type httpClientOptions struct {
 	dialContextFunc   commonconfig.DialContextFunc
 	newTLSConfigFunc  commonconfig.NewTLSConfigFunc
@@ -134,7 +141,13 @@ func newClient(rt http.RoundTripper) *http.Client {
 // given config.HTTPClientConfig and config.HTTPClientOption.
 // The name is used as go-conntrack metric label.
 func NewClientFromConfig(cfg commonconfig.HTTPClientConfig, name string, optFuncs ...HTTPClientOption) (*http.Client, error) {
-	rt, err := NewRoundTripperFromConfig(cfg, name, optFuncs...)
+	return NewClientFromConfigMirror(HTTPClientConfigMirror{HTTPClientConfig: cfg}, name, optFuncs...)
+}
+
+// NewClientFromConfigMirror is like NewClientFromConfig but accepts an
+// HTTPClientConfigMirror, enabling pyroscope-specific options such as H2C.
+func NewClientFromConfigMirror(cfg HTTPClientConfigMirror, name string, optFuncs ...HTTPClientOption) (*http.Client, error) {
+	rt, err := newRoundTripperFromConfigWithContextMirror(context.Background(), cfg, name, optFuncs...)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +171,10 @@ func NewRoundTripperFromConfig(cfg commonconfig.HTTPClientConfig, name string, o
 // given config.HTTPClientConfig and config.HTTPClientOption.
 // The name is used as go-conntrack metric label.
 func NewRoundTripperFromConfigWithContext(ctx context.Context, cfg commonconfig.HTTPClientConfig, name string, optFuncs ...HTTPClientOption) (http.RoundTripper, error) {
+	return newRoundTripperFromConfigWithContextMirror(ctx, HTTPClientConfigMirror{HTTPClientConfig: cfg}, name, optFuncs...)
+}
+
+func newRoundTripperFromConfigWithContextMirror(ctx context.Context, cfg HTTPClientConfigMirror, name string, optFuncs ...HTTPClientOption) (http.RoundTripper, error) {
 	opts := defaultHTTPClientOptions
 	for _, opt := range optFuncs {
 		opt.applyToHTTPClientOptions(&opts)
@@ -179,25 +196,35 @@ func NewRoundTripperFromConfigWithContext(ctx context.Context, cfg commonconfig.
 	newRT := func(tlsConfig *tls.Config) (http.RoundTripper, error) {
 		// The only timeout we care about is the configured scrape timeout.
 		// It is applied on request. So we leave out any timings here.
-		var rt http.RoundTripper = &http.Transport{
-			Proxy:                 cfg.Proxy(),
-			ProxyConnectHeader:    cfg.GetProxyConnectHeader(),
-			MaxIdleConns:          20000,
-			MaxIdleConnsPerHost:   1000, // see https://github.com/golang/go/issues/13801
-			DisableKeepAlives:     !opts.keepAlivesEnabled,
-			TLSClientConfig:       tlsConfig,
-			DisableCompression:    true,
-			IdleConnTimeout:       opts.idleConnTimeout,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-			DialContext:           dialContext,
-		}
-		if opts.http2Enabled && cfg.EnableHTTP2 {
-			http2t, err := http2.ConfigureTransports(rt.(*http.Transport))
-			if err != nil {
-				return nil, err
+		var rt http.RoundTripper
+		if cfg.H2C {
+			rt = &http2.Transport{
+				AllowHTTP: true,
+				DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
+					return dialContext(ctx, network, addr)
+				},
 			}
-			http2t.ReadIdleTimeout = time.Minute
+		} else {
+			rt = &http.Transport{
+				Proxy:                 cfg.Proxy(),
+				ProxyConnectHeader:    cfg.GetProxyConnectHeader(),
+				MaxIdleConns:          20000,
+				MaxIdleConnsPerHost:   1000, // see https://github.com/golang/go/issues/13801
+				DisableKeepAlives:     !opts.keepAlivesEnabled,
+				TLSClientConfig:       tlsConfig,
+				DisableCompression:    true,
+				IdleConnTimeout:       opts.idleConnTimeout,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+				DialContext:           dialContext,
+			}
+			if opts.http2Enabled && cfg.EnableHTTP2 {
+				http2t, err := http2.ConfigureTransports(rt.(*http.Transport))
+				if err != nil {
+					return nil, err
+				}
+				http2t.ReadIdleTimeout = time.Minute
+			}
 		}
 
 		// If a authorization_credentials is provided, create a round tripper that will set the

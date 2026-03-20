@@ -216,6 +216,10 @@ type endpointClient struct {
 	pushClient   pushv1connect.PusherServiceClient
 	debugInfo    *debuginfo.Client
 	ingestClient *http.Client
+
+	h2cOnce   sync.Once
+	h2cClient *http.Client
+	h2cErr    error
 }
 
 type fanOutClient struct {
@@ -752,10 +756,35 @@ func validateLabels(lbls labels.Labels) error {
 	return err
 }
 
-// http2Client returns an HTTP/2-guaranteed client for this endpoint.
-// Stub: replaced with the real implementation in a follow-up commit.
+// newHTTP2Client creates an HTTP/2-guaranteed client for this endpoint.
+// For http:// URLs it uses h2c; for https:// it uses HTTP/2 over TLS.
+func (ec *endpointClient) newHTTP2Client() (*http.Client, error) {
+	u, err := url.Parse(ec.options.URL)
+	if err != nil {
+		return nil, err
+	}
+	switch u.Scheme {
+	case "http":
+		return promhttp2.NewClientFromConfigMirror(promhttp2.HTTPClientConfigMirror{
+			HTTPClientConfig: *ec.options.HTTPClientConfig.Convert(),
+			H2C:              true,
+		}, ec.options.Name)
+	case "https":
+		httpCfg := *ec.options.HTTPClientConfig.Convert()
+		httpCfg.EnableHTTP2 = true
+		return promhttp2.NewClientFromConfigMirror(promhttp2.HTTPClientConfigMirror{HTTPClientConfig: httpCfg}, ec.options.Name)
+	default:
+		return nil, fmt.Errorf("unsupported scheme for HTTP/2 client: %s", u.Scheme)
+	}
+}
+
+// http2Client lazily initialises and returns the HTTP/2 client.
+// The result is cached; subsequent calls return the same client and error.
 func (ec *endpointClient) http2Client() (*http.Client, error) {
-	return nil, fmt.Errorf("h2c not yet implemented")
+	ec.h2cOnce.Do(func() {
+		ec.h2cClient, ec.h2cErr = ec.newHTTP2Client()
+	})
+	return ec.h2cClient, ec.h2cErr
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {
