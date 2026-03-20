@@ -283,12 +283,9 @@ func (s *shards) start(n int) {
 	s.done = make(chan struct{})
 	s.softShutdown = make(chan struct{})
 
-	var started sync.WaitGroup
-	started.Add(n)
 	for i := range n {
-		go s.runShard(s.queues[i], &started)
+		go s.runShard(s.queues[i])
 	}
-	started.Wait()
 }
 
 // stop tries to perform a graceful shutdown of all shards.
@@ -320,11 +317,7 @@ func (s *shards) stop() {
 }
 
 // runShard is the worker goroutine that processes batches from a single queue.
-func (s *shards) runShard(q *queue, started *sync.WaitGroup) {
-	if started != nil {
-		started.Done()
-	}
-
+func (s *shards) runShard(q *queue) {
 	// Given that a shard handles multiple batches (1 per tenant) and each batch
 	// can be created at a different point in time, we look for batches whose
 	// max wait time has been reached every 10 times per BatchWait, so that the
