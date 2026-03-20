@@ -44,7 +44,7 @@ func buildLimitsConfigStages(cfg limit.Config) []stages.StageConfig {
 					Rules: []*stages.RuleConfig{
 						{
 							Limit:      lineSizeBytes,
-							SourceType: stages.TruncateSourceLine,
+							SourceType: stages.SourceTypeLine,
 						},
 					},
 				},
