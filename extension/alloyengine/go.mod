@@ -1,6 +1,6 @@
 module github.com/grafana/alloy/extension/alloyengine
 
-go 1.25.7
+go 1.25.8
 
 replace github.com/grafana/alloy => ../..
 
