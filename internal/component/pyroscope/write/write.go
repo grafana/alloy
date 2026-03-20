@@ -752,6 +752,12 @@ func validateLabels(lbls labels.Labels) error {
 	return err
 }
 
+// http2Client returns an HTTP/2-guaranteed client for this endpoint.
+// Stub: replaced with the real implementation in a follow-up commit.
+func (ec *endpointClient) http2Client() (*http.Client, error) {
+	return nil, fmt.Errorf("h2c not yet implemented")
+}
+
 func configureTracing(config Arguments, httpClient *http.Client) {
 	if config.Tracing.JaegerPropagator || config.Tracing.TraceContextPropagator {
 		var propagators []propagation.TextMapPropagator
