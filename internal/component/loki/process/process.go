@@ -89,7 +89,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		loki.Drain(c.processOut, func() {
+		loki.Drain(c.processOut, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			if c.entryHandler != nil {

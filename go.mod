@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.25.7
+go 1.25.8
 
 // This local replace is required for local development and testing of the syntax submodule.
 // It is intentionally kept outside the generated block to avoid being overwritten by dependency management tools.
@@ -32,7 +32,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0
 	github.com/bmatcuk/doublestar/v4 v4.9.1
 	github.com/boynux/squid-exporter v1.10.5-0.20230618153315-c1fae094e18e
-	github.com/buger/jsonparser v1.1.1
+	github.com/buger/jsonparser v1.1.2
 	github.com/burningalchemist/sql_exporter v0.0.0-20240103092044-466b38b6abc4
 	github.com/c2h5oh/datasize v0.0.0-20231215233829-aa82cc1e6500
 	github.com/cespare/xxhash/v2 v2.3.0
@@ -304,7 +304,7 @@ require (
 	golang.org/x/time v0.14.0
 	golang.org/x/tools v0.42.0
 	google.golang.org/api v0.257.0
-	google.golang.org/grpc v1.78.0
+	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -530,7 +530,7 @@ require (
 	github.com/cilium/ebpf v0.20.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
-	github.com/cncf/xds/go v0.0.0-20251022180443-0feb69152e9f // indirect
+	github.com/cncf/xds/go v0.0.0-20251210132809-ee656c7534f5 // indirect
 	github.com/containerd/continuity v0.4.5 // indirect
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
@@ -945,7 +945,7 @@ require (
 	go.opentelemetry.io/contrib/detectors/aws/ec2/v2 v2.0.0 // indirect
 	go.opentelemetry.io/contrib/detectors/aws/eks v1.38.0 // indirect
 	go.opentelemetry.io/contrib/detectors/azure/azurevm v0.10.0 // indirect
-	go.opentelemetry.io/contrib/detectors/gcp v1.38.0 // indirect
+	go.opentelemetry.io/contrib/detectors/gcp v1.39.0 // indirect
 	go.opentelemetry.io/contrib/exporters/autoexport v0.61.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/httptrace/otelhttptrace v0.64.0 // indirect
@@ -966,7 +966,7 @@ require (
 	go.opentelemetry.io/otel/sdk/log v0.14.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/fx v1.24.0 // indirect
-	go.yaml.in/yaml/v2 v2.4.3 // indirect
+	go.yaml.in/yaml/v2 v2.4.3
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go4.org/netipx v0.0.0-20230125063823-8449b0a6169f // indirect
 	golang.design/x/chann v0.1.2 // indirect
@@ -1013,7 +1013,7 @@ require (
 )
 
 require (
-	cel.dev/expr v0.24.0 // indirect
+	cel.dev/expr v0.25.1 // indirect
 	cloud.google.com/go/storage v1.57.0 // indirect
 	github.com/BobuSumisu/aho-corasick v1.0.3 // indirect
 	github.com/DataDog/datadog-agent/pkg/config/helper v0.74.0-rc.3 // indirect
