@@ -512,6 +512,22 @@ func TestMetrics(t *testing.T) {
 						"loki_secretfilter_secrets_redacted_by_origin"))
 			}
 
+			// Check secretsRedactedByCategory
+			if len(tc.expectedRedactedByRule) > 0 {
+				jobValue := string(labels[model.LabelName("job")])
+				var metricStrings strings.Builder
+				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_category_total Number of secrets redacted, partitioned by rule name and origin label value.\n")
+				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_redacted_by_category_total counter\n")
+				for ruleName, count := range tc.expectedRedactedByRule {
+					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_category_total{origin="%s",rule="%s"} %d`,
+						jobValue, ruleName, count)
+					metricStrings.WriteString(metric + "\n")
+				}
+				require.NoError(t,
+					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
+						"loki_secretfilter_secrets_redacted_by_category_total"))
+			}
+
 			// Check processingDuration metric
 			// We don't validate the exact value since it will vary, but we verify it exists and has the right structure
 			count, err := testutil.GatherAndCount(registry, "loki_secretfilter_processing_duration_seconds")
@@ -566,6 +582,7 @@ func TestMetricsRegistration(t *testing.T) {
 	c.metrics.secretsRedactedTotal.Inc()
 	c.metrics.secretsRedactedByRule.WithLabelValues("test_rule").Inc()
 	c.metrics.secretsRedactedByOrigin.WithLabelValues("test_value").Inc()
+	c.metrics.secretsRedactedByCategory.WithLabelValues("test_rule", "test_value").Inc()
 	c.metrics.processingDuration.Observe(0.123)
 
 	// Check that the metrics are registered
@@ -574,10 +591,11 @@ func TestMetricsRegistration(t *testing.T) {
 
 	// Create a map of expected metrics
 	expectedMetrics := map[string]bool{
-		"loki_secretfilter_secrets_redacted_total":         false,
-		"loki_secretfilter_secrets_redacted_by_rule_total": false,
-		"loki_secretfilter_secrets_redacted_by_origin":     false,
-		"loki_secretfilter_processing_duration_seconds":    false,
+		"loki_secretfilter_secrets_redacted_total":          false,
+		"loki_secretfilter_secrets_redacted_by_rule_total":  false,
+		"loki_secretfilter_secrets_redacted_by_origin":      false,
+		"loki_secretfilter_secrets_redacted_by_category_total":    false,
+		"loki_secretfilter_processing_duration_seconds":     false,
 	}
 
 	// Check each metric family

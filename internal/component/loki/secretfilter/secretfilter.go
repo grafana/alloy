@@ -135,6 +135,9 @@ type metrics struct {
 	// Number of secrets redacted by specified labels
 	secretsRedactedByOrigin *prometheus.CounterVec
 
+	// Number of secrets redacted by rule and origin (combined)
+	secretsRedactedByCategory *prometheus.CounterVec
+
 	// Summary of time taken for redaction log processing
 	processingDuration prometheus.Summary
 
@@ -172,6 +175,12 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 		}, []string{"origin"})
 	}
 
+	m.secretsRedactedByCategory = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Subsystem: "loki_secretfilter",
+		Name:      "secrets_redacted_by_category_total",
+		Help:      "Number of secrets redacted, partitioned by rule name and origin label value.",
+	}, []string{"rule", "origin"})
+
 	m.processingDuration = prometheus.NewSummary(prometheus.SummaryOpts{
 		Subsystem: "loki_secretfilter",
 		Name:      "processing_duration_seconds",
@@ -206,6 +215,7 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 		if originLabel != "" {
 			m.secretsRedactedByOrigin = util.MustRegisterOrGet(reg, m.secretsRedactedByOrigin).(*prometheus.CounterVec)
 		}
+		m.secretsRedactedByCategory = util.MustRegisterOrGet(reg, m.secretsRedactedByCategory).(*prometheus.CounterVec)
 		m.processingDuration = util.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
 		m.entriesBypassedTotal = util.MustRegisterOrGet(reg, m.entriesBypassedTotal).(prometheus.Counter)
 		m.linesTimedOutTotal = util.MustRegisterOrGet(reg, m.linesTimedOutTotal).(prometheus.Counter)
@@ -416,11 +426,14 @@ func (c *Component) redactLine(entry loki.Entry, findings []report.Finding) loki
 
 		c.metrics.secretsRedactedTotal.Inc()
 		c.metrics.secretsRedactedByRule.WithLabelValues(ruleName).Inc()
+		originValue := ""
 		if c.args.OriginLabel != "" && len(entry.Labels) > 0 {
 			if value, ok := entry.Labels[model.LabelName(c.args.OriginLabel)]; ok {
-				c.metrics.secretsRedactedByOrigin.WithLabelValues(string(value)).Inc()
+				originValue = string(value)
+				c.metrics.secretsRedactedByOrigin.WithLabelValues(originValue).Inc()
 			}
 		}
+		c.metrics.secretsRedactedByCategory.WithLabelValues(ruleName, originValue).Inc()
 	}
 	entry.Line = line
 	return entry

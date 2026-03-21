@@ -125,6 +125,7 @@ The following fields are exported and can be referenced by other components:
 | `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets redacted.                                                              |
 | `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                          |
 | `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label, when `origin_label` is set.           |
+| `loki_secretfilter_secrets_redacted_by_category_total`   | Counter | Number of secrets redacted, partitioned by rule name and origin label value (empty string if `origin_label` is not set or the label is absent). |
 
 
 ## Example
