@@ -591,11 +591,11 @@ func TestMetricsRegistration(t *testing.T) {
 
 	// Create a map of expected metrics
 	expectedMetrics := map[string]bool{
-		"loki_secretfilter_secrets_redacted_total":          false,
-		"loki_secretfilter_secrets_redacted_by_rule_total":  false,
-		"loki_secretfilter_secrets_redacted_by_origin":      false,
-		"loki_secretfilter_secrets_redacted_by_category_total":    false,
-		"loki_secretfilter_processing_duration_seconds":     false,
+		"loki_secretfilter_secrets_redacted_total":             false,
+		"loki_secretfilter_secrets_redacted_by_rule_total":     false,
+		"loki_secretfilter_secrets_redacted_by_origin":         false,
+		"loki_secretfilter_secrets_redacted_by_category_total": false,
+		"loki_secretfilter_processing_duration_seconds":        false,
 	}
 
 	// Check each metric family
