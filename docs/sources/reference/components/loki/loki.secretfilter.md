@@ -50,7 +50,7 @@ You can use the following arguments with `loki.secretfilter`:
 | -------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `forward_to`         | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
 | `gitleaks_config`    | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
-| `origin_label`       | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
+| `origin_label`       | `string`             | Loki label to use as the `origin` dimension in `secrets_redacted_by_origin` and `secrets_redacted_by_category_total`. If empty, `secrets_redacted_by_origin` is not registered and the `origin` label on `secrets_redacted_by_category_total` is set to `""`. | `""`    | no       |
 | `rate`               | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged.      | `1.0`   | no       |
 | `redact_with`        | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`, for example, `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
 | `redact_percent`     | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction.                 | `80`    | no       |
@@ -81,7 +81,8 @@ Entries that {{< param "PRODUCT_NAME" >}} does not select based on the sampling 
 Use a value below `1.0`, for example, `0.1` for 10%, to reduce CPU usage when processing high-volume logs.
 Monitor `loki_secretfilter_entries_bypassed_total` to observe how many entries were skipped.
 
-**Origin metric:** The `origin_label` argument specifies which Loki label to use for the `secrets_redacted_by_origin` metric, so you can track how many secrets were redacted per source or environment.
+**Origin metric:** The `origin_label` argument specifies which Loki label to use as the `origin` dimension in the `secrets_redacted_by_origin` and `secrets_redacted_by_category_total` metrics, so you can track how many secrets were redacted per source or environment.
+When `origin_label` is not set, `secrets_redacted_by_origin` is not registered, and the `origin` label on `secrets_redacted_by_category_total` defaults to an empty string.
 
 **Processing timeout:** The `processing_timeout` argument sets a maximum duration for processing each log entry.
 When the timeout is exceeded, the `loki_secretfilter_lines_timed_out_total` metric is incremented.
@@ -125,7 +126,7 @@ The following fields are exported and can be referenced by other components:
 | `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets redacted.                                                              |
 | `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                          |
 | `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label, when `origin_label` is set.           |
-| `loki_secretfilter_secrets_redacted_by_category_total`   | Counter | Number of secrets redacted, partitioned by rule name and origin label value (empty string if `origin_label` is not set or the label is absent). |
+| `loki_secretfilter_secrets_redacted_by_category_total` | Counter | Number of secrets redacted, partitioned by rule name and origin label value. The `origin` label is empty when `origin_label` is not set or the label is absent on the entry. |
 
 
 ## Example
