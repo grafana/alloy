@@ -1654,6 +1654,8 @@ github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a h1:0usWxe5SGXKQo
 github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a/go.mod h1:3OETvrxfELvGsU2RoGGWercfeZ4bCL3+SOwzIWtJH/Q=
 github.com/mholt/archives v0.1.2 h1:UBSe5NfYKHI1sy+S5dJsEsG9jsKKk8NJA4HCC+xTI4A=
 github.com/mholt/archives v0.1.2/go.mod h1:D7QzTHgw3ctfS6wgOO9dN+MFgdZpbksGCxprUOwZWDs=
+github.com/michel-laterman/proxy-connect-dialer-go v0.1.0 h1:Q8asukpmyrEheocd+R+6YEI4jcm62sHHalgTMG+LoLw=
+github.com/michel-laterman/proxy-connect-dialer-go v0.1.0/go.mod h1:HTlVkRAqzTRPYbWxgAiwMT9HRZMOqP3Mx7+toa3yJjc=
 github.com/microsoft/go-mssqldb v1.9.2 h1:nY8TmFMQOHpm2qVWo6y4I2mAmVdZqlGiMGAYt64Ibbs=
 github.com/microsoft/go-mssqldb v1.9.2/go.mod h1:GBbW9ASTiDC+mpgWDGKdm3FnFLTUsLYN3iFL90lQ+PA=
 github.com/miekg/dns v1.1.25/go.mod h1:bPDLeHnStXmXAq1m/Ch/hvfNHr14JKNPMBo3VZKjuso=
@@ -1838,6 +1840,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2client
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.142.0/go.mod h1:n4QAObJb6Jm9RVNp55ctM3IxEiODJGwCd5R+W4J1ehg=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.142.0 h1:xFOR39iAmMz1qoClCNFZtOrAbdelZnaW1qcdcl1cpFE=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.142.0/go.mod h1:fd4BmG/alnGTP5jbYwyRAegWFkvqYjgXU4EXYUXPUyA=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.142.0 h1:ZictsvRwuVJ0u2okFE0WPuzoDyINiD+biDl0j4NPVuo=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.142.0/go.mod h1:BtrQ997wZTMCUrKyqBzpfGnnfgeEl7aZ7dnbTCNZ1KI=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.142.0 h1:ALJuFnSl/psitnJZepyNvh3vvaBSzYVZR68mG6M4+XQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.142.0/go.mod h1:lTf1V8Bw5+zJZRDJpu88XIJvLjCFU4jZXiTc4lT0Nyc=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.142.0 h1:WHmtbcnh1Gtw/VYFOlqi7Lh51tj/XVSVMQCwKuycEes=
@@ -2676,6 +2680,8 @@ go.opentelemetry.io/collector/processor/xprocessor v0.142.0 h1:7a1Crxrd5iBMVnebT
 go.opentelemetry.io/collector/processor/xprocessor v0.142.0/go.mod h1:LY/GS2DiJILJKS3ynU3eOLLWSP8CmN1FtdpAMsVV8AU=
 go.opentelemetry.io/collector/receiver v1.51.0 h1:BUEHfN3HSvR3YzPzJOLOotPyJlILi2D4WkGzNPNuDlA=
 go.opentelemetry.io/collector/receiver v1.51.0/go.mod h1:NrkCdesDdxt6bjSVU2J+UsQxDvOUMIe/XdhnexaqAic=
+go.opentelemetry.io/collector/receiver/nopreceiver v0.142.0 h1:Z1DJMjFgSma81HTpnk3e7DruXJPLLva56+lxRUDnq/I=
+go.opentelemetry.io/collector/receiver/nopreceiver v0.142.0/go.mod h1:qhmceHrEPDz0iG0Piz8+d4uVHFX20im4/IHQuyqzwMc=
 go.opentelemetry.io/collector/receiver/otlpreceiver v0.142.0 h1:JeIi6cMMIajqUZro1M2uaTbRKIehAihmscFL+FB9m1g=
 go.opentelemetry.io/collector/receiver/otlpreceiver v0.142.0/go.mod h1:OSpqBwLv69K4FmBSO11vMjgNjb/l7kzHU0s+EwrmvCk=
 go.opentelemetry.io/collector/receiver/receiverhelper v0.142.0 h1:GfoWfdCyILpRq7vgBGra0qR1eOS8f52+QLBVMh658Gc=
