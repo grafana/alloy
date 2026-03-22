@@ -16,6 +16,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const parentServiceInstanceIDFlagKey = "alloyengext.parent.service.id"
+
 var _ extension.Extension = (*alloyEngineExtension)(nil)
 
 type state int
@@ -96,7 +98,13 @@ func (e *alloyEngineExtension) Start(ctx context.Context, host component.Host) e
 
 	runCommand := e.runCommandFactory()
 	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
-	err := runCommand.ParseFlags(e.config.flagsAsSlice())
+	flags := e.config.flagsAsSlice()
+	if e.config.SupervisorStorageDir != "" {
+		if id := ReadPersistentStateInstanceID(e.config.SupervisorStorageDir); id != "" {
+			flags = append(flags, fmt.Sprintf("--%s=%s", parentServiceInstanceIDFlagKey, id))
+		}
+	}
+	err := runCommand.ParseFlags(flags)
 	if err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}

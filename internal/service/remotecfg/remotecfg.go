@@ -50,6 +50,8 @@ const ServiceName = "remotecfg"
 const reservedAttributeNamespace = "collector"
 const namespaceDelimiter = "."
 
+const parentCollectorAttrKey = "parent.service.instance.id"
+
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.
 type Options struct {
@@ -57,6 +59,9 @@ type Options struct {
 	StoragePath string                // Where to cache configuration on-disk.
 	ConfigPath  string                // Where the root config file is.
 	Metrics     prometheus.Registerer // Where to send metrics to.
+	// ParentServiceInstanceID is set by the process (e.g. alloyengine extension via --alloyengext.parent.service.id).
+	// When non-empty, it is merged into remotecfg local attributes as parent.service.instance.id unless overridden in config.
+	ParentServiceInstanceID string
 }
 
 // New returns a new instance of the remotecfg service.
@@ -265,6 +270,11 @@ func (s *Service) updateHandleArgs(newArgs Arguments) error {
 	// Combine the new attributes on top of the system attributes
 	s.attrs = maps.Clone(s.systemAttrs)
 	maps.Copy(s.attrs, newArgs.Attributes)
+
+	// add parent.service.instance.id (from --alloyengext.parent.service.id) when passed from alloyengine extension
+	if s.opts.ParentServiceInstanceID != "" {
+		s.attrs[parentCollectorAttrKey] = s.opts.ParentServiceInstanceID
+	}
 
 	// Update the args as the last step to avoid polluting any comparisons
 	s.args = newArgs

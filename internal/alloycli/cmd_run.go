@@ -174,6 +174,11 @@ depending on the nature of the reload error.
 	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
 	addDeprecatedFlags(cmd)
+
+	// alloy engine extension hidden flags
+	cmd.Flags().StringVar(&r.parentServiceInstanceID, "alloyengext.parent.service.id", r.parentServiceInstanceID, "Parent collector instance id for FM hierarchy; set by the alloyengine extension and thus hidden")
+	_ = cmd.Flags().MarkHidden("alloyengext.parent.service.id")
+
 	return cmd
 }
 
@@ -181,6 +186,7 @@ type alloyRun struct {
 	inMemoryAddr                 string
 	httpListenAddr               string
 	storagePath                  string
+	parentServiceInstanceID      string
 	minStability                 featuregate.Stability
 	uiPrefix                     string
 	enablePprof                  bool
@@ -367,10 +373,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	})
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(l, "service", "remotecfg"),
-		ConfigPath:  configPath,
-		StoragePath: fr.storagePath,
-		Metrics:     reg,
+		Logger:                  log.With(l, "service", "remotecfg"),
+		ConfigPath:              configPath,
+		StoragePath:             fr.storagePath,
+		Metrics:                 reg,
+		ParentServiceInstanceID: fr.parentServiceInstanceID,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create the remotecfg service: %w", err)

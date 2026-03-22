@@ -6,8 +6,9 @@ import (
 )
 
 type Config struct {
-	AlloyConfig AlloyConfig       `mapstructure:"config"`
-	Flags       map[string]string `mapstructure:"flags"`
+	AlloyConfig          AlloyConfig       `mapstructure:"config"`
+	Flags                map[string]string `mapstructure:"flags"`
+	SupervisorStorageDir string            `mapstructure:"fm_supervisor_storage_dir"`
 }
 
 // This type represents the incoming format of the Alloy configuration
