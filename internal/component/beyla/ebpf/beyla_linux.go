@@ -757,7 +757,10 @@ func (c *Component) CurrentHealth() component.Health {
 }
 
 func (c *Component) Handler() http.Handler {
-	return promhttp.HandlerFor(c.reg, promhttp.HandlerOpts{})
+	c.mut.Lock()
+	nativeHistograms := c.args.Metrics.NativeHistograms
+	c.mut.Unlock()
+	return promhttp.HandlerFor(c.reg, promhttp.HandlerOpts{EnableOpenMetrics: nativeHistograms})
 }
 
 func (a *Arguments) Convert() (*beyla.Config, error) {

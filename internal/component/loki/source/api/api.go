@@ -14,7 +14,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/api/internal/lokipush"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
@@ -94,7 +93,7 @@ func (c *Component) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	source.ConsumeBatch(ctx, c.handler, c.fanout)
+	loki.ConsumeBatch(ctx, c.handler, c.fanout)
 	return
 }
 
@@ -139,8 +138,8 @@ func (c *Component) Update(args component.Arguments) error {
 		if err != nil {
 			return fmt.Errorf("failed to create embedded server: %v", err)
 		}
-		err = c.server.Run()
-		if err != nil {
+
+		if err = c.server.Run(); err != nil {
 			return fmt.Errorf("failed to run embedded server: %v", err)
 		}
 	}

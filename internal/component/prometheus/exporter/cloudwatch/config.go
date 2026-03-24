@@ -27,7 +27,7 @@ var defaults = Arguments{
 		ScrapeInterval: 5 * time.Minute,
 	},
 	LabelsSnakeCase:   false,
-	UseAWSSDKVersion2: false,
+	UseAWSSDKVersion2: true,
 }
 
 // Arguments are the Alloy based options to configure the embedded CloudWatch exporter.

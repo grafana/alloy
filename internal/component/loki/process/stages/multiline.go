@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -12,7 +13,9 @@ import (
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 // Configuration errors.
@@ -78,9 +81,9 @@ type multilineState struct {
 }
 
 func (s *multilineState) Reset() {
+	// We don't reset startLineEntry here to keep old behaviour.
 	s.buffer.Reset()
 	s.currentLines = 0
-	s.startLineEntry = Entry{}
 }
 
 // newMultilineStage creates a MulitlineStage from config
@@ -193,11 +196,23 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 		return
 	}
 
-	entry := s.startLineEntry
-	entry.Line = s.buffer.String()
+	// copy extracted data.
+	extracted := make(map[string]any, len(s.startLineEntry.Extracted))
+	for k, v := range s.startLineEntry.Extracted {
+		extracted[k] = v
+	}
+	collapsed := Entry{
+		Extracted: extracted,
+		Entry: loki.NewEntryWithCreatedUnixMicro(s.startLineEntry.Entry.Labels.Clone(), s.startLineEntry.Created(), push.Entry{
+			Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
+			Line:               s.buffer.String(),
+			StructuredMetadata: slices.Clone(s.startLineEntry.Entry.Entry.StructuredMetadata),
+		}),
+	}
 
 	s.Reset()
-	out <- entry
+
+	out <- collapsed
 }
 
 // Cleanup implements Stage.

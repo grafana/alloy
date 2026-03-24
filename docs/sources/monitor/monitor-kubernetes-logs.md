@@ -45,10 +45,10 @@ Follow these steps to clone the scenarios repository and deploy the monitoring e
 
 1. Set up the example Kubernetes environment:
 
-   1. Navigate to the `alloy-scenarios/k8s-logs` directory:
+   1. Navigate to the `alloy-scenarios/k8s/logs` directory:
 
       ```shell
-      cd alloy-scenarios/k8s-logs
+      cd alloy-scenarios/k8s/logs
       ```
 
    1. Create a local Kubernetes cluster using kind.  

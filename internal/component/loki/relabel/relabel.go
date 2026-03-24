@@ -68,7 +68,7 @@ type Component struct {
 	mut      sync.RWMutex
 	rcs      []*relabel.Config
 	receiver loki.LogsReceiver
-	fanout   []loki.LogsReceiver
+	fanout   *loki.Fanout
 
 	cache        *lru.Cache
 	maxCacheSize int
@@ -102,6 +102,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		maxCacheSize:       args.MaxCacheSize,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 		builder:            labels.NewScratchBuilder(0),
+		fanout:             loki.NewFanout(args.ForwardTo),
 	}
 
 	// Create and immediately export the receiver which remains the same for
@@ -120,43 +121,34 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	componentID := livedebugging.ComponentID(c.opts.ID)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.receiver.Chan():
-			c.metrics.entriesProcessed.Inc()
-			lbls := c.relabel(entry)
+	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(entry loki.Entry) (loki.Entry, bool) {
+		relabeled, ok := c.relabel(entry)
 
-			count := uint64(1)
-			if len(lbls) == 0 {
-				count = 0 // if no labels are left, the count is not incremented because the log will be filtered out
-			}
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.LokiLog,
-				count,
-				func() string {
-					return fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), lbls.String())
-				},
-			))
-
-			if len(lbls) == 0 {
-				level.Debug(c.opts.Logger).Log("msg", "dropping entry after relabeling", "labels", entry.Labels.String())
-				continue
-			}
-
-			c.metrics.entriesOutgoing.Inc()
-			entry.Labels = lbls
-			for _, f := range c.fanout {
-				select {
-				case <-ctx.Done():
-					return nil
-				case f.Chan() <- entry:
-				}
-			}
+		count := uint64(1)
+		if !ok {
+			count = 0
 		}
-	}
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.LokiLog,
+			count,
+			func() string {
+				if !ok {
+					return fmt.Sprintf("entry: %s, labels: %s => <dropped>", entry.Line, entry.Labels.String())
+				}
+				return fmt.Sprintf("entry: %s, labels: %s => %s", entry.Line, entry.Labels.String(), relabeled.Labels.String())
+			},
+		))
+
+		if !ok {
+			level.Debug(c.opts.Logger).Log("msg", "dropping entry after relabeling", "labels", entry.Labels.String())
+			return loki.Entry{}, false
+		}
+
+		c.metrics.entriesOutgoing.Inc()
+		return relabeled, true
+	})
+	return nil
 }
 
 // Update implements component.Component.
@@ -178,7 +170,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 	c.rcs = newRCS
-	c.fanout = newArgs.ForwardTo
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.RelabelConfigs})
 
@@ -206,7 +198,9 @@ type cacheItem struct {
 // between model.LabelSet (map) and labels.Labels (slice). Promtail does
 // not have this issue as relabel config rules are only applied to targets.
 // Do we want to use labels.Labels in loki.Entry instead?
-func (c *Component) relabel(e loki.Entry) model.LabelSet {
+func (c *Component) relabel(e loki.Entry) (loki.Entry, bool) {
+	c.metrics.entriesProcessed.Inc()
+
 	hash := e.Labels.Fingerprint()
 
 	// Let's look in the cache for the hash of the entry's labels.
@@ -218,7 +212,11 @@ func (c *Component) relabel(e loki.Entry) model.LabelSet {
 		for _, ci := range val.([]cacheItem) {
 			if e.Labels.Equal(ci.original) {
 				c.metrics.cacheHits.Inc()
-				return ci.relabeled
+				if len(ci.relabeled) == 0 {
+					return loki.Entry{}, false
+				}
+				e.Labels = ci.relabeled
+				return e, true
 			}
 		}
 	}
@@ -238,7 +236,12 @@ func (c *Component) relabel(e loki.Entry) model.LabelSet {
 	c.cache.Add(hash, val)
 	c.metrics.cacheSize.Set(float64(c.cache.Len()))
 
-	return relabeled
+	if len(relabeled) == 0 {
+		return loki.Entry{}, false
+	}
+
+	e.Labels = relabeled
+	return e, true
 }
 
 func (c *Component) process(e loki.Entry) model.LabelSet {

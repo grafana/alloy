@@ -2,6 +2,7 @@ package heroku
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -14,7 +15,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/heroku/internal/herokutarget"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/regexp"
-	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
@@ -37,7 +37,7 @@ func TestPush(t *testing.T) {
 	waitForServerToBeReady(t, c)
 
 	// Create a Heroku Drain Request and send it to the launched server.
-	req, err := http.NewRequest(http.MethodPost, getEndpoint(c.target), strings.NewReader(testPayload))
+	req, err := http.NewRequest(http.MethodPost, getEndpoint(c.server), strings.NewReader(testPayload))
 	require.NoError(t, err)
 
 	res, err := http.DefaultClient.Do(req)
@@ -46,7 +46,7 @@ func TestPush(t *testing.T) {
 
 	// Check the received log entries
 	wantLabelSet := model.LabelSet{"foo": "bar", "host": "host", "app": "heroku", "proc": "router", "log_id": "-"}
-	wantLogLine := "at=info method=GET path=\"/\" host=cryptic-cliffs-27764.herokuapp.com request_id=59da6323-2bc4-4143-8677-cc66ccfb115f fwd=\"181.167.87.140\" dyno=web.1 connect=0ms service=3ms status=200 bytes=6979 protocol=https\n"
+	wantLogLine := "at=info method=GET path=\"/\" host=cryptic-cliffs-27764.herokuapp.com request_id=59da6323-2bc4-4143-8677-cc66ccfb115f fwd=\"181.167.87.140\" dyno=web.1 connect=0ms service=3ms status=200 bytes=6979 protocol=https\n" // trufflehog:ignore
 
 	for i := 0; i < 2; i++ {
 		select {
@@ -65,98 +65,84 @@ func TestPush(t *testing.T) {
 }
 
 func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
-	httpPort := getFreePort(t)
-	grpcPort := getFreePort(t)
 	tests := []struct {
 		name            string
-		args            Arguments
-		newArgs         Arguments
+		mutateNewArgs   func(t *testing.T, args *Arguments)
 		restartRequired bool
 	}{
 		{
 			name:            "identical args don't require server restart",
-			args:            testArgsWithPorts(httpPort, grpcPort),
-			newArgs:         testArgsWithPorts(httpPort, grpcPort),
+			mutateNewArgs:   func(_ *testing.T, _ *Arguments) {},
 			restartRequired: false,
 		},
 		{
 			name: "change in address requires server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			mutateNewArgs: func(_ *testing.T, args *Arguments) {
 				args.Server.HTTP.ListenAddress = "127.0.0.1"
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
-			}),
+			},
 			restartRequired: true,
 		},
 		{
-			name:            "change in port requires server restart",
-			args:            testArgsWithPorts(httpPort, grpcPort),
-			newArgs:         testArgsWithPorts(getFreePort(t), grpcPort),
+			name: "change in port requires server restart",
+			mutateNewArgs: func(t *testing.T, args *Arguments) {
+				args.Server.HTTP.ListenPort = getFreePort(t)
+			},
 			restartRequired: true,
 		},
 		{
 			name: "change in forwardTo does not require server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			mutateNewArgs: func(_ *testing.T, args *Arguments) {
 				args.ForwardTo = []loki.LogsReceiver{}
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
-			}),
+			},
 			restartRequired: false,
 		},
 		{
 			name: "change in labels requires server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			mutateNewArgs: func(_ *testing.T, args *Arguments) {
 				args.Labels = map[string]string{"some": "label"}
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
-			}),
+			},
 			restartRequired: true,
 		},
 		{
 			name: "change in relabel rules requires server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			mutateNewArgs: func(_ *testing.T, args *Arguments) {
 				args.RelabelRules = alloy_relabel.Rules{}
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
-			}),
+			},
 			restartRequired: true,
 		},
 		{
 			name: "change in use incoming timestamp requires server restart",
-			args: testArgsWithPorts(httpPort, grpcPort),
-			newArgs: testArgsWith(t, func(args *Arguments) {
+			mutateNewArgs: func(_ *testing.T, args *Arguments) {
 				args.UseIncomingTimestamp = !args.UseIncomingTimestamp
-				args.Server.HTTP.ListenPort = httpPort
-				args.Server.GRPC.ListenPort = grpcPort
-			}),
+			},
 			restartRequired: true,
 		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			args := testArgsWithPorts(0, 0)
+			newArgs := cloneArguments(args)
+			tc.mutateNewArgs(t, &newArgs)
+
 			comp, err := New(
 				defaultOptions(t),
-				tc.args,
+				args,
 			)
 			require.NoError(t, err)
 			defer func() {
 				// in order to cleanly shutdown, we want to make sure the server is running first.
 				waitForServerToBeReady(t, comp)
-				require.NoError(t, comp.target.Stop())
+				comp.server.Shutdown()
 			}()
 
 			// in order to cleanly update, we want to make sure the server is running first.
 			waitForServerToBeReady(t, comp)
 
-			targetBefore := comp.target
-			err = comp.Update(tc.newArgs)
+			targetBefore := comp.server
+			err = comp.Update(newArgs)
 			require.NoError(t, err)
 
-			restarted := targetBefore != comp.target
+			restarted := targetBefore != comp.server
 			require.Equal(t, restarted, tc.restartRequired)
 		})
 	}
@@ -230,25 +216,55 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 }
 
 func testArgsWith(t *testing.T, mutator func(arguments *Arguments)) Arguments {
-	a := testArgsWithPorts(getFreePort(t), getFreePort(t))
+	_ = t
+	a := testArgsWithPorts(0, 0)
 	mutator(&a)
 	return a
+}
+
+func cloneArguments(args Arguments) Arguments {
+	cloned := args
+
+	if args.Server != nil {
+		serverCopy := *args.Server
+		if args.Server.HTTP != nil {
+			httpCopy := *args.Server.HTTP
+			serverCopy.HTTP = &httpCopy
+		}
+		if args.Server.GRPC != nil {
+			grpcCopy := *args.Server.GRPC
+			serverCopy.GRPC = &grpcCopy
+		}
+		cloned.Server = &serverCopy
+	}
+
+	cloned.ForwardTo = append([]loki.LogsReceiver(nil), args.ForwardTo...)
+	if args.Labels != nil {
+		cloned.Labels = make(map[string]string, len(args.Labels))
+		for k, v := range args.Labels {
+			cloned.Labels[k] = v
+		}
+	}
+
+	return cloned
 }
 
 func waitForServerToBeReady(t *testing.T, comp *Component) {
 	require.Eventuallyf(t, func() bool {
 		resp, err := http.Get(fmt.Sprintf(
 			"http://%v/wrong/url",
-			comp.target.HTTPListenAddress(),
+			comp.server.HTTPListenAddress(),
 		))
 		return err == nil && resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 
 func getFreePort(t *testing.T) int {
-	port, err := freeport.GetFreePort()
+	l, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
-	return port
+	defer func() { require.NoError(t, l.Close()) }()
+
+	return l.Addr().(*net.TCPAddr).Port
 }
 
 func newRegexp() alloy_relabel.Regexp {
@@ -259,6 +275,6 @@ func newRegexp() alloy_relabel.Regexp {
 	return alloy_relabel.Regexp{Regexp: re}
 }
 
-func getEndpoint(target *herokutarget.HerokuTarget) string {
+func getEndpoint(target *herokutarget.HerokuServer) string {
 	return fmt.Sprintf("http://%s%s", target.HTTPListenAddress(), target.DrainEndpoint())
 }

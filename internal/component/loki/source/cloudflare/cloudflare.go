@@ -1,10 +1,5 @@
 package cloudflare
 
-// This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
-// The cloudflaretarget package is used to configure and run a target that can
-// read from the Cloudflare Logpull API and forward entries to other loki
-// components.
-
 import (
 	"context"
 	"fmt"
@@ -17,7 +12,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -139,14 +133,14 @@ func (c *Component) Run(ctx context.Context) error {
 
 		// NOTE: We need to stop posFile first so we don't record entries we are draining.
 		c.posFile.Stop()
-		source.Drain(c.handler, func() {
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			c.tailer.stop()
 		})
 	}()
 
-	source.Consume(ctx, c.handler, c.fanout)
+	loki.Consume(ctx, c.handler, c.fanout)
 	return nil
 }
 

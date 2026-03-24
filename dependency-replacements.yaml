@@ -135,3 +135,10 @@ replaces:
       Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
     dependency: github.com/prometheus/prometheus
     replacement: github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
+
+  - comment: >
+      Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936).
+      Fork branch: https://github.com/DataDog/vault/tree/master.
+      Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
+    dependency: github.com/hashicorp/vault/api/auth/aws
+    replacement: github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101

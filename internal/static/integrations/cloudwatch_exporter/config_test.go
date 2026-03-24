@@ -475,6 +475,24 @@ func TestTranslateConfigToYACEConfig(t *testing.T) {
 	require.EqualValues(t, falsePtr, fipsEnabled2)
 }
 
+func TestConfigDefaults(t *testing.T) {
+	t.Run("UseAWSSDKVersion2 defaults to true", func(t *testing.T) {
+		var c Config
+		err := yaml.Unmarshal([]byte(`sts_region: us-east-1`), &c)
+		require.NoError(t, err)
+		require.NotEmpty(t, c.STSRegion)
+		require.True(t, c.UseAWSSDKVersion2)
+	})
+
+	t.Run("UseAWSSDKVersion2 can be explicitly set to false", func(t *testing.T) {
+		var c Config
+		err := yaml.Unmarshal([]byte("sts_region: us-east-1\naws_sdk_version_v2: false"), &c)
+		require.NoError(t, err)
+		require.NotEmpty(t, c.STSRegion)
+		require.False(t, c.UseAWSSDKVersion2)
+	})
+}
+
 func TestTranslateNilToZeroConfigToYACEConfig(t *testing.T) {
 	c := Config{}
 	err := yaml.Unmarshal([]byte(configString3), &c)
