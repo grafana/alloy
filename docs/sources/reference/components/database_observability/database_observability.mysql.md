@@ -3,14 +3,16 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.mysql
 title: database_observability.mysql
 labels:
-  stage: stable
+  stage: general-availability
   products:
     - oss
 ---
 
 # `database_observability.mysql`
 
-{{< docs/shared lookup="stability/stable.md" source="alloy" version="<ALLOY_VERSION>" >}}
+`database_observability.mysql` connects to a MySQL database and collects observability data from the `performance_schema` and `information_schema`.
+The component collects query details, schema information, explain plans, query samples, and lock information.
+It forwards this data as log entries to Loki receivers and exports targets for Prometheus scraping.
 
 ## Usage
 
