@@ -51,7 +51,9 @@ otelcol.processor.batch "beyla_java" {
 }
 
 otelcol.exporter.otlphttp "beyla_java" {
-  traces_endpoint = "http://tempo:4318/v1/traces"
+  // The shared integration stack exposes Tempo on the external compose network
+  // under its project-scoped container DNS name.
+  traces_endpoint = "http://alloy-integration-tests-tempo-1:4318/v1/traces"
   client {
     endpoint = "ignore"
     tls {
