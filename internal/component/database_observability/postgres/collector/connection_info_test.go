@@ -86,6 +86,18 @@ func TestConnectionInfo(t *testing.T) {
 			engineVersion:   "15.4",
 			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "products-db", "postgres", "15.4", "unknown", "azure", "unknown"),
 		},
+		{
+			name:          "GCP with cloud provider info supplied",
+			dsn:           "postgres://user:pass@10.0.0.1:5432/mydb",
+			engineVersion: "15.4",
+			cloudProvider: &database_observability.CloudProvider{
+				GCP: &database_observability.GCPCloudProviderInfo{
+					ProjectID:  "my-gcp-project",
+					InstanceID: "my-cloud-sql-instance",
+				},
+			},
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "my-cloud-sql-instance", "postgres", "15.4", "my-gcp-project", "gcp", "unknown"),
+		},
 	}
 
 	for _, tc := range testCases {

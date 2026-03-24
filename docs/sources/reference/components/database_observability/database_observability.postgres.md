@@ -68,9 +68,10 @@ You can use the following blocks with `database_observability.postgres`:
 
 | Block                              | Description                                       | Required |
 |------------------------------------|---------------------------------------------------|----------|
-| [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.               | no       |
-| `cloud_provider` > [`aws`][aws]    | Provide AWS database host information.            | no       |
+| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
+| `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
@@ -81,6 +82,7 @@ You can use the following blocks with `database_observability.postgres`:
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
+[gcp]: #gcp
 [query_details]: #query_details
 [query_samples]: #query_samples
 [schema_details]: #schema_details
@@ -93,7 +95,7 @@ You can use the following blocks with `database_observability.postgres`:
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`][aws] blocks.
+It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
@@ -115,6 +117,15 @@ The `azure` block supplies the identifying information for the database being mo
 | `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
 | `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
 | `server_name`     | `string` | The database server name.                            |         | no       |
+
+### `gcp`
+
+The `gcp` block supplies the identifying information for the GCP Cloud SQL database being monitored.
+
+| Name          | Type     | Description                                                 | Default | Required |
+|---------------|----------|-------------------------------------------------------------|---------|----------|
+| `project_id`  | `string` | The GCP project ID that contains the Cloud SQL instance.    |         | yes      |
+| `instance_id` | `string` | The Cloud SQL instance ID.                                  |         | yes      |
 
 ### `query_details`
 

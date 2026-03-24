@@ -27,6 +27,12 @@ func populateCloudProviderFromConfig(config *CloudProvider) (*database_observabi
 			ServerName:     config.Azure.ServerName,
 		}
 	}
+	if config.GCP != nil {
+		cloudProvider.GCP = &database_observability.GCPCloudProviderInfo{
+			ProjectID:  config.GCP.ProjectID,
+			InstanceID: config.GCP.InstanceID,
+		}
+	}
 	return &cloudProvider, nil
 }
 

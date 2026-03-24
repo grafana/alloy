@@ -86,6 +86,11 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 			providerRegion = c.CloudProvider.Azure.ResourceGroup
 			providerAccount = c.CloudProvider.Azure.SubscriptionID
 		}
+		if c.CloudProvider.GCP != nil {
+			providerName = "gcp"
+			providerAccount = c.CloudProvider.GCP.ProjectID
+			dbInstanceIdentifier = c.CloudProvider.GCP.InstanceID
+		}
 	} else {
 		parts, err := ParseURL(c.DSN)
 		if err != nil {

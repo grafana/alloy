@@ -485,6 +485,29 @@ func Test_parseCloudProvider(t *testing.T) {
 		assert.Empty(t, args.CloudProvider.Azure.ServerName)
 	})
 
+	t.Run("parse gcp cloud provider block", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			gcp {
+				project_id  = "my-gcp-project"
+				instance_id = "my-cloud-sql-instance"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.GCP)
+		assert.Equal(t, "my-gcp-project", args.CloudProvider.GCP.ProjectID)
+		assert.Equal(t, "my-cloud-sql-instance", args.CloudProvider.GCP.InstanceID)
+	})
+
 	t.Run("empty cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
