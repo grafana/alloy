@@ -17,7 +17,7 @@ In OpenTelemetry terminology, this deployment model is often referred to as _gat
 
 {{< admonition type="note" >}}
 The proxy configuration described here refers to using {{< param "PRODUCT_NAME" >}} as a telemetry proxy that aggregates and forwards telemetry between instances.
-It doesn't cover configuring {{< param "PRODUCT_NAME" >}} to use a corporate HTTP proxy for outbound traffic, such as `proxy_url` or `proxy_from_environment` in `remote_write` or `loki.write`.
+It doesn't cover configuring {{< param "PRODUCT_NAME" >}} to use a corporate HTTP proxy for outbound traffic, such as `proxy_url` or `proxy_from_environment` in [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) or [`loki.write`](../../reference/components/loki/loki.write/).
 {{< /admonition >}}
 
 ## Before you begin
@@ -57,14 +57,14 @@ flowchart LR
   class EdgeAlloy,LoadBalancer,ProxyAlloy,Backend grafana
 {{< /mermaid >}}
 
-For metrics, edge instances push data using `prometheus.remote_write` to proxy instances running `prometheus.receive_http`.
-For logs, edge instances push data using `loki.write` to proxy instances running `loki.source.api`.
+For metrics, edge instances push data using [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) to proxy instances running [`prometheus.receive_http`](../../reference/components/prometheus/prometheus.receive_http/).
+For logs, edge instances push data using [`loki.write`](../../reference/components/loki/loki.write/) to proxy instances running [`loki.source.api`](../../reference/components/loki/loki.source.api/).
 
 #### Sticky load balancing for metrics
 
 Sticky load balancing ensures that requests with the same identifier, such as a time series or trace ID, are consistently routed to the same backend instance.
 
-For Prometheus `remote_write` traffic, you must ensure consistent routing per time series.
+For Prometheus [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) traffic, you must ensure consistent routing per time series.
 When different proxy instances receive samples for the same series, you encounter out-of-order sample errors, increased ingestion load, and write-ahead log (WAL) churn.
 
 {{< admonition type="warning" >}}
@@ -86,7 +86,7 @@ Logs must use a push model.
 {{< /admonition >}}
 
 While technically possible for metrics, using proxy instances to scrape other {{< param "PRODUCT_NAME" >}} instances isn't recommended as a primary aggregation strategy.
-Push-based aggregation using `prometheus.remote_write` provides clearer scaling characteristics, simpler configuration management, and better compatibility with dynamic environments.
+Push-based aggregation using [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) provides clearer scaling characteristics, simpler configuration management, and better compatibility with dynamic environments.
 
 ## Configure metrics proxying
 
@@ -94,7 +94,7 @@ You can use the push pattern to proxy metrics between edge and proxy instances.
 
 ### Configure edge instances for metrics
 
-Edge instances scrape metrics locally and push them to proxy instances.
+Edge instances use [`prometheus.scrape`](../../reference/components/prometheus/prometheus.scrape/) to scrape metrics locally and [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) to push them to proxy instances.
 The following example configuration scrapes a local Node Exporter and pushes metrics to a proxy:
 
 ```alloy
@@ -128,7 +128,7 @@ For example:
 
 ### Configure proxy instances for metrics
 
-Proxy instances receive metrics from edge instances and forward them to the backend.
+Proxy instances use [`prometheus.receive_http`](../../reference/components/prometheus/prometheus.receive_http/) to receive metrics from edge instances and [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) to forward them to the backend.
 The following example configuration receives metrics and forwards them to Mimir:
 
 ```alloy
@@ -151,16 +151,16 @@ Replace the following:
 
 - _`<MIMIR_ENDPOINT>`_: The URL of your Mimir instance.
 
-You can add relabeling, filtering, or tenant routing at the proxy layer by inserting a `prometheus.relabel` component between the receiver and the remote write.
+You can add relabeling, filtering, or tenant routing at the proxy layer by inserting a [`prometheus.relabel`](../../reference/components/prometheus/prometheus.relabel/) component between the receiver and [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/).
 
 ## Configure logs proxying
 
 Logs must use a push model because you can't pull logs from other {{< param "PRODUCT_NAME" >}} instances.
-Use `loki.write` on edge instances and `loki.source.api` on proxy instances.
+Use [`loki.write`](../../reference/components/loki/loki.write/) on edge instances and [`loki.source.api`](../../reference/components/loki/loki.source.api/) on proxy instances.
 
 ### Configure edge instances for logs
 
-Edge instances collect logs and push them to proxy instances.
+Edge instances use [`loki.source.file`](../../reference/components/loki/loki.source.file/) to collect logs and [`loki.write`](../../reference/components/loki/loki.write/) to push them to proxy instances.
 The following example configuration collects logs from files and pushes them to a proxy:
 
 ```alloy
@@ -184,7 +184,7 @@ Replace the following:
 
 ### Configure proxy instances for logs
 
-Proxy instances receive logs from edge instances and forward them to the backend.
+Proxy instances use [`loki.source.api`](../../reference/components/loki/loki.source.api/) to receive logs from edge instances and [`loki.write`](../../reference/components/loki/loki.write/) to forward them to the backend.
 The following example configuration receives logs and forwards them to Loki:
 
 ```alloy
@@ -243,19 +243,19 @@ The following table shows what patterns each signal type supports:
 | Traces   | Depends            | Generally no       | Use OpenTelemetry-compatible receivers                                            |
 | Profiles | Supported          | No                 | Edge `pyroscope.write`, proxy `pyroscope.receive_http`, backend `pyroscope.write` |
 
-For traces, you typically configure edge instances to send data to an OpenTelemetry-compatible receiver, such as `otelcol.receiver.otlp`, on proxy instances.
+For traces, you typically configure edge instances to send data to an OpenTelemetry-compatible receiver, such as [`otelcol.receiver.otlp`](../../reference/components/otelcol/otelcol.receiver.otlp/), on proxy instances.
 The proxy instances then export to the backend using an appropriate exporter.
-Basic trace forwarding doesn't require sticky routing, but if proxy instances run trace-derived components such as `otelcol.connector.spanmetrics` or `otelcol.connector.servicegraph`, you need consistent routing so all spans for a trace or service reach the same instance.
-You can use `otelcol.exporter.loadbalancing` on the edge instances to route by trace ID or service name.
+Basic trace forwarding doesn't require sticky routing, but if proxy instances run trace-derived components such as [`otelcol.connector.spanmetrics`](../../reference/components/otelcol/otelcol.connector.spanmetrics/) or [`otelcol.connector.servicegraph`](../../reference/components/otelcol/otelcol.connector.servicegraph/), you need consistent routing so all spans for a trace or service reach the same instance.
+You can use [`otelcol.exporter.loadbalancing`](../../reference/components/otelcol/otelcol.exporter.loadbalancing/) on the edge instances to route by trace ID or service name.
 Alternatively, you can add a unique label per proxy instance and aggregate the resulting metrics in PromQL or Adaptive Metrics.
 
-For profiles, edge instances use `pyroscope.write` to push to proxy instances running [`pyroscope.receive_http`](../../reference/components/pyroscope/pyroscope.receive_http/).
+For profiles, edge instances use [`pyroscope.write`](../../reference/components/pyroscope/pyroscope.write/) to push to proxy instances running [`pyroscope.receive_http`](../../reference/components/pyroscope/pyroscope.receive_http/).
 Refer to that component for supported ingest endpoints and how it forwards to receivers such as `pyroscope.write`.
-For chained `pyroscope.write` traffic, load balancing multiple receivers, and timeout configuration, refer to the troubleshooting sections on that component and on [`pyroscope.write`](../../reference/components/pyroscope/pyroscope.write/).
+For chained `pyroscope.write` traffic, load balancing multiple receivers, and timeout configuration, refer to the troubleshooting sections on that component and on `pyroscope.write`.
 
 ## High availability and replication
 
-When you run multiple proxy instances, ensure consistent routing for `remote_write` traffic to prevent out-of-order errors.
+When you run multiple proxy instances, ensure consistent routing for [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) traffic to prevent out-of-order errors.
 Avoid double-writing unless you intentionally want data replicated across backends.
 
 For high availability pairs, configure proper external labels such as `cluster` and `replica` so your backend can deduplicate data correctly.
@@ -298,7 +298,7 @@ Fleet management, which includes centralized configuration distribution, rollout
 You can use fleet tooling to deploy proxy instances, manage their configurations, rotate credentials, and scale horizontally.
 However, proxying itself doesn't require a fleet management solution.
 
-If you use fleet management to deploy or manage proxy instances, configure remote write endpoints and self-monitoring pipelines consistently across edge and proxy layers.
+If you use fleet management to deploy or manage proxy instances, configure [`prometheus.remote_write`](../../reference/components/prometheus/prometheus.remote_write/) endpoints and self-monitoring pipelines consistently across edge and proxy layers.
 Fleet tooling controls configuration distribution and rollout, but it doesn't automatically create or enforce a proxy topology.
 You must explicitly design the data flow, including which instances push to proxies and how load balancing and routing are configured.
 
