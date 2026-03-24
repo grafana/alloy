@@ -38,10 +38,6 @@ type fileInfo struct {
 	relPath string
 }
 
-func executeCommand(command string, args []string, taskDescription string) {
-	executeCommandInDir("", command, args, taskDescription)
-}
-
 func executeCommandInDir(dir, command string, args []string, taskDescription string) {
 	fmt.Printf("%s...\n", taskDescription)
 
