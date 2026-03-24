@@ -1,0 +1,23 @@
+otelcol.receiver.awsfirehose "default_metrics" {
+	access_key = "mysecretkey"
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.receiver.awsfirehose "default_logs" {
+	encoding   = "cwlogs"
+	access_key = "mysecretkey"
+	endpoint   = "0.0.0.0:4434"
+
+	output {
+		logs = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}
