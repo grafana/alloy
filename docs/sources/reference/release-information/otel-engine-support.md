@@ -14,11 +14,15 @@ Different parts of the {{< param "OTEL_ENGINE" >}} have different levels of stab
 
 {{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+While the {{< param "OTEL_ENGINE" >}} remains experimental, all components are subject to the caveats of the experimental stability level, including possible breaking changes and removal without notice.
+The support levels described in this document represent the target support model for the {{< param "OTEL_ENGINE" >}}.
+They apply fully once the feature reaches general availability.
+
 ## Quick reference
 
 | Area | Support level |
 |---|---|
-| {{< param "PRODUCT_NAME" >}} binary, `alloy otel` CLI, `alloyengine` extension | Fully supported |
+| {{< param "PRODUCT_NAME" >}} binary, `alloy otel` CLI, `alloyengine` extension | Supported |
 | Upstream OpenTelemetry Collector core engine | Supported; upstream-dependent resolution |
 | Bundled upstream OpenTelemetry Collector components | Supported; upstream-dependent resolution |
 | [Community components][] | Not supported by the {{< param "PRODUCT_NAME" >}} maintainers |
@@ -33,7 +37,7 @@ The {{< param "PRODUCT_NAME" >}} maintainers implement and maintain the followin
 - **The `alloyengine` extension**: The extension that runs the {{< param "DEFAULT_ENGINE" >}} alongside the {{< param "OTEL_ENGINE" >}}.
 - **The {{< param "PRODUCT_NAME" >}} binary**: The overall binary, build, and release process.
 
-These components follow the same [backward compatibility][] guarantees as the rest of {{< param "PRODUCT_NAME" >}}, subject to the current [stability level][Grafana release life cycle] of the {{< param "OTEL_ENGINE" >}} feature.
+These components follow the same [backward compatibility][] guarantees as the rest of {{< param "PRODUCT_NAME" >}}, subject to the current [stability level](https://grafana.com/docs/release-life-cycle/) of the {{< param "OTEL_ENGINE" >}} feature.
 
 ## Upstream OpenTelemetry Collector components
 
@@ -61,14 +65,14 @@ The following table shows how they relate:
 
 | {{< param "PRODUCT_NAME" >}} level | OpenTelemetry Collector level | Description |
 |---|---|---|
-| [Experimental][Grafana release life cycle] | Development, Alpha | Early-stage. Subject to breaking changes or removal without notice. Not for production use. |
-| [Public preview][Grafana release life cycle] | Beta | More mature. Configuration is relatively stable but breaking changes are possible. Not for production use. |
-| [Generally available][Grafana release life cycle] | Stable | Production-ready with backward compatibility guarantees and full support. |
+| [Experimental](https://grafana.com/docs/release-life-cycle/) | Development, Alpha | Early-stage. Subject to breaking changes or removal without notice. Not for production use. |
+| [Public preview](https://grafana.com/docs/release-life-cycle/) | Beta | More mature. Configuration is relatively stable but breaking changes are possible. Not for production use. |
+| [Generally available](https://grafana.com/docs/release-life-cycle/) | Stable | Production-ready with backward compatibility guarantees and full support. |
 
 The stability level of a bundled upstream component in {{< param "PRODUCT_NAME" >}} may be lower than its upstream stability level based on the {{< param "PRODUCT_NAME" >}} maintainers' assessment of the component's maturity and reliability.
 The stability level generally isn't raised above the upstream level.
 
-Refer to the [Grafana release life cycle][] for definitions of {{< param "PRODUCT_NAME" >}} stability levels.
+Refer to the [Grafana release life cycle](https://grafana.com/docs/release-life-cycle/) for definitions of {{< param "PRODUCT_NAME" >}} stability levels.
 Refer to the [OpenTelemetry Collector component stability][] documentation for definitions of upstream levels.
 
 ## Custom builds with OpenTelemetry Collector Builder
@@ -99,7 +103,6 @@ The {{< param "PRODUCT_NAME" >}} maintainers may not be able to provide support 
 - Refer to [The {{< param "OTEL_ENGINE" >}}](../../../set-up/otel_engine/) for information about how to run the {{< param "OTEL_ENGINE" >}}.
 
 [backward compatibility]: ../backward-compatibility/
-[Grafana release life cycle]: https://grafana.com/docs/release-life-cycle/
 [OpenTelemetry Collector]: https://github.com/open-telemetry/opentelemetry-collector
 [OpenTelemetry Collector Contrib]: https://github.com/open-telemetry/opentelemetry-collector-contrib
 [OpenTelemetry Collector component stability]: https://github.com/open-telemetry/opentelemetry-collector/blob/main/docs/component-stability.md
