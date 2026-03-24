@@ -129,7 +129,6 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 			}
 		})
-
 	}()
 
 	loki.Consume(ctx, c.handler, c.fanout)

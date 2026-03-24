@@ -105,6 +105,7 @@ type Component struct {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.azure_event_hubs component shutting down, stopping the targets")
+
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
@@ -112,7 +113,6 @@ func (c *Component) Run(ctx context.Context) error {
 			if err := c.target.Stop(); err != nil {
 				level.Error(c.opts.Logger).Log("msg", "error while stopping azure_event_hubs target", "err", err)
 			}
-
 		})
 	}()
 
