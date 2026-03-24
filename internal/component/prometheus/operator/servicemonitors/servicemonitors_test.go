@@ -68,7 +68,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			defer metricsServer.Close()
 
 			// Create fake kubernetes client
-			fakeK8s := fake.NewSimpleClientset()
+			fakeK8s := fake.NewClientset()
 
 			// Set up test appender to collect metrics
 			appender := testappender.NewCollectingAppender()

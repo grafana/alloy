@@ -145,6 +145,58 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "InferredContextConditions",
+			cfg: `
+			error_mode = "ignore"
+			trace_conditions {
+				context = "span"
+				conditions = [
+					"attributes[\"http.request.method\"] == nil",
+				]
+			}
+			metric_conditions {
+				context = "metric"
+				conditions = [
+					"name == \"my.metric\"",
+				]
+			}
+			log_conditions {
+				context = "log"
+				conditions = [
+					"severity_number < SEVERITY_NUMBER_WARN",
+				]
+			}
+			output {}
+			`,
+			expected: map[string]any{
+				"error_mode": "ignore",
+				"trace_conditions": []any{
+					map[string]any{
+						"context": "span",
+						"conditions": []any{
+							`attributes["http.request.method"] == nil`,
+						},
+					},
+				},
+				"metric_conditions": []any{
+					map[string]any{
+						"context": "metric",
+						"conditions": []any{
+							`name == "my.metric"`,
+						},
+					},
+				},
+				"log_conditions": []any{
+					map[string]any{
+						"context": "log",
+						"conditions": []any{
+							`severity_number < SEVERITY_NUMBER_WARN`,
+						},
+					},
+				},
+			},
+		},
+		{
 			testName: "invalidOtelFilterFunctionUsage",
 			cfg: `
 			error_mode = "ignore"	

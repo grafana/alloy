@@ -123,15 +123,21 @@ func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.LogsReceive
 	if s.processStageReceivers != nil {
 		return s.processStageReceivers
 	}
-	if len(s.cfg.PipelineStages) == 0 {
+
+	globalLimitStages := buildLimitsConfigStages(s.globalCtx.LimitsConfig)
+
+	if len(s.cfg.PipelineStages) == 0 && len(globalLimitStages) == 0 {
 		s.processStageReceivers = s.globalCtx.WriteReceivers
 		return s.processStageReceivers
 	}
 
-	alloyStages := make([]stages.StageConfig, len(s.cfg.PipelineStages))
-	for i, ps := range s.cfg.PipelineStages {
+	// Global limit stages are prepended so they apply before any per-scrape-config
+	// pipeline stages, matching Promtail's behavior of applying limits before processing.
+	alloyStages := make([]stages.StageConfig, 0, len(globalLimitStages)+len(s.cfg.PipelineStages))
+	alloyStages = append(alloyStages, globalLimitStages...)
+	for _, ps := range s.cfg.PipelineStages {
 		if fs, ok := convertStage(ps, s.diags); ok {
-			alloyStages[i] = fs
+			alloyStages = append(alloyStages, fs)
 		}
 	}
 	args := process.Arguments{
