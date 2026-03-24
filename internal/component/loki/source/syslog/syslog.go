@@ -94,14 +94,18 @@ func (c *Component) Run(ctx context.Context) error {
 		})
 	}()
 
-	var wg sync.WaitGroup
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
 
-	wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
 
 	wg.Go(func() {
 		for {
 			select {
 			case <-ctx.Done():
+				cancel()
 				return
 			case <-c.targetsUpdated:
 				c.reloadTargets()
