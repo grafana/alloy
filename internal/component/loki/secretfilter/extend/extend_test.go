@@ -46,3 +46,25 @@ func TestSecretFiltering_WithGitleaksConfigFile(t *testing.T) {
 
 	secretfilter.RunTestCases(t, config, cases)
 }
+
+func TestSecretFiltering_RequestTimingsLog(t *testing.T) {
+	configPath := gitleaksConfigPath(t)
+	if _, err := os.Stat(configPath); err != nil {
+		t.Skipf("gitleaks.toml not found at %s: %v", configPath, err)
+	}
+
+	config := fmt.Sprintf(`
+		forward_to = []
+		gitleaks_config = %q
+	`, configPath)
+
+	cases := []secretfilter.TestCase{
+		{
+			Name: "request_timings_empty_token_id",
+			// Structured from real logs; token_id is empty and `total=6.928165ms` gets redacted instead
+			InputLog:     `user=1 token_id= total=6.928165ms auth=40.984µs downstream=6.805953ms conn_send=81.228µs path=/foo status=200 query_hash=1`,
+			ShouldRedact: false,
+		},
+	}
+	secretfilter.RunTestCases(t, config, cases)
+}

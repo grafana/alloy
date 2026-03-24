@@ -12,3 +12,8 @@ id = "generic-api-key"
   regexes = [
     '''^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$''',
   ]
+  # Ignore finding when the match is tokenId and its variants
+  [[rules.allowlists]]
+  description = "ignore tokenId keyword for generic-api-key"
+  regexTarget = "match"
+  regexes = [ "(?i)token_?id" ]
