@@ -94,7 +94,7 @@ local filename = 'alloy-loki.json';
     (
       panel.new(title='Write latency in $cluster', type='timeseries') +
       panel.withDescription(|||
-        Percentile write latency
+        Percentile write latency.
       |||) +
       panel.withUnit('s') +
       panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
