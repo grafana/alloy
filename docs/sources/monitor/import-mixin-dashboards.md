@@ -43,5 +43,5 @@ For full UI details and options, refer to the official Grafana documentation on 
 
 ## Next steps
 
-- Refer to [Monitor metrics and logs with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/) for end-to-end monitoring tasks.
+- Refer to [Monitor metrics and logs with Grafana Alloy](../) for end-to-end monitoring tasks.
 - Refer to the [Alloy mixin source](https://github.com/grafana/alloy/tree/main/operations/alloy-mixin) for rendered files and customization options.
