@@ -116,6 +116,16 @@ Replace the following:
 
 - _`<PROXY_LOAD_BALANCER>`_: The URL of your load balancer in front of the proxy {{< param "PRODUCT_NAME" >}} instances.
 
+{{< admonition type="note" >}}
+`<PROXY_LOAD_BALANCER>` is the address where edge instances send data.
+Your load balancer must forward each request path to the port exposed by your proxy {{< param "PRODUCT_NAME" >}} instances.
+
+For example:
+
+- Metrics: forward `https://<PROXY_LOAD_BALANCER>/api/v1/metrics/write` to proxy instances listening on port `12345`
+- Logs: forward `https://<PROXY_LOAD_BALANCER>/loki/api/v1/push` to proxy instances listening on port `3100`
+{{< /admonition >}}
+
 ### Configure proxy instances for metrics
 
 Proxy instances receive metrics from edge instances and forward them to the backend.
@@ -226,18 +236,22 @@ In production, prefer hashing based on series-identifying headers or use an L4 l
 
 The following table shows what patterns each signal type supports:
 
-| Signal   | Push through proxy | Pull with sharding | Notes                                  |
-| -------- | ------------------ | ------------------ | -------------------------------------- |
-| Metrics  | Supported          | Supported          | Sticky routing required for push       |
-| Logs     | Supported          | Not supported      | Push only                              |
-| Traces   | Depends            | Generally no       | Use OpenTelemetry-compatible receivers |
-| Profiles | Limited            | No                 | Depends on backend ingestion model     |
+| Signal   | Push through proxy | Pull with sharding | Notes                                                                             |
+| -------- | ------------------ | ------------------ | --------------------------------------------------------------------------------- |
+| Metrics  | Supported          | Supported          | Sticky routing required for push                                                  |
+| Logs     | Supported          | Not supported      | Push only                                                                         |
+| Traces   | Depends            | Generally no       | Use OpenTelemetry-compatible receivers                                            |
+| Profiles | Supported          | No                 | Edge `pyroscope.write`, proxy `pyroscope.receive_http`, backend `pyroscope.write` |
 
 For traces, you typically configure edge instances to send data to an OpenTelemetry-compatible receiver, such as `otelcol.receiver.otlp`, on proxy instances.
 The proxy instances then export to the backend using an appropriate exporter.
 Basic trace forwarding doesn't require sticky routing, but if proxy instances run trace-derived components such as `otelcol.connector.spanmetrics` or `otelcol.connector.servicegraph`, you need consistent routing so all spans for a trace or service reach the same instance.
 You can use `otelcol.exporter.loadbalancing` on the edge instances to route by trace ID or service name.
 Alternatively, you can add a unique label per proxy instance and aggregate the resulting metrics in PromQL or Adaptive Metrics.
+
+For profiles, edge instances use `pyroscope.write` to push to proxy instances running [`pyroscope.receive_http`](../reference/components/pyroscope/pyroscope.receive_http/).
+Refer to that component for supported ingest endpoints and how it forwards to receivers such as `pyroscope.write`.
+For chained `pyroscope.write` traffic, load balancing multiple receivers, and timeout configuration, refer to the troubleshooting sections on that component and on [`pyroscope.write`](../reference/components/pyroscope/pyroscope.write/).
 
 ## High availability and replication
 
