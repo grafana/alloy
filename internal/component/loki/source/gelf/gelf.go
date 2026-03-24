@@ -44,13 +44,6 @@ func (r *Arguments) SetToDefault() {
 	}
 }
 
-func convertConfig(a Arguments) *scrapeconfig.GelfTargetConfig {
-	return &scrapeconfig.GelfTargetConfig{
-		ListenAddress:        a.ListenAddress,
-		UseIncomingTimestamp: a.UseIncomingTimestamp,
-	}
-}
-
 // New creates a new gelf component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	metrics := target.NewMetrics(o.Registerer)
