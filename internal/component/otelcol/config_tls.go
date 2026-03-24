@@ -6,7 +6,8 @@ import (
 
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"go.opentelemetry.io/collector/config/configopaque"
-	otelconfigtls "go.opentelemetry.io/collector/config/configtls"
+	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/config/configtls"
 )
 
 // TLSServerArguments holds shared TLS settings for components which launch
@@ -18,15 +19,15 @@ type TLSServerArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *TLSServerArguments) Convert() *otelconfigtls.ServerConfig {
+func (args *TLSServerArguments) Convert() configoptional.Optional[configtls.ServerConfig] {
 	if args == nil {
-		return nil
+		return configoptional.None[configtls.ServerConfig]()
 	}
 
-	return &otelconfigtls.ServerConfig{
+	return configoptional.Some(configtls.ServerConfig{
 		Config:       *args.TLSSetting.Convert(),
 		ClientCAFile: args.ClientCAFile,
-	}
+	})
 }
 
 // TLSClientArguments holds shared TLS settings for components which launch
@@ -40,12 +41,12 @@ type TLSClientArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args *TLSClientArguments) Convert() *otelconfigtls.ClientConfig {
+func (args *TLSClientArguments) Convert() *configtls.ClientConfig {
 	if args == nil {
 		return nil
 	}
 
-	return &otelconfigtls.ClientConfig{
+	return &configtls.ClientConfig{
 		Config:             *args.TLSSetting.Convert(),
 		Insecure:           args.Insecure,
 		InsecureSkipVerify: args.InsecureSkipVerify,
@@ -65,14 +66,16 @@ type TLSSetting struct {
 	ReloadInterval           time.Duration     `alloy:"reload_interval,attr,optional"`
 	CipherSuites             []string          `alloy:"cipher_suites,attr,optional"`
 	IncludeSystemCACertsPool bool              `alloy:"include_system_ca_certs_pool,attr,optional"`
+	CurvePreferences         []string          `alloy:"curve_preferences,attr,optional"`
+	TPMConfig                *TPMConfig        `alloy:"tpm,block,optional"`
 }
 
-func (args *TLSSetting) Convert() *otelconfigtls.Config {
+func (args *TLSSetting) Convert() *configtls.Config {
 	if args == nil {
 		return nil
 	}
 
-	return &otelconfigtls.Config{
+	t := &configtls.Config{
 		CAPem:                    configopaque.String(args.CA),
 		CAFile:                   args.CAFile,
 		CertPem:                  configopaque.String(args.Cert),
@@ -84,7 +87,10 @@ func (args *TLSSetting) Convert() *otelconfigtls.Config {
 		ReloadInterval:           args.ReloadInterval,
 		CipherSuites:             args.CipherSuites,
 		IncludeSystemCACertsPool: args.IncludeSystemCACertsPool,
+		CurvePreferences:         args.CurvePreferences,
+		TPMConfig:                args.TPMConfig.Convert(),
 	}
+	return t
 }
 
 // Validate implements syntax.Validator.
@@ -111,4 +117,24 @@ func (t *TLSSetting) Validate() error {
 	}
 
 	return nil
+}
+
+type TPMConfig struct {
+	Enabled   bool   `alloy:"enabled,attr,optional"`
+	Path      string `alloy:"path,attr,optional"`
+	OwnerAuth string `alloy:"owner_auth,attr,optional"`
+	Auth      string `alloy:"auth,attr,optional"`
+}
+
+func (t *TPMConfig) Convert() configtls.TPMConfig {
+	if t == nil {
+		return configtls.TPMConfig{}
+	}
+
+	return configtls.TPMConfig{
+		Enabled:   t.Enabled,
+		Path:      t.Path,
+		OwnerAuth: t.OwnerAuth,
+		Auth:      t.Auth,
+	}
 }

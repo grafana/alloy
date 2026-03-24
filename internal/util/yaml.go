@@ -12,7 +12,7 @@ import (
 type RawYAML []byte
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (r *RawYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (r *RawYAML) UnmarshalYAML(unmarshal func(any) error) error {
 	var ms yaml.MapSlice
 	if err := unmarshal(&ms); err != nil {
 		return err
@@ -26,7 +26,7 @@ func (r *RawYAML) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML implements yaml.Marshaler.
-func (r RawYAML) MarshalYAML() (interface{}, error) {
+func (r RawYAML) MarshalYAML() (any, error) {
 	return r.Map()
 }
 
@@ -40,7 +40,7 @@ func (r RawYAML) Map() (yaml.MapSlice, error) {
 }
 
 // MarshalYAMLMerged marshals all values from vv into a single object.
-func MarshalYAMLMerged(vv ...interface{}) ([]byte, error) {
+func MarshalYAMLMerged(vv ...any) ([]byte, error) {
 	var full yaml.MapSlice
 	for _, v := range vv {
 		bb, err := yaml.Marshal(v)
@@ -58,7 +58,7 @@ func MarshalYAMLMerged(vv ...interface{}) ([]byte, error) {
 
 // UnmarshalYAMLMerged performs a strict unmarshal of bb into all values from
 // vv.
-func UnmarshalYAMLMerged(bb []byte, vv ...interface{}) error {
+func UnmarshalYAMLMerged(bb []byte, vv ...any) error {
 	var typeErrors []yaml.TypeError
 
 	for _, v := range vv {

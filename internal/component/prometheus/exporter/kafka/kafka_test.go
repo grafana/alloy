@@ -3,10 +3,11 @@ package kafka
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/static/integrations/kafka_exporter"
 	"github.com/grafana/alloy/syntax"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAlloyUnmarshal(t *testing.T) {
@@ -116,7 +117,9 @@ func TestCustomizeTarget(t *testing.T) {
 	baseTarget := discovery.Target{}
 	newTargets := customizeTarget(baseTarget, args)
 	require.Equal(t, 1, len(newTargets))
-	require.Equal(t, "example", newTargets[0]["instance"])
+	val, ok := newTargets[0].Get("instance")
+	require.True(t, ok)
+	require.Equal(t, "example", val)
 }
 
 func TestSASLPassword(t *testing.T) { // #6044

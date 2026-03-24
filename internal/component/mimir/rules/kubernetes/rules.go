@@ -60,7 +60,7 @@ type Component struct {
 	opts component.Options
 	args Arguments
 
-	mimirClient       mimirClient.Interface
+	mimirClient       mimirClient.RulerInterface
 	k8sClient         kubernetes.Interface
 	promClient        promVersioned.Interface
 	namespaceSelector labels.Selector
@@ -191,6 +191,8 @@ func newNoInit(o component.Options, args Arguments) (*Component, error) {
 }
 
 func (c *Component) Run(ctx context.Context) error {
+	//TODO: There's a chance that the startup function is stuck retrying forever.
+	//      What's worse is that a config update wouldn't be able to fix it, since we haven't entered the config update loop yet.
 	c.startupWithRetries(ctx, c.leader, c, c)
 
 	for {
@@ -244,6 +246,7 @@ func (c *Component) startupWithRetries(ctx context.Context, leader leadership, s
 			level.Error(c.log).Log("msg", "starting up component failed, will retry", "err", err)
 			health.reportUnhealthy(err)
 		} else {
+			health.reportHealthy()
 			break
 		}
 		startupBackoff.Wait()
@@ -308,8 +311,8 @@ func (c *Component) startup(ctx context.Context) error {
 		return nil
 	}
 
-	cfg := workqueue.RateLimitingQueueConfig{Name: "mimir.rules.kubernetes"}
-	queue := workqueue.NewRateLimitingQueueWithConfig(workqueue.DefaultControllerRateLimiter(), cfg)
+	cfg := workqueue.TypedRateLimitingQueueConfig[commonK8s.Event]{Name: "mimir.rules.kubernetes"}
+	queue := workqueue.NewTypedRateLimitingQueueWithConfig(workqueue.DefaultTypedControllerRateLimiter[commonK8s.Event](), cfg)
 	informerStopChan := make(chan struct{})
 
 	namespaceLister, err := c.startNamespaceInformer(queue, informerStopChan)
@@ -395,7 +398,7 @@ func (c *Component) init() error {
 	return nil
 }
 
-func (c *Component) startNamespaceInformer(queue workqueue.RateLimitingInterface, stopChan chan struct{}) (coreListers.NamespaceLister, error) {
+func (c *Component) startNamespaceInformer(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{}) (coreListers.NamespaceLister, error) {
 	factory := informers.NewSharedInformerFactoryWithOptions(
 		c.k8sClient,
 		24*time.Hour,
@@ -417,7 +420,7 @@ func (c *Component) startNamespaceInformer(queue workqueue.RateLimitingInterface
 	return namespaceLister, nil
 }
 
-func (c *Component) startRuleInformer(queue workqueue.RateLimitingInterface, stopChan chan struct{}) (promListers.PrometheusRuleLister, error) {
+func (c *Component) startRuleInformer(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{}) (promListers.PrometheusRuleLister, error) {
 	factory := promExternalVersions.NewSharedInformerFactoryWithOptions(
 		c.promClient,
 		24*time.Hour,
@@ -439,24 +442,25 @@ func (c *Component) startRuleInformer(queue workqueue.RateLimitingInterface, sto
 	return ruleLister, nil
 }
 
-func (c *Component) newEventProcessor(queue workqueue.RateLimitingInterface, stopChan chan struct{}, namespaceLister coreListers.NamespaceLister, ruleLister promListers.PrometheusRuleLister) *eventProcessor {
+func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface[commonK8s.Event], stopChan chan struct{}, namespaceLister coreListers.NamespaceLister, ruleLister promListers.PrometheusRuleLister) *eventProcessor {
 	// Copy the label map to make sure that a change in arguments won't immediately propagate to the event processor.
 	externalLabels := make(map[string]string, len(c.args.ExternalLabels))
 	maps.Copy(externalLabels, c.args.ExternalLabels)
 
 	return &eventProcessor{
-		queue:             queue,
-		stopChan:          stopChan,
-		health:            c,
-		mimirClient:       c.mimirClient,
-		namespaceLister:   namespaceLister,
-		ruleLister:        ruleLister,
-		namespaceSelector: c.namespaceSelector,
-		ruleSelector:      c.ruleSelector,
-		namespacePrefix:   c.args.MimirNameSpacePrefix,
-		metrics:           c.metrics,
-		logger:            c.log,
-		externalLabels:    externalLabels,
+		queue:              queue,
+		stopChan:           stopChan,
+		health:             c,
+		mimirClient:        c.mimirClient,
+		namespaceLister:    namespaceLister,
+		ruleLister:         ruleLister,
+		namespaceSelector:  c.namespaceSelector,
+		ruleSelector:       c.ruleSelector,
+		namespacePrefix:    c.args.MimirNameSpacePrefix,
+		metrics:            c.metrics,
+		logger:             c.log,
+		externalLabels:     externalLabels,
+		extraQueryMatchers: c.args.ExtraQueryMatchers,
 	}
 }
 
@@ -519,6 +523,7 @@ func newComponentLeadership(id string, logger log.Logger, cluster cluster.Cluste
 }
 
 func (l *componentLeadership) update() (bool, error) {
+	// NOTE: since this is leader election, it is okay to NOT check if cluster is ready.
 	peers, err := l.cluster.Lookup(shard.StringKey(l.id), 1, shard.OpReadWrite)
 	if err != nil {
 		return false, fmt.Errorf("unable to determine leader for %s: %w", l.id, err)

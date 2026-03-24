@@ -39,7 +39,7 @@ func (s OptionalSecret) AlloyCapsule() {}
 // OptionalSecrets can only be converted into *string if IsSecret is false. In
 // other cases, this method will return an explicit error or
 // syntax.ErrNoConversion.
-func (s OptionalSecret) ConvertInto(dst interface{}) error {
+func (s OptionalSecret) ConvertInto(dst any) error {
 	switch dst := dst.(type) {
 	case *Secret:
 		*dst = Secret(s.Value)
@@ -58,7 +58,7 @@ func (s OptionalSecret) ConvertInto(dst interface{}) error {
 // ConvertFrom converts the src value and stores it into the OptionalSecret s.
 // Secrets and strings can be converted into an OptionalSecret. In other
 // cases, this method will return syntax.ErrNoConversion.
-func (s *OptionalSecret) ConvertFrom(src interface{}) error {
+func (s *OptionalSecret) ConvertFrom(src any) error {
 	switch src := src.(type) {
 	case Secret:
 		*s = OptionalSecret{IsSecret: true, Value: string(src)}

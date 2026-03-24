@@ -82,7 +82,7 @@ func (args *LightsailArguments) Validate() error {
 		client := imds.NewFromConfig(cfg)
 		region, err := client.GetRegion(cfgCtx, &imds.GetRegionInput{})
 		if err != nil {
-			return errors.New("Lightsail SD configuration requires a region")
+			return errors.New("lightsail SD configuration requires a region")
 		}
 		args.Region = region.Region
 	}

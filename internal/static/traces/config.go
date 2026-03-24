@@ -1,6 +1,8 @@
 package traces
 
 import (
+	"bytes"
+	"context"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -11,7 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mitchellh/mapstructure"
+	"go.uber.org/multierr"
+	"gopkg.in/yaml.v2"
+
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling"
@@ -20,23 +24,23 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/opencensusreceiver"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
 	"github.com/prometheus/client_golang/prometheus"
 	prom_config "github.com/prometheus/common/config"
 	"go.opentelemetry.io/collector/component/componenttest"
+	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/confmap"
-	otelexporter "go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/collector/confmap/provider/yamlprovider"
+	otel_exporter "go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/otlpexporter"
 	"go.opentelemetry.io/collector/exporter/otlphttpexporter"
 	"go.opentelemetry.io/collector/extension"
 	"go.opentelemetry.io/collector/otelcol"
-	otelprocessor "go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
-	"go.uber.org/multierr"
-	"gopkg.in/yaml.v2"
+	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 
@@ -48,8 +52,6 @@ import (
 	"github.com/grafana/alloy/internal/static/traces/remotewriteexporter"
 	"github.com/grafana/alloy/internal/static/traces/servicegraphprocessor"
 	"github.com/grafana/alloy/internal/static/traces/spanmetricsprocessor"
-	"github.com/grafana/alloy/internal/util"
-	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )
 
 const (
@@ -89,7 +91,7 @@ type Config struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	c.Unmarshaled = true
 	type plain Config
 	return unmarshal((*plain)(c))
@@ -132,16 +134,16 @@ type InstanceConfig struct {
 
 	// Batch:
 	// https://github.com/open-telemetry/opentelemetry-collector/tree/v0.96.0/processor/batchprocessor
-	Batch map[string]interface{} `yaml:"batch,omitempty"`
+	Batch map[string]any `yaml:"batch,omitempty"`
 
 	// Attributes:
 	// https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.96.0/processor
-	Attributes map[string]interface{} `yaml:"attributes,omitempty"`
+	Attributes map[string]any `yaml:"attributes,omitempty"`
 
 	// prom service discovery config
-	ScrapeConfigs   []interface{} `yaml:"scrape_configs,omitempty"`
-	OperationType   string        `yaml:"prom_sd_operation_type,omitempty"`
-	PodAssociations []string      `yaml:"prom_sd_pod_associations,omitempty"`
+	ScrapeConfigs   []any    `yaml:"scrape_configs,omitempty"`
+	OperationType   string   `yaml:"prom_sd_operation_type,omitempty"`
+	PodAssociations []string `yaml:"prom_sd_pod_associations,omitempty"`
 
 	// SpanMetricsProcessor:
 	SpanMetrics *SpanMetricsConfig `yaml:"spanmetrics,omitempty"`
@@ -172,26 +174,26 @@ type SecretString string
 var _ yaml.Marshaler = (*SecretString)(nil)
 
 // MarshalYAML implements yaml.Marshaler.
-func (s SecretString) MarshalYAML() (interface{}, error) {
+func (s SecretString) MarshalYAML() (any, error) {
 	return secretMarshalString, nil
 }
 
 // JaegerRemoteSamplingMap is a set of Jaeger Remote Sampling extensions.
 // Because receivers may be configured with an unknown set of sensitive information,
 // ReceiverMap will marshal as YAML to the text "<secret>".
-type JaegerRemoteSamplingConfig map[string]interface{}
+type JaegerRemoteSamplingConfig map[string]any
 
 var _ yaml.Marshaler = (*JaegerRemoteSamplingConfig)(nil)
 
 // MarshalYAML implements yaml.Marshaler.
-func (jrsm JaegerRemoteSamplingConfig) MarshalYAML() (interface{}, error) {
+func (jrsm JaegerRemoteSamplingConfig) MarshalYAML() (any, error) {
 	return secretMarshalString, nil
 }
 
 // ReceiverMap stores a set of receivers. Because receivers may be configured
 // with an unknown set of sensitive information, ReceiverMap will marshal as
 // YAML to the text "<secret>".
-type ReceiverMap map[string]interface{}
+type ReceiverMap map[string]any
 
 var (
 	_ yaml.Marshaler   = (*ReceiverMap)(nil)
@@ -199,7 +201,7 @@ var (
 )
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (r *ReceiverMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (r *ReceiverMap) UnmarshalYAML(unmarshal func(any) error) error {
 	type plain ReceiverMap
 	if err := unmarshal((*plain)(r)); err != nil {
 		return err
@@ -210,12 +212,12 @@ func (r *ReceiverMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	for k := range *r {
 		if strings.HasPrefix(k, otlpReceiverName) {
 			// for http and grpc receivers, include_metadata is set to true by default
-			receiverCfg, ok := (*r)[k].(map[interface{}]interface{})
+			receiverCfg, ok := (*r)[k].(map[any]any)
 			if !ok {
 				return fmt.Errorf("failed to parse OTLP receiver config: %s", k)
 			}
 
-			protocolsCfg, ok := receiverCfg["protocols"].(map[interface{}]interface{})
+			protocolsCfg, ok := receiverCfg["protocols"].(map[any]any)
 			if !ok {
 				return fmt.Errorf("otlp receiver requires a \"protocols\" field which must be a YAML map: %s", k)
 			}
@@ -223,10 +225,10 @@ func (r *ReceiverMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
 			for _, p := range protocols {
 				if cfg, ok := protocolsCfg[p]; ok {
 					if cfg == nil {
-						protocolsCfg[p] = map[interface{}]interface{}{"include_metadata": true}
+						protocolsCfg[p] = map[any]any{"include_metadata": true}
 					} else {
-						if _, ok := cfg.(map[interface{}]interface{})["include_metadata"]; !ok {
-							protocolsCfg[p].(map[interface{}]interface{})["include_metadata"] = true
+						if _, ok := cfg.(map[any]any)["include_metadata"]; !ok {
+							protocolsCfg[p].(map[any]any)["include_metadata"] = true
 						}
 					}
 				}
@@ -238,7 +240,7 @@ func (r *ReceiverMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 // MarshalYAML implements yaml.Marshaler.
-func (r ReceiverMap) MarshalYAML() (interface{}, error) {
+func (r ReceiverMap) MarshalYAML() (any, error) {
 	return secretMarshalString, nil
 }
 
@@ -291,27 +293,6 @@ type OAuth2Config struct {
 	Timeout        time.Duration    `yaml:"timeout,omitempty"`
 }
 
-// Agent uses standard YAML unmarshalling, while the oauth2clientauthextension relies on
-// mapstructure without providing YAML labels. `toOtelConfig` marshals `Oauth2Config` to configuration type expected by
-// the oauth2clientauthextension Extension Factory
-func (c OAuth2Config) toOtelConfig() (*oauth2clientauthextension.Config, error) {
-	var result *oauth2clientauthextension.Config
-	decoderConfig := &mapstructure.DecoderConfig{
-		MatchName:        func(s, t string) bool { return util.CamelToSnake(s) == t },
-		Result:           &result,
-		WeaklyTypedInput: true,
-		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			mapstructure.StringToSliceHookFunc(","),
-			mapstructure.StringToTimeDurationHookFunc(),
-		),
-	}
-	decoder, _ := mapstructure.NewDecoder(decoderConfig)
-	if err := decoder.Decode(c); err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 // RemoteWriteConfig controls the configuration of an exporter
 type RemoteWriteConfig struct {
 	Endpoint    string `yaml:"endpoint,omitempty"`
@@ -325,12 +306,12 @@ type RemoteWriteConfig struct {
 	BasicAuth          *prom_config.BasicAuth `yaml:"basic_auth,omitempty"`
 	Oauth2             *OAuth2Config          `yaml:"oauth2,omitempty"`
 	Headers            map[string]string      `yaml:"headers,omitempty"`
-	SendingQueue       map[string]interface{} `yaml:"sending_queue,omitempty"`    // https://github.com/open-telemetry/opentelemetry-collector/blob/v0.96.0/exporter/exporterhelper/queued_retry.go
-	RetryOnFailure     map[string]interface{} `yaml:"retry_on_failure,omitempty"` // https://github.com/open-telemetry/opentelemetry-collector/blob/v0.96.0/exporter/exporterhelper/queued_retry.go
+	SendingQueue       map[string]any         `yaml:"sending_queue,omitempty"`    // https://github.com/open-telemetry/opentelemetry-collector/blob/v0.96.0/exporter/exporterhelper/queued_retry.go
+	RetryOnFailure     map[string]any         `yaml:"retry_on_failure,omitempty"` // https://github.com/open-telemetry/opentelemetry-collector/blob/v0.96.0/exporter/exporterhelper/queued_retry.go
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (c *RemoteWriteConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *RemoteWriteConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultRemoteWriteConfig
 
 	type plain RemoteWriteConfig
@@ -392,16 +373,16 @@ type tailSamplingConfig struct {
 }
 
 type policy struct {
-	Name   string                 `yaml:"name,omitempty"`
-	Type   string                 `yaml:"type"`
-	Policy map[string]interface{} `yaml:",inline"`
+	Name   string         `yaml:"name,omitempty"`
+	Type   string         `yaml:"type"`
+	Policy map[string]any `yaml:",inline"`
 }
 
 // loadBalancingConfig defines the configuration for load balancing spans between agent instances
 // loadBalancingConfig is an OTel exporter's config with extra resolver config
 type loadBalancingConfig struct {
-	Exporter exporterConfig         `yaml:"exporter"`
-	Resolver map[string]interface{} `yaml:"resolver"`
+	Exporter exporterConfig `yaml:"exporter"`
+	Resolver map[string]any `yaml:"resolver"`
 	// ReceiverPort is the port the instance will use to receive load balanced traces
 	ReceiverPort string `yaml:"receiver_port"`
 	RoutingKey   string `yaml:"routing_key,omitempty"`
@@ -423,7 +404,7 @@ type serviceGraphsConfig struct {
 }
 
 // exporter builds an OTel exporter from RemoteWriteConfig
-func exporter(rwCfg RemoteWriteConfig) (map[string]interface{}, error) {
+func exporter(rwCfg RemoteWriteConfig) (map[string]any, error) {
 	if len(rwCfg.Endpoint) == 0 {
 		return nil, errors.New("must have a configured a backend endpoint")
 	}
@@ -462,15 +443,18 @@ func exporter(rwCfg RemoteWriteConfig) (map[string]interface{}, error) {
 	if len(headers) == 0 && rwCfg.Format == formatJaeger {
 		headers = nil
 	}
-	exporter := map[string]interface{}{
+	exporter := map[string]any{
 		"endpoint":         rwCfg.Endpoint,
 		"compression":      compression,
-		"headers":          headers,
 		"sending_queue":    rwCfg.SendingQueue,
 		"retry_on_failure": rwCfg.RetryOnFailure,
 	}
 
-	tlsConfig := map[string]interface{}{
+	if len(headers) > 0 {
+		exporter["headers"] = headers
+	}
+
+	tlsConfig := map[string]any{
 		"insecure": rwCfg.Insecure,
 	}
 	if !rwCfg.Insecure {
@@ -491,8 +475,8 @@ func exporter(rwCfg RemoteWriteConfig) (map[string]interface{}, error) {
 	// sending_queue.retry_on_failure default is 300s which prevents any
 	// sending-related errors to not be logged for 5 minutes. We'll lower that
 	// to 60s.
-	if retryConfig := exporter["retry_on_failure"].(map[string]interface{}); retryConfig == nil {
-		exporter["retry_on_failure"] = map[string]interface{}{
+	if retryConfig := exporter["retry_on_failure"].(map[string]any); retryConfig == nil {
+		exporter["retry_on_failure"] = map[string]any{
 			"max_elapsed_time": "60s",
 		}
 	} else if retryConfig["max_elapsed_time"] == nil {
@@ -526,8 +510,8 @@ func getExporterName(index int, protocol string, format string) (string, error) 
 }
 
 // exporters builds one or multiple exporters from a remote_write block.
-func (c *InstanceConfig) exporters() (map[string]interface{}, error) {
-	exporters := map[string]interface{}{}
+func (c *InstanceConfig) exporters() (map[string]any, error) {
+	exporters := map[string]any{}
 	for i, remoteWriteConfig := range c.RemoteWrite {
 		exporter, err := exporter(remoteWriteConfig)
 		if err != nil {
@@ -546,12 +530,12 @@ func (c *InstanceConfig) exporters() (map[string]interface{}, error) {
 }
 
 func getAuthExtensionName(exporterName string) string {
-	return fmt.Sprintf("oauth2client/%s", strings.Replace(exporterName, "/", "", -1))
+	return fmt.Sprintf("oauth2client/%s", strings.ReplaceAll(exporterName, "/", ""))
 }
 
 // builds oauth2clientauth extensions required to support RemoteWriteConfigurations.
-func (c *InstanceConfig) extensions() (map[string]interface{}, error) {
-	extensions := map[string]interface{}{}
+func (c *InstanceConfig) extensions() (map[string]any, error) {
+	extensions := map[string]any{}
 	for i, remoteWriteConfig := range c.RemoteWrite {
 		if remoteWriteConfig.Oauth2 == nil {
 			continue
@@ -560,11 +544,7 @@ func (c *InstanceConfig) extensions() (map[string]interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
-		oauthConfig, err := remoteWriteConfig.Oauth2.toOtelConfig()
-		if err != nil {
-			return nil, err
-		}
-		extensions[getAuthExtensionName(exporterName)] = oauthConfig
+		extensions[getAuthExtensionName(exporterName)] = remoteWriteConfig.Oauth2
 	}
 	if c.JaegerRemoteSampling != nil {
 		if len(c.JaegerRemoteSampling) == 0 {
@@ -572,17 +552,17 @@ func (c *InstanceConfig) extensions() (map[string]interface{}, error) {
 		}
 		for i, jrsConfig := range c.JaegerRemoteSampling {
 			extName := fmt.Sprintf("jaegerremotesampling/%d", i)
-			extensions[extName] = jrsConfig
+			extensions[extName] = map[string]any(jrsConfig)
 		}
 	}
 	return extensions, nil
 }
 
-func resolver(config map[string]interface{}) (map[string]interface{}, error) {
+func resolver(config map[string]any) (map[string]any, error) {
 	if len(config) == 0 {
 		return nil, fmt.Errorf("must configure one resolver (dns, static, or kubernetes)")
 	}
-	resolverCfg := make(map[string]interface{})
+	resolverCfg := make(map[string]any)
 	for typ, cfg := range config {
 		switch typ {
 		case dnsTagName, staticTagName:
@@ -596,7 +576,7 @@ func resolver(config map[string]interface{}) (map[string]interface{}, error) {
 	return resolverCfg, nil
 }
 
-func (c *InstanceConfig) loadBalancingExporter() (map[string]interface{}, error) {
+func (c *InstanceConfig) loadBalancingExporter() (map[string]any, error) {
 	exporter, err := exporter(RemoteWriteConfig{
 		// Endpoint is omitted in OTel load balancing exporter
 		Endpoint:    "noop:8888",
@@ -614,8 +594,8 @@ func (c *InstanceConfig) loadBalancingExporter() (map[string]interface{}, error)
 	if err != nil {
 		return nil, err
 	}
-	return map[string]interface{}{
-		"protocol": map[string]interface{}{
+	return map[string]any{
+		"protocol": map[string]any{
 			"otlp": exporter,
 		},
 		"resolver":    resolverCfg,
@@ -625,8 +605,8 @@ func (c *InstanceConfig) loadBalancingExporter() (map[string]interface{}, error)
 
 // formatPolicies creates sampling policies (i.e. rules) compatible with OTel's tail sampling processor
 // https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/v0.96.0/processor/tailsamplingprocessor
-func formatPolicies(cfg []policy) ([]map[string]interface{}, error) {
-	policies := make([]map[string]interface{}, 0, len(cfg))
+func formatPolicies(cfg []policy) ([]map[string]any, error) {
+	policies := make([]map[string]any, 0, len(cfg))
 	for i, policy := range cfg {
 		typ, name := policy.Type, policy.Name
 		if typ == "" {
@@ -639,12 +619,12 @@ func formatPolicies(cfg []policy) ([]map[string]interface{}, error) {
 
 		switch typ {
 		case alwaysSamplePolicy:
-			policies = append(policies, map[string]interface{}{
+			policies = append(policies, map[string]any{
 				"name": name,
 				"type": typ,
 			})
 		default:
-			policies = append(policies, map[string]interface{}{
+			policies = append(policies, map[string]any{
 				"name": name,
 				"type": typ,
 				typ:    policy.Policy[typ],
@@ -655,7 +635,7 @@ func formatPolicies(cfg []policy) ([]map[string]interface{}, error) {
 }
 
 func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
-	otelMapStructure := map[string]interface{}{}
+	otelMapStructure := map[string]any{}
 
 	if len(c.Receivers) == 0 {
 		return nil, errors.New("must have at least one configured receiver")
@@ -685,7 +665,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 	}
 
 	// processors
-	processors := map[string]interface{}{}
+	processors := map[string]any{}
 	processorNames := []string{}
 	if c.ScrapeConfigs != nil {
 		opType := promsdconsumer.OperationTypeUpsert
@@ -693,7 +673,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 			opType = c.OperationType
 		}
 		processorNames = append(processorNames, promsdprocessor.TypeStr)
-		processors[promsdprocessor.TypeStr] = map[string]interface{}{
+		processors[promsdprocessor.TypeStr] = map[string]any{
 			"scrape_configs":   c.ScrapeConfigs,
 			"operation_type":   opType,
 			"pod_associations": c.PodAssociations,
@@ -702,7 +682,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 
 	if c.AutomaticLogging != nil {
 		processorNames = append(processorNames, automaticloggingprocessor.TypeStr)
-		processors[automaticloggingprocessor.TypeStr] = map[string]interface{}{
+		processors[automaticloggingprocessor.TypeStr] = map[string]any{
 			"automatic_logging": c.AutomaticLogging,
 		}
 	}
@@ -717,7 +697,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 		processorNames = append(processorNames, "batch")
 	}
 
-	pipelines := make(map[string]interface{})
+	pipelines := make(map[string]any)
 	if c.SpanMetrics != nil {
 		// Configure the metrics exporter.
 		namespace := "traces_spanmetrics"
@@ -728,24 +708,30 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 		var exporterName string
 		if len(c.SpanMetrics.MetricsInstance) != 0 && len(c.SpanMetrics.HandlerEndpoint) == 0 {
 			exporterName = remotewriteexporter.TypeStr
-			exporters[remotewriteexporter.TypeStr] = map[string]interface{}{
+			exporters[remotewriteexporter.TypeStr] = map[string]any{
 				"namespace":        namespace,
 				"const_labels":     c.SpanMetrics.ConstLabels,
 				"metrics_instance": c.SpanMetrics.MetricsInstance,
 			}
 		} else if len(c.SpanMetrics.MetricsInstance) == 0 && len(c.SpanMetrics.HandlerEndpoint) != 0 {
+			constLabels := map[string]string{}
+			if c.SpanMetrics.ConstLabels != nil {
+				// Temporary workaround for https://github.com/open-telemetry/opentelemetry-collector/issues/13117
+				// Remove after upgrade to otel 128
+				constLabels = *c.SpanMetrics.ConstLabels
+			}
 			exporterName = "prometheus"
-			exporters[exporterName] = map[string]interface{}{
+			exporters[exporterName] = map[string]any{
 				"endpoint":     c.SpanMetrics.HandlerEndpoint,
 				"namespace":    namespace,
-				"const_labels": c.SpanMetrics.ConstLabels,
+				"const_labels": constLabels,
 			}
 		} else {
 			return nil, fmt.Errorf("must specify a prometheus instance or a metrics handler endpoint to export the metrics")
 		}
 
 		processorNames = append(processorNames, "spanmetrics")
-		spanMetrics := map[string]interface{}{
+		spanMetrics := map[string]any{
 			"metrics_exporter":          exporterName,
 			"latency_histogram_buckets": c.SpanMetrics.LatencyHistogramBuckets,
 			"dimensions":                c.SpanMetrics.Dimensions,
@@ -761,7 +747,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 		}
 		processors["spanmetrics"] = spanMetrics
 
-		pipelines[spanMetricsPipelineFullName] = map[string]interface{}{
+		pipelines[spanMetricsPipelineFullName] = map[string]any{
 			"receivers": []string{noopreceiver.TypeStr},
 			"exporters": []string{exporterName},
 		}
@@ -794,7 +780,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 		// tail_sampling should be executed before the batch processor
 		// TODO(mario.rodriguez): put attributes processor before tail_sampling. Maybe we want to sample on mutated spans
 		processorNames = append([]string{"tail_sampling"}, processorNames...)
-		processors["tail_sampling"] = map[string]interface{}{
+		processors["tail_sampling"] = map[string]any{
 			"policies":                    policies,
 			"decision_wait":               wait,
 			"num_traces":                  numTraces,
@@ -813,9 +799,9 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 		if c.LoadBalancing.ReceiverPort != "" {
 			receiverPort = c.LoadBalancing.ReceiverPort
 		}
-		c.Receivers["otlp/lb"] = map[string]interface{}{
-			"protocols": map[string]interface{}{
-				"grpc": map[string]interface{}{
+		c.Receivers["otlp/lb"] = map[string]any{
+			"protocols": map[string]any{
+				"grpc": map[string]any{
 					"endpoint": net.JoinHostPort("0.0.0.0", receiverPort),
 				},
 			},
@@ -823,7 +809,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 	}
 
 	if c.ServiceGraphs != nil && c.ServiceGraphs.Enabled {
-		processors[servicegraphprocessor.TypeStr] = map[string]interface{}{
+		processors[servicegraphprocessor.TypeStr] = map[string]any{
 			"wait":      c.ServiceGraphs.Wait,
 			"max_items": c.ServiceGraphs.MaxItems,
 		}
@@ -835,19 +821,19 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 	orderedSplitProcessors := orderProcessors(processorNames, splitPipeline)
 	if splitPipeline {
 		// load balancing pipeline
-		pipelines["traces/0"] = map[string]interface{}{
+		pipelines["traces/0"] = map[string]any{
 			"receivers":  receiverNames,
 			"processors": orderedSplitProcessors[0],
 			"exporters":  []string{"loadbalancing"},
 		}
 		// processing pipeline
-		pipelines["traces/1"] = map[string]interface{}{
+		pipelines["traces/1"] = map[string]any{
 			"exporters":  exportersNames,
 			"processors": orderedSplitProcessors[1],
 			"receivers":  []string{"otlp/lb"},
 		}
 	} else {
-		pipelines["traces"] = map[string]interface{}{
+		pipelines["traces"] = map[string]any{
 			"exporters":  exportersNames,
 			"processors": orderedSplitProcessors[0],
 			"receivers":  receiverNames,
@@ -860,7 +846,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 		c.Receivers[noopreceiver.TypeStr] = nil
 	}
 
-	receiversMap := map[string]interface{}(c.Receivers)
+	receiversMap := map[string]any(c.Receivers)
 
 	otelMapStructure["extensions"] = extensions
 	otelMapStructure["exporters"] = exporters
@@ -868,7 +854,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 	otelMapStructure["receivers"] = receiversMap
 
 	// pipelines
-	serviceMap := map[string]interface{}{
+	serviceMap := map[string]any{
 		"pipelines": pipelines,
 	}
 	if len(extensionsNames) > 0 {
@@ -891,7 +877,7 @@ func (c *InstanceConfig) OtelConfig() (*otelcol.Config, error) {
 // tracingFactories() only creates the needed factories.  if we decide to add support for a new
 // processor, exporter, receiver we need to add it here
 func tracingFactories() (otelcol.Factories, error) {
-	extensions, err := extension.MakeFactoryMap(
+	extensions, err := otelcol.MakeFactoryMap[extension.Factory](
 		oauth2clientauthextension.NewFactory(),
 		jaegerremotesampling.NewFactory(),
 	)
@@ -899,11 +885,10 @@ func tracingFactories() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 
-	receivers, err := receiver.MakeFactoryMap(
+	receivers, err := otelcol.MakeFactoryMap[receiver.Factory](
 		jaegerreceiver.NewFactory(),
 		zipkinreceiver.NewFactory(),
 		otlpreceiver.NewFactory(),
-		opencensusreceiver.NewFactory(),
 		kafkareceiver.NewFactory(),
 		noopreceiver.NewFactory(),
 		pushreceiver.NewFactory(),
@@ -912,7 +897,7 @@ func tracingFactories() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 
-	exporters, err := otelexporter.MakeFactoryMap(
+	exporters, err := otelcol.MakeFactoryMap[otel_exporter.Factory](
 		otlpexporter.NewFactory(),
 		otlphttpexporter.NewFactory(),
 		loadbalancingexporter.NewFactory(),
@@ -923,7 +908,7 @@ func tracingFactories() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 
-	processors, err := otelprocessor.MakeFactoryMap(
+	processors, err := otelcol.MakeFactoryMap[processor.Factory](
 		batchprocessor.NewFactory(),
 		attributesprocessor.NewFactory(),
 		promsdprocessor.NewFactory(),
@@ -941,6 +926,7 @@ func tracingFactories() (otelcol.Factories, error) {
 		Receivers:  receivers,
 		Processors: processors,
 		Exporters:  exporters,
+		Telemetry:  otelconftelemetry.NewFactory(),
 	}, nil
 }
 
@@ -993,27 +979,47 @@ func orderProcessors(processors []string, splitPipelines bool) [][]string {
 	}
 }
 
-func otelcolConfigFromStringMap(otelMapStructure map[string]interface{}, factories *otelcol.Factories) (*otelcol.Config, error) {
-	configMap := confmap.NewFromStringMap(otelMapStructure)
-	otelCfg, err := otelcol.Unmarshal(configMap, *factories)
+func otelcolConfigFromStringMap(otelMapStructure map[string]any, factories *otelcol.Factories) (*otelcol.Config, error) {
+	var b bytes.Buffer
+	enc := yaml.NewEncoder(&b)
+
+	enc.SetHook(func(in any) (ok bool, out any, err error) {
+		switch v := in.(type) {
+		case SecretString:
+			return true, string(v), nil
+		case configopaque.String:
+			return true, string(v), nil
+		default:
+			return false, nil, nil
+		}
+	})
+
+	if err := enc.Encode(otelMapStructure); err != nil {
+		return nil, err
+	}
+	cp, err := otelcol.NewConfigProvider(otelcol.ConfigProviderSettings{
+		ResolverSettings: confmap.ResolverSettings{
+			URIs: []string{"yaml:" + b.String()},
+			ProviderFactories: []confmap.ProviderFactory{
+				yamlprovider.NewFactory(),
+			},
+		},
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create config provider: %w", err)
+	}
+
+	otelCfg, err := cp.Get(context.Background(), *factories)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load OTel config: %w", err)
 	}
 
-	res := otelcol.Config{
-		Receivers:  otelCfg.Receivers.Configs(),
-		Processors: otelCfg.Processors.Configs(),
-		Exporters:  otelCfg.Exporters.Configs(),
-		Connectors: otelCfg.Connectors.Configs(),
-		Extensions: otelCfg.Extensions.Configs(),
-		Service:    otelCfg.Service,
-	}
-
-	if err := res.Validate(); err != nil {
+	if err := otelCfg.Validate(); err != nil {
 		return nil, err
 	}
 
-	return &res, nil
+	return otelCfg, nil
 }
 
 // Code taken from OTel's service/configcheck.go

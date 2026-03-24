@@ -1,0 +1,64 @@
+receivers:
+  splunk_hec:
+    raw_path: "/raw"
+    hec_metadata_to_otel_attrs:
+      source: "mysource"
+      sourcetype: "mysourcetype"
+      index: "myindex"
+      host: "myhost"
+    
+exporters:
+  splunk_hec:
+    # Splunk HTTP Event Collector token.
+    token: "00000000-0000-0000-0000-0000000000000"
+    # URL to a Splunk instance to send data to.
+    endpoint: "https://splunk:8088/services/collector"
+    # Optional Splunk source: https://docs.splunk.com/Splexicon:Source
+    source: "otel"
+    # Optional Splunk source type: https://docs.splunk.com/Splexicon:Sourcetype
+    sourcetype: "otel"
+    # Splunk index, optional name of the Splunk index targeted.
+    index: "metrics"
+    # Maximum HTTP connections to use simultaneously when sending data. Defaults to 100.
+    max_idle_conns: 200
+    # Whether to disable gzip compression over HTTP. Defaults to false.
+    disable_compression: false
+    # HTTP timeout when sending data. Defaults to 10s.
+    timeout: 10s
+    tls:
+      # Whether to skip checking the certificate of the HEC endpoint when sending data over HTTPS. Defaults to false.
+      insecure_skip_verify: false
+      # Path to the CA cert to verify the server being connected to.
+      ca_file: /certs/ExampleCA.crt
+      # Path to the TLS cert to use for client connections when TLS client auth is required.
+      cert_file: /certs/HECclient.crt
+      # Path to the TLS key to use for TLS required connections.
+      key_file: /certs/HECclient.key
+    # Application name is used to track telemetry information for Splunk App's using HEC by App name.
+    splunk_app_name: "OpenTelemetry-Collector Splunk Exporter"
+    # Application version is used to track telemetry information for Splunk App's using HEC by App version.
+    splunk_app_version: "v0.0.1"
+    heartbeat:
+      interval: 30s
+    telemetry:
+      enabled: true
+      override_metrics_names:
+        otelcol_exporter_splunkhec_heartbeats_sent: app_heartbeats_success_total
+        otelcol_exporter_splunkhec_heartbeats_failed: app_heartbeats_failed_total
+      extra_attributes:
+        dataset_name: SplunkCloudBeaverStack
+        custom_key: custom_value
+    otel_attrs_to_hec_metadata:
+      source: "mysource"
+      sourcetype: "mysourcetype"
+      index: "myindex"
+      host: "myhost"
+
+service:
+  pipelines:
+    metrics:
+      receivers: [splunk_hec]
+      exporters: [splunk_hec]
+    logs:
+      receivers: [splunk_hec]
+      exporters: [splunk_hec]

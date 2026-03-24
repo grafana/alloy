@@ -26,14 +26,14 @@ type (
 
 	// jsonValue represents a single Alloy value as JSON.
 	jsonValue struct {
-		Type  string      `json:"type"`
-		Value interface{} `json:"value"`
+		Type  string `json:"type"`
+		Value any    `json:"value"`
 	}
 
 	// jsonObjectField represents a field within an Alloy object.
 	jsonObjectField struct {
-		Key   string      `json:"key"`
-		Value interface{} `json:"value"`
+		Key   string `json:"key"`
+		Value any    `json:"value"`
 	}
 )
 

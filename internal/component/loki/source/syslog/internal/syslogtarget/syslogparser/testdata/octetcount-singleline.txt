@@ -1,0 +1,1 @@
+88 <86>Apr 28 11:53:46 doas: catap ran command ls / as root from /home/catap/src/go-syslog

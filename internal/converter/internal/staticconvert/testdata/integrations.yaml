@@ -34,6 +34,7 @@ integrations:
   cloudwatch_exporter:
     enabled: true
     sts_region: us-east-2
+    aws_sdk_version_v2: true
     discovery:
       jobs:
         - type: AWS/EC2

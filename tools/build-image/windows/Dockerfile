@@ -1,4 +1,4 @@
-FROM library/golang:1.22.5-windowsservercore-1809
+FROM library/golang:1.25.8-windowsservercore-ltsc2022@sha256:8231fbb9b76c4acf94daf580a35ef5a64480e545aded8062fb29deaf456c145f
 
 SHELL ["powershell", "-command"]
 
@@ -38,9 +38,7 @@ RUN choco install git --version 2.39.0 -y
 # React App Dependencies
 #
 # nodejs - node server
-# yarn - installs node dependencies
-RUN choco install nodejs.install --version 19.2.0 -y
-RUN choco install yarn --version 1.22.19 -y
+RUN choco install nodejs.install --version 24.4.0 -y
 
 # Git tries to prevent misuse of repositories (CVE-2022-24765), but we don't
 # care about this for build containers, where it's expected that the repository

@@ -1,9 +1,10 @@
-//go:build linux && (amd64 || arm64)
+//go:build (linux || darwin) && (amd64 || arm64)
 
 package asprof
 
 import (
 	"archive/tar"
+	"archive/zip"
 	"bytes"
 	"fmt"
 	"io"
@@ -20,6 +21,13 @@ import (
 )
 
 const extractPerm = 0755
+
+func readArchive(buf []byte, format int, cb func(name string, fi fs.FileInfo, data []byte) error) error {
+	if format == ArchiveFormatTarGz {
+		return readTarGZ(buf, cb)
+	}
+	return readZip(buf, cb)
+}
 
 func readTarGZ(buf []byte, cb func(name string, fi fs.FileInfo, data []byte) error) error {
 	gzipReader, err := gzip.NewReader(bytes.NewReader(buf))
@@ -53,6 +61,36 @@ func readTarGZ(buf []byte, cb func(name string, fi fs.FileInfo, data []byte) err
 		}
 	}
 
+	return nil
+}
+
+func readZip(buf []byte, cb func(name string, fi fs.FileInfo, data []byte) error) error {
+	zipReader, err := zip.NewReader(bytes.NewReader(buf), int64(len(buf)))
+	if err != nil {
+		return err
+	}
+
+	for _, file := range zipReader.File {
+		rc, err := file.Open()
+		if err != nil {
+			return fmt.Errorf("error opening file %s: %w", file.Name, err)
+		}
+
+		fileInfo := file.FileInfo()
+		if fileInfo.IsDir() {
+			continue
+		}
+
+		data, err := io.ReadAll(rc)
+		rc.Close()
+		if err != nil {
+			return fmt.Errorf("error reading file %s: %w", file.Name, err)
+		}
+
+		if err := cb(file.Name, fileInfo, data); err != nil {
+			return fmt.Errorf("error processing file %s: %w", file.Name, err)
+		}
+	}
 	return nil
 }
 
@@ -140,13 +178,14 @@ func checkTempDirPermissions(tmpDirFile *os.File) error {
 	}
 	sys := tmpDirFileStat.Sys().(*syscall.Stat_t)
 	ok := false
+	isSticky := tmpDirFileStat.Mode()&os.ModeSticky != 0
 	if sys.Uid == uint32(os.Getuid()) && tmpDirFileStat.Mode().Perm() == extractPerm {
 		ok = true
-	} else if sys.Uid == 0 && tmpDirFileStat.Mode()&os.ModeSticky != 0 {
+	} else if sys.Uid == 0 && isSticky {
 		ok = true
 	}
 	if !ok {
-		return fmt.Errorf("tmp dir %s has wrong permissions %+v", tmpDirFile.Name(), sys)
+		return fmt.Errorf("tmp dir %s has wrong permissions: It either needs to be owned by the same uid as this process %d while the dir permission is set to %04o or it needs to be owned by root and the sticky bit set: owner=%d mode=%04o sticky=%v", tmpDirFile.Name(), os.Getuid(), extractPerm, sys.Uid, tmpDirFileStat.Mode().Perm(), isSticky)
 	}
 	return nil
 }
@@ -183,8 +222,4 @@ func checkExtractFile(f *os.File, parent *os.File) error {
 		return fmt.Errorf("expected %s, but it is %s", expectedPath, actualPath)
 	}
 	return nil
-}
-
-func readlinkFD(f *os.File) (string, error) {
-	return os.Readlink(fmt.Sprintf("/proc/self/fd/%d", f.Fd()))
 }

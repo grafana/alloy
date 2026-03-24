@@ -21,8 +21,9 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
@@ -33,12 +34,16 @@ var DefaultArguments = Arguments{
 }
 
 type Arguments struct {
-	APIURL        string            `alloy:"api_url,attr,optional"`
-	Repositories  []string          `alloy:"repositories,attr,optional"`
-	Organizations []string          `alloy:"organizations,attr,optional"`
-	Users         []string          `alloy:"users,attr,optional"`
-	APIToken      alloytypes.Secret `alloy:"api_token,attr,optional"`
-	APITokenFile  string            `alloy:"api_token_file,attr,optional"`
+	APIURL                  string            `alloy:"api_url,attr,optional"`
+	Repositories            []string          `alloy:"repositories,attr,optional"`
+	Organizations           []string          `alloy:"organizations,attr,optional"`
+	Users                   []string          `alloy:"users,attr,optional"`
+	APIToken                alloytypes.Secret `alloy:"api_token,attr,optional"`
+	APITokenFile            string            `alloy:"api_token_file,attr,optional"`
+	GitHubAppKeyPath        string            `alloy:"github_app_key_path,attr,optional"`
+	GitHubAppID             int64             `alloy:"github_app_id,attr,optional"`
+	GitHubAppInstallationID int64             `alloy:"github_app_installation_id,attr,optional"`
+	GitHubRateLimit         float64           `alloy:"github_rate_limit,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -48,11 +53,15 @@ func (a *Arguments) SetToDefault() {
 
 func (a *Arguments) Convert() *github_exporter.Config {
 	return &github_exporter.Config{
-		APIURL:        a.APIURL,
-		Repositories:  a.Repositories,
-		Organizations: a.Organizations,
-		Users:         a.Users,
-		APIToken:      config_util.Secret(a.APIToken),
-		APITokenFile:  a.APITokenFile,
+		APIURL:                  a.APIURL,
+		Repositories:            a.Repositories,
+		Organizations:           a.Organizations,
+		Users:                   a.Users,
+		APIToken:                config_util.Secret(a.APIToken),
+		APITokenFile:            a.APITokenFile,
+		GitHubAppKeyPath:        a.GitHubAppKeyPath,
+		GitHubAppID:             a.GitHubAppID,
+		GitHubAppInstallationID: a.GitHubAppInstallationID,
+		GitHubRateLimit:         a.GitHubRateLimit,
 	}
 }

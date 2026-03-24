@@ -1,4 +1,4 @@
-//go:build !builtinassets
+//go:build !embedalloyui
 
 package ui
 
@@ -9,6 +9,6 @@ import (
 
 // Assets contains the UI's assets.
 func Assets() http.FileSystem {
-	assetsDir := filepath.Join(".", "internal", "web", "ui", "build")
+	assetsDir := filepath.Join(".", "internal", "web", "ui", "dist")
 	return http.Dir(assetsDir)
 }

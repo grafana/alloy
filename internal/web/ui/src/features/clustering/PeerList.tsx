@@ -1,8 +1,6 @@
-import { PeerInfo } from '../clustering/types';
-
-import Table from './Table';
-
+import { type PeerInfo } from '../clustering/types';
 import styles from './PeerList.module.css';
+import Table from './Table';
 
 interface PeerListProps {
   peers: PeerInfo[];

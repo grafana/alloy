@@ -3,36 +3,34 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/loki/loki.
 aliases:
   - ../loki.relabel/ # /docs/alloy/latest/reference/components/loki.relabel/
 description: Learn about loki.relabel
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: loki.relabel
 ---
 
-# loki.relabel
+# `loki.relabel`
 
-The `loki.relabel` component rewrites the label set of each log entry passed to
-its receiver by applying one or more relabeling `rule`s and forwards the
-results to the list of receivers in the component's arguments.
+The `loki.relabel` component rewrites the label set of each log entry passed to its receiver by applying one or more relabeling rules and forwards the results to the list of receivers in the component's arguments.
 
-If no labels remain after the relabeling rules are applied, then the log
-entries are dropped.
+If no labels remain after the relabeling rules are applied, then the log entries are dropped.
 
-The most common use of `loki.relabel` is to filter log entries or standardize
-the label set that is passed to one or more downstream receivers. The `rule`
-blocks are applied to the label set of each log entry in order of their
-appearance in the configuration file. The configured rules can be retrieved by
-calling the function in the `rules` export field.
+The most common use of `loki.relabel` is to filter log entries or standardize the label set that's passed to one or more downstream receivers.
+The `rule` blocks are applied to the label set of each log entry in order of their appearance in the configuration file.
+The configured rules can be retrieved by calling the function in the `rules` export field.
 
-If you're looking for a way to process the log entry contents, take a look at
-[the `loki.process` component][loki.process] instead.
+If you're looking for a way to process the log entry contents, use [the `loki.process` component][loki.process] instead.
 
 [loki.process]: ../loki.process/
 
-Multiple `loki.relabel` components can be specified by giving them different labels.
+You can specify multiple `loki.relabel` components by giving them different labels.
 
 ## Usage
 
 ```alloy
-loki.relabel "LABEL" {
-  forward_to = RECEIVER_LIST
+loki.relabel "<LABEL>" {
+  forward_to = <RECEIVER_LIST>
 
   rule {
     ...
@@ -44,24 +42,24 @@ loki.relabel "LABEL" {
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `loki.relabel`:
 
-Name             | Type             | Description                                                    | Default | Required
------------------|------------------|----------------------------------------------------------------|---------|---------
-`forward_to`     | `list(receiver)` | Where to forward log entries after relabeling.                 |         | yes
-`max_cache_size` | `int`            | The maximum number of elements to hold in the relabeling cache | 10,000  | no
+| Name             | Type             | Description                                                    | Default  | Required |
+| ---------------- | ---------------- | -------------------------------------------------------------- | -------- | -------- |
+| `forward_to`     | `list(receiver)` | Where to forward log entries after relabeling.                 |          | yes      |
+| `max_cache_size` | `int`            | The maximum number of elements to hold in the relabeling cache | `10000`  | no       |
 
 ## Blocks
 
-The following blocks are supported inside the definition of `loki.relabel`:
+You can use the following block with `loki.relabel`:
 
-Hierarchy | Name     | Description                                        | Required
-----------|----------|----------------------------------------------------|---------
-rule      | [rule][] | Relabeling rules to apply to received log entries. | no
+| Name           | Description                                        | Required |
+| -------------- | -------------------------------------------------- | -------- |
+| [`rule`][rule] | Relabeling rules to apply to received log entries. | no       |
 
-[rule]: #rule-block
+[rule]: #rule
 
-### rule block
+### `rule`
 
 {{< docs/shared lookup="reference/components/rule-block-logs.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -69,10 +67,10 @@ rule      | [rule][] | Relabeling rules to apply to received log entries. | no
 
 The following fields are exported and can be referenced by other components:
 
-Name       | Type           | Description
------------|----------------|-------------------------------------------------------------
-`receiver` | `receiver`     | The input receiver where log lines are sent to be relabeled.
-`rules`    | `RelabelRules` | The currently configured relabeling rules.
+| Name       | Type           | Description                                                  |
+| ---------- | -------------- | ------------------------------------------------------------ |
+| `receiver` | `receiver`     | The input receiver where log lines are sent to be relabeled. |
+| `rules`    | `RelabelRules` | The currently configured relabeling rules.                   |
 
 ## Component health
 
@@ -81,7 +79,7 @@ In those cases, exported fields are kept at their last healthy values.
 
 ## Debug information
 
-`loki.relabel` does not expose any component-specific debug information.
+`loki.relabel` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 

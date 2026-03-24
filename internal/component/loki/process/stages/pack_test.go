@@ -4,8 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
-	"github.com/grafana/loki/v3/pkg/logqlmodel"
+	"github.com/grafana/loki/pkg/push"
 	json "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -37,9 +37,8 @@ stage.match {
 // create a working pipeline.
 func TestPackPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	plName := "test_pack_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), &plName, registry)
+	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	l1Lbls := model.LabelSet{
@@ -114,13 +113,13 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry: loki.Entry{
 					Labels: model.LabelSet{
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
 						Line:      "test line 1",
 					},
@@ -132,9 +131,9 @@ func TestPackStage(t *testing.T) {
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
-						Line:      "{\"" + logqlmodel.PackedEntryKey + "\":\"test line 1\"}",
+						Line:      "{\"" + packedEntryKey + "\":\"test line 1\"}",
 					},
 				},
 			},
@@ -146,13 +145,13 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry: loki.Entry{
 					Labels: model.LabelSet{
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
 						Line:      "test line 1",
 					},
@@ -163,9 +162,9 @@ func TestPackStage(t *testing.T) {
 					Labels: model.LabelSet{
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
-						Line:      "{\"foo\":\"bar\",\"" + logqlmodel.PackedEntryKey + "\":\"test line 1\"}",
+						Line:      "{\"foo\":\"bar\",\"" + packedEntryKey + "\":\"test line 1\"}",
 					},
 				},
 			},
@@ -177,13 +176,13 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry: loki.Entry{
 					Labels: model.LabelSet{
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
 						Line:      "test line 1",
 					},
@@ -192,9 +191,9 @@ func TestPackStage(t *testing.T) {
 			expectedEntry: Entry{
 				Entry: loki.Entry{
 					Labels: model.LabelSet{},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
-						Line:      "{\"bar\":\"baz\",\"foo\":\"bar\",\"" + logqlmodel.PackedEntryKey + "\":\"test line 1\"}",
+						Line:      "{\"bar\":\"baz\",\"foo\":\"bar\",\"" + packedEntryKey + "\":\"test line 1\"}",
 					},
 				},
 			},
@@ -206,7 +205,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{
+				Extracted: map[string]any{
 					"extr1": "etr1val",
 					"extr2": "etr2val",
 				},
@@ -215,7 +214,7 @@ func TestPackStage(t *testing.T) {
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
 						Line:      "test line 1",
 					},
@@ -226,9 +225,9 @@ func TestPackStage(t *testing.T) {
 					Labels: model.LabelSet{
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
-						Line:      "{\"extr1\":\"etr1val\",\"foo\":\"bar\",\"" + logqlmodel.PackedEntryKey + "\":\"test line 1\"}",
+						Line:      "{\"extr1\":\"etr1val\",\"foo\":\"bar\",\"" + packedEntryKey + "\":\"test line 1\"}",
 					},
 				},
 			},
@@ -240,7 +239,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{
+				Extracted: map[string]any{
 					"extr1": "etr1val",
 					"extr2": []int{1, 2, 3},
 				},
@@ -249,7 +248,7 @@ func TestPackStage(t *testing.T) {
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
 						Line:      "test line 1",
 					},
@@ -260,9 +259,9 @@ func TestPackStage(t *testing.T) {
 					Labels: model.LabelSet{
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
-						Line:      "{\"foo\":\"bar\",\"" + logqlmodel.PackedEntryKey + "\":\"test line 1\"}",
+						Line:      "{\"foo\":\"bar\",\"" + packedEntryKey + "\":\"test line 1\"}",
 					},
 				},
 			},
@@ -274,7 +273,7 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: false,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{
+				Extracted: map[string]any{
 					"extr1":   "etr1val",
 					"ex\"tr2": `"fd"`,
 				},
@@ -283,7 +282,7 @@ func TestPackStage(t *testing.T) {
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
 						Line:      "test line 1",
 					},
@@ -294,9 +293,9 @@ func TestPackStage(t *testing.T) {
 					Labels: model.LabelSet{
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
-						Line:      "{\"ex\\\"tr2\":\"\\\"fd\\\"\",\"foo\":\"bar\",\"" + logqlmodel.PackedEntryKey + "\":\"test line 1\"}",
+						Line:      "{\"ex\\\"tr2\":\"\\\"fd\\\"\",\"foo\":\"bar\",\"" + packedEntryKey + "\":\"test line 1\"}",
 					},
 				},
 			},
@@ -308,13 +307,13 @@ func TestPackStage(t *testing.T) {
 				IngestTimestamp: true,
 			},
 			inputEntry: Entry{
-				Extracted: map[string]interface{}{},
+				Extracted: map[string]any{},
 				Entry: loki.Entry{
 					Labels: model.LabelSet{
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0),
 						Line:      "test line 1",
 					},
@@ -326,9 +325,9 @@ func TestPackStage(t *testing.T) {
 						"foo": "bar",
 						"bar": "baz",
 					},
-					Entry: logproto.Entry{
+					Entry: push.Entry{
 						Timestamp: time.Unix(1, 0), // Ignored in test execution below
-						Line:      "{\"" + logqlmodel.PackedEntryKey + "\":\"test line 1\"}",
+						Line:      "{\"" + packedEntryKey + "\":\"test line 1\"}",
 					},
 				},
 			},

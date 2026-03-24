@@ -32,7 +32,7 @@ type controller struct {
 }
 
 // Generous timeout period for configuring all informers
-const informerSyncTimeout = 10 * time.Second
+const informerSyncTimeout = 10 * time.Minute
 
 // newController creates a new, unstarted controller. The controller will
 // request a reconcile when the state of Kubernetes changes.
@@ -170,11 +170,22 @@ func (ctrl *controller) configureInformers(ctx context.Context, informers cache.
 	informerCtx, cancel := context.WithTimeout(ctx, informerSyncTimeout)
 	defer cancel()
 
+	// Register field index for spec.nodeName only if node filtering is enabled
+	if ctrl.reconciler.nodeFilterEnabled && ctrl.reconciler.getNodeFilterName() != "" {
+		if err := informers.IndexField(informerCtx, &corev1.Pod{}, "spec.nodeName", func(obj client.Object) []string {
+			pod := obj.(*corev1.Pod)
+			return []string{pod.Spec.NodeName}
+		}); err != nil {
+			return fmt.Errorf("failed to register field index for spec.nodeName: %w", err)
+		}
+		level.Debug(ctrl.log).Log("msg", "registered field index for spec.nodeName")
+	}
+
 	for _, ty := range types {
 		informer, err := informers.GetInformer(informerCtx, ty)
 		if err != nil {
 			if errors.Is(informerCtx.Err(), context.DeadlineExceeded) { // Check the context to prevent GetInformer returning a fake timeout
-				return fmt.Errorf("Timeout exceeded while configuring informers. Check the connection"+
+				return fmt.Errorf("timeout exceeded while configuring informers. Check the connection"+
 					" to the Kubernetes API is stable and that Alloy has appropriate RBAC permissions for %v", ty)
 			}
 
@@ -204,6 +215,6 @@ type onChangeEventHandler struct {
 
 var _ toolscache.ResourceEventHandler = onChangeEventHandler{}
 
-func (h onChangeEventHandler) OnAdd(_ interface{}, _ bool) { h.ChangeFunc() }
-func (h onChangeEventHandler) OnUpdate(_, _ interface{})   { h.ChangeFunc() }
-func (h onChangeEventHandler) OnDelete(_ interface{})      { h.ChangeFunc() }
+func (h onChangeEventHandler) OnAdd(_ any, _ bool) { h.ChangeFunc() }
+func (h onChangeEventHandler) OnUpdate(_, _ any)   { h.ChangeFunc() }
+func (h onChangeEventHandler) OnDelete(_ any)      { h.ChangeFunc() }

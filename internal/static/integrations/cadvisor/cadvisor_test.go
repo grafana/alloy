@@ -23,7 +23,7 @@ func TestConfig_DockerOnly(t *testing.T) {
 		ig, err := cfg.NewIntegration(util.TestLogger(t))
 		require.NoError(t, err)
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithCancel(t.Context())
 		cancel()
 		require.NoError(t, ig.Run(ctx))
 	})

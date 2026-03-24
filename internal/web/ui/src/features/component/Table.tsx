@@ -1,9 +1,8 @@
-import { CSSProperties } from 'react';
-
-import TableHead from './TableHead';
-import { SortOrder } from './types';
+import { type CSSProperties } from 'react';
 
 import styles from './Table.module.css';
+import TableHead from './TableHead';
+import { SortOrder } from './types';
 
 interface Props {
   tableHeaders: string[];

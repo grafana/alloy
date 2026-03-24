@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/component/common/config"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/common/model"
 	prom_discovery "github.com/prometheus/prometheus/discovery/nomad"
 	"github.com/stretchr/testify/require"
@@ -22,7 +24,10 @@ func TestAlloyUnmarshal(t *testing.T) {
 		tag_separator = ";"
 		enable_http2 = true
 		follow_redirects = false
-		proxy_url = "http://example:8080"`
+		proxy_url = "http://example:8080"
+		http_headers = {
+			"foo" = ["foobar"],
+		}`
 
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -37,6 +42,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 	assert.Equal(t, true, args.HTTPClientConfig.EnableHTTP2)
 	assert.Equal(t, false, args.HTTPClientConfig.FollowRedirects)
 	assert.Equal(t, "http://example:8080", args.HTTPClientConfig.ProxyConfig.ProxyURL.String())
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestConvert(t *testing.T) {
@@ -47,6 +55,13 @@ func TestConvert(t *testing.T) {
 		Region:          "a",
 		Server:          "http://foo:111",
 		TagSeparator:    ";",
+		HTTPClientConfig: config.HTTPClientConfig{
+			HTTPHeaders: &config.Headers{
+				Headers: map[string][]alloytypes.Secret{
+					"foo": {"foobar"},
+				},
+			},
+		},
 	}
 
 	promArgs := alloyArgsOAuth.Convert().(*prom_discovery.SDConfig)
@@ -56,6 +71,9 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, model.Duration(time.Minute), promArgs.RefreshInterval)
 	assert.Equal(t, "http://foo:111", promArgs.Server)
 	assert.Equal(t, ";", promArgs.TagSeparator)
+
+	header := promArgs.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestValidate(t *testing.T) {

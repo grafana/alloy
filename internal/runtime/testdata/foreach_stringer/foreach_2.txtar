@@ -1,0 +1,22 @@
+A collection containing a map.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = [{"a" = 1, "b" = "c"}]
+  var = "item"
+
+  template {
+    testcomponents.stringer "st" {
+      input_map = item
+      forward_to = [testcomponents.string_receiver.log.receiver]
+    }
+  }
+}
+
+// Receive strings and append them to a log,
+// separated by a new line.
+testcomponents.string_receiver "log" {
+}
+
+-- expected_debug_info.txt --
+map[string]interface {}{"a":1, "b":"c"}

@@ -140,6 +140,12 @@ func TestValue_Call(t *testing.T) {
 		require.Equal(t, int64(15+43), res.Int())
 	})
 
+	t.Run("equal - string", func(t *testing.T) {
+		v := value.String("aa")
+		w := value.String("aa")
+		require.True(t, v.Equal(w))
+	})
+
 	t.Run("fully variadic", func(t *testing.T) {
 		add := func(nums ...int) int {
 			var sum int

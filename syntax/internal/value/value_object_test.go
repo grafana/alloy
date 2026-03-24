@@ -57,10 +57,10 @@ func TestBlockRepresentation(t *testing.T) {
 	}
 
 	t.Run("Map decode", func(t *testing.T) {
-		var m map[string]interface{}
+		var m map[string]any
 		require.NoError(t, value.Decode(value.Encode(val), &m))
 
-		type object = map[string]interface{}
+		type object = map[string]any
 
 		expect := object{
 			"attr_1": "value_1",
@@ -121,10 +121,10 @@ func TestSquashedBlockRepresentation(t *testing.T) {
 	}
 
 	t.Run("Map decode", func(t *testing.T) {
-		var m map[string]interface{}
+		var m map[string]any
 		require.NoError(t, value.Decode(value.Encode(val), &m))
 
-		type object = map[string]interface{}
+		type object = map[string]any
 
 		expect := object{
 			"outer_field_1": "value1",
@@ -169,11 +169,11 @@ func TestSliceOfBlocks(t *testing.T) {
 	}
 
 	t.Run("Map decode", func(t *testing.T) {
-		var m map[string]interface{}
+		var m map[string]any
 		require.NoError(t, value.Decode(value.Encode(val), &m))
 
-		type object = map[string]interface{}
-		type list = []interface{}
+		type object = map[string]any
+		type list = []any
 
 		expect := object{
 			"attr_1": "value_1",

@@ -365,7 +365,7 @@ func TestAllServices(t *testing.T) {
 
 	d := newDiscovery(t, config)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	ch := make(chan []*targetgroup.Group)
 	done := make(chan struct{})
 	go func() {
@@ -386,7 +386,7 @@ func TestNoTargets(t *testing.T) {
 
 	d := newDiscovery(t, config)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	ch := make(chan []*targetgroup.Group)
 	go d.Run(ctx, ch)
 
@@ -403,7 +403,7 @@ func TestOneService(t *testing.T) {
 	config.Services = []string{"test"}
 	d := newDiscovery(t, config)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	ch := make(chan []*targetgroup.Group)
 	go d.Run(ctx, ch)
 	checkOneTarget(t, <-ch)

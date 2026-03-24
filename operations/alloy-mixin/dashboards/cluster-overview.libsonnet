@@ -10,7 +10,38 @@ local cluster_node_filename = 'alloy-cluster-node.json';
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=false,
-      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
+    ) + [
+      dashboard.newGroupByTemplateVariable(
+        query='instance,state,job,namespace,cluster,pod',
+        defaultValue='instance'
+      ),
+    ],
+
+  local minClusterSizeLineStyle = [
+    {
+      id: 'color',
+      value: {
+        fixedColor: 'red',
+        mode: 'fixed',
+      },
+    },
+    {
+      id: 'custom.lineStyle',
+      value: {
+        dash: [10, 10],
+        fill: 'dash',
+      },
+    },
+    {
+      id: 'custom.lineWidth',
+      value: 1,
+    },
+    {
+      id: 'custom.dashPattern',
+      value: [10, 10],
+    },
+  ],
 
   [filename]:
     dashboard.new(name='Alloy / Cluster Overview', tag=$._config.dashboardTag) +
@@ -23,7 +54,7 @@ local cluster_node_filename = 'alloy-cluster-node.json';
     dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
-      dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
+      dashboard.newLokiAnnotation('Deployments', '{cluster=~"$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
     ]) +
     dashboard.withPanelsMixin([
       // Nodes
@@ -111,9 +142,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
           ],
         )
       ),
-      // Convergance state
+      // Convergence state
       (
-        panel.new('Convergance state', 'stat') +
+        panel.new('Convergence state', 'stat') +
         panel.withDescription(|||
           Whether the cluster state has converged.
 
@@ -179,9 +210,9 @@ local cluster_node_filename = 'alloy-cluster-node.json';
         ]) +
         panel.withUnit('suffix:nodes')
       ),
-      // Convergance state timeline
+      // Convergence state timeline
       (
-        panel.new('Convergance state timeline', 'state-timeline') {
+        panel.new('Convergence state timeline', 'state-timeline') {
           fieldConfig: {
             defaults: {
               custom: {
@@ -224,6 +255,40 @@ local cluster_node_filename = 'alloy-cluster-node.json';
             type: 'value',
           },
         ])
+      ),
+
+      // Number of peers as seen by each instance.
+      (
+        panel.new(title='Number of peers seen by each instance', type='timeseries') +
+        panel.withUnit('peers') +
+        panel.withDescription(|||
+          The number of cluster peers seen by each instance.
+
+          When cluster is converged, every peer should see all the other instances. When we have a split brain or one
+          peer not joining the cluster, we will see two or more groups of instances that report different peer numbers
+          for an extended period of time and not converging.
+
+          This graph helps to identify which instances may be in a split brain state.
+
+          The minimum cluster size shows the value of the --cluster.wait-for-size flag, which specifies the minimum 
+          number of instances required before cluster-enabled components begin processing traffic.
+        |||) +
+        panel.withPosition({ h: 12, w: 24, x: 0, y: 18 }) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by(${groupby}) (cluster_node_peers{%(groupSelector)s})
+            ||| % $._config,
+            legendFormat='__auto',
+          ),
+          panel.newQuery(
+            expr= |||
+              avg(cluster_minimum_size{%(groupSelector)s})
+            ||| % $._config,
+            legendFormat='Minimum cluster size',
+          )
+        ]) + 
+        panel.withOverridesByName('Minimum cluster size', minClusterSizeLineStyle)
       ),
     ]),
 }

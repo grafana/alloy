@@ -13,16 +13,14 @@ import (
 
 func BenchmarkExprs(b *testing.B) {
 	// Shared scope across all tests below
-	scope := &vm.Scope{
-		Variables: map[string]interface{}{
-			"foobar": int(42),
-		},
-	}
+	scope := vm.NewScope(map[string]any{
+		"foobar": int(42),
+	})
 
 	tt := []struct {
 		name   string
 		input  string
-		expect interface{}
+		expect any
 	}{
 		// Binops
 		{"or", `false || true`, bool(true)},

@@ -4,12 +4,14 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "alloy.fullname" . }}-cluster
+  namespace: {{ include "alloy.namespace" . }}
   labels:
     {{- include "alloy.labels" . | nindent 4 }}
     app.kubernetes.io/component: networking
 spec:
   type: ClusterIP
   clusterIP: 'None'
+  publishNotReadyAddresses: true
   selector:
     {{- include "alloy.selectorLabels" . | nindent 4 }}
   ports:
@@ -28,5 +30,9 @@ spec:
       port: {{ $portMap.port }}
       targetPort: {{ $portMap.targetPort }}
       protocol: {{ coalesce $portMap.protocol "TCP" }}
+      {{- if not (empty $portMap.appProtocol) }}
+      # Useful for OpenShift clusters that want to expose Alloy ports externally
+      appProtocol: {{ $portMap.appProtocol }}
+      {{- end }}
   {{- end }}
 {{- end }}

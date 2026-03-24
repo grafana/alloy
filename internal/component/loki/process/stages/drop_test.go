@@ -7,12 +7,14 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/alloy/internal/util"
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // Not all these are tested but are here to make sure the different types marshal without error
@@ -55,7 +57,7 @@ func Test_dropStage_Process(t *testing.T) {
 		name       string
 		config     *DropConfig
 		labels     model.LabelSet
-		extracted  map[string]interface{}
+		extracted  map[string]any
 		t          time.Time
 		entry      string
 		shouldDrop bool
@@ -66,7 +68,7 @@ func Test_dropStage_Process(t *testing.T) {
 				LongerThan: tenBytes,
 			},
 			labels:     model.LabelSet{},
-			extracted:  map[string]interface{}{},
+			extracted:  map[string]any{},
 			entry:      "12345678901",
 			shouldDrop: true,
 		},
@@ -76,7 +78,7 @@ func Test_dropStage_Process(t *testing.T) {
 				LongerThan: tenBytes,
 			},
 			labels:     model.LabelSet{},
-			extracted:  map[string]interface{}{},
+			extracted:  map[string]any{},
 			entry:      "1234567890",
 			shouldDrop: false,
 		},
@@ -86,7 +88,7 @@ func Test_dropStage_Process(t *testing.T) {
 				LongerThan: tenBytes,
 			},
 			labels:     model.LabelSet{},
-			extracted:  map[string]interface{}{},
+			extracted:  map[string]any{},
 			entry:      "123456789",
 			shouldDrop: false,
 		},
@@ -96,7 +98,7 @@ func Test_dropStage_Process(t *testing.T) {
 				OlderThan: oneHour,
 			},
 			labels:     model.LabelSet{},
-			extracted:  map[string]interface{}{},
+			extracted:  map[string]any{},
 			t:          time.Now().Add(-2 * time.Hour),
 			shouldDrop: true,
 		},
@@ -106,7 +108,7 @@ func Test_dropStage_Process(t *testing.T) {
 				OlderThan: oneHour,
 			},
 			labels:     model.LabelSet{},
-			extracted:  map[string]interface{}{},
+			extracted:  map[string]any{},
 			t:          time.Now().Add(-5 * time.Minute),
 			shouldDrop: false,
 		},
@@ -116,7 +118,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Source: "key",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "",
 			},
 			shouldDrop: true,
@@ -127,7 +129,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Source: "key1",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "val1",
 			},
 			shouldDrop: false,
@@ -139,7 +141,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Value:  "val1",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "val1",
 			},
 			shouldDrop: true,
@@ -151,7 +153,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Value:  "val1",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "VALRUE1",
 			},
 			shouldDrop: false,
@@ -163,7 +165,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Value:  "50",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"level": 50,
 			},
 			shouldDrop: true,
@@ -175,7 +177,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Value:  "50",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"level": "50",
 			},
 			shouldDrop: true,
@@ -187,7 +189,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Value:  "50",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"level": 100,
 			},
 			shouldDrop: false,
@@ -199,7 +201,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Value:  "50",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"level": "100",
 			},
 			shouldDrop: false,
@@ -211,7 +213,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Value:  `val1;val200.*`,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key1": "val1",
 				"key2": "val200.*",
 			},
@@ -225,7 +227,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Value:     `val1|val200[a]`,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key1": "val1",
 				"key2": "val200[a]",
 			},
@@ -238,7 +240,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Expression: "50",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": 50,
 			},
 			shouldDrop: true,
@@ -250,7 +252,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Expression: "50",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "50",
 			},
 			shouldDrop: true,
@@ -262,7 +264,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Expression: `val\d{1};val\d{3}$`,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key1": "val1",
 				"key2": "val200",
 			},
@@ -276,7 +278,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Expression: `val\d{1}#val\d{3}$`,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key1": "val1",
 				"key2": "val200",
 			},
@@ -289,7 +291,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Expression: ".*val.*",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "pal1",
 			},
 			shouldDrop: false,
@@ -301,7 +303,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Expression: `match\d+;match\d+`,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key1": "match1",
 				"key2": "notmatch2",
 			},
@@ -315,7 +317,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Expression: `match\d;match\d`,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key1": "match1",
 				"key2": "match2",
 			},
@@ -328,7 +330,7 @@ func Test_dropStage_Process(t *testing.T) {
 				Expression: ".*val.*",
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"pokey": "pal1",
 			},
 			shouldDrop: false,
@@ -340,7 +342,7 @@ func Test_dropStage_Process(t *testing.T) {
 			},
 			labels:     model.LabelSet{},
 			entry:      "this is a line which does not match the regex",
-			extracted:  map[string]interface{}{},
+			extracted:  map[string]any{},
 			shouldDrop: false,
 		},
 		{
@@ -350,7 +352,7 @@ func Test_dropStage_Process(t *testing.T) {
 			},
 			labels:     model.LabelSet{},
 			entry:      "this is a line with the word value in it",
-			extracted:  map[string]interface{}{},
+			extracted:  map[string]any{},
 			shouldDrop: true,
 		},
 		{
@@ -360,7 +362,7 @@ func Test_dropStage_Process(t *testing.T) {
 				LongerThan: tenBytes,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "pal1",
 			},
 			entry:      "12345678901",
@@ -373,7 +375,7 @@ func Test_dropStage_Process(t *testing.T) {
 				LongerThan: tenBytes,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "pal1",
 			},
 			entry:      "123456789",
@@ -386,7 +388,7 @@ func Test_dropStage_Process(t *testing.T) {
 				LongerThan: tenBytes,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"WOOOOOOOOOOOOOO": "pal1",
 			},
 			entry:      "123456789012",
@@ -401,7 +403,7 @@ func Test_dropStage_Process(t *testing.T) {
 				LongerThan: tenBytes,
 			},
 			labels: model.LabelSet{},
-			extracted: map[string]interface{}{
+			extracted: map[string]any{
 				"key": "must contain value to match",
 			},
 			t:          time.Now().Add(-2 * time.Hour),
@@ -411,7 +413,7 @@ func Test_dropStage_Process(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateDropConfig(tt.config)
+			_, err := validateDropConfig(tt.config)
 			if err != nil {
 				t.Error(err)
 			}
@@ -430,9 +432,8 @@ func Test_dropStage_Process(t *testing.T) {
 
 func TestDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	plName := "test_drop_pipeline"
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), &plName, registry)
+	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 	out := processEntries(pl,
 		newEntry(nil, nil, testMatchLogLineApp1, time.Now()),
@@ -465,7 +466,7 @@ func Test_validateDropConfig(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateDropConfig(tt.config); ((err != nil) && (err.Error() != tt.wantErr.Error())) || (err == nil && tt.wantErr != nil) {
+			if _, err := validateDropConfig(tt.config); ((err != nil) && (err.Error() != tt.wantErr.Error())) || (err == nil && tt.wantErr != nil) {
 				t.Errorf("validateDropConfig() error = %v, wantErr = %v", err, tt.wantErr)
 			}
 		})

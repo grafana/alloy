@@ -36,6 +36,7 @@ func newTopicManager(client topicClient, topics []string) (*topicManager, error)
 		}
 		if t[0] != '^' {
 			matches = append(matches, t)
+			continue
 		}
 		re, err := regexp.Compile(t)
 		if err != nil {

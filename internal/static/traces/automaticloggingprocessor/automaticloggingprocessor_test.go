@@ -1,7 +1,6 @@
 package automaticloggingprocessor
 
 import (
-	"context"
 	"testing"
 
 	"github.com/grafana/alloy/internal/static/logs"
@@ -58,7 +57,7 @@ func TestLogToStdoutSet(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, p.(*automaticLoggingProcessor).logToStdout)
 
-	err = p.Start(context.Background(), componenttest.NewNopHost())
+	err = p.Start(t.Context(), componenttest.NewNopHost())
 	require.NoError(t, err)
 
 	cfg = &AutomaticLoggingConfig{

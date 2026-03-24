@@ -20,8 +20,12 @@ type DebugMimirNamespace struct {
 	NumRuleGroups int    `alloy:"num_rule_groups,attr"`
 }
 
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	var output DebugInfo
+
+	if c.eventProcessor == nil {
+		return output
+	}
 
 	currentState := c.eventProcessor.getMimirState()
 	for namespace := range currentState {

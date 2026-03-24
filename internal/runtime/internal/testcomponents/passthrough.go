@@ -77,7 +77,7 @@ func (t *Passthrough) Update(args component.Arguments) error {
 }
 
 // DebugInfo implements DebugComponent.
-func (t *Passthrough) DebugInfo() interface{} {
+func (t *Passthrough) DebugInfo() any {
 	// Useless, but for demonstration purposes shows how to export debug
 	// information. Real components would want to use something interesting here
 	// which allow the user to investigate issues of the internal state of a

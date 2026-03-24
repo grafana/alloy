@@ -9,6 +9,8 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -25,7 +27,7 @@ func (k8sAttributesProcessorConverter) InputComponentName() string {
 	return "otelcol.processor.k8sattributes"
 }
 
-func (k8sAttributesProcessorConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (k8sAttributesProcessorConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,20 +44,22 @@ func (k8sAttributesProcessorConverter) ConvertAndAppend(state *State, id compone
 	return diags
 }
 
-func toK8SAttributesProcessor(state *State, id component.InstanceID, cfg *k8sattributesprocessor.Config) *k8sattributes.Arguments {
+func toK8SAttributesProcessor(state *State, id componentstatus.InstanceID, cfg *k8sattributesprocessor.Config) *k8sattributes.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &k8sattributes.Arguments{
 		AuthType:    string(cfg.AuthType),
 		Passthrough: cfg.Passthrough,
 		ExtractConfig: k8sattributes.ExtractConfig{
-			Metadata:    cfg.Extract.Metadata,
-			Annotations: toFilterExtract(cfg.Extract.Annotations),
-			Labels:      toFilterExtract(cfg.Extract.Labels),
+			Metadata:                     cfg.Extract.Metadata,
+			Annotations:                  toFilterExtract(cfg.Extract.Annotations),
+			Labels:                       toFilterExtract(cfg.Extract.Labels),
+			OtelAnnotations:              cfg.Extract.OtelAnnotations,
+			DeploymentNameFromReplicaSet: cfg.Extract.DeploymentNameFromReplicaSet,
 		},
 		Filter: k8sattributes.FilterConfig{
 			Node:      cfg.Filter.Node,
@@ -63,8 +67,10 @@ func toK8SAttributesProcessor(state *State, id component.InstanceID, cfg *k8satt
 			Fields:    toFilterFields(cfg.Filter.Fields),
 			Labels:    toFilterFields(cfg.Filter.Labels),
 		},
-		PodAssociations: toPodAssociations(cfg.Association),
-		Exclude:         toExclude(cfg.Exclude),
+		PodAssociations:        toPodAssociations(cfg.Association),
+		Exclude:                toExclude(cfg.Exclude),
+		WaitForMetadata:        cfg.WaitForMetadata,
+		WaitForMetadataTimeout: cfg.WaitForMetadataTimeout,
 
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(nextMetrics),
@@ -124,7 +130,6 @@ func toFilterExtract(cfg []k8sattributesprocessor.FieldExtractConfig) []k8sattri
 			TagName:  c.TagName,
 			Key:      c.Key,
 			KeyRegex: c.KeyRegex,
-			Regex:    c.Regex,
 			From:     c.From,
 		})
 	}

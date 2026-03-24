@@ -9,10 +9,11 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
-func StringifyInstanceID(id component.InstanceID) string {
-	return fmt.Sprintf("%s/%s", StringifyKind(id.Kind), id.ID)
+func StringifyInstanceID(id componentstatus.InstanceID) string {
+	return fmt.Sprintf("%s/%s", StringifyKind(id.Kind()), id.ComponentID())
 }
 
 func StringifyKind(k component.Kind) string {
@@ -28,7 +29,7 @@ func StringifyKind(k component.Kind) string {
 	case component.KindConnector:
 		return "connector"
 	default:
-		return fmt.Sprintf("Kind(%d)", k)
+		return fmt.Sprintf("Kind(%s)", k.String())
 	}
 }
 
@@ -57,7 +58,7 @@ func ConvertWithoutValidation(in []byte, extraArgs []string) ([]byte, diag.Diagn
 
 	f := builder.NewFile()
 
-	diags.AddAll(AppendConfig(f, cfg, "", nil))
+	diags.AddAll(AppendConfig(f, cfg, "", nil, true))
 	diags.AddAll(common.ValidateNodes(f))
 
 	var buf bytes.Buffer

@@ -67,6 +67,22 @@ func (ds *Diagnostics) RemoveDiagsBySeverity(severity Severity) {
 	*ds = newDiags
 }
 
+func (ds *Diagnostics) RemoveDiagsByText(diagsToRemove map[string]struct{}) {
+	if len(diagsToRemove) == 0 {
+		return
+	}
+
+	var newDiags Diagnostics
+
+	for _, diag := range *ds {
+		if _, shouldRemove := diagsToRemove[diag.String()]; !shouldRemove {
+			newDiags = append(newDiags, diag)
+		}
+	}
+
+	*ds = newDiags
+}
+
 func (ds *Diagnostics) HasSeverityLevel(severity Severity) bool {
 	for _, diag := range *ds {
 		if diag.Severity == severity {

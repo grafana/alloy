@@ -13,11 +13,12 @@ import (
 	"github.com/prometheus/common/model"
 	promCfg "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/static/config/encoder"
-	"github.com/grafana/alloy/internal/static/metrics"
 	"github.com/grafana/alloy/internal/static/metrics/instance"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -75,10 +76,14 @@ metrics:
     scrape_timeout: 33s`
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
-			ScrapeInterval:     model.Duration(1 * time.Minute),
-			ScrapeTimeout:      model.Duration(33 * time.Second),
-			ScrapeProtocols:    promCfg.DefaultScrapeProtocols,
-			EvaluationInterval: model.Duration(1 * time.Minute),
+			ScrapeInterval:             model.Duration(1 * time.Minute),
+			ScrapeTimeout:              model.Duration(33 * time.Second),
+			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
+			EvaluationInterval:         model.Duration(1 * time.Minute),
+			ExtraScrapeMetrics:         ptr.To(false),
+			MetricNameValidationScheme: model.UTF8Validation,
+			MetricNameEscapingScheme:   model.AllowUTF8,
+			ScrapeNativeHistograms:     ptr.To(false),
 		},
 	}
 
@@ -96,12 +101,17 @@ metrics:
   wal_directory: /tmp/wal
   global:
     scrape_timeout: ${SCRAPE_TIMEOUT}`
+	falseVal := false
 	expect := instance.GlobalConfig{
 		Prometheus: promCfg.GlobalConfig{
-			ScrapeInterval:     model.Duration(1 * time.Minute),
-			ScrapeTimeout:      model.Duration(33 * time.Second),
-			ScrapeProtocols:    promCfg.DefaultScrapeProtocols,
-			EvaluationInterval: model.Duration(1 * time.Minute),
+			ScrapeInterval:             model.Duration(1 * time.Minute),
+			ScrapeTimeout:              model.Duration(33 * time.Second),
+			ScrapeProtocols:            promCfg.DefaultScrapeProtocols,
+			EvaluationInterval:         model.Duration(1 * time.Minute),
+			MetricNameValidationScheme: model.UTF8Validation,
+			MetricNameEscapingScheme:   model.AllowUTF8,
+			ScrapeNativeHistograms:     &falseVal,
+			ExtraScrapeMetrics:         &falseVal,
 		},
 	}
 	t.Setenv("SCRAPE_TIMEOUT", "33s")
@@ -121,7 +131,7 @@ metrics:
   global:
     external_labels:
       foo: ${1}`
-	expect := labels.Labels{{Name: "foo", Value: "${1}"}}
+	expect := labels.FromStrings("foo", "${1}")
 
 	fs := flag.NewFlagSet("test", flag.ExitOnError)
 	c, err := LoadFromFunc(fs, []string{"-config.file", "test"}, func(_, _ string, _ bool, c *Config) error {
@@ -181,8 +191,11 @@ func TestConfig_Defaults(t *testing.T) {
 	err := LoadBytes([]byte(`{}`), false, &c)
 	require.NoError(t, err)
 
-	require.Equal(t, metrics.DefaultConfig, c.Metrics)
-	require.Equal(t, DefaultVersionedIntegrations(), c.Integrations)
+	defaultConfig := DefaultConfig()
+	util.DefaultConfigFromFlags(&defaultConfig)
+
+	assert.Equal(t, defaultConfig.Metrics, c.Metrics)
+	assert.Equal(t, DefaultVersionedIntegrations(), c.Integrations)
 }
 
 func TestConfig_TracesLokiValidates(t *testing.T) {
@@ -388,7 +401,7 @@ logs:
 		return LoadBytes([]byte(cfg), true, c)
 	})
 	require.NoError(t, err)
-	pipelineStages := myCfg.Logs.Configs[0].ScrapeConfig[0].PipelineStages[0].(map[interface{}]interface{})
+	pipelineStages := myCfg.Logs.Configs[0].ScrapeConfig[0].PipelineStages[0].(map[any]any)
 	expected := `\\temp\\Logs\\(?P<log_app>.+?)\\`
 	require.Equal(t, expected, pipelineStages["expression"].(string))
 }

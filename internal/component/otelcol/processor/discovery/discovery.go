@@ -4,19 +4,22 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/alloy/syntax"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
 func init() {
@@ -78,13 +81,14 @@ func (args *Arguments) Validate() error {
 
 // Component is the otelcol.exporter.discovery component.
 type Component struct {
-	consumer              *promsdconsumer.Consumer
-	logger                log.Logger
-	liveDebuggingConsumer *livedebuggingconsumer.Consumer
-	debugDataPublisher    livedebugging.DebugDataPublisher
+	consumer           *promsdconsumer.Consumer
+	logger             log.Logger
+	debugDataPublisher livedebugging.DebugDataPublisher
 
 	opts component.Options
 	args Arguments
+
+	updateMut sync.Mutex
 }
 
 var (
@@ -103,19 +107,21 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	liveDebuggingConsumer := livedebuggingconsumer.New(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID)
-
-	traces := c.Output.Traces
-	if debugDataPublisher.(livedebugging.DebugDataPublisher).IsActive(livedebugging.ComponentID(o.ID)) {
-		traces = append(traces, liveDebuggingConsumer)
-	}
+	nextTraces := c.Output.Traces
+	fanout := fanoutconsumer.Traces(nextTraces)
+	tracesInterceptor := interceptconsumer.Traces(fanout,
+		func(ctx context.Context, td ptrace.Traces) error {
+			livedebuggingpublisher.PublishTracesIfActive(debugDataPublisher.(livedebugging.DebugDataPublisher), o.ID, td, otelcol.GetComponentMetadata(nextTraces))
+			return fanout.ConsumeTraces(ctx, td)
+		},
+	)
 
 	consumerOpts := promsdconsumer.Options{
 		// Don't bother setting up labels - this will be done by the Update() function.
 		HostLabels:      map[string]discovery.Target{},
 		OperationType:   c.OperationType,
 		PodAssociations: c.PodAssociations,
-		NextConsumer:    fanoutconsumer.Traces(traces),
+		NextConsumer:    tracesInterceptor,
 	}
 	consumer, err := promsdconsumer.NewConsumer(consumerOpts, o.Logger)
 	if err != nil {
@@ -123,11 +129,10 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 
 	res := &Component{
-		consumer:              consumer,
-		logger:                o.Logger,
-		opts:                  o,
-		debugDataPublisher:    debugDataPublisher.(livedebugging.DebugDataPublisher),
-		liveDebuggingConsumer: liveDebuggingConsumer,
+		consumer:           consumer,
+		logger:             o.Logger,
+		opts:               o,
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	if err := res.Update(c); err != nil {
@@ -137,7 +142,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// Export the consumer.
 	// This will remain the same throughout the component's lifetime,
 	// so we do this during component construction.
-	export := lazyconsumer.New(context.Background())
+	export := lazyconsumer.New(context.Background(), o.ID)
 	export.SetConsumers(res.consumer, nil, nil)
 	o.OnStateChange(otelcol.ConsumerExports{Input: export})
 
@@ -154,6 +159,8 @@ func (c *Component) Run(ctx context.Context) error {
 
 // Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
+	c.updateMut.Lock()
+	defer c.updateMut.Unlock()
 	c.args = newConfig.(Arguments)
 
 	hostLabels := make(map[string]discovery.Target)
@@ -167,16 +174,21 @@ func (c *Component) Update(newConfig component.Arguments) error {
 
 		hostLabels[host] = promsdconsumer.NewTargetsWithNonInternalLabels(labels)
 	}
-	traces := c.args.Output.Traces
-	if c.debugDataPublisher.IsActive(livedebugging.ComponentID(c.opts.ID)) {
-		traces = append(traces, c.liveDebuggingConsumer)
-	}
+	nextTraces := c.args.Output.Traces
+	fanout := fanoutconsumer.Traces(nextTraces)
+
+	tracesInterceptor := interceptconsumer.Traces(fanout,
+		func(ctx context.Context, td ptrace.Traces) error {
+			livedebuggingpublisher.PublishTracesIfActive(c.debugDataPublisher, c.opts.ID, td, otelcol.GetComponentMetadata(nextTraces))
+			return fanout.ConsumeTraces(ctx, td)
+		},
+	)
 
 	err := c.consumer.UpdateOptions(promsdconsumer.Options{
 		HostLabels:      hostLabels,
 		OperationType:   c.args.OperationType,
 		PodAssociations: c.args.PodAssociations,
-		NextConsumer:    fanoutconsumer.Traces(traces),
+		NextConsumer:    tracesInterceptor,
 	})
 
 	if err != nil {
@@ -186,6 +198,4 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	return nil
 }
 
-func (c *Component) LiveDebugging(_ int) {
-	c.Update(c.args)
-}
+func (c *Component) LiveDebugging() {}

@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
 )
@@ -21,18 +22,27 @@ func init() {
 	})
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
-	exporterConfig, err := ConvertToYACE(a)
+	exporterConfig, err := ConvertToYACE(a, opts.Logger)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid cloudwatch exporter configuration: %w", err)
 	}
 	// yaceSess expects a default value of True
 	fipsEnabled := !a.FIPSDisabled
 
-	if a.DecoupledScrape.Enabled {
-		return cloudwatch_exporter.NewDecoupledCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, a.DecoupledScrape.ScrapeInterval, fipsEnabled, a.Debug), getHash(a), nil
+	if !a.UseAWSSDKVersion2 {
+		level.Warn(opts.Logger).Log(
+			"msg",
+			"the `aws_sdk_version_v2` argument is deprecated and will be removed in future releases - AWS SDK for Go v1 is end-of-life, remove this argument to use AWS SDK for Go v2",
+		)
 	}
 
-	return cloudwatch_exporter.NewCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, fipsEnabled, a.Debug), getHash(a), nil
+	if a.DecoupledScrape.Enabled {
+		exp, err := cloudwatch_exporter.NewDecoupledCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, a.DecoupledScrape.ScrapeInterval, fipsEnabled, a.LabelsSnakeCase, a.Debug, a.UseAWSSDKVersion2)
+		return exp, getHash(a), err
+	}
+
+	exp, err := cloudwatch_exporter.NewCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, fipsEnabled, a.LabelsSnakeCase, a.Debug, a.UseAWSSDKVersion2)
+	return exp, getHash(a), err
 }

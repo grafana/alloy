@@ -3,32 +3,35 @@ package file_match
 import (
 	"os"
 	"path/filepath"
+	"time"
 
-	"github.com/bmatcuk/doublestar"
 	"github.com/go-kit/log"
 
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/util/glob"
 )
 
 // watch handles a single discovery.target for file watching.
 type watch struct {
-	target discovery.Target
-	log    log.Logger
+	target          discovery.Target
+	log             log.Logger
+	ignoreOlderThan time.Duration
+	globber         glob.Globber
 }
 
 func (w *watch) getPaths() ([]discovery.Target, error) {
 	allMatchingPaths := make([]discovery.Target, 0)
 
-	matches, err := doublestar.Glob(w.getPath())
+	matches, err := w.globber.FilepathGlob(w.getPath())
 	if err != nil {
 		return nil, err
 	}
 	exclude := w.getExcludePath()
 	for _, m := range matches {
 		if exclude != "" {
-			if match, _ := doublestar.PathMatch(exclude, m); match {
+			if match, _ := w.globber.PathMatch(filepath.FromSlash(exclude), m); match {
 				continue
 			}
 		}
@@ -41,31 +44,36 @@ func (w *watch) getPaths() ([]discovery.Target, error) {
 		if err != nil {
 			// On some filesystems we can get errors accessing the discovered paths. Don't log these as errors.
 			// local.file_match will retry on the next sync period if the access is blocked temporarily only.
-			if utils.IsEphemeralOrFileClosed(err) {
+			if util.IsEphemeralOrFileClosed(err) {
 				level.Debug(w.log).Log("msg", "I/O error when getting os stat", "path", abs, "err", err)
 			} else {
 				level.Error(w.log).Log("msg", "error getting os stat", "path", abs, "err", err)
 			}
 			continue
 		}
+
 		if fi.IsDir() {
 			continue
 		}
-		dt := discovery.Target{}
-		for dk, v := range w.target {
-			dt[dk] = v
+
+		if w.ignoreOlderThan != 0 && fi.ModTime().Before(time.Now().Add(-w.ignoreOlderThan)) {
+			continue
 		}
-		dt["__path__"] = abs
-		allMatchingPaths = append(allMatchingPaths, dt)
+
+		tb := discovery.NewTargetBuilderFrom(w.target)
+		tb.Set("__path__", abs)
+		allMatchingPaths = append(allMatchingPaths, tb.Target())
 	}
 
 	return allMatchingPaths, nil
 }
 
 func (w *watch) getPath() string {
-	return w.target["__path__"]
+	path, _ := w.target.Get("__path__")
+	return path
 }
 
 func (w *watch) getExcludePath() string {
-	return w.target["__path_exclude__"]
+	excludePath, _ := w.target.Get("__path_exclude__")
+	return excludePath
 }

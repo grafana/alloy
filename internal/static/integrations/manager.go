@@ -71,12 +71,12 @@ type ManagerConfig struct {
 }
 
 // MarshalYAML implements yaml.Marshaler for ManagerConfig.
-func (c ManagerConfig) MarshalYAML() (interface{}, error) {
+func (c ManagerConfig) MarshalYAML() (any, error) {
 	return MarshalYAML(c)
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for ManagerConfig.
-func (c *ManagerConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *ManagerConfig) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultManagerConfig()
 	return UnmarshalYAML(c, unmarshal)
 }

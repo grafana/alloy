@@ -149,11 +149,11 @@ func inferMetadata(args component.Arguments, exports component.Exports) Metadata
 	return m
 }
 
-func hasFieldOfType(obj interface{}, fieldType reflect.Type) bool {
+func hasFieldOfType(obj any, fieldType reflect.Type) bool {
 	objValue := reflect.ValueOf(obj)
 
 	// If the object is a pointer, dereference it
-	for objValue.Kind() == reflect.Ptr {
+	for objValue.Kind() == reflect.Pointer {
 		objValue = objValue.Elem()
 	}
 
@@ -187,7 +187,7 @@ func hasFieldOfType(obj interface{}, fieldType reflect.Type) bool {
 		}
 
 		// If the field is a pointer, create a new instance of the pointer type and recursively check its fields
-		if fv.Kind() == reflect.Ptr {
+		if fv.Kind() == reflect.Pointer {
 			if hasFieldOfType(reflect.New(ft.Elem()).Interface(), fieldType) {
 				return true
 			}

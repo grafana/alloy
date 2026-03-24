@@ -1,0 +1,14 @@
+clients:
+  - url: http://localhost/loki/api/v1/push
+scrape_configs:
+  - job_name: test_invalid_syslog_format
+    syslog:
+      listen_address: localhost:4000
+      listen_protocol: udp
+      idle_timeout: 1m
+      label_structured_data: true
+      use_incoming_timestamp: true
+      syslog_format: foobar
+
+tracing: {enabled: false}
+server: {register_instrumentation: false}

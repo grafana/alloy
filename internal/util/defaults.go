@@ -6,7 +6,7 @@ import "flag"
 // retrieving default values that are registered as flags.
 //
 // cfg must implement either PrefixedConfigFlags or ConfigFlags.
-func DefaultConfigFromFlags(cfg interface{}) interface{} {
+func DefaultConfigFromFlags(cfg any) any {
 	// This function is super ugly but is required for mixing the combination
 	// of mechanisms for providing default for config structs that are used
 	// across both Prometheus (via UnmarshalYAML and assigning the default object)

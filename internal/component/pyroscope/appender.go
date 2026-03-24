@@ -2,31 +2,51 @@ package pyroscope
 
 import (
 	"context"
+	"net/url"
 	"sync"
 	"time"
 
+	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 )
 
 const (
-	LabelNameDelta = "__delta__"
+	LabelNameDelta   = "__delta__"
+	LabelName        = "__name__"
+	LabelServiceName = "service_name"
+
+	HeaderContentType = "Content-Type"
 )
 
 var NoopAppendable = AppendableFunc(func(_ context.Context, _ labels.Labels, _ []*RawSample) error { return nil })
 
 type Appendable interface {
+	debuginfo.Appender
+
 	Appender() Appender
 }
 
 type Appender interface {
 	Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error
+	AppendIngest(ctx context.Context, profile *IncomingProfile) error
 }
 
 type RawSample struct {
+	ID string
 	// raw_profile is the set of bytes of the pprof profile
 	RawProfile []byte
+}
+
+type IncomingProfile struct {
+	// RawBody is the set of bytes of the pprof profile, as its sent by the client
+	RawBody []byte
+	// ContentType is the content type of the RawBody. This must be sent on to the endpoints.
+	ContentType []string
+	URL         *url.URL
+	Labels      labels.Labels
 }
 
 var _ Appendable = (*Fanout)(nil)
@@ -39,6 +59,25 @@ type Fanout struct {
 	// ComponentID is what component this belongs to.
 	componentID  string
 	writeLatency prometheus.Histogram
+}
+
+func (f *Fanout) Client() debuginfogrpc.DebuginfoServiceClient {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	for _, c := range f.children {
+		if client := c.Client(); client != nil {
+			return client
+		}
+	}
+	return nil
+}
+
+func (f *Fanout) Upload(j debuginfo.UploadJob) {
+	f.mut.RLock()
+	defer f.mut.RUnlock()
+	for _, c := range f.children {
+		c.Upload(j)
+	}
 }
 
 // NewFanout creates a fanout appendable.
@@ -88,6 +127,10 @@ func (f *Fanout) Appender() Appender {
 	return app
 }
 
+func (f *Fanout) String() string {
+	return f.componentID + ".receiver"
+}
+
 var _ Appender = (*appender)(nil)
 
 type appender struct {
@@ -112,12 +155,26 @@ func (a *appender) Append(ctx context.Context, labels labels.Labels, samples []*
 	return multiErr
 }
 
-type AppendableFunc func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
+// AppendIngest satisfies the AppenderIngest interface.
+func (a *appender) AppendIngest(ctx context.Context, profile *IncomingProfile) error {
+	now := time.Now()
+	defer func() {
+		a.writeLatency.Observe(time.Since(now).Seconds())
+	}()
+	var multiErr error
+	for _, x := range a.children {
+		// Create a copy for each child
+		profileCopy := &IncomingProfile{
+			RawBody:     profile.RawBody,     // []byte is immutable, safe to share
+			ContentType: profile.ContentType, // []string is immutable, safe to share
+			URL:         profile.URL,         // URL is immutable once created
+			Labels:      profile.Labels.Copy(),
+		}
 
-func (f AppendableFunc) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
-	return f(ctx, labels, samples)
-}
-
-func (f AppendableFunc) Appender() Appender {
-	return f
+		err := x.AppendIngest(ctx, profileCopy)
+		if err != nil {
+			multiErr = multierror.Append(multiErr, err)
+		}
+	}
+	return multiErr
 }

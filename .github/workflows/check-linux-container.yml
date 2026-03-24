@@ -1,0 +1,36 @@
+name: Check Linux container
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile'
+      - 'tools/ci/docker-containers'
+      - '.github/workflows/check-linux-container.yml'
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'tools/ci/docker-containers'
+      - '.github/workflows/check-linux-container.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  check-linux-container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel
+      push: false
+
+  check-linux-boringcrypto-container:
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel-boringcrypto
+      push: false

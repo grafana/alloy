@@ -35,8 +35,8 @@ func AssertValueInReg(t assert.TestingT, reg *prometheus.Registry, metricName st
 
 func AssertValueInStr(t assert.TestingT, allMetrics string, metricName string, labels labels.Labels, value float64) {
 	ls := ""
-	if len(labels) != 0 {
-		ls = strings.Replace(labels.String(), ", ", ",", -1)
+	if labels.Len() != 0 {
+		ls = strings.ReplaceAll(labels.String(), ", ", ",")
 	}
 
 	// NOTE: currently no support for exemplars or explicit timestamps

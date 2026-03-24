@@ -1,0 +1,58 @@
+receivers:
+  syslog:
+    location: "UTC"
+    protocol: "rfc5424"
+    enable_octet_counting: true
+    max_octets: 16000
+    allow_skip_pri_header: true
+    non_transparent_framing_trailer: "NUL"
+    on_error: "drop"
+    tcp:
+      listen_address: "localhost:1514"
+      max_log_size: "2MiB"
+      one_log_per_packet: true
+      add_attributes: true
+      encoding: "utf-16be"
+      preserve_leading_whitespaces: true
+      preserve_trailing_whitespaces: true
+      tls:
+        include_system_ca_certs_pool: true
+        reload_interval: "1m"
+    udp:
+      listen_address: "localhost:1515"
+      one_log_per_packet: false
+      add_attributes: false
+      encoding: "utf-16le"
+      preserve_leading_whitespaces: false
+      preserve_trailing_whitespaces: false
+      async:
+        readers: 2
+        processors: 4
+        max_queue_length: 1000
+      multiline:
+        line_end_pattern: "logend"
+        omit_pattern: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: "10s"
+      max_interval: "1m"
+      max_elapsed_time: "10m"
+    
+
+exporters:
+  syslog:
+    endpoint: localhost
+    port: 1514
+    protocol: "rfc5424"
+    network: "tcp"
+    enable_octet_counting: true
+    tls:
+      insecure: false
+      insecure_skip_verify: true
+
+service:
+  pipelines:
+    logs:
+      receivers: [syslog]
+      processors: []
+      exporters: [syslog]

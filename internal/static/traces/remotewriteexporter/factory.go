@@ -42,7 +42,7 @@ func createDefaultConfig() component.Config {
 
 func createMetricsExporter(
 	_ context.Context,
-	_ exporter.CreateSettings,
+	_ exporter.Settings,
 	cfg component.Config,
 ) (exporter.Metrics, error) {
 

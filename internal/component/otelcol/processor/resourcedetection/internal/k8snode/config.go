@@ -51,8 +51,8 @@ func (c *Config) SetToDefault() {
 	*c = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		//TODO: K8sAPIConfig is squashed - is there a better way to "convert" it?
 		"auth_type":           args.KubernetesAPIConfig.AuthType,
 		"context":             args.KubernetesAPIConfig.Context,
@@ -67,8 +67,8 @@ type ResourceAttributesConfig struct {
 	K8sNodeUID  rac.ResourceAttributeConfig `alloy:"k8s.node.uid,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"k8s.node.name": r.K8sNodeName.Convert(),
 		"k8s.node.uid":  r.K8sNodeUID.Convert(),
 	}

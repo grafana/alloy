@@ -5,20 +5,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/stretchr/testify/require"
 )
 
 func TestIDRemovalIfFailedToLoad(t *testing.T) {
-	f := New(testOptions(t))
+	f, err := New(testOptions(t))
+	require.NoError(t, err)
 
 	fullContent := "test.fail.module \"t1\" { content = \"\" }"
 	fl, err := ParseSource("test", []byte(fullContent))
 	require.NoError(t, err)
-	err = f.LoadSource(fl, nil)
+	err = f.LoadSource(fl, nil, "")
 	require.NoError(t, err)
-	ctx := context.Background()
+	ctx := t.Context()
 	ctx, cnc := context.WithTimeout(ctx, 600*time.Second)
 
 	go f.Run(ctx)

@@ -1,4 +1,4 @@
-package postgres_exporter //nolint:golint
+package postgres_exporter
 
 import (
 	"testing"

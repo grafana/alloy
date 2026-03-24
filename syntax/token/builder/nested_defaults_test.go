@@ -19,7 +19,7 @@ const (
 
 var testCases = []struct {
 	name          string
-	input         interface{}
+	input         any
 	expectedAlloy string
 }{
 	{

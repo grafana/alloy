@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"go.opentelemetry.io/collector/component"
-	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/config/confignet"
@@ -24,17 +23,20 @@ const (
 // NewFactory creates a factory for the jaeger remote sampling extension.
 func NewFactory() extension.Factory {
 	return extension.NewFactory(
-		otelcomponent.MustNewType(typeStr),
+		component.MustNewType(typeStr),
 		createDefaultConfig,
 		createExtension,
-		otelcomponent.StabilityLevelBeta,
+		component.StabilityLevelBeta,
 	)
 }
 
 func createDefaultConfig() component.Config {
 	return &Config{
 		HTTPServerConfig: &confighttp.ServerConfig{
-			Endpoint: ":5778",
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  ":5778",
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 		GRPCServerConfig: &configgrpc.ServerConfig{
 			NetAddr: confignet.AddrConfig{
@@ -64,7 +66,7 @@ func logDeprecation(logger *zap.Logger) {
 // 	featuregate.WithRegisterToVersion("0.92.0"),
 // )
 
-func createExtension(_ context.Context, set extension.CreateSettings, cfg component.Config) (extension.Extension, error) {
+func createExtension(_ context.Context, set extension.Settings, cfg component.Config) (extension.Extension, error) {
 	logDeprecation(set.Logger)
 	return newExtension(cfg.(*Config), set.TelemetrySettings), nil
 }

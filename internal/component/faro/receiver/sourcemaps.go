@@ -2,6 +2,7 @@ package receiver
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -13,11 +14,13 @@ import (
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/go-sourcemap/sourcemap"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/wildcard"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vincent-petithory/dataurl"
@@ -27,6 +30,8 @@ import (
 // transforming minified source locations to the original source location.
 type sourceMapsStore interface {
 	GetSourceMap(sourceURL string, release string) (*sourcemap.Consumer, error)
+	Start()
+	Stop()
 }
 
 // Stub interfaces for easier mocking.
@@ -38,23 +43,42 @@ type (
 	fileService interface {
 		Stat(name string) (fs.FileInfo, error)
 		ReadFile(name string) ([]byte, error)
+		ValidateFilePath(name string) (string, error)
 	}
 )
 
 type osFileService struct{}
 
-func (fs osFileService) Stat(name string) (fs.FileInfo, error) { return os.Stat(name) }
-func (fs osFileService) ReadFile(name string) ([]byte, error)  { return os.ReadFile(name) }
+func (fs osFileService) ValidateFilePath(name string) (string, error) {
+	if strings.Contains(name, "..") {
+		return "", fmt.Errorf("invalid file name: %s", name)
+	}
+	return name, nil
+}
+
+func (fs osFileService) Stat(name string) (fs.FileInfo, error) {
+	if _, err := fs.ValidateFilePath(name); err != nil {
+		return nil, err
+	}
+	return os.Stat(name)
+}
+
+func (fs osFileService) ReadFile(name string) ([]byte, error) {
+	if _, err := fs.ValidateFilePath(name); err != nil {
+		return nil, err
+	}
+	return os.ReadFile(name)
+}
 
 type sourceMapMetrics struct {
-	cacheSize *prometheus.CounterVec
+	cacheSize *prometheus.GaugeVec
 	downloads *prometheus.CounterVec
 	fileReads *prometheus.CounterVec
 }
 
 func newSourceMapMetrics(reg prometheus.Registerer) *sourceMapMetrics {
 	m := &sourceMapMetrics{
-		cacheSize: prometheus.NewCounterVec(prometheus.CounterOpts{
+		cacheSize: prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Name: "faro_receiver_sourcemap_cache_size",
 			Help: "number of items in source map cache, per origin",
 		}, []string{"origin"}),
@@ -68,13 +92,25 @@ func newSourceMapMetrics(reg prometheus.Registerer) *sourceMapMetrics {
 		}, []string{"origin", "status"}),
 	}
 
-	reg.MustRegister(m.cacheSize, m.downloads, m.fileReads)
+	m.cacheSize = util.MustRegisterOrGet(reg, m.cacheSize).(*prometheus.GaugeVec)
+	m.downloads = util.MustRegisterOrGet(reg, m.downloads).(*prometheus.CounterVec)
+	m.fileReads = util.MustRegisterOrGet(reg, m.fileReads).(*prometheus.CounterVec)
 	return m
 }
 
 type sourcemapFileLocation struct {
 	LocationArguments
 	pathTemplate *template.Template
+}
+
+type timeSource interface {
+	Now() time.Time
+}
+
+type realTimeSource struct{}
+
+func (realTimeSource) Now() time.Time {
+	return time.Now()
 }
 
 type sourceMapsStoreImpl struct {
@@ -85,8 +121,18 @@ type sourceMapsStoreImpl struct {
 	metrics *sourceMapMetrics
 	locs    []*sourcemapFileLocation
 
-	cacheMut sync.Mutex
-	cache    map[string]*sourcemap.Consumer
+	cacheMut      sync.Mutex
+	cache         map[string]*cachedSourceMap
+	timeSource    timeSource
+	cleanupCtx    context.Context
+	cleanupCancel context.CancelFunc
+	cleanupWg     sync.WaitGroup
+	isStarted     bool
+}
+
+type cachedSourceMap struct {
+	consumer *sourcemap.Consumer
+	lastUsed time.Time
 }
 
 // newSourceMapStore creates an implementation of sourceMapsStore. The returned
@@ -119,27 +165,28 @@ func newSourceMapsStore(log log.Logger, args SourceMapsArguments, metrics *sourc
 	}
 
 	return &sourceMapsStoreImpl{
-		log:     log,
-		cli:     cli,
-		fs:      fs,
-		args:    args,
-		cache:   make(map[string]*sourcemap.Consumer),
-		metrics: metrics,
-		locs:    locs,
+		log:        log,
+		cli:        cli,
+		fs:         fs,
+		args:       args,
+		cache:      make(map[string]*cachedSourceMap),
+		metrics:    metrics,
+		locs:       locs,
+		timeSource: realTimeSource{},
 	}
 }
 
 func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string) (*sourcemap.Consumer, error) {
-	// TODO(rfratto): GetSourceMap is weak to transient errors, since it always
-	// caches the result, even when there's an error. This means that transient
-	// errors will be cached forever, preventing source maps from being retrieved.
-
 	store.cacheMut.Lock()
 	defer store.cacheMut.Unlock()
 
 	cacheKey := fmt.Sprintf("%s__%s", sourceURL, release)
-	if sm, ok := store.cache[cacheKey]; ok {
-		return sm, nil
+	if cached, ok := store.cache[cacheKey]; ok {
+		if cached != nil {
+			cached.lastUsed = store.timeSource.Now()
+			return cached.consumer, nil
+		}
+		return nil, nil
 	}
 
 	content, sourceMapURL, err := store.getSourceMapContent(sourceURL, release)
@@ -147,20 +194,119 @@ func (store *sourceMapsStoreImpl) GetSourceMap(sourceURL string, release string)
 		store.cache[cacheKey] = nil
 		return nil, err
 	}
-	if content != nil {
-		consumer, err := sourcemap.Parse(sourceMapURL, content)
-		if err != nil {
-			store.cache[cacheKey] = nil
-			level.Debug(store.log).Log("msg", "failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
-			return nil, err
+
+	consumer, err := sourcemap.Parse(sourceMapURL, content)
+	if err != nil {
+		store.cache[cacheKey] = nil
+		level.Debug(store.log).Log("msg", "failed to parse source map", "url", sourceMapURL, "release", release, "err", err)
+		return nil, err
+	}
+	level.Info(store.log).Log("msg", "successfully parsed source map", "url", sourceMapURL, "release", release)
+	store.cache[cacheKey] = &cachedSourceMap{
+		consumer: consumer,
+		lastUsed: store.timeSource.Now(),
+	}
+	store.metrics.cacheSize.WithLabelValues(getOrigin(sourceURL)).Inc()
+	return consumer, nil
+}
+
+func (store *sourceMapsStoreImpl) CleanOldCacheEntries() {
+	store.cacheMut.Lock()
+	defer store.cacheMut.Unlock()
+
+	ttl := store.args.Cache.TTL
+	for key, cached := range store.cache {
+		if cached != nil && cached.lastUsed.Before(store.timeSource.Now().Add(-ttl)) {
+			srcUrl := strings.SplitN(key, "__", 2)[0]
+			origin := getOrigin(srcUrl)
+			store.metrics.cacheSize.WithLabelValues(origin).Dec()
+			delete(store.cache, key)
 		}
-		level.Info(store.log).Log("msg", "successfully parsed source map", "url", sourceMapURL, "release", release)
-		store.cache[cacheKey] = consumer
-		store.metrics.cacheSize.WithLabelValues(getOrigin(sourceURL)).Inc()
-		return consumer, nil
+	}
+}
+
+func (store *sourceMapsStoreImpl) CleanCachedErrors() {
+	store.cacheMut.Lock()
+	defer store.cacheMut.Unlock()
+
+	for key, cached := range store.cache {
+		if cached == nil {
+			delete(store.cache, key)
+		}
+	}
+}
+
+// Start begins the cleanup routines based on configured cache intervals.
+func (store *sourceMapsStoreImpl) Start() {
+	store.cacheMut.Lock()
+	defer store.cacheMut.Unlock()
+
+	if store.isStarted {
+		return
+	}
+	store.isStarted = true
+
+	cacheConfig := store.args.Cache
+	if cacheConfig == nil {
+		return
 	}
 
-	return nil, nil
+	store.cleanupCtx, store.cleanupCancel = context.WithCancel(context.Background())
+
+	if d := cacheConfig.CleanupCheckInterval; d > 0 {
+		store.cleanupWg.Add(1)
+		go func(interval time.Duration) {
+			defer store.cleanupWg.Done()
+			store.CleanOldCacheEntries()
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-store.cleanupCtx.Done():
+					return
+				case <-ticker.C:
+					store.CleanOldCacheEntries()
+				}
+			}
+		}(d)
+	}
+
+	if d := cacheConfig.ErrorCleanupInterval; d > 0 {
+		store.cleanupWg.Add(1)
+		go func(interval time.Duration) {
+			defer store.cleanupWg.Done()
+			store.CleanCachedErrors()
+			ticker := time.NewTicker(interval)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-store.cleanupCtx.Done():
+					return
+				case <-ticker.C:
+					store.CleanCachedErrors()
+				}
+			}
+		}(d)
+	}
+}
+
+// Stop terminates all cleanup goroutines and waits for them to finish.
+func (store *sourceMapsStoreImpl) Stop() {
+	store.cacheMut.Lock()
+	defer store.cacheMut.Unlock()
+
+	if !store.isStarted {
+		return
+	}
+	store.isStarted = false
+
+	if store.cleanupCancel != nil {
+		store.cleanupCancel()
+		store.cleanupCancel = nil
+	}
+
+	store.cleanupWg.Wait()
+	store.cleanupCtx = nil
 }
 
 func (store *sourceMapsStoreImpl) getSourceMapContent(sourceURL string, release string) (content []byte, sourceMapURL string, err error) {
@@ -199,14 +345,21 @@ func (store *sourceMapsStoreImpl) getSourceMapFromFileSystem(sourceURL string, r
 	}
 	mapFilePath := filepath.Join(pathParts...) + ".map"
 
-	if _, err := store.fs.Stat(mapFilePath); err != nil {
+	validMapFilePath, err := store.fs.ValidateFilePath(mapFilePath)
+	if err != nil {
+		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "invalid_path").Inc()
+		level.Debug(store.log).Log("msg", "source map path contains invalid characters", "url", sourceURL, "file_path", mapFilePath)
+		return nil, "", err
+	}
+
+	if _, err := store.fs.Stat(validMapFilePath); err != nil {
 		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "not_found").Inc()
-		level.Debug(store.log).Log("msg", "source map not found on filesystem", "url", sourceURL, "file_path", mapFilePath)
+		level.Debug(store.log).Log("msg", "source map not found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
 		return nil, "", nil
 	}
-	level.Debug(store.log).Log("msg", "source map found on filesystem", "url", mapFilePath, "file_path", mapFilePath)
+	level.Debug(store.log).Log("msg", "source map found on filesystem", "url", sourceURL, "file_path", validMapFilePath)
 
-	content, err = store.fs.ReadFile(mapFilePath)
+	content, err = store.fs.ReadFile(validMapFilePath)
 	if err != nil {
 		store.metrics.fileReads.WithLabelValues(getOrigin(sourceURL), "error").Inc()
 	} else {
@@ -342,6 +495,8 @@ func transformException(log log.Logger, store sourceMapsStore, ex *payload.Excep
 		Value:      ex.Value,
 		Stacktrace: &payload.Stacktrace{Frames: frames},
 		Timestamp:  ex.Timestamp,
+		Context:    ex.Context,
+		Trace:      ex.Trace,
 	}
 }
 

@@ -109,7 +109,7 @@ local tests = [
       [alloy.block('some_block', 'foobar')]: {
         attr_1: [0, 1, 2, 3],
         attr_2: { first_name: 'John', last_name: 'Smith' },
-        expr: alloy.expr('env("HOME")'),
+        expr: alloy.expr('sys.env("HOME")'),
       },
     },
     expect: |||
@@ -120,7 +120,7 @@ local tests = [
           "first_name" = "John",
           "last_name" = "Smith",
         }
-        expr = env("HOME")
+        expr = sys.env("HOME")
       }
     |||,
   },
@@ -163,10 +163,10 @@ local tests = [
   {
     name: 'Indented literals',
     input: {
-      attr_1: alloy.expr('concat([%s])' % alloy.manifestAlloyValue({ hello: 'world' })),
+      attr_1: alloy.expr('array.concat([%s])' % alloy.manifestAlloyValue({ hello: 'world' })),
     },
     expect: |||
-      attr_1 = concat([{
+      attr_1 = array.concat([{
         "hello" = "world",
       }])
     |||,
@@ -174,10 +174,10 @@ local tests = [
   {
     name: 'Pruned expressions',
     input: std.prune({
-      expr: alloy.expr('env("HOME")'),
+      expr: alloy.expr('sys.env("HOME")'),
     }),
     expect: |||
-      expr = env("HOME")
+      expr = sys.env("HOME")
     |||,
   },
 ];

@@ -1,16 +1,18 @@
 //go:build !windows
 
-package node_exporter //nolint:golint
+package node_exporter
 
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sort"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -30,7 +32,7 @@ type Integration struct {
 // New creates a new node_exporter integration.
 func New(log log.Logger, c *Config) (*Integration, error) {
 	cfg := c.mapConfigToNodeConfig()
-	nc, err := collector.NewNodeCollector(cfg, log)
+	nc, err := collector.NewNodeCollector(cfg, slog.New(logging.NewSlogGoKitHandler(log)))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create node_exporter: %w", err)
 	}

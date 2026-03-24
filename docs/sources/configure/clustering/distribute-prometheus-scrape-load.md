@@ -15,7 +15,7 @@ A good predictor for the size of an {{< param "PRODUCT_NAME" >}} deployment is t
 
 ## Before you begin
 
-- Familiarize yourself with how to [configure][] existing {{< param "PRODUCT_NAME" >}} installations.
+- Familiarize yourself with how to [configure][] {{< param "PRODUCT_NAME" >}} installations.
 - [Configure Prometheus metrics collection][].
 - [Configure clustering][clustering].
 - Ensure that all of your clustered {{< param "PRODUCT_NAME" >}}s have the same configuration file.

@@ -3,7 +3,6 @@ package gcplog
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/grafana/alloy/internal/featuregate"
@@ -55,15 +54,16 @@ func (a *Arguments) Validate() error {
 
 // Component implements the loki.source.gcplog component.
 type Component struct {
-	opts          component.Options
+	opts component.Options
+
 	metrics       *gt.Metrics
 	serverMetrics *util.UncheckedCollector
 
-	mut    sync.RWMutex
-	fanout []loki.LogsReceiver
-	target gt.Target
-
+	fanout  *loki.Fanout
 	handler loki.LogsReceiver
+
+	mut    sync.RWMutex
+	target gt.Target
 }
 
 // New creates a new loki.source.gcplog component.
@@ -72,7 +72,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:          o,
 		metrics:       gt.NewMetrics(o.Registerer),
 		handler:       loki.NewLogsReceiver(),
-		fanout:        args.ForwardTo,
+		fanout:        loki.NewFanout(args.ForwardTo),
 		serverMetrics: util.NewUncheckedCollector(nil),
 	}
 
@@ -90,26 +90,16 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", "loki.source.gcplog component shutting down, stopping the targets")
-		c.mut.RLock()
-		err := c.target.Stop()
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "error while stopping gcplog target", "err", err)
+
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		if c.target != nil {
+			c.target.Stop()
 		}
-		c.mut.RUnlock()
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
-		}
-	}
+	loki.Consume(ctx, c.handler, c.fanout)
+	return nil
 }
 
 // Update implements component.Component.
@@ -118,32 +108,33 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	var rcs []*relabel.Config
-	if newArgs.RelabelRules != nil && len(newArgs.RelabelRules) > 0 {
+	if len(newArgs.RelabelRules) > 0 {
 		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
 	if c.target != nil {
-		err := c.target.Stop()
-		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "error while stopping gcplog target", "err", err)
-		}
+		c.target.Stop()
 	}
-	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	jobName := strings.Replace(c.opts.ID, ".", "_", -1)
 
 	if newArgs.PullTarget != nil {
 		// TODO(@tpaschalis) Are there any options from "google.golang.org/api/option"
 		// we should expose as configuration and pass here?
-		t, err := gt.NewPullTarget(c.metrics, c.opts.Logger, entryHandler, jobName, newArgs.PullTarget, rcs)
+		t, err := gt.NewPullTarget(c.metrics, c.opts.Logger, c.handler, newArgs.PullTarget, rcs)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog target with provided config", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog pull target", "err", err)
+			return err
+		}
+
+		if err := t.Run(); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start gcplog pull target", "err", err)
 			return err
 		}
 		c.target = t
 	}
+
 	if newArgs.PushTarget != nil {
 		// [gt.NewPushTarget] registers new metrics every time it is called. To
 		// avoid issues with re-registering metrics with the same name, we create a
@@ -152,9 +143,13 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		t, err := gt.NewPushTarget(c.metrics, c.opts.Logger, entryHandler, jobName, newArgs.PushTarget, rcs, registry)
+		t, err := gt.NewPushTarget(c.metrics, c.opts.Logger, c.handler, newArgs.PushTarget, rcs, registry)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog target with provided config", "err", err)
+			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog push target", "err", err)
+			return err
+		}
+		if err := t.Run(); err != nil {
+			level.Error(c.opts.Logger).Log("msg", "failed to start gcplog push target", "err", err)
 			return err
 		}
 		c.target = t
@@ -164,7 +159,7 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 // DebugInfo returns information about the status of targets.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 	return targetDebugInfo{Details: c.target.Details()}

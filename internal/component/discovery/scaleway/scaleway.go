@@ -49,6 +49,7 @@ type Arguments struct {
 	TLSConfig       config.TLSConfig    `alloy:"tls_config,block,optional"`
 	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
 	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
+	HTTPHeaders     *config.Headers     `alloy:",squash"`
 }
 
 var DefaultArguments = Arguments{
@@ -86,11 +87,15 @@ func (args *Arguments) Validate() error {
 		return err
 	}
 
+	if err := args.HTTPHeaders.Validate(); err != nil {
+		return err
+	}
+
 	// Test UnmarshalYAML against the upstream type which has custom validations.
 	//
 	// TODO(rfratto): decouple upstream validation into a separate method so this
 	// can be called directly.
-	err := (&prom_discovery.SDConfig{}).UnmarshalYAML(func(i interface{}) error {
+	err := (&prom_discovery.SDConfig{}).UnmarshalYAML(func(i any) error {
 		// Here, i is an internal type (*scaleway.plain) that we can't reference or
 		// use.
 		//
@@ -124,6 +129,7 @@ func (args Arguments) Convert() discovery.DiscovererConfig {
 			TLSConfig:       *args.TLSConfig.Convert(),
 			FollowRedirects: args.FollowRedirects,
 			EnableHTTP2:     args.EnableHTTP2,
+			HTTPHeaders:     args.HTTPHeaders.Convert(),
 		},
 
 		RefreshInterval: model.Duration(args.RefreshInterval),

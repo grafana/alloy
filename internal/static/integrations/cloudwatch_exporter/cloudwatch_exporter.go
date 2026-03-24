@@ -2,17 +2,20 @@ package cloudwatch_exporter
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
+	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
+
 	"github.com/go-kit/log"
-	yace "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg"
-	yaceClients "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/clients"
-	yaceClientsV1 "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/clients/v1"
-	yaceConf "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/config"
-	yaceLog "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/logging"
+	yace "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg"
+	yaceClients "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients"
+	yaceClientsV1 "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/v1"
+	yaceClientsV2 "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
@@ -22,28 +25,41 @@ type cachingFactory interface {
 	Clear()
 }
 
-var _ cachingFactory = &yaceClientsV1.CachingFactory{}
+var _ cachingFactory = &yaceClientsV2.CachingFactory{}
 
 // exporter wraps YACE entrypoint around an Integration implementation
 type exporter struct {
 	name                 string
-	logger               yaceLoggerWrapper
+	logger               *slog.Logger
 	cachingClientFactory cachingFactory
-	scrapeConf           yaceConf.ScrapeConf
+	scrapeConf           yaceModel.JobsConfig
+	labelsSnakeCase      bool
 }
 
 // NewCloudwatchExporter creates a new YACE wrapper, that implements Integration
-func NewCloudwatchExporter(name string, logger log.Logger, conf yaceConf.ScrapeConf, fipsEnabled, debug bool) *exporter {
-	loggerWrapper := yaceLoggerWrapper{
-		debug: debug,
-		log:   logger,
+func NewCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, fipsEnabled, labelsSnakeCase, debug, useAWSSDKVersionV2 bool) (*exporter, error) {
+	var factory cachingFactory
+	var err error
+
+	l := slog.New(newSlogHandler(logging.NewSlogGoKitHandler(logger), debug))
+
+	if useAWSSDKVersionV2 {
+		factory, err = yaceClientsV2.NewFactory(l, conf, fipsEnabled)
+	} else {
+		factory = yaceClientsV1.NewFactory(l, conf, fipsEnabled)
 	}
+
+	if err != nil {
+		return nil, err
+	}
+
 	return &exporter{
 		name:                 name,
-		logger:               loggerWrapper,
-		cachingClientFactory: yaceClientsV1.NewFactory(conf, fipsEnabled, loggerWrapper),
+		logger:               l,
+		cachingClientFactory: factory,
 		scrapeConf:           conf,
-	}
+		labelsSnakeCase:      labelsSnakeCase,
+	}, nil
 }
 
 func (e *exporter) MetricsHandler() (http.Handler, error) {
@@ -58,6 +74,11 @@ func (e *exporter) MetricsHandler() (http.Handler, error) {
 		defer e.cachingClientFactory.Clear()
 
 		reg := prometheus.NewRegistry()
+		for _, metric := range yace.Metrics {
+			if err := reg.Register(metric); err != nil {
+				e.logger.Debug("Could not register cloudwatch api metric")
+			}
+		}
 		err := yace.UpdateMetrics(
 			context.Background(),
 			e.logger,
@@ -65,15 +86,12 @@ func (e *exporter) MetricsHandler() (http.Handler, error) {
 			reg,
 			e.cachingClientFactory,
 			yace.MetricsPerQuery(metricsPerQuery),
-			yace.LabelsSnakeCase(labelsSnakeCase),
+			yace.LabelsSnakeCase(e.labelsSnakeCase),
 			yace.CloudWatchAPIConcurrency(cloudWatchConcurrency),
 			yace.TaggingAPIConcurrency(tagConcurrency),
-			// Enable max-dimension-associator feature flag
-			// https://github.com/nerdswords/yet-another-cloudwatch-exporter/blob/master/docs/feature_flags.md#new-associator-algorithm
-			yace.EnableFeatureFlag(yaceConf.MaxDimensionsAssociator),
 		)
 		if err != nil {
-			e.logger.Error(err, "Error collecting cloudwatch metrics")
+			e.logger.Error("Error collecting cloudwatch metrics", "err", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -93,41 +111,4 @@ func (e *exporter) ScrapeConfigs() []config.ScrapeConfig {
 func (e *exporter) Run(ctx context.Context) error {
 	<-ctx.Done()
 	return nil
-}
-
-// yaceLoggerWrapper is wrapper implementation of yaceLog.Logger, based out of a log.Logger.
-type yaceLoggerWrapper struct {
-	log log.Logger
-
-	// debug is just used for development purposes
-	debug bool
-}
-
-func (l yaceLoggerWrapper) Info(message string, keyvals ...interface{}) {
-	l.log.Log(append([]interface{}{"level", "info", "msg", message}, keyvals...)...)
-}
-
-func (l yaceLoggerWrapper) Debug(message string, keyvals ...interface{}) {
-	if l.debug {
-		l.log.Log(append([]interface{}{"level", "debug", "msg", message}, keyvals...)...)
-	}
-}
-
-func (l yaceLoggerWrapper) Error(err error, message string, keyvals ...interface{}) {
-	l.log.Log(append([]interface{}{"level", "error", "msg", message, "err", err}, keyvals...)...)
-}
-
-func (l yaceLoggerWrapper) Warn(message string, keyvals ...interface{}) {
-	l.log.Log(append([]interface{}{"level", "warn", "msg", message}, keyvals...)...)
-}
-
-func (l yaceLoggerWrapper) With(keyvals ...interface{}) yaceLog.Logger {
-	withLog := log.With(l.log, keyvals)
-	return yaceLoggerWrapper{
-		log: withLog,
-	}
-}
-
-func (l yaceLoggerWrapper) IsDebugEnabled() bool {
-	return l.debug
 }

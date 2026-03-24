@@ -79,7 +79,7 @@ type eventuallyT struct {
 type (
 	testError struct {
 		format string
-		args   []interface{}
+		args   []any
 	}
 
 	// testAbort is sent when FailNow is called.
@@ -88,7 +88,7 @@ type (
 
 var _ require.TestingT = (*eventuallyT)(nil)
 
-func (et *eventuallyT) Errorf(format string, args ...interface{}) {
+func (et *eventuallyT) Errorf(format string, args ...any) {
 	et.errors = append(et.errors, testError{
 		format: format,
 		args:   args,

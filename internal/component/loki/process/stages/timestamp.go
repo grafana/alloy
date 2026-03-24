@@ -4,14 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"time"
+	_ "time/tzdata" // embed timezone data
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
 
-	_ "time/tzdata" // embed timezone data
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Config errors.
@@ -53,7 +54,7 @@ type TimestampConfig struct {
 
 type parser func(string) (time.Time, error)
 
-func validateTimestampConfig(cfg TimestampConfig) (parser, error) {
+func validateTimestampConfig(cfg *TimestampConfig) (parser, error) {
 	if cfg.Source == "" {
 		return nil, ErrTimestampSourceRequired
 	}
@@ -73,7 +74,7 @@ func validateTimestampConfig(cfg TimestampConfig) (parser, error) {
 	if cfg.ActionOnFailure == "" {
 		cfg.ActionOnFailure = TimestampActionOnFailureDefault
 	} else {
-		if !stringsContain(TimestampActionOnFailureOptions, cfg.ActionOnFailure) {
+		if !slices.Contains(TimestampActionOnFailureOptions, cfg.ActionOnFailure) {
 			return nil, fmt.Errorf(ErrInvalidActionOnFailure.Error(), TimestampActionOnFailureOptions)
 		}
 	}
@@ -99,7 +100,7 @@ func validateTimestampConfig(cfg TimestampConfig) (parser, error) {
 
 // newTimestampStage creates a new timestamp extraction pipeline stage.
 func newTimestampStage(logger log.Logger, config TimestampConfig) (Stage, error) {
-	parser, err := validateTimestampConfig(config)
+	parser, err := validateTimestampConfig(&config)
 	if err != nil {
 		return nil, err
 	}
@@ -130,13 +131,8 @@ type timestampStage struct {
 	lastKnownTimestamps *lru.Cache
 }
 
-// Name implements Stage.
-func (ts *timestampStage) Name() string {
-	return StageTypeTimestamp
-}
-
 // Process implements Stage.
-func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	if ts.config == nil {
 		return
 	}
@@ -157,7 +153,7 @@ func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]in
 	}
 }
 
-func (ts *timestampStage) parseTimestampFromSource(extracted map[string]interface{}) (*time.Time, error) {
+func (ts *timestampStage) parseTimestampFromSource(extracted map[string]any) (*time.Time, error) {
 	// Ensure the extracted data contains the timestamp source.
 	v, ok := extracted[ts.config.Source]
 	if !ok {

@@ -65,8 +65,8 @@ func KeyValAdd(kv *KeyVal, key string, value string) {
 }
 
 // KeyValToInterfaceSlice converts KeyVal to []interface{}, typically used for logging
-func KeyValToInterfaceSlice(kv *KeyVal) []interface{} {
-	slice := make([]interface{}, kv.Len()*2)
+func KeyValToInterfaceSlice(kv *KeyVal) []any {
+	slice := make([]any, kv.Len()*2)
 	idx := 0
 	for el := kv.Oldest(); el != nil; el = el.Next() {
 		slice[idx] = el.Key
@@ -78,8 +78,8 @@ func KeyValToInterfaceSlice(kv *KeyVal) []interface{} {
 }
 
 // KeyValToInterfaceMap converts KeyVal to map[string]interface
-func KeyValToInterfaceMap(kv *KeyVal) map[string]interface{} {
-	retv := make(map[string]interface{})
+func KeyValToInterfaceMap(kv *KeyVal) map[string]any {
+	retv := make(map[string]any)
 	for el := kv.Oldest(); el != nil; el = el.Next() {
 		retv[fmt.Sprint(el.Key)] = el.Value
 	}

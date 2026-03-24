@@ -1,4 +1,4 @@
-//go:build builtinassets
+//go:build embedalloyui
 
 package ui
 
@@ -8,15 +8,15 @@ import (
 	"net/http"
 )
 
-//go:generate yarn
-//go:generate yarn run build
+//go:generate npm install
+//go:generate npm run build
 
-//go:embed build
-var builtinAssetsTarball embed.FS
+//go:embed dist
+var embedalloyuiTarball embed.FS
 
 // Assets contains the UI's assets.
 func Assets() http.FileSystem {
-	inner, err := fs.Sub(builtinAssetsTarball, "build")
+	inner, err := fs.Sub(embedalloyuiTarball, "dist")
 	if err != nil {
 		panic(err)
 	}

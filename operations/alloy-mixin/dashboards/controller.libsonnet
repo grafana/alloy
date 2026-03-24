@@ -9,7 +9,13 @@ local filename = 'alloy-controller.json';
       filterSelector=$._config.filterSelector, 
       enableK8sCluster=$._config.enableK8sCluster, 
       includeInstance=false,
-      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels),
+      setenceCaseLabels=$._config.useSetenceCaseTemplateLabels
+    ) + [
+      dashboard.newGroupByTemplateVariable(
+        query='instance,component_path,component_id,controller_path,health_type,job,namespace,cluster,pod',
+        defaultValue='instance'
+      ),
+    ],
 
   [filename]:
     dashboard.new(name='Alloy / Controller', tag=$._config.dashboardTag) +
@@ -22,7 +28,7 @@ local filename = 'alloy-controller.json';
     dashboard.withTemplateVariablesMixin(templateVariables) +
     // TODO(@tpaschalis) Make the annotation optional.
     dashboard.withAnnotations([
-      dashboard.newLokiAnnotation('Deployments', '{cluster="$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
+      dashboard.newLokiAnnotation('Deployments', '{cluster=~"$cluster", container="kube-diff-logger"} | json | namespace_extracted="alloy" | name_extracted=~"alloy.*"', 'rgba(0, 211, 255, 1)'),
     ]) +
     dashboard.withPanelsMixin([
       // Running instances
@@ -208,7 +214,7 @@ local filename = 'alloy-controller.json';
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by (instance) (rate(alloy_component_evaluation_seconds_count{%(groupSelector)s}[$__rate_interval]))
+              sum by (${groupby}) (rate(alloy_component_evaluation_seconds_count{%(groupSelector)s}[$__rate_interval]))
             ||| % $._config,
           ),
         ])
@@ -268,21 +274,21 @@ local filename = 'alloy-controller.json';
       // Slow components evaluation time %
       (
         panel.new(title='Slow components evaluation times', type='timeseries') +
-        panel.withUnit('percentunit') +
+        panel.withUnit('s') +
         panel.withDescription(|||
-          The percentage of time spent evaluating 'slow' components - components that took longer than 1 minute to evaluate.
+          The maximum duration of slow component evaluations over time.
 
-          Ideally, no component should take more than 1 minute to evaluate. The components displayed in this chart
-          may be a sign of a problem with the pipeline.
+          This shows components that took longer than 1 minute to evaluate. Ideally, no component 
+          should take more than 1 minute to evaluate. The components displayed in this chart
+          may be a sign of a problem with the pipeline or performance issues.
         |||) +
         panel.withPosition({ x: 16, y: 12, w: 8, h: 10 }) +
         panel.withQueries([
           panel.newQuery(
             expr= |||
-              sum by (component_path, component_id) (rate(alloy_component_evaluation_slow_seconds{%(groupSelector)s}[$__rate_interval]))
-              / scalar(sum(rate(alloy_component_evaluation_seconds_sum{%(groupSelector)s}[$__rate_interval])))
+              increase(alloy_component_evaluation_slow_seconds{%(groupSelector)s}[$__rate_interval])
             ||| % $._config,
-            legendFormat='{{component path}} {{component_id}}',
+            legendFormat='{{instance}} {{controller_path}} {{component_id}}',
           ),
         ])
       ),

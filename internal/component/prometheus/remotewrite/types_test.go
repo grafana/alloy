@@ -5,15 +5,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/syntax"
+	"github.com/prometheus/client_golang/exp/api/remote"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/common/sigv4"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	"github.com/prometheus/sigv4"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func expectedCfg(transform func(c *config.Config)) *config.Config {
@@ -36,7 +38,7 @@ func expectedCfg(transform func(c *config.Config)) *config.Config {
 				SendExemplars:       true,
 				HTTPClientConfig: commonconfig.HTTPClientConfig{
 					FollowRedirects: true,
-					EnableHTTP2:     true,
+					EnableHTTP2:     false,
 				},
 				QueueConfig: config.QueueConfig{
 					Capacity:          10000,
@@ -77,7 +79,43 @@ func TestAlloyConfig(t *testing.T) {
 				url = "http://0.0.0.0:11111/api/v1/write"
 			}
 			`,
-			expectedCfg: expectedCfg(nil),
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "Endpoint_ProtobufMessage_V1",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "prometheus.WriteRequest"
+			}
+			`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "Endpoint_ProtobufMessage_V2",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "io.prometheus.write.v2.Request"
+			}
+			`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV2MessageType
+			}),
+		},
+		{
+			testName: "Endpoint_ProtobufMessage_Invalid",
+			cfg: `
+			endpoint {
+				url = "http://0.0.0.0:11111/api/v1/write"
+				protobuf_message = "invalid.message"
+			}
+			`,
+			errorMsg: "unknown type for remote write protobuf message invalid.message",
 		},
 		{
 			testName: "RelabelConfig",
@@ -106,6 +144,7 @@ func TestAlloyConfig(t *testing.T) {
 				relabelCfg.SourceLabels = model.LabelNames{"instance"}
 				relabelCfg.TargetLabel = "instance"
 				relabelCfg.Action = "lowercase"
+				relabelCfg.NameValidationScheme = model.LegacyValidation
 
 				c.GlobalConfig.ExternalLabels = labels.FromMap(map[string]string{
 					"cluster": "local",
@@ -116,6 +155,7 @@ func TestAlloyConfig(t *testing.T) {
 				c.RemoteWriteConfigs[0].WriteRelabelConfigs = []*relabel.Config{
 					relabelCfg,
 				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -126,7 +166,7 @@ func TestAlloyConfig(t *testing.T) {
 
 				azuread {
 					managed_identity {
-						client_id = "00000000-0000-0000-0000-000000000000"
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
 					}
 				}
 			}`,
@@ -134,9 +174,10 @@ func TestAlloyConfig(t *testing.T) {
 				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
 					Cloud: "AzurePublic",
 					ManagedIdentity: &azuread.ManagedIdentityConfig{
-						ClientID: "00000000-0000-0000-0000-000000000000",
+						ClientID: "f47ac10b-58cc-0372-8567-0e02b2c3d479",
 					},
 				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -148,7 +189,7 @@ func TestAlloyConfig(t *testing.T) {
 				azuread {
 					cloud = "AzureChina"
 					managed_identity {
-						client_id = "00000000-0000-0000-0000-000000000000"
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
 					}
 				}
 			}`,
@@ -156,9 +197,10 @@ func TestAlloyConfig(t *testing.T) {
 				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
 					Cloud: "AzureChina",
 					ManagedIdentity: &azuread.ManagedIdentityConfig{
-						ClientID: "00000000-0000-0000-0000-000000000000",
+						ClientID: "f47ac10b-58cc-0372-8567-0e02b2c3d479",
 					},
 				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -171,6 +213,7 @@ func TestAlloyConfig(t *testing.T) {
 			}`,
 			expectedCfg: expectedCfg(func(c *config.Config) {
 				c.RemoteWriteConfigs[0].SigV4Config = &sigv4.SigV4Config{}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -195,6 +238,7 @@ func TestAlloyConfig(t *testing.T) {
 					Profile:   "example_profile",
 					RoleARN:   "example_role_arn",
 				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
 			}),
 		},
 		{
@@ -235,7 +279,7 @@ func TestAlloyConfig(t *testing.T) {
 					}
 				}
 			}`,
-			errorMsg: "the provided Azure Managed Identity client_id provided is invalid",
+			errorMsg: "the provided Azure Managed Identity client_id is invalid",
 		},
 		{
 			// Make sure the squashed HTTPClientConfig Validate function is being utilized correctly

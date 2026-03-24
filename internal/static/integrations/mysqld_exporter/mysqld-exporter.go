@@ -1,9 +1,10 @@
 // Package mysqld_exporter embeds https://github.com/prometheus/mysqld_exporter
-package mysqld_exporter //nolint:golint
+package mysqld_exporter
 
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	config_util "github.com/prometheus/common/config"
@@ -11,6 +12,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/go-sql-driver/mysql"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -71,7 +74,7 @@ type Config struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultConfig
 
 	type plain Config
@@ -122,7 +125,8 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 	}
 
 	scrapers := GetScrapers(c)
-	exporter := collector.New(context.Background(), string(dsn), scrapers, log, collector.Config{
+	logger := slog.New(logging.NewSlogGoKitHandler(log))
+	exporter := collector.New(context.Background(), string(dsn), scrapers, logger, collector.Config{
 		LockTimeout:   c.LockWaitTimeout,
 		SlowLogFilter: c.LogSlowFilter,
 	})

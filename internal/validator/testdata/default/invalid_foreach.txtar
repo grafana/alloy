@@ -1,0 +1,123 @@
+invalid foreach
+-- main.alloy --
+foreach "missing" { }
+
+foreach "invalid_property" {
+	test       = "test"
+	collection = []
+	var        = "each"
+
+	template { }
+}
+
+foreach "invalid_template" {
+	collection = []
+	var        = "each"
+
+	template {
+		// Unknown component.
+		local.missing "applogs" { }
+
+		// Missing required property.
+		remote.http "missing_required" { }
+
+		// Invalid property.
+		loki.source.file "invalid_property" {
+			test       = "test"
+			targets    = []
+			forward_to = []
+		}
+
+		// Service configuration.
+		logging { }
+
+		// Duplicates.
+		local.file_match "applogs" {
+			path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+		}
+
+		local.file_match "applogs" {
+			path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+		}
+	}
+}
+
+foreach "invalid_nested" {
+	collection = []
+	var        = "outer"
+
+	template {
+		import.git "mod" {
+			repository = "https://github.com/wildum/module.git"
+			revision   = "master"
+			path       = module_path + ".alloy"
+		}
+	
+		// valid inside foreach
+		mod.myModule "mod" { }
+	}
+}
+
+// invalid outside of foreach
+mod.myModule "mod" { }
+
+foreach "invalid_nested" {
+	collection = []
+	var        = "outer"
+
+	template {
+		foreach "invalid_template" {
+			collection = []
+			var        = "inner"
+
+			template {
+				// Unknown component.
+				local.missing "applogs" { }
+
+				// Missing required property.
+				remote.http "missing_required" { }
+
+				// Invalid property.
+				loki.source.file "invalid_property" {
+					test       = "test"
+					targets    = []
+					forward_to = []
+				}
+
+				// Service configuration.
+				logging { }
+
+				// Duplicates.
+				local.file_match "applogs" {
+					path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+				}
+
+				local.file_match "applogs" {
+					path_targets = [{"__path__" = "/tmp/app-logs/app.log"}]
+				}
+			}
+		}
+	}
+}
+
+foreach "reference_component_outside" {
+	collection = []
+	var        = "each"
+
+	template {
+		prometheus.exporter.redis "default" {
+			// This is the "__address__" label from discovery.kubernetes.
+			redis_addr = each["__address__"]
+		}
+
+		prometheus.scrape "default" {
+			targets    = prometheus.exporter.redis.default.targets
+			forward_to = []
+		}
+	}
+}
+
+prometheus.scrape "default" {
+	targets    = prometheus.exporter.redis.default.targets
+	forward_to = []
+}

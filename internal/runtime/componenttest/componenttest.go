@@ -5,23 +5,27 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"reflect"
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/runtime/equality"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
+
 	"github.com/go-kit/log"
+	"go.opentelemetry.io/otel/trace/noop"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // A Controller is a testing controller which controls a single component.
 type Controller struct {
+	PromRegistry prometheus.Registerer
+
 	reg component.Registration
 	log log.Logger
 
@@ -36,6 +40,11 @@ type Controller struct {
 	exports    component.Exports
 	exportsCh  chan struct{}
 }
+
+const (
+	defaultWaitRunningTimeout = 5 * time.Second
+	defaultWaitExportsTimeout = 5 * time.Second
+)
 
 // NewControllerFromID returns a new testing Controller for the component with
 // the provided name.
@@ -56,6 +65,8 @@ func NewControllerFromReg(l log.Logger, reg component.Registration) *Controller 
 	}
 
 	return &Controller{
+		PromRegistry: prometheus.NewRegistry(),
+
 		reg: reg,
 		log: l,
 
@@ -66,7 +77,7 @@ func NewControllerFromReg(l log.Logger, reg component.Registration) *Controller 
 
 func (c *Controller) onStateChange(e component.Exports) {
 	c.exportsMut.Lock()
-	changed := !reflect.DeepEqual(c.exports, e)
+	changed := !equality.DeepEqual(c.exports, e)
 	c.exports = e
 	c.exportsMut.Unlock()
 
@@ -83,6 +94,10 @@ func (c *Controller) onStateChange(e component.Exports) {
 // WaitRunning blocks until the Controller is running up to the provided
 // timeout.
 func (c *Controller) WaitRunning(timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = defaultWaitRunningTimeout
+	}
+
 	select {
 	case <-time.After(timeout):
 		return fmt.Errorf("timed out waiting for the controller to start running")
@@ -97,6 +112,10 @@ func (c *Controller) WaitRunning(timeout time.Duration) error {
 // WaitExports blocks until new Exports are available up to the provided
 // timeout.
 func (c *Controller) WaitExports(timeout time.Duration) error {
+	if timeout <= 0 {
+		timeout = defaultWaitExportsTimeout
+	}
+
 	select {
 	case <-time.After(timeout):
 		return fmt.Errorf("timed out waiting for exports")
@@ -116,7 +135,7 @@ func (c *Controller) Exports() component.Exports {
 // until ctx is canceled, the component exits, or if there was an error.
 //
 // Run may only be called once per Controller.
-func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
+func (c *Controller) Run(ctx context.Context, args component.Arguments, optsModifiers ...func(opts component.Options) component.Options) error {
 	dataPath, err := os.MkdirTemp("", "controller-*")
 	if err != nil {
 		return err
@@ -125,22 +144,37 @@ func (c *Controller) Run(ctx context.Context, args component.Arguments) error {
 		_ = os.RemoveAll(dataPath)
 	}()
 
-	run, err := c.buildComponent(dataPath, args)
+	run, err := c.buildComponent(dataPath, args, optsModifiers...)
 
-	// We close c.running before checking the error, since the component will
-	// never run if we return an error anyway.
+	if err != nil {
+		c.onRun.Do(func() {
+			c.runError.Store(err)
+			close(c.running)
+		})
+		return err
+	}
+
+	go func() {
+		select {
+		case <-ctx.Done():
+		// ensure we signal running if the component doesn't exit within the first few hundred ms
+		case <-time.After(500 * time.Millisecond):
+			c.onRun.Do(func() {
+				close(c.running)
+			})
+		}
+	}()
+	// Ensure the error is captured for the defer
+	err = run.Run(ctx)
+
 	c.onRun.Do(func() {
 		c.runError.Store(err)
 		close(c.running)
 	})
-
-	if err != nil {
-		return err
-	}
-	return run.Run(ctx)
+	return err
 }
 
-func (c *Controller) buildComponent(dataPath string, args component.Arguments) (component.Component, error) {
+func (c *Controller) buildComponent(dataPath string, args component.Arguments, optsModifiers ...func(opts component.Options) component.Options) (component.Component, error) {
 	c.innerMut.Lock()
 	defer c.innerMut.Unlock()
 
@@ -159,8 +193,8 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments) (
 		Tracer:        noop.NewTracerProvider(),
 		DataPath:      dataPath,
 		OnStateChange: c.onStateChange,
-		Registerer:    prometheus.NewRegistry(),
-		GetServiceData: func(name string) (interface{}, error) {
+		Registerer:    c.PromRegistry,
+		GetServiceData: func(name string) (any, error) {
 			switch name {
 			case labelstore.ServiceName:
 				return labelstore.New(nil, prometheus.DefaultRegisterer), nil
@@ -170,6 +204,10 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments) (
 				return nil, fmt.Errorf("no service named %s defined", name)
 			}
 		},
+	}
+
+	for _, mod := range optsModifiers {
+		opts = mod(opts)
 	}
 
 	inner, err := c.reg.Build(opts, args)
@@ -190,4 +228,14 @@ func (c *Controller) Update(args component.Arguments) error {
 		return fmt.Errorf("component is not running")
 	}
 	return c.inner.Update(args)
+}
+
+// GetComponent retrieves the component under test. It should only be called
+// after Run()
+func (c *Controller) GetComponent() (component.Component, error) {
+	if c.inner == nil {
+		return nil, fmt.Errorf("component was nil. Did you call Run()? %w", component.ErrComponentNotFound)
+	}
+
+	return c.inner, nil
 }

@@ -12,7 +12,7 @@ import (
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/exporter/debugexporter"
-	otelextension "go.opentelemetry.io/collector/extension"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -24,16 +24,17 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := debugexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
 
 type Arguments struct {
-	Verbosity          string `alloy:"verbosity,attr,optional"`
-	SamplingInitial    int    `alloy:"sampling_initial,attr,optional"`
-	SamplingThereafter int    `alloy:"sampling_thereafter,attr,optional"`
-	UseInternalLogger  bool   `alloy:"use_internal_logger,attr,optional"`
+	Verbosity          string   `alloy:"verbosity,attr,optional"`
+	SamplingInitial    int      `alloy:"sampling_initial,attr,optional"`
+	SamplingThereafter int      `alloy:"sampling_thereafter,attr,optional"`
+	UseInternalLogger  bool     `alloy:"use_internal_logger,attr,optional"`
+	OutputPaths        []string `alloy:"output_paths,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -83,16 +84,17 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		SamplingInitial:    args.SamplingInitial,
 		SamplingThereafter: args.SamplingThereafter,
 		UseInternalLogger:  args.UseInternalLogger,
+		OutputPaths:        args.OutputPaths,
 	}, nil
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 
 // Exporters implements exporter.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

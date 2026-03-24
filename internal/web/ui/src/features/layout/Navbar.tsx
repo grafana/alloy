@@ -1,7 +1,6 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 
 import logo from '../../images/logo.svg';
-
 import styles from './Navbar.module.css';
 
 function Navbar() {
@@ -21,6 +20,11 @@ function Navbar() {
         <li>
           <NavLink to="/clustering" className="nav-link">
             Clustering
+          </NavLink>
+        </li>
+        <li>
+          <NavLink to="/remotecfg" className="nav-link">
+            Remote Configuration
           </NavLink>
         </li>
         <li>

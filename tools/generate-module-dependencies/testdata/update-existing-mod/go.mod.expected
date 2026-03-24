@@ -1,0 +1,10 @@
+module test.example.com
+
+go 1.21
+
+// BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
+// Updated replace
+replace example.com/package => example.com/fork v1.1.0
+
+// END GENERATED REPLACES
+

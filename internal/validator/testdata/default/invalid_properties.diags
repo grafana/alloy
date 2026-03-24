@@ -1,0 +1,103 @@
+Error: main.alloy:9:2: unrecognized attribute name "test"
+
+ 8 | logging {
+ 9 |     test = "test"
+   |     ^^^^^^^^^^^^^
+10 | }
+
+Error: main.alloy:16:1: missing required attribute "content"
+
+15 | 
+16 | import.string "string" {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+17 | 
+
+Error: main.alloy:18:1: missing required attribute "filename"
+
+17 | 
+18 | import.file "file" {}
+   | ^^^^^^^^^^^^^^^^^^^^^
+19 | 
+
+Error: main.alloy:20:1: missing required attribute "repository"
+
+19 |   
+20 |   import.git "git" {
+   |  _^^^^^^^^^^^^^^^^^^
+21 | |   revision   = "main"
+22 | |   path       = "modules"
+23 | | }
+   | |_^
+24 |   
+
+Error: main.alloy:26:2: unrecognized attribute name "test"
+
+25 | import.http "http" {
+26 |     test = "test"
+   |     ^^^^^^^^^^^^^
+27 | }
+
+Error: main.alloy:25:1: missing required attribute "url"
+
+24 |   
+25 |   import.http "http" {
+   |  _^^^^^^^^^^^^^^^^^^^^
+26 | |     test = "test"
+27 | | }
+   | |_^
+28 |   
+
+Error: main.alloy:30:1: import.http block must have a label
+
+29 | // missing label
+30 | import.http {}
+   | ^^^^^^^^^^^
+31 | 
+
+Error: main.alloy:30:1: missing required attribute "url"
+
+29 | // missing label
+30 | import.http {}
+   | ^^^^^^^^^^^^^^
+31 | 
+
+Error: main.alloy:2:1: missing required attribute "url"
+
+1 | 
+2 | remote.http "missing_required" {}
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+3 | 
+
+Error: main.alloy:5:2: unrecognized attribute name "test"
+
+4 | loki.source.file "invalid_property" {
+5 |     test = "test"
+  |     ^^^^^^^^^^^^^
+6 | }
+
+Error: main.alloy:4:1: missing required attribute "targets"
+
+3 |   
+4 |   loki.source.file "invalid_property" {
+  |  _^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+5 | |     test = "test"
+6 | | }
+  | |_^
+7 |   
+
+Error: main.alloy:4:1: missing required attribute "forward_to"
+
+3 |   
+4 |   loki.source.file "invalid_property" {
+  |  _^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+5 | |     test = "test"
+6 | | }
+  | |_^
+7 |   
+
+Error: main.alloy:13:2: unrecognized attribute name "test"
+
+12 | http {
+13 |     test = "test"
+   |     ^^^^^^^^^^^^^
+14 | }

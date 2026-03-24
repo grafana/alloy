@@ -20,7 +20,9 @@ type EventLogMessageConfig struct {
 }
 
 func (e *EventLogMessageConfig) Validate() error {
-	if !model.LabelName(e.Source).IsValid() {
+	// TODO: add support for different validation schemes.
+	//nolint:staticcheck
+	if !model.LabelName(e.Source).IsValidLegacy() {
 		return fmt.Errorf(ErrInvalidLabelName, e.Source)
 	}
 	return nil
@@ -61,7 +63,7 @@ func (m *eventLogMessageStage) Run(in chan Entry) chan Entry {
 
 // Process a event log message from extracted with the specified key, adding additional
 // entries into the extracted map
-func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, key string) error {
+func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string) error {
 	value, ok := extracted[key]
 	if !ok {
 		if Debug {
@@ -74,15 +76,16 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 		level.Warn(m.logger).Log("msg", "invalid label value parsed", "value", value)
 		return err
 	}
-	lines := strings.Split(s, "\r\n")
-	for _, line := range lines {
+	for line := range strings.SplitSeq(s, "\r\n") {
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) < 2 {
-			level.Warn(m.logger).Log("msg", "invalid line parsed from message", "line", line)
+			level.Debug(m.logger).Log("msg", "invalid line parsed from message", "line", line)
 			continue
 		}
 		mkey := parts[0]
-		if !model.LabelName(mkey).IsValid() {
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
+		if !model.LabelName(mkey).IsValidLegacy() {
 			if m.cfg.DropInvalidLabels {
 				if Debug {
 					level.Debug(m.logger).Log("msg", "invalid label parsed from message", "key", mkey)
@@ -107,13 +110,9 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]interface{}, ke
 	}
 	if Debug {
 		level.Debug(m.logger).Log("msg", "extracted data debug in event_log_message stage",
-			"extracted data", fmt.Sprintf("%v", extracted))
+			"extracted_data", fmt.Sprintf("%v", extracted))
 	}
 	return nil
-}
-
-func (m *eventLogMessageStage) Name() string {
-	return StageTypeEventLogMessage
 }
 
 // Cleanup implements Stage.

@@ -20,17 +20,20 @@ type configMetrics struct {
 var confMetrics *configMetrics
 var configMetricsInitializer sync.Once
 
-func initializeConfigMetrics() {
-	confMetrics = newConfigMetrics()
+func initializeConfigMetrics(clusterName string) {
+	confMetrics = newConfigMetrics(clusterName)
 }
 
-func newConfigMetrics() *configMetrics {
+func newConfigMetrics(clusterName string) *configMetrics {
 	var m configMetrics
 
 	m.configHash = promauto.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "alloy_config_hash",
 			Help: "Hash of the currently active config file.",
+			ConstLabels: prometheus.Labels{
+				"cluster_name": clusterName,
+			},
 		},
 		[]string{"sha256"},
 	)
@@ -49,22 +52,11 @@ func newConfigMetrics() *configMetrics {
 	return &m
 }
 
-// Create a sha256 hash of the config before expansion and expose it via
-// the alloy_config_hash metric.
-func InstrumentConfig(buf []byte) {
-	InstrumentSHA256(sha256.Sum256(buf))
-}
+func InstrumentConfig(success bool, hash [sha256.Size]byte, clusterName string) {
+	configMetricsInitializer.Do(func() {
+		initializeConfigMetrics(clusterName)
+	})
 
-// InstrumentSHA256 stores the provided hash to the alloy_config_hash metric.
-func InstrumentSHA256(hash [sha256.Size]byte) {
-	configMetricsInitializer.Do(initializeConfigMetrics)
-	confMetrics.configHash.Reset()
-	confMetrics.configHash.WithLabelValues(fmt.Sprintf("%x", hash)).Set(1)
-}
-
-// Expose metrics for load success / failures.
-func InstrumentLoad(success bool) {
-	configMetricsInitializer.Do(initializeConfigMetrics)
 	if success {
 		confMetrics.configLoadSuccessSeconds.SetToCurrentTime()
 		confMetrics.configLoadSuccess.Set(1)
@@ -72,4 +64,7 @@ func InstrumentLoad(success bool) {
 		confMetrics.configLoadSuccess.Set(0)
 		confMetrics.configLoadFailures.Inc()
 	}
+
+	confMetrics.configHash.Reset()
+	confMetrics.configHash.WithLabelValues(fmt.Sprintf("%x", hash)).Set(1)
 }

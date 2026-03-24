@@ -20,14 +20,15 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	conventions "go.opentelemetry.io/collector/semconv/v1.6.1"
+	"go.opentelemetry.io/collector/pipeline"
+	conventions "go.opentelemetry.io/otel/semconv/v1.6.1"
 	"go.uber.org/zap"
 
 	"github.com/grafana/alloy/internal/static/traces/spanmetricsprocessor/internal/cache"
 )
 
 const (
-	serviceNameKey     = conventions.AttributeServiceName
+	serviceNameKey     = string(conventions.ServiceNameKey)
 	operationKey       = "operation"   // OpenTelemetry non-standard constant.
 	spanKindKey        = "span.kind"   // OpenTelemetry non-standard constant.
 	statusCodeKey      = "status.code" // OpenTelemetry non-standard constant.
@@ -170,12 +171,12 @@ func (p *processorImp) Start(ctx context.Context, host component.Host) error {
 	p.logger.Info("Starting spanmetricsprocessor")
 	// exporters := host.GetExporters() //nolint:staticcheck
 	//TODO: This exporters map is empty - figure out a way to populate it when we need to upgrade the Agent?
-	exporters := make(map[component.DataType]map[component.ID]component.Component)
+	exporters := make(map[pipeline.Signal]map[component.ID]component.Component)
 
-	availableMetricsExporters := make([]string, 0, len(exporters[component.DataTypeMetrics]))
+	availableMetricsExporters := make([]string, 0, len(exporters[pipeline.SignalMetrics]))
 
 	// The available list of exporters come from any configured metrics pipelines' exporters.
-	for k, exp := range exporters[component.DataTypeMetrics] {
+	for k, exp := range exporters[pipeline.SignalMetrics] {
 		metricsExp, ok := exp.(exporter.Metrics)
 		if !ok {
 			return fmt.Errorf("the exporter %q isn't a metrics exporter", k.String())
@@ -338,7 +339,7 @@ func (p *processorImp) aggregateMetrics(traces ptrace.Traces) {
 	for i := 0; i < traces.ResourceSpans().Len(); i++ {
 		rspans := traces.ResourceSpans().At(i)
 		resourceAttr := rspans.Resource().Attributes()
-		serviceAttr, ok := resourceAttr.Get(conventions.AttributeServiceName)
+		serviceAttr, ok := resourceAttr.Get(serviceNameKey)
 		if !ok {
 			continue
 		}

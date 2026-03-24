@@ -1,4 +1,4 @@
-//go:build (linux && !(amd64 || arm64)) || !linux
+//go:build (linux && !(amd64 || arm64)) || !(linux || darwin)
 
 package java
 

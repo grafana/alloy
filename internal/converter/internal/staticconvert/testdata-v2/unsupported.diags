@@ -4,4 +4,5 @@
 (Warning) The eventhandler cache_path is unnecessary in Alloy because the storage path is governed by the --storage.path cmd argument and is always local to the component.
 (Warning) Please review your agent command line flags and ensure they are set in your Alloy config file where necessary.
 (Error) The converter does not support converting the provided app_agent_receiver traces_instance config.
-(Error) Support for the vsphere integration has been removed in Alloy v1.0, and conversion will not be performed.\nTo achieve similar functionality, consider creating an otelcol.receiver.vcenter component and converting generated metrics to a Prometheus pipeline using otelcol.exporter.prometheus.
+(Error) Support for the vsphere integration has been removed in Alloy v1.0, and conversion will not be performed.
+To achieve similar functionality, consider creating an otelcol.receiver.vcenter component and converting generated metrics to a Prometheus pipeline using otelcol.exporter.prometheus.

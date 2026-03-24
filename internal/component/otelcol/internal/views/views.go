@@ -1,29 +1,29 @@
 package views
 
 import (
-	semconv "go.opentelemetry.io/collector/semconv/v1.13.0"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/metric"
+	semconv "go.opentelemetry.io/otel/semconv/v1.13.0"
 )
 
 var (
 	grpcScope = "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	// grpcUnacceptableKeyValues is a list of high cardinality grpc attributes that should be filtered out.
 	grpcUnacceptableKeyValues = []attribute.KeyValue{
-		attribute.String(semconv.AttributeNetSockPeerAddr, ""),
-		attribute.String(semconv.AttributeNetSockPeerPort, ""),
-		attribute.String(semconv.AttributeNetSockPeerName, ""),
+		attribute.String(string(semconv.NetSockPeerAddrKey), ""),
+		attribute.String(string(semconv.NetSockPeerPortKey), ""),
+		attribute.String(string(semconv.NetSockPeerNameKey), ""),
 	}
 
 	httpScope = "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	// httpUnacceptableKeyValues is a list of high cardinality http attributes that should be filtered out.
 	httpUnacceptableKeyValues = []attribute.KeyValue{
-		attribute.String(semconv.AttributeNetHostName, ""),
-		attribute.String(semconv.AttributeNetHostPort, ""),
-		attribute.String(semconv.AttributeNetSockPeerPort, ""),
-		attribute.String(semconv.AttributeNetSockPeerAddr, ""),
-		attribute.String(semconv.AttributeHTTPClientIP, ""),
+		attribute.String(string(semconv.NetHostNameKey), ""),
+		attribute.String(string(semconv.NetHostPortKey), ""),
+		attribute.String(string(semconv.NetSockPeerPortKey), ""),
+		attribute.String(string(semconv.NetSockPeerAddrKey), ""),
+		attribute.String(string(semconv.HTTPClientIPKey), ""),
 	}
 )
 

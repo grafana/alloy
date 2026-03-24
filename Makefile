@@ -1,6 +1,6 @@
 ## Build, test, and generate code for various parts of Alloy.
 ##
-## At least Go 1.19, git, and a moderately recent version of Docker is required
+## At least Go 1.22, git, and a moderately recent version of Docker is required
 ## to be able to use the Makefile. This list isn't exhaustive and there are other
 ## dependencies for the generate-* targets. If you do not have the full list of
 ## build dependencies, you may set USE_CONTAINER=1 to proxy build commands to a
@@ -15,9 +15,10 @@
 ##
 ## Targets for running tests:
 ##
-##   test              Run tests
-##   lint              Lint code
-##   integration-test  Run integration tests
+##   test                  Run tests
+##   lint                  Lint code
+##   integration-test      Run integration tests
+##   integration-test-k8s  Run Kubernetes integration tests
 ##
 ## Targets for building binaries:
 ##
@@ -36,27 +37,30 @@
 ##
 ##   dist                 Produce release assets for everything.
 ##   dist-alloy-binaries  Produce release-ready Alloy binaries.
-##   dist-packages        Produce release-ready DEB and RPM packages.
+##   dist-alloy-packages  Produce release-ready DEB and RPM packages.
 ##   dist-alloy-installer Produce a Windows installer for Alloy.
+##   dist-alloy-mixin-zip Produce release-ready Alloy mixin dashboard archive.
 ##
 ## Targets for generating assets:
 ##
 ##   generate                  Generate everything.
-##   generate-drone            Generate the Drone YAML from Jsonnet.
 ##   generate-helm-docs        Generate Helm chart documentation.
 ##   generate-helm-tests       Generate Helm chart tests.
 ##   generate-ui               Generate the UI assets.
-##   generate-versioned-files  Generate versioned files.
 ##   generate-winmanifest      Generate the Windows application manifest.
+##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
+##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
+##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
 ##
 ## Other targets:
 ##
 ##   build-container-cache  Create a cache for the build container to speed up
 ##                          subsequent proxied builds
-##   drone                  Sign Drone CI config (maintainers only)
 ##   clean                  Clean caches and built binaries
 ##   help                   Displays this message
 ##   info                   Print Makefile-specific environment variables
+##   update-go-version-pr-1 Update Go version in build images (use VERSION=1.25.8)
+##   update-go-version-pr-2 Update Go version in go.mod and Dockerfiles (use VERSION=1.25.8)
 ##
 ## Environment variables:
 ##
@@ -75,20 +79,39 @@
 ##   GO_TAGS              Extra tags to use when building.
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
+##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
 
 include tools/make/*.mk
 
-ALLOY_IMAGE          ?= grafana/alloy:latest
-ALLOY_IMAGE_WINDOWS  ?= grafana/alloy:nanoserver-1809
-ALLOY_BINARY         ?= build/alloy
-SERVICE_BINARY       ?= build/alloy-service
-ALLOYLINT_BINARY     ?= build/alloylint
-GOOS                 ?= $(shell go env GOOS)
-GOARCH               ?= $(shell go env GOARCH)
-GOARM                ?= $(shell go env GOARM)
-CGO_ENABLED          ?= 1
-RELEASE_BUILD        ?= 0
-GOEXPERIMENT         ?= $(shell go env GOEXPERIMENT)
+ALLOY_IMAGE          		?= grafana/alloy:latest
+ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
+ALLOY_BINARY         		?= build/alloy
+SERVICE_BINARY       		?= build/alloy-service
+ALLOYLINT_BINARY     		?= build/alloylint
+BUILDER_USER         		?= $(shell whoami)
+BUILDER_HOST         		?= $(shell hostname)
+BUILDER_VERSION      		?= v0.139.0
+JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
+JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
+GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
+GOOS                 		?= $(shell go env GOOS)
+GOARCH               		?= $(shell go env GOARCH)
+GOARM                		?= $(shell go env GOARM)
+CGO_ENABLED          		?= 1
+RELEASE_BUILD        		?= 0
+GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
+
+# Determine the golangci-lint binary path using Make functions where possible.
+# Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
+# Uses GNU Make's $(or ...) function for lazy evaluation based on priority.
+# $(wildcard ...) checks for existence. PATH check still uses shell for practicality.
+# Allows override via environment/command line using ?=
+GOLANGCI_LINT_BINARY ?= $(or \
+    $(if $(shell go env GOBIN),$(wildcard $(shell go env GOBIN)/golangci-lint)), \
+    $(wildcard $(shell go env GOPATH)/bin/golangci-lint), \
+    $(shell command -v golangci-lint 2>/dev/null), \
+    golangci-lint \
+)
 
 # List of all environment variables which will propagate to the build
 # container. USE_CONTAINER must _not_ be included to avoid infinite recursion.
@@ -96,7 +119,7 @@ PROPAGATE_VARS := \
     ALLOY_IMAGE ALLOY_IMAGE_WINDOWS \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
-    VERSION GO_TAGS GOEXPERIMENT
+    VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
 
 #
 # Constants for targets
@@ -108,11 +131,16 @@ VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 VPREFIX      := github.com/grafana/alloy/internal/build
+VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
+ifdef SOURCE_DATE_EPOCH
+    DATE_STAMP = -d@$(SOURCE_DATE_EPOCH)
+endif
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
+		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
-                -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
-                -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+                -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
+                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ")
 
 DEFAULT_FLAGS    := $(GO_FLAGS)
 DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
@@ -132,29 +160,53 @@ endif
 
 .PHONY: lint
 lint: alloylint
-	find . -name go.mod -execdir golangci-lint run -v --timeout=10m \;
-	$(ALLOYLINT_BINARY) ./...
+	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
+
+.PHONY: run-alloylint
+run-alloylint: alloylint
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
-# more without -race for packages that have known race detection issues. The
-# final command runs tests for all other submodules.
+# more for packages that exclude tests via //go:build !race due to known race detection issues. The
+# final command runs tests for syntax module.
 test:
-	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep -v /integration-tests/)
-	$(GO_ENV) go test $(GO_FLAGS) ./internal/static/integrations/node_exporter ./internal/static/logs ./internal/component/otelcol/processor/tail_sampling ./internal/component/loki/source/file ./internal/component/loki/source/docker
-	$(GO_ENV) find . -name go.mod -not -path "./go.mod" -execdir go test -race ./... \;
+	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
+		if echo "$$dir" | grep -qv testdata; then \
+			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
+		fi;\
+	done
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	docker pull $(BUILD_IMAGE)
-	go test -tags=packaging  ./internal/tools/packaging_test
+	go test -tags=packaging -race ./internal/tools/packaging_test
 endif
 
-.PHONY: integration-test
-integration-test:
-	cd internal/cmd/integration-tests && $(GO_ENV) go run .
+.PHONY: integration-test-docker
+integration-test-docker:
+	cd integration-tests/docker && $(GO_ENV) go run .
+
+.PHONY: integration-test-k8s
+integration-test-k8s: alloy-image
+	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
+	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="alloyintegrationtests" -timeout 30m ./...
+
+# Windows service integration test. Runs only on Windows with Administrator privileges.
+# Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
+.PHONY: integration-test-windows-service
+integration-test-windows-service: dist-alloy-installer-windows
+	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
+		$(GO_ENV) go test -v -tags=alloyintegrationtests -timeout 5m -run TestWindowsService ./...
+
+.PHONY: test-pyroscope
+test-pyroscope:
+	$(GO_ENV) go test $(GO_FLAGS) -race $(shell go list ./... | grep pyroscope)
+	cd ./internal/component/pyroscope/util/internal/cmd/playground/ && \
+		$(GO_ENV) go build .
 
 #
 # Targets for building binaries
@@ -163,11 +215,11 @@ integration-test:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy:
+alloy: generate-ui
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(ALLOY_BINARY) .
+	cd ./collector && $(GO_ENV) go build $(GO_FLAGS) -o ../$(ALLOY_BINARY) .
 endif
 
 # alloy-service is not included in binaries since it's Windows-only.
@@ -211,17 +263,14 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-winmanifest
-generate: generate-drone generate-helm-docs generate-helm-tests generate-ui generate-versioned-files generate-docs generate-winmanifest
-
-generate-drone:
-	drone jsonnet -V BUILD_IMAGE_VERSION=$(BUILD_IMAGE_VERSION) --stream --format --source .drone/drone.jsonnet --target .drone/drone.yml
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd operations/helm/charts/alloy && helm-docs
+	cd ./operations/helm/charts/alloy && helm-docs
 endif
 
 generate-helm-tests:
@@ -231,25 +280,38 @@ else
 	bash ./operations/helm/scripts/rebuild-tests.sh
 endif
 
+generate-module-dependencies:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+endif
+
+generate-otel-collector-distro:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	@if [ -f ./collector/go.mod ]; then \
+		cd ./collector && go mod tidy; \
+	fi
+	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
+	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
+endif
+
 generate-ui:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_UI_BUILD),1)
+	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
 else
-	cd ./internal/web/ui && yarn --network-timeout=1200000 && yarn run build
-endif
-
-generate-versioned-files:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else
-	sh ./tools/gen-versioned-files/gen-versioned-files.sh
+	cd ./internal/web/ui && npm install && npm run build
 endif
 
 generate-docs:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	go generate ./docs
+	go generate ./internal/tools/docs_generator/
 endif
 
 generate-winmanifest:
@@ -258,20 +320,74 @@ ifeq ($(USE_CONTAINER),1)
 else
 	go generate ./internal/winmanifest
 endif
+
+.PHONY: generate-rendered-mixin
+generate-rendered-mixin:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	rm -rf operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+	mkdir -p operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+	cd operations/alloy-mixin && $(JB) install
+	$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/dashboards -e 'local mixin = import "mixin.libsonnet"; mixin.grafanaDashboards'
+	$(JSONNET) -S -J operations/alloy-mixin -J operations/alloy-mixin/vendor -m operations/alloy-mixin/rendered/alerts -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".yaml"]: std.manifestYamlDoc({ groups: [g] }) for g in mixin.prometheusAlerts.groups }'
+endif
+
+.PHONY: test-mixin
+test-mixin: generate-rendered-mixin
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	@echo "Running Jsonnet tests..."
+	@for test in operations/alloy-mixin/test/*_test.jsonnet; do \
+		echo "Testing $$test..."; \
+		$(JSONNET) -J operations/alloy-mixin -J operations/alloy-mixin/vendor "$$test" || exit 1; \
+		echo ""; \
+	done
+	@echo "✅ All Jsonnet tests passed!"
+	@echo "Validating dashboards with Grizzly..."
+	@for dashboard in operations/alloy-mixin/rendered/dashboards/*.json; do \
+		echo "  Validating $$dashboard..."; \
+		$(GRIZZLY) show "$$dashboard" > /dev/null || exit 1; \
+	done
+	@echo "Grizzly validation passed!"
+	@echo "All mixin tests passed!"
+endif
+
+generate-snmp:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# Fetch snmp.yml file of the same version as the snmp_exporter go module, use sed to update the file we need to fetch in common.go:
+	@LATEST_SNMP_VERSION=$$(go list -f '{{ .Version }}' -m github.com/prometheus/snmp_exporter); \
+	sed -i '' "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/$$LATEST_SNMP_VERSION/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go; \
+	go generate ./internal/static/integrations/snmp_exporter/common; \
+	sed -i '' "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: $$LATEST_SNMP_VERSION/" docs/sources/_index.md.t
+endif
+
+generate-gh-issue-templates:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+# This script requires bash 4.0 or higher or zsh to work properly
+	bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh
+endif
+
 #
 # Other targets
 #
 # build-container-cache and clean-build-container-cache are defined in
 # Makefile.build-container.
 
-# Drone signs the yaml, you will need to specify DRONE_TOKEN, which can be
-# found by logging into your profile in Drone.
-#
-# This will only work for maintainers.
-.PHONY: drone
-drone: generate-drone
-	drone lint .drone/drone.yml --trusted
-	drone --server https://drone.grafana.net sign --save grafana/alloy .drone/drone.yml
+.PHONY: update-go-version-pr-1
+update-go-version-pr-1:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-build-image VERSION=1.25.8)"; exit 1; fi
+	cd ./tools && go run ./go-version pr-1 $(VERSION)
+
+.PHONY: update-go-version-pr-2
+update-go-version-pr-2:
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-mod VERSION=1.25.8)"; exit 1; fi
+	cd ./tools && go run ./go-version pr-2 $(VERSION)
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache

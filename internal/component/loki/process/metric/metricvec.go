@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/util"
+	"github.com/grafana/alloy/internal/loki/util"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -67,6 +67,8 @@ func cleanLabels(set model.LabelSet) model.LabelSet {
 	for k, v := range set {
 		// Performing the same label validity check the prometheus go client library does.
 		// https://github.com/prometheus/client_golang/blob/618194de6ad3db637313666104533639011b470d/prometheus/labels.go#L85
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !k.IsValid() || strings.HasPrefix(string(k), "__") {
 			continue
 		}

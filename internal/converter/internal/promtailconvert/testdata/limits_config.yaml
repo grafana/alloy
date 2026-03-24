@@ -1,0 +1,19 @@
+limits_config:
+  max_line_size: 256KB
+  max_line_size_truncate: true
+  max_streams: 100
+  readline_rate_enabled: true
+  readline_rate: 1000.5
+  readline_burst: 1000
+  readline_rate_drop: true
+
+clients:
+  - url: http://localhost/loki/api/v1/push
+
+scrape_configs:
+  - job_name: example
+    kubernetes_sd_configs:
+      - role: pod
+        kubeconfig_file: /home/toby/.kube/config
+
+server: { register_instrumentation: false }

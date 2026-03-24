@@ -1,18 +1,20 @@
 package alloyjson_test
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/encoding/alloyjson"
-	"github.com/stretchr/testify/require"
 )
 
 func TestValues(t *testing.T) {
 	tt := []struct {
 		name       string
-		input      interface{}
+		input      any
 		expectJSON string
 	}{
 		{
@@ -51,7 +53,7 @@ func TestValues(t *testing.T) {
 		},
 		{
 			name:  "nested array",
-			input: []interface{}{"testing", []int{0, 1, 2}},
+			input: []any{"testing", []int{0, 1, 2}},
 			expectJSON: `{
 				"type": "array",
 				"value": [
@@ -88,6 +90,32 @@ func TestValues(t *testing.T) {
 			name:       "capsule",
 			input:      alloytypes.Secret("foo"),
 			expectJSON: `{ "type": "capsule", "value": "(secret)" }`,
+		},
+		{
+			name: "mappable capsule",
+			input: capsuleConvertibleToObject{
+				name:    "Scrooge McDuck",
+				address: "Duckburg, Killmotor Hill",
+			},
+			expectJSON: `{
+				"type": "object",
+				"value": [
+					{ "key": "address", "value": { "type": "string", "value": "Duckburg, Killmotor Hill" }},
+					{ "key": "name", "value": { "type": "string", "value": "Scrooge McDuck" }}
+				]
+			}`,
+		},
+		{
+			name: "capsule with stringer",
+			input: capsuleWithStringer{
+				name: "MyName",
+			},
+			expectJSON: `{ "type": "capsule", "value": "MyName" }`,
+		},
+		{
+			name:       "capsule with stringer and empty string",
+			input:      capsuleWithStringer{},
+			expectJSON: `{ "type": "capsule", "value": "capsule(\"alloyjson_test.capsuleWithStringer\")" }`,
 		},
 		{
 			// nil arrays and objects must always be [] instead of null as that's
@@ -360,4 +388,37 @@ func TestRawMap_Capsule(t *testing.T) {
 	bb, err := alloyjson.MarshalBody(val)
 	require.NoError(t, err)
 	require.JSONEq(t, expect, string(bb))
+}
+
+type capsuleConvertibleToObject struct {
+	name    string
+	address string
+}
+
+func (c capsuleConvertibleToObject) ConvertInto(dst any) error {
+	switch dst := dst.(type) {
+	case *map[string]syntax.Value:
+		result := map[string]syntax.Value{
+			"name":    syntax.ValueFromString(c.name),
+			"address": syntax.ValueFromString(c.address),
+		}
+		*dst = result
+		return nil
+	}
+	return fmt.Errorf("capsuleConvertibleToObject: conversion to '%T' is not supported", dst)
+}
+
+func (c capsuleConvertibleToObject) AlloyCapsule() {}
+
+var (
+	_ syntax.Capsule                = capsuleConvertibleToObject{}
+	_ syntax.ConvertibleIntoCapsule = capsuleConvertibleToObject{}
+)
+
+type capsuleWithStringer struct {
+	name string
+}
+
+func (c capsuleWithStringer) String() string {
+	return c.name
 }

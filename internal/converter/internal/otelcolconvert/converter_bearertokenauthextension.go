@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -26,7 +27,7 @@ func (bearerTokenAuthExtensionConverter) Factory() component.Factory {
 
 func (bearerTokenAuthExtensionConverter) InputComponentName() string { return "otelcol.auth.bearer" }
 
-func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -39,7 +40,7 @@ func (bearerTokenAuthExtensionConverter) ConvertAndAppend(state *State, id compo
 		block = common.NewBlockWithOverride([]string{"otelcol", "auth", "bearer"}, label, args)
 	} else {
 		args, fileContents := toBearerTokenAuthExtensionWithFilename(state, bcfg)
-		overrideHook := func(val interface{}) interface{} {
+		overrideHook := func(val any) any {
 			switch value := val.(type) {
 			case alloytypes.Secret:
 				return common.CustomTokenizer{Expr: fileContents}
@@ -63,6 +64,7 @@ func toBearerTokenAuthExtension(cfg *bearertokenauthextension.Config) *bearer.Ar
 	return &bearer.Arguments{
 		Scheme:       cfg.Scheme,
 		Token:        alloytypes.Secret(string(cfg.BearerToken)),
+		Header:       cfg.Header,
 		DebugMetrics: common.DefaultValue[bearer.Arguments]().DebugMetrics,
 	}
 }
@@ -80,6 +82,7 @@ func toBearerTokenAuthExtensionWithFilename(state *State, cfg *bearertokenauthex
 
 	return &bearer.Arguments{
 		Scheme:       cfg.Scheme,
+		Header:       cfg.Header,
 		DebugMetrics: common.DefaultValue[bearer.Arguments]().DebugMetrics,
 	}, fmt.Sprintf("%s.content", StringifyBlock(block))
 }

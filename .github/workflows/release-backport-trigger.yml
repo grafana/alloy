@@ -1,0 +1,36 @@
+name: Backport PR - Trigger
+
+on:
+  pull_request:
+    types: [labeled, closed]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  trigger:
+    # Only run when:
+    # - In the upstream repo (not forks)
+    # - PR is merged
+    # - Has at least one backport label
+    # If all jobs are skipped, the workflow is not considered "successful".
+    if: >
+      github.repository == 'grafana/alloy' &&
+      github.event.pull_request.merged == true &&
+      contains(toJSON(github.event.pull_request.labels.*.name), 'backport/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Save PR number for worker workflow 📦
+        run: |
+          mkdir -p backport-info
+          echo "${PR_NUMBER}" > backport-info/pr_number
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+
+      - name: Upload PR info artifact 🛫
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: backport-info
+          path: backport-info/
+          retention-days: 1

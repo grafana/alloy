@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/confmap/xconfmap"
 )
 
 // Config defines the configuration options for the host_info connector.
@@ -15,7 +15,7 @@ type Config struct {
 	MetricsFlushInterval time.Duration `mapstructure:"metrics_flush_interval"`
 }
 
-var _ component.ConfigValidator = (*Config)(nil)
+var _ xconfmap.Validator = (*Config)(nil)
 
 // Validate checks if the configuration is valid
 func (c Config) Validate() error {

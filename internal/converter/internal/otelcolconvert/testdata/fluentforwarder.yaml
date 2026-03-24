@@ -1,0 +1,14 @@
+receivers:
+  fluentforward:
+    endpoint: "localhost:1514"
+
+exporters:
+  otlp:
+    endpoint: database:4317
+
+service:
+  pipelines:
+    logs:
+      receivers: [fluentforward]
+      processors: []
+      exporters: [otlp]

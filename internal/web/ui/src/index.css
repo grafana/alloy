@@ -1,6 +1,8 @@
 @import url('./static/fonts.css');
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
 }
 
@@ -18,7 +20,7 @@ body {
   cursor: pointer;
 }
 
-.app-navbar div[role="menu"] {
+.app-navbar div[role='menu'] {
   border: 1px solid #e4e5e5;
 }
 
@@ -26,6 +28,7 @@ body {
   color: #25292e;
 }
 
-pre, code {
+pre,
+code {
   font-family: 'Fira Code', monospace;
 }

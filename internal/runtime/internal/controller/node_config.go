@@ -3,7 +3,9 @@ package controller
 import (
 	"fmt"
 
-	"github.com/grafana/alloy/internal/runtime/internal/importsource"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/nodeconf/foreach"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
 )
@@ -15,9 +17,26 @@ const (
 	tracingBlockID  = "tracing"
 )
 
+// Add config blocks that are not GA. Config blocks that are not specified here are considered GA.
+var configBlocksUnstable = map[string]featuregate.Stability{
+	foreach.BlockName: foreach.StabilityLevel,
+}
+
 // NewConfigNode creates a new ConfigNode from an initial ast.BlockStmt.
 // The underlying config isn't applied until Evaluate is called.
-func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals) (BlockNode, diag.Diagnostics) {
+func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals, customReg *CustomComponentRegistry) (BlockNode, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if err := checkFeatureStability(block.GetBlockName(), globals.MinStability); err != nil {
+		diags.Add(diag.Diagnostic{
+			Severity: diag.SeverityLevelError,
+			Message:  err.Error(),
+			StartPos: ast.StartPos(block).Position(),
+			EndPos:   ast.EndPos(block).Position(),
+		})
+		return nil, diags
+	}
+
 	switch block.GetBlockName() {
 	case argumentBlockID:
 		return NewArgumentConfigNode(block, globals), nil
@@ -27,10 +46,11 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals) (BlockNode, d
 		return NewLoggingConfigNode(block, globals), nil
 	case tracingBlockID:
 		return NewTracingConfigNode(block, globals), nil
-	case importsource.BlockImportFile, importsource.BlockImportString, importsource.BlockImportHTTP, importsource.BlockImportGit:
+	case importsource.BlockNameFile, importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit:
 		return NewImportConfigNode(block, globals, importsource.GetSourceType(block.GetBlockName())), nil
+	case foreach.BlockName:
+		return NewForeachConfigNode(block, globals, customReg), nil
 	default:
-		var diags diag.Diagnostics
 		diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,
 			Message:  fmt.Sprintf("invalid config block type %s while creating new config node", block.GetBlockName()),
@@ -39,6 +59,14 @@ func NewConfigNode(block *ast.BlockStmt, globals ComponentGlobals) (BlockNode, d
 		})
 		return nil, diags
 	}
+}
+
+func checkFeatureStability(blockName string, minStability featuregate.Stability) error {
+	blockStability, exist := configBlocksUnstable[blockName]
+	if exist {
+		return featuregate.CheckAllowed(blockStability, minStability, fmt.Sprintf("config block %q", blockName))
+	}
+	return nil
 }
 
 // ConfigNodeMap represents the config BlockNodes in their explicit types.
@@ -50,6 +78,7 @@ type ConfigNodeMap struct {
 	argumentMap map[string]*ArgumentConfigNode
 	exportMap   map[string]*ExportConfigNode
 	importMap   map[string]*ImportConfigNode
+	foreachMap  map[string]*ForeachConfigNode
 }
 
 // NewConfigNodeMap will create an initial ConfigNodeMap. Append must be called
@@ -61,6 +90,7 @@ func NewConfigNodeMap() *ConfigNodeMap {
 		argumentMap: map[string]*ArgumentConfigNode{},
 		exportMap:   map[string]*ExportConfigNode{},
 		importMap:   map[string]*ImportConfigNode{},
+		foreachMap:  map[string]*ForeachConfigNode{},
 	}
 }
 
@@ -80,6 +110,8 @@ func (nodeMap *ConfigNodeMap) Append(configNode BlockNode) diag.Diagnostics {
 		nodeMap.tracing = n
 	case *ImportConfigNode:
 		nodeMap.importMap[n.Label()] = n
+	case *ForeachConfigNode:
+		nodeMap.foreachMap[n.Label()] = n
 	default:
 		diags.Add(diag.Diagnostic{
 			Severity: diag.SeverityLevelError,

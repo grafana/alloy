@@ -12,6 +12,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func TestAlloyUnmarshal(t *testing.T) {
@@ -28,7 +29,10 @@ func TestAlloyUnmarshal(t *testing.T) {
 		}
 		enable_http2 = true
 		follow_redirects = false
-		proxy_url = "http://example:8080"`
+		proxy_url = "http://example:8080"
+		http_headers = {
+			"foo" = ["foobar"],
+		}`
 
 	var args Arguments
 	err := syntax.Unmarshal([]byte(alloyCfg), &args)
@@ -45,6 +49,9 @@ func TestAlloyUnmarshal(t *testing.T) {
 	assert.Equal(t, true, args.EnableHTTP2)
 	assert.Equal(t, false, args.FollowRedirects)
 	assert.Equal(t, "http://example:8080", args.ProxyConfig.ProxyURL.String())
+
+	header := args.HTTPHeaders.Headers["foo"][0]
+	assert.Equal(t, "foobar", string(header))
 }
 
 func TestAlloyUnmarshal_OAuthRequiredFields(t *testing.T) {
@@ -130,6 +137,11 @@ func TestConvert(t *testing.T) {
 				URL: proxyUrl,
 			},
 		},
+		HTTPHeaders: &config.Headers{
+			Headers: map[string][]alloytypes.Secret{
+				"foo": {"foobar"},
+			},
+		},
 	}
 
 	args := alloyArgsOAuth.Convert()
@@ -146,6 +158,9 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, false, promArgs.HTTPClientConfig.FollowRedirects)
 	assert.Equal(t, false, promArgs.HTTPClientConfig.EnableHTTP2)
 	assert.Equal(t, "http://example:8080", promArgs.HTTPClientConfig.ProxyURL.String())
+
+	header := promArgs.HTTPClientConfig.HTTPHeaders.Headers["foo"].Secrets[0]
+	assert.Equal(t, "foobar", string(header))
 
 	alloyArgsManagedIdentity := Arguments{
 		Environment:     "AzureTestCloud",

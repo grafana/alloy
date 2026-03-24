@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"net/netip"
 	"strconv"
 
 	se "github.com/boynux/squid-exporter/collector"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/static/integrations"
 	config_util "github.com/prometheus/common/config"
+
+	"github.com/grafana/alloy/internal/static/integrations"
 
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -43,7 +45,13 @@ func (c *Config) validate() error {
 	if host == "" {
 		return ErrNoHostname
 	}
-	c.Host = host
+
+	if ip, err := netip.ParseAddr(host); err == nil && ip.IsValid() && ip.Is6() {
+		// Restore the explicit brackets for IPv6 addresses
+		c.Host = fmt.Sprintf("[%s]", host)
+	} else {
+		c.Host = host
+	}
 
 	if port == "" {
 		return ErrNoPort
@@ -58,7 +66,7 @@ func (c *Config) validate() error {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = Config{}
 
 	type plain Config
@@ -71,7 +79,7 @@ func (c *Config) Name() string {
 }
 
 // InstanceKey returns the addr of the squid instance.
-func (c *Config) InstanceKey(agentKey string) (string, error) {
+func (c *Config) InstanceKey(_ string) (string, error) {
 	return c.Address, nil
 }
 
@@ -94,7 +102,7 @@ func New(c *Config) (integrations.Integration, error) {
 	}
 
 	seExporter := se.New(&se.CollectorConfig{
-		Hostname: c.Host,
+		Hostname: fmt.Sprintf("[%s]", c.Host),
 		Port:     c.Port,
 		Login:    c.Username,
 		Password: string(c.Password),

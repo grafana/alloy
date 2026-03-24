@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -9,31 +8,19 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/loki/process/metric"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/component/loki/process/metric"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Metric types.
 const (
-	MetricTypeCounter   = "counter"
-	MetricTypeGauge     = "gauge"
-	MetricTypeHistogram = "histogram"
-
 	defaultMetricsPrefix = "loki_process_custom_"
 )
 
-// Configuration errors.
-var (
-	ErrEmptyMetricsStageConfig = errors.New("empty metric stage configuration")
-	ErrMetricsStageInvalidType = errors.New("invalid metric type: must be one of 'counter', 'gauge', or 'histogram'")
-	ErrInvalidIdleDur          = errors.New("max_idle_duration could not be parsed as a time.Duration")
-	ErrSubSecIdleDur           = errors.New("max_idle_duration less than 1s not allowed")
-)
-
 // MetricConfig is a single metrics configuration.
-// TODO(@tpaschalis) Rework once Alloy squashing is implemented.
 type MetricConfig struct {
 	Counter   *metric.CounterConfig   `alloy:"counter,block,optional"`
 	Gauge     *metric.GaugeConfig     `alloy:"gauge,block,optional"`
@@ -106,7 +93,6 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 	}
 	return &metricStage{
 		logger:  logger,
-		cfg:     config,
 		metrics: metrics,
 	}, nil
 }
@@ -114,7 +100,6 @@ func newMetricStage(logger log.Logger, config MetricsConfig, registry prometheus
 // metricStage creates and updates prometheus metrics based on extracted pipeline data
 type metricStage struct {
 	logger  log.Logger
-	cfg     MetricsConfig
 	metrics map[string]cfgCollector
 }
 
@@ -132,7 +117,7 @@ func (m *metricStage) Run(in chan Entry) chan Entry {
 }
 
 // Process implements Stage
-func (m *metricStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
+func (m *metricStage) Process(labels model.LabelSet, extracted map[string]any, _ *time.Time, entry *string) {
 	for name, cc := range m.metrics {
 		// There is a special case for counters where we count even if there is no match in the extracted map.
 		if c, ok := cc.collector.(*metric.Counters); ok {
@@ -170,11 +155,6 @@ func (m *metricStage) Process(labels model.LabelSet, extracted map[string]interf
 	}
 }
 
-// Name implements Stage
-func (m *metricStage) Name() string {
-	return StageTypeMetric
-}
-
 // Cleanup implements Stage.
 func (m *metricStage) Cleanup() {
 	for _, cfgCollector := range m.metrics {
@@ -190,7 +170,7 @@ func (m *metricStage) Cleanup() {
 }
 
 // recordCounter will update a counter metric
-func (m *metricStage) recordCounter(name string, counter *metric.Counters, labels model.LabelSet, v interface{}) {
+func (m *metricStage) recordCounter(name string, counter *metric.Counters, labels model.LabelSet, v any) {
 	// If value matching is defined, make sure value matches.
 	if counter.Cfg.Value != "" {
 		stringVal, err := getString(v)
@@ -223,7 +203,7 @@ func (m *metricStage) recordCounter(name string, counter *metric.Counters, label
 }
 
 // recordGauge will update a gauge metric
-func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels model.LabelSet, v interface{}) {
+func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels model.LabelSet, v any) {
 	// If value matching is defined, make sure value matches.
 	if gauge.Cfg.Value != "" {
 		stringVal, err := getString(v)
@@ -276,7 +256,7 @@ func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels mode
 }
 
 // recordHistogram will update a Histogram metric
-func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms, labels model.LabelSet, v interface{}) {
+func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms, labels model.LabelSet, v any) {
 	// If value matching is defined, make sure value matches.
 	if histogram.Cfg.Value != "" {
 		stringVal, err := getString(v)
@@ -303,7 +283,7 @@ func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms,
 }
 
 // getFloat will take the provided value and return a float64 if possible
-func getFloat(unk interface{}) (float64, error) {
+func getFloat(unk any) (float64, error) {
 	switch i := unk.(type) {
 	case float64:
 		return i, nil

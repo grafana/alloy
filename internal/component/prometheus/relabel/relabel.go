@@ -5,12 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/grafana/alloy/internal/component"
-	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/service/livedebugging"
 	lru "github.com/hashicorp/golang-lru/v2"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -21,6 +15,13 @@ import (
 	"github.com/prometheus/prometheus/model/value"
 	"github.com/prometheus/prometheus/storage"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/component"
+	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
 const name = "prometheus.relabel"
@@ -86,12 +87,10 @@ type Component struct {
 	cacheDeletes     prometheus_client.Counter
 	fanout           *prometheus.Fanout
 	exited           atomic.Bool
-	ls               labelstore.LabelStore
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 
-	cacheMut sync.RWMutex
-	cache    *lru.Cache[uint64, *labelAndID]
+	cache *lru.Cache[uint64, labels.Labels]
 }
 
 var (
@@ -101,7 +100,7 @@ var (
 
 // New creates a new prometheus.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	cache, err := lru.New[uint64, *labelAndID](args.CacheSize)
+	cache, err := lru.New[uint64, labels.Labels](args.CacheSize)
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +114,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil {
 		return nil, err
 	}
+	ls := data.(labelstore.LabelStore)
 	c := &Component{
 		opts:               o,
 		cache:              cache,
-		ls:                 data.(labelstore.LabelStore),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	c.metricsProcessed = prometheus_client.NewCounter(prometheus_client.CounterOpts{
@@ -153,11 +152,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}
 	}
 
-	c.fanout = prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, c.ls)
+	c.fanout = prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	c.receiver = prometheus.NewInterceptor(
 		c.fanout,
-		c.ls,
-		prometheus.WithAppendHook(func(_ storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
+		prometheus.WithComponentID(c.opts.ID),
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
 			if c.exited.Load() {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
@@ -167,9 +166,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				return 0, nil
 			}
 			c.metricsOutgoing.Inc()
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.Append(0, newLbl, t, v)
 		}),
-		prometheus.WithExemplarHook(func(_ storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
+		prometheus.WithExemplarHook(func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
 			if c.exited.Load() {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
@@ -178,9 +179,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			if newLbl.IsEmpty() {
 				return 0, nil
 			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.AppendExemplar(0, newLbl, e)
 		}),
-		prometheus.WithMetadataHook(func(_ storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
+		prometheus.WithMetadataHook(func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
 			if c.exited.Load() {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
@@ -189,9 +192,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			if newLbl.IsEmpty() {
 				return 0, nil
 			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.UpdateMetadata(0, newLbl, m)
 		}),
-		prometheus.WithHistogramHook(func(_ storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
+		prometheus.WithHistogramHook(func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
 			if c.exited.Load() {
 				return 0, fmt.Errorf("%s has exited", o.ID)
 			}
@@ -200,6 +205,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			if newLbl.IsEmpty() {
 				return 0, nil
 			}
+
+			// Since SeriesRefs are tied to the labels, we send zero to indicate the seriesRef should be recalculated downstream.
 			return next.AppendHistogram(0, newLbl, t, h, fh)
 		}),
 	)
@@ -219,6 +226,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer c.exited.Store(true)
+	defer c.fanout.Clear()
 
 	<-ctx.Done()
 	return nil
@@ -243,86 +251,76 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
-	globalRef := c.ls.GetOrAddGlobalRefID(lbls)
+	c.metricsProcessed.Inc()
+
 	var (
 		relabelled labels.Labels
 		keep       bool
 	)
-	newLbls, found := c.getFromCache(globalRef)
+	newLbls, found := c.getFromCache(lbls)
 	if found {
 		c.cacheHits.Inc()
-		// If newLbls is nil but cache entry was found then we want to keep the value nil, if it's not we want to reuse the labels
-		if newLbls != nil {
-			relabelled = newLbls.labels
+		// If newLbls is empty but cache entry was found then we want to keep the value empty, if it's not we want to reuse the labels
+		if !newLbls.IsEmpty() {
+			relabelled = newLbls
 		}
 	} else {
 		// Relabel against a copy of the labels to prevent modifying the original
 		// slice.
 		relabelled, keep = relabel.Process(lbls.Copy(), c.mrc...)
 		c.cacheMisses.Inc()
-		c.addToCache(globalRef, relabelled, keep)
+		c.addToCache(lbls, relabelled, keep)
 	}
 
 	// If stale remove from the cache, the reason we don't exit early is so the stale value can propagate.
-	// TODO: (@mattdurham) This caching can leak and likely needs a timed eviction at some point, but this is simple.
-	// In the future the global ref cache may have some hooks to allow notification of when caches should be evicted.
 	if value.IsStaleNaN(val) {
-		c.deleteFromCache(globalRef)
+		c.deleteFromCache(lbls)
 	}
 	// Set the cache size to the cache.len
 	// TODO(@mattdurham): Instead of setting this each time could collect on demand for better performance.
 	c.cacheSize.Set(float64(c.cache.Len()))
 
-	componentID := livedebugging.ComponentID(c.opts.ID)
-	if c.debugDataPublisher.IsActive(componentID) {
-		c.debugDataPublisher.Publish(componentID, fmt.Sprintf("%s => %s", lbls.String(), relabelled.String()))
+	count := uint64(1)
+	if relabelled.Len() == 0 {
+		count = 0 // if no labels are left, the count is not incremented because the metric will be filtered out
 	}
+	componentID := livedebugging.ComponentID(c.opts.ID)
+	c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+		componentID,
+		livedebugging.PrometheusMetric,
+		count,
+		func() string {
+			return fmt.Sprintf("%s => %s", lbls.String(), relabelled.String())
+		},
+	))
 
 	return relabelled
 }
 
-func (c *Component) getFromCache(id uint64) (*labelAndID, bool) {
-	c.cacheMut.RLock()
-	defer c.cacheMut.RUnlock()
-
-	fm, found := c.cache.Get(id)
-	return fm, found
+func (c *Component) getFromCache(lbls labels.Labels) (labels.Labels, bool) {
+	hash := lbls.Hash()
+	return c.cache.Get(hash)
 }
 
-func (c *Component) deleteFromCache(id uint64) {
-	c.cacheMut.Lock()
-	defer c.cacheMut.Unlock()
+func (c *Component) deleteFromCache(lbls labels.Labels) {
 	c.cacheDeletes.Inc()
-	c.cache.Remove(id)
+
+	hash := lbls.Hash()
+	c.cache.Remove(hash)
 }
 
 func (c *Component) clearCache(cacheSize int) {
-	c.cacheMut.Lock()
-	defer c.cacheMut.Unlock()
-	cache, _ := lru.New[uint64, *labelAndID](cacheSize)
+	cache, _ := lru.New[uint64, labels.Labels](cacheSize)
 	c.cache = cache
 }
 
-func (c *Component) addToCache(originalID uint64, lbls labels.Labels, keep bool) {
-	c.cacheMut.Lock()
-	defer c.cacheMut.Unlock()
-
+func (c *Component) addToCache(lbls labels.Labels, relabeled labels.Labels, keep bool) {
+	hash := lbls.Hash()
 	if !keep {
-		c.cache.Add(originalID, nil)
+		c.cache.Add(hash, labels.EmptyLabels())
 		return
 	}
-	newGlobal := c.ls.GetOrAddGlobalRefID(lbls)
-	c.cache.Add(originalID, &labelAndID{
-		labels: lbls,
-		id:     newGlobal,
-	})
+	c.cache.Add(hash, relabeled)
 }
 
-func (c *Component) LiveDebugging(_ int) {}
-
-// labelAndID stores both the globalrefid for the label and the id itself. We store the id so that it doesn't have
-// to be recalculated again.
-type labelAndID struct {
-	labels labels.Labels
-	id     uint64
-}
+func (c *Component) LiveDebugging() {}

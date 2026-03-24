@@ -3,6 +3,7 @@ package promsdprocessor
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -18,6 +19,7 @@ import (
 	"go.opentelemetry.io/collector/processor"
 
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	util "github.com/grafana/alloy/internal/util/log"
 )
@@ -49,7 +51,7 @@ func newTraceProcessor(nextConsumer consumer.Traces, operationType string, podAs
 
 	mgr := promdiscovery.NewManager(
 		ctx,
-		logger,
+		slog.New(logging.NewSlogGoKitHandler(logger)),
 		discoveryManagerRegistry,
 		sdMetrics,
 		promdiscovery.Name("traces service disco"),
@@ -178,11 +180,7 @@ func (p *promServiceDiscoProcessor) syncTargets(jobName string, group *targetgro
 			continue
 		}
 
-		var labels = make(discovery.Target)
-		for k, v := range processedLabels.Map() {
-			labels[k] = v
-		}
-
+		var labels = discovery.NewTargetFromModelLabels(processedLabels)
 		host, err := promsdconsumer.GetHostFromLabels(labels)
 		if err != nil {
 			level.Warn(p.logger).Log("msg", "ignoring target, unable to find address", "err", err)

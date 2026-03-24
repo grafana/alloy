@@ -7,17 +7,21 @@ on:
     branches:
       - main
   pull_request:
+
+permissions:
+  contents: read
+
 jobs:
   run_tests:
-    runs-on: ubuntu-latest
+    runs-on: github-hosted-ubuntu-x64-large
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Setup Go
-      uses: actions/setup-go@v5
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        go-version: "1.22"
-    - name: Set OTEL Exporter Endpoint
-      run: echo "OTEL_EXPORTER_ENDPOINT=172.17.0.1:4318" >> $GITHUB_ENV
+        persist-credentials: false
+    - name: Setup Go
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      with:
+        go-version-file: go.mod
     - name: Run tests
-      run: make integration-test
+      run: make integration-test-docker

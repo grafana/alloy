@@ -39,13 +39,12 @@ func (*Service) Definition() service.Definition {
 		Name:       ServiceName,
 		ConfigType: Arguments{},
 		DependsOn:  []string{},
-		Stability:  featuregate.StabilityExperimental,
+		Stability:  featuregate.StabilityGenerallyAvailable,
 	}
 }
 
 // Run implements service.Service.
 func (s *Service) Run(ctx context.Context, host service.Host) error {
-	s.liveDebugging.SetServiceHost(host)
 	<-ctx.Done()
 	return nil
 }

@@ -8,8 +8,6 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/storage"
-
-	"github.com/grafana/alloy/internal/service/labelstore"
 )
 
 // Interceptor is a storage.Appendable which invokes callback functions upon
@@ -20,22 +18,21 @@ type Interceptor struct {
 	onAppendExemplar     func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error)
 	onUpdateMetadata     func(ref storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error)
 	onAppendHistogram    func(ref storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error)
-	onAppendCTZeroSample func(ref storage.SeriesRef, l labels.Labels, t, ct int64, next storage.Appender) (storage.SeriesRef, error)
+	onAppendSTZeroSample func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error)
 
 	// next is the next appendable to pass in the chain.
 	next storage.Appendable
 
-	ls labelstore.LabelStore
+	componentID string
 }
 
 var _ storage.Appendable = (*Interceptor)(nil)
 
 // NewInterceptor creates a new Interceptor storage.Appendable. Options can be
 // provided to NewInterceptor to install custom hooks for different methods.
-func NewInterceptor(next storage.Appendable, ls labelstore.LabelStore, opts ...InterceptorOption) *Interceptor {
+func NewInterceptor(next storage.Appendable, opts ...InterceptorOption) *Interceptor {
 	i := &Interceptor{
 		next: next,
-		ls:   ls,
 	}
 	for _, opt := range opts {
 		opt(i)
@@ -78,47 +75,52 @@ func WithHistogramHook(f func(ref storage.SeriesRef, l labels.Labels, t int64, h
 	}
 }
 
-// WithCTZeroSampleHook returns an InterceptorOption which hooks into calls to
-// AppendCTZeroSample.
-func WithCTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, ct int64, next storage.Appender) (storage.SeriesRef, error)) InterceptorOption {
+// WithSTZeroSampleHook returns an InterceptorOption which hooks into calls to
+// AppendSTZeroSample.
+func WithSTZeroSampleHook(f func(ref storage.SeriesRef, l labels.Labels, t, st int64, next storage.Appender) (storage.SeriesRef, error)) InterceptorOption {
 	return func(i *Interceptor) {
-		i.onAppendCTZeroSample = f
+		i.onAppendSTZeroSample = f
+	}
+}
+
+// WithComponentID returns an InterceptorOptions which is used to set the componentID of the Interceptor.
+// This is useful for debugging
+func WithComponentID(id string) InterceptorOption {
+	return func(i *Interceptor) {
+		i.componentID = id
 	}
 }
 
 // Appender satisfies the Appendable interface.
-func (f *Interceptor) Appender(ctx context.Context) storage.Appender {
+func (i *Interceptor) Appender(ctx context.Context) storage.Appender {
 	app := &interceptappender{
-		interceptor:       f,
-		ls:                f.ls,
-		stalenessTrackers: make([]labelstore.StalenessTracker, 0),
+		interceptor: i,
 	}
-	if f.next != nil {
-		app.child = f.next.Appender(ctx)
+	if i.next != nil {
+		app.child = i.next.Appender(ctx)
 	}
 	return app
 }
 
+func (i *Interceptor) String() string {
+	return i.componentID + ".receiver"
+}
+
 type interceptappender struct {
-	interceptor       *Interceptor
-	child             storage.Appender
-	ls                labelstore.LabelStore
-	stalenessTrackers []labelstore.StalenessTracker
+	interceptor *Interceptor
+	child       storage.Appender
+}
+
+func (a *interceptappender) SetOptions(opts *storage.AppendOptions) {
+	if a.child != nil {
+		a.child.SetOptions(opts)
+	}
 }
 
 var _ storage.Appender = (*interceptappender)(nil)
 
 // Append satisfies the Appender interface.
 func (a *interceptappender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
-	a.stalenessTrackers = append(a.stalenessTrackers, labelstore.StalenessTracker{
-		GlobalRefID: uint64(ref),
-		Labels:      l,
-		Value:       v,
-	})
-
 	if a.interceptor.onAppend != nil {
 		return a.interceptor.onAppend(ref, l, t, v, a.child)
 	}
@@ -130,7 +132,6 @@ func (a *interceptappender) Append(ref storage.SeriesRef, l labels.Labels, t int
 
 // Commit satisfies the Appender interface.
 func (a *interceptappender) Commit() error {
-	a.ls.TrackStaleness(a.stalenessTrackers)
 	if a.child == nil {
 		return nil
 	}
@@ -139,7 +140,6 @@ func (a *interceptappender) Commit() error {
 
 // Rollback satisfies the Appender interface.
 func (a *interceptappender) Rollback() error {
-	a.ls.TrackStaleness(a.stalenessTrackers)
 	if a.child == nil {
 		return nil
 	}
@@ -152,10 +152,6 @@ func (a *interceptappender) AppendExemplar(
 	l labels.Labels,
 	e exemplar.Exemplar,
 ) (storage.SeriesRef, error) {
-
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
 
 	if a.interceptor.onAppendExemplar != nil {
 		return a.interceptor.onAppendExemplar(ref, l, e, a.child)
@@ -172,10 +168,6 @@ func (a *interceptappender) UpdateMetadata(
 	l labels.Labels,
 	m metadata.Metadata,
 ) (storage.SeriesRef, error) {
-
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
 
 	if a.interceptor.onUpdateMetadata != nil {
 		return a.interceptor.onUpdateMetadata(ref, l, m, a.child)
@@ -194,10 +186,6 @@ func (a *interceptappender) AppendHistogram(
 	fh *histogram.FloatHistogram,
 ) (storage.SeriesRef, error) {
 
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
-
 	if a.interceptor.onAppendHistogram != nil {
 		return a.interceptor.onAppendHistogram(ref, l, t, h, fh, a.child)
 	}
@@ -207,21 +195,31 @@ func (a *interceptappender) AppendHistogram(
 	return a.child.AppendHistogram(ref, l, t, h, fh)
 }
 
-func (a *interceptappender) AppendCTZeroSample(
+func (a *interceptappender) AppendSTZeroSample(
 	ref storage.SeriesRef,
 	l labels.Labels,
-	t, ct int64,
+	t, st int64,
 ) (storage.SeriesRef, error) {
 
-	if ref == 0 {
-		ref = storage.SeriesRef(a.ls.GetOrAddGlobalRefID(l))
-	}
-
-	if a.interceptor.onAppendCTZeroSample != nil {
-		return a.interceptor.onAppendCTZeroSample(ref, l, t, ct, a.child)
+	if a.interceptor.onAppendSTZeroSample != nil {
+		return a.interceptor.onAppendSTZeroSample(ref, l, t, st, a.child)
 	}
 	if a.child == nil {
 		return 0, nil
 	}
-	return a.child.AppendCTZeroSample(ref, l, t, ct)
+	return a.child.AppendSTZeroSample(ref, l, t, st)
+}
+
+func (a *interceptappender) AppendHistogramSTZeroSample(
+	ref storage.SeriesRef,
+	l labels.Labels,
+	t, st int64,
+	h *histogram.Histogram,
+	fh *histogram.FloatHistogram,
+) (storage.SeriesRef, error) {
+
+	if a.child == nil {
+		return 0, nil
+	}
+	return a.child.AppendHistogramSTZeroSample(ref, l, t, st, h, fh)
 }

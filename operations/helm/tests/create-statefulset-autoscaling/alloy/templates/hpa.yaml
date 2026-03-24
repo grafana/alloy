@@ -4,6 +4,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: alloy
+  namespace: default
   labels:
     helm.sh/chart: alloy
     app.kubernetes.io/name: alloy
@@ -20,9 +21,22 @@ spec:
   maxReplicas: 5
   behavior:
     scaleDown:
-      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+      selectPolicy: Min
+      stabilizationWindowSeconds: 100
     scaleUp:
-      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+        - type: Percent
+          value: 100
+          periodSeconds: 15
+      selectPolicy: Max
+      stabilizationWindowSeconds: 80
   metrics:
     # Changing the order of the metrics will cause ArgoCD to go into a sync loop
     # memory needs to be first.

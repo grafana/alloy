@@ -99,6 +99,10 @@ func sharePointer(a, b reflect.Value) (string, bool) {
 		return "", false
 
 	case reflect.Pointer:
+		// same edge case as above: skip if this is a struct ptr and that the structs are empty
+		if !a.IsNil() && a.Elem().Kind() == reflect.Struct && a.Elem().NumField() == 0 {
+			return "", false
+		}
 		if pointersMatch(a, b) {
 			return "", true
 		} else {

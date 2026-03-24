@@ -13,7 +13,8 @@ import (
 
 // Config configures behavior of the printer.
 type Config struct {
-	Indent int // Indentation to apply to all emitted code. Default 0.
+	Indent        int  // Indentation to apply to all emitted code. Default 0.
+	RedactSecrets bool // Should secrets be redacted. Default false.
 }
 
 // Fprint pretty-prints the specified node to w. The Node type must be an
@@ -164,7 +165,7 @@ func (p *printer) SetComments(comments []ast.CommentGroup) {
 // the provided Pos. Writing token.Pos values can help make sure the printer's
 // AST-space position is accurate, as AST-space position is otherwise an
 // estimation based on written data.
-func (p *printer) Write(args ...interface{}) {
+func (p *printer) Write(args ...any) {
 	for _, arg := range args {
 		var (
 			data  string
@@ -235,6 +236,14 @@ func (p *printer) Write(args ...interface{}) {
 
 		default:
 			panic(fmt.Sprintf("printer: unsupported argument %v (%T)\n", arg, arg))
+		}
+
+		if p.cfg.RedactSecrets {
+			if v, ok := arg.(ast.Expr); ok {
+				if v.IsSecret() {
+					data = "\"(secret)\""
+				}
+			}
 		}
 
 		next := p.pos

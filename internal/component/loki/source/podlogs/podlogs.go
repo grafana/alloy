@@ -10,19 +10,19 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/oklog/run"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 )
 
 func init() {
@@ -47,8 +47,27 @@ type Arguments struct {
 
 	Selector          config.LabelSelector `alloy:"selector,block,optional"`
 	NamespaceSelector config.LabelSelector `alloy:"namespace_selector,block,optional"`
+	TailFromEnd       bool                 `alloy:"tail_from_end,attr,optional"`
+
+	// Node filtering settings to limit pod discovery to specific nodes.
+	NodeFilter NodeFilterConfig `alloy:"node_filter,block,optional"`
+
+	// PreserveDiscoveredLabels controls whether discovered Kubernetes meta labels
+	// are preserved when forwarding logs to downstream components.
+	PreserveDiscoveredLabels bool `alloy:"preserve_discovered_labels,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
+}
+
+// NodeFilterConfig configures node-based filtering for pod discovery.
+// When enabled, only pods running on the specified node will be discovered,
+// which is useful for DaemonSet deployments to avoid cross-node log collection.
+type NodeFilterConfig struct {
+	// Enabled controls whether node filtering is active.
+	Enabled bool `alloy:"enabled,attr,optional"`
+	// NodeName specifies the node name to filter by. If empty, the component
+	// will attempt to use the NODE_NAME environment variable.
+	NodeName string `alloy:"node_name,attr,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes.
@@ -72,14 +91,12 @@ type Component struct {
 
 	positions positions.Positions
 	handler   loki.LogsReceiver
+	fanout    *loki.Fanout
 
 	mut         sync.RWMutex
 	args        Arguments
 	lastOptions *kubetail.Options
 	restConfig  *rest.Config
-
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
 }
 
 var (
@@ -123,6 +140,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 		positions: positionsFile,
 		handler:   loki.NewLogsReceiver(),
+		fanout:    loki.NewFanout(args.ForwardTo),
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -132,72 +150,47 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	defer c.positions.Stop()
-
 	defer func() {
-		c.mut.RLock()
-		defer c.mut.RUnlock()
-
-		// Guard for safety, but it's not possible for Run to be called without
-		// c.tailer being initialized.
-		if c.tailer != nil {
-			c.tailer.Stop()
-		}
+		defer c.positions.Stop()
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			// Guard for safety, but it's not possible for Run to be called without
+			// c.tailer being initialized.
+			if c.tailer != nil {
+				c.tailer.Stop()
+			}
+		})
 	}()
 
-	var g run.Group
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
 
-	g.Add(func() error {
-		c.runHandler(ctx)
-		return nil
-	}, func(_ error) {
-		cancel()
-	})
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
 
-	g.Add(func() error {
-		err := c.controller.Run(ctx)
-		if err != nil {
+	wg.Go(func() {
+		// We cancel consume loop after controller exit.
+		defer cancel()
+		if err := c.controller.Run(ctx); err != nil {
 			level.Error(c.log).Log("msg", "controller exited with error", "err", err)
 		}
-		return err
-	}, func(_ error) {
-		cancel()
 	})
 
-	return g.Run()
-}
-
-func (c *Component) runHandler(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-
-			for _, receiver := range receivers {
-				receiver.Chan() <- entry
-			}
-		}
-	}
+	wg.Wait()
+	return nil
 }
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update the receivers before anything else, just in case something fails.
-	c.receiversMut.Lock()
-	c.receivers = newArgs.ForwardTo
-	c.receiversMut.Unlock()
-
 	c.mut.Lock()
 	defer c.mut.Unlock()
+
+	// Update the receivers before anything else, just in case something fails.
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	if err := c.updateTailer(newArgs); err != nil {
 		return err
@@ -240,9 +233,10 @@ func (c *Component) updateTailer(args Arguments) error {
 	}
 
 	managerOpts := &kubetail.Options{
-		Client:    clientSet,
-		Handler:   loki.NewEntryHandler(c.handler.Chan(), func() {}),
-		Positions: c.positions,
+		Client:      clientSet,
+		Handler:     loki.NewEntryHandler(c.handler.Chan(), func() {}),
+		Positions:   c.positions,
+		TailFromEnd: args.TailFromEnd,
 	}
 	c.lastOptions = managerOpts
 
@@ -258,11 +252,24 @@ func (c *Component) updateTailer(args Arguments) error {
 // updateReconciler updates the state of the reconciler. This must only be
 // called after updateTailer. mut must be held when calling.
 func (c *Component) updateReconciler(args Arguments) error {
+	// The clustering settings should always be updated,
+	// even if the selectors haven't changed.
+	c.reconciler.SetDistribute(args.Clustering.Enabled)
+
 	var (
-		selectorChanged          = !reflect.DeepEqual(c.args.Selector, args.Selector)
-		namespaceSelectorChanged = !reflect.DeepEqual(c.args.NamespaceSelector, args.NamespaceSelector)
+		selectorChanged                 = !reflect.DeepEqual(c.args.Selector, args.Selector)
+		namespaceSelectorChanged        = !reflect.DeepEqual(c.args.NamespaceSelector, args.NamespaceSelector)
+		nodeFilterChanged               = !reflect.DeepEqual(c.args.NodeFilter, args.NodeFilter)
+		preserveDiscoveredLabelsChanged = c.args.PreserveDiscoveredLabels != args.PreserveDiscoveredLabels
 	)
-	if !selectorChanged && !namespaceSelectorChanged {
+
+	// Update preserve discovered labels configuration
+	c.reconciler.UpdatePreserveMetaLabels(args.PreserveDiscoveredLabels)
+
+	// Update node filter configuration
+	c.reconciler.UpdateNodeFilter(args.NodeFilter.Enabled, args.NodeFilter.NodeName)
+
+	if !selectorChanged && !namespaceSelectorChanged && !nodeFilterChanged && !preserveDiscoveredLabelsChanged {
 		return nil
 	}
 
@@ -276,7 +283,6 @@ func (c *Component) updateReconciler(args Arguments) error {
 	}
 
 	c.reconciler.UpdateSelectors(sel, nsSel)
-	c.reconciler.SetDistribute(args.Clustering.Enabled)
 
 	// Request a reconcile so the new selectors get applied.
 	c.controller.RequestReconcile()
@@ -302,7 +308,7 @@ func (c *Component) updateController(args Arguments) error {
 }
 
 // DebugInfo returns debug information for loki.source.podlogs.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	var info DebugInfo
 
 	info.DiscoveredPodLogs = c.reconciler.DebugInfo()

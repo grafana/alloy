@@ -1,0 +1,29 @@
+This test verifies id field behavior with invalid/missing field names and non-object collection items.
+
+-- main.alloy --
+foreach "testForeach" {
+  collection = ["plain-string",{"namespace" = "prod"},42]
+  var = "item"
+  id = "namespace"
+  enable_metrics = true
+
+  template {
+    testcomponents.pulse "pt" {
+      max = 10
+      frequency = "10ms"
+      forward_to = [testcomponents.summation_receiver.sum.receiver]
+    }
+  }
+}
+
+testcomponents.summation_receiver "sum" {
+}
+
+-- expected_metrics.prom --
+
+# HELP alloy_component_controller_running_components Total number of running components.
+# TYPE alloy_component_controller_running_components gauge
+alloy_component_controller_running_components{controller_id="",controller_path="/",health_type="healthy"} 2
+alloy_component_controller_running_components{controller_id="foreach_42_1",controller_path="/foreach.testForeach",health_type="healthy"} 1
+alloy_component_controller_running_components{controller_id="foreach_plain_string_1",controller_path="/foreach.testForeach",health_type="healthy"} 1
+alloy_component_controller_running_components{controller_id="foreach_prod_1",controller_path="/foreach.testForeach",health_type="healthy"} 1

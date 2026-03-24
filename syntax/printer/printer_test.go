@@ -9,6 +9,7 @@ import (
 	"testing"
 	"unicode"
 
+	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/printer"
 	"github.com/stretchr/testify/require"
@@ -35,6 +36,34 @@ func TestPrinter(t *testing.T) {
 
 		return nil
 	})
+}
+
+func TestSecretRedaction(t *testing.T) {
+	input := `password = "my_password"
+string = "normal string"`
+
+	f, err := parser.ParseFile("", []byte(input))
+	require.NoError(t, err)
+
+	pw := f.Body[0].(*ast.AttributeStmt)
+	require.Equal(t, "\"my_password\"", pw.Value.(*ast.LiteralExpr).Value)
+
+	unredactedOutput := `password = "my_password"
+string   = "normal string"`
+	var buf bytes.Buffer
+	require.NoError(t, printer.Fprint(&buf, f))
+	require.Equal(t, unredactedOutput, buf.String())
+
+	redactedOutput := `password = "(secret)"
+string   = "normal string"`
+
+	pw.Value.SetSecret(true)
+	c := printer.Config{
+		RedactSecrets: true,
+	}
+	buf.Reset()
+	require.NoError(t, c.Fprint(&buf, f))
+	require.Equal(t, redactedOutput, buf.String())
 }
 
 func testPrinter(t *testing.T, inputFile string, expectFile string, expectErrorFile string) {

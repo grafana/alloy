@@ -2,9 +2,12 @@ package runtime
 
 import (
 	"context"
-	"os"
+	"io"
 	"testing"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -12,8 +15,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/stretchr/testify/require"
 )
 
 const loggingConfig = `
@@ -53,7 +54,7 @@ func TestModule(t *testing.T) {
 	tt := []struct {
 		name                  string
 		argumentModuleContent string
-		args                  map[string]interface{}
+		args                  map[string]any
 		exportModuleContent   string
 		expectedExports       []string
 		expectedErrorContains string
@@ -88,7 +89,7 @@ func TestModule(t *testing.T) {
 			name:                  "Argument not defined in module source",
 			argumentModuleContent: `argument "different_argument" {}`,
 			exportModuleContent:   exportStringConfig,
-			args:                  map[string]interface{}{"different_argument": "test", "username": "bad"},
+			args:                  map[string]any{"different_argument": "test", "username": "bad"},
 			expectedErrorContains: "Provided argument \"username\" is not defined in the module",
 		},
 
@@ -127,14 +128,14 @@ func TestModule(t *testing.T) {
 			defer verifyNoGoroutineLeaks(t)
 			mc := newModuleController(testModuleControllerOptions(t)).(*moduleController)
 			// modules do not clean up their own worker pool as we normally use a shared one from the root controller
-			defer mc.o.WorkerPool.Stop()
+			defer mc.o.WorkerPool.Stop(5 * time.Second)
 
 			tm := &testModule{
 				content: tc.argumentModuleContent + tc.exportModuleContent,
 				args:    tc.args,
 				opts:    component.Options{ModuleController: mc},
 			}
-			ctx, cnc := context.WithTimeout(context.Background(), 1*time.Second)
+			ctx, cnc := context.WithTimeout(t.Context(), 1*time.Second)
 			defer cnc()
 			err := tm.Run(ctx)
 			if tc.expectedErrorContains == "" {
@@ -152,35 +153,37 @@ func TestModule(t *testing.T) {
 
 func TestArgsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	f := New(testOptions(t))
-	defer cleanUpController(f)
+	f, err := New(testOptions(t))
+	require.NoError(t, err)
+	defer cleanUpController(t.Context(), f)
 	fl, err := ParseSource("test", []byte("argument \"arg\"{}"))
 	require.NoError(t, err)
-	err = f.LoadSource(fl, nil)
+	err = f.LoadSource(fl, nil, "")
 	require.ErrorContains(t, err, "argument blocks only allowed inside a module")
 }
 
 func TestExportsNotInModules(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	f := New(testOptions(t))
-	defer cleanUpController(f)
+	f, err := New(testOptions(t))
+	require.NoError(t, err)
+	defer cleanUpController(t.Context(), f)
 	fl, err := ParseSource("test", []byte("export \"arg\"{ value = 1}"))
 	require.NoError(t, err)
-	err = f.LoadSource(fl, nil)
+	err = f.LoadSource(fl, nil, "")
 	require.ErrorContains(t, err, "export blocks only allowed inside a module")
 }
 
 func TestExportsWhenNotUsed(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	f := New(testOptions(t))
+	f, err := New(testOptions(t))
+	require.NoError(t, err)
 	content := " export \\\"username\\\"  { value  = 1 } \\n export \\\"dummy\\\" { value = 2 } "
 	fullContent := "test.module \"t1\" { content = \"" + content + "\" }"
 	fl, err := ParseSource("test", []byte(fullContent))
 	require.NoError(t, err)
-	err = f.LoadSource(fl, nil)
+	err = f.LoadSource(fl, nil, "")
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cnc := context.WithTimeout(ctx, 1*time.Second)
+	ctx, cnc := context.WithTimeout(t.Context(), 1*time.Second)
 	defer cnc()
 	f.Run(ctx)
 	exps := f.loader.Components()[0].Exports().(TestExports)
@@ -193,14 +196,13 @@ func TestExportsWhenNotUsed(t *testing.T) {
 func TestIDList(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
-	defer o.WorkerPool.Stop()
+	defer o.WorkerPool.Stop(5 * time.Second)
 	nc := newModuleController(o)
 	require.Len(t, nc.ModuleIDs(), 0)
 
 	mod1, err := nc.NewModule("t1", nil)
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cncl := context.WithCancel(ctx)
+	ctx, cncl := context.WithCancel(t.Context())
 	go func() {
 		m1err := mod1.Run(ctx)
 		require.NoError(t, m1err)
@@ -228,14 +230,13 @@ func TestIDList(t *testing.T) {
 func TestDuplicateIDList(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
 	o := testModuleControllerOptions(t)
-	defer o.WorkerPool.Stop()
+	defer o.WorkerPool.Stop(5 * time.Second)
 	nc := newModuleController(o)
 	require.Len(t, nc.ModuleIDs(), 0)
 
 	mod1, err := nc.NewModule("t1", nil)
 	require.NoError(t, err)
-	ctx := context.Background()
-	ctx, cncl := context.WithCancel(ctx)
+	ctx, cncl := context.WithCancel(t.Context())
 	defer cncl()
 	go func() {
 		m1err := mod1.Run(ctx)
@@ -245,16 +246,14 @@ func TestDuplicateIDList(t *testing.T) {
 		return len(nc.ModuleIDs()) == 1
 	}, 5*time.Second, 100*time.Millisecond)
 
-	// This should panic with duplicate registration.
-	require.PanicsWithError(t, "duplicate metrics collector registration attempted", func() {
-		_, _ = nc.NewModule("t1", nil)
-	})
+	_, err = nc.NewModule("t1", nil)
+	require.Error(t, err)
 }
 
 func testModuleControllerOptions(t *testing.T) *moduleControllerOptions {
 	t.Helper()
 
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 
 	services := []service.Service{
@@ -295,13 +294,13 @@ type TestArguments struct {
 }
 
 type TestExports struct {
-	Exports map[string]interface{} `alloy:"exports,attr"`
+	Exports map[string]any `alloy:"exports,attr"`
 }
 
 type testModule struct {
 	content string
-	args    map[string]interface{}
-	exports map[string]interface{}
+	args    map[string]any
+	exports map[string]any
 	opts    component.Options
 }
 

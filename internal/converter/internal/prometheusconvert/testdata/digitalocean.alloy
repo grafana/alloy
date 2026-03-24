@@ -11,7 +11,7 @@ discovery.digitalocean "prometheus2" {
 }
 
 prometheus.scrape "prometheus1" {
-	targets = concat(
+	targets = array.concat(
 		discovery.digitalocean.prometheus1.targets,
 		[{
 			__address__ = "localhost:9090",

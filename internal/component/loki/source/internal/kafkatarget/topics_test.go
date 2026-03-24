@@ -92,6 +92,16 @@ func Test_Topics(t *testing.T) {
 			false,
 		},
 		{
+			mustNewTopicsManager(&mockKafkaClient{topics: []string{"foo", "foobar", "buzz"}}, []string{"^foo$"}),
+			[]string{"foo"},
+			false,
+		},
+		{
+			mustNewTopicsManager(&mockKafkaClient{topics: []string{"foo", "foobar", "buzz"}}, []string{"foo"}),
+			[]string{"foo"},
+			false,
+		},
+		{
 			mustNewTopicsManager(&mockKafkaClient{topics: []string{"foo", "foobar", "buzz"}}, []string{"^foo.*", "buzz"}),
 			[]string{"buzz", "foo", "foobar"},
 			false,

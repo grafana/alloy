@@ -18,9 +18,10 @@ prometheus.scrape "prometheus2" {
 	targets = [{
 		__address__ = "localhost:9091",
 	}]
-	forward_to                = [prometheus.remote_write.default.receiver]
-	job_name                  = "prometheus2"
-	scrape_classic_histograms = true
+	forward_to                    = [prometheus.remote_write.default.receiver]
+	job_name                      = "prometheus2"
+	scrape_classic_histograms     = true
+	native_histogram_bucket_limit = 2
 }
 
 prometheus.remote_write "default" {

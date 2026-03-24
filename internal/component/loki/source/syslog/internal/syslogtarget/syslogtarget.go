@@ -1,6 +1,6 @@
 package syslogtarget
 
-// This code is copied from Promtail v2.8.4 (4a564456861c0ab7441b815aa49a7c0f22a05f4c)
+// This code is copied from Promtail v3.1.0 (935aee77ed389c825d36b8d6a85c0d83895a24d1)
 // The syslogtarget package is used to configure and run the targets that can
 // read syslog entries and forward them to other loki components.
 
@@ -8,28 +8,45 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
-	"github.com/grafana/loki/v3/pkg/logproto"
-	"github.com/influxdata/go-syslog/v3"
-	"github.com/influxdata/go-syslog/v3/rfc5424"
+	"github.com/grafana/loki/pkg/push"
+	"github.com/leodido/go-syslog/v4"
+	"github.com/leodido/go-syslog/v4/rfc3164"
+	"github.com/leodido/go-syslog/v4/rfc5424"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (
 	DefaultIdleTimeout      = 120 * time.Second
 	DefaultMaxMessageLength = 8192
-	DefaultProtocol         = protocolTCP
+	DefaultProtocol         = ProtocolTCP
 )
+
+type NewMessageDebugEvent struct {
+	Format         string
+	Message        string
+	Timestamp      time.Time
+	OriginalLabels labels.Labels
+	MappedLabels   model.LabelSet
+}
+
+type NopDebugListener struct{}
+
+func (NopDebugListener) OnNewMessage(e NewMessageDebugEvent) {}
+
+type DebugListener interface {
+	OnNewMessage(e NewMessageDebugEvent)
+}
 
 // SyslogTarget listens to syslog messages.
 // nolint:revive
@@ -39,6 +56,7 @@ type SyslogTarget struct {
 	handler       loki.EntryHandler
 	config        *scrapeconfig.SyslogTargetConfig
 	relabelConfig []*relabel.Config
+	dbgListener   DebugListener
 
 	transport Transport
 
@@ -52,45 +70,52 @@ type message struct {
 	timestamp time.Time
 }
 
-// NewSyslogTarget configures a new SyslogTarget.
-func NewSyslogTarget(
-	metrics *Metrics,
-	logger log.Logger,
-	handler loki.EntryHandler,
-	relabel []*relabel.Config,
-	config *scrapeconfig.SyslogTargetConfig,
-) (*SyslogTarget, error) {
+type TargetParams struct {
+	Metrics       *Metrics
+	Logger        log.Logger
+	Handler       loki.EntryHandler
+	Relabel       []*relabel.Config
+	Config        *scrapeconfig.SyslogTargetConfig
+	DebugListener DebugListener
+}
 
+// NewSyslogTarget configures a new SyslogTarget.
+func NewSyslogTarget(params TargetParams) (*SyslogTarget, error) {
 	t := &SyslogTarget{
-		metrics:       metrics,
-		logger:        logger,
-		handler:       handler,
-		config:        config,
-		relabelConfig: relabel,
+		metrics:       params.Metrics,
+		logger:        params.Logger,
+		handler:       params.Handler,
+		config:        params.Config,
+		relabelConfig: params.Relabel,
 		messagesDone:  make(chan struct{}),
+		dbgListener:   params.DebugListener,
+	}
+
+	if t.dbgListener == nil {
+		t.dbgListener = NopDebugListener{}
 	}
 
 	switch t.transportProtocol() {
-	case protocolTCP:
-		t.transport = NewSyslogTCPTransport(
-			config,
-			t.handleMessage,
-			t.handleMessageError,
-			logger,
-		)
-	case protocolUDP:
-		t.transport = NewSyslogUDPTransport(
-			config,
-			t.handleMessage,
-			t.handleMessageError,
-			logger,
-		)
+	case ProtocolTCP:
+		t.transport = NewSyslogTCPTransport(TransportConfig{
+			Logger:         params.Logger,
+			Target:         params.Config,
+			MessageHandler: t.handleMessage,
+			ErrorHandler:   t.handleMessageError,
+		})
+	case ProtocolUDP:
+		t.transport = NewSyslogUDPTransport(TransportConfig{
+			Logger:         params.Logger,
+			Target:         params.Config,
+			MessageHandler: t.handleMessage,
+			ErrorHandler:   t.handleMessageError,
+		})
 	default:
 		return nil, fmt.Errorf("invalid transport protocol. expected 'tcp' or 'udp', got '%s'", t.transportProtocol())
 	}
 
 	t.messages = make(chan message)
-	go t.messageSender(handler.Chan())
+	go t.messageSender(params.Handler.Chan())
 
 	err := t.transport.Run()
 	if err != nil {
@@ -105,40 +130,50 @@ func (t *SyslogTarget) handleMessageError(err error) {
 		level.Debug(t.logger).Log("msg", "connection timed out", "err", ne)
 		return
 	}
+
 	level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
 	t.metrics.syslogParsingErrors.Inc()
 }
 
-func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Message) {
-	rfc5424Msg := msg.(*rfc5424.SyslogMessage)
-
-	if rfc5424Msg.Message == nil {
+func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc5424.SyslogMessage) {
+	if msg.Message == nil {
 		t.metrics.syslogEmptyMessages.Inc()
-		return
+
+		if !t.config.RFC5424AllowEmptyMsg {
+			return
+		}
 	}
 
 	lb := labels.NewBuilder(connLabels)
-	if v := rfc5424Msg.SeverityLevel(); v != nil {
+	if v := msg.SeverityLevel(); v != nil {
 		lb.Set("__syslog_message_severity", *v)
 	}
-	if v := rfc5424Msg.FacilityLevel(); v != nil {
+	if v := msg.FacilityLevel(); v != nil {
 		lb.Set("__syslog_message_facility", *v)
 	}
-	if v := rfc5424Msg.Hostname; v != nil {
+	if v := msg.Hostname; v != nil {
 		lb.Set("__syslog_message_hostname", *v)
 	}
-	if v := rfc5424Msg.Appname; v != nil {
+	if v := msg.Appname; v != nil {
 		lb.Set("__syslog_message_app_name", *v)
 	}
-	if v := rfc5424Msg.ProcID; v != nil {
+	if v := msg.ProcID; v != nil {
 		lb.Set("__syslog_message_proc_id", *v)
 	}
-	if v := rfc5424Msg.MsgID; v != nil {
+	if v := msg.MsgID; v != nil {
 		lb.Set("__syslog_message_msg_id", *v)
 	}
 
-	if t.config.LabelStructuredData && rfc5424Msg.StructuredData != nil {
-		for id, params := range *rfc5424Msg.StructuredData {
+	// cisco-specific fields
+	if v := msg.MessageCounter; v != nil {
+		lb.Set("__syslog_message_msg_counter", strconv.Itoa(int(*v)))
+	}
+	if v := msg.Sequence; v != nil {
+		lb.Set("__syslog_message_sequence", strconv.Itoa(int(*v)))
+	}
+
+	if t.config.LabelStructuredData && msg.StructuredData != nil {
+		for id, params := range *msg.StructuredData {
 			id = strings.ReplaceAll(id, "@", "_")
 			for name, value := range params {
 				key := "__syslog_message_sd_" + id + "_" + name
@@ -147,52 +182,177 @@ func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Messag
 		}
 	}
 
-	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
+	originalLabels := lb.Labels()
+	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	var timestamp time.Time
-	if t.config.UseIncomingTimestamp && rfc5424Msg.Timestamp != nil {
-		timestamp = *rfc5424Msg.Timestamp
+	if t.config.UseIncomingTimestamp && msg.Timestamp != nil {
+		timestamp = *msg.Timestamp
 	} else {
 		timestamp = time.Now()
 	}
 
-	m := *rfc5424Msg.Message
+	m := ""
+	if msg.Message != nil {
+		m = *msg.Message
+	}
 	if t.config.UseRFC5424Message {
-		fullMsg, err := rfc5424Msg.String()
+		fullMsg, err := msg.String()
 		if err != nil {
 			level.Debug(t.logger).Log("msg", "failed to convert rfc5424 message to string; using message field instead", "err", err)
 		} else {
 			m = fullMsg
 		}
 	}
+
+	t.dbgListener.OnNewMessage(NewMessageDebugEvent{
+		Format:         scrapeconfig.SyslogFormatRFC5424,
+		Message:        m,
+		Timestamp:      timestamp,
+		OriginalLabels: originalLabels,
+		MappedLabels:   filtered,
+	})
+
 	t.messages <- message{filtered, m, timestamp}
+}
+
+func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc3164.SyslogMessage) {
+	if msg.Message == nil {
+		// Drop RFC3164 messages with an empty Message
+		t.metrics.syslogEmptyMessages.Inc()
+		return
+	}
+
+	lb := labels.NewBuilder(connLabels)
+	if v := msg.SeverityLevel(); v != nil {
+		lb.Set("__syslog_message_severity", *v)
+	}
+	if v := msg.FacilityLevel(); v != nil {
+		lb.Set("__syslog_message_facility", *v)
+	}
+	if v := msg.Hostname; v != nil {
+		lb.Set("__syslog_message_hostname", *v)
+	}
+	if v := msg.Appname; v != nil {
+		lb.Set("__syslog_message_app_name", *v)
+	}
+	if v := msg.ProcID; v != nil {
+		lb.Set("__syslog_message_proc_id", *v)
+	}
+	if v := msg.MsgID; v != nil {
+		lb.Set("__syslog_message_msg_id", *v)
+	}
+
+	// cisco-specific fields
+	if v := msg.MessageCounter; v != nil {
+		lb.Set("__syslog_message_msg_counter", strconv.Itoa(int(*v)))
+	}
+	if v := msg.Sequence; v != nil {
+		lb.Set("__syslog_message_sequence", strconv.Itoa(int(*v)))
+	}
+
+	originalLabels := lb.Labels()
+	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
+
+	filtered := make(model.LabelSet)
+	processed.Range(func(lbl labels.Label) {
+		if strings.HasPrefix(lbl.Name, "__") {
+			return
+		}
+		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
+	})
+
+	var timestamp time.Time
+	if t.config.UseIncomingTimestamp && msg.Timestamp != nil {
+		timestamp = *msg.Timestamp
+	} else {
+		timestamp = time.Now()
+	}
+
+	m := *msg.Message
+	t.dbgListener.OnNewMessage(NewMessageDebugEvent{
+		Format:         scrapeconfig.SyslogFormatRFC3164,
+		Message:        m,
+		Timestamp:      timestamp,
+		OriginalLabels: originalLabels,
+		MappedLabels:   filtered,
+	})
+
+	t.messages <- message{filtered, m, timestamp}
+}
+
+func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg *syslog.Base) {
+	// Drop raw logs with nil or empty message - this would mean the line itself is empty (e.g. "\n")
+	if msg.Message == nil || *msg.Message == "" {
+		t.metrics.syslogEmptyMessages.Inc()
+		return
+	}
+
+	lb := labels.NewBuilder(connLabels)
+	if v := msg.SeverityLevel(); v != nil {
+		lb.Set("__syslog_message_severity", *v)
+	}
+	if v := msg.FacilityLevel(); v != nil {
+		lb.Set("__syslog_message_facility", *v)
+	}
+
+	originalLabels := lb.Labels()
+	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
+	filtered := make(model.LabelSet)
+	processed.Range(func(lbl labels.Label) {
+		if strings.HasPrefix(lbl.Name, "__") {
+			return
+		}
+		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
+	})
+
+	ts := time.Now()
+	t.dbgListener.OnNewMessage(NewMessageDebugEvent{
+		Format:         scrapeconfig.SyslogFormatRaw,
+		Message:        *msg.Message,
+		Timestamp:      ts,
+		OriginalLabels: originalLabels,
+		MappedLabels:   filtered,
+	})
+
+	// Timestamp isn't available during raw parse.
+	t.messages <- message{
+		labels:    filtered,
+		message:   *msg.Message,
+		timestamp: ts,
+	}
+}
+
+func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Message) {
+	switch m := msg.(type) {
+	case *rfc3164.SyslogMessage:
+		t.handleMessageRFC3164(connLabels, m)
+	case *rfc5424.SyslogMessage:
+		t.handleMessageRFC5424(connLabels, m)
+	case *syslog.Base:
+		t.handleMessageRaw(connLabels, m)
+	default:
+		level.Error(t.logger).Log("msg", fmt.Sprintf("handleMessage: unsupported message type %T", m))
+	}
 }
 
 func (t *SyslogTarget) messageSender(entries chan<- loki.Entry) {
 	for msg := range t.messages {
-		entries <- loki.Entry{
-			Labels: msg.labels,
-			Entry: logproto.Entry{
-				Timestamp: msg.timestamp,
-				Line:      msg.message,
-			},
-		}
+		entries <- loki.NewEntry(msg.labels, push.Entry{
+			Timestamp: msg.timestamp,
+			Line:      msg.message,
+		})
 		t.metrics.syslogEntries.Inc()
 	}
 	t.messagesDone <- struct{}{}
-}
-
-// Type returns SyslogTargetType.
-func (t *SyslogTarget) Type() target.TargetType {
-	return target.SyslogTargetType
 }
 
 // Ready indicates whether or not the syslog target is ready to be read from.
@@ -200,21 +360,10 @@ func (t *SyslogTarget) Ready() bool {
 	return t.transport.Ready()
 }
 
-// DiscoveredLabels returns the set of labels discovered by the syslog target, which
-// is always nil. Implements Target.
-func (t *SyslogTarget) DiscoveredLabels() model.LabelSet {
-	return nil
-}
-
 // Labels returns the set of labels that statically apply to all log entries
 // produced by the SyslogTarget.
 func (t *SyslogTarget) Labels() model.LabelSet {
 	return t.config.Labels
-}
-
-// Details returns target-specific details.
-func (t *SyslogTarget) Details() interface{} {
-	return map[string]string{}
 }
 
 // Stop shuts down the SyslogTarget.

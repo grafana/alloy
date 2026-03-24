@@ -1,7 +1,7 @@
 package build
 
 import (
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/kafka"
@@ -26,7 +26,7 @@ func (s *ScrapeConfigBuilder) AppendKafka() {
 		ForwardTo:            s.getOrNewProcessStageReceivers(),
 		RelabelRules:         relabel.Rules{},
 	}
-	override := func(val interface{}) interface{} {
+	override := func(val any) any {
 		switch value := val.(type) {
 		case relabel.Rules:
 			return common.CustomTokenizer{Expr: s.getOrNewDiscoveryRelabelRules()}

@@ -21,10 +21,11 @@ type SecretFetcher interface {
 type secretManager struct {
 	secretCache map[string]map[string][]byte
 	configCache map[string]map[string]string
-	client      *kubernetes.Clientset
+	client      kubernetes.Interface
 }
 
-func NewSecretManager(client *kubernetes.Clientset) SecretFetcher {
+// NewSecretManager creates a new SecretFetcher using the provided kubernetes client.
+func NewSecretManager(client kubernetes.Interface) SecretFetcher {
 	return &secretManager{
 		secretCache: make(map[string]map[string][]byte),
 		configCache: make(map[string]map[string]string),
@@ -79,5 +80,5 @@ func (s *secretManager) SecretOrConfigMapValue(namespace string, socm promopv1.S
 	} else if socm.ConfigMap != nil {
 		return s.GetConfigMapValue(namespace, *socm.ConfigMap)
 	}
-	return "", fmt.Errorf("Neither Secret or ConfigMap are specified") // should not be possible
+	return "", fmt.Errorf("neither Secret or ConfigMap are specified") // should not be possible
 }

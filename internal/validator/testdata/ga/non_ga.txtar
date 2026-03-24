@@ -1,0 +1,16 @@
+not generally available
+-- main.alloy --
+// Collect metrics for each Redis instance.
+foreach "foreach" {
+	collection = []
+	var        = "each"
+
+	template {}
+}
+
+prometheus.scrape "scrape" {
+  targets    = array.combine_maps([], [], [])
+  forward_to = array.combine_maps([], [], [])
+}
+
+

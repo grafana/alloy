@@ -42,6 +42,7 @@ type Arguments struct {
 	FollowRedirects bool                `alloy:"follow_redirects,attr,optional"`
 	EnableHTTP2     bool                `alloy:"enable_http2,attr,optional"`
 	TLSConfig       config.TLSConfig    `alloy:"tls_config,block,optional"`
+	HTTPHeaders     *config.Headers     `alloy:",squash"`
 }
 
 type OAuth struct {
@@ -77,6 +78,10 @@ func (a *Arguments) Validate() error {
 		return err
 	}
 
+	if err := a.HTTPHeaders.Validate(); err != nil {
+		return err
+	}
+
 	return a.ProxyConfig.Validate()
 }
 
@@ -102,6 +107,7 @@ func (a Arguments) Convert() discovery.DiscovererConfig {
 	httpClientConfig.EnableHTTP2 = a.EnableHTTP2
 	httpClientConfig.TLSConfig = a.TLSConfig
 	httpClientConfig.ProxyConfig = a.ProxyConfig
+	httpClientConfig.HTTPHeaders = a.HTTPHeaders
 
 	return &prom_discovery.SDConfig{
 		Environment:          a.Environment,

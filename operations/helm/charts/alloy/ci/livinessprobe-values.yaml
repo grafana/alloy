@@ -1,0 +1,11 @@
+alloy:
+  livenessProbe:
+    httpGet:
+      path: /metrics
+      port: 12345
+      scheme: HTTP
+    initialDelaySeconds: 30
+    timeoutSeconds: 2
+    periodSeconds: 30
+    successThreshold: 1
+    failureThreshold: 3

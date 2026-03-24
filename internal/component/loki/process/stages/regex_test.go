@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -29,6 +30,29 @@ stage.regex {
 stage.regex {
     expression = "^HTTP\\/(?P<protocol_version>[0-9\\.]+)$"
     source     = "protocol"
+}
+`
+
+var testRegexAlloyMultiStageWithSourceAndLabelFromGroups = `
+stage.regex {
+    expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+	labels_from_groups = true
+}
+stage.regex {
+    expression = "^HTTP\\/(?P<protocol_version>[0-9\\.]+)$"
+    source     = "protocol"
+}
+`
+
+var testRegexAlloyMultiStageWithExistingLabelsAndLabelFromGroups = `
+stage.static_labels {
+    values = {
+      protocol = "HTTP/2",
+    }
+}
+stage.regex {
+    expression = "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$"
+	labels_from_groups = true
 }
 `
 
@@ -62,12 +86,13 @@ func TestPipeline_Regex(t *testing.T) {
 	tests := map[string]struct {
 		config          string
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
+		expectedLables  model.LabelSet
 	}{
 		"successfully run a pipeline with 1 regex stage without source": {
 			testRegexAlloySingleStageWithoutSource,
 			testRegexLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -80,11 +105,12 @@ func TestPipeline_Regex(t *testing.T) {
 				"referer":   "-",
 				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
 			},
+			model.LabelSet{},
 		},
 		"successfully run a pipeline with 2 regex stages with source": {
 			testRegexAlloyMultiStageWithSource,
 			testRegexLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"ip":               "11.11.11.11",
 				"identd":           "-",
 				"user":             "frank",
@@ -98,23 +124,84 @@ func TestPipeline_Regex(t *testing.T) {
 				"referer":          "-",
 				"useragent":        "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
 			},
+			model.LabelSet{},
+		},
+		"successfully run a pipeline with 2 regex stages with source and labels from groups": {
+			testRegexAlloyMultiStageWithSourceAndLabelFromGroups,
+			testRegexLogLine,
+			map[string]any{
+				"ip":               "11.11.11.11",
+				"identd":           "-",
+				"user":             "frank",
+				"timestamp":        "25/Jan/2000:14:00:01 -0500",
+				"action":           "GET",
+				"path":             "/1986.js",
+				"protocol":         "HTTP/1.1",
+				"protocol_version": "1.1",
+				"status":           "200",
+				"size":             "932",
+				"referer":          "-",
+				"useragent":        "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+			},
+			model.LabelSet{
+				"ip":        "11.11.11.11",
+				"identd":    "-",
+				"user":      "frank",
+				"timestamp": "25/Jan/2000:14:00:01 -0500",
+				"action":    "GET",
+				"path":      "/1986.js",
+				"protocol":  "HTTP/1.1",
+				"status":    "200",
+				"size":      "932",
+				"referer":   "-",
+				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+			},
+		},
+		"successfully run a pipeline with regex stage labels overriding existing labels with labels_from_groups": {
+			testRegexAlloyMultiStageWithExistingLabelsAndLabelFromGroups,
+			testRegexLogLine,
+			map[string]any{
+				"ip":        "11.11.11.11",
+				"identd":    "-",
+				"user":      "frank",
+				"timestamp": "25/Jan/2000:14:00:01 -0500",
+				"action":    "GET",
+				"path":      "/1986.js",
+				"protocol":  "HTTP/1.1",
+				"status":    "200",
+				"size":      "932",
+				"referer":   "-",
+				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+			},
+			model.LabelSet{
+				"ip":        "11.11.11.11",
+				"identd":    "-",
+				"user":      "frank",
+				"timestamp": "25/Jan/2000:14:00:01 -0500",
+				"action":    "GET",
+				"path":      "/1986.js",
+				"protocol":  "HTTP/1.1",
+				"status":    "200",
+				"size":      "932",
+				"referer":   "-",
+				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+			},
 		},
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
 			logger := util.TestAlloyLogger(t)
-			pl, err := NewPipeline(logger, loadConfig(testData.config), nil, prometheus.DefaultRegisterer)
+			pl, err := NewPipeline(logger, loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatal(err)
 			}
 
 			out := processEntries(pl, newEntry(nil, nil, testData.entry, time.Now()))[0]
 			assert.Equal(t, testData.expectedExtract, out.Extracted)
+			assert.Equal(t, testData.expectedLables, out.Labels)
 		})
 	}
 }
@@ -123,13 +210,13 @@ func TestPipelineWithMissingKey_Regex(t *testing.T) {
 	var buf bytes.Buffer
 	w := log.NewSyncWriter(&buf)
 	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testRegexAlloySourceWithMissingKey), nil, prometheus.DefaultRegisterer)
+	pl, err := NewPipeline(logger, loadConfig(testRegexAlloySourceWithMissingKey), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
 	_ = processEntries(pl, newEntry(nil, nil, testRegexLogLineWithMissingKey, time.Now()))[0]
 
-	expectedLog := "level=debug component=stage type=regex msg=\"failed to convert source value to string\" source=time err=\"Can't convert <nil> to string\" type=null"
+	expectedLog := "level=debug component=stage type=regex msg=\"failed to convert source value to string\" source=time err=\"can't convert <nil> to string\" type=null"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
@@ -138,7 +225,7 @@ func TestPipelineWithMissingKey_Regex(t *testing.T) {
 func TestRegexConfig_validate(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
-		config interface{}
+		config any
 		err    error
 	}{
 		"empty config": {
@@ -146,30 +233,30 @@ func TestRegexConfig_validate(t *testing.T) {
 			ErrExpressionRequired,
 		},
 		"missing regex_expression": {
-			map[string]interface{}{},
+			map[string]any{},
 			ErrExpressionRequired,
 		},
 		"invalid regex_expression": {
-			map[string]interface{}{
+			map[string]any{
 				"expression": "(?P<ts[0-9]+).*",
 			},
 			errors.New(ErrCouldNotCompileRegex.Error() + ": error parsing regexp: invalid named capture: `(?P<ts[0-9]+).*`"),
 		},
 		"empty source": {
-			map[string]interface{}{
+			map[string]any{
 				"expression": "(?P<ts>[0-9]+).*",
 				"source":     "",
 			},
 			ErrEmptyRegexStageSource,
 		},
 		"valid without source": {
-			map[string]interface{}{
+			map[string]any{
 				"expression": "(?P<ts>[0-9]+).*",
 			},
 			nil,
 		},
 		"valid with source": {
-			map[string]interface{}{
+			map[string]any{
 				"expression": "(?P<ts>[0-9]+).*",
 				"source":     "log",
 			},
@@ -202,17 +289,56 @@ func TestRegexParser_Parse(t *testing.T) {
 	t.Parallel()
 	tests := map[string]struct {
 		config          RegexConfig
-		extracted       map[string]interface{}
+		extracted       map[string]any
+		labels          model.LabelSet
 		entry           string
-		expectedExtract map[string]interface{}
+		expectedExtract map[string]any
+		expectedLabels  model.LabelSet
 	}{
 		"successfully match expression on entry": {
 			RegexConfig{
 				Expression: "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
 			},
-			map[string]interface{}{},
+			map[string]any{},
+			model.LabelSet{},
 			regexLogFixture,
-			map[string]interface{}{
+			map[string]any{
+				"ip":        "11.11.11.11",
+				"identd":    "-",
+				"user":      "frank",
+				"timestamp": "25/Jan/2000:14:00:01 -0500",
+				"action":    "GET",
+				"path":      "/1986.js",
+				"protocol":  "HTTP/1.1",
+				"status":    "200",
+				"size":      "932",
+				"referer":   "-",
+				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+			},
+			model.LabelSet{},
+		},
+		"successfully match expression on entry with label extracted from named capture groups": {
+			RegexConfig{
+				Expression:       "^(?P<ip>\\S+) (?P<identd>\\S+) (?P<user>\\S+) \\[(?P<timestamp>[\\w:/]+\\s[+\\-]\\d{4})\\] \"(?P<action>\\S+)\\s?(?P<path>\\S+)?\\s?(?P<protocol>\\S+)?\" (?P<status>\\d{3}|-) (?P<size>\\d+|-)\\s?\"?(?P<referer>[^\"]*)\"?\\s?\"?(?P<useragent>[^\"]*)?\"?$",
+				LabelsFromGroups: true,
+			},
+			map[string]any{},
+			model.LabelSet{},
+			regexLogFixture,
+			map[string]any{
+				"ip":        "11.11.11.11",
+				"identd":    "-",
+				"user":      "frank",
+				"timestamp": "25/Jan/2000:14:00:01 -0500",
+				"action":    "GET",
+				"path":      "/1986.js",
+				"protocol":  "HTTP/1.1",
+				"status":    "200",
+				"size":      "932",
+				"referer":   "-",
+				"useragent": "Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.1.7) Gecko/20091221 Firefox/3.5.7 GTB6",
+			},
+			model.LabelSet{
 				"ip":        "11.11.11.11",
 				"identd":    "-",
 				"user":      "frank",
@@ -231,11 +357,35 @@ func TestRegexParser_Parse(t *testing.T) {
 				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
 				Source:     &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
+				"protocol": "HTTP/1.1",
+			},
+			model.LabelSet{},
+			regexLogFixture,
+			map[string]any{
+				"protocol":         "HTTP/1.1",
+				"protocol_version": "1.1",
+			},
+			model.LabelSet{},
+		},
+		"successfully match expression on extracted[source] with label extracted from named capture groups": {
+			RegexConfig{
+				Expression:       "^HTTP\\/(?P<protocol_version>.*)$",
+				Source:           &protocolStr,
+				LabelsFromGroups: true,
+			},
+			map[string]any{
+				"protocol": "HTTP/1.1",
+			},
+			model.LabelSet{
 				"protocol": "HTTP/1.1",
 			},
 			regexLogFixture,
-			map[string]interface{}{
+			map[string]any{
+				"protocol":         "HTTP/1.1",
+				"protocol_version": "1.1",
+			},
+			model.LabelSet{
 				"protocol":         "HTTP/1.1",
 				"protocol_version": "1.1",
 			},
@@ -244,67 +394,77 @@ func TestRegexParser_Parse(t *testing.T) {
 			RegexConfig{
 				Expression: "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<flags>\\S+?) (?P<message>.*)$",
 			},
-			map[string]interface{}{},
+			map[string]any{},
+			model.LabelSet{},
 			"blahblahblah",
-			map[string]interface{}{},
+			map[string]any{},
+			model.LabelSet{},
 		},
 		"failed to match expression on extracted[source]": {
 			RegexConfig{
 				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
 				Source:     &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "unknown",
 			},
+			model.LabelSet{},
 			"unknown/unknown",
-			map[string]interface{}{
+			map[string]any{
 				"protocol": "unknown",
 			},
+			model.LabelSet{},
 		},
 		"case insensitive": {
 			RegexConfig{
 				Expression: "(?i)(?P<bad>panic:|core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted)",
 			},
-			map[string]interface{}{},
+			map[string]any{},
+			model.LabelSet{},
 			"A Terrible Error has occurred!!!",
-			map[string]interface{}{
+			map[string]any{
 				"bad": "Error",
 			},
+			model.LabelSet{},
 		},
 		"missing extracted[source]": {
 			RegexConfig{
 				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
 				Source:     &protocolStr,
 			},
-			map[string]interface{}{},
+			map[string]any{},
+			model.LabelSet{},
 			"blahblahblah",
-			map[string]interface{}{},
+			map[string]any{},
+			model.LabelSet{},
 		},
 		"invalid data type in extracted[source]": {
 			RegexConfig{
 				Expression: "^HTTP\\/(?P<protocol_version>.*)$",
 				Source:     &protocolStr,
 			},
-			map[string]interface{}{
+			map[string]any{
 				"protocol": true,
 			},
+			model.LabelSet{},
 			"unknown/unknown",
-			map[string]interface{}{
+			map[string]any{
 				"protocol": true,
 			},
+			model.LabelSet{},
 		},
 	}
 	for tName, tt := range tests {
-		tt := tt
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 			logger := util.TestAlloyLogger(t)
-			p, err := New(logger, nil, StageConfig{RegexConfig: &tt.config}, nil)
+			p, err := New(logger, StageConfig{RegexConfig: &tt.config}, nil, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatalf("failed to create regex parser: %s", err)
 			}
-			out := processEntries(p, newEntry(tt.extracted, nil, tt.entry, time.Now()))[0]
+			out := processEntries(p, newEntry(tt.extracted, tt.labels, tt.entry, time.Now()))[0]
 			assert.Equal(t, tt.expectedExtract, out.Extracted)
+			assert.Equal(t, tt.expectedLabels, out.Labels)
 		})
 	}
 }
@@ -324,13 +484,13 @@ func BenchmarkRegexStage(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.name, func(b *testing.B) {
 			logger := util.TestAlloyLogger(b)
-			stage, err := New(logger, nil, StageConfig{RegexConfig: &bm.config}, nil)
+			stage, err := New(logger, StageConfig{RegexConfig: &bm.config}, nil, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				panic(err)
 			}
 			labels := model.LabelSet{}
 			ts := time.Now()
-			extr := map[string]interface{}{}
+			extr := map[string]any{}
 
 			in := make(chan Entry)
 			out := stage.Run(in)

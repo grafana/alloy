@@ -3,6 +3,7 @@ package remotewrite
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
@@ -10,22 +11,21 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/alloyseed"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/prometheus"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/static/metrics/wal"
-	"github.com/grafana/alloy/internal/useragent"
-	"github.com/prometheus/prometheus/model/exemplar"
-	"github.com/prometheus/prometheus/model/histogram"
-	"github.com/prometheus/prometheus/model/labels"
-	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/model/timestamp"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/alloyseed"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/labelstore"
+	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/static/metrics/wal"
+	"github.com/grafana/alloy/internal/useragent"
 )
 
 // Options.
@@ -62,10 +62,12 @@ type Component struct {
 	cfg Arguments
 
 	receiver *prometheus.Interceptor
+
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
 
 // New creates a new prometheus.remote_write component.
-func New(o component.Options, c Arguments) (*Component, error) {
+func New(o component.Options, args Arguments) (*Component, error) {
 	// Older versions of prometheus.remote_write used the subpath below, which
 	// added in too many extra unnecessary directories (since o.DataPath is
 	// already unique).
@@ -81,8 +83,13 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	remoteLogger := log.With(o.Logger, "subcomponent", "rw")
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil)
+	remoteLogger := slog.New(
+		logging.NewSlogGoKitHandler(
+			log.With(o.Logger, "subcomponent", "rw"),
+		),
+	)
+	// TODO: Expose the option to enable type and unit labels: https://github.com/grafana/alloy/issues/4659
+	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
 
@@ -92,78 +99,36 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	}
 	ls := service.(labelstore.LabelStore)
 
-	res := &Component{
-		log:         o.Logger,
-		opts:        o,
-		walStore:    walStorage,
-		remoteStore: remoteStore,
-		storage:     storage.NewFanout(o.Logger, walStorage, remoteStore),
+	if err := validateStabilityLevelForRemoteWritev2(o, args); err != nil {
+		return nil, err
 	}
-	res.receiver = prometheus.NewInterceptor(
-		res.storage,
-		ls,
 
-		// In the methods below, conversion is needed because remote_writes assume
-		// they are responsible for generating ref IDs. This means two
-		// remote_writes may return the same ref ID for two different series. We
-		// treat the remote_write ID as a "local ID" and translate it to a "global
-		// ID" to ensure Alloy compatibility.
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
 
-		prometheus.WithAppendHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, v float64, next storage.Appender) (storage.SeriesRef, error) {
-			if res.exited.Load() {
-				return 0, fmt.Errorf("%s has exited", o.ID)
-			}
-
-			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
-			newRef, nextErr := next.Append(storage.SeriesRef(localID), l, t, v)
-			if localID == 0 {
-				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
-			}
-			return globalRef, nextErr
-		}),
-		prometheus.WithHistogramHook(func(globalRef storage.SeriesRef, l labels.Labels, t int64, h *histogram.Histogram, fh *histogram.FloatHistogram, next storage.Appender) (storage.SeriesRef, error) {
-			if res.exited.Load() {
-				return 0, fmt.Errorf("%s has exited", o.ID)
-			}
-
-			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
-			newRef, nextErr := next.AppendHistogram(storage.SeriesRef(localID), l, t, h, fh)
-			if localID == 0 {
-				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
-			}
-			return globalRef, nextErr
-		}),
-		prometheus.WithMetadataHook(func(globalRef storage.SeriesRef, l labels.Labels, m metadata.Metadata, next storage.Appender) (storage.SeriesRef, error) {
-			if res.exited.Load() {
-				return 0, fmt.Errorf("%s has exited", o.ID)
-			}
-
-			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
-			newRef, nextErr := next.UpdateMetadata(storage.SeriesRef(localID), l, m)
-			if localID == 0 {
-				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
-			}
-			return globalRef, nextErr
-		}),
-		prometheus.WithExemplarHook(func(globalRef storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
-			if res.exited.Load() {
-				return 0, fmt.Errorf("%s has exited", o.ID)
-			}
-
-			localID := ls.GetLocalRefID(res.opts.ID, uint64(globalRef))
-			newRef, nextErr := next.AppendExemplar(storage.SeriesRef(localID), l, e)
-			if localID == 0 {
-				ls.GetOrAddLink(res.opts.ID, uint64(newRef), l)
-			}
-			return globalRef, nextErr
-		}),
+	fanoutLogger := slog.New(
+		logging.NewSlogGoKitHandler(
+			log.With(o.Logger, "subcomponent", "fanout"),
+		),
 	)
+	res := &Component{
+		log:                o.Logger,
+		opts:               o,
+		walStore:           walStorage,
+		remoteStore:        remoteStore,
+		storage:            storage.NewFanout(fanoutLogger, walStorage, remoteStore),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
+	}
+
+	res.receiver = NewInterceptor(o.ID, &res.exited, res.debugDataPublisher, ls, res.storage)
 
 	// Immediately export the receiver which remains the same for the component
 	// lifetime.
 	o.OnStateChange(Exports{Receiver: res.receiver})
 
-	if err := res.Update(c); err != nil {
+	if err := res.Update(args); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -172,6 +137,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 func startTime() (int64, error) { return 0, nil }
 
 var _ component.Component = (*Component)(nil)
+var _ component.LiveDebugging = (*Component)(nil)
 
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
@@ -259,6 +225,11 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	if err != nil {
 		return err
 	}
+
+	if err := validateStabilityLevelForRemoteWritev2(c.opts, cfg); err != nil {
+		return err
+	}
+
 	uid := alloyseed.Get().UID
 	for _, cfg := range convertedConfig.RemoteWriteConfigs {
 		if cfg.Headers == nil {
@@ -273,5 +244,17 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	}
 
 	c.cfg = cfg
+	return nil
+}
+
+func (c *Component) LiveDebugging() {}
+
+func validateStabilityLevelForRemoteWritev2(o component.Options, args Arguments) error {
+	for _, endpoint := range args.Endpoints {
+		if endpoint.ProtobufMessage == PrometheusProtobufMessageV2 && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+			return fmt.Errorf("using remote write v2 (protobuf_message=%s) with endpoint %s requires setting the stability.level flag to experimental", PrometheusProtobufMessageV2, endpoint.Name)
+		}
+	}
+
 	return nil
 }

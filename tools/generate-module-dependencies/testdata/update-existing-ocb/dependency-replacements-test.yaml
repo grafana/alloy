@@ -1,0 +1,13 @@
+modules:
+  - name: test-collector
+    path: test-builder-config.yaml
+    file_type: ocb
+
+replaces:
+  - comment: Test replace for example.com/package
+    dependency: example.com/package
+    replacement: example.com/fork v1.0.0
+
+  - comment: Another test replace
+    dependency: github.com/test/dependency
+    replacement: github.com/test/fork v1.0.0

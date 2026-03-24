@@ -5,7 +5,7 @@ title: otelcol
 weight: 100
 ---
 
-# otelcol
+# `otelcol`
 
 This section contains reference documentation for the `otelcol` components.
 

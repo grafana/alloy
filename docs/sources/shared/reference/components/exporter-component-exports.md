@@ -6,9 +6,9 @@ headless: true
 
 The following fields are exported and can be referenced by other components.
 
-Name      | Type                | Description
-----------|---------------------|----------------------------------------------------------
-`targets` | `list(map(string))` | The targets that can be used to collect exporter metrics.
+| Name      | Type                | Description                                               |
+| --------- | ------------------- | --------------------------------------------------------- |
+| `targets` | `list(map(string))` | The targets that can be used to collect exporter metrics. |
 
 For example, the `targets` can either be passed to a `discovery.relabel` component to rewrite the targets' label sets or to a `prometheus.scrape` component that collects the exposed metrics.
 

@@ -1,3 +1,5 @@
+//go:build windows
+
 package windowsevent
 
 import (
@@ -5,14 +7,13 @@ import (
 	"os"
 	"path"
 	"sync"
-
-	"github.com/grafana/loki/v3/clients/pkg/promtail/api"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
+	"time"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/utils"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/util"
 )
 
 func init() {
@@ -35,33 +36,21 @@ var (
 type Component struct {
 	opts component.Options
 
-	mut       sync.RWMutex
-	args      Arguments
-	target    *Target
-	handle    *handler
-	receivers []loki.LogsReceiver
-}
+	handle loki.LogsReceiver
+	fanout *loki.Fanout
 
-type handler struct {
-	handler chan api.Entry
-}
-
-func (h *handler) Chan() chan<- api.Entry {
-	return h.handler
-}
-
-func (h *handler) Stop() {
-	// This is a noop.
+	mut    sync.Mutex
+	args   Arguments
+	target *Target
 }
 
 // New creates a new loki.source.windowsevent component.
 func New(o component.Options, args Arguments) (*Component, error) {
-
 	c := &Component{
-		opts:      o,
-		receivers: args.ForwardTo,
-		handle:    &handler{handler: make(chan api.Entry)},
-		args:      args,
+		opts:   o,
+		fanout: loki.NewFanout(args.ForwardTo),
+		handle: loki.NewLogsReceiver(),
+		args:   args,
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -74,29 +63,18 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.mut.Lock()
-		defer c.mut.Unlock()
-		if c.target != nil {
-			_ = c.target.Stop()
-		}
-	}()
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handle.handler:
-			c.mut.RLock()
-			lokiEntry := loki.Entry{
-				Labels: entry.Labels,
-				Entry:  entry.Entry,
+		loki.Drain(c.handle, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			if c.target != nil {
+				_ = c.target.Stop()
 			}
-			for _, receiver := range c.receivers {
-				receiver.Chan() <- lokiEntry
-			}
-			c.mut.RUnlock()
-		}
-	}
 
+		})
+	}()
+
+	loki.Consume(ctx, c.handle, c.fanout)
+	return nil
 }
 
 // Update implements component.Component.
@@ -105,6 +83,8 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
+
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	// If no bookmark specified create one in the datapath.
 	if newArgs.BookmarkPath == "" {
@@ -116,10 +96,6 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
-	winTarget, err := NewTarget(c.opts.Logger, c.handle, nil, convertConfig(newArgs))
-	if err != nil {
-		return err
-	}
 	// Stop the original target.
 	if c.target != nil {
 		err := c.target.Stop()
@@ -127,10 +103,17 @@ func (c *Component) Update(args component.Arguments) error {
 			return err
 		}
 	}
+
+	// Same as the loki.source.file sync position period
+	bookmarkSyncPeriod := 10 * time.Second
+	winTarget, err := NewTarget(c.opts.Logger, c.handle, nil, convertConfig(newArgs), bookmarkSyncPeriod)
+	if err != nil {
+		return err
+	}
+
 	c.target = winTarget
 
 	c.args = newArgs
-	c.receivers = newArgs.ForwardTo
 	return nil
 }
 
@@ -174,6 +157,6 @@ func convertConfig(arg Arguments) *scrapeconfig.WindowsEventsTargetConfig {
 		ExcludeEventData:     arg.ExcludeEventData,
 		ExcludeEventMessage:  arg.ExcludeEventMessage,
 		ExcludeUserData:      arg.ExcludeUserdata,
-		Labels:               utils.ToLabelSet(arg.Labels),
+		Labels:               util.MapToModelLabelSet(arg.Labels),
 	}
 }

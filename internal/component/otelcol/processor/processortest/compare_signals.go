@@ -12,8 +12,8 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace"
 )
 
-func CompareMetrics(t *testing.T, expected, actual pmetric.Metrics) {
-	err := pmetrictest.CompareMetrics(
+func CompareMetrics(t *testing.T, expected, actual pmetric.Metrics) error {
+	return pmetrictest.CompareMetrics(
 		expected,
 		actual,
 		pmetrictest.IgnoreResourceMetricsOrder(),
@@ -24,7 +24,6 @@ func CompareMetrics(t *testing.T, expected, actual pmetric.Metrics) {
 		pmetrictest.IgnoreTimestamp(),
 		pmetrictest.IgnoreStartTimestamp(),
 	)
-	require.NoError(t, err)
 }
 
 func CompareLogs(t *testing.T, expected, actual plog.Logs) {

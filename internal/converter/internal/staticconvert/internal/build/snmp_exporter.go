@@ -25,6 +25,9 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 		target["auth"] = t.Auth
 		target["walk_params"] = t.WalkParams
 		target["snmp_context"] = t.SNMPContext
+		for k, v := range t.Labels {
+			target[k] = v
+		}
 		targets = append(targets, target)
 	}
 
@@ -47,10 +50,12 @@ func toSnmpExporter(config *snmp_exporter.Config) *snmp.Arguments {
 	}
 
 	return &snmp.Arguments{
-		ConfigFile:  config.SnmpConfigFile,
-		Config:      alloytypes.OptionalSecret{},
-		TargetsList: targets,
-		WalkParams:  walkParams,
+		ConfigFile:          config.SnmpConfigFile,
+		Config:              alloytypes.OptionalSecret{},
+		ConfigMergeStrategy: config.SnmpConfigMergeStrategy,
+		SnmpConcurrency:     config.SnmpConcurrency,
+		TargetsList:         targets,
+		WalkParams:          walkParams,
 		ConfigStruct: snmp_config.Config{
 			Auths:   config.SnmpConfig.Auths,
 			Modules: config.SnmpConfig.Modules,
@@ -96,10 +101,12 @@ func toSnmpExporterV2(config *snmp_exporter_v2.Config) *snmp.Arguments {
 	}
 
 	return &snmp.Arguments{
-		ConfigFile:  config.SnmpConfigFile,
-		Config:      alloytypes.OptionalSecret{},
-		TargetsList: targets,
-		WalkParams:  walkParams,
+		ConfigFile:          config.SnmpConfigFile,
+		Config:              alloytypes.OptionalSecret{},
+		ConfigMergeStrategy: config.SnmpConfigMergeStrategy,
+		SnmpConcurrency:     config.SnmpConcurrency,
+		TargetsList:         targets,
+		WalkParams:          walkParams,
 		ConfigStruct: snmp_config.Config{
 			Auths:   config.SnmpConfig.Auths,
 			Modules: config.SnmpConfig.Modules,

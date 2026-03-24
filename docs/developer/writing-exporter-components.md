@@ -63,7 +63,7 @@ prometheus.exporter.blackbox "example" {
 
 ## Registering the component
 
-In order to make the component visible to Alloy configurations, it needs to be added to [all.go](../../component/all/all.go) file.
+In order to make the component visible to Alloy configurations, it needs to be added to [all.go](../../internal/component/all/all.go) file.
 
 ## Documentation
 

@@ -1,14 +1,11 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import AutoScroll from '@brianmcallister/react-auto-scroll';
 import { faBroom, faBug, faCopy, faRoad, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
 import { Field, Input, Slider } from '@grafana/ui';
+import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router';
 
 import Page from '../features/layout/Page';
 import { useLiveDebugging } from '../hooks/liveDebugging';
-
 import styles from './LiveDebugging.module.css';
 
 function PageLiveDebugging() {
@@ -18,9 +15,46 @@ function PageLiveDebugging() {
   const [sampleProb, setSampleProb] = useState(1);
   const [sliderProb, setSliderProb] = useState(100);
   const [filterValue, setFilterValue] = useState('');
+  const [autoScroll, setAutoScroll] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef<number>(0);
   const { loading, error } = useLiveDebugging(String(componentID), enabled, sampleProb, setData);
 
   const filteredData = data.filter((n) => n.toLowerCase().includes(filterValue.toLowerCase()));
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (!autoScroll) {
+      return;
+    }
+
+    const scrollToBottom = () => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
+      }
+    };
+
+    const interval = setInterval(scrollToBottom, 500);
+    return () => clearInterval(interval);
+  }, [autoScroll]);
+
+  /**
+   * Detect manual scroll to disable auto-scroll
+   */
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    if (!autoScroll) {
+      return;
+    }
+
+    const currentScrollTop = event.currentTarget.scrollTop;
+    const isScrollingUp = currentScrollTop < lastScrollTopRef.current;
+
+    if (isScrollingUp) {
+      setAutoScroll(false);
+    }
+
+    lastScrollTopRef.current = currentScrollTop;
+  };
 
   function toggleEnableButton() {
     if (enabled) {
@@ -103,20 +137,32 @@ function PageLiveDebugging() {
           <FontAwesomeIcon icon={faCopy} /> Copy
         </button>
       </div>
+      <div className={styles.debugLink}>
+        <label>
+          <input type="checkbox" checked={autoScroll} onChange={(e) => setAutoScroll(e.target.checked)} /> Auto-scroll
+        </label>
+      </div>
     </>
   );
 
   return (
     <Page name="Live Debugging" desc="Live feed of debug data" icon={faBug} controls={controls}>
-      {loading && <p>Listening for incoming data...</p>}
-      {error && <p>Error: {error}</p>}
-      <AutoScroll className={styles.autoScroll} height={document.body.scrollHeight - 260}>
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        style={{
+          height: '100%',
+          overflowY: 'scroll',
+        }}
+      >
+        {loading && <p>Listening for incoming data...</p>}
+        {error && <p>Error: {error}</p>}
         {filteredData.map((msg, index) => (
           <div className={styles.logLine} key={index}>
             {msg}
           </div>
         ))}
-      </AutoScroll>
+      </div>
     </Page>
   );
 }

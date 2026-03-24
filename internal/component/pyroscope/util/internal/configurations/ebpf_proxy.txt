@@ -1,0 +1,49 @@
+logging {
+	level = "debug"
+}
+
+discovery.process "all" { }
+
+discovery.relabel "all_process_targets" {
+	targets = discovery.process.all.targets
+
+	rule {
+		source_labels = ["__meta_process_cwd", "__meta_process_exe"]
+		separator     = " @ "
+		target_label  = "service_name"
+		action        = "replace"
+	}
+}
+
+pyroscope.write "local_pyroscope" {
+	endpoint {
+		url = "http://127.0.0.1:4040"
+	}
+}
+
+pyroscope.write "local_proxy" {
+	endpoint {
+		url = "http://127.0.0.1:4041"
+	}
+}
+
+pyroscope.ebpf "default" {
+	targets      = discovery.relabel.all_process_targets.output
+	targets_only = false
+	forward_to   = [pyroscope.write.local_proxy.receiver]
+	demangle     = "full"
+	go_enabled   = false
+
+	debug_info {
+		upload                  = true
+		on_target_symbolization = false
+	}
+}
+
+pyroscope.receive_http "proxy" {
+	http {
+		listen_address = "0.0.0.0"
+		listen_port    = 4041
+	}
+	forward_to = [pyroscope.write.local_pyroscope.receiver]
+}

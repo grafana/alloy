@@ -5,7 +5,7 @@ title: beyla
 weight: 100
 ---
 
-# beyla
+# `beyla`
 
 This section contains reference documentation for the `beyla` components.
 

@@ -3,10 +3,11 @@ package common_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/token/builder"
-	"github.com/stretchr/testify/require"
 )
 
 func TestOptionalSecret_Write(t *testing.T) {
@@ -25,14 +26,14 @@ func TestOptionalSecret_Write(t *testing.T) {
 		{
 			name: "empty",
 			value: common.ConvertTargets{
-				Targets: []discovery.Target{{}},
+				Targets: []discovery.Target{},
 			},
-			expect: ``,
+			expect: `[]`,
 		},
 		{
 			name: "__address__ key",
 			value: common.ConvertTargets{
-				Targets: []discovery.Target{{"__address__": "testing"}},
+				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__address__": "testing"})},
 			},
 			expect: `[{
 	__address__ = "testing",
@@ -41,7 +42,7 @@ func TestOptionalSecret_Write(t *testing.T) {
 		{
 			name: "__address__ key label",
 			value: common.ConvertTargets{
-				Targets: []discovery.Target{{"__address__": "testing", "label": "value"}},
+				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__address__": "testing", "label": "value"})},
 			},
 			expect: `[{
 	__address__ = "testing",
@@ -52,11 +53,11 @@ func TestOptionalSecret_Write(t *testing.T) {
 			name: "multiple __address__ key label",
 			value: common.ConvertTargets{
 				Targets: []discovery.Target{
-					{"__address__": "testing", "label": "value"},
-					{"__address__": "testing2", "label": "value"},
+					discovery.NewTargetFromMap(map[string]string{"__address__": "testing", "label": "value"}),
+					discovery.NewTargetFromMap(map[string]string{"__address__": "testing2", "label": "value"}),
 				},
 			},
-			expect: `concat(
+			expect: `array.concat(
 	[{
 		__address__ = "testing",
 		label       = "value",
@@ -70,16 +71,19 @@ func TestOptionalSecret_Write(t *testing.T) {
 		{
 			name: "__expr__ key",
 			value: common.ConvertTargets{
-				Targets: []discovery.Target{{"__expr__": "testing"}},
+				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__expr__": "testing"})},
 			},
 			expect: `testing`,
 		},
 		{
 			name: "multiple __expr__ key",
 			value: common.ConvertTargets{
-				Targets: []discovery.Target{{"__expr__": "testing"}, {"__expr__": "testing2"}},
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{"__expr__": "testing"}),
+					discovery.NewTargetFromMap(map[string]string{"__expr__": "testing2"}),
+				},
 			},
-			expect: `concat(
+			expect: `array.concat(
 	testing,
 	testing2,
 )`,
@@ -87,9 +91,12 @@ func TestOptionalSecret_Write(t *testing.T) {
 		{
 			name: "both key types",
 			value: common.ConvertTargets{
-				Targets: []discovery.Target{{"__address__": "testing", "label": "value"}, {"__expr__": "testing2"}},
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{"__address__": "testing", "label": "value"}),
+					discovery.NewTargetFromMap(map[string]string{"__expr__": "testing2"}),
+				},
 			},
-			expect: `concat(
+			expect: `array.concat(
 	[{
 		__address__ = "testing",
 		label       = "value",

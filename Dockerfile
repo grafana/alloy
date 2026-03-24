@@ -1,10 +1,19 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.21@sha256:27f9262d43452075f3c410287a2c43f5ef1bf7ec2bb06e8c9eeb1b8d453087bc
 
 # NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.3 as build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.29@sha256:2500d89efb3bc1cf0a94a00a197ec0f316cc409b7fc031a8de0f6092a782bdd6 AS ui-build
+ARG BUILDPLATFORM
+COPY ./internal/web/ui /ui
+WORKDIR /ui
+RUN --mount=type=cache,target=/ui/node_modules,sharing=locked \
+    npm install                                               \
+    && npm run build
+
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.29@sha256:2500d89efb3bc1cf0a94a00a197ec0f316cc409b7fc031a8de0f6092a782bdd6 AS build
+
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
 ARG TARGETOS
@@ -17,46 +26,56 @@ ARG GOEXPERIMENT
 COPY . /src/alloy
 WORKDIR /src/alloy
 
-# Build the UI before building Alloy, which will then bake the final UI into
-# the binary.
-RUN --mount=type=cache,target=/src/alloy/web/ui/node_modules,sharing=locked \
-   make generate-ui
+COPY --from=ui-build /ui/dist /src/alloy/internal/web/ui/dist
 
 RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
-    GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
+    GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM=${TARGETVARIANT#v} \
     RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
-    GO_TAGS="netgo builtinassets promtail_journal_enabled" \
+    GO_TAGS="netgo embedalloyui promtail_journal_enabled" \
     GOEXPERIMENT=${GOEXPERIMENT} \
+    SKIP_UI_BUILD=1 \
     make alloy
 
-FROM public.ecr.aws/ubuntu/ubuntu:mantic
+###
+
+FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:b1940c8ecf8ff591053cc5db0303fb882f9fafec50f26892a870bcbe1b30d25a
 
 # Username and uid for alloy user
-ARG UID=473
+ARG UID="473"
 ARG USERNAME="alloy"
+# Force non-interactive mode for tzdata package install
+ARG DEBIAN_FRONTEND="noninteractive"
 
 LABEL org.opencontainers.image.source="https://github.com/grafana/alloy"
 
-# Install dependencies needed at runtime.
-RUN  apt-get update \
- &&  apt-get install -qy libsystemd-dev tzdata ca-certificates \
- &&  rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -qy --no-install-recommends \
+        ca-certificates \
+        libsystemd0 \
+        tzdata \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 
-COPY --from=build --chown=$UID /src/alloy/build/alloy /bin/alloy
-COPY --chown=$UID example-config.alloy /etc/alloy/config.alloy
+COPY --from=build --chown=${UID}:${UID} /src/alloy/build/alloy /bin/alloy
+COPY --chown=${UID}:${UID} example-config.alloy /etc/alloy/config.alloy
+
+# Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY packaging/docker/otelcol.sh /bin/otelcol
+RUN chmod 755 /bin/otelcol
 
 # Create alloy user in container, but do not set it as default
 #
-# NOTE(rfratto): non-root support in Docker containers is an experimental,
+# NOTE: non-root support in Docker containers is an experimental,
 # undocumented feature; use at your own risk.
-RUN groupadd --gid $UID $USERNAME
-RUN useradd -m -u $UID -g $UID $USERNAME
-
-RUN mkdir -p /var/lib/alloy/data
-RUN chown -R $USERNAME:$USERNAME /var/lib/alloy
-RUN chmod -R 770 /var/lib/alloy
+RUN groupadd --gid $UID $USERNAME \
+    && useradd -m -u $UID -g $UID $USERNAME \
+    && mkdir -p /var/lib/alloy/data \
+    && chown -R $USERNAME:$USERNAME /var/lib/alloy \
+    && chmod -R 770 /var/lib/alloy
 
 ENTRYPOINT ["/bin/alloy"]
 ENV ALLOY_DEPLOY_MODE=docker

@@ -4,6 +4,9 @@ extensions:
       - action: insert
         key: X-Scope-OrgID
         from_context: tenant_id
+      - action: insert
+        key: X-Scope-OrgID-Fake
+        from_attribute: tenant_id
       - action: upsert
         key: User-ID
         value: user_id

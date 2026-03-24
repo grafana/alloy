@@ -1,0 +1,27 @@
+Error: main.alloy:20:17: component "prometheus.relabel.default.receiver" does not exist or is out of scope
+
+19 | 
+20 |         forward_to = [prometheus.relabel.default.receiver]
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+21 |     }
+
+Error: main.alloy:35:4: component "discovery.kubernetes.pods2.targets" does not exist or is out of scope
+
+34 |         value = array.concat(
+35 |             discovery.kubernetes.pods2.targets,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+36 |             discovery.kubernetes.nodes2.targets,
+
+Error: main.alloy:36:4: component "discovery.kubernetes.nodes2.targets" does not exist or is out of scope
+
+35 |             discovery.kubernetes.pods2.targets,
+36 |             discovery.kubernetes.nodes2.targets,
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+37 |         )
+
+Error: main.alloy:5:14: component "loki.process.test2.receiver" does not exist or is out of scope
+
+4 |     format = "logfmt"
+5 |     write_to = [loki.process.test2.receiver]
+  |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+6 | }

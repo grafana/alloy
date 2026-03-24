@@ -88,7 +88,7 @@ func TestSeverityLevelMatchesOtel(t *testing.T) {
 
 			require.NoError(t, err)
 
-			input := make(map[string]interface{})
+			input := make(map[string]any)
 
 			matchConfig, err := matchProperties.Convert()
 			require.NoError(t, err)
@@ -132,6 +132,23 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 		L:          l,
 	}
 	processortest.TestRunProcessor(prc)
+}
+
+// Test that the validate function is called. The validation logic for the actions is tested in the otelcol pkg.
+func Test_Validate(t *testing.T) {
+	cfg := `
+		action {
+			value = 111111
+			action = "insert"
+		}
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+	expectedErr := "validation failed for action block number 1: the action insert requires the key argument to be set"
+	var args attributes.Arguments
+	require.ErrorContains(t, syntax.Unmarshal([]byte(cfg), &args), expectedErr)
 }
 
 func Test_Insert(t *testing.T) {
@@ -2905,7 +2922,7 @@ var _ client.AuthData = (*fakeAuthData)(nil)
 
 type fakeAuthData struct{}
 
-func (fakeAuthData) GetAttribute(name string) interface{} {
+func (fakeAuthData) GetAttribute(name string) any {
 	return "fake_subject"
 }
 

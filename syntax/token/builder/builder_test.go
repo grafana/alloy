@@ -6,11 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/alloy/syntax/token"
 	"github.com/grafana/alloy/syntax/token/builder"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBuilder_File(t *testing.T) {
@@ -43,6 +45,31 @@ func TestBuilder_File(t *testing.T) {
 	require.Equal(t, expect, string(f.Bytes()))
 }
 
+type capsuleConvertibleToObject struct {
+	name    string
+	address string
+}
+
+func (c capsuleConvertibleToObject) ConvertInto(dst any) error {
+	switch dst := dst.(type) {
+	case *map[string]syntax.Value:
+		result := map[string]syntax.Value{
+			"name":    syntax.ValueFromString(c.name),
+			"address": syntax.ValueFromString(c.address),
+		}
+		*dst = result
+		return nil
+	}
+	return fmt.Errorf("capsuleConvertibleToObject: conversion to '%T' is not supported", dst)
+}
+
+func (c capsuleConvertibleToObject) AlloyCapsule() {}
+
+var (
+	_ syntax.Capsule                = capsuleConvertibleToObject{}
+	_ syntax.ConvertibleIntoCapsule = capsuleConvertibleToObject{}
+)
+
 func TestBuilder_GoEncode(t *testing.T) {
 	f := builder.NewFile()
 
@@ -55,17 +82,27 @@ func TestBuilder_GoEncode(t *testing.T) {
 	f.Body().SetAttributeValue("bool", true)
 	f.Body().SetAttributeValue("list", []int{0, 1, 2})
 	f.Body().SetAttributeValue("func", func(int, int) int { return 0 })
+	f.Body().AppendTokens([]builder.Token{{token.LITERAL, "\n"}})
+
 	f.Body().SetAttributeValue("capsule", make(chan int))
+	f.Body().SetAttributeValue("mappable_capsule", capsuleConvertibleToObject{
+		name:    "Bert",
+		address: "11a Sesame St",
+	})
+	f.Body().SetAttributeValue("mappable_capsule_ptr", &capsuleConvertibleToObject{
+		name:    "Ernie",
+		address: "11b Sesame St",
+	})
 	f.Body().AppendTokens([]builder.Token{{token.LITERAL, "\n"}})
 
-	f.Body().SetAttributeValue("map", map[string]interface{}{"foo": "bar"})
-	f.Body().SetAttributeValue("map_2", map[string]interface{}{"non ident": "bar"})
+	f.Body().SetAttributeValue("map", map[string]any{"foo": "bar"})
+	f.Body().SetAttributeValue("map_2", map[string]any{"non ident": "bar"})
 	f.Body().AppendTokens([]builder.Token{{token.LITERAL, "\n"}})
 
-	f.Body().SetAttributeValue("mixed_list", []interface{}{
+	f.Body().SetAttributeValue("mixed_list", []any{
 		0,
 		true,
-		map[string]interface{}{"key": true},
+		map[string]any{"key": true},
 		"Hello!",
 	})
 
@@ -73,12 +110,21 @@ func TestBuilder_GoEncode(t *testing.T) {
 		// Hello, world!
 		null_value = null
 	
-		num     = 15 
-		string  = "Hello, world!"
-		bool    = true
-		list    = [0, 1, 2]
-		func    = function
-		capsule = capsule("chan int")
+		num    = 15
+		string = "Hello, world!"
+		bool   = true
+		list   = [0, 1, 2]
+		func   = function
+		
+		capsule          = capsule("chan int")
+		mappable_capsule = {
+			address = "11a Sesame St",
+			name    = "Bert",
+		}
+		mappable_capsule_ptr = {
+			address = "11b Sesame St",
+			name    = "Ernie",
+		}
 
 		map = {
 			foo = "bar",
@@ -109,7 +155,7 @@ func TestBuilder_GoEncode_SortMapKeys(t *testing.T) {
 
 	// Maps are unordered because you can't iterate over their keys in a
 	// consistent order.
-	var unordered = map[string]interface{}{
+	var unordered = map[string]any{
 		"key_a": 1,
 		"key_c": 3,
 		"key_b": 2,
@@ -357,7 +403,7 @@ func TestBuilder_ValueOverrideHook(t *testing.T) {
 	}
 
 	f := builder.NewFile()
-	f.Body().SetValueOverrideHook(func(val interface{}) interface{} {
+	f.Body().SetValueOverrideHook(func(val any) any {
 		return "some other value"
 	})
 	f.Body().AppendFrom(Structure{

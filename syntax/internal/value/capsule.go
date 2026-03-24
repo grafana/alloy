@@ -36,7 +36,7 @@ type ConvertibleFromCapsule interface {
 	//
 	// ConvertFrom should return ErrNoConversion if no conversion is available
 	// from src.
-	ConvertFrom(src interface{}) error
+	ConvertFrom(src any) error
 }
 
 // ConvertibleIntoCapsule is a Capsule which supports custom conversion rules
@@ -49,5 +49,5 @@ type ConvertibleIntoCapsule interface {
 	//
 	// ConvertInto should return ErrNoConversion if no conversion into dst is
 	// available.
-	ConvertInto(dst interface{}) error
+	ConvertInto(dst any) error
 }

@@ -35,6 +35,7 @@ type Arguments struct {
 	Namespace string `alloy:"namespace,attr,optional"`
 
 	Path string `alloy:"path,attr"`
+	Key  string `alloy:"key,attr,optional"`
 
 	RereadFrequency time.Duration `alloy:"reread_frequency,attr,optional"`
 
@@ -310,7 +311,7 @@ func (c *Component) CurrentHealth() component.Health {
 
 // DebugInfo returns debug information about the remote.vault component. It
 // includes non-sensitive metadata about the current secret.
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	return debugInfo{
 		AuthToken: c.authManager.DebugInfo(),
 		Secret:    c.secretManager.DebugInfo(),

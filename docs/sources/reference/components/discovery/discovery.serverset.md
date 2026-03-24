@@ -3,10 +3,14 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/discovery/
 aliases:
   - ../discovery.serverset/ # /docs/alloy/latest/reference/components/discovery.serverset/
 description: Learn about discovery.serverset
+labels:
+  stage: general-availability
+  products:
+    - oss
 title: discovery.serverset
 ---
 
-# discovery.serverset
+# `discovery.serverset`
 
 `discovery.serverset` discovers [Serversets][] stored in Zookeeper and exposes them as targets.
 Serversets are commonly used by [Finagle][] and [Aurora][].
@@ -18,9 +22,9 @@ Serversets are commonly used by [Finagle][] and [Aurora][].
 ## Usage
 
 ```alloy
-discovery.serverset "LABEL" {
-	servers = SERVERS_LIST
-	paths   = ZOOKEEPER_PATHS_LIST
+discovery.serverset "<LABEL>" {
+    servers = "<SERVERS_LIST>"
+    paths   = "<ZOOKEEPER_PATHS_LIST>"
 }
 ```
 
@@ -29,30 +33,35 @@ The Thrift format isn't supported.
 
 ## Arguments
 
-The following arguments are supported:
+You can use the following arguments with `discovery.serverset`:
 
 | Name      | Type           | Description                                      | Default | Required |
-|-----------|----------------|--------------------------------------------------|---------|----------|
-| `servers` | `list(string)` | The Zookeeper servers to connect to.             |         | yes      |
+| --------- | -------------- | ------------------------------------------------ | ------- | -------- |
 | `paths`   | `list(string)` | The Zookeeper paths to discover Serversets from. |         | yes      |
-| `timeout` | `duration`     | The Zookeeper session timeout                    | `10s`   | no       |
+| `servers` | `list(string)` | The Zookeeper servers to connect to.             |         | yes      |
+| `timeout` | `duration`     | The Zookeeper session timeout                    | `"10s"` | no       |
+
+## Blocks
+
+The `discovery.serverset` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
 The following fields are exported and can be referenced by other components:
 
-Name      | Type                | Description
-----------|---------------------|-------------------------------
-`targets` | `list(map(string))` | The set of targets discovered.
+| Name      | Type                | Description                    |
+| --------- | ------------------- | ------------------------------ |
+| `targets` | `list(map(string))` | The set of targets discovered. |
 
 The following metadata labels are available on targets during relabeling:
-* `__meta_serverset_path`: the full path to the serverset member node in Zookeeper
-* `__meta_serverset_endpoint_host`: the host of the default endpoint
-* `__meta_serverset_endpoint_port`: the port of the default endpoint
-* `__meta_serverset_endpoint_host_<endpoint>`: the host of the given endpoint
-* `__meta_serverset_endpoint_port_<endpoint>`: the port of the given endpoint
-* `__meta_serverset_shard`: the shard number of the member
-* `__meta_serverset_status`: the status of the member
+
+* `__meta_serverset_endpoint_host_<endpoint>`: The host of the given endpoint.
+* `__meta_serverset_endpoint_host`: The host of the default endpoint.
+* `__meta_serverset_endpoint_port_<endpoint>`: The port of the given endpoint.
+* `__meta_serverset_endpoint_port`: The port of the default endpoint.
+* `__meta_serverset_path`: The full path to the serverset member node in Zookeeper.
+* `__meta_serverset_shard`: The shard number of the member.
+* `__meta_serverset_status`: The status of the member.
 
 ## Component health
 
@@ -61,33 +70,33 @@ In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`discovery.serverset` does not expose any component-specific debug information.
+`discovery.serverset` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`discovery.serverset` does not expose any component-specific debug metrics.
+`discovery.serverset` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-The configuration below will connect to one of the Zookeeper servers (either `zk1`, `zk2`, or `zk3`) and discover JSON Serversets at paths `/path/to/znode1` and `/path/to/znode2`.
-The discovered targets are scraped by the `prometheus.scrape.default` component and forwarded to the `prometheus.remote_write.default` component, which will send the samples to specified remote_write URL.
+The configuration below connects to one of the Zookeeper servers, either `zk1`, `zk2`, or `zk3`, and discovers JSON Serversets at paths `/path/to/znode1` and `/path/to/znode2`.
+The discovered targets are scraped by the `prometheus.scrape.default` component and forwarded to the `prometheus.remote_write.default` component, which sends the samples to specified `remote_write` URL.
 
 ```alloy
 discovery.serverset "zookeeper" {
-	servers = ["zk1", "zk2", "zk3"]
-	paths   = ["/path/to/znode1", "/path/to/znode2"]
-	timeout = "30s"
+    servers = ["zk1", "zk2", "zk3"]
+    paths   = ["/path/to/znode1", "/path/to/znode2"]
+    timeout = "30s"
 }
 
 prometheus.scrape "default" {
-	targets    = discovery.serverset.zookeeper.targets
-	forward_to = [prometheus.remote_write.default.receiver]
+    targets    = discovery.serverset.zookeeper.targets
+    forward_to = [prometheus.remote_write.default.receiver]
 }
 
 prometheus.remote_write "default" {
-	endpoint {
-		url = "http://remote-write-url1"
-	}
+    endpoint {
+        url = "http://remote-write-url1"
+    }
 }
 ```
 

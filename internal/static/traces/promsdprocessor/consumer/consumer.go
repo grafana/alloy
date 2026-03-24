@@ -10,13 +10,14 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/collector/client"
 	otelconsumer "go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
-	semconv "go.opentelemetry.io/collector/semconv/v1.5.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.5.0"
+
+	"github.com/grafana/alloy/internal/component/discovery"
 )
 
 const (
@@ -27,7 +28,7 @@ const (
 	// OperationTypeUpsert does both of above
 	OperationTypeUpsert = "upsert"
 
-	//TODO: It'd be cleaner to get these from the otel semver package?
+	// TODO: It'd be cleaner to get these from the otel semver package?
 	//      Not all are in semver though. E.g. "k8s.pod.ip" is internal inside the k8sattributesprocessor.
 	PodAssociationIPLabel       = "ip"
 	PodAssociationOTelIPLabel   = "net.host.ip"
@@ -160,20 +161,21 @@ func (c *Consumer) processAttributes(ctx context.Context, attrs pcommon.Map) {
 		return
 	}
 
-	for _, label := range labels.Labels() {
+	labels.ForEachLabel(func(label string, value string) bool {
 		switch c.opts.OperationType {
 		case OperationTypeUpsert:
-			attrs.PutStr(label.Name, label.Value)
+			attrs.PutStr(label, value)
 		case OperationTypeInsert:
-			if _, ok := attrs.Get(label.Name); !ok {
-				attrs.PutStr(label.Name, label.Value)
+			if _, ok := attrs.Get(label); !ok {
+				attrs.PutStr(label, value)
 			}
 		case OperationTypeUpdate:
-			if toVal, ok := attrs.Get(label.Name); ok {
-				toVal.SetStr(label.Value)
+			if toVal, ok := attrs.Get(label); ok {
+				toVal.SetStr(value)
 			}
 		}
-	}
+		return true
+	})
 }
 
 func (c *Consumer) getPodIP(ctx context.Context, attrs pcommon.Map) string {
@@ -185,7 +187,7 @@ func (c *Consumer) getPodIP(ctx context.Context, attrs pcommon.Map) string {
 				return ip
 			}
 		case PodAssociationHostnameLabel:
-			hostname := stringAttributeFromMap(attrs, semconv.AttributeHostName)
+			hostname := stringAttributeFromMap(attrs, string(semconv.HostNameKey))
 			if net.ParseIP(hostname) != nil {
 				return hostname
 			}
@@ -230,9 +232,9 @@ func (c *Consumer) getConnectionIP(ctx context.Context) string {
 }
 
 func GetHostFromLabels(labels discovery.Target) (string, error) {
-	address, ok := labels[model.AddressLabel]
+	address, ok := labels.Get(model.AddressLabel)
 	if !ok {
-		return "", fmt.Errorf("unable to find address in labels %q", labels.Labels())
+		return "", fmt.Errorf("unable to find address in labels %q", labels)
 	}
 
 	host := address
@@ -247,12 +249,6 @@ func GetHostFromLabels(labels discovery.Target) (string, error) {
 	return host, nil
 }
 
-func NewTargetsWithNonInternalLabels(labels discovery.Target) discovery.Target {
-	res := make(discovery.Target)
-	for k, v := range labels {
-		if !strings.HasPrefix(k, "__") {
-			res[k] = v
-		}
-	}
-	return res
+func NewTargetsWithNonInternalLabels(target discovery.Target) discovery.Target {
+	return discovery.NewTargetFromLabelSet(target.NonReservedLabelSet())
 }

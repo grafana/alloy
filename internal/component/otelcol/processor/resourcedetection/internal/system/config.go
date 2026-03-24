@@ -34,10 +34,13 @@ func (c *Config) SetToDefault() {
 			HostCPUStepping:    rac.ResourceAttributeConfig{Enabled: false},
 			HostCPUVendorID:    rac.ResourceAttributeConfig{Enabled: false},
 			HostID:             rac.ResourceAttributeConfig{Enabled: false},
+			HostInterface:      rac.ResourceAttributeConfig{Enabled: false},
 			HostIP:             rac.ResourceAttributeConfig{Enabled: false},
 			HostMac:            rac.ResourceAttributeConfig{Enabled: false},
 			HostName:           rac.ResourceAttributeConfig{Enabled: true},
+			OsBuildId:          rac.ResourceAttributeConfig{Enabled: false},
 			OsDescription:      rac.ResourceAttributeConfig{Enabled: false},
+			OsName:             rac.ResourceAttributeConfig{Enabled: false},
 			OsType:             rac.ResourceAttributeConfig{Enabled: true},
 		},
 	}
@@ -56,8 +59,8 @@ func (cfg *Config) Validate() error {
 	return nil
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"hostname_sources":    args.HostnameSources,
 		"resource_attributes": args.ResourceAttributes.Convert(),
 	}
@@ -73,15 +76,19 @@ type ResourceAttributesConfig struct {
 	HostCPUStepping    rac.ResourceAttributeConfig `alloy:"host.cpu.stepping,block,optional"`
 	HostCPUVendorID    rac.ResourceAttributeConfig `alloy:"host.cpu.vendor.id,block,optional"`
 	HostID             rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
+	HostInterface      rac.ResourceAttributeConfig `alloy:"host.interface,block,optional"`
 	HostIP             rac.ResourceAttributeConfig `alloy:"host.ip,block,optional"`
 	HostMac            rac.ResourceAttributeConfig `alloy:"host.mac,block,optional"`
 	HostName           rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
+	OsBuildId          rac.ResourceAttributeConfig `alloy:"os.build.id,block,optional"`
 	OsDescription      rac.ResourceAttributeConfig `alloy:"os.description,block,optional"`
+	OsName             rac.ResourceAttributeConfig `alloy:"os.name,block,optional"`
 	OsType             rac.ResourceAttributeConfig `alloy:"os.type,block,optional"`
+	OsVersion          rac.ResourceAttributeConfig `alloy:"os.version,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"host.arch":              r.HostArch.Convert(),
 		"host.cpu.cache.l2.size": r.HostCPUCacheL2Size.Convert(),
 		"host.cpu.family":        r.HostCPUFamily.Convert(),
@@ -90,10 +97,14 @@ func (r ResourceAttributesConfig) Convert() map[string]interface{} {
 		"host.cpu.stepping":      r.HostCPUStepping.Convert(),
 		"host.cpu.vendor.id":     r.HostCPUVendorID.Convert(),
 		"host.id":                r.HostID.Convert(),
+		"host.interface":         r.HostInterface.Convert(),
 		"host.ip":                r.HostIP.Convert(),
 		"host.mac":               r.HostMac.Convert(),
 		"host.name":              r.HostName.Convert(),
+		"os.build.id":            r.OsBuildId.Convert(),
 		"os.description":         r.OsDescription.Convert(),
+		"os.name":                r.OsName.Convert(),
 		"os.type":                r.OsType.Convert(),
+		"os.version":             r.OsVersion.Convert(),
 	}
 }

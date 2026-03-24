@@ -16,7 +16,7 @@ span.health {
 span.health.state-ok {
   color: #ffffff;
   background-color: #3b8160;
-  border-color:#3b8160;
+  border-color: #3b8160;
 }
 
 span.health.state-error {
@@ -30,5 +30,3 @@ span.health.state-warn {
   background-color: #f5d65b;
   border-color: #f5d65b;
 }
-
-

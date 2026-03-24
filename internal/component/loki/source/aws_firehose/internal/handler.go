@@ -15,8 +15,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/logproto"
-	yacepromutil "github.com/nerdswords/yet-another-cloudwatch-exporter/pkg/promutil"
+	yacepromutil "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/promutil"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -24,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiClient "github.com/grafana/alloy/internal/component/common/loki/client"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/loki/pkg/push"
 )
 
 const (
@@ -122,7 +122,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// common labels contains all record-wide labels
-	commonLabels := labels.NewBuilder(nil)
+	commonLabels := labels.NewBuilder(labels.EmptyLabels())
 	commonLabels.Set("__aws_firehose_request_id", req.Header.Get("X-Amz-Firehose-Request-Id"))
 	commonLabels.Set("__aws_firehose_source_arn", req.Header.Get("X-Amz-Firehose-Source-Arn"))
 
@@ -136,9 +136,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	for l, v := range requestStaticLabels {
 		commonLabels.Set(string(l), string(v))
 	}
-
 	h.metrics.batchSize.WithLabelValues().Observe(float64(len(firehoseReq.Records)))
 
+	created := time.Now()
 	for _, rec := range firehoseReq.Records {
 		// cleanup err since it might have failed in the previous iteration
 		err = nil
@@ -159,15 +159,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 		switch recordType {
 		case OriginDirectPUT:
-			h.sender.Send(req.Context(), loki.Entry{
-				Labels: h.postProcessLabels(commonLabels.Labels()),
-				Entry: logproto.Entry{
-					Timestamp: ts,
-					Line:      string(decodedRecord),
-				},
-			})
+			lset := h.postProcessLabels(commonLabels.Labels())
+			h.sender.Send(req.Context(), loki.NewEntryWithCreated(lset, created, push.Entry{Timestamp: ts, Line: string(decodedRecord)}))
 		case OriginCloudwatchLogs:
-			err = h.handleCloudwatchLogsRecord(req.Context(), decodedRecord, commonLabels.Labels(), ts)
+			err = h.handleCloudwatchLogsRecord(req.Context(), decodedRecord, commonLabels.Labels(), ts, created)
 		}
 		if err != nil {
 			h.metrics.errorsRecord.WithLabelValues(getReason(err)).Inc()
@@ -187,19 +182,22 @@ func (h *Handler) postProcessLabels(lbs labels.Labels) model.LabelSet {
 	}
 
 	entryLabels := make(model.LabelSet)
-	for _, lbl := range lbs {
+	lbs.Range(func(lbl labels.Label) {
 		// if internal label and not reserved, drop
 		if strings.HasPrefix(lbl.Name, "__") && lbl.Name != lokiClient.ReservedLabelTenantID {
-			continue
+			return
 		}
 
 		// ignore invalid labels
-		if !model.LabelName(lbl.Name).IsValid() || !model.LabelValue(lbl.Value).IsValid() {
-			continue
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
+		if !model.LabelName(lbl.Name).IsValidLegacy() || !model.LabelValue(lbl.Value).IsValid() {
+			return
 		}
 
 		entryLabels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
+
 	return entryLabels
 }
 
@@ -210,9 +208,9 @@ func sendAPIResponse(w http.ResponseWriter, firehoseID, errMsg string, status in
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if errMsg != "" {
-		_, _ = w.Write([]byte(fmt.Sprintf(errorResponseTemplate, firehoseID, timestamp, errMsg)))
+		_, _ = fmt.Fprintf(w, errorResponseTemplate, firehoseID, timestamp, errMsg)
 	} else {
-		_, _ = w.Write([]byte(fmt.Sprintf(successResponseTemplate, firehoseID, timestamp)))
+		_, _ = fmt.Fprintf(w, successResponseTemplate, firehoseID, timestamp)
 	}
 }
 
@@ -257,7 +255,7 @@ func (h *Handler) decodeRecord(rec string) ([]byte, RecordOrigin, error) {
 
 // handleCloudwatchLogsRecord explodes the cloudwatch logs record into each log message. Also, it adds all properties
 // sent in the envelope as internal labels, available for relabel.
-func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, commonLabels labels.Labels, timestamp time.Time) error {
+func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, commonLabels labels.Labels, timestamp, created time.Time) error {
 	cwRecord := CloudwatchLogsRecord{}
 	if err := json.Unmarshal(data, &cwRecord); err != nil {
 		return errWithReason{
@@ -274,13 +272,12 @@ func (h *Handler) handleCloudwatchLogsRecord(ctx context.Context, data []byte, c
 	cwLogsLabels.Set("__aws_cw_msg_type", cwRecord.MessageType)
 
 	for _, event := range cwRecord.LogEvents {
-		h.sender.Send(ctx, loki.Entry{
-			Labels: h.postProcessLabels(cwLogsLabels.Labels()),
-			Entry: logproto.Entry{
-				Timestamp: timestamp,
-				Line:      event.Message,
-			},
-		})
+		if h.useIncomingTs {
+			timestamp = time.UnixMilli(event.Timestamp)
+		}
+
+		lset := h.postProcessLabels(cwLogsLabels.Labels())
+		h.sender.Send(ctx, loki.NewEntryWithCreated(lset, created, push.Entry{Timestamp: timestamp, Line: event.Message}))
 	}
 
 	return nil
@@ -316,13 +313,17 @@ func (h *Handler) tryToGetStaticLabelsFromRequest(req *http.Request, tenantID st
 		// construct model.LabelName from the header value, if the raw data is not valid label name, try to fix it and use
 		rawLabelName := strings.TrimPrefix(name, commonAttributesLabelPrefix)
 		labelName := model.LabelName(rawLabelName)
-		if !labelName.IsValid() {
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
+		if !labelName.IsValidLegacy() {
 			level.Debug(h.logger).Log(fmt.Sprintf("label name is not valid, trying to fix: %s", rawLabelName))
 
 			// try to sanitize label name
 			sanitizedLabelName := yacepromutil.PromString(rawLabelName)
 			labelName = model.LabelName(sanitizedLabelName)
-			if !labelName.IsValid() {
+			// TODO: add support for different validation schemes.
+			//nolint:staticcheck
+			if !labelName.IsValidLegacy() {
 				// This situation can happen when:
 				// - the header with label information is a valid JSON
 				// - the label name is not valid and can not be sanitized

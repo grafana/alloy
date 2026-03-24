@@ -9,16 +9,54 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
-	"github.com/grafana/alloy/internal/util"
+	alloyutil "github.com/grafana/alloy/internal/util"
+	"github.com/grafana/pyroscope/ebpf/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
 
+// mockTimeSource is a test helper for controlling time.
+type mockTimeSource struct {
+	now time.Time
+}
+
+func (m *mockTimeSource) Now() time.Time {
+	return m.now
+}
+
+func Test_traceContextKeptWhenStacktraceDefined(t *testing.T) {
+	input := &payload.Exception{
+		Stacktrace: &payload.Stacktrace{},
+		Trace: payload.TraceContext{
+			TraceID: "0000000000000",
+			SpanID:  "000000",
+		},
+	}
+
+	expect := input
+	actual := transformException(nil, nil, input, "123")
+	require.Equal(t, expect, actual)
+}
+
+func Test_traceContextKeptWhenStacktraceNotDefined(t *testing.T) {
+	input := &payload.Exception{
+		Trace: payload.TraceContext{
+			TraceID: "0000000000000",
+			SpanID:  "000000",
+		},
+	}
+
+	expect := input
+	actual := transformException(nil, nil, input, "123")
+	require.Equal(t, expect, actual)
+}
+
 func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 	var (
-		logger = util.TestLogger(t)
+		logger = alloyutil.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -38,7 +76,7 @@ func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
 			httpClient,
-			&mockFileService{},
+			newTestFileService(),
 		)
 	)
 
@@ -68,7 +106,7 @@ func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 	var (
-		logger = util.TestLogger(t)
+		logger = alloyutil.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -90,7 +128,7 @@ func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
 			httpClient,
-			&mockFileService{},
+			newTestFileService(),
 		)
 	)
 
@@ -102,7 +140,7 @@ func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 	var (
-		logger = util.TestLogger(t)
+		logger = alloyutil.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -122,7 +160,7 @@ func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 			},
 			newSourceMapMetrics(prometheus.NewRegistry()),
 			httpClient,
-			&mockFileService{},
+			newTestFileService(),
 		)
 	)
 
@@ -170,36 +208,35 @@ func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 	var (
-		logger = util.TestLogger(t)
+		logger = alloyutil.TestLogger(t)
 
 		httpClient = &mockHTTPClient{}
 
-		fileService = &mockFileService{
-			files: map[string][]byte{
-				filepath.FromSlash("/var/build/latest/foo.js.map"): loadTestData(t, "foo.js.map"),
-				filepath.FromSlash("/var/build/123/foo.js.map"):    loadTestData(t, "foo.js.map"),
-			},
-		}
+		fileService = newTestFileService()
+	)
+	fileService.files = map[string][]byte{
+		filepath.FromSlash("/var/build/latest/foo.js.map"): loadTestData(t, "foo.js.map"),
+		filepath.FromSlash("/var/build/123/foo.js.map"):    loadTestData(t, "foo.js.map"),
+	}
 
-		store = newSourceMapsStore(
-			logger,
-			SourceMapsArguments{
-				Download: false,
-				Locations: []LocationArguments{
-					{
-						MinifiedPathPrefix: "http://foo.com/",
-						Path:               filepath.FromSlash("/var/build/latest/"),
-					},
-					{
-						MinifiedPathPrefix: "http://bar.com/",
-						Path:               filepath.FromSlash("/var/build/{{ .Release }}/"),
-					},
+	var store = newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Download: false,
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "http://foo.com/",
+					Path:               filepath.FromSlash("/var/build/latest/"),
+				},
+				{
+					MinifiedPathPrefix: "http://bar.com/",
+					Path:               filepath.FromSlash("/var/build/{{ .Release }}/"),
 				},
 			},
-			newSourceMapMetrics(prometheus.NewRegistry()),
-			httpClient,
-			fileService,
-		)
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
 	)
 
 	expect := &payload.Exception{
@@ -231,6 +268,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 				},
 			},
 		},
+		Context: payload.ExceptionContext{"ReactError": "Annoying Error", "component": "ReactErrorBoundary"},
 	}
 
 	actual := transformException(logger, store, &payload.Exception{
@@ -262,14 +300,16 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 				},
 			},
 		},
+		Context: payload.ExceptionContext{"ReactError": "Annoying Error", "component": "ReactErrorBoundary"},
 	}, "123")
 
 	require.Equal(t, expect, actual)
+	require.EqualValues(t, payload.ExceptionContext{"ReactError": "Annoying Error", "component": "ReactErrorBoundary"}, actual.Context)
 }
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 	var (
-		logger = util.TestLogger(t)
+		logger = alloyutil.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -281,28 +321,27 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 			},
 		}
 
-		fileService = &mockFileService{
-			files: map[string][]byte{
-				filepath.FromSlash("/var/build/latest/foo.js.map"): loadTestData(t, "foo.js.map"),
-			},
-		}
+		fileService = newTestFileService()
+	)
+	fileService.files = map[string][]byte{
+		filepath.FromSlash("/var/build/latest/foo.js.map"): loadTestData(t, "foo.js.map"),
+	}
 
-		store = newSourceMapsStore(
-			logger,
-			SourceMapsArguments{
-				Download:            true,
-				DownloadFromOrigins: []string{"*"},
-				Locations: []LocationArguments{
-					{
-						MinifiedPathPrefix: "http://foo.com/",
-						Path:               filepath.FromSlash("/var/build/latest/"),
-					},
+	var store = newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Download:            true,
+			DownloadFromOrigins: []string{"*"},
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "http://foo.com/",
+					Path:               filepath.FromSlash("/var/build/latest/"),
 				},
 			},
-			newSourceMapMetrics(prometheus.NewRegistry()),
-			httpClient,
-			fileService,
-		)
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
 	)
 
 	expect := &payload.Exception{
@@ -351,7 +390,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *testing.T) {
 	var (
-		logger = util.TestLogger(t)
+		logger = alloyutil.TestLogger(t)
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -363,28 +402,27 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *test
 			},
 		}
 
-		fileService = &mockFileService{
-			files: map[string][]byte{
-				filepath.FromSlash("/var/build/latest/foo.js.map"): loadTestData(t, "foo.js.map"),
-			},
-		}
+		fileService = newTestFileService()
+	)
+	fileService.files = map[string][]byte{
+		filepath.FromSlash("/var/build/latest/foo.js.map"): loadTestData(t, "foo.js.map"),
+	}
 
-		store = newSourceMapsStore(
-			logger,
-			SourceMapsArguments{
-				Download:            false,
-				DownloadFromOrigins: []string{"*"},
-				Locations: []LocationArguments{
-					{
-						MinifiedPathPrefix: "http://foo.com/",
-						Path:               filepath.FromSlash("/var/build/latest/"),
-					},
+	var store = newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Download:            false,
+			DownloadFromOrigins: []string{"*"},
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "http://foo.com/",
+					Path:               filepath.FromSlash("/var/build/latest/"),
 				},
 			},
-			newSourceMapMetrics(prometheus.NewRegistry()),
-			httpClient,
-			fileService,
-		)
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
 	)
 
 	expect := &payload.Exception{
@@ -433,10 +471,10 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *test
 
 func Test_sourceMapsStoreImpl_FilepathSanitized(t *testing.T) {
 	var (
-		logger = util.TestLogger(t)
+		logger = alloyutil.TestLogger(t)
 
 		httpClient  = &mockHTTPClient{}
-		fileService = &mockFileService{}
+		fileService = newTestFileService()
 
 		store = newSourceMapsStore(
 			logger,
@@ -530,6 +568,224 @@ func Test_urlMatchesOrigins(t *testing.T) {
 	}
 }
 
+func TestOsFileService_RejectsInvalidPaths(t *testing.T) {
+	fs := osFileService{}
+
+	invalidPaths := []string{
+		"file/with/slash",
+		"file\\with\\backslash",
+		"file/../with/parent/dir",
+		"../parent/dir",
+		"./current/dir",
+		"file..with..dots",
+	}
+
+	for _, path := range invalidPaths {
+		_, errStat := fs.Stat(path)
+		if errStat == nil {
+			t.Errorf("Expected error for path %q containing illegal characters, but got nil", path)
+		}
+		_, errReadFile := fs.ReadFile(path)
+		if errReadFile == nil {
+			t.Errorf("Expected error for path %q containing illegal characters, but got nil", path)
+		}
+	}
+
+	validPath := "validfilename.txt"
+	_, errStat := fs.Stat(validPath)
+	if errStat != nil && errStat.Error() == "invalid file name: "+validPath {
+		t.Errorf("Expected valid path %q to not trigger invalid file name error", validPath)
+	}
+	_, errReadFile := fs.ReadFile(validPath)
+	if errReadFile != nil && errReadFile.Error() == "invalid file name: "+validPath {
+		t.Errorf("Expected valid path %q to not trigger invalid file name error", validPath)
+	}
+}
+
+func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
+	var (
+		logger      = alloyutil.TestLogger(t)
+		fileService = &testFileService{}
+		store       = newSourceMapsStore(
+			logger,
+			SourceMapsArguments{
+				Download: false,
+				Locations: []LocationArguments{
+					{
+						MinifiedPathPrefix: "https://example.com/",
+						Path:               "/foo/bar/baz/qux",
+					},
+				},
+			},
+			newSourceMapMetrics(prometheus.NewRegistry()),
+			nil,
+			fileService,
+		)
+	)
+
+	input := &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    6,
+					Filename: "https://example.com/folder/file.js",
+					Function: "eval",
+					Lineno:   5,
+				},
+			},
+		},
+	}
+
+	actual := transformException(logger, store, input, "123")
+	require.Equal(t, input, actual)
+	require.Equal(t, []string{filepath.FromSlash("/foo/bar/baz/qux/folder/file.js.map")}, fileService.stats)
+	require.Empty(t, fileService.reads, "should not read file when stat fails")
+}
+
+func TestSourceMapsStoreImpl_CleanCachedErrors(t *testing.T) {
+	tt := []struct {
+		name              string
+		cache             map[string]*cachedSourceMap
+		expectedCacheSize int
+	}{
+		{
+			name: "should remove cached error",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": nil,
+			},
+			expectedCacheSize: 0,
+		},
+		{
+			name: "should not remove from map if no errors",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldNotRemoveFromCache.com__v2": {},
+			},
+			expectedCacheSize: 1,
+		},
+		{
+			name: "should not remove from map if no errors",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldNotRemoveFromCache.com__v1": {},
+				"http://shouldNotRemoveFromCache.com__v2": {},
+			},
+			expectedCacheSize: 2,
+		},
+		{
+			name: "should remove only cached errors",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldNotRemoveFromCache.com__v1": nil,
+				"http://shouldNotRemoveFromCache.com__v2": {},
+			},
+			expectedCacheSize: 1,
+		},
+	}
+
+	logger := util.TestLogger(t)
+
+	for _, tc := range tt {
+		reg := prometheus.NewRegistry()
+		metrics := newSourceMapMetrics(reg)
+
+		store := &sourceMapsStoreImpl{
+			log:        logger,
+			args:       SourceMapsArguments{Cache: &CacheArguments{TTL: 5 * time.Minute}},
+			metrics:    metrics,
+			cli:        &mockHTTPClient{},
+			fs:         newTestFileService(),
+			cache:      tc.cache,
+			timeSource: &mockTimeSource{now: time.Now()},
+		}
+
+		t.Run(tc.name, func(t *testing.T) {
+			store.CleanCachedErrors()
+			require.Equal(t, tc.expectedCacheSize, len(store.cache))
+		})
+	}
+}
+
+func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
+	now := time.Now()
+
+	tt := []struct {
+		name              string
+		cache             map[string]*cachedSourceMap
+		timeSource        *mockTimeSource
+		cacheTimeout      time.Duration
+		expectedCacheSize int
+	}{
+		{
+			name: "should clear entry from cache if too old",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+			},
+			timeSource:        &mockTimeSource{now: now.Add(6 * time.Minute)},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 0,
+		},
+		{
+			name: "should not clear entry from cache if not too old",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+			},
+			timeSource:        &mockTimeSource{now: now.Add(3 * time.Minute)},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 1,
+		},
+		{
+			name: "should clear only old entries from cache",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(-6 * time.Minute)},
+			},
+			timeSource:        &mockTimeSource{now: now},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 1,
+		},
+		{
+			name: "should not clear multiple entries",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now.Add(3 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(4 * time.Minute)},
+			},
+			timeSource:        &mockTimeSource{now: now},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 2,
+		},
+		{
+			name: "should clear multiple old entries from cache",
+			cache: map[string]*cachedSourceMap{
+				"http://shouldRemoveCachedErrors.com__v1": {lastUsed: now.Add(-10 * time.Minute)},
+				"http://shouldRemoveCachedErrors.com__v2": {lastUsed: now.Add(-7 * time.Minute)},
+			},
+			timeSource:        &mockTimeSource{now: now},
+			cacheTimeout:      5 * time.Minute,
+			expectedCacheSize: 0,
+		},
+	}
+
+	logger := util.TestLogger(t)
+
+	for _, tc := range tt {
+		reg := prometheus.NewRegistry()
+		metrics := newSourceMapMetrics(reg)
+
+		store := &sourceMapsStoreImpl{
+			log:        logger,
+			args:       SourceMapsArguments{Cache: &CacheArguments{TTL: tc.cacheTimeout}},
+			metrics:    metrics,
+			cli:        &mockHTTPClient{},
+			fs:         newTestFileService(),
+			cache:      tc.cache,
+			timeSource: tc.timeSource,
+		}
+
+		t.Run(tc.name, func(t *testing.T) {
+			store.CleanOldCacheEntries()
+			require.Equal(t, tc.expectedCacheSize, len(store.cache))
+		})
+	}
+}
+
 type mockHTTPClient struct {
 	responses []struct {
 		*http.Response
@@ -547,13 +803,14 @@ func (cl *mockHTTPClient) Get(url string) (resp *http.Response, err error) {
 	return nil, errors.New("mockHTTPClient got more requests than expected")
 }
 
-type mockFileService struct {
+type testFileService struct {
 	files map[string][]byte
+	osFileService
 	stats []string
 	reads []string
 }
 
-func (s *mockFileService) Stat(name string) (fs.FileInfo, error) {
+func (s *testFileService) Stat(name string) (fs.FileInfo, error) {
 	s.stats = append(s.stats, name)
 	_, ok := s.files[name]
 	if !ok {
@@ -562,13 +819,17 @@ func (s *mockFileService) Stat(name string) (fs.FileInfo, error) {
 	return nil, nil
 }
 
-func (s *mockFileService) ReadFile(name string) ([]byte, error) {
+func (s *testFileService) ReadFile(name string) ([]byte, error) {
 	s.reads = append(s.reads, name)
 	content, ok := s.files[name]
 	if ok {
 		return content, nil
 	}
 	return nil, errors.New("file not found")
+}
+
+func (s *testFileService) ValidateFilePath(name string) (string, error) {
+	return s.osFileService.ValidateFilePath(name)
 }
 
 func newResponseFromTestData(t *testing.T, file string) *http.Response {
@@ -607,4 +868,13 @@ func loadTestData(t *testing.T, file string) []byte {
 	require.NoError(t, err, "expected to be able to read file")
 	require.True(t, len(content) > 0)
 	return content
+}
+
+func newTestFileService() *testFileService {
+	return &testFileService{
+		files:         make(map[string][]byte),
+		osFileService: osFileService{},
+		stats:         make([]string, 0),
+		reads:         make([]string, 0),
+	}
 }

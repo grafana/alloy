@@ -5,7 +5,7 @@ title: remote
 weight: 100
 ---
 
-# remote
+# `remote`
 
 This section contains reference documentation for the `remote` components.
 

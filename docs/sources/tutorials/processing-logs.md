@@ -1,12 +1,12 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/tutorials/processing-logs/
 description: Learn how to process logs
-menuTitle: Processing Logs
-title: Processing logs with Grafana Alloy
+menuTitle: Process Logs
+title: Process logs with Grafana Alloy
 weight: 300
 ---
 
-# Processing logs with {{% param "FULL_PRODUCT_NAME" %}}
+# Process logs with {{% param "FULL_PRODUCT_NAME" %}}
 
 This tutorial assumes you are familiar with setting up and connecting components.
 It covers using `loki.source.api` to receive logs over HTTP, processing and filtering them, and sending them to Loki.
@@ -24,7 +24,7 @@ It can be useful for receiving logs from other {{< param "PRODUCT_NAME" >}}s or 
 
 ### Recommended reading
 
-- Optional: [loki.source.api][]
+* Optional: [`loki.source.api`][loki.source.api]
 
 ### Set up the `loki.source.api` component
 
@@ -54,9 +54,9 @@ You are configuring the `loki.source.api` component to listen on `127.0.0.1:9999
 
 ### Recommended reading
 
-- [loki.process#stage.drop][]
-- [loki.process#stage.json][]
-- [loki.process#stage.labels][]
+* [`loki.process#stage.drop`][loki.process#stage.drop]
+* [`loki.process#stage.json`][loki.process#stage.json]
+* [`loki.process#stage.labels`][loki.process#stage.labels]
 
 ### Configure the `loki.process` and `loki.write` components
 
@@ -142,13 +142,13 @@ loki.write "local_loki" {
 
 Many of the `stage.*` blocks in `loki.process` act on reading or writing a shared map of values extracted from the logs.
 You can think of this extracted map as a hashmap or table that each stage has access to, and it's referred to as the "extracted map" from here on.
-In subsequent stages, you can use the extracted map to filter logs, add or remove labels, or even modify the log line.
+In subsequent stages, you can use the extracted map to filter logs, add, or remove labels, or even modify the log line.
 
 {{< admonition type="note" >}}
 `stage.*` blocks are executed in the order they appear in the component, top down.
 {{< /admonition >}}
 
-Let's use an example log line to illustrate this, then go stage by stage, showing the contents of the extracted map.
+You can use an example log line to illustrate this, then go stage by stage, showing the contents of the extracted map.
 Here is the example log line:
 
 ```json
@@ -301,7 +301,7 @@ stage.drop {
 This stage acts on the `is_secret` value in the extracted map, which is a value that you extracted in the previous stage.
 This stage drops the log line if the value of `is_secret` is `"true"` and doesn't modify the extracted map.
 There are many other ways to filter logs, but this is a simple example.
-Refer to the [loki.process#stage.drop][] documentation for more information.
+Refer to the [`loki.process`][loki.process#stage.drop] stage.drop documentation for more information.
 
 #### Stage 5
 
@@ -345,14 +345,14 @@ Replace the following:
 
 * _`<BINARY_FILE_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
 
-Try executing the following which will insert the current timestamp:
+Try executing the following which inserts the current timestamp:
 
 ```bash
 curl localhost:9999/loki/api/v1/raw -XPOST -H "Content-Type: application/json" -d '{"log": {"is_secret": "false", "level": "debug", "message": "This is a debug message!"}, "timestamp":  "'"$(date -u +"%Y-%m-%dT%H:%M:%SZ")"'"}'
 ```
 
 Now that you have sent some logs, its time to see how they look in Grafana.
-Navigate to [http://localhost:3000/explore](http://localhost:3000/explore) and switch the Datasource to `Loki`.
+Navigate to [http://localhost:3000/explore](http://localhost:3000/explore) and switch the data source to `Loki`.
 Try querying for `{source="demo-api"}` and see if you can find the logs you sent.
 
 Try playing around with the values of `"level"`, `"message"`, `"timestamp"`, and `"is_secret"` and see how the logs change.
@@ -363,13 +363,13 @@ You can also try adding more stages to the `loki.process` component to extract m
 ## Exercise
 
 Since you are already using Docker and Docker exports logs, you can send those logs to Loki.
-Refer to the [discovery.docker][] and [loki.source.docker][] documentation for more information.
+Refer to the [`discovery.docker`][discovery.docker] and [`loki.source.docker`][loki.source.docker] documentation for more information.
 
 To ensure proper timestamps and other labels, make sure you use a `loki.process` component to process the logs before sending them to Loki.
 
-Although you haven't used it before, let's use a `discovery.relabel` component to attach the container name as a label to the logs.
-You can refer to the [discovery.relabel][] documentation for more information.
-The `discovery.relabel` component is very similar to the `prometheus.relabel` component, but is used to relabel discovered targets rather than metrics.
+Although you haven't used it before, you can use a `discovery.relabel` component to attach the container name as a label to the logs.
+You can refer to the [`discovery.relabel`][discovery.relabel] documentation for more information.
+The `discovery.relabel` component is very similar to the `prometheus.relabel` component, but it relabels discovered targets rather than metrics.
 
 {{< collapse title="Solution" >}}
 
@@ -416,9 +416,9 @@ loki.write "local_loki" {
 
 [logs]: ../logs-and-relabeling-basics/
 [loki.source.api]: ../../reference/components/loki/loki.source.api/
-[loki.process#stage.drop]: ../../reference/components/loki/loki.process/#stagedrop-block
-[loki.process#stage.json]: ../../reference/components/loki/loki.process/#stagejson-block
-[loki.process#stage.labels]: ../../reference/components/loki/loki.process/#stagelabels-block
+[loki.process#stage.drop]: ../../reference/components/loki/loki.process/#stagedrop
+[loki.process#stage.json]: ../../reference/components/loki/loki.process/#stagejson
+[loki.process#stage.labels]: ../../reference/components/loki/loki.process/#stagelabels
 [discovery.docker]: ../../reference/components/discovery/discovery.docker/
 [loki.source.docker]: ../../reference/components/loki/loki.source.docker/
 [discovery.relabel]: ../../reference/components/discovery/discovery.relabel/

@@ -5,10 +5,12 @@ aliases:
 description: Learn how to install Grafana Alloy on macOS
 menuTitle: macOS
 title: Install Grafana Alloy on macOS
-weight: 400
+weight: 250
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} on macOS
+
+{{< docs/learning-journeys title="Monitor a macOS system in Grafana Cloud" url="https://grafana.com/docs/learning-journeys/macos-integration/" >}}
 
 You can install {{< param "PRODUCT_NAME" >}} on macOS with Homebrew.
 
@@ -52,7 +54,7 @@ To upgrade {{< param "PRODUCT_NAME" >}} on macOS, run the following commands in 
 1. Restart {{< param "PRODUCT_NAME" >}}:
 
    ```shell
-   brew services restart alloy
+   brew services restart grafana/grafana/alloy
    ```
 
 ## Uninstall
@@ -65,8 +67,8 @@ brew uninstall grafana/grafana/alloy
 
 ## Next steps
 
-- [Run {{< param "PRODUCT_NAME" >}}][Run]
-- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+* [Run {{< param "PRODUCT_NAME" >}}][Run]
+* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Homebrew]: https://brew.sh
 [Run]: ../../run/macos/

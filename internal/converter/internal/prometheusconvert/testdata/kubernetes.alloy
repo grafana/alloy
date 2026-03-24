@@ -7,7 +7,7 @@ discovery.kubernetes "prometheus2" {
 }
 
 prometheus.scrape "prometheus1" {
-	targets = concat(
+	targets = array.concat(
 		discovery.kubernetes.prometheus1.targets,
 		[{
 			__address__ = "localhost:9090",

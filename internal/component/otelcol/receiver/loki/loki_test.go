@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/v3/pkg/logproto"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -16,6 +15,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/loki/pkg/push"
 )
 
 func Test(t *testing.T) {
@@ -54,7 +54,7 @@ func Test(t *testing.T) {
 				"filename": "/var/log/app/errors.log",
 				"env":      "dev",
 			},
-			Entry: logproto.Entry{
+			Entry: push.Entry{
 				Timestamp: time.Now(),
 				Line:      "It's super effective!",
 			},
@@ -62,7 +62,7 @@ func Test(t *testing.T) {
 		exports.Receiver.Chan() <- entry
 	}()
 
-	wantAttributes := map[string]interface{}{
+	wantAttributes := map[string]any{
 		"env":                   "dev",
 		"filename":              "/var/log/app/errors.log",
 		"log.file.name":         "errors.log",

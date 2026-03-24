@@ -13,7 +13,7 @@ import (
 func init() {
 	component.Register(component.Registration{
 		Name:      "beyla.ebpf",
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 

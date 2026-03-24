@@ -6,19 +6,16 @@ description: Learn how to install Grafana Alloy with Ansible
 menuTitle: Ansible
 title: Install Grafana Alloy with Ansible
 weight: 550
-_build:
-  list: false
-noindex: true
 ---
 
 # Install or uninstall {{% param "FULL_PRODUCT_NAME" %}} using Ansible
 
-You can use [Grafana Ansible Collection](https://github.com/grafana/grafana-ansible-collection) to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
+You can use the [Grafana Ansible Collection][collection] to install and manage {{< param "PRODUCT_NAME" >}} on Linux hosts.
 
 ## Before you begin
 
-- These steps assume you already have a working [Ansible][] setup and a pre-existing inventory.
-- You can add the tasks below to any new or existing role.
+- These steps assume you already have a working [Ansible][] setup and an inventory.
+- You can add the tasks below to any role.
 
 ## Steps
 
@@ -36,22 +33,22 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
           ansible.builtin.include_role:
             name: grafana.grafana.alloy
           vars:
-            config: |
+            alloy_config: |
               prometheus.scrape "default" {
                 targets = [{"__address__" = "localhost:12345"}]
                 forward_to = [prometheus.remote_write.prom.receiver]
               }
               prometheus.remote_write "prom" {
                 endpoint {
-                    url = "YOUR_PROMETHEUS_PUSH_ENDPOINT"
+                    url = "<YOUR_PROMETHEUS_PUSH_ENDPOINT>"
                 }
               }
     ```
 
-    The above snippet has a sample configuration to collect and send Alloy metrics to Prometheus
+    This snippet has a sample configuration to collect and send {{% param "PRODUCT_NAME" %}} metrics to Prometheus
 
     Replace the following:
-    - _`YOUR_PROMETHEUS_PUSH_ENDPOINT`_:  With the Remote write endpoint of your Prometheus Instance.
+    - _`<YOUR_PROMETHEUS_PUSH_ENDPOINT>`_:  The Remote write endpoint of your Prometheus Instance.
 
 1. Run the Ansible playbook. Open a terminal window and run the following command from the Ansible playbook directory.
 
@@ -64,12 +61,12 @@ To add {{% param "PRODUCT_NAME" %}} to a host:
 To verify that the {{< param "PRODUCT_NAME" >}} service on the target machine is `active` and `running`, open a terminal window and run the following command:
 
 ```shell
-$ sudo systemctl status alloy.service
+sudo systemctl status alloy.service
 ```
 
 If the service is `active` and `running`, the output should look similar to this:
 
-```
+```shell
 alloy.service - Grafana Alloy
   Loaded: loaded (/etc/systemd/system/alloy.service; enabled; vendor preset: enabled)
   Active: active (running) since Wed 2022-07-20 09:56:15 UTC; 36s ago
@@ -85,5 +82,6 @@ Main PID: 3176 (alloy-linux-amd)
 
 - [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
-[Grafana Ansible Collection]: https://github.com/grafana/grafana-ansible-collection
+[collection]: https://github.com/grafana/grafana-ansible-collection
+[Ansible]: https://www.ansible.com/
 [Configure]: ../../../configure/linux/

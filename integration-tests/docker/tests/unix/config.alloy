@@ -1,0 +1,35 @@
+prometheus.exporter.unix "node_exporter" { }
+
+prometheus.scrape "node_exporter" {
+  targets    = prometheus.exporter.unix.node_exporter.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.exporter.unix "textfile" {
+	set_collectors = ["textfile"]
+
+	textfile {
+		directory = "/etc/alloy"
+	}
+}
+
+prometheus.scrape "textfile" {
+  targets    = prometheus.exporter.unix.textfile.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+  scrape_interval = "1s"
+  scrape_timeout = "500ms"
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    queue_config {
+        max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "unix_metrics",
+  }
+}

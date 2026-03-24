@@ -1,1 +1,0 @@
-(Critical) the configuration is unsupported because the receiver "otlp" is used across multiple pipelines with distinct names

@@ -1,0 +1,20 @@
+Error: main.alloy:2:15: expected array, got string
+
+1 | loki.source.file "test" {
+2 |     forward_to = "wrong"
+  |                  ^^^^^^^
+3 |     targets = [10]
+
+Error: main.alloy:3:13: expected capsule, got number
+
+2 |     forward_to = "wrong"
+3 |     targets = [10]
+  |                ^^
+4 |     encoding = true
+
+Error: main.alloy:4:13: expected string, got bool
+
+3 |     targets = [10]
+4 |     encoding = true
+  |                ^^^^
+5 | }

@@ -31,7 +31,7 @@ func (s Secret) AlloyCapsule() {}
 // ConvertInto converts the Secret and stores it into the Go value pointed at
 // by dst. Secrets can be converted into *OptionalSecret. In other cases, this
 // method will return an explicit error or syntax.ErrNoConversion.
-func (s Secret) ConvertInto(dst interface{}) error {
+func (s Secret) ConvertInto(dst any) error {
 	switch dst := dst.(type) {
 	case *OptionalSecret:
 		*dst = OptionalSecret{IsSecret: true, Value: string(s)}
@@ -46,7 +46,7 @@ func (s Secret) ConvertInto(dst interface{}) error {
 // ConvertFrom converts the src value and stores it into the Secret s.
 // OptionalSecrets and strings can be converted into a Secret. In other cases,
 // this method will return syntax.ErrNoConversion.
-func (s *Secret) ConvertFrom(src interface{}) error {
+func (s *Secret) ConvertFrom(src any) error {
 	switch src := src.(type) {
 	case OptionalSecret:
 		*s = Secret(src.Value)

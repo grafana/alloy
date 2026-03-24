@@ -13,14 +13,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/go-gelf/v2/gelf"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/target"
-	"github.com/grafana/loki/v3/pkg/logproto"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -40,7 +39,7 @@ var SeverityLevels = map[int32]string{
 type Target struct {
 	metrics       *Metrics
 	logger        log.Logger
-	handler       loki.EntryHandler
+	handler       loki.LogsReceiver
 	config        *scrapeconfig.GelfTargetConfig
 	relabelConfig []*relabel.Config
 	gelfReader    *gelf.Reader
@@ -55,7 +54,7 @@ type Target struct {
 func NewTarget(
 	metrics *Metrics,
 	logger log.Logger,
-	handler loki.EntryHandler,
+	handler loki.LogsReceiver,
 	relabel []*relabel.Config,
 	config *scrapeconfig.GelfTargetConfig,
 ) (*Target, error) {
@@ -114,7 +113,7 @@ func (t *Target) run() {
 }
 
 func (t *Target) handleMessage(msg *gelf.Message) {
-	lb := labels.NewBuilder(nil)
+	lb := labels.NewBuilder(labels.EmptyLabels())
 
 	// Add all labels from the config.
 	for k, v := range t.config.Labels {
@@ -128,12 +127,12 @@ func (t *Target) handleMessage(msg *gelf.Message) {
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
 	filtered := make(model.LabelSet)
-	for _, lbl := range processed {
+	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
-			continue
+			return
 		}
 		filtered[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
-	}
+	})
 
 	var timestamp time.Time
 	if t.config.UseIncomingTimestamp && msg.TimeUnix != 0 {
@@ -149,44 +148,15 @@ func (t *Target) handleMessage(msg *gelf.Message) {
 		t.metrics.gelfErrors.Inc()
 		return
 	}
-	t.handler.Chan() <- loki.Entry{
-		Labels: filtered,
-		Entry: logproto.Entry{
-			Timestamp: timestamp,
-			Line:      t.encodeBuff.String(),
-		},
-	}
+
+	t.handler.Chan() <- loki.NewEntry(filtered, push.Entry{
+		Timestamp: timestamp,
+		Line:      t.encodeBuff.String(),
+	})
 }
 
 func secondsToUnixTimestamp(seconds float64) time.Time {
 	return time.Unix(0, int64(seconds*float64(time.Second)))
-}
-
-// Type returns GelfTargetType.
-func (t *Target) Type() target.TargetType {
-	return target.GelfTargetType
-}
-
-// Ready indicates whether or not the gelf target is ready to be read from.
-func (t *Target) Ready() bool {
-	return true
-}
-
-// DiscoveredLabels returns the set of labels discovered by the gelf target, which
-// is always nil. Implements Target.
-func (t *Target) DiscoveredLabels() model.LabelSet {
-	return nil
-}
-
-// Labels returns the set of labels that statically apply to all log entries
-// produced by the GelfTarget.
-func (t *Target) Labels() model.LabelSet {
-	return t.config.Labels
-}
-
-// Details returns target-specific details.
-func (t *Target) Details() interface{} {
-	return map[string]string{}
 }
 
 // Stop shuts down the GelfTarget.
@@ -197,5 +167,4 @@ func (t *Target) Stop() {
 		level.Error(t.logger).Log("msg", "error while closing gelf reader", "err", err)
 	}
 	t.wg.Wait()
-	t.handler.Stop()
 }

@@ -19,7 +19,7 @@ var goAlloyDefaulter = reflect.TypeOf((*value.Defaulter)(nil)).Elem()
 // MarshalBody marshals the provided Go value to a JSON representation of
 // Alloy. MarshalBody panics if not given a struct with alloy tags or a
 // map[string]any.
-func MarshalBody(val interface{}) ([]byte, error) {
+func MarshalBody(val any) ([]byte, error) {
 	rv := reflect.ValueOf(val)
 	return json.Marshal(encodeStructAsBody(rv))
 }
@@ -243,7 +243,7 @@ func encodeEnumElementToStatements(prefix []string, enumElement reflect.Value) [
 
 // MarshalValue marshals the provided Go value to a JSON representation of
 // Alloy.
-func MarshalValue(val interface{}) ([]byte, error) {
+func MarshalValue(val any) ([]byte, error) {
 	alloyValue := value.Encode(val)
 	return json.Marshal(buildJSONValue(alloyValue))
 }
@@ -270,7 +270,7 @@ func buildJSONValue(v value.Value) jsonValue {
 		return jsonValue{Type: "bool", Value: v.Bool()}
 
 	case value.TypeArray:
-		elements := []interface{}{}
+		elements := []any{}
 
 		for i := 0; i < v.Len(); i++ {
 			element := v.Index(i)
@@ -281,34 +281,51 @@ func buildJSONValue(v value.Value) jsonValue {
 		return jsonValue{Type: "array", Value: elements}
 
 	case value.TypeObject:
-		keys := v.Keys()
-
-		// If v isn't an ordered object (i.e., a go map), sort the keys so they
-		// have a deterministic print order.
-		if !v.OrderedKeys() {
-			sort.Strings(keys)
-		}
-
-		fields := []jsonObjectField{}
-
-		for i := 0; i < len(keys); i++ {
-			field, _ := v.Key(keys[i])
-
-			fields = append(fields, jsonObjectField{
-				Key:   keys[i],
-				Value: buildJSONValue(field),
-			})
-		}
-
-		return jsonValue{Type: "object", Value: fields}
+		return tokenizeObject(v)
 
 	case value.TypeFunction:
 		return jsonValue{Type: "function", Value: v.Describe()}
 
 	case value.TypeCapsule:
+		// Check if this capsule can be converted into Alloy object for more detailed description:
+		if newVal, ok := v.TryConvertToObject(); ok {
+			return tokenizeObject(value.Encode(newVal))
+		}
+
+		// If capsule implements fmt.Stringer we use that as value.
+		if stringer, ok := reflect.TypeAssert[fmt.Stringer](v.Reflect()); ok {
+			if s := stringer.String(); s != "" {
+				return jsonValue{Type: "capsule", Value: s}
+			}
+		}
+
+		// Otherwise, describe the value
 		return jsonValue{Type: "capsule", Value: v.Describe()}
 
 	default:
 		panic(fmt.Sprintf("syntax/encoding/alloyjson: unrecognized value type %q", v.Type()))
 	}
+}
+
+func tokenizeObject(v value.Value) jsonValue {
+	keys := v.Keys()
+
+	// If v isn't an ordered object (i.e., a go map), sort the keys so they
+	// have a deterministic print order.
+	if !v.OrderedKeys() {
+		sort.Strings(keys)
+	}
+
+	fields := []jsonObjectField{}
+
+	for i := 0; i < len(keys); i++ {
+		field, _ := v.Key(keys[i])
+
+		fields = append(fields, jsonObjectField{
+			Key:   keys[i],
+			Value: buildJSONValue(field),
+		})
+	}
+
+	return jsonValue{Type: "object", Value: fields}
 }

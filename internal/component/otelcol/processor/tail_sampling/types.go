@@ -19,12 +19,18 @@ type PolicyConfig struct {
 
 	// Configs for defining and policy
 	AndConfig AndConfig `alloy:"and,block,optional"`
+
+	// Configs for defining not policy
+	NotConfig NotConfig `alloy:"not,block,optional"`
+
+	// Configs for defining drop policy
+	DropConfig DropConfig `alloy:"drop,block,optional"`
 }
 
 func (policyConfig PolicyConfig) Convert() tsp.PolicyCfg {
 	var otelConfig tsp.PolicyCfg
 
-	mustDecodeMapStructure(map[string]interface{}{
+	mustDecodeMapStructure(map[string]any{
 		"name":              policyConfig.SharedPolicyConfig.Name,
 		"type":              policyConfig.SharedPolicyConfig.Type,
 		"latency":           policyConfig.SharedPolicyConfig.LatencyConfig.Convert(),
@@ -33,12 +39,15 @@ func (policyConfig PolicyConfig) Convert() tsp.PolicyCfg {
 		"status_code":       policyConfig.SharedPolicyConfig.StatusCodeConfig.Convert(),
 		"string_attribute":  policyConfig.SharedPolicyConfig.StringAttributeConfig.Convert(),
 		"rate_limiting":     policyConfig.SharedPolicyConfig.RateLimitingConfig.Convert(),
+		"bytes_limiting":    policyConfig.SharedPolicyConfig.BytesLimitingConfig.Convert(),
 		"span_count":        policyConfig.SharedPolicyConfig.SpanCountConfig.Convert(),
 		"boolean_attribute": policyConfig.SharedPolicyConfig.BooleanAttributeConfig.Convert(),
 		"ottl_condition":    policyConfig.SharedPolicyConfig.OttlConditionConfig.Convert(),
 		"trace_state":       policyConfig.SharedPolicyConfig.TraceStateConfig.Convert(),
 		"composite":         policyConfig.CompositeConfig.Convert(),
 		"and":               policyConfig.AndConfig.Convert(),
+		"not":               policyConfig.NotConfig.Convert(),
+		"drop":              policyConfig.DropConfig.Convert(),
 	}, &otelConfig)
 
 	return otelConfig
@@ -54,6 +63,7 @@ type SharedPolicyConfig struct {
 	StatusCodeConfig       StatusCodeConfig       `alloy:"status_code,block,optional"`
 	StringAttributeConfig  StringAttributeConfig  `alloy:"string_attribute,block,optional"`
 	RateLimitingConfig     RateLimitingConfig     `alloy:"rate_limiting,block,optional"`
+	BytesLimitingConfig    BytesLimitingConfig    `alloy:"bytes_limiting,block,optional"`
 	SpanCountConfig        SpanCountConfig        `alloy:"span_count,block,optional"`
 	BooleanAttributeConfig BooleanAttributeConfig `alloy:"boolean_attribute,block,optional"`
 	OttlConditionConfig    OttlConditionConfig    `alloy:"ottl_condition,block,optional"`
@@ -66,13 +76,13 @@ type LatencyConfig struct {
 	// ThresholdMs in milliseconds.
 	ThresholdMs int64 `alloy:"threshold_ms,attr"`
 	// Upper bound in milliseconds.
-	UpperThresholdmsMs int64 `alloy:"upper_threshold_ms,attr,optional"`
+	UpperThresholdMs int64 `alloy:"upper_threshold_ms,attr,optional"`
 }
 
 func (latencyConfig LatencyConfig) Convert() tsp.LatencyCfg {
 	return tsp.LatencyCfg{
-		ThresholdMs:        latencyConfig.ThresholdMs,
-		UpperThresholdmsMs: latencyConfig.UpperThresholdmsMs,
+		ThresholdMs:      latencyConfig.ThresholdMs,
+		UpperThresholdMs: latencyConfig.UpperThresholdMs,
 	}
 }
 
@@ -174,6 +184,22 @@ func (rateLimitingConfig RateLimitingConfig) Convert() tsp.RateLimitingCfg {
 	}
 }
 
+// BytesLimitingConfig holds the configurable settings to create a bytes limiting
+// sampling policy evaluator using a token bucket algorithm.
+type BytesLimitingConfig struct {
+	// BytesPerSecond sets the limit on the maximum number of bytes that can be processed each second.
+	BytesPerSecond int64 `alloy:"bytes_per_second,attr"`
+	// BurstCapacity sets the maximum burst capacity in bytes.
+	BurstCapacity int64 `alloy:"burst_capacity,attr,optional"`
+}
+
+func (bytesLimitingConfig BytesLimitingConfig) Convert() tsp.BytesLimitingCfg {
+	return tsp.BytesLimitingCfg{
+		BytesPerSecond: bytesLimitingConfig.BytesPerSecond,
+		BurstCapacity:  bytesLimitingConfig.BurstCapacity,
+	}
+}
+
 // SpanCountConfig holds the configurable settings to create a Span Count filter sampling policy
 // sampling policy evaluator
 type SpanCountConfig struct {
@@ -197,6 +223,10 @@ type BooleanAttributeConfig struct {
 	// Value indicate the bool value, either true or false to use when matching against attribute values.
 	// BooleanAttribute Policy will apply exact value match on Value
 	Value bool `alloy:"value,attr"`
+	// InvertMatch indicates that values must not match against attribute values.
+	// If InvertMatch is true and Values is equal to 'true', all other values will be sampled except 'true'.
+	// Also, if the specified Key does not match any resource or span attributes, data will be sampled.
+	InvertMatch bool `alloy:"invert_match,attr,optional"`
 }
 
 func (booleanAttributeConfig BooleanAttributeConfig) Convert() tsp.BooleanAttributeCfg {
@@ -335,7 +365,7 @@ type CompositeSubPolicyConfig struct {
 func (compositeSubPolicyConfig CompositeSubPolicyConfig) Convert() tsp.CompositeSubPolicyCfg {
 	var otelConfig tsp.CompositeSubPolicyCfg
 
-	mustDecodeMapStructure(map[string]interface{}{
+	mustDecodeMapStructure(map[string]any{
 		"name":              compositeSubPolicyConfig.SharedPolicyConfig.Name,
 		"type":              compositeSubPolicyConfig.SharedPolicyConfig.Type,
 		"latency":           compositeSubPolicyConfig.SharedPolicyConfig.LatencyConfig.Convert(),
@@ -344,6 +374,7 @@ func (compositeSubPolicyConfig CompositeSubPolicyConfig) Convert() tsp.Composite
 		"status_code":       compositeSubPolicyConfig.SharedPolicyConfig.StatusCodeConfig.Convert(),
 		"string_attribute":  compositeSubPolicyConfig.SharedPolicyConfig.StringAttributeConfig.Convert(),
 		"rate_limiting":     compositeSubPolicyConfig.SharedPolicyConfig.RateLimitingConfig.Convert(),
+		"bytes_limiting":    compositeSubPolicyConfig.SharedPolicyConfig.BytesLimitingConfig.Convert(),
 		"span_count":        compositeSubPolicyConfig.SharedPolicyConfig.SpanCountConfig.Convert(),
 		"boolean_attribute": compositeSubPolicyConfig.SharedPolicyConfig.BooleanAttributeConfig.Convert(),
 		"ottl_condition":    compositeSubPolicyConfig.SharedPolicyConfig.OttlConditionConfig.Convert(),
@@ -382,6 +413,58 @@ func (andConfig AndConfig) Convert() tsp.AndCfg {
 	}
 }
 
+type DropConfig struct {
+	SubPolicyConfig []AndSubPolicyConfig `alloy:"drop_sub_policy,block"`
+}
+
+func (dropConfig DropConfig) Convert() tsp.DropCfg {
+	var otelPolicyCfgs []tsp.AndSubPolicyCfg
+	for _, subPolicyCfg := range dropConfig.SubPolicyConfig {
+		otelPolicyCfgs = append(otelPolicyCfgs, subPolicyCfg.Convert())
+	}
+
+	return tsp.DropCfg{
+		SubPolicyCfg: otelPolicyCfgs,
+	}
+}
+
+type NotConfig struct {
+	SubPolicyConfig NotSubPolicyConfig `alloy:"not_sub_policy,block"`
+}
+
+func (notConfig NotConfig) Convert() tsp.NotCfg {
+	return tsp.NotCfg{
+		SubPolicy: notConfig.SubPolicyConfig.Convert(),
+	}
+}
+
+// NotSubPolicyConfig holds the common configuration to the policy under the not policy.
+type NotSubPolicyConfig struct {
+	SharedPolicyConfig SharedPolicyConfig `alloy:",squash"`
+}
+
+func (notSubPolicyConfig NotSubPolicyConfig) Convert() tsp.NotSubPolicyCfg {
+	var otelConfig tsp.NotSubPolicyCfg
+
+	mustDecodeMapStructure(map[string]any{
+		"name":              notSubPolicyConfig.SharedPolicyConfig.Name,
+		"type":              notSubPolicyConfig.SharedPolicyConfig.Type,
+		"latency":           notSubPolicyConfig.SharedPolicyConfig.LatencyConfig.Convert(),
+		"numeric_attribute": notSubPolicyConfig.SharedPolicyConfig.NumericAttributeConfig.Convert(),
+		"probabilistic":     notSubPolicyConfig.SharedPolicyConfig.ProbabilisticConfig.Convert(),
+		"status_code":       notSubPolicyConfig.SharedPolicyConfig.StatusCodeConfig.Convert(),
+		"string_attribute":  notSubPolicyConfig.SharedPolicyConfig.StringAttributeConfig.Convert(),
+		"rate_limiting":     notSubPolicyConfig.SharedPolicyConfig.RateLimitingConfig.Convert(),
+		"bytes_limiting":    notSubPolicyConfig.SharedPolicyConfig.BytesLimitingConfig.Convert(),
+		"span_count":        notSubPolicyConfig.SharedPolicyConfig.SpanCountConfig.Convert(),
+		"boolean_attribute": notSubPolicyConfig.SharedPolicyConfig.BooleanAttributeConfig.Convert(),
+		"ottl_condition":    notSubPolicyConfig.SharedPolicyConfig.OttlConditionConfig.Convert(),
+		"trace_state":       notSubPolicyConfig.SharedPolicyConfig.TraceStateConfig.Convert(),
+	}, &otelConfig)
+
+	return otelConfig
+}
+
 // AndSubPolicyConfig holds the common configuration to all policies under and policy.
 type AndSubPolicyConfig struct {
 	SharedPolicyConfig SharedPolicyConfig `alloy:",squash"`
@@ -390,7 +473,7 @@ type AndSubPolicyConfig struct {
 func (andSubPolicyConfig AndSubPolicyConfig) Convert() tsp.AndSubPolicyCfg {
 	var otelConfig tsp.AndSubPolicyCfg
 
-	mustDecodeMapStructure(map[string]interface{}{
+	mustDecodeMapStructure(map[string]any{
 		"name":              andSubPolicyConfig.SharedPolicyConfig.Name,
 		"type":              andSubPolicyConfig.SharedPolicyConfig.Type,
 		"latency":           andSubPolicyConfig.SharedPolicyConfig.LatencyConfig.Convert(),
@@ -399,6 +482,7 @@ func (andSubPolicyConfig AndSubPolicyConfig) Convert() tsp.AndSubPolicyCfg {
 		"status_code":       andSubPolicyConfig.SharedPolicyConfig.StatusCodeConfig.Convert(),
 		"string_attribute":  andSubPolicyConfig.SharedPolicyConfig.StringAttributeConfig.Convert(),
 		"rate_limiting":     andSubPolicyConfig.SharedPolicyConfig.RateLimitingConfig.Convert(),
+		"bytes_limiting":    andSubPolicyConfig.SharedPolicyConfig.BytesLimitingConfig.Convert(),
 		"span_count":        andSubPolicyConfig.SharedPolicyConfig.SpanCountConfig.Convert(),
 		"boolean_attribute": andSubPolicyConfig.SharedPolicyConfig.BooleanAttributeConfig.Convert(),
 		"ottl_condition":    andSubPolicyConfig.SharedPolicyConfig.OttlConditionConfig.Convert(),
@@ -410,7 +494,7 @@ func (andSubPolicyConfig AndSubPolicyConfig) Convert() tsp.AndSubPolicyCfg {
 
 // mustDecodeMapStructure decodes a map into a structure. It panics if it fails.
 // This is necessary for otel types that have private fields such as sharedPolicyCfg.
-func mustDecodeMapStructure(source map[string]interface{}, otelConfig interface{}) {
+func mustDecodeMapStructure(source map[string]any, otelConfig any) {
 	err := mapstructure.Decode(source, otelConfig)
 
 	//TODO: Rework this to return an error instead of panicking
@@ -425,10 +509,16 @@ type DecisionCacheConfig struct {
 	// For effective use, this value should be at least an order of magnitude higher than Arguments.NumTraces.
 	// If left as default 0, a no-op DecisionCache will be used.
 	SampledCacheSize int `alloy:"sampled_cache_size,attr,optional"`
+	// NonSampledCacheSize specifies the size of the cache that holds the non-sampled trace IDs.
+	// This value will be the maximum amount of trace IDs that the cache can hold before overwriting previous IDs.
+	// For effective use, this value should be at least an order of magnitude higher than Config.NumTraces.
+	// If left as default 0, a no-op DecisionCache will be used.
+	NonSampledCacheSize int `alloy:"non_sampled_cache_size,attr,optional"`
 }
 
 func (decisionCacheConfig DecisionCacheConfig) Convert() tsp.DecisionCacheConfig {
 	return tsp.DecisionCacheConfig{
-		SampledCacheSize: decisionCacheConfig.SampledCacheSize,
+		SampledCacheSize:    decisionCacheConfig.SampledCacheSize,
+		NonSampledCacheSize: decisionCacheConfig.NonSampledCacheSize,
 	}
 }

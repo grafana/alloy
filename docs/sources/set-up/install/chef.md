@@ -5,10 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy with Chef
 menuTitle: Chef
 title: Install Grafana Alloy with Chef
-weight: 550
-_build:
-  list: false
-noindex: true
+weight: 600
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} with Chef
@@ -18,13 +15,12 @@ You can use Chef to install and manage {{< param "PRODUCT_NAME" >}}.
 ## Before you begin
 
 - These steps assume you already have a working [Chef][] setup.
-- You can add the following resources to any new or existing recipe.
+- You can add the following resources to any recipe.
 - These tasks install {{< param "PRODUCT_NAME" >}} from the package repositories.
   The tasks target Linux systems from the following families:
-  - Debian (including Ubuntu)
-  - RedHat Enterprise Linux
+  - Debian, including Ubuntu
+  - RedHat Enterprise Linux, including Fedora
   - Amazon Linux
-  - Fedora
 
 ## Steps
 
@@ -53,7 +49,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
       elsif platform_family?('rhel', 'amazon', 'fedora')
         yum_repository 'grafana' do
           description 'grafana'
-          baseurl 'https://rpm.grafana.com/oss/rpm'
+          baseurl 'https://rpm.grafana.com'
           gpgcheck true
           gpgkey 'https://rpm.grafana.com/gpg.key'
           enabled true
@@ -91,7 +87,7 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 The `alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
 The default configuration file location is `/etc/alloy/config.alloy`.
-You can replace this file with your own configuration or create a new configuration file for the service to use.
+You can replace this file with your own configuration or create a configuration file for the service to use.
 
 ## Next steps
 

@@ -18,7 +18,7 @@ Metrics for the controller are exposed at the `/metrics` HTTP endpoint of the {{
 
 The controller exposes the following metrics:
 
-* `alloy_component_controller_evaluating` (Gauge): Set to `1` whenever the  component controller is currently evaluating components.
+* `alloy_component_controller_evaluating` (Gauge): Set to `1` whenever the  component controller is evaluating components.
   This value may be misrepresented depending on how fast evaluations complete or how often evaluations occur.
 * `alloy_component_controller_running_components` (Gauge): The current number of running components by health.
    The health is represented in the `health_type` label.

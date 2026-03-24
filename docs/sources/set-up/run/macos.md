@@ -17,15 +17,15 @@ weight: 400
 To start {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services start alloy
+brew services start grafana/grafana/alloy
 ```
 
 {{< param "PRODUCT_NAME" >}} automatically runs when the system starts.
 
-(Optional) To verify that the service is running, run the following command in a terminal window:
+Optional: To verify that the service is running, run the following command in a terminal window:
 
 ```shell
-brew services info alloy
+brew services info grafana/grafana/alloy
 ```
 
 ## Restart {{% param "PRODUCT_NAME" %}}
@@ -33,7 +33,7 @@ brew services info alloy
 To restart {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services restart alloy
+brew services restart grafana/grafana/alloy
 ```
 
 ## Stop {{% param "PRODUCT_NAME" %}}
@@ -41,7 +41,7 @@ brew services restart alloy
 To stop {{< param "PRODUCT_NAME" >}}, run the following command in a terminal window:
 
 ```shell
-brew services stop  alloy
+brew services stop grafana/grafana/alloy
 ```
 
 ## View {{% param "PRODUCT_NAME" %}} logs

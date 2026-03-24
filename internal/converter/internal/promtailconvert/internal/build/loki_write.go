@@ -4,17 +4,17 @@ import (
 	"fmt"
 
 	"github.com/alecthomas/units"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/client"
-	lokiflag "github.com/grafana/loki/v3/pkg/util/flagext"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	lokiwrite "github.com/grafana/alloy/internal/component/loki/write"
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
+	"github.com/grafana/alloy/internal/loki/promtail/client"
+	"github.com/grafana/alloy/internal/loki/util/flagext"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
-func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string) (*builder.Block, loki.LogsReceiver) {
+func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string, maxStreams int) (*builder.Block, loki.LogsReceiver) {
 	label := "default"
 	if labelPrefix != "" {
 		label = labelPrefix
@@ -22,14 +22,14 @@ func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, lab
 
 	lokiWriteLabel := common.LabelWithIndex(index, label)
 
-	lokiWriteArgs := toLokiWriteArguments(client, diags)
+	lokiWriteArgs := toLokiWriteArguments(client, diags, maxStreams)
 	block := common.NewBlockWithOverride([]string{"loki", "write"}, lokiWriteLabel, lokiWriteArgs)
 	return block, common.ConvertLogsReceiver{
 		Expr: fmt.Sprintf("loki.write.%s.receiver", lokiWriteLabel),
 	}
 }
 
-func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics) *lokiwrite.Arguments {
+func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics, maxStreams int) *lokiwrite.Arguments {
 	batchSize, err := units.ParseBase2Bytes(fmt.Sprintf("%dB", config.BatchSize))
 	if err != nil {
 		diags.Add(
@@ -53,13 +53,15 @@ func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics) *lokiw
 				RemoteTimeout:     config.Timeout,
 				TenantID:          config.TenantID,
 				RetryOnHTTP429:    !config.DropRateLimitedBatches,
+				QueueConfig:       lokiwrite.GetDefaultEndpointOptions().QueueConfig,
 			},
 		},
 		ExternalLabels: convertFlagLabels(config.ExternalLabels),
+		MaxStreams:     maxStreams,
 	}
 }
 
-func convertFlagLabels(labels lokiflag.LabelSet) map[string]string {
+func convertFlagLabels(labels flagext.LabelSet) map[string]string {
 	result := map[string]string{}
 	for k, v := range labels.LabelSet {
 		result[string(k)] = string(v)

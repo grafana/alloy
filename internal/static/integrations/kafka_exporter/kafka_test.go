@@ -1,4 +1,4 @@
-package kafka_exporter //nolint:golint
+package kafka_exporter
 
 import (
 	"testing"

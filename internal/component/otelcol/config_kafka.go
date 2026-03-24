@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 )
 
 // KafkaAuthenticationArguments configures how to authenticate to the Kafka broker.
@@ -16,8 +16,8 @@ type KafkaAuthenticationArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaAuthenticationArguments) Convert() map[string]interface{} {
-	auth := make(map[string]interface{})
+func (args KafkaAuthenticationArguments) Convert() map[string]any {
+	auth := make(map[string]any)
 
 	if args.Plaintext != nil {
 		conv := args.Plaintext.Convert()
@@ -46,8 +46,8 @@ type KafkaPlaintextArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaPlaintextArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args KafkaPlaintextArguments) Convert() map[string]any {
+	return map[string]any{
 		"username": args.Username,
 		"password": string(args.Password),
 	}
@@ -63,8 +63,8 @@ type KafkaSASLArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaSASLArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args KafkaSASLArguments) Convert() map[string]any {
+	return map[string]any{
 		"username":  args.Username,
 		"password":  string(args.Password),
 		"mechanism": args.Mechanism,
@@ -74,17 +74,15 @@ func (args KafkaSASLArguments) Convert() map[string]interface{} {
 }
 
 // KafkaAWSMSKArguments exposes additional SASL authentication measures required to
-// use the AWS_MSK_IAM mechanism.
+// use the AWS_MSK_IAM_OAUTHBEARER mechanism.
 type KafkaAWSMSKArguments struct {
-	Region     string `alloy:"region,attr"`
-	BrokerAddr string `alloy:"broker_addr,attr"`
+	Region string `alloy:"region,attr"`
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaAWSMSKArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"region":      args.Region,
-		"broker_addr": args.BrokerAddr,
+func (args KafkaAWSMSKArguments) Convert() map[string]any {
+	return map[string]any{
+		"region": args.Region,
 	}
 }
 
@@ -102,8 +100,8 @@ type KafkaKerberosArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaKerberosArguments) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args KafkaKerberosArguments) Convert() map[string]any {
+	return map[string]any{
 		"service_name":             args.ServiceName,
 		"realm":                    args.Realm,
 		"use_keytab":               args.UseKeyTab,
@@ -118,13 +116,15 @@ func (args KafkaKerberosArguments) Convert() map[string]interface{} {
 // KafkaMetadataArguments configures how the Alloy component will
 // retrieve metadata from the Kafka broker.
 type KafkaMetadataArguments struct {
-	IncludeAllTopics bool                        `alloy:"include_all_topics,attr,optional"`
-	Retry            KafkaMetadataRetryArguments `alloy:"retry,block,optional"`
+	Full            bool                        `alloy:"full,attr,optional"`
+	RefreshInterval time.Duration               `alloy:"refresh_interval,attr,optional"`
+	Retry           KafkaMetadataRetryArguments `alloy:"retry,block,optional"`
 }
 
 func (args *KafkaMetadataArguments) SetToDefault() {
 	*args = KafkaMetadataArguments{
-		IncludeAllTopics: true,
+		Full:            true,
+		RefreshInterval: 10 * time.Minute,
 		Retry: KafkaMetadataRetryArguments{
 			MaxRetries: 3,
 			Backoff:    250 * time.Millisecond,
@@ -133,10 +133,11 @@ func (args *KafkaMetadataArguments) SetToDefault() {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaMetadataArguments) Convert() kafkaexporter.Metadata {
-	return kafkaexporter.Metadata{
-		Full:  args.IncludeAllTopics,
-		Retry: args.Retry.Convert(),
+func (args KafkaMetadataArguments) Convert() configkafka.MetadataConfig {
+	return configkafka.MetadataConfig{
+		Full:            args.Full,
+		RefreshInterval: args.RefreshInterval,
+		Retry:           args.Retry.Convert(),
 	}
 }
 
@@ -149,8 +150,8 @@ type KafkaMetadataRetryArguments struct {
 }
 
 // Convert converts args into the upstream type.
-func (args KafkaMetadataRetryArguments) Convert() kafkaexporter.MetadataRetry {
-	return kafkaexporter.MetadataRetry{
+func (args KafkaMetadataRetryArguments) Convert() configkafka.MetadataRetryConfig {
+	return configkafka.MetadataRetryConfig{
 		Max:     args.MaxRetries,
 		Backoff: args.Backoff,
 	}

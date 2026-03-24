@@ -15,7 +15,7 @@ import (
 
 // Go types used throughout the package.
 var (
-	goAny             = reflect.TypeOf((*interface{})(nil)).Elem()
+	goAny             = reflect.TypeOf((*any)(nil)).Elem()
 	goString          = reflect.TypeOf(string(""))
 	goByteSlice       = reflect.TypeOf([]byte(nil))
 	goError           = reflect.TypeOf((*error)(nil)).Elem()
@@ -83,7 +83,7 @@ func Array(vv ...Value) Value {
 
 // Func makes a new function Value from f. Func panics if f does not map to an
 // Alloy function.
-func Func(f interface{}) Value {
+func Func(f any) Value {
 	rv := reflect.ValueOf(f)
 	if AlloyType(rv.Type()) != TypeFunction {
 		panic("syntax/value: Func called with non-function type")
@@ -93,7 +93,7 @@ func Func(f interface{}) Value {
 
 // Encapsulate creates a new Capsule value from v. Encapsulate panics if v does
 // not map to an Alloy capsule.
-func Encapsulate(v interface{}) Value {
+func Encapsulate(v any) Value {
 	rv := reflect.ValueOf(v)
 	if AlloyType(rv.Type()) != TypeCapsule {
 		panic("syntax/value: Capsule called with non-capsule type")
@@ -103,7 +103,7 @@ func Encapsulate(v interface{}) Value {
 
 // Encode creates a new Value from v. If v is a pointer, v must be considered
 // immutable and not change while the Value is used.
-func Encode(v interface{}) Value {
+func Encode(v any) Value {
 	if v == nil {
 		return Null
 	}
@@ -199,17 +199,10 @@ func (v Value) Text() string {
 		panic("syntax/value: Text called on non-string type")
 	}
 
-	// Attempt to get an address to v.rv for interface checking.
-	//
-	// The normal v.rv value is used for other checks.
-	addrRV := v.rv
-	if addrRV.CanAddr() {
-		addrRV = addrRV.Addr()
-	}
 	switch {
-	case addrRV.Type().Implements(goTextMarshaler):
+	case v.Implements(goTextMarshaler):
 		// TODO(rfratto): what should we do if this fails?
-		text, _ := addrRV.Interface().(encoding.TextMarshaler).MarshalText()
+		text, _ := v.ReflectAddr().Interface().(encoding.TextMarshaler).MarshalText()
 		return string(text)
 
 	case v.rv.Type() == goDuration:
@@ -219,6 +212,10 @@ func (v Value) Text() string {
 	default:
 		return v.rv.String()
 	}
+}
+
+func (v Value) IsString() bool {
+	return v.Type() == TypeString
 }
 
 // Len returns the length of v. Panics if v is not an array or object.
@@ -251,15 +248,41 @@ func (v Value) Index(i int) Value {
 }
 
 // Interface returns the underlying Go value for the Value.
-func (v Value) Interface() interface{} {
+func (v Value) Interface() any {
 	if v.ty == TypeNull {
 		return nil
 	}
 	return v.rv.Interface()
 }
 
+func (v Value) Implements(t reflect.Type) bool {
+	return v.ReflectAddr().Type().Implements(t)
+}
+
 // Reflect returns the raw reflection value backing v.
 func (v Value) Reflect() reflect.Value { return v.rv }
+
+// ReflectAddr is like Reflect, but attempts to get an address of the raw reflection value where possible.
+func (v Value) ReflectAddr() reflect.Value {
+	// Attempt to get an address to v.rv
+	addrRV := v.rv
+	if addrRV.CanAddr() {
+		addrRV = addrRV.Addr()
+	}
+	return addrRV
+}
+
+// TryConvertToObject will try to convert v into an Alloy object in a map[string]Value form. Returns (object, true) if
+// successful or (nil, false) if conversion was not possible.
+func (v Value) TryConvertToObject() (map[string]Value, bool) {
+	if v.Type() == TypeCapsule && v.Implements(reflect.TypeFor[ConvertibleIntoCapsule]()) {
+		objVal := make(map[string]Value)
+		if err := v.ReflectAddr().Interface().(ConvertibleIntoCapsule).ConvertInto(&objVal); err == nil {
+			return objVal, true
+		}
+	}
+	return nil, false
+}
 
 // makeValue converts a reflect value into a Value, dereferencing any pointers or
 // interface{} values.
@@ -396,7 +419,7 @@ func (v Value) Key(key string) (index Value, ok bool) {
 //
 // An ArgError will be returned if one of the arguments is invalid. An Error
 // will be returned if the function call returns an error or if the number of
-// arguments doesn't match.
+// arguments doesn't match
 func (v Value) Call(args ...Value) (Value, error) {
 	if v.ty != TypeFunction {
 		panic("syntax/value: Call called on non-function type")
@@ -518,6 +541,18 @@ func convertValue(val Value, toType Type) (Value, error) {
 				return Uint(parsed), nil
 			}
 		}
+
+	case TypeCapsule:
+		// Some capsules, such as optional secrects, may be convertible to a string.
+		// Try to convert them to a string and then rerun convertValue.
+		into := reflect.New(reflect.TypeOf(string(""))).Elem()
+		ok, err := TryCapsuleConvert(val, into, TypeString)
+		if ok && err == nil {
+			val, err := convertValue(Value{into, TypeString}, toType)
+			if err == nil {
+				return val, nil
+			}
+		}
 	}
 
 	return Null, TypeError{Value: val, Expected: toType}
@@ -552,4 +587,17 @@ func convertGoNumber(nval Number, target reflect.Type) reflect.Value {
 	}
 
 	panic("unsupported number conversion")
+}
+
+// Equal will result in panic if the values are funcs, maps or slices
+func (v Value) Equal(rhs Value) bool {
+	if v.Type() != rhs.Type() {
+		return false
+	}
+
+	if !v.rv.Equal(rhs.rv) {
+		return false
+	}
+
+	return true
 }

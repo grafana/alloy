@@ -1,0 +1,20 @@
+Error: main.alloy:2:1: foreach block "foreach" is at stability level "experimental", which is below the minimum allowed stability level "generally-available". Use --stability.level command-line flag to enable "experimental" features
+
+1 | // Collect metrics for each Redis instance.
+2 | foreach "foreach" {
+  | ^^^^^^^
+3 |     collection = []
+
+Error: main.alloy:10:16: array.combine_maps is at stability level "experimental", which is below the minimum allowed stability level "generally-available". Use --stability.level command-line flag to enable "experimental" features
+
+ 9 | prometheus.scrape "scrape" {
+10 |   targets    = array.combine_maps([], [], [])
+   |                ^^^^^^^^^^^^^^^^^^
+11 |   forward_to = array.combine_maps([], [], [])
+
+Error: main.alloy:11:16: array.combine_maps is at stability level "experimental", which is below the minimum allowed stability level "generally-available". Use --stability.level command-line flag to enable "experimental" features
+
+10 |   targets    = array.combine_maps([], [], [])
+11 |   forward_to = array.combine_maps([], [], [])
+   |                ^^^^^^^^^^^^^^^^^^
+12 | }

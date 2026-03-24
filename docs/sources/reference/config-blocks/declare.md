@@ -1,20 +1,23 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/config-blocks/declare/
 description: Learn about the declare configuration block
-menuTitle: declare
-title: declare block
+labels:
+  stage: general-availability
+  products:
+    - oss
+title: declare
 ---
 
-# declare block
+# `declare`
 
 `declare` is an optional configuration block used to define a new [custom component][].
 `declare` blocks must be given a label that determines the name of the custom component.
 
-## Example
+## Usage
 
 ```alloy
-declare "COMPONENT_NAME" {
-    COMPONENT_DEFINITION
+declare "<COMPONENT_NAME>" {
+    <COMPONENT_DEFINITION>
 }
 ```
 
@@ -24,10 +27,10 @@ The `declare` block has no predefined schema for its arguments.
 The body of the `declare` block is used as the component definition.
 The body can contain the following:
 
-* [argument][] blocks
-* [export][] blocks
-* [declare][] blocks
-* [import][] blocks
+* [`argument`][argument] blocks
+* [`export`][export] blocks
+* [`declare`][declare] blocks
+* [`import`][import] blocks
 * Component definitions (either built-in or custom components)
 
 The `declare` block may not contain any configuration blocks that aren't listed above.
@@ -63,7 +66,7 @@ self_collect "example" {
 
 prometheus.remote_write "example" {
   endpoint {
-    url = REMOTE_WRITE_URL
+    url = <REMOTE_WRITE_URL>
   }
 }
 ```
@@ -71,5 +74,5 @@ prometheus.remote_write "example" {
 [argument]: ../argument/
 [export]: ../export/
 [declare]: ../declare/
-[import]: ../../../get-started/modules/#importing-modules
+[import]: ../../../get-started/modules/#import-modules
 [custom component]: ../../../get-started/custom_components/

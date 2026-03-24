@@ -3,40 +3,42 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus
 aliases:
   - ../prometheus.exporter.catchpoint/ # /docs/alloy/latest/reference/components/prometheus.exporter.catchpoint/
 description: Learn about prometheus.exporter.catchpoint
+labels:
+  stage: experimental
+  products:
+    - oss
 title: prometheus.exporter.catchpoint
 ---
 
-# prometheus.exporter.catchpoint
+# `prometheus.exporter.catchpoint`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `prometheus.exporter.catchpoint` component uses the [catchpoint_exporter](https://github.com/grafana/catchpoint-prometheus-exporter) for collecting statistics from a Catchpoint account.
+The `prometheus.exporter.catchpoint` component uses the [`catchpoint_exporter`](https://github.com/grafana/catchpoint-prometheus-exporter) for collecting statistics from a Catchpoint account.
 
 ## Usage
 
 ```alloy
 prometheus.exporter.catchpoint "<LABEL>" {
-    port              = PORT
+    port              = "<PORT>"
     verbose_logging   = <VERBOSE_LOGGING>
-    webhook_path      = <WEBHOOK_PATH>
+    webhook_path      = "<WEBHOOK_PATH>"
 }
 ```
 
 ## Arguments
 
-The following arguments can be used to configure the exporter's behavior.
-Omitted fields take their default values.
+You can use the following arguments with `prometheus.exporter.catchpoint`:
 
 | Name              | Type     | Description                                                                     | Default                 | Required |
 | ----------------- | -------- | ------------------------------------------------------------------------------- | ----------------------- | -------- |
-| `port`            | `string` | Sets the port on which the exporter will run.                                   | `"9090"`                | no       |
+| `port`            | `string` | Sets the port on which the exporter runs.                                       | `"9090"`                | no       |
 | `verbose_logging` | `bool`   | Enables verbose logging to provide more detailed output for debugging purposes. | `false`                 | no       |
-| `webhook_path`    | `string` | Defines the path where the exporter will receive webhook data from Catchpoint   | `"/catchpoint-webhook"` | no       |
+| `webhook_path`    | `string` | Defines the path where the exporter receives webhook data from Catchpoint       | `"/catchpoint-webhook"` | no       |
 
 ## Blocks
 
-The `prometheus.exporter.catchpoint` component does not support any blocks, and is configured
-fully through arguments.
+The `prometheus.exporter.catchpoint` component doesn't support any blocks. You can configure this component with arguments.
 
 ## Exported fields
 
@@ -44,24 +46,20 @@ fully through arguments.
 
 ## Component health
 
-`prometheus.exporter.catchpoint` is only reported as unhealthy if given
-an invalid configuration. In those cases, exported fields retain their last
-healthy values.
+`prometheus.exporter.catchpoint` is only reported as unhealthy if given an invalid configuration.
+In those cases, exported fields retain their last healthy values.
 
 ## Debug information
 
-`prometheus.exporter.catchpoint` does not expose any component-specific
-debug information.
+`prometheus.exporter.catchpoint` doesn't expose any component-specific debug information.
 
 ## Debug metrics
 
-`prometheus.exporter.catchpoint` does not expose any component-specific
-debug metrics.
+`prometheus.exporter.catchpoint` doesn't expose any component-specific debug metrics.
 
 ## Example
 
-This example uses a [`prometheus.scrape` component][scrape] to collect metrics
-from `prometheus.exporter.catchpoint`:
+This example uses a [`prometheus.scrape` component][scrape] to collect metrics from `prometheus.exporter.catchpoint`:
 
 ```alloy
 prometheus.exporter.catchpoint "example" {
@@ -90,9 +88,9 @@ prometheus.remote_write "demo" {
 
 Replace the following:
 
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
-- _`<USERNAME>`_: The username to use for authentication to the remote_write API.
-- _`<PASSWORD>`_: The password to use for authentication to the remote_write API.
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
 
 [scrape]: ../prometheus.scrape/
 

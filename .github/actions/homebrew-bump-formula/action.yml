@@ -1,0 +1,116 @@
+name: Homebrew bump formula
+description: Bump (update) a Homebrew formula on new project release
+author: dawidd6
+branding:
+  icon: arrow-up-circle
+  color: yellow
+inputs:
+  token:
+    description: GitHub token (not the default one)
+    required: true
+  user_name:
+    description: Git user name to commit by.
+    required: false
+  user_email:
+    description: Git user email to commit by.
+    required: false
+  message:
+    description: |
+      Additional message to append to created PR.
+    required: false
+  org:
+    description: |
+      Fork tap repository to selected GitHub organization.
+    required: false
+  no_fork:
+    description: |
+      Use the origin repository instead of forking.
+    required: false
+  tap:
+    description: |
+      Formula tap.
+
+      In livecheck mode, if formula input is empty,
+      the Action will check the whole tap.
+
+      Example: dawidd6/tap
+      Example: dawidd6/homebrew-tap
+    required: false
+  tap_url:
+    description: |
+      Formula tap URL.
+
+      Specify this if you don't have the repository named $USER/homebrew-$TAP.
+      Or if your tap is hosted somewhere else.
+      If you specify this input, the `tap` input needs to be set too.
+
+      Example: http://github.com/dawidd6/action-homebrew-bump-formula.git
+    required: false
+  formula:
+    description: |
+      Formula name.
+
+      In livecheck mode, this could take more than one formula,
+      separated by commas or spaces or newlines.
+
+      Example: lazygit
+      Example (livecheck): lazygit, lazydocker, lazynpm
+    required: false
+  tag:
+    description: |
+      Git tag.
+
+      It is determined automatically.
+
+      Example: v1.0.0
+      Example: refs/tags/v1.0.0
+    required: false
+    default: ${{github.ref}}
+  revision:
+    description: |
+      Git revision.
+
+      Only required for formulae that use git to download the source.
+
+      It is determined automatically.
+
+      Example: 130d3a3af72f66780ae4e24cd143ae7a4d757f9d
+    required: false
+    default: ${{github.sha}}
+  force:
+    description: Check open PRs or not (will fail if detected)
+    required: false
+  livecheck:
+    description: |
+      Use `brew livecheck` to determine outdated formulae.
+
+      If tap input is specified - check all formulae in this tap.
+      If formula input is specified - check one or more formulae.
+      If formula and tap inputs are specified - check one or more formulae in that tap.
+    required: false
+runs:
+  using: composite
+  steps:
+    - run: echo /home/linuxbrew/.linuxbrew/bin >> $GITHUB_PATH
+      if: ${{runner.os == 'Linux'}}
+      shell: sh
+    - run: brew developer on
+      shell: sh
+    - run: brew update-reset
+      shell: sh
+    - run: brew ruby $GITHUB_ACTION_PATH/main.rb
+      shell: sh
+      env:
+        HOMEBREW_GITHUB_API_TOKEN: ${{inputs.token}}
+        HOMEBREW_GIT_NAME: ${{inputs.user_name}}
+        HOMEBREW_GIT_EMAIL: ${{inputs.user_email}}
+        HOMEBREW_BUMP_MESSAGE: ${{inputs.message}}
+        HOMEBREW_BUMP_ORG: ${{inputs.org}}
+        HOMEBREW_BUMP_NO_FORK: ${{inputs.no_fork}}
+        HOMEBREW_BUMP_TAP: ${{inputs.tap}}
+        HOMEBREW_BUMP_TAP_URL: ${{inputs.tap_url}}
+        HOMEBREW_BUMP_FORMULA: ${{inputs.formula}}
+        HOMEBREW_BUMP_TAG: ${{inputs.tag}}
+        HOMEBREW_BUMP_REVISION: ${{inputs.revision}}
+        HOMEBREW_BUMP_FORCE: ${{inputs.force}}
+        HOMEBREW_BUMP_LIVECHECK: ${{inputs.livecheck}}

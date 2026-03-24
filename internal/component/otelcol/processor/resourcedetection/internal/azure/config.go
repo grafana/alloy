@@ -23,6 +23,7 @@ var DefaultArguments = Config{
 		CloudPlatform:          rac.ResourceAttributeConfig{Enabled: true},
 		CloudProvider:          rac.ResourceAttributeConfig{Enabled: true},
 		CloudRegion:            rac.ResourceAttributeConfig{Enabled: true},
+		CloudAvailabilityZone:  rac.ResourceAttributeConfig{Enabled: false},
 		HostID:                 rac.ResourceAttributeConfig{Enabled: true},
 		HostName:               rac.ResourceAttributeConfig{Enabled: true},
 	},
@@ -35,8 +36,8 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (args Config) Convert() map[string]any {
+	return map[string]any{
 		"resource_attributes": args.ResourceAttributes.Convert(),
 		"tags":                args.Tags,
 	}
@@ -52,12 +53,13 @@ type ResourceAttributesConfig struct {
 	CloudPlatform          rac.ResourceAttributeConfig `alloy:"cloud.platform,block,optional"`
 	CloudProvider          rac.ResourceAttributeConfig `alloy:"cloud.provider,block,optional"`
 	CloudRegion            rac.ResourceAttributeConfig `alloy:"cloud.region,block,optional"`
+	CloudAvailabilityZone  rac.ResourceAttributeConfig `alloy:"cloud.availability_zone,block,optional"`
 	HostID                 rac.ResourceAttributeConfig `alloy:"host.id,block,optional"`
 	HostName               rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"azure.resourcegroup.name": r.AzureResourcegroupName.Convert(),
 		"azure.vm.name":            r.AzureVMName.Convert(),
 		"azure.vm.scaleset.name":   r.AzureVMScalesetName.Convert(),
@@ -66,6 +68,7 @@ func (r ResourceAttributesConfig) Convert() map[string]interface{} {
 		"cloud.platform":           r.CloudPlatform.Convert(),
 		"cloud.provider":           r.CloudProvider.Convert(),
 		"cloud.region":             r.CloudRegion.Convert(),
+		"cloud.availability_zone":  r.CloudAvailabilityZone.Convert(),
 		"host.id":                  r.HostID.Convert(),
 		"host.name":                r.HostName.Convert(),
 	}

@@ -2,17 +2,19 @@
 package otlp
 
 import (
+	"maps"
 	"time"
+
+	otelcomponent "go.opentelemetry.io/collector/component"
+	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.opentelemetry.io/collector/exporter/otlpexporter"
+	"go.opentelemetry.io/collector/pipeline"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
-	otelcomponent "go.opentelemetry.io/collector/component"
-	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
-	"go.opentelemetry.io/collector/exporter/otlpexporter"
-	otelextension "go.opentelemetry.io/collector/extension"
 )
 
 func init() {
@@ -24,7 +26,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			fact := otlpexporter.NewFactory()
-			return exporter.New(opts, fact, args.(Arguments), exporter.TypeAll)
+			return exporter.New(opts, fact, args.(Arguments), exporter.TypeSignalConstFunc(exporter.TypeAll))
 		},
 	})
 }
@@ -58,23 +60,35 @@ func (args *Arguments) SetToDefault() {
 
 // Convert implements exporter.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
+	clientArgs := *(*otelcol.GRPCClientArguments)(&args.Client)
+	convertedClientArgs, err := clientArgs.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	q, err := args.Queue.Convert()
+	if err != nil {
+		return nil, err
+	}
 	return &otlpexporter.Config{
-		TimeoutSettings: otelpexporterhelper.TimeoutSettings{
+		TimeoutConfig: otelpexporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
 		},
-		QueueConfig:  *args.Queue.Convert(),
+		QueueConfig:  q,
 		RetryConfig:  *args.Retry.Convert(),
-		ClientConfig: *(*otelcol.GRPCClientArguments)(&args.Client).Convert(),
+		ClientConfig: *convertedClientArgs,
 	}, nil
 }
 
 // Extensions implements exporter.Arguments.
-func (args Arguments) Extensions() map[otelcomponent.ID]otelextension.Extension {
-	return (*otelcol.GRPCClientArguments)(&args.Client).Extensions()
+func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
+	ext := (*otelcol.GRPCClientArguments)(&args.Client).Extensions()
+	maps.Copy(ext, args.Queue.Extensions())
+	return ext
 }
 
 // Exporters implements exporter.Arguments.
-func (args Arguments) Exporters() map[otelcomponent.DataType]map[otelcomponent.ID]otelcomponent.Component {
+func (args Arguments) Exporters() map[pipeline.Signal]map[otelcomponent.ID]otelcomponent.Component {
 	return nil
 }
 

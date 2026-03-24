@@ -24,7 +24,7 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/internal/runtime/tracing/internal/jaegerremote/utils"
-	jaeger_api_v2 "github.com/jaegertracing/jaeger/proto-gen/api_v2"
+	jaeger_api_v2 "github.com/jaegertracing/jaeger-idl/proto-gen/api_v2"
 	"go.opentelemetry.io/otel/sdk/trace"
 	oteltrace "go.opentelemetry.io/otel/trace"
 )

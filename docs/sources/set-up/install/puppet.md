@@ -5,10 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy with Puppet
 menuTitle: Puppet
 title: Install Grafana Alloy with Puppet
-weight: 560
-_build:
-  list: false
-noindex: true
+weight: 750
 ---
 
 # Install {{% param "FULL_PRODUCT_NAME" %}} with Puppet
@@ -18,16 +15,16 @@ You can use Puppet to install and manage {{< param "PRODUCT_NAME" >}}.
 ## Before you begin
 
 - These steps assume you already have a working [Puppet][] setup.
-- You can add the following manifest to any new or existing module.
+- You can add the following manifest to any module.
 - The manifest installs {{< param "PRODUCT_NAME" >}} from the package repositories. It targets Linux systems from the following families:
-  - Debian (including Ubuntu)
-  - RedHat Enterprise Linux (including Fedora)
+  - Debian, including Ubuntu
+  - RedHat Enterprise Linux, including Fedora
 
 ## Steps
 
 To add {{< param "PRODUCT_NAME" >}} to a host:
 
-1. Ensure that the following module dependencies are declared and installed:
+1. Make sure that the following module dependencies are declared and installed:
 
     ```json
     {
@@ -40,10 +37,10 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
     }
     ```
 
-1. Create a new [Puppet][] manifest with the following class to add the Grafana package repositories, install the `alloy` package, and run the service:
+1. Create a [Puppet][] manifest with the following class to add the Grafana package repositories, install the `alloy` package, and run the service:
 
     ```ruby
-    class grafana_agent::grafana_agent_flow () {
+    class grafana_alloy::grafana_alloy () {
       case $::os['family'] {
         'debian': {
           apt::source { 'grafana':
@@ -68,11 +65,11 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
             ensure   => 'present',
             name     => 'grafana',
             descr    => 'grafana',
-            baseurl  => 'https://packages.grafana.com/oss/rpm',
-            gpgkey   => 'https://packages.grafana.com/gpg.key',
+            baseurl  => 'https://rpm.grafana.com',
+            gpgkey   => 'https://rpm.grafana.com/gpg.key',
             enabled  => '1',
             gpgcheck => '1',
-            target   => '/etc/yum.repo.d/grafana.repo',
+            target   => '/etc/yum.repos.d/grafana.repo',
           } -> package { 'alloy':
           } -> service { 'alloy':
             ensure    => running,
@@ -99,11 +96,11 @@ To add {{< param "PRODUCT_NAME" >}} to a host:
 The `alloy` package installs a default configuration file that doesn't send telemetry anywhere.
 
 The default configuration file location is `/etc/alloy/config.alloy`.
-You can replace this file with your own configuration, or create a new configuration file for the service to use.
+You can replace this file with your own configuration, or create a configuration file for the service to use.
 
 ## Next steps
 
-- [Configure {{< param "PRODUCT_NAME" >}}][Configure]
+* [Configure {{< param "PRODUCT_NAME" >}}][Configure]
 
 [Puppet]: https://www.puppet.com/
 [Configure]: ../../../configure/linux/

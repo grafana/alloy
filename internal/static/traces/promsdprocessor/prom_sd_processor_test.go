@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/grafana/alloy/internal/component/discovery"
 )
 
 func TestSyncGroups(t *testing.T) {
@@ -38,7 +39,7 @@ func TestSyncGroups(t *testing.T) {
 				},
 			},
 			expected: map[string]discovery.Target{
-				"127.0.0.1": {},
+				"127.0.0.1": discovery.EmptyTarget,
 			},
 		},
 		{
@@ -54,9 +55,9 @@ func TestSyncGroups(t *testing.T) {
 				},
 			},
 			expected: map[string]discovery.Target{
-				"127.0.0.1": {
+				"127.0.0.1": discovery.NewTargetFromMap(map[string]string{
 					"label": "val",
-				},
+				}),
 			},
 		},
 		{
@@ -72,9 +73,9 @@ func TestSyncGroups(t *testing.T) {
 				},
 			},
 			expected: map[string]discovery.Target{
-				"127.0.0.1": {
+				"127.0.0.1": discovery.NewTargetFromMap(map[string]string{
 					"label": "val",
-				},
+				}),
 			},
 		},
 		{
@@ -90,7 +91,7 @@ func TestSyncGroups(t *testing.T) {
 				},
 			},
 			expected: map[string]discovery.Target{
-				"127.0.0.1": {},
+				"127.0.0.1": discovery.EmptyTarget,
 			},
 		},
 	}

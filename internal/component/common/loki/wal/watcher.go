@@ -4,17 +4,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/grafana/loki/v3/pkg/ingester/wal"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 
 	"github.com/grafana/alloy/internal/component/common/loki/wal/internal"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
@@ -59,7 +60,7 @@ type WriteTo interface {
 	// found in.
 	StoreSeries(series []record.RefSeries, segmentNum int)
 
-	AppendEntries(entries wal.RefEntries, segmentNum int) error
+	AppendEntries(entries RefEntries, segmentNum int) error
 }
 
 // Marker allows the Watcher to start from a specific segment in the WAL.
@@ -205,7 +206,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 	}
 	defer segment.Close()
 
-	reader := wlog.NewLiveReader(w.logger, nil, segment)
+	reader := wlog.NewLiveReader(slog.New(logging.NewSlogGoKitHandler(w.logger)), nil, segment)
 
 	readTimer := newBackoffTimer(w.minReadFreq, w.maxReadFreq)
 
@@ -330,7 +331,9 @@ func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 	var readData bool
 
 	rec := recordPool.GetRecord()
-	if err := wal.DecodeRecord(b, rec); err != nil {
+	defer func() { recordPool.PutRecord(rec) }()
+
+	if err := DecodeRecord(b, rec); err != nil {
 		w.metrics.recordDecodeFails.WithLabelValues(w.id).Inc()
 		return readData, err
 	}

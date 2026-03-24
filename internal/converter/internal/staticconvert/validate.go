@@ -93,8 +93,8 @@ func validateMetrics(metricsConfig metrics.Config, grpcListenPort int) diag.Diag
 	defaultMetrics.ServiceConfig.Lifecycler.ListenPort = grpcListenPort
 	diags.AddAll(common.ValidateSupported(common.NotDeepEquals, metricsConfig.WALCleanupAge, defaultMetrics.WALCleanupAge, "wal_cleanup_age metrics", ""))
 	diags.AddAll(common.ValidateSupported(common.NotEquals, metricsConfig.WALCleanupPeriod, defaultMetrics.WALCleanupPeriod, "wal_cleanup_period metrics", ""))
-	diags.AddAll(common.ValidateSupported(common.NotDeepEquals, metricsConfig.ServiceConfig, defaultMetrics.ServiceConfig, "scraping_service metrics", ""))
-	diags.AddAll(common.ValidateSupported(common.NotDeepEquals, metricsConfig.ServiceClientConfig, defaultMetrics.ServiceClientConfig, "scraping_service_client metrics", ""))
+	diags.AddAll(common.ValidateSupported(common.NotYAMLMarshallEquals, metricsConfig.ServiceConfig, defaultMetrics.ServiceConfig, "scraping_service metrics", ""))
+	diags.AddAll(common.ValidateSupported(common.NotYAMLMarshallEquals, metricsConfig.ServiceClientConfig, defaultMetrics.ServiceClientConfig, "scraping_service_client metrics", ""))
 	diags.AddAll(common.ValidateSupported(common.NotEquals, metricsConfig.InstanceRestartBackoff, defaultMetrics.InstanceRestartBackoff, "instance_restart_backoff metrics", ""))
 	diags.AddAll(common.ValidateSupported(common.NotEquals, metricsConfig.InstanceMode, defaultMetrics.InstanceMode, "instance_mode metrics", ""))
 	diags.AddAll(common.ValidateSupported(common.NotEquals, metricsConfig.DisableKeepAlives, defaultMetrics.DisableKeepAlives, "http_disable_keepalives metrics", ""))
@@ -215,7 +215,7 @@ func validateIntegrationsV2(integrationsConfig *v2.SubsystemOptions) diag.Diagno
 	return diags
 }
 
-func validateTraces(tracesConfig traces.Config) diag.Diagnostics {
+func validateTraces(_ traces.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	return diags
@@ -223,7 +223,7 @@ func validateTraces(tracesConfig traces.Config) diag.Diagnostics {
 
 // validateLogs validates the logs config for anything not already covered
 // by appendStaticPromtail.
-func validateLogs(logsConfig *logs.Config) diag.Diagnostics {
+func validateLogs(_ *logs.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	return diags

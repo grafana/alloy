@@ -15,7 +15,7 @@ import (
 // Configuration errors.
 var (
 	ErrLimitStageInvalidRateOrBurst = errors.New("limit stage failed to parse rate or burst")
-	ErrLimitStageByLabelMustDrop    = errors.New("When ratelimiting by label, drop must be true")
+	ErrLimitStageByLabelMustDrop    = errors.New("when ratelimiting by label, drop must be true")
 	ratelimitDropReason             = "ratelimit_drop_stage"
 )
 
@@ -123,11 +123,6 @@ func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
 	}
 	_ = m.rateLimiter.Wait(context.Background())
 	return false
-}
-
-// Name implements Stage
-func (m *limitStage) Name() string {
-	return StageTypeLimit
 }
 
 // Cleanup implements Stage.

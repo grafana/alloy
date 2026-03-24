@@ -58,7 +58,7 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
+func (args Config) Convert() map[string]any {
 	//TODO(ptodev): Change the OTel Collector's "meta" param to be a slice instead of a map.
 	var metaLabels map[string]string
 	if args.MetaLabels != nil {
@@ -68,7 +68,7 @@ func (args Config) Convert() map[string]interface{} {
 		}
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"address":             args.Address,
 		"datacenter":          args.Datacenter,
 		"token":               configopaque.String(args.Token),
@@ -85,8 +85,8 @@ type ResourceAttributesConfig struct {
 	HostName    rac.ResourceAttributeConfig `alloy:"host.name,block,optional"`
 }
 
-func (r *ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r *ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"cloud.region": r.CloudRegion.Convert(),
 		"host.id":      r.HostID.Convert(),
 		"host.name":    r.HostName.Convert(),

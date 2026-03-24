@@ -1,13 +1,9 @@
 import { Fragment } from 'react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 
 import { alloyStringify } from '../alloy-syntax-js/stringify';
-
-import { style } from './style';
-import Table from './Table';
-import { PartitionedBody } from './types';
-
 import styles from './ComponentView.module.css';
+import Table from './Table';
+import { type PartitionedBody } from './types';
 
 interface ComponentBodyProps {
   partition: PartitionedBody;
@@ -19,15 +15,15 @@ const ComponentBody = ({ partition }: ComponentBodyProps) => {
   const sectionClass = partition.key.length === 1 ? '' : styles.nested;
 
   const renderTableData = () => {
-    return partition.attrs.map(({ name, value }, index) => {
+    return partition.attrs.map(({ name, value }) => {
+      const stringifiedValue = alloyStringify(value);
+
       return (
         <tr key={name}>
           <td className={styles.nameColumn}>{name}</td>
           <td>
             <pre className={styles.pre}>
-              <SyntaxHighlighter language="javascript" style={style}>
-                {alloyStringify(value)}
-              </SyntaxHighlighter>
+              <code>{stringifiedValue}</code>
             </pre>
           </td>
         </tr>

@@ -14,9 +14,9 @@ const (
 func TestBackoffTimer(t *testing.T) {
 	var min = time.Millisecond * 300
 	var max = time.Second
-	timer := newBackoffTimer(min, max)
 
 	start := time.Now()
+	timer := newBackoffTimer(min, max)
 	<-timer.C
 	verifyElapsedTime(t, min, time.Since(start))
 

@@ -1,0 +1,19 @@
+otelcol.receiver.otlp "default" {
+	grpc {
+		endpoint = coalesce(sys.env("NORMAL_FORMAT"), "")
+	}
+
+	http {
+		endpoint = "localhost:4318"
+	}
+
+	output {
+		metrics = [otelcol.exporter.otlp.default.input]
+	}
+}
+
+otelcol.exporter.otlp "default" {
+	client {
+		endpoint = "database:4317"
+	}
+}

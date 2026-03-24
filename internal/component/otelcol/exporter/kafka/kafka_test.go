@@ -4,65 +4,205 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/internal/component"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/config/configcompression"
+	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/config/configretry"
+	"go.opentelemetry.io/collector/exporter/exporterhelper"
 )
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
+	defaultExpected := func() kafkaexporter.Config {
+		return kafkaexporter.Config{
+			TimeoutSettings: exporterhelper.TimeoutConfig{
+				Timeout: 5 * time.Second,
+			},
+			QueueBatchConfig: configoptional.Some(exporterhelper.NewDefaultQueueConfig()),
+			Logs: kafkaexporter.SignalConfig{
+				Topic:                "otlp_logs",
+				TopicFromMetadataKey: "",
+				Encoding:             "otlp_proto",
+			},
+			Metrics: kafkaexporter.SignalConfig{
+				Topic:                "otlp_metrics",
+				TopicFromMetadataKey: "",
+				Encoding:             "otlp_proto",
+			},
+			Traces: kafkaexporter.SignalConfig{
+				Topic:                "otlp_spans",
+				TopicFromMetadataKey: "",
+				Encoding:             "otlp_proto",
+			},
+			Profiles: kafkaexporter.SignalConfig{
+				Topic:                "",
+				TopicFromMetadataKey: "",
+				Encoding:             "",
+			},
+			Topic:                                "",
+			IncludeMetadataKeys:                  []string(nil),
+			TopicFromAttribute:                   "",
+			Encoding:                             "",
+			PartitionTracesByID:                  false,
+			PartitionMetricsByResourceAttributes: false,
+			PartitionLogsByResourceAttributes:    false,
+			PartitionLogsByTraceID:               false,
+			BackOffConfig: configretry.BackOffConfig{
+				Enabled:             true,
+				InitialInterval:     5 * time.Second,
+				RandomizationFactor: 0.5,
+				Multiplier:          1.5,
+				MaxInterval:         30 * time.Second,
+				MaxElapsedTime:      5 * time.Minute,
+			},
+			ClientConfig: configkafka.ClientConfig{
+				Brokers:         []string{"localhost:9092"},
+				ProtocolVersion: "2.0.0",
+				ClientID:        "otel-collector",
+				ConnIdleTimeout: 9 * time.Minute,
+				Metadata: configkafka.MetadataConfig{
+					Full:            true,
+					RefreshInterval: 10 * time.Minute,
+					Retry: configkafka.MetadataRetryConfig{
+						Max:     3,
+						Backoff: 250 * time.Millisecond,
+					},
+				},
+			},
+			Producer: configkafka.ProducerConfig{
+				MaxMessageBytes: 1000000,
+				RequiredAcks:    1,
+				Compression:     "none",
+				CompressionParams: configcompression.CompressionParams{
+					Level: 0,
+				},
+				FlushMaxMessages:       10000,
+				AllowAutoTopicCreation: true,
+			},
+		}
+	}
+
 	tests := []struct {
 		testName string
 		cfg      string
-		expected map[string]interface{}
+		expected kafkaexporter.Config
 	}{
 		{
 			testName: "Defaults",
 			cfg: `
 				protocol_version = "2.0.0"
 			`,
-			expected: map[string]interface{}{
-				"brokers":          []string{"localhost:9092"},
-				"protocol_version": "2.0.0",
-				"resolve_canonical_bootstrap_servers_only": false,
-				"client_id":              "sarama",
-				"topic":                  "",
-				"topic_from_attribute":   "",
-				"encoding":               "otlp_proto",
-				"partition_traces_by_id": false,
-				"partition_metrics_by_resource_attributes": false,
-				"timeout":        5 * time.Second,
-				"authentication": map[string]interface{}{},
+			expected: defaultExpected(),
+		},
+		{
+			testName: "Deprecated topic",
+			cfg: `
+				protocol_version = "2.0.0"
+				topic = "test_default_topic"
+				metrics {
+					topic = "test_metrics_topic"
+				}
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
 
-				"metadata": map[string]interface{}{
-					"full": true,
-					"retry": map[string]interface{}{
-						"max":     3,
-						"backoff": 250 * time.Millisecond,
-					},
-				},
-				"retry_on_failure": map[string]interface{}{
-					"enabled":              true,
-					"initial_interval":     5 * time.Second,
-					"randomization_factor": 0.5,
-					"multiplier":           1.5,
-					"max_interval":         30 * time.Second,
-					"max_elapsed_time":     5 * time.Minute,
-				},
-				"sending_queue": map[string]interface{}{
-					"enabled":       true,
-					"num_consumers": 10,
-					"queue_size":    1000,
-				},
-				"producer": map[string]interface{}{
-					"max_message_bytes":  1000000,
-					"required_acks":      1,
-					"compression":        "none",
-					"flush_max_messages": 0,
-				},
-			},
+				cfg.Topic = ""
+				cfg.Encoding = ""
+
+				cfg.Logs.Topic = "test_default_topic"
+				cfg.Logs.Encoding = "otlp_proto"
+
+				cfg.Metrics.Topic = "test_metrics_topic"
+				cfg.Metrics.Encoding = "otlp_proto"
+
+				cfg.Traces.Topic = "test_default_topic"
+				cfg.Traces.Encoding = "otlp_proto"
+
+				return cfg
+			}(),
+		},
+		{
+			testName: "Deprecated encoding",
+			cfg: `
+				protocol_version = "2.0.0"
+				encoding = "otlp_json"
+				traces {
+					encoding = "zipkin_thrift"
+				}
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+
+				cfg.Topic = ""
+				cfg.Encoding = ""
+
+				cfg.Logs.Topic = "otlp_logs"
+				cfg.Logs.Encoding = "otlp_json"
+
+				cfg.Metrics.Topic = "otlp_metrics"
+				cfg.Metrics.Encoding = "otlp_json"
+
+				cfg.Traces.Topic = "otlp_spans"
+				cfg.Traces.Encoding = "zipkin_thrift"
+
+				return cfg
+			}(),
+		},
+		{
+			testName: "Deprecated topic and empty blocks",
+			cfg: `
+				protocol_version = "2.0.0"
+
+				// Neither "topic" nor "encoding" will be used,
+				// because the default values from the enpty blocks should be used.
+				// Making those blocks empty means their thefault values should be used,
+				// and they have precedence over those deprecared arguments.
+				topic = "test_default_topic"
+				encoding = "otlp_json"
+
+				metrics {}
+				logs {}
+				traces {}
+			`,
+			expected: defaultExpected(),
+		},
+		{
+			testName: "Partition by resource attributes",
+			cfg: `
+				protocol_version = "2.0.0"
+				partition_traces_by_id = true
+				partition_metrics_by_resource_attributes = true
+				partition_logs_by_resource_attributes = true
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.PartitionTracesByID = true
+				cfg.PartitionMetricsByResourceAttributes = true
+				cfg.PartitionLogsByResourceAttributes = true
+				return cfg
+			}(),
+		},
+		{
+			testName: "Partition logs by trace id",
+			cfg: `
+				protocol_version = "2.0.0"
+				partition_traces_by_id = true
+				partition_metrics_by_resource_attributes = true
+				partition_logs_by_trace_id = true
+			`,
+			expected: func() kafkaexporter.Config {
+				cfg := defaultExpected()
+				cfg.PartitionTracesByID = true
+				cfg.PartitionMetricsByResourceAttributes = true
+				cfg.PartitionLogsByTraceID = true
+				return cfg
+			}(),
 		},
 		{
 			testName: "Explicit",
@@ -71,11 +211,12 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				brokers = ["redpanda:123"]
 				resolve_canonical_bootstrap_servers_only = true
 				client_id = "my-client"
-				topic = "my-topic"
+				topic = ""
 				topic_from_attribute = "my-attr"
 				encoding = "otlp_json"
 				partition_traces_by_id = true
 				partition_metrics_by_resource_attributes = true
+				partition_logs_by_resource_attributes = true
 				timeout = "12s"
 
 				authentication {
@@ -86,7 +227,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				}
 
 				metadata {
-					include_all_topics = false
+					full = false
+					refresh_interval = "14s"
 					retry {
 						max_retries = 5
 						backoff = "511ms"
@@ -112,65 +254,109 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					max_message_bytes =  2000001
 					required_acks = 0
 					compression = "gzip"
+					compression_params {
+						level = 9
+					}
 					flush_max_messages = 101
 				}
-			`,
-			expected: map[string]interface{}{
-				"brokers":          []string{"redpanda:123"},
-				"protocol_version": "2.0.0",
-				"resolve_canonical_bootstrap_servers_only": true,
-				"client_id":              "my-client",
-				"topic":                  "my-topic",
-				"topic_from_attribute":   "my-attr",
-				"encoding":               "otlp_json",
-				"partition_traces_by_id": true,
-				"partition_metrics_by_resource_attributes": true,
-				"timeout": 12 * time.Second,
-				"auth": map[string]interface{}{
-					"plain_text": map[string]interface{}{
-						"username": "user",
-						"password": "pass",
-					},
-				},
 
-				"metadata": map[string]interface{}{
-					"full": false,
-					"retry": map[string]interface{}{
-						"max":     5,
-						"backoff": 511 * time.Millisecond,
+				logs {
+					topic = "logs_test_topic"
+					encoding = "raw"
+				}
+				metrics {
+					topic = "metrics_test_topic"
+					encoding = "otlp_json"
+				}
+				traces {
+					topic = "spans_test_topic"
+					encoding = "zipkin_json"
+				}
+			`,
+			expected: kafkaexporter.Config{
+				TimeoutSettings: exporterhelper.TimeoutConfig{
+					Timeout: 12 * time.Second,
+				},
+				QueueBatchConfig: configoptional.Some(exporterhelper.QueueBatchConfig{
+					NumConsumers: 11,
+					QueueSize:    1001,
+					Sizer:        exporterhelper.RequestSizerTypeRequests,
+					Batch:        exporterhelper.NewDefaultQueueConfig().Batch,
+				}),
+				Logs: kafkaexporter.SignalConfig{
+					Topic:                "logs_test_topic",
+					TopicFromMetadataKey: "",
+					Encoding:             "raw",
+				},
+				Metrics: kafkaexporter.SignalConfig{
+					Topic:                "metrics_test_topic",
+					TopicFromMetadataKey: "",
+					Encoding:             "otlp_json",
+				},
+				Traces: kafkaexporter.SignalConfig{
+					Topic:                "spans_test_topic",
+					TopicFromMetadataKey: "",
+					Encoding:             "zipkin_json",
+				},
+				Profiles: kafkaexporter.SignalConfig{
+					Topic:                "",
+					TopicFromMetadataKey: "",
+					Encoding:             "",
+				},
+				BackOffConfig: configretry.BackOffConfig{
+					Enabled:             true,
+					InitialInterval:     10 * time.Second,
+					RandomizationFactor: 0.1,
+					Multiplier:          2.0,
+					MaxInterval:         61 * time.Second,
+					MaxElapsedTime:      11 * time.Minute,
+				},
+				ClientConfig: configkafka.ClientConfig{
+					Brokers:                              []string{"redpanda:123"},
+					ProtocolVersion:                      "2.0.0",
+					ClientID:                             "my-client",
+					ConnIdleTimeout:                      9 * time.Minute,
+					ResolveCanonicalBootstrapServersOnly: true,
+					Metadata: configkafka.MetadataConfig{
+						Full:            false,
+						RefreshInterval: 14 * time.Second,
+						Retry: configkafka.MetadataRetryConfig{
+							Max:     5,
+							Backoff: 511 * time.Millisecond,
+						},
+					},
+					Authentication: configkafka.AuthenticationConfig{
+						PlainText: &configkafka.PlainTextConfig{
+							Username: "user",
+							Password: "pass",
+						},
 					},
 				},
-				"retry_on_failure": map[string]interface{}{
-					"enabled":              true,
-					"initial_interval":     10 * time.Second,
-					"randomization_factor": 0.1,
-					"multiplier":           2.0,
-					"max_interval":         61 * time.Second,
-					"max_elapsed_time":     11 * time.Minute,
+				Producer: configkafka.ProducerConfig{
+					MaxMessageBytes: 2000001,
+					RequiredAcks:    0,
+					Compression:     "gzip",
+					CompressionParams: configcompression.CompressionParams{
+						Level: 9,
+					},
+					FlushMaxMessages:       101,
+					AllowAutoTopicCreation: true,
 				},
-				"sending_queue": map[string]interface{}{
-					"enabled":       true,
-					"num_consumers": 11,
-					"queue_size":    1001,
-				},
-				"producer": map[string]interface{}{
-					"max_message_bytes":  2000001,
-					"required_acks":      0,
-					"compression":        "gzip",
-					"flush_max_messages": 101,
-				},
+				Topic:                                "",
+				IncludeMetadataKeys:                  []string(nil),
+				TopicFromAttribute:                   "my-attr",
+				Encoding:                             "",
+				PartitionTracesByID:                  true,
+				PartitionMetricsByResourceAttributes: true,
+				PartitionLogsByResourceAttributes:    true,
 			},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.testName, func(t *testing.T) {
-			var expected kafkaexporter.Config
-			err := mapstructure.Decode(tc.expected, &expected)
-			require.NoError(t, err)
-
 			var args kafka.Arguments
-			err = syntax.Unmarshal([]byte(tc.cfg), &args)
+			err := syntax.Unmarshal([]byte(tc.cfg), &args)
 			require.NoError(t, err)
 
 			actualPtr, err := args.Convert()
@@ -178,7 +364,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 
 			actual := actualPtr.(*kafkaexporter.Config)
 
-			require.Equal(t, expected, *actual)
+			require.Equal(t, tc.expected, *actual)
 		})
 	}
 }
@@ -236,5 +422,105 @@ func TestDebugMetricsConfig(t *testing.T) {
 
 			require.Equal(t, tc.expected, args.DebugMetricsConfig())
 		})
+	}
+}
+
+func TestGetSignalType(t *testing.T) {
+	encodings := []string{
+		"otlp_proto",
+		"otlp_json",
+		"raw",
+		"jaeger_proto",
+		"jaeger_json",
+		"zipkin_proto",
+		"zipkin_json",
+	}
+
+	for _, encoding := range encodings {
+		t.Run(encoding, func(t *testing.T) {
+			args := kafka.Arguments{
+				Encoding: encoding,
+			}
+			signalType := kafka.GetSignalType(component.Options{}, args)
+
+			switch encoding {
+			case "raw":
+				require.Equal(t, exporter.TypeLogs, signalType)
+			case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
+				require.Equal(t, exporter.TypeTraces, signalType)
+			default:
+				require.Equal(t, exporter.TypeAll, signalType)
+			}
+		})
+	}
+
+	signalCfgs := []struct {
+		logs    *kafka.KafkaExporterSignalConfig
+		traces  *kafka.KafkaExporterSignalConfig
+		metrics *kafka.KafkaExporterSignalConfig
+	}{
+		{
+			logs: &kafka.KafkaExporterSignalConfig{Encoding: "raw"},
+		},
+		{
+			traces: &kafka.KafkaExporterSignalConfig{Encoding: "zipkin_json"},
+		},
+		{
+			metrics: &kafka.KafkaExporterSignalConfig{Encoding: "otlp_json"},
+		},
+		{
+			metrics: &kafka.KafkaExporterSignalConfig{Encoding: "otlp_json"},
+			logs:    &kafka.KafkaExporterSignalConfig{Encoding: "raw"},
+		},
+		{
+			metrics: &kafka.KafkaExporterSignalConfig{Encoding: "otlp_json"},
+			logs:    &kafka.KafkaExporterSignalConfig{Encoding: "raw"},
+		},
+		{
+			traces: &kafka.KafkaExporterSignalConfig{Encoding: "zipkin_json"},
+			logs:   &kafka.KafkaExporterSignalConfig{Encoding: "raw"},
+		},
+		{
+			metrics: &kafka.KafkaExporterSignalConfig{Encoding: "otlp_json"},
+			traces:  &kafka.KafkaExporterSignalConfig{Encoding: "zipkin_json"},
+		},
+	}
+
+	for _, encoding := range encodings {
+		for _, signalCfg := range signalCfgs {
+			t.Run(encoding, func(t *testing.T) {
+				args := kafka.Arguments{
+					Encoding: encoding,
+					Logs:     signalCfg.logs,
+					Traces:   signalCfg.traces,
+					Metrics:  signalCfg.metrics,
+				}
+				signalType := kafka.GetSignalType(component.Options{}, args)
+
+				var expected exporter.TypeSignal
+				expected = 0
+
+				if signalCfg.logs != nil {
+					expected |= exporter.TypeLogs
+				}
+				if signalCfg.metrics != nil {
+					expected |= exporter.TypeMetrics
+				}
+				if signalCfg.traces != nil {
+					expected |= exporter.TypeTraces
+				}
+
+				switch encoding {
+				case "raw":
+					expected |= exporter.TypeLogs
+				case "jaeger_proto", "jaeger_json", "zipkin_proto", "zipkin_json":
+					expected |= exporter.TypeTraces
+				default:
+					expected |= exporter.TypeAll
+				}
+
+				require.Equal(t, expected, signalType)
+			})
+		}
 	}
 }

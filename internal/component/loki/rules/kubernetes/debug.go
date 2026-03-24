@@ -20,7 +20,7 @@ type DebugLokiNamespace struct {
 	NumRuleGroups int    `alloy:"num_rule_groups,attr"`
 }
 
-func (c *Component) DebugInfo() interface{} {
+func (c *Component) DebugInfo() any {
 	var output DebugInfo
 	for ns := range c.currentState {
 		if !isManagedLokiNamespace(c.args.LokiNameSpacePrefix, ns) {

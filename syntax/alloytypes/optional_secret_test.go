@@ -73,7 +73,7 @@ func TestOptionalSecret(t *testing.T) {
 func TestOptionalSecret_Write(t *testing.T) {
 	tt := []struct {
 		name   string
-		value  interface{}
+		value  any
 		expect string
 	}{
 		{"non-sensitive", alloytypes.OptionalSecret{Value: "foobar"}, `"foobar"`},

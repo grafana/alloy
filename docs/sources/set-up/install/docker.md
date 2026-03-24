@@ -5,7 +5,7 @@ aliases:
 description: Learn how to install Grafana Alloy on Docker
 menuTitle: Docker
 title: Run Grafana Alloy in a Docker container
-weight: 100
+weight: 350
 ---
 
 # Run {{% param "FULL_PRODUCT_NAME" %}} in a Docker container
@@ -13,11 +13,16 @@ weight: 100
 {{< param "PRODUCT_NAME" >}} is available as a Docker container image on the following platforms:
 
 * [Linux containers][] for AMD64 and ARM64.
+* macOS for AMD64 (Intel) and ARM64 (Apple Silicon) using [Docker Desktop][].
 * [Windows containers][] for AMD64.
+
+{{< admonition type="note" >}}
+On macOS, Docker Desktop manages a Linux virtual machine transparently, so the Linux container commands work without modification.
+{{< /admonition >}}
 
 ## Before you begin
 
-* Install [Docker][] on your computer.
+* Install [Docker][] or [Docker Desktop][] on your computer.
 * Create and save an {{< param "PRODUCT_NAME" >}} configuration file on your computer, for example:
 
   ```alloy
@@ -42,7 +47,7 @@ docker run \
 
 Replace the following:
 
-- _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
+* _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
 You can modify the last line to change the arguments passed to the {{< param "PRODUCT_NAME" >}} binary.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
@@ -60,10 +65,9 @@ If you don't pass this argument, the [debugging UI][UI] won't be available outsi
 BoringCrypto support is in _Public preview_ and is only available on AMD64 and ARM64 platforms.
 {{< /admonition >}}
 
-BoringCrypto images are published with every release starting with version
-1.1:
+BoringCrypto images are published with every release starting with version 1.1:
 
-* The latest BoringCrypto image is published as `grafana/alloy:boringcrypto`.
+* The current BoringCrypto image is published as `grafana/alloy:boringcrypto`.
 * A specific version of the BoringCrypto image is published as
   `grafana/alloy:<VERSION>-boringcrypto`, such as
   `grafana/alloy:v1.1.0-boringcrypto`.
@@ -76,23 +80,23 @@ To run {{< param "PRODUCT_NAME" >}} as a Windows Docker container, run the follo
 docker run \
   -v "<CONFIG_FILE_PATH>:C:\Program Files\GrafanaLabs\Alloy\config.alloy" \
   -p 12345:12345 \
-  grafana/alloy:nanoserver-1809 \
+  grafana/alloy:windowsservercore-ltsc2022 \
     run --server.http.listen-addr=0.0.0.0:12345 "--storage.path=C:\ProgramData\GrafanaLabs\Alloy\data" \
     "C:\Program Files\GrafanaLabs\Alloy\config.alloy"
 ```
 
 Replace the following:
 
-- _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
+* _`<CONFIG_FILE_PATH>`_: The path of the configuration file on your host system.
 
 You can modify the last line to change the arguments passed to the {{< param "PRODUCT_NAME" >}} binary.
 Refer to the documentation for [run][] for more information about the options available to the `run` command.
 
 {{< admonition type="note" >}}
 Make sure you pass `--server.http.listen-addr=0.0.0.0:12345` as an argument as shown in the example above.
-If you don't pass this argument, the [debugging UI][UI] won't be available outside of the Docker container.
+If you don't pass this argument, the [debugging UI][debug] won't be available outside of the Docker container.
 
-[UI]: ../../../troubleshoot/debug/#alloy-ui
+[debug]: ../../../troubleshoot/debug/#alloy-ui
 {{< /admonition >}}
 
 ## Verify
@@ -102,5 +106,6 @@ To verify that {{< param "PRODUCT_NAME" >}} is running successfully, navigate to
 [Linux containers]: #run-a-linux-docker-container
 [Windows containers]: #run-a-windows-docker-container
 [Docker]: https://docker.io
+[Docker Desktop]: https://www.docker.com/products/docker-desktop/
 [run]: ../../../reference/cli/run/
-[UI]: ../../../troubleshoot/debug/#alloy-ui
+[UI]: ../../../troubleshoot/debug/

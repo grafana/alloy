@@ -1,8 +1,7 @@
-import { FC, Fragment, ReactElement } from 'react';
-
-import { ObjectField, Value, ValueType } from './types';
+import { type FC, Fragment, type ReactElement } from 'react';
 
 import styles from './AlloyValue.module.css';
+import { type ObjectField, type Value, ValueType } from './types';
 
 export interface AlloyValueProps {
   value: Value;
@@ -58,7 +57,7 @@ const ValueRenderer: FC<valueRendererProps> = (props) => {
         </>
       );
 
-    case ValueType.OBJECT:
+    case ValueType.OBJECT: {
       if (value.value.length === 0) {
         // No elements; return `{}` without any line breaks.
         return (
@@ -96,6 +95,7 @@ const ValueRenderer: FC<valueRendererProps> = (props) => {
           <span>&#125;</span>
         </>
       );
+    }
 
     case ValueType.FUNCTION:
       return <span className={styles.special}>{value.value}</span>;

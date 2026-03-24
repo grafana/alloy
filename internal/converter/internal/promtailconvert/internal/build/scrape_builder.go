@@ -4,16 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+	"time"
 
-	"github.com/grafana/loki/v3/clients/pkg/promtail/positions"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/scrapeconfig"
-	"github.com/grafana/loki/v3/clients/pkg/promtail/targets/file"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/discovery/relabel"
-	filematch "github.com/grafana/alloy/internal/component/local/file_match"
 	"github.com/grafana/alloy/internal/component/loki/process"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	lokirelabel "github.com/grafana/alloy/internal/component/loki/relabel"
@@ -21,6 +18,9 @@ import (
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/component"
+	"github.com/grafana/alloy/internal/loki/promtail/file"
+	"github.com/grafana/alloy/internal/loki/promtail/positions"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/alloy/syntax/scanner"
 	"github.com/grafana/alloy/syntax/token/builder"
 )
@@ -31,12 +31,11 @@ type ScrapeConfigBuilder struct {
 	cfg       *scrapeconfig.Config
 	globalCtx *GlobalContext
 
-	allTargetsExps             []string
-	processStageReceivers      []loki.LogsReceiver
-	allRelabeledTargetsExpr    string
-	allExpandedFileTargetsExpr string
-	discoveryRelabelRulesExpr  string
-	lokiRelabelReceiverExpr    string
+	allTargetsExps            []string
+	processStageReceivers     []loki.LogsReceiver
+	allRelabeledTargetsExpr   string
+	discoveryRelabelRulesExpr string
+	lokiRelabelReceiverExpr   string
 }
 
 func NewScrapeConfigBuilder(
@@ -69,17 +68,19 @@ func (s *ScrapeConfigBuilder) AppendLokiSourceFile(watchConfig *file.WatchConfig
 	if len(s.allTargetsExps) == 0 {
 		return
 	}
-	targets := s.getExpandedFileTargetsExpr()
-	forwardTo := s.getOrNewProcessStageReceivers()
 
 	args := lokisourcefile.Arguments{
-		ForwardTo:           forwardTo,
-		Encoding:            s.cfg.Encoding,
-		DecompressionConfig: convertDecompressionConfig(s.cfg.DecompressionCfg),
-		FileWatch:           convertFileWatchConfig(watchConfig),
-		LegacyPositionsFile: positionsCfg.PositionsFile,
+		ForwardTo:            s.getOrNewProcessStageReceivers(),
+		Encoding:             s.cfg.Encoding,
+		DecompressionConfig:  convertDecompressionConfig(s.cfg.DecompressionCfg),
+		FileWatch:            convertFileWatchConfig(watchConfig),
+		LegacyPositionsFile:  positionsCfg.PositionsFile,
+		OnPositionsFileError: lokisourcefile.OnPositionsFileErrorRestartBeginning,
+		FileMatch:            convertFileMatchConfig(s.globalCtx.TargetSyncPeriod),
 	}
-	overrideHook := func(val interface{}) interface{} {
+
+	targets := s.getAllRelabeledTargetsExpr()
+	overrideHook := func(val any) any {
 		if _, ok := val.([]discovery.Target); ok {
 			return common.CustomTokenizer{Expr: targets}
 		}
@@ -122,15 +123,21 @@ func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.LogsReceive
 	if s.processStageReceivers != nil {
 		return s.processStageReceivers
 	}
-	if len(s.cfg.PipelineStages) == 0 {
+
+	globalLimitStages := buildLimitsConfigStages(s.globalCtx.LimitsConfig)
+
+	if len(s.cfg.PipelineStages) == 0 && len(globalLimitStages) == 0 {
 		s.processStageReceivers = s.globalCtx.WriteReceivers
 		return s.processStageReceivers
 	}
 
-	alloyStages := make([]stages.StageConfig, len(s.cfg.PipelineStages))
-	for i, ps := range s.cfg.PipelineStages {
+	// Global limit stages are prepended so they apply before any per-scrape-config
+	// pipeline stages, matching Promtail's behavior of applying limits before processing.
+	alloyStages := make([]stages.StageConfig, 0, len(globalLimitStages)+len(s.cfg.PipelineStages))
+	alloyStages = append(alloyStages, globalLimitStages...)
+	for _, ps := range s.cfg.PipelineStages {
 		if fs, ok := convertStage(ps, s.diags); ok {
-			alloyStages[i] = fs
+			alloyStages = append(alloyStages, fs)
 		}
 	}
 	args := process.Arguments{
@@ -160,7 +167,7 @@ func (s *ScrapeConfigBuilder) appendDiscoveryRelabel() {
 		RelabelConfigs: relabelConfigs,
 	}
 
-	overrideHook := func(val interface{}) interface{} {
+	overrideHook := func(val any) any {
 		if _, ok := val.([]discovery.Target); ok {
 			return common.CustomTokenizer{Expr: s.getAllTargetsJoinedExpr()}
 		}
@@ -188,31 +195,6 @@ func (s *ScrapeConfigBuilder) getOrNewDiscoveryRelabelRules() string {
 	return s.discoveryRelabelRulesExpr
 }
 
-func (s *ScrapeConfigBuilder) getExpandedFileTargetsExpr() string {
-	if s.allExpandedFileTargetsExpr != "" {
-		return s.allExpandedFileTargetsExpr
-	}
-	args := filematch.Arguments{
-		SyncPeriod: s.globalCtx.TargetSyncPeriod,
-	}
-	overrideHook := func(val interface{}) interface{} {
-		if _, ok := val.([]discovery.Target); ok {
-			return common.CustomTokenizer{Expr: s.getAllRelabeledTargetsExpr()}
-		}
-		return val
-	}
-
-	compLabel := common.LabelForParts(s.globalCtx.LabelPrefix, s.cfg.JobName)
-	s.f.Body().AppendBlock(common.NewBlockWithOverrideFn(
-		[]string{"local", "file_match"},
-		compLabel,
-		args,
-		overrideHook,
-	))
-	s.allExpandedFileTargetsExpr = "local.file_match." + compLabel + ".targets"
-	return s.allExpandedFileTargetsExpr
-}
-
 func (s *ScrapeConfigBuilder) getAllTargetsJoinedExpr() string {
 	targetsExpr := "[]"
 	if len(s.allTargetsExps) == 1 {
@@ -222,7 +204,7 @@ func (s *ScrapeConfigBuilder) getAllTargetsJoinedExpr() string {
 		for i, t := range s.allTargetsExps {
 			formatted[i] = fmt.Sprintf("\t\t%s,", t)
 		}
-		targetsExpr = fmt.Sprintf("concat(\n%s\n\t)", strings.Join(formatted, "\n"))
+		targetsExpr = fmt.Sprintf("array.concat(\n%s\n\t)", strings.Join(formatted, "\n"))
 	}
 	return targetsExpr
 }
@@ -256,6 +238,13 @@ func convertFileWatchConfig(watchConfig *file.WatchConfig) lokisourcefile.FileWa
 	}
 }
 
+func convertFileMatchConfig(sync time.Duration) lokisourcefile.FileMatch {
+	return lokisourcefile.FileMatch{
+		Enabled:    true,
+		SyncPeriod: sync,
+	}
+}
+
 func logsReceiversToExpr(r []loki.LogsReceiver) string {
 	var exprs []string
 	for _, r := range r {
@@ -265,7 +254,7 @@ func logsReceiversToExpr(r []loki.LogsReceiver) string {
 	return "[" + strings.Join(exprs, ", ") + "]"
 }
 
-func toAlloyExpression(goValue interface{}) (string, error) {
+func toAlloyExpression(goValue any) (string, error) {
 	e := builder.NewExpr()
 	e.SetValue(goValue)
 	var buff bytes.Buffer

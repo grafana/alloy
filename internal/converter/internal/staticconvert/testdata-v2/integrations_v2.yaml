@@ -69,6 +69,7 @@ integrations:
     store_container_labels: false
   cloudwatch_configs:
     - sts_region: us-east-2
+      aws_sdk_version_v2: true
       discovery:
         jobs:
           - type: AWS/EC2
@@ -212,7 +213,7 @@ integrations:
         snmp_context: dummyContext
       - name: network_router_2
         address: 192.168.1.3
-        module: mikrotik
+        module: system,mikrotik
         walk_params: private
         auth: private
         snmp_context: dummyContext

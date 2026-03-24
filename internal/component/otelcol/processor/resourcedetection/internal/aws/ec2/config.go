@@ -1,6 +1,8 @@
 package ec2
 
 import (
+	"time"
+
 	rac "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/resource_attribute_config"
 	"github.com/grafana/alloy/syntax"
 )
@@ -11,8 +13,12 @@ const Name = "ec2"
 type Config struct {
 	// Tags is a list of regex's to match ec2 instance tag keys that users want
 	// to add as resource attributes to processed data
-	Tags               []string                 `alloy:"tags,attr,optional"`
-	ResourceAttributes ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
+	Tags                  []string                 `alloy:"tags,attr,optional"`
+	ResourceAttributes    ResourceAttributesConfig `alloy:"resource_attributes,block,optional"`
+	MaxAttempts           int                      `alloy:"max_attempts,attr,optional"`
+	MaxBackoff            time.Duration            `alloy:"max_backoff,attr,optional"`
+	FailOnMissingMetadata bool                     `alloy:"fail_on_missing_metadata,attr,optional"`
+	TagsFromIMDS          bool                     `alloy:"tags_from_imds,attr,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -28,6 +34,8 @@ var DefaultArguments = Config{
 		HostName:              rac.ResourceAttributeConfig{Enabled: true},
 		HostType:              rac.ResourceAttributeConfig{Enabled: true},
 	},
+	MaxAttempts: 3,
+	MaxBackoff:  20 * time.Second,
 }
 
 var _ syntax.Defaulter = (*Config)(nil)
@@ -37,10 +45,14 @@ func (args *Config) SetToDefault() {
 	*args = DefaultArguments
 }
 
-func (args Config) Convert() map[string]interface{} {
-	return map[string]interface{}{
-		"tags":                append([]string{}, args.Tags...),
-		"resource_attributes": args.ResourceAttributes.Convert(),
+func (args Config) Convert() map[string]any {
+	return map[string]any{
+		"tags":                     append([]string{}, args.Tags...),
+		"resource_attributes":      args.ResourceAttributes.Convert(),
+		"max_attempts":             args.MaxAttempts,
+		"max_backoff":              args.MaxBackoff,
+		"fail_on_missing_metadata": args.FailOnMissingMetadata,
+		"tags_from_imds":           args.TagsFromIMDS,
 	}
 }
 
@@ -57,8 +69,8 @@ type ResourceAttributesConfig struct {
 	HostType              rac.ResourceAttributeConfig `alloy:"host.type,block,optional"`
 }
 
-func (r ResourceAttributesConfig) Convert() map[string]interface{} {
-	return map[string]interface{}{
+func (r ResourceAttributesConfig) Convert() map[string]any {
+	return map[string]any{
 		"cloud.account.id":        r.CloudAccountID.Convert(),
 		"cloud.availability_zone": r.CloudAvailabilityZone.Convert(),
 		"cloud.platform":          r.CloudPlatform.Convert(),

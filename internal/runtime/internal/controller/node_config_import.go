@@ -17,8 +17,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/runner"
-	"github.com/grafana/alloy/internal/runtime/internal/importsource"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/syntax/ast"
@@ -47,12 +47,14 @@ type ImportConfigNode struct {
 
 	importChildrenUpdateChan chan struct{} // used to trigger an update of the running children
 
+	// NOTE: To avoid deadlocks, whenever we need both locks we must always first lock the mut, then healthMut.
 	mut                       sync.RWMutex
 	importedContent           map[string]string
 	importConfigNodesChildren map[string]*ImportConfigNode
 	importChildrenRunning     bool
 	importedDeclares          map[string]ast.Body
 
+	// NOTE: To avoid deadlocks, whenever we need both locks we must always first lock the mut, then healthMut.
 	healthMut     sync.RWMutex
 	evalHealth    component.Health // Health of the last source evaluation
 	runHealth     component.Health // Health of running
@@ -101,7 +103,7 @@ func getImportManagedOptions(globals ComponentGlobals, cn *ImportConfigNode) com
 		}, cn.registry),
 		Tracer:   tracing.WrapTracer(globals.TraceProvider, cn.globalID),
 		DataPath: filepath.Join(globals.DataPath, cn.globalID),
-		GetServiceData: func(name string) (interface{}, error) {
+		GetServiceData: func(name string) (any, error) {
 			return globals.GetServiceData(name)
 		},
 	}
@@ -156,10 +158,14 @@ func (cn *ImportConfigNode) setContentHealth(t component.HealthType, msg string)
 //  4. Health reported from the source.
 //  5. Health reported from the nested imports.
 func (cn *ImportConfigNode) CurrentHealth() component.Health {
-	cn.healthMut.RLock()
-	defer cn.healthMut.RUnlock()
+	// NOTE: Since other code paths such as onContentUpdate -> setContentHealth will
+	// also end up acquiring both of these mutexes, it's _essential_ to keep the
+	// order in which they're locked consistent to avoid deadlocks. We must always first
+	// lock the mut, then healthMut.
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
+	cn.healthMut.RLock()
+	defer cn.healthMut.RUnlock()
 
 	health := component.LeastHealthy(
 		cn.runHealth,
@@ -257,7 +263,7 @@ func (cn *ImportConfigNode) processImportedContent(content *ast.File) error {
 		switch componentName {
 		case declareType:
 			cn.processDeclareBlock(blockStmt)
-		case importsource.BlockImportFile, importsource.BlockImportString, importsource.BlockImportHTTP, importsource.BlockImportGit:
+		case importsource.BlockNameFile, importsource.BlockNameString, importsource.BlockNameHTTP, importsource.BlockNameGit:
 			err := cn.processImportBlock(blockStmt, componentName)
 			if err != nil {
 				return err
@@ -289,6 +295,11 @@ func (cn *ImportConfigNode) processImportBlock(stmt *ast.BlockStmt, fullName str
 	childGlobals.OnBlockNodeUpdate = cn.onChildrenContentUpdate
 	// Children data paths are nested inside their parents to avoid collisions.
 	childGlobals.DataPath = filepath.Join(childGlobals.DataPath, cn.globalID)
+
+	if importsource.GetSourceType(cn.block.GetBlockName()) == importsource.HTTP && sourceType == importsource.File {
+		return fmt.Errorf("importing a module via import.http (nodeID: %s) that contains an import.file block is not supported", cn.nodeID)
+	}
+
 	cn.importConfigNodesChildren[stmt.Label] = NewImportConfigNode(stmt, childGlobals, sourceType)
 	return nil
 }
@@ -296,10 +307,9 @@ func (cn *ImportConfigNode) processImportBlock(stmt *ast.BlockStmt, fullName str
 // evaluateChildren evaluates the import nodes managed by this import node.
 func (cn *ImportConfigNode) evaluateChildren() error {
 	for _, child := range cn.importConfigNodesChildren {
-		err := child.Evaluate(&vm.Scope{
-			Parent:    nil,
-			Variables: make(map[string]interface{}),
-		})
+		err := child.Evaluate(vm.NewScope(map[string]any{
+			importsource.ModulePath: cn.source.ModulePath(),
+		}))
 		if err != nil {
 			return fmt.Errorf("imported node %s failed to evaluate, %v", child.label, err)
 		}
@@ -422,6 +432,13 @@ func (cn *ImportConfigNode) ImportedDeclares() map[string]ast.Body {
 	cn.mut.RLock()
 	defer cn.mut.RUnlock()
 	return cn.importedDeclares
+}
+
+// Scope returns the scope associated with the import source.
+func (cn *ImportConfigNode) Scope() *vm.Scope {
+	return vm.NewScope(map[string]any{
+		importsource.ModulePath: cn.source.ModulePath(),
+	})
 }
 
 // ImportConfigNodesChildren returns the ImportConfigNodesChildren of this ImportConfigNode.

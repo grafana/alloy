@@ -4,14 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
+	"github.com/grafana/dskit/backoff"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
+	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/discovery"
@@ -20,16 +25,17 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
 	toolscache "k8s.io/client-go/tools/cache"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/grafana/alloy/internal/component"
+	commonk8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/component/prometheus/operator/configgen"
 	compscrape "github.com/grafana/alloy/internal/component/prometheus/scrape"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
@@ -37,8 +43,58 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-// Generous timeout period for configuring all informers
-const informerSyncTimeout = 10 * time.Second
+type crdManagerInterface interface {
+	Run(ctx context.Context) error
+	ClusteringUpdated()
+	DebugInfo() any
+	GetScrapeConfig(ns, name string) []*config.ScrapeConfig
+}
+
+type crdManagerFactory interface {
+	New(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface
+}
+
+type realCrdManagerFactory struct{}
+
+func (realCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
+	return newCrdManager(opts, cluster, logger, args, kind, ls)
+}
+
+// CacheFactory creates controller-runtime caches with the given options.
+// This is returned by K8sFactory.New and can be called multiple times (e.g., once per namespace).
+type CacheFactory func(opts cache.Options) (cache.Cache, error)
+
+// K8sFactory creates Kubernetes clients and cache factories.
+// This allows tests to inject fake implementations while production code uses real ones.
+type K8sFactory interface {
+	// New creates a Kubernetes client and a cache factory.
+	// The cache factory can be called multiple times to create caches with different options.
+	New(clientConfig commonk8s.ClientArguments, logger log.Logger) (kubernetes.Interface, CacheFactory, error)
+}
+
+// realK8sFactory is the production implementation that creates real Kubernetes clients and caches.
+type realK8sFactory struct{}
+
+func (realK8sFactory) New(clientConfig commonk8s.ClientArguments, logger log.Logger) (kubernetes.Interface, CacheFactory, error) {
+	restConfig, err := clientConfig.BuildRESTConfig(logger)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating rest config: %w", err)
+	}
+
+	k8sClient, err := kubernetes.NewForConfig(restConfig)
+	if err != nil {
+		return nil, nil, fmt.Errorf("creating kubernetes client: %w", err)
+	}
+
+	cacheFactory := func(opts cache.Options) (cache.Cache, error) {
+		return cache.New(restConfig, opts)
+	}
+
+	return k8sClient, cacheFactory, nil
+}
+
+// defaultK8sFactory is the production K8sFactory used when none is injected.
+var defaultK8sFactory K8sFactory = realK8sFactory{}
 
 // crdManager is all of the fields required to run a crd based component.
 // on update, this entire thing should be recreated and restarted
@@ -64,7 +120,8 @@ type crdManager struct {
 	args    *operator.Arguments
 	cluster cluster.Cluster
 
-	client *kubernetes.Clientset
+	client     kubernetes.Interface
+	k8sFactory K8sFactory
 
 	kind string
 }
@@ -73,11 +130,12 @@ const (
 	KindPodMonitor     string = "podMonitor"
 	KindServiceMonitor string = "serviceMonitor"
 	KindProbe          string = "probe"
+	KindScrapeConfig   string = "scrapeConfig"
 )
 
 func newCrdManager(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) *crdManager {
 	switch kind {
-	case KindPodMonitor, KindServiceMonitor, KindProbe:
+	case KindPodMonitor, KindServiceMonitor, KindProbe, KindScrapeConfig:
 	default:
 		panic(fmt.Sprintf("Unknown kind for crdManager: %s", kind))
 	}
@@ -93,17 +151,17 @@ func newCrdManager(opts component.Options, cluster cluster.Cluster, logger log.L
 		kind:              kind,
 		clusteringUpdated: make(chan struct{}, 1),
 		ls:                ls,
+		k8sFactory:        defaultK8sFactory,
 	}
 }
 
 func (c *crdManager) Run(ctx context.Context) error {
-	restConfig, err := c.args.Client.BuildRESTConfig(c.logger)
+	// Create Kubernetes client and cache factory
+	var err error
+	var cacheFactory CacheFactory
+	c.client, cacheFactory, err = c.k8sFactory.New(c.args.Client, c.logger)
 	if err != nil {
-		return fmt.Errorf("creating rest config: %w", err)
-	}
-	c.client, err = kubernetes.NewForConfig(restConfig)
-	if err != nil {
-		return fmt.Errorf("creating kubernetes client: %w", err)
+		return fmt.Errorf("creating kubernetes client and cache factory: %w", err)
 	}
 
 	unregisterer := util.WrapWithUnregisterer(c.opts.Registerer)
@@ -115,7 +173,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}
 
 	// Start prometheus service discovery manager
-	c.discoveryManager = discovery.NewManager(ctx, c.logger, unregisterer, sdMetrics, discovery.Name(c.opts.ID))
+	c.discoveryManager = discovery.NewManager(ctx, slog.New(logging.NewSlogGoKitHandler(c.logger)), unregisterer, sdMetrics, discovery.Name(c.opts.ID))
 	go func() {
 		err := c.discoveryManager.Run()
 		if err != nil {
@@ -125,8 +183,15 @@ func (c *crdManager) Run(ctx context.Context) error {
 
 	// Start prometheus scrape manager.
 	alloyAppendable := prometheus.NewFanout(c.args.ForwardTo, c.opts.ID, c.opts.Registerer, c.ls)
-	opts := &scrape.Options{}
-	c.scrapeManager, err = scrape.NewManager(opts, c.logger, alloyAppendable, unregisterer)
+	defer alloyAppendable.Clear()
+
+	// TODO: Expose EnableCreatedTimestampZeroIngestion: https://github.com/grafana/alloy/issues/4045
+	scrapeOpts := &scrape.Options{
+		AppendMetadata:          c.args.Scrape.HonorMetadata,
+		PassMetadataInContext:   c.args.Scrape.HonorMetadata,
+		EnableTypeAndUnitLabels: c.args.Scrape.EnableTypeAndUnitLabels,
+	}
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}
@@ -141,10 +206,10 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}()
 
 	// run informers after everything else is running
-	if err := c.runInformers(restConfig, ctx); err != nil {
+	if err := c.runInformers(cacheFactory, ctx); err != nil {
 		return err
 	}
-	level.Info(c.logger).Log("msg", "informers  started")
+	level.Info(c.logger).Log("msg", "informers started")
 
 	var cachedTargets map[string][]*targetgroup.Group
 	// Start the target discovery loop to update the scrape manager with new targets.
@@ -176,6 +241,9 @@ func (c *crdManager) ClusteringUpdated() {
 // TODO: merge this code with the code in prometheus.scrape. This is a copy of that code, mostly because
 // we operate on slightly different data structures.
 func filterTargets(m map[string][]*targetgroup.Group, c cluster.Cluster) map[string][]*targetgroup.Group {
+	if !c.Ready() { // if cluster not ready, we don't take any traffic locally
+		return make(map[string][]*targetgroup.Group)
+	}
 	// the key in the map is the job name.
 	// the targetGroups have zero or more targets inside them.
 	// we should keep the same structure even when there are no targets in a group for this node to scrape,
@@ -221,7 +289,7 @@ func nonMetaLabelString(l model.LabelSet) string {
 }
 
 // DebugInfo returns debug information for the CRDManager.
-func (c *crdManager) DebugInfo() interface{} {
+func (c *crdManager) DebugInfo() any {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
@@ -237,7 +305,7 @@ func (c *crdManager) DebugInfo() interface{} {
 	return info
 }
 
-func (c *crdManager) getScrapeConfig(ns, name string) []*config.ScrapeConfig {
+func (c *crdManager) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
 	prefix := fmt.Sprintf("%s/%s/%s", c.kind, ns, name)
 	matches := []*config.ScrapeConfig{}
 	for k, v := range c.scrapeConfigs {
@@ -249,10 +317,11 @@ func (c *crdManager) getScrapeConfig(ns, name string) []*config.ScrapeConfig {
 }
 
 // runInformers starts all the informers that are required to discover CRDs.
-func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) error {
+func (c *crdManager) runInformers(cacheFactory CacheFactory, ctx context.Context) error {
 	scheme := runtime.NewScheme()
 	for _, add := range []func(*runtime.Scheme) error{
 		promopv1.AddToScheme,
+		promopv1alpha1.AddToScheme,
 	} {
 		if err := add(scheme); err != nil {
 			return fmt.Errorf("unable to register scheme: %w", err)
@@ -276,12 +345,12 @@ func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) 
 		if ls != labels.Nothing() {
 			opts.DefaultLabelSelector = ls
 		}
-		cache, err := cache.New(restConfig, opts)
+		informerCache, err := cacheFactory(opts)
 		if err != nil {
 			return err
 		}
 
-		informers := cache
+		informers := informerCache
 
 		go func() {
 			err := informers.Start(ctx)
@@ -301,6 +370,23 @@ func (c *crdManager) runInformers(restConfig *rest.Config, ctx context.Context) 
 	return nil
 }
 
+func getInformer(ctx context.Context, informers cache.Informers, prototype client.Object, timeout time.Duration) (cache.Informer, error) {
+	informerCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	informer, err := informers.GetInformer(informerCtx, prototype)
+	if err != nil {
+		if errors.Is(informerCtx.Err(), context.DeadlineExceeded) { // Check the context to prevent GetInformer returning a fake timeout
+			return nil, fmt.Errorf("timeout exceeded while configuring informers. Check the connection"+
+				" to the Kubernetes API is stable and that Alloy has appropriate RBAC permissions for %T", prototype)
+		}
+
+		return nil, err
+	}
+
+	return informer, err
+}
+
 // configureInformers configures the informers for the CRDManager to watch for crd changes.
 func (c *crdManager) configureInformers(ctx context.Context, informers cache.Informers) error {
 	var prototype client.Object
@@ -311,22 +397,43 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 		prototype = &promopv1.ServiceMonitor{}
 	case KindProbe:
 		prototype = &promopv1.Probe{}
+	case KindScrapeConfig:
+		prototype = &promopv1alpha1.ScrapeConfig{}
 	default:
 		return fmt.Errorf("unknown kind to configure Informers: %s", c.kind)
 	}
 
-	informerCtx, cancel := context.WithTimeout(ctx, informerSyncTimeout)
+	// On node restart, the API server is not always immediately available.
+	// Retry with backoff to give time for the network to initialize.
+	var informer cache.Informer
+	var err error
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.args.InformerSyncTimeout)
+	deadline, _ := timeoutCtx.Deadline()
 	defer cancel()
-
-	informer, err := informers.GetInformer(informerCtx, prototype)
-	if err != nil {
-		if errors.Is(informerCtx.Err(), context.DeadlineExceeded) { // Check the context to prevent GetInformer returning a fake timeout
-			return fmt.Errorf("timeout exceeded while configuring informers. Check the connection"+
-				" to the Kubernetes API is stable and that Alloy has appropriate RBAC permissions for %v", prototype)
+	backoff := backoff.New(
+		timeoutCtx,
+		backoff.Config{
+			MinBackoff: 1 * time.Second,
+			MaxBackoff: 10 * time.Second,
+			MaxRetries: 0, // Will retry until InformerSyncTimeout is reached
+		},
+	)
+	for {
+		// Retry to get the informer in case of a timeout.
+		informer, err = getInformer(ctx, informers, prototype, c.args.InformerSyncTimeout)
+		nextDelay := backoff.NextDelay()
+		// exit loop on success, timeout, max retries reached, or if next backoff exceeds timeout
+		if err == nil || !backoff.Ongoing() || time.Now().Add(nextDelay).After(deadline) {
+			break
 		}
-
+		level.Warn(c.logger).Log("msg", "failed to get informer, retrying", "next backoff", nextDelay, "err", err)
+		backoff.Wait()
+	}
+	if err != nil {
 		return err
 	}
+
 	const resync = 5 * time.Minute
 	switch c.kind {
 	case KindPodMonitor:
@@ -346,6 +453,12 @@ func (c *crdManager) configureInformers(ctx context.Context, informers cache.Inf
 			AddFunc:    c.onAddProbe,
 			UpdateFunc: c.onUpdateProbe,
 			DeleteFunc: c.onDeleteProbe,
+		}), resync)
+	case KindScrapeConfig:
+		_, err = informer.AddEventHandlerWithResyncPeriod((toolscache.ResourceEventHandlerFuncs{
+			AddFunc:    c.onAddScrapeConfig,
+			UpdateFunc: c.onUpdateScrapeConfig,
+			DeleteFunc: c.onDeleteScrapeConfig,
 		}), resync)
 	default:
 		return fmt.Errorf("unknown kind to configure Informers: %s", c.kind)
@@ -370,9 +483,14 @@ func (c *crdManager) apply() error {
 	for _, sc := range c.scrapeConfigs {
 		scs = append(scs, sc)
 	}
-	err = c.scrapeManager.ApplyConfig(&config.Config{
-		ScrapeConfigs: scs,
-	})
+
+	cfg, err := config.Load("", slog.New(logging.NewSlogGoKitHandler(c.logger)))
+	if err != nil {
+		return fmt.Errorf("loading empty config: %w", err)
+	}
+	cfg.ScrapeConfigs = scs
+
+	err = c.scrapeManager.ApplyConfig(cfg)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "error applying scrape configs", "err", err)
 		return err
@@ -438,18 +556,19 @@ func (c *crdManager) addPodMonitor(pm *promopv1.PodMonitor) {
 	c.addDebugInfo(pm.Namespace, pm.Name, err)
 }
 
-func (c *crdManager) onAddPodMonitor(obj interface{}) {
+func (c *crdManager) onAddPodMonitor(obj any) {
 	pm := obj.(*promopv1.PodMonitor)
 	level.Info(c.logger).Log("msg", "found pod monitor", "name", pm.Name)
 	c.addPodMonitor(pm)
 }
-func (c *crdManager) onUpdatePodMonitor(oldObj, newObj interface{}) {
+
+func (c *crdManager) onUpdatePodMonitor(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.PodMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addPodMonitor(newObj.(*promopv1.PodMonitor))
 }
 
-func (c *crdManager) onDeletePodMonitor(obj interface{}) {
+func (c *crdManager) onDeletePodMonitor(obj any) {
 	pm := obj.(*promopv1.PodMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -469,7 +588,7 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	mapKeys := []string{}
 	for i, ep := range sm.Spec.Endpoints {
 		var scrapeConfig *config.ScrapeConfig
-		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i)
+		scrapeConfig, err = gen.GenerateServiceMonitorConfig(sm, ep, i, promk8s.Role(c.args.KubernetesRole))
 		if err != nil {
 			// TODO(jcreixell): Generate Kubernetes event to inform of this error when running `kubectl get <servicemonitor>`.
 			level.Error(c.logger).Log("name", sm.Name, "err", err, "msg", "error generating scrapeconfig from serviceMonitor")
@@ -494,18 +613,19 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 	c.addDebugInfo(sm.Namespace, sm.Name, err)
 }
 
-func (c *crdManager) onAddServiceMonitor(obj interface{}) {
+func (c *crdManager) onAddServiceMonitor(obj any) {
 	pm := obj.(*promopv1.ServiceMonitor)
 	level.Info(c.logger).Log("msg", "found service monitor", "name", pm.Name)
 	c.addServiceMonitor(pm)
 }
-func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj interface{}) {
+
+func (c *crdManager) onUpdateServiceMonitor(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.ServiceMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addServiceMonitor(newObj.(*promopv1.ServiceMonitor))
 }
 
-func (c *crdManager) onDeleteServiceMonitor(obj interface{}) {
+func (c *crdManager) onDeleteServiceMonitor(obj any) {
 	pm := obj.(*promopv1.ServiceMonitor)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
@@ -541,19 +661,74 @@ func (c *crdManager) addProbe(p *promopv1.Probe) {
 	c.addDebugInfo(p.Namespace, p.Name, err)
 }
 
-func (c *crdManager) onAddProbe(obj interface{}) {
+func (c *crdManager) onAddProbe(obj any) {
 	pm := obj.(*promopv1.Probe)
 	level.Info(c.logger).Log("msg", "found probe", "name", pm.Name)
 	c.addProbe(pm)
 }
-func (c *crdManager) onUpdateProbe(oldObj, newObj interface{}) {
+
+func (c *crdManager) onUpdateProbe(oldObj, newObj any) {
 	pm := oldObj.(*promopv1.Probe)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	c.addProbe(newObj.(*promopv1.Probe))
 }
 
-func (c *crdManager) onDeleteProbe(obj interface{}) {
+func (c *crdManager) onDeleteProbe(obj any) {
 	pm := obj.(*promopv1.Probe)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	if err := c.apply(); err != nil {
+		level.Error(c.logger).Log("name", pm.Name, "err", err, "msg", "error applying scrape configs after deleting "+c.kind)
+	}
+}
+
+func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
+	var err error
+	gen := configgen.ConfigGenerator{
+		Secrets:                  configgen.NewSecretManager(c.client),
+		Client:                   &c.args.Client,
+		AdditionalRelabelConfigs: c.args.RelabelConfigs,
+		ScrapeOptions:            c.args.Scrape,
+	}
+	mapKeys := []string{}
+	scrapeConfigs, errs := gen.GenerateScrapeConfigConfigs(pm)
+	objName := fmt.Sprintf("%s/%s", pm.Namespace, pm.Name)
+	for _, err := range errs {
+		level.Warn(c.logger).Log("msg", "error in scrape config", "source", objName, "err", err)
+	}
+	if len(errs) > 0 {
+		c.addDebugInfo(pm.Namespace, pm.Name, errors.Join(errs...))
+		if len(scrapeConfigs) == 0 {
+			return
+		}
+	}
+	c.mut.Lock()
+	for _, scrapeConfig := range scrapeConfigs {
+		mapKeys = append(mapKeys, scrapeConfig.JobName)
+		c.discoveryConfigs[scrapeConfig.JobName] = scrapeConfig.ServiceDiscoveryConfigs
+		c.scrapeConfigs[scrapeConfig.JobName] = scrapeConfig
+	}
+	c.crdsToMapKeys[objName] = mapKeys
+	c.mut.Unlock()
+	if err = c.apply(); err != nil {
+		level.Error(c.logger).Log("name", pm.Name, "err", err, "msg", "error applying scrape configs from "+c.kind)
+	}
+	c.addDebugInfo(pm.Namespace, pm.Name, err)
+}
+
+func (c *crdManager) onAddScrapeConfig(obj any) {
+	pm := obj.(*promopv1alpha1.ScrapeConfig)
+	level.Info(c.logger).Log("msg", "found scrape config", "name", pm.Name)
+	c.addScrapeConfig(pm)
+}
+
+func (c *crdManager) onUpdateScrapeConfig(oldObj, newObj any) {
+	pm := oldObj.(*promopv1alpha1.ScrapeConfig)
+	c.clearConfigs(pm.Namespace, pm.Name)
+	c.addScrapeConfig(newObj.(*promopv1alpha1.ScrapeConfig))
+}
+
+func (c *crdManager) onDeleteScrapeConfig(obj any) {
+	pm := obj.(*promopv1alpha1.ScrapeConfig)
 	c.clearConfigs(pm.Namespace, pm.Name)
 	if err := c.apply(); err != nil {
 		level.Error(c.logger).Log("name", pm.Name, "err", err, "msg", "error applying scrape configs after deleting "+c.kind)

@@ -1,0 +1,56 @@
+{{- if .Capabilities.APIVersions.Has "autoscaling.k8s.io/v1" -}}
+{{- if .Values.controller.autoscaling.vertical.enabled -}}
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: {{ include "alloy.fullname" . }}
+  labels:
+    {{- include "alloy.labels" . | nindent 4 }}
+    app.kubernetes.io/component: availability
+spec:
+  {{- with .Values.controller.autoscaling.vertical }}
+  {{- with .recommenders }}
+  recommenders:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .resourcePolicy }}
+  resourcePolicy:
+    {{- with .containerPolicies }}
+    containerPolicies:
+    {{- range . }}
+    - containerName: {{ .containerName }}
+      {{- with .controlledResources }}
+      controlledResources:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .controlledValues }}
+      controlledValues: {{ .controlledValues }}
+      {{- end }}
+      {{- with .maxAllowed }}
+      maxAllowed:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .minAllowed }}
+      minAllowed:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- with .updatePolicy }}
+  updatePolicy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  targetRef:
+    apiVersion: apps/v1
+    {{- if eq .Values.controller.type "deployment" }}
+    kind: Deployment
+    {{- else if eq .Values.controller.type "statefulset" }}
+    kind: StatefulSet
+    {{- else }}
+    kind: DaemonSet
+    {{- end }}
+    name: {{ include "alloy.fullname" . }}
+{{- end }}
+{{- end }}

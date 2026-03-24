@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/pipeline"
 	"go.opentelemetry.io/collector/service/pipelines"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -59,24 +61,24 @@ func createPipelineGroups(cfg pipelines.Config) ([]pipelineGroup, error) {
 		group := groups[name]
 		group.Name = name
 
-		switch key.Type() {
-		case component.DataTypeMetrics:
+		switch key.Signal() {
+		case pipeline.SignalMetrics:
 			if group.Metrics != nil {
 				return nil, fmt.Errorf("duplicate metrics pipeline for pipeline named %q", name)
 			}
 			group.Metrics = config
-		case component.DataTypeLogs:
+		case pipeline.SignalLogs:
 			if group.Logs != nil {
 				return nil, fmt.Errorf("duplicate logs pipeline for pipeline named %q", name)
 			}
 			group.Logs = config
-		case component.DataTypeTraces:
+		case pipeline.SignalTraces:
 			if group.Traces != nil {
 				return nil, fmt.Errorf("duplicate traces pipeline for pipeline named %q", name)
 			}
 			group.Traces = config
 		default:
-			return nil, fmt.Errorf("unknown pipeline type %q", key.Type())
+			return nil, fmt.Errorf("unknown pipeline type %q", key.Signal())
 		}
 
 		groups[name] = group
@@ -156,24 +158,24 @@ func mergeIDs(in ...[]component.ID) []component.ID {
 
 // NextMetrics returns the set of components who should be sent metrics from
 // the given component ID.
-func (group pipelineGroup) NextMetrics(fromID component.InstanceID) []component.InstanceID {
+func (group pipelineGroup) NextMetrics(fromID componentstatus.InstanceID) []componentstatus.InstanceID {
 	return nextInPipeline(group.Metrics, fromID)
 }
 
 // NextLogs returns the set of components who should be sent logs from the
 // given component ID.
-func (group pipelineGroup) NextLogs(fromID component.InstanceID) []component.InstanceID {
+func (group pipelineGroup) NextLogs(fromID componentstatus.InstanceID) []componentstatus.InstanceID {
 	return nextInPipeline(group.Logs, fromID)
 }
 
 // NextTraces returns the set of components who should be sent traces from the
 // given component ID.
-func (group pipelineGroup) NextTraces(fromID component.InstanceID) []component.InstanceID {
+func (group pipelineGroup) NextTraces(fromID componentstatus.InstanceID) []componentstatus.InstanceID {
 	return nextInPipeline(group.Traces, fromID)
 }
 
-func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID component.InstanceID) []component.InstanceID {
-	switch fromID.Kind {
+func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID componentstatus.InstanceID) []componentstatus.InstanceID {
+	switch fromID.Kind() {
 	case component.KindReceiver, component.KindConnector:
 		// Validate this receiver is part of the pipeline.
 		if !findInComponentIds(fromID, pipeline.Receivers) {
@@ -183,7 +185,7 @@ func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID component.Instanc
 		// Receivers and connectors should either send to the first processor
 		// if one exists or to every exporter otherwise.
 		if len(pipeline.Processors) > 0 {
-			return []component.InstanceID{{Kind: component.KindProcessor, ID: pipeline.Processors[0]}}
+			return []componentstatus.InstanceID{*componentstatus.NewInstanceID(pipeline.Processors[0], component.KindProcessor)}
 		}
 		return toComponentInstanceIDs(component.KindExporter, pipeline.Exporters)
 
@@ -195,10 +197,10 @@ func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID component.Instanc
 
 		// Processors should send to the next processor if one exists or to every
 		// exporter otherwise.
-		processorIndex := slices.Index(pipeline.Processors, fromID.ID)
+		processorIndex := slices.Index(pipeline.Processors, fromID.ComponentID())
 		if processorIndex+1 < len(pipeline.Processors) {
 			// Send to next processor.
-			return []component.InstanceID{{Kind: component.KindProcessor, ID: pipeline.Processors[processorIndex+1]}}
+			return []componentstatus.InstanceID{*componentstatus.NewInstanceID(pipeline.Processors[processorIndex+1], component.KindProcessor)}
 		}
 
 		return toComponentInstanceIDs(component.KindExporter, pipeline.Exporters)
@@ -208,29 +210,26 @@ func nextInPipeline(pipeline *pipelines.PipelineConfig, fromID component.Instanc
 		return nil
 
 	default:
-		panic(fmt.Sprintf("nextInPipeline: unsupported component kind %v", fromID.Kind))
+		panic(fmt.Sprintf("nextInPipeline: unsupported component kind %v", fromID.Kind()))
 	}
 }
 
 // toComponentInstanceIDs converts a slice of [component.ID] into a slice of
-// [component.InstanceID]. Each element in the returned slice will have a
+// [componentstatus.InstanceID]. Each element in the returned slice will have a
 // kind matching the provided kind argument.
-func toComponentInstanceIDs(kind component.Kind, ids []component.ID) []component.InstanceID {
-	res := make([]component.InstanceID, 0, len(ids))
+func toComponentInstanceIDs(kind component.Kind, ids []component.ID) []componentstatus.InstanceID {
+	res := make([]componentstatus.InstanceID, 0, len(ids))
 
 	for _, id := range ids {
-		res = append(res, component.InstanceID{
-			ID:   id,
-			Kind: kind,
-		})
+		res = append(res, *componentstatus.NewInstanceID(id, kind))
 	}
 
 	return res
 }
 
-func findInComponentIds(fromID component.InstanceID, componentIDs []component.ID) bool {
+func findInComponentIds(fromID componentstatus.InstanceID, componentIDs []component.ID) bool {
 	for _, id := range componentIDs {
-		if fromID.ID == id {
+		if fromID.ComponentID() == id {
 			return true
 		}
 	}

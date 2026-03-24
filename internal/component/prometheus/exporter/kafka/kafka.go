@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/IBM/sarama"
+	"github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
@@ -11,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/kafka_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/prometheus/common/config"
 )
 
 var DefaultArguments = Arguments{
@@ -92,17 +93,18 @@ func (a *Arguments) Validate() error {
 
 func customizeTarget(baseTarget discovery.Target, args component.Arguments) []discovery.Target {
 	a := args.(Arguments)
-	target := baseTarget
+	targetBuilder := discovery.NewTargetBuilderFrom(baseTarget)
 	if len(a.KafkaURIs) > 1 {
-		target["instance"] = a.Instance
+		targetBuilder.Set("instance", a.Instance)
 	} else {
-		target["instance"] = a.KafkaURIs[0]
+		targetBuilder.Set("instance", a.KafkaURIs[0])
 	}
-	return []discovery.Target{target}
+	return []discovery.Target{targetBuilder.Target()}
 }
 
-func createExporter(opts component.Options, args component.Arguments, defaultInstanceKey string) (integrations.Integration, string, error) {
+func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
+	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
 	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 

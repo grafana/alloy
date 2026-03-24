@@ -5,7 +5,7 @@ title: pyroscope
 weight: 100
 ---
 
-# pyroscope
+# `pyroscope`
 
 This section contains reference documentation for the `pyroscope` components.
 

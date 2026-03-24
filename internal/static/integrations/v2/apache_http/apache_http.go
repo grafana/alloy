@@ -1,5 +1,5 @@
 // Package apache_http embeds https://github.com/Lusitaniae/apache_exporter
-package apache_http //nolint:golint
+package apache_http
 
 import (
 	"net/http"
@@ -49,7 +49,7 @@ func (c *Config) Identifier(globals integrations_v2.Globals) (string, error) {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
-func (c *Config) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
 	*c = DefaultConfig
 
 	type plain Config

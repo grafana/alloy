@@ -36,6 +36,24 @@ const (
 //go:embed testdata/*
 var testData embed.FS
 
+// These timestamps line up with the log entries in the testdata/cw_logs_mixed.json file.
+var cwLogsTimestamps = []int64{
+	1684423980083,
+	1684424003641,
+	1684424003820,
+	1684424003822,
+	1684424003859,
+	1684424003859,
+	1684424005707,
+	1684424005708,
+	1684424005718,
+	1684424005718,
+	1684424007492,
+	1684424007493,
+	1684424007494,
+	1684424007494,
+}
+
 func readTestData(t *testing.T, name string) string {
 	f, err := testData.ReadFile(name)
 	if err != nil {
@@ -111,18 +129,20 @@ func TestHandler(t *testing.T) {
 			Body: readTestData(t, "testdata/direct_put.json"),
 			Relabels: []*relabel.Config{
 				{
-					SourceLabels: model.LabelNames{"__aws_firehose_request_id"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					Replacement:  "$1",
-					TargetLabel:  "aws_request_id",
-					Action:       relabel.Replace,
+					SourceLabels:         model.LabelNames{"__aws_firehose_request_id"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					Replacement:          "$1",
+					TargetLabel:          "aws_request_id",
+					Action:               relabel.Replace,
+					NameValidationScheme: model.LegacyValidation,
 				},
 				{
-					SourceLabels: model.LabelNames{"__aws_firehose_source_arn"},
-					Regex:        relabel.MustNewRegexp("(.*)"),
-					Replacement:  "$1",
-					TargetLabel:  "aws_source_arn",
-					Action:       relabel.Replace,
+					SourceLabels:         model.LabelNames{"__aws_firehose_source_arn"},
+					Regex:                relabel.MustNewRegexp("(.*)"),
+					Replacement:          "$1",
+					TargetLabel:          "aws_source_arn",
+					Action:               relabel.Replace,
+					NameValidationScheme: model.LegacyValidation,
 				},
 			},
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
@@ -196,8 +216,8 @@ func TestHandler(t *testing.T) {
 				require.Equal(t, "86208cf6-2bcc-47e6-9010-02ca9f44a025", r.RequestID)
 
 				require.Len(t, entries, 14)
-				expectedTimestamp := time.Unix(cwRequestTimestamp/1000, 0)
-				for _, e := range entries {
+				for i, e := range entries {
+					var expectedTimestamp = time.UnixMilli(cwLogsTimestamps[i])
 					require.Equal(t, expectedTimestamp, e.Timestamp, "timestamp is other than expected")
 				}
 			},
@@ -461,11 +481,12 @@ func assertCloudwatchDataContents(t *testing.T, _ *httptest.ResponseRecorder, en
 
 func keepLabelRule(src, dst string) *relabel.Config {
 	return &relabel.Config{
-		SourceLabels: model.LabelNames{model.LabelName(src)},
-		Regex:        relabel.MustNewRegexp("(.*)"),
-		Replacement:  "$1",
-		TargetLabel:  dst,
-		Action:       relabel.Replace,
+		SourceLabels:         model.LabelNames{model.LabelName(src)},
+		Regex:                relabel.MustNewRegexp("(.*)"),
+		Replacement:          "$1",
+		TargetLabel:          dst,
+		Action:               relabel.Replace,
+		NameValidationScheme: model.LegacyValidation,
 	}
 }
 
@@ -736,9 +757,13 @@ func TestGetStaticLabelsFromRequest_NoError_InvalidData(t *testing.T) {
 			got := handler.tryToGetStaticLabelsFromRequest(req, "001")
 
 			require.Equal(t, tt.want, got)
-
-			err := testutil.GatherAndCompare(registry, strings.NewReader(tt.expectedMetrics), "loki_source_awsfirehose_invalid_static_labels_errors")
-			require.NoError(t, err)
+			if tt.expectedMetrics != "" {
+				err := testutil.GatherAndCompare(registry, strings.NewReader(tt.expectedMetrics), "loki_source_awsfirehose_invalid_static_labels_errors")
+				require.NoError(t, err)
+			} else {
+				err := testutil.GatherAndCompare(registry, strings.NewReader(tt.expectedMetrics))
+				require.NoError(t, err)
+			}
 		})
 	}
 }

@@ -1,4 +1,4 @@
-package elasticsearch_exporter //nolint:golint
+package elasticsearch_exporter
 
 import (
 	"crypto/tls"

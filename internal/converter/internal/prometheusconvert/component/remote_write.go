@@ -10,9 +10,9 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert/build"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/prometheus/common/sigv4"
 	prom_config "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	"github.com/prometheus/sigv4"
 )
 
 func AppendPrometheusRemoteWrite(pb *build.PrometheusBlocks, globalConfig prom_config.GlobalConfig, remoteWriteConfigs []*prom_config.RemoteWriteConfig, label string) *remotewrite.Exports {
@@ -72,6 +72,7 @@ func getEndpointOptions(remoteWriteConfigs []*prom_config.RemoteWriteConfig) []*
 			Headers:              remoteWriteConfig.Headers,
 			SendExemplars:        remoteWriteConfig.SendExemplars,
 			SendNativeHistograms: remoteWriteConfig.SendNativeHistograms,
+			ProtobufMessage:      string(remoteWriteConfig.ProtobufMessage),
 			HTTPClientConfig:     common.ToHttpClientConfig(&remoteWriteConfig.HTTPClientConfig),
 			QueueOptions:         toQueueOptions(&remoteWriteConfig.QueueConfig),
 			MetadataOptions:      toMetadataOptions(&remoteWriteConfig.MetadataConfig),
@@ -129,10 +130,29 @@ func toAzureAD(azureADConfig *azuread.AzureADConfig) *remotewrite.AzureADConfig 
 		return nil
 	}
 
-	return &remotewrite.AzureADConfig{
+	res := &remotewrite.AzureADConfig{
 		Cloud: azureADConfig.Cloud,
-		ManagedIdentity: remotewrite.ManagedIdentityConfig{
-			ClientID: azureADConfig.ManagedIdentity.ClientID,
-		},
 	}
+
+	if azureADConfig.ManagedIdentity != nil {
+		res.ManagedIdentity = &remotewrite.ManagedIdentityConfig{
+			ClientID: azureADConfig.ManagedIdentity.ClientID,
+		}
+	}
+
+	if azureADConfig.OAuth != nil {
+		res.OAuth = &remotewrite.OAuthConfig{
+			ClientID:     azureADConfig.OAuth.ClientID,
+			ClientSecret: alloytypes.Secret(azureADConfig.OAuth.ClientSecret),
+			TenantID:     azureADConfig.OAuth.TenantID,
+		}
+	}
+
+	if azureADConfig.SDK != nil {
+		res.SDK = &remotewrite.SDKConfig{
+			TenantID: azureADConfig.SDK.TenantID,
+		}
+	}
+
+	return res
 }

@@ -19,22 +19,21 @@ This topic describes how to:
 
 ## Components used in this topic
 
-* [prometheus.scrape][]
-* [prometheus.remote_write][]
+* [`prometheus.scrape`][prometheus.scrape]
+* [`prometheus.remote_write`][prometheus.remote_write]
 
 ## Before you begin
 
-* You must have an existing Prometheus configuration.
+* You must have a Prometheus configuration.
 * You must have a set of Prometheus applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
 * You must be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
 
 ## Convert a Prometheus configuration
 
 To fully migrate your configuration from [Prometheus] to {{< param "PRODUCT_NAME" >}}, you must convert your Prometheus configuration into an {{< param "PRODUCT_NAME" >}} configuration.
-This conversion will enable you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
+This conversion allows you to take full advantage of the many additional features available in {{< param "PRODUCT_NAME" >}}.
 
-> In this task, you will use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}}
-> configuration from a Prometheus configuration.
+In this task, you use the [convert][] CLI command to output an {{< param "PRODUCT_NAME" >}} configuration from a Prometheus configuration.
 
 1. Open a terminal window and run the following command.
 
@@ -44,8 +43,8 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-   - _`<INPUT_CONFIG_PATH>`_: The full path to the Prometheus configuration.
-   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the Prometheus configuration.
+   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. [Run][] {{< param "PRODUCT_NAME" >}} using the new {{< param "PRODUCT_NAME" >}} configuration from _`<OUTPUT_CONFIG_PATH>`_:
 
@@ -65,8 +64,8 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-   - _`<INPUT_CONFIG_PATH>`_: The full path to the Prometheus configuration.
-   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the Prometheus configuration.
+   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 1. You can also output a diagnostic report by including the `--report` flag.
 
@@ -76,9 +75,9 @@ This conversion will enable you to take full advantage of the many additional fe
 
    Replace the following:
 
-   - _`<INPUT_CONFIG_PATH>`_: The full path to the Prometheus configuration.
-   - _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
-   - _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
+   * _`<INPUT_CONFIG_PATH>`_: The full path to the Prometheus configuration.
+   * _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+   * _`<OUTPUT_REPORT_PATH>`_: The output path for the report.
 
     Using the [example][] Prometheus configuration below, the diagnostic report provides the following information:
 
@@ -91,17 +90,16 @@ This conversion will enable you to take full advantage of the many additional fe
 
 ## Run a Prometheus configuration
 
-If you’re not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your existing Prometheus configuration.
+If you're not ready to completely switch to an {{< param "PRODUCT_NAME" >}} configuration, you can run {{< param "PRODUCT_NAME" >}} using your Prometheus configuration.
 The `--config.format=prometheus` flag tells {{< param "PRODUCT_NAME" >}} to convert your Prometheus configuration to an {{< param "PRODUCT_NAME" >}} configuration and load it directly without saving the new configuration.
-This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your existing Prometheus configuration infrastructure.
+This allows you to try {{< param "PRODUCT_NAME" >}} without modifying your Prometheus configuration infrastructure.
 
-> In this task, you will use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}}
-> using a Prometheus configuration.
+In this task, you use the [run][] CLI command to run {{< param "PRODUCT_NAME" >}} using a Prometheus configuration.
 
-[Run][run alloy] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=prometheus`.
+[Run][run] {{< param "PRODUCT_NAME" >}} and include the command line flag `--config.format=prometheus`.
 Your configuration file must be a valid Prometheus configuration file rather than an {{< param "PRODUCT_NAME" >}} configuration file.
 
-### Debugging
+### Debug
 
 1. You can follow the convert CLI command [debugging][] instructions to generate a diagnostic report.
 
@@ -146,8 +144,8 @@ alloy convert --source-format=prometheus --output=<OUTPUT_CONFIG_PATH> <INPUT_CO
 
 Replace the following:
 
-- _`<INPUT_CONFIG_PATH>`_: The full path to the Prometheus configuration.
-- _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
+* _`<INPUT_CONFIG_PATH>`_: The full path to the Prometheus configuration.
+* _`<OUTPUT_CONFIG_PATH>`_: The full path to output the {{< param "PRODUCT_NAME" >}} configuration.
 
 The new {{< param "PRODUCT_NAME" >}} configuration file looks like this:
 
@@ -186,7 +184,7 @@ prometheus.remote_write "default" {
 
 ## Limitations
 
-Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} will issue warnings or errors where the conversion can't be performed.
+Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} issues warnings or errors where the conversion can't be performed.
 
 After the configuration is converted, review the {{< param "PRODUCT_NAME" >}} configuration file created and verify that it's correct before starting to use it in a production environment.
 
@@ -195,7 +193,7 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 * The following configurations aren't available for conversion to {{< param "PRODUCT_NAME" >}}: `rule_files`, `alerting`, `remote_read`, `storage`, and `tracing`.
   Any additional unsupported features are returned as errors during conversion.
 * Check if you are using any extra command line arguments with Prometheus that aren't present in your configuration file. For example, `--web.listen-address`.
-* Metamonitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Prometheus metamonitoring metrics but will use a different name.
+* Meta-monitoring metrics exposed by {{< param "PRODUCT_NAME" >}} usually match Prometheus meta-monitoring metrics but uses a different name.
   Make sure that you use the new metric names, for example, in your alerts and dashboards queries.
 * The logs produced by {{< param "PRODUCT_NAME" >}} differ from those produced by Prometheus.
 * {{< param "PRODUCT_NAME" >}} exposes the {{< param "PRODUCT_NAME" >}} [UI][].
@@ -208,7 +206,6 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
 [run]: ../../../reference/cli/run/
-[run alloy]: ../../../set-up/run/
 [DebuggingUI]: ../../../troubleshoot/debug/
 [configuration]: ../../../get-started/configuration-syntax/
 [UI]: ../../../troubleshoot/debug/#alloy-ui

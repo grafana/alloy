@@ -1,19 +1,178 @@
 package runtime
 
 import (
+	"bytes"
 	"context"
+	"io"
 	"os"
+	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
+	"time"
+
+	"github.com/go-kit/log"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
-	"github.com/grafana/alloy/internal/runtime/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
+	"github.com/grafana/alloy/internal/runtime/internal/testservices"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/stretchr/testify/require"
-	"go.uber.org/goleak"
+	"github.com/grafana/alloy/internal/service"
 )
+
+func TestRuntime(t *testing.T) {
+	type serviceState struct {
+		running   *atomic.Bool
+		runCalled *atomic.Int32
+	}
+
+	type ScheduledComponent interface {
+		NodeID() string
+		CurrentHealth() component.Health
+	}
+
+	var collectComponents = func(ctrl *Runtime) []ScheduledComponent {
+		var scheduledComponents []ScheduledComponent
+
+		for _, c := range ctrl.loader.Components() {
+			scheduledComponents = append(scheduledComponents, c)
+		}
+		for _, c := range ctrl.loader.Imports() {
+			scheduledComponents = append(scheduledComponents, c)
+		}
+
+		return scheduledComponents
+	}
+
+	var verifyHealth = func(comps []ScheduledComponent, l int, h component.HealthType) {
+		require.Len(t, comps, l)
+		for _, c := range comps {
+			assert.Equal(t, h, c.CurrentHealth().Health, "unexpected status for %s", c.NodeID())
+		}
+	}
+
+	var verifyService = func(s serviceState, running bool) {
+		require.Equal(t, running, s.running.Load())
+		require.Equal(t, int32(1), s.runCalled.Load())
+	}
+
+	var reload = func(ctrl *Runtime, cfg string) {
+		source, err := ParseSource("", []byte(cfg))
+		require.NoError(t, err)
+		require.NoError(t, ctrl.LoadSource(source, nil, ""))
+		require.Eventually(t, func() bool { return ctrl.LoadComplete() }, 2*time.Second, 100*time.Millisecond)
+	}
+
+	cfg := `
+		import.string "test" {
+			content = ` + "`" + `declare "module" {testcomponents.tick "ticker" {frequency = "1s"}}` + "`" + `
+		}
+
+		testcomponents.tick "ticker" {
+			frequency = "1s"
+		}
+
+		testcomponents.passthrough "static" {
+			input = "hello, world!"
+		}
+
+		testcomponents.passthrough "ticker" {
+			input = testcomponents.tick.ticker.tick_time
+		}
+
+		testcomponents.passthrough "forwarded" {
+			input = testcomponents.passthrough.ticker.output
+		}
+
+		test.module "m" {}
+		
+		foreach "fe" {
+			collection = [1, 2]
+			var = "id"
+    		template {
+				testcomponents.tick "ticker" {
+					frequency = "1s"
+				}
+			}
+		}
+	`
+
+	svcState := serviceState{
+		running:   atomic.NewBool(false),
+		runCalled: atomic.NewInt32(0),
+	}
+
+	opts := testOptions(t, &testservices.Fake{
+		RunFunc: func(ctx context.Context, host service.Host) error {
+			svcState.running.Store(true)
+			defer svcState.running.Store(false)
+			svcState.runCalled.Inc()
+			<-ctx.Done()
+			return nil
+		},
+	})
+
+	opts.MinStability = featuregate.StabilityExperimental
+
+	ctrl, err := New(opts)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		ctrl.Run(ctx)
+	})
+
+	reload(ctrl, cfg)
+	verifyService(svcState, true)
+	verifyHealth(collectComponents(ctrl), 7, component.HealthTypeHealthy)
+
+	var toBeStopped []ScheduledComponent
+	for _, c := range ctrl.loader.Components() {
+		if c.NodeID() == "testcomponents.passthrough.forwarded" {
+			toBeStopped = append(toBeStopped, c)
+		}
+	}
+
+	require.Len(t, toBeStopped, 1)
+
+	cfg = `
+			testcomponents.tick "ticker" {
+				frequency = "1s"
+			}
+
+			testcomponents.passthrough "static" {
+				input = "hello, world!"
+			}
+
+			testcomponents.passthrough "ticker" {
+				input = testcomponents.tick.ticker.tick_time
+			}
+		`
+
+	reload(ctrl, cfg)
+
+	ctrl.loader.Imports()
+
+	verifyService(svcState, true)
+
+	verifyHealth(collectComponents(ctrl), 3, component.HealthTypeHealthy)
+	verifyHealth(toBeStopped, 1, component.HealthTypeExited)
+
+	cancel()
+	wg.Wait()
+
+	verifyService(svcState, false)
+	verifyHealth(collectComponents(ctrl), 3, component.HealthTypeExited)
+}
 
 var testFile = `
 	testcomponents.tick "ticker" {
@@ -35,15 +194,16 @@ var testFile = `
 
 func TestController_LoadSource_Evaluation(t *testing.T) {
 	defer verifyNoGoroutineLeaks(t)
-	ctrl := New(testOptions(t))
-	defer cleanUpController(ctrl)
+	ctrl, err := New(testOptions(t))
+	require.NoError(t, err)
+	defer cleanUpController(t.Context(), ctrl)
 
 	// Use testFile from graph_builder_test.go.
 	f, err := ParseSource(t.Name(), []byte(testFile))
 	require.NoError(t, err)
 	require.NotNil(t, f)
 
-	err = ctrl.LoadSource(f, nil)
+	err = ctrl.LoadSource(f, nil, "")
 	require.NoError(t, err)
 	require.Len(t, ctrl.loader.Components(), 4)
 
@@ -52,6 +212,136 @@ func TestController_LoadSource_Evaluation(t *testing.T) {
 	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
 	require.Equal(t, "hello, world!", in.(testcomponents.PassthroughConfig).Input)
 	require.Equal(t, "hello, world!", out.(testcomponents.PassthroughExports).Output)
+}
+
+var modulePathTestFile = `
+	testcomponents.tick "ticker" {
+		frequency = "1s"
+	}
+	testcomponents.passthrough "static" {
+		input = module_path
+	}
+	testcomponents.passthrough "ticker" {
+		input = testcomponents.tick.ticker.tick_time
+	}
+	testcomponents.passthrough "forwarded" {
+		input = testcomponents.passthrough.ticker.output
+	}
+`
+
+func TestController_LoadSource_WithModulePath_Evaluation(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	ctrl, err := New(testOptions(t))
+	require.NoError(t, err)
+	defer cleanUpController(t.Context(), ctrl)
+
+	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	filePath := filepath.Join("tmp_modulePath_test", "test", "main.alloy")
+	require.NoError(t, os.Mkdir("tmp_modulePath_test", 0700))
+	require.NoError(t, os.Mkdir(filepath.Join("tmp_modulePath_test", "test"), 0700))
+	defer os.RemoveAll("tmp_modulePath_test")
+	require.NoError(t, os.WriteFile(filePath, []byte(""), 0664))
+
+	err = ctrl.LoadSource(f, nil, filePath)
+	require.NoError(t, err)
+	require.Len(t, ctrl.loader.Components(), 4)
+
+	// Check the inputs and outputs of things that should be immediately resolved
+	// without having to run the components.
+	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
+	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), in.(testcomponents.PassthroughConfig).Input)
+	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), out.(testcomponents.PassthroughExports).Output)
+}
+
+func TestController_LoadSource_WithModulePathWithoutFileExtension_Evaluation(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	ctrl, err := New(testOptions(t))
+	require.NoError(t, err)
+	defer cleanUpController(t.Context(), ctrl)
+
+	f, err := ParseSource(t.Name(), []byte(modulePathTestFile))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	filePath := filepath.Join("tmp_modulePath_test", "test", "main.alloy")
+	require.NoError(t, os.Mkdir("tmp_modulePath_test", 0700))
+	require.NoError(t, os.Mkdir(filepath.Join("tmp_modulePath_test", "test"), 0700))
+	defer os.RemoveAll("tmp_modulePath_test")
+	require.NoError(t, os.WriteFile(filePath, []byte(""), 0664))
+
+	err = ctrl.LoadSource(f, nil, filePath)
+	require.NoError(t, err)
+	require.Len(t, ctrl.loader.Components(), 4)
+
+	// Check the inputs and outputs of things that should be immediately resolved
+	// without having to run the components.
+	in, out := getFields(t, ctrl.loader.Graph(), "testcomponents.passthrough.static")
+	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), in.(testcomponents.PassthroughConfig).Input)
+	require.Equal(t, filepath.Join("tmp_modulePath_test", "test"), out.(testcomponents.PassthroughExports).Output)
+}
+
+// This test reloads the config a few times and checks that Alloy does not log errors.
+// The ticker has a very small frequency to put pressure on the concurrent evaluations happening
+// in the runtime while the loader is concurrently reloading the config.
+func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
+	defer verifyNoGoroutineLeaks(t)
+	opts := testOptions(t)
+
+	var testFileFastTick = `
+	testcomponents.tick "ticker" {
+		frequency = "10ns"
+	}
+
+	testcomponents.passthrough "static" {
+		input = "hello, world!"
+	}
+
+	testcomponents.passthrough "ticker" {
+		input = testcomponents.tick.ticker.tick_time
+	}
+
+	testcomponents.passthrough "forwarded" {
+		input = testcomponents.passthrough.ticker.output
+	}
+`
+	var logsBuffer bytes.Buffer
+	syncBuff := log.NewSyncWriter(&logsBuffer)
+	opts.Logger.SetTemporaryWriter(syncBuff)
+
+	ctrl, err := New(opts)
+	require.NoError(t, err)
+
+	f, err := ParseSource(t.Name(), []byte(testFileFastTick))
+	require.NoError(t, err)
+	require.NotNil(t, f)
+
+	err = ctrl.LoadSource(f, nil, "")
+	require.NoError(t, err)
+	require.Len(t, ctrl.loader.Components(), 4)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		ctrl.Run(ctx)
+		close(done)
+	}()
+
+	for i := 0; i < 5; i++ {
+		err = ctrl.LoadSource(f, nil, "")
+		require.NoError(t, err)
+	}
+
+	require.Eventually(t, func() bool {
+		return ctrl.LoadComplete()
+	}, 3*time.Second, 10*time.Millisecond)
+
+	cancel()
+	<-done
+
+	require.False(t, strings.Contains(logsBuffer.String(), "level=error"))
 }
 
 func getFields(t *testing.T, g *dag.Graph, nodeID string) (component.Arguments, component.Exports) {
@@ -64,10 +354,10 @@ func getFields(t *testing.T, g *dag.Graph, nodeID string) (component.Arguments, 
 	return uc.Arguments(), uc.Exports()
 }
 
-func testOptions(t *testing.T) Options {
+func testOptions(t *testing.T, svcs ...service.Service) Options {
 	t.Helper()
 
-	s, err := logging.New(os.Stderr, logging.DefaultOptions)
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
 
 	return Options{
@@ -75,12 +365,13 @@ func testOptions(t *testing.T) Options {
 		DataPath:     t.TempDir(),
 		MinStability: featuregate.StabilityPublicPreview,
 		Reg:          nil,
+		Services:     svcs,
 	}
 }
 
-func cleanUpController(ctrl *Runtime) {
+func cleanUpController(ctx context.Context, ctrl *Runtime) {
 	// To avoid leaking goroutines and clean-up, we need to run and shut down the controller.
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	done := make(chan struct{})
 	go func() {
 		ctrl.Run(ctx)

@@ -1,0 +1,99 @@
+MySQL explain json generated from the query:
+
+```
+EXPLAIN FORMAT=JSON
+SELECT e.first_name, e.last_name, s.salary,
+       DENSE_RANK() OVER (ORDER BY s.salary DESC) as salary_rank
+FROM employees e
+JOIN salaries s ON e.emp_no = s.emp_no
+WHERE s.to_date = '9999-01-01'
+LIMIT 100\G
+```
+
+-- window_functions.json --
+{
+  "query_block": {
+    "select_id": 1,
+    "cost_info": {
+      "query_cost": "886032.03"
+    },
+    "windowing": {
+      "windows": [
+        {
+          "name": "<unnamed window>",
+          "using_filesort": true,
+          "filesort_key": [
+            "`salary` desc"
+          ],
+          "functions": [
+            "dense_rank"
+          ]
+        }
+      ],
+      "cost_info": {
+        "sort_cost": "283842.59"
+      },
+      "buffer_result": {
+        "using_temporary_table": true,
+        "nested_loop": [
+          {
+            "table": {
+              "table_name": "s",
+              "access_type": "ALL",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "rows_examined_per_scan": 2838426,
+              "rows_produced_per_join": 283842,
+              "filtered": "10.00",
+              "cost_info": {
+                "read_cost": "261578.34",
+                "eval_cost": "28384.26",
+                "prefix_cost": "289962.60",
+                "data_read_per_join": "4M"
+              },
+              "used_columns": [
+                "emp_no",
+                "salary",
+                "from_date",
+                "to_date"
+              ],
+              "attached_condition": "(`employees`.`s`.`to_date` = DATE'9999-01-01')"
+            }
+          },
+          {
+            "table": {
+              "table_name": "e",
+              "access_type": "eq_ref",
+              "possible_keys": [
+                "PRIMARY"
+              ],
+              "key": "PRIMARY",
+              "used_key_parts": [
+                "emp_no"
+              ],
+              "key_length": "4",
+              "ref": [
+                "employees.s.emp_no"
+              ],
+              "rows_examined_per_scan": 1,
+              "rows_produced_per_join": 283842,
+              "filtered": "100.00",
+              "cost_info": {
+                "read_cost": "283842.59",
+                "eval_cost": "28384.26",
+                "prefix_cost": "602189.45",
+                "data_read_per_join": "36M"
+              },
+              "used_columns": [
+                "emp_no",
+                "first_name",
+                "last_name"
+              ]
+            }
+          }
+        ]
+      }
+    }
+  }
+}

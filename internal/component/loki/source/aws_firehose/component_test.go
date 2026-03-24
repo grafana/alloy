@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -56,6 +57,45 @@ func (r *receiver) run(ctx context.Context) {
 	}
 }
 
+func TestComponentFromNestedController(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	opts := component.Options{
+		ID:            "foo/loki.source.awsfirehose.default",
+		Logger:        util.TestAlloyLogger(t),
+		Registerer:    prometheus.NewRegistry(),
+		OnStateChange: func(e component.Exports) {},
+	}
+	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
+
+	// call cancelReceivers to terminate them
+	receiverContext, cancelReceivers := context.WithCancel(t.Context())
+	go r1.run(receiverContext)
+	go r2.run(receiverContext)
+
+	args := Arguments{}
+
+	port, err := freeport.GetFreePort()
+	require.NoError(t, err)
+	args.Server = &fnet.ServerConfig{
+		HTTP: &fnet.HTTPConfig{
+			ListenAddress: "localhost",
+			ListenPort:    port,
+		},
+		// assign random grpc port
+		GRPC: &fnet.GRPCConfig{ListenPort: 0},
+	}
+	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
+
+	// Create and run the component.
+	c, err := New(opts, args)
+	require.NoError(t, err)
+	require.NotNil(t, c)
+
+	cancelReceivers()
+}
+
 func TestComponent(t *testing.T) {
 	opts := component.Options{
 		ID:            "loki.source.awsfirehose",
@@ -68,7 +108,7 @@ func TestComponent(t *testing.T) {
 	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
 
 	// call cancelReceivers to terminate them
-	receiverContext, cancelReceivers := context.WithCancel(context.Background())
+	receiverContext, cancelReceivers := context.WithCancel(t.Context())
 	go r1.run(receiverContext)
 	go r2.run(receiverContext)
 
@@ -90,7 +130,7 @@ func TestComponent(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	componentCtx, cancelComponent := context.WithCancel(context.Background())
+	componentCtx, cancelComponent := context.WithCancel(t.Context())
 	go c.Run(componentCtx)
 	defer cancelComponent()
 
@@ -146,7 +186,7 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
 
 	// call cancelReceivers to terminate them
-	receiverContext, cancelReceivers := context.WithCancel(context.Background())
+	receiverContext, cancelReceivers := context.WithCancel(t.Context())
 	go r1.run(receiverContext)
 	go r2.run(receiverContext)
 	defer cancelReceivers()
@@ -183,7 +223,7 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	componentCtx, cancelComponent := context.WithCancel(context.Background())
+	componentCtx, cancelComponent := context.WithCancel(t.Context())
 	go c.Run(componentCtx)
 	defer cancelComponent()
 

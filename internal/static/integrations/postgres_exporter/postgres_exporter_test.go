@@ -1,4 +1,4 @@
-package postgres_exporter //nolint:golint
+package postgres_exporter
 
 import (
 	"testing"
@@ -8,19 +8,29 @@ import (
 )
 
 func Test_ParsePostgresURL(t *testing.T) {
-	dsn := "postgresql://linus:42secret@localhost:5432/postgres?sslmode=disable"
-	expected := map[string]string{
-		"dbname":   "postgres",
-		"host":     "localhost",
-		"password": "42secret",
-		"port":     "5432",
-		"sslmode":  "disable",
-		"user":     "linus",
-	}
+	t.Run("with valid url", func(t *testing.T) {
+		dsn := "postgresql://linus:42secret@localhost:5432/postgres?sslmode=disable"
+		expected := map[string]string{
+			"dbname":   "postgres",
+			"host":     "localhost",
+			"password": "42secret",
+			"port":     "5432",
+			"sslmode":  "disable",
+			"user":     "linus",
+		}
 
-	actual, err := parsePostgresURL(dsn)
-	require.NoError(t, err)
-	require.Equal(t, actual, expected)
+		actual, err := parsePostgresURL(dsn)
+		require.NoError(t, err)
+		require.Equal(t, actual, expected)
+	})
+
+	t.Run("with minimal url", func(t *testing.T) {
+		minimal := "postgres://"
+		expected := map[string]string{}
+		actual, err := parsePostgresURL(minimal)
+		require.NoError(t, err)
+		require.Equal(t, actual, expected)
+	})
 }
 
 func Test_getDataSourceNames(t *testing.T) {

@@ -19,6 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
@@ -26,12 +27,15 @@ import (
 )
 
 func TestGenerateServiceMonitorConfig(t *testing.T) {
-	var falseVal = false
-	var proxyURL = "https://proxy:8080"
+	var (
+		falsePtr = ptr.To(false)
+		proxyURL = "https://proxy:8080"
+	)
 	suite := []struct {
 		name                   string
 		m                      *promopv1.ServiceMonitor
 		ep                     promopv1.Endpoint
+		role                   promk8s.Role
 		expectedRelabels       string
 		expectedMetricRelabels string
 		expected               *config.ScrapeConfig
@@ -44,7 +48,8 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					Name:      "svcmonitor",
 				},
 			},
-			ep: promopv1.Endpoint{},
+			ep:   promopv1.Endpoint{},
+			role: promk8s.RoleEndpoint,
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
 				  replacement: bar
@@ -75,14 +80,21 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				  replacement: ${1}
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:           "serviceMonitor/operator/svcmonitor/1",
-				HonorTimestamps:   true,
-				ScrapeInterval:    model.Duration(time.Minute),
-				ScrapeTimeout:     model.Duration(10 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/metrics",
-				Scheme:            "http",
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				ExtraScrapeMetrics:             falsePtr,
+				ScrapeNativeHistograms:         falsePtr,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -110,6 +122,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 			ep: promopv1.Endpoint{
 				TargetPort: &intstr.IntOrString{StrVal: "http_metrics", Type: intstr.String},
 			},
+			role: promk8s.RoleEndpoint,
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
 				  replacement: bar
@@ -145,14 +158,21 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				  replacement: http_metrics
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:           "serviceMonitor/operator/svcmonitor/1",
-				HonorTimestamps:   true,
-				ScrapeInterval:    model.Duration(time.Minute),
-				ScrapeTimeout:     model.Duration(10 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/metrics",
-				Scheme:            "http",
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ExtraScrapeMetrics:             falsePtr,
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				ScrapeNativeHistograms:         falsePtr,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -180,6 +200,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 			ep: promopv1.Endpoint{
 				TargetPort: &intstr.IntOrString{IntVal: 4242, Type: intstr.Int},
 			},
+			role: promk8s.RoleEndpoint,
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
 				  replacement: bar
@@ -215,14 +236,21 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				  replacement: "4242"
 			`),
 			expected: &config.ScrapeConfig{
-				JobName:           "serviceMonitor/operator/svcmonitor/1",
-				HonorTimestamps:   true,
-				ScrapeInterval:    model.Duration(time.Minute),
-				ScrapeTimeout:     model.Duration(10 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/metrics",
-				Scheme:            "http",
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				ExtraScrapeMetrics:             falsePtr,
+				ScrapeNativeHistograms:         falsePtr,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
 					EnableHTTP2:     true,
@@ -230,6 +258,84 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				ServiceDiscoveryConfigs: discovery.Configs{
 					&promk8s.SDConfig{
 						Role: "endpoints",
+
+						NamespaceDiscovery: promk8s.NamespaceDiscovery{
+							IncludeOwnNamespace: false,
+							Names:               []string{"operator"},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "role_endpointslice",
+			m: &promopv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "svcmonitor",
+				},
+			},
+			ep: promopv1.Endpoint{
+				TargetPort: &intstr.IntOrString{IntVal: 4242, Type: intstr.Int},
+			},
+			role: promk8s.RoleEndpointSlice,
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- source_labels: ["__meta_kubernetes_pod_container_port_number"]
+				  regex: "4242"
+				  action: "keep"
+				- source_labels: [__meta_kubernetes_endpointslice_address_target_kind, __meta_kubernetes_endpointslice_address_target_name]
+				  regex: Node;(.*)
+				  target_label: node
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_endpointslice_address_target_kind, __meta_kubernetes_endpointslice_address_target_name]
+				  regex: Pod;(.*)
+				  target_label: pod
+				  action: replace
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_namespace]
+				  target_label: namespace
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: service
+				- source_labels: [__meta_kubernetes_pod_container_name]
+				  target_label: container
+				- source_labels: [__meta_kubernetes_pod_name]
+				  target_label: pod
+				- source_labels: [__meta_kubernetes_pod_phase]
+				  regex: (Failed|Succeeded)
+				  action: drop
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: job
+				  replacement: ${1}
+				- target_label: endpoint
+				  replacement: "4242"
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				ExtraScrapeMetrics:             falsePtr,
+				ScrapeNativeHistograms:         falsePtr,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					&promk8s.SDConfig{
+						Role: "endpointslice",
 
 						NamespaceDiscovery: promk8s.NamespaceDiscovery{
 							IncludeOwnNamespace: false,
@@ -273,41 +379,47 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 							},
 						},
 					},
+					ScrapeProtocols: []promopv1.ScrapeProtocol{
+						promopv1.ScrapeProtocol(config.PrometheusProto),
+					},
 					NamespaceSelector:     promopv1.NamespaceSelector{Any: false, MatchNames: []string{"ns_a", "ns_b"}},
-					SampleLimit:           101,
-					TargetLimit:           102,
-					LabelLimit:            103,
-					LabelNameLengthLimit:  104,
-					LabelValueLengthLimit: 105,
-					AttachMetadata:        &promopv1.AttachMetadata{Node: true},
+					SampleLimit:           ptr.To(uint64(101)),
+					TargetLimit:           ptr.To(uint64(102)),
+					LabelLimit:            ptr.To(uint64(103)),
+					LabelNameLengthLimit:  ptr.To(uint64(104)),
+					LabelValueLengthLimit: ptr.To(uint64(105)),
+					AttachMetadata:        &promopv1.AttachMetadata{Node: boolPtr(true)},
 				},
 			},
 			ep: promopv1.Endpoint{
 				Port:            "metrics",
-				EnableHttp2:     &falseVal,
+				EnableHttp2:     falsePtr,
 				Path:            "/foo",
 				Params:          map[string][]string{"a": {"b"}},
-				FollowRedirects: &falseVal,
-				ProxyURL:        &proxyURL,
+				FollowRedirects: falsePtr,
+				ProxyConfig: promopv1.ProxyConfig{
+					ProxyURL: &proxyURL,
+				},
 				Scheme:          "https",
 				ScrapeTimeout:   "17s",
 				Interval:        "12m",
 				HonorLabels:     true,
-				HonorTimestamps: &falseVal,
-				FilterRunning:   &falseVal,
+				HonorTimestamps: falsePtr,
+				FilterRunning:   falsePtr,
 				TLSConfig: &promopv1.TLSConfig{
 					SafeTLSConfig: promopv1.SafeTLSConfig{
-						ServerName:         "foo.com",
-						InsecureSkipVerify: true,
+						ServerName:         stringPtr("foo.com"),
+						InsecureSkipVerify: boolPtr(true),
 					},
 				},
-				RelabelConfigs: []*promopv1.RelabelConfig{
+				RelabelConfigs: []promopv1.RelabelConfig{
 					{
 						SourceLabels: []promopv1.LabelName{"foo"},
 						TargetLabel:  "bar",
 					},
 				},
 			},
+			role: promk8s.RoleEndpoint,
 			expectedRelabels: util.Untab(`
 				- target_label: __meta_foo
 				  replacement: bar
@@ -384,14 +496,15 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				Params: url.Values{
 					"a": []string{"b"},
 				},
-				ScrapeInterval:    model.Duration(12 * time.Minute),
-				ScrapeTimeout:     model.Duration(17 * time.Second),
-				ScrapeProtocols:   config.DefaultScrapeProtocols,
-				EnableCompression: true,
-				MetricsPath:       "/foo",
-				Scheme:            "https",
+				ScrapeInterval:         model.Duration(12 * time.Minute),
+				ScrapeTimeout:          model.Duration(17 * time.Second),
+				ScrapeProtocols:        []config.ScrapeProtocol{config.PrometheusProto},
+				ScrapeFallbackProtocol: config.PrometheusText0_0_4,
+				EnableCompression:      true,
+				MetricsPath:            "/foo",
+				Scheme:                 "https",
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
-					FollowRedirects: falseVal,
+					FollowRedirects: false,
 					EnableHTTP2:     false,
 					TLSConfig: commonConfig.TLSConfig{
 						ServerName:         "foo.com",
@@ -411,11 +524,100 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 						},
 					},
 				},
-				SampleLimit:           101,
-				TargetLimit:           102,
-				LabelLimit:            103,
-				LabelNameLengthLimit:  104,
-				LabelValueLengthLimit: 105,
+				SampleLimit:                    101,
+				TargetLimit:                    102,
+				LabelLimit:                     103,
+				LabelNameLengthLimit:           104,
+				LabelValueLengthLimit:          105,
+				ExtraScrapeMetrics:             falsePtr,
+				ScrapeNativeHistograms:         falsePtr,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+			},
+		},
+		{
+			name: "invalid-relabelling-action",
+			m: &promopv1.ServiceMonitor{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "operator",
+					Name:      "svcmonitor",
+				},
+			},
+			ep: promopv1.Endpoint{
+				MetricRelabelConfigs: []promopv1.RelabelConfig{
+					{
+						SourceLabels: []promopv1.LabelName{"foo"},
+						TargetLabel:  "bar",
+						Action:       "Replace",
+					},
+				},
+			},
+			role: promk8s.RoleEndpoint,
+			expectedRelabels: util.Untab(`
+				- target_label: __meta_foo
+				  replacement: bar
+				- source_labels: [job]
+				  target_label: __tmp_prometheus_job_name
+				- source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
+				  regex: Node;(.*)
+				  target_label: node
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
+				  regex: Pod;(.*)
+				  target_label: pod
+				  action: replace
+				  replacement: ${1}
+				- source_labels: [__meta_kubernetes_namespace]
+				  target_label: namespace
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: service
+				- source_labels: [__meta_kubernetes_pod_container_name]
+				  target_label: container
+				- source_labels: [__meta_kubernetes_pod_name]
+				  target_label: pod
+				- source_labels: [__meta_kubernetes_pod_phase]
+				  regex: (Failed|Succeeded)
+				  action: drop
+				- source_labels: [__meta_kubernetes_service_name]
+				  target_label: job
+				  replacement: ${1}
+			`),
+			expectedMetricRelabels: util.Untab(`
+				- action: replace
+				  source_labels: [foo]
+				  target_label: bar
+			`),
+			expected: &config.ScrapeConfig{
+				JobName:                        "serviceMonitor/operator/svcmonitor/1",
+				HonorTimestamps:                true,
+				ScrapeInterval:                 model.Duration(time.Minute),
+				ScrapeTimeout:                  model.Duration(10 * time.Second),
+				ScrapeProtocols:                config.DefaultScrapeProtocols,
+				ScrapeFallbackProtocol:         config.PrometheusText0_0_4,
+				ExtraScrapeMetrics:             falsePtr,
+				ScrapeNativeHistograms:         falsePtr,
+				AlwaysScrapeClassicHistograms:  falsePtr,
+				ConvertClassicHistogramsToNHCB: falsePtr,
+				EnableCompression:              true,
+				MetricsPath:                    "/metrics",
+				Scheme:                         "http",
+				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
+				HTTPClientConfig: commonConfig.HTTPClientConfig{
+					FollowRedirects: true,
+					EnableHTTP2:     true,
+				},
+				ServiceDiscoveryConfigs: discovery.Configs{
+					&promk8s.SDConfig{
+						Role: "endpoints",
+						NamespaceDiscovery: promk8s.NamespaceDiscovery{
+							IncludeOwnNamespace: false,
+							Names:               []string{"operator"},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -427,7 +629,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 					{TargetLabel: "__meta_foo", Replacement: "bar"},
 				},
 			}
-			cfg, err := cg.GenerateServiceMonitorConfig(tc.m, tc.ep, 1)
+			cfg, err := cg.GenerateServiceMonitorConfig(tc.m, tc.ep, 1, tc.role)
 			require.NoError(t, err)
 			// check relabel configs separately
 			rlcs := cfg.RelabelConfigs

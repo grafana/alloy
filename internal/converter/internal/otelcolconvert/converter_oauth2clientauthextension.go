@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 )
 
 func init() {
@@ -23,7 +24,7 @@ func (oauth2ClientAuthExtensionConverter) Factory() component.Factory {
 
 func (oauth2ClientAuthExtensionConverter) InputComponentName() string { return "otelcol.auth.oauth2" }
 
-func (oauth2ClientAuthExtensionConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (oauth2ClientAuthExtensionConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -41,14 +42,35 @@ func (oauth2ClientAuthExtensionConverter) ConvertAndAppend(state *State, id comp
 }
 
 func toOAuth2ClientAuthExtension(cfg *oauth2clientauthextension.Config) *oauth2.Arguments {
-	return &oauth2.Arguments{
-		ClientID:       cfg.ClientID,
-		ClientSecret:   alloytypes.Secret(cfg.ClientSecret),
-		TokenURL:       cfg.TokenURL,
-		EndpointParams: cfg.EndpointParams,
-		Scopes:         cfg.Scopes,
-		TLSSetting:     toTLSClientArguments(cfg.TLSSetting),
-		Timeout:        cfg.Timeout,
-		DebugMetrics:   common.DefaultValue[oauth2.Arguments]().DebugMetrics,
+	args := &oauth2.Arguments{
+		ClientID:                 cfg.ClientID,
+		ClientSecret:             alloytypes.Secret(cfg.ClientSecret),
+		ClientSecretFile:         cfg.ClientSecretFile,
+		TokenURL:                 cfg.TokenURL,
+		EndpointParams:           cfg.EndpointParams,
+		Scopes:                   cfg.Scopes,
+		TLS:                      toTLSClientArguments(cfg.TLS),
+		Timeout:                  cfg.Timeout,
+		DebugMetrics:             common.DefaultValue[oauth2.Arguments]().DebugMetrics,
+		ClientIDFile:             cfg.ClientIDFile,
+		ClientCertificateKeyID:   cfg.ClientCertificateKeyID,
+		ClientCertificateKey:     alloytypes.Secret(cfg.ClientCertificateKey),
+		ClientCertificateKeyFile: cfg.ClientCertificateKeyFile,
+		SignatureAlgorithm:       cfg.SignatureAlgorithm,
+		Iss:                      cfg.Iss,
+		Audience:                 cfg.Audience,
+		Claims:                   cfg.Claims,
 	}
+
+	args.SetToDefault()
+
+	if cfg.ExpiryBuffer != 0 {
+		args.ExpiryBuffer = cfg.ExpiryBuffer
+	}
+
+	if cfg.GrantType != "" {
+		args.GrantType = cfg.GrantType
+	}
+
+	return args
 }

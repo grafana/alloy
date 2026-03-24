@@ -1,7 +1,7 @@
 package convert
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/grafana/alloy/internal/util"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 )
 
@@ -11,7 +11,7 @@ type metrics struct {
 	entriesProcessed prometheus_client.Counter
 }
 
-func newMetrics(reg prometheus.Registerer) *metrics {
+func newMetrics(reg prometheus_client.Registerer) *metrics {
 	var m metrics
 
 	m.entriesTotal = prometheus_client.NewCounter(prometheus_client.CounterOpts{
@@ -28,11 +28,9 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	})
 
 	if reg != nil {
-		reg.MustRegister(
-			m.entriesTotal,
-			m.entriesFailed,
-			m.entriesProcessed,
-		)
+		m.entriesTotal = util.MustRegisterOrGet(reg, m.entriesTotal).(prometheus_client.Counter)
+		m.entriesFailed = util.MustRegisterOrGet(reg, m.entriesFailed).(prometheus_client.Counter)
+		m.entriesProcessed = util.MustRegisterOrGet(reg, m.entriesProcessed).(prometheus_client.Counter)
 	}
 
 	return &m

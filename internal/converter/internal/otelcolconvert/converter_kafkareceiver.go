@@ -9,10 +9,13 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/mitchellh/mapstructure"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtls"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -25,7 +28,7 @@ func (kafkaReceiverConverter) Factory() component.Factory { return kafkareceiver
 
 func (kafkaReceiverConverter) InputComponentName() string { return "" }
 
-func (kafkaReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (kafkaReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -42,21 +45,28 @@ func (kafkaReceiverConverter) ConvertAndAppend(state *State, id component.Instan
 	return diags
 }
 
-func toKafkaReceiver(state *State, id component.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
+func toKafkaReceiver(state *State, id componentstatus.InstanceID, cfg *kafkareceiver.Config) *kafka.Arguments {
 	var (
-		nextMetrics = state.Next(id, component.DataTypeMetrics)
-		nextLogs    = state.Next(id, component.DataTypeLogs)
-		nextTraces  = state.Next(id, component.DataTypeTraces)
+		nextMetrics = state.Next(id, pipeline.SignalMetrics)
+		nextLogs    = state.Next(id, pipeline.SignalLogs)
+		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
+	var tlsCfgPtr *otelcol.TLSClientArguments
+	if cfg.TLS != nil {
+		tlsCfg := toTLSClientArguments(*cfg.TLS)
+		tlsCfgPtr = &tlsCfg
+	}
+
 	return &kafka.Arguments{
-		Brokers:         cfg.Brokers,
-		ProtocolVersion: cfg.ProtocolVersion,
-		Topic:           cfg.Topic,
-		Encoding:        cfg.Encoding,
-		GroupID:         cfg.GroupID,
-		ClientID:        cfg.ClientID,
-		InitialOffset:   cfg.InitialOffset,
+		Brokers:           cfg.Brokers,
+		ProtocolVersion:   cfg.ProtocolVersion,
+		SessionTimeout:    cfg.SessionTimeout,
+		HeartbeatInterval: cfg.HeartbeatInterval,
+		GroupID:           cfg.GroupID,
+		ClientID:          cfg.ClientID,
+		InitialOffset:     cfg.InitialOffset,
+		ConnIdleTimeout:   cfg.ConnIdleTimeout,
 
 		ResolveCanonicalBootstrapServersOnly: cfg.ResolveCanonicalBootstrapServersOnly,
 
@@ -66,6 +76,23 @@ func toKafkaReceiver(state *State, id component.InstanceID, cfg *kafkareceiver.C
 		MessageMarking:   toKafkaMessageMarking(cfg.MessageMarking),
 		HeaderExtraction: toKafkaHeaderExtraction(cfg.HeaderExtraction),
 
+		TLS: tlsCfgPtr,
+
+		Logs:    toKafkaTopicEncodingConfig(cfg.Logs),
+		Metrics: toKafkaTopicEncodingConfig(cfg.Metrics),
+		Traces:  toKafkaTopicEncodingConfig(cfg.Traces),
+
+		MinFetchSize:           cfg.MinFetchSize,
+		MaxFetchSize:           cfg.MaxFetchSize,
+		MaxPartitionFetchSize:  cfg.MaxPartitionFetchSize,
+		MaxFetchWait:           cfg.MaxFetchWait,
+		RackID:                 cfg.RackID,
+		UseLeaderEpoch:         cfg.UseLeaderEpoch,
+		GroupRebalanceStrategy: string(cfg.GroupRebalanceStrategy),
+		GroupInstanceID:        cfg.GroupInstanceID,
+
+		ErrorBackOff: toKafkaErrorBackOff(cfg.ErrorBackOff),
+
 		DebugMetrics: common.DefaultValue[kafka.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{
@@ -73,6 +100,25 @@ func toKafkaReceiver(state *State, id component.InstanceID, cfg *kafkareceiver.C
 			Logs:    ToTokenizedConsumers(nextLogs),
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
+	}
+}
+
+func toKafkaErrorBackOff(cfg configretry.BackOffConfig) kafka.ErrorBackOffArguments {
+	return kafka.ErrorBackOffArguments{
+		Enabled:             cfg.Enabled,
+		InitialInterval:     cfg.InitialInterval,
+		RandomizationFactor: cfg.RandomizationFactor,
+		Multiplier:          cfg.Multiplier,
+		MaxInterval:         cfg.MaxInterval,
+		MaxElapsedTime:      cfg.MaxElapsedTime,
+	}
+}
+
+func toKafkaTopicEncodingConfig(cfg kafkareceiver.TopicEncodingConfig) kafka.KafkaReceiverTopicEncodingConfig {
+	return kafka.KafkaReceiverTopicEncodingConfig{
+		Topics:        cfg.Topics,
+		Encoding:      cfg.Encoding,
+		ExcludeTopics: cfg.ExcludeTopics,
 	}
 }
 
@@ -116,8 +162,7 @@ func toKafkaAWSMSK(cfg map[string]any) otelcol.KafkaAWSMSKArguments {
 	}
 
 	return otelcol.KafkaAWSMSKArguments{
-		Region:     cfg["region"].(string),
-		BrokerAddr: cfg["broker_addr"].(string),
+		Region: cfg["region"].(string),
 	}
 }
 
@@ -153,21 +198,22 @@ func toKafkaKerberos(cfg map[string]any) *otelcol.KafkaKerberosArguments {
 	}
 }
 
-func toKafkaMetadata(cfg kafkaexporter.Metadata) otelcol.KafkaMetadataArguments {
+func toKafkaMetadata(cfg configkafka.MetadataConfig) otelcol.KafkaMetadataArguments {
 	return otelcol.KafkaMetadataArguments{
-		IncludeAllTopics: cfg.Full,
-		Retry:            toKafkaRetry(cfg.Retry),
+		Full:            cfg.Full,
+		RefreshInterval: cfg.RefreshInterval,
+		Retry:           toKafkaRetry(cfg.Retry),
 	}
 }
 
-func toKafkaRetry(cfg kafkaexporter.MetadataRetry) otelcol.KafkaMetadataRetryArguments {
+func toKafkaRetry(cfg configkafka.MetadataRetryConfig) otelcol.KafkaMetadataRetryArguments {
 	return otelcol.KafkaMetadataRetryArguments{
 		MaxRetries: cfg.Max,
 		Backoff:    cfg.Backoff,
 	}
 }
 
-func toKafkaAutoCommit(cfg kafkareceiver.AutoCommit) kafka.AutoCommitArguments {
+func toKafkaAutoCommit(cfg configkafka.AutoCommitConfig) kafka.AutoCommitArguments {
 	return kafka.AutoCommitArguments{
 		Enable:   cfg.Enable,
 		Interval: cfg.Interval,

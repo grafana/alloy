@@ -15,7 +15,7 @@ var _ value.Capsule = (customCapsule)(false)
 func (customCapsule) AlloyCapsule() {}
 
 var typeTests = []struct {
-	input  interface{}
+	input  any
 	expect value.Type
 }{
 	{int(0), value.TypeNumber},
@@ -46,7 +46,7 @@ var typeTests = []struct {
 		Label string `alloy:",label"`
 	}{}, value.TypeObject},
 
-	{map[string]interface{}{}, value.TypeObject},
+	{map[string]any{}, value.TypeObject},
 
 	// Go functions must have one non-error return type and one optional error
 	// return type to be Alloy functions. Everything else is a capsule.
@@ -60,7 +60,7 @@ var typeTests = []struct {
 	{(func() (int, int, int))(nil), value.TypeCapsule}, // Can only have 1 or 2 return types
 
 	{make(chan struct{}), value.TypeCapsule},
-	{map[bool]interface{}{}, value.TypeCapsule}, // Maps with non-string types are capsules
+	{map[bool]any{}, value.TypeCapsule}, // Maps with non-string types are capsules
 
 	// Types with capsule markers should be capsules.
 	{customCapsule(false), value.TypeCapsule},

@@ -3,19 +3,26 @@ package kubernetes
 import (
 	"testing"
 
-	"github.com/grafana/alloy/syntax"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestAlloyConfig(t *testing.T) {
 	var exampleAlloyConfig = `
 	role = "pod"
     kubeconfig_file = "/etc/k8s/kubeconfig.yaml"
+	http_headers = {
+		"foo" = ["foobar"],
+	}
 `
 
 	var args Arguments
 	err := syntax.Unmarshal([]byte(exampleAlloyConfig), &args)
 	require.NoError(t, err)
+
+	header := args.HTTPClientConfig.HTTPHeaders.Headers["foo"][0]
+	require.Equal(t, "foobar", string(header))
 }
 
 func TestBadAlloyConfig(t *testing.T) {
@@ -39,6 +46,7 @@ func TestAttachMetadata(t *testing.T) {
         role = "pod"
     attach_metadata {
 	    node = true
+		namespace = true
     }
 `
 

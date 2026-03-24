@@ -5,7 +5,7 @@ title: discovery
 weight: 100
 ---
 
-# discovery
+# `discovery`
 
 This section contains reference documentation for the `discovery` components.
 

@@ -12,7 +12,7 @@ weight: 100
 
 You can install {{< param "PRODUCT_NAME" >}} on Docker, Kubernetes, Linux, macOS, or Windows.
 
-The following architectures are supported:
+{{< param "PRODUCT_NAME" >}} supports the following architectures:
 
 - **Linux**: AMD64, ARM64
 - **Windows**: AMD64
@@ -30,4 +30,4 @@ Installing {{< param "PRODUCT_NAME" >}} on other operating systems is possible, 
 By default, {{< param "PRODUCT_NAME" >}} sends anonymous usage information to Grafana Labs.
 Refer to [data collection][] for more information about what data Grafana collects and how you can opt-out.
 
-[data collection]: "../../../../data-collection/
+[data collection]: ../../../data-collection/

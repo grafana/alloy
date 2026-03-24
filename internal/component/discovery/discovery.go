@@ -2,44 +2,17 @@ package discovery
 
 import (
 	"context"
-	"sort"
-	"strings"
+	"fmt"
 	"sync"
 	"time"
 
-	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
-	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/service/livedebugging"
 )
-
-// Target refers to a singular discovered endpoint found by a discovery
-// component.
-type Target map[string]string
-
-// Labels converts Target into a set of sorted labels.
-func (t Target) Labels() labels.Labels {
-	var lset labels.Labels
-	for k, v := range t {
-		lset = append(lset, labels.Label{Name: k, Value: v})
-	}
-	sort.Sort(lset)
-	return lset
-}
-
-func (t Target) NonMetaLabels() labels.Labels {
-	var lset labels.Labels
-	for k, v := range t {
-		if !strings.HasPrefix(k, model.MetaLabelPrefix) {
-			lset = append(lset, labels.Label{Name: k, Value: v})
-		}
-	}
-	sort.Sort(lset)
-	return lset
-}
 
 // Exports holds values which are exported by all discovery components.
 type Exports struct {
@@ -62,16 +35,26 @@ type Component struct {
 	latestDisc    DiscovererWithMetrics
 	newDiscoverer chan struct{}
 
-	creator Creator
+	creator            Creator
+	debugDataPublisher livedebugging.DebugDataPublisher
 }
+
+var _ component.Component = (*Component)(nil)
+var _ component.LiveDebugging = (*Component)(nil)
 
 // New creates a discovery component given arguments and a concrete Discovery implementation function.
 func New(o component.Options, args component.Arguments, creator Creator) (*Component, error) {
+	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
 		opts:    o,
 		creator: creator,
 		// buffered to avoid deadlock from the first immediate update
-		newDiscoverer: make(chan struct{}, 1),
+		newDiscoverer:      make(chan struct{}, 1),
+		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	return c, c.Update(args)
 }
@@ -197,27 +180,21 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 
 	// function to convert and send targets in format scraper expects
 	send := func() {
-		allTargets := []Target{}
-		for _, group := range cache {
-			for _, target := range group.Targets {
-				labels := map[string]string{}
-				// first add the group labels, and then the
-				// target labels, so that target labels take precedence.
-				for k, v := range group.Labels {
-					labels[string(k)] = string(v)
-				}
-				for k, v := range target {
-					labels[string(k)] = string(v)
-				}
-				allTargets = append(allTargets, labels)
-			}
-		}
+		allTargets := toAlloyTargets(cache)
+		componentID := livedebugging.ComponentID(c.opts.ID)
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			componentID,
+			livedebugging.Target,
+			uint64(len(allTargets)),
+			func() string { return fmt.Sprintf("%s", allTargets) },
+		))
 		c.opts.OnStateChange(Exports{Targets: allTargets})
 	}
 
 	ticker := time.NewTicker(MaxUpdateFrequency)
-	// true if we have received new targets and need to send.
-	haveUpdates := false
+	// true if we have received new targets and need to send. Initially set it to true to send empty targets in case
+	// the discoverer never sends any targets.
+	haveUpdates := true
 	for {
 		select {
 		case <-ticker.C:
@@ -244,3 +221,20 @@ func (c *Component) runDiscovery(ctx context.Context, d DiscovererWithMetrics) {
 		}
 	}
 }
+
+func toAlloyTargets(cache map[string]*targetgroup.Group) []Target {
+	targetsCount := 0
+	for _, group := range cache {
+		targetsCount += len(group.Targets)
+	}
+	allTargets := make([]Target, 0, targetsCount)
+
+	for _, group := range cache {
+		for _, target := range group.Targets {
+			allTargets = append(allTargets, NewTargetFromSpecificAndBaseLabelSet(target, group.Labels))
+		}
+	}
+	return allTargets
+}
+
+func (c *Component) LiveDebugging() {}

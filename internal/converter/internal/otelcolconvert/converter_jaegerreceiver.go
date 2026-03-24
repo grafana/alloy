@@ -10,8 +10,11 @@ import (
 	"github.com/grafana/alloy/internal/converter/internal/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver"
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/component/componentstatus"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/configoptional"
+	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -24,7 +27,7 @@ func (jaegerReceiverConverter) Factory() component.Factory { return jaegerreceiv
 
 func (jaegerReceiverConverter) InputComponentName() string { return "" }
 
-func (jaegerReceiverConverter) ConvertAndAppend(state *State, id component.InstanceID, cfg component.Config) diag.Diagnostics {
+func (jaegerReceiverConverter) ConvertAndAppend(state *State, id componentstatus.InstanceID, cfg component.Config) diag.Diagnostics {
 	var diags diag.Diagnostics
 
 	label := state.AlloyComponentLabel()
@@ -41,17 +44,17 @@ func (jaegerReceiverConverter) ConvertAndAppend(state *State, id component.Insta
 	return diags
 }
 
-func toJaegerReceiver(state *State, id component.InstanceID, cfg *jaegerreceiver.Config) *jaeger.Arguments {
+func toJaegerReceiver(state *State, id componentstatus.InstanceID, cfg *jaegerreceiver.Config) *jaeger.Arguments {
 	var (
-		nextTraces = state.Next(id, component.DataTypeTraces)
+		nextTraces = state.Next(id, pipeline.SignalTraces)
 	)
 
 	return &jaeger.Arguments{
 		Protocols: jaeger.ProtocolsArguments{
 			GRPC:          toJaegerGRPCArguments(cfg.GRPC),
 			ThriftHTTP:    toJaegerThriftHTTPArguments(cfg.ThriftHTTP),
-			ThriftBinary:  toJaegerThriftBinaryArguments(cfg.ThriftBinary),
-			ThriftCompact: toJaegerThriftCompactArguments(cfg.ThriftCompact),
+			ThriftBinary:  toJaegerThriftBinaryArguments(cfg.ThriftBinaryUDP),
+			ThriftCompact: toJaegerThriftCompactArguments(cfg.ThriftCompactUDP),
 		},
 
 		DebugMetrics: common.DefaultValue[jaeger.Arguments]().DebugMetrics,
@@ -62,25 +65,25 @@ func toJaegerReceiver(state *State, id component.InstanceID, cfg *jaegerreceiver
 	}
 }
 
-func toJaegerGRPCArguments(cfg *configgrpc.ServerConfig) *jaeger.GRPC {
-	if cfg == nil {
+func toJaegerGRPCArguments(cfg configoptional.Optional[configgrpc.ServerConfig]) *jaeger.GRPC {
+	if !cfg.HasValue() {
 		return nil
 	}
-	return &jaeger.GRPC{GRPCServerArguments: toGRPCServerArguments(cfg)}
+	return &jaeger.GRPC{GRPCServerArguments: toGRPCServerArguments(cfg.Get())}
 }
 
-func toJaegerThriftHTTPArguments(cfg *confighttp.ServerConfig) *jaeger.ThriftHTTP {
-	if cfg == nil {
+func toJaegerThriftHTTPArguments(cfg configoptional.Optional[confighttp.ServerConfig]) *jaeger.ThriftHTTP {
+	if !cfg.HasValue() {
 		return nil
 	}
-	return &jaeger.ThriftHTTP{HTTPServerArguments: toHTTPServerArguments(cfg)}
+	return &jaeger.ThriftHTTP{HTTPServerArguments: toHTTPServerArguments(cfg.Get())}
 }
 
-func toJaegerThriftBinaryArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.ThriftBinary {
-	if cfg == nil {
+func toJaegerThriftBinaryArguments(cfg configoptional.Optional[jaegerreceiver.ProtocolUDP]) *jaeger.ThriftBinary {
+	if !cfg.HasValue() {
 		return nil
 	}
-	return &jaeger.ThriftBinary{ProtocolUDP: toJaegerProtocolUDPArguments(cfg)}
+	return &jaeger.ThriftBinary{ProtocolUDP: toJaegerProtocolUDPArguments(cfg.Get())}
 }
 
 func toJaegerProtocolUDPArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.ProtocolUDP {
@@ -97,9 +100,9 @@ func toJaegerProtocolUDPArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.Proto
 	}
 }
 
-func toJaegerThriftCompactArguments(cfg *jaegerreceiver.ProtocolUDP) *jaeger.ThriftCompact {
-	if cfg == nil {
+func toJaegerThriftCompactArguments(cfg configoptional.Optional[jaegerreceiver.ProtocolUDP]) *jaeger.ThriftCompact {
+	if !cfg.HasValue() {
 		return nil
 	}
-	return &jaeger.ThriftCompact{ProtocolUDP: toJaegerProtocolUDPArguments(cfg)}
+	return &jaeger.ThriftCompact{ProtocolUDP: toJaegerProtocolUDPArguments(cfg.Get())}
 }

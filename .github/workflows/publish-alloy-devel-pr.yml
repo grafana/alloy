@@ -1,0 +1,41 @@
+name: Publish alloy-devel containers
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+jobs:
+  publish_linux_container:
+    if: ${{ github.repository == 'grafana/alloy' && contains(github.event.pull_request.labels.*.name, 'publish-dev:linux')}}
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel-pr
+      dev: true
+      pr-number: ${{ github.event.pull_request.number }}
+
+  publish_linux_boringcrypto_container:
+    if: ${{ github.repository == 'grafana/alloy' && contains(github.event.pull_request.labels.*.name, 'publish-dev:linux-bc')}}
+    uses: ./.github/workflows/publish-alloy-linux.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name:  alloy-devel-boringcrypto-pr
+      dev: true
+      pr-number: ${{ github.event.pull_request.number }}
+
+  publish_windows_container:
+    if: ${{ github.repository == 'grafana/alloy' && contains(github.event.pull_request.labels.*.name, 'publish-dev:windows')}}
+    uses: ./.github/workflows/publish-alloy-windows.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      img-name: alloy-devel-pr
+      dev: true
+      pr-number: ${{ github.event.pull_request.number }}

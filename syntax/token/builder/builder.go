@@ -32,7 +32,7 @@ func (e *Expr) Tokens() []Token { return e.rawTokens }
 // value is encoded using the normal Go to Alloy encoding rules. If any value
 // reachable from goValue implements Tokenizer, the printed tokens will instead
 // be retrieved by calling the AlloyTokenize method.
-func (e *Expr) SetValue(goValue interface{}) {
+func (e *Expr) SetValue(goValue any) {
 	e.rawTokens = tokenEncode(goValue)
 }
 
@@ -83,7 +83,7 @@ type Body struct {
 	valueOverrideHook ValueOverrideHook
 }
 
-type ValueOverrideHook = func(val interface{}) interface{}
+type ValueOverrideHook = func(val any) any
 
 // SetValueOverrideHook sets a hook to override the value that will be token
 // encoded. The hook can mutate the value to be encoded or should return it
@@ -145,7 +145,7 @@ func (b *Body) AppendBlock(block *Block) {
 //
 // goValue must be a struct or a pointer to a struct that contains alloy struct
 // tags.
-func (b *Body) AppendFrom(goValue interface{}) {
+func (b *Body) AppendFrom(goValue any) {
 	if goValue == nil {
 		return
 	}
@@ -337,7 +337,7 @@ func (b *Body) getOrCreateAttribute(name string) *attribute {
 // If the attribute was previously set, its value tokens are updated.
 //
 // Attributes will be written out in the order they were initially crated.
-func (b *Body) SetAttributeValue(name string, goValue interface{}) {
+func (b *Body) SetAttributeValue(name string, goValue any) {
 	attr := b.getOrCreateAttribute(name)
 
 	if b.valueOverrideHook != nil {

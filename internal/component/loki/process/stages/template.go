@@ -8,21 +8,22 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"text/template"
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	"golang.org/x/crypto/sha3"
 )
 
 // Config Errors.
 var (
-	ErrEmptyTemplateStageConfig = errors.New("template stage config cannot be empty")
-	ErrTemplateSourceRequired   = errors.New("template source value is required")
+	ErrTemplateSourceRequired = errors.New("template source value is required")
 )
 
 var extraFunctionMap = template.FuncMap{
@@ -97,9 +98,16 @@ type templateStage struct {
 	template *template.Template
 }
 
+var bufPool = sync.Pool{
+	New: func() any {
+		return &bytes.Buffer{}
+	},
+}
+
 // Process implements Stage
-func (o *templateStage) Process(labels model.LabelSet, extracted map[string]interface{}, t *time.Time, entry *string) {
-	td := make(map[string]interface{})
+func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
+	// We allocate space for all extracted values + Value and Entry
+	td := make(map[string]any, len(extracted)+2)
 	for k, v := range extracted {
 		s, err := getString(v)
 		if err != nil {
@@ -115,7 +123,12 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]inte
 	}
 	td["Entry"] = *entry
 
-	buf := &bytes.Buffer{}
+	buf := bufPool.Get().(*bytes.Buffer)
+	defer func() {
+		buf.Reset()
+		bufPool.Put(buf)
+	}()
+
 	err := o.template.Execute(buf, td)
 	if err != nil {
 		if Debug {
@@ -130,9 +143,4 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]inte
 	} else {
 		extracted[o.cfgs.Source] = st
 	}
-}
-
-// Name implements Stage
-func (o *templateStage) Name() string {
-	return StageTypeTemplate
 }

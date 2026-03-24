@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 var (
@@ -14,9 +16,6 @@ var (
 	// debug level when debug level logging is not enabled. Log level allocations can become very expensive
 	// as we log numerous log entries per log line at debug level.
 	Debug = false
-
-	// Inspect is used to debug promtail pipelines by showing diffs between pipeline stages
-	Inspect = false
 )
 
 const (
@@ -150,20 +149,13 @@ func parseTimestampWithoutYear(layout string, location *time.Location, timestamp
 		return parsedTime, fmt.Errorf(ErrTimestampContainsYear, timestamp)
 	}
 
-	// Handle the case we're crossing the New Year's Eve midnight
-	if parsedTime.Month() == 12 && now.Month() == 1 {
-		parsedTime = parsedTime.AddDate(now.Year()-1, 0, 0)
-	} else if parsedTime.Month() == 1 && now.Month() == 12 {
-		parsedTime = parsedTime.AddDate(now.Year()+1, 0, 0)
-	} else {
-		parsedTime = parsedTime.AddDate(now.Year(), 0, 0)
-	}
+	util.SetYearForLimitedTimeFormat(&parsedTime, now)
 
 	return parsedTime, nil
 }
 
 // getString will convert the input variable to a string if possible
-func getString(unk interface{}) (string, error) {
+func getString(unk any) (string, error) {
 	switch i := unk.(type) {
 	case float64:
 		return strconv.FormatFloat(i, 'f', -1, 64), nil
@@ -189,16 +181,6 @@ func getString(unk interface{}) (string, error) {
 		}
 		return "false", nil
 	default:
-		return "", fmt.Errorf("Can't convert %v to string", unk)
+		return "", fmt.Errorf("can't convert %v to string", unk)
 	}
-}
-
-func stringsContain(values []string, search string) bool {
-	for _, v := range values {
-		if search == v {
-			return true
-		}
-	}
-
-	return false
 }
