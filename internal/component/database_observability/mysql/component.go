@@ -303,7 +303,6 @@ func (c *Component) Run(ctx context.Context) error {
 				c.dbConnection.Close()
 			}
 		})
-
 	}()
 
 	var (
@@ -372,6 +371,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = args.(Arguments)
+	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	if err := c.connectAndStartCollectors(context.Background()); err != nil {
 		c.reportError("failed to connect", err)
