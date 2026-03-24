@@ -90,7 +90,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru v1.0.2
 	github.com/hashicorp/golang-lru/v2 v2.0.7
-	github.com/hashicorp/vault/api v1.20.0
+	github.com/hashicorp/vault/api v1.22.0
 	github.com/hashicorp/vault/api/auth/approle v0.2.0
 	github.com/hashicorp/vault/api/auth/aws v0.2.0
 	github.com/hashicorp/vault/api/auth/azure v0.2.0
@@ -662,7 +662,7 @@ require (
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
-	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.6 // indirect
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
@@ -1146,7 +1146,7 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prome
 // Fix sent_batch_duration_seconds measuring before the request was sent. Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-v0.309.1 Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
 
-// Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936). Fork branch: https://github.com/DataDog/vault/tree/master. Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
-replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
+// Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936). Fork branch: https://github.com/grafana/vault/tree/main. Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
+replace github.com/hashicorp/vault/api/auth/aws => github.com/grafana/vault/api/auth/aws v0.0.0-20260320153401-e07b3b1e8319
 
 // END GENERATED REPLACES

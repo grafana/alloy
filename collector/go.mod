@@ -551,7 +551,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
-	github.com/hashicorp/go-secure-stdlib/parseutil v0.1.6 // indirect
+	github.com/hashicorp/go-secure-stdlib/parseutil v0.2.0 // indirect
 	github.com/hashicorp/go-secure-stdlib/strutil v0.1.2 // indirect
 	github.com/hashicorp/go-sockaddr v1.0.7 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
@@ -563,7 +563,7 @@ require (
 	github.com/hashicorp/memberlist v0.5.3 // indirect
 	github.com/hashicorp/nomad/api v0.0.0-20251216171439-1dee0671280e // indirect
 	github.com/hashicorp/serf v0.10.2 // indirect
-	github.com/hashicorp/vault/api v1.20.0 // indirect
+	github.com/hashicorp/vault/api v1.22.0 // indirect
 	github.com/hashicorp/vault/api/auth/approle v0.2.0 // indirect
 	github.com/hashicorp/vault/api/auth/aws v0.2.0 // indirect
 	github.com/hashicorp/vault/api/auth/azure v0.2.0 // indirect
@@ -1119,4 +1119,4 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/prome
 
 replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2-0.20260302171028-8cf60eef5463
 
-replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
+replace github.com/hashicorp/vault/api/auth/aws => github.com/grafana/vault/api/auth/aws v0.0.0-20260320153401-e07b3b1e8319

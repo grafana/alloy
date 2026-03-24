@@ -138,7 +138,7 @@ replaces:
 
   - comment: >
       Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936).
-      Fork branch: https://github.com/DataDog/vault/tree/master.
+      Fork branch: https://github.com/grafana/vault/tree/main.
       Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
     dependency: github.com/hashicorp/vault/api/auth/aws
-    replacement: github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
+    replacement: github.com/grafana/vault/api/auth/aws v0.0.0-20260320153401-e07b3b1e8319
