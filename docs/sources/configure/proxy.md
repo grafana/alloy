@@ -249,9 +249,9 @@ Basic trace forwarding doesn't require sticky routing, but if proxy instances ru
 You can use `otelcol.exporter.loadbalancing` on the edge instances to route by trace ID or service name.
 Alternatively, you can add a unique label per proxy instance and aggregate the resulting metrics in PromQL or Adaptive Metrics.
 
-For profiles, edge instances use `pyroscope.write` to push to proxy instances running [`pyroscope.receive_http`](../reference/components/pyroscope/pyroscope.receive_http/).
+For profiles, edge instances use `pyroscope.write` to push to proxy instances running [`pyroscope.receive_http`](../../reference/components/pyroscope/pyroscope.receive_http/).
 Refer to that component for supported ingest endpoints and how it forwards to receivers such as `pyroscope.write`.
-For chained `pyroscope.write` traffic, load balancing multiple receivers, and timeout configuration, refer to the troubleshooting sections on that component and on [`pyroscope.write`](../reference/components/pyroscope/pyroscope.write/).
+For chained `pyroscope.write` traffic, load balancing multiple receivers, and timeout configuration, refer to the troubleshooting sections on that component and on [`pyroscope.write`](../../reference/components/pyroscope/pyroscope.write/).
 
 ## High availability and replication
 
