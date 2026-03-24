@@ -8,7 +8,7 @@ weight: 650
 
 # Import rendered mixin dashboards and alert rules into Grafana
 
-Use this task to import dashboards and alert rules generated from the Alloy mixin into your Grafana instance.
+Use this task to import dashboards and alert rules generated from the Grafana Alloy mixin into your Grafana instance.
 You can import dashboards from rendered JSON files in the source repository or from the release zip archive.
 
 ## Before you begin
