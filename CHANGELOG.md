@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.14.2](https://github.com/grafana/alloy/compare/v1.14.1...v1.14.2) (2026-03-24)
+
+
+### Bug Fixes 🐛
+
+* **deps:** Update go version to 1.25.8 ([#5846](https://github.com/grafana/alloy/issues/5846)) ([b9add52](https://github.com/grafana/alloy/commit/b9add528fe215cdc27e006a726d4d7694ff71976))
+* **deps:** Update module github.com/buger/jsonparser to v1.1.2 [SECURITY] [backport] ([#5841](https://github.com/grafana/alloy/issues/5841)) ([33a64c5](https://github.com/grafana/alloy/commit/33a64c5e956973bbc72fbf5ee05c17c9619c7d79))
+* **deps:** Update module google.golang.org/grpc to v1.79.3 [SECURITY] [backport] ([#5842](https://github.com/grafana/alloy/issues/5842)) ([be8150a](https://github.com/grafana/alloy/commit/be8150a9d29a92eb0bcd900fb1e172147f0505ff))
+
 ## [1.14.1](https://github.com/grafana/alloy/compare/v1.14.0...v1.14.1) (2026-03-17)
 
 
