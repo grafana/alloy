@@ -577,6 +577,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.EnableCompression = c.EnableCompression
 	dec.NativeHistogramBucketLimit = c.NativeHistogramBucketLimit
 	dec.NativeHistogramMinBucketFactor = c.NativeHistogramMinBucketFactor
+	dec.ExtraScrapeMetrics = &c.ExtraMetrics
 
 	return &dec
 }
