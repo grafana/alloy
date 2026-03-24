@@ -286,6 +286,9 @@ controller:
   # The default value used by Kubernetes if unspecifed is 30 seconds.
   terminationGracePeriodSeconds: null
 
+  # -- The maximum number of revisions that will be maintained in the Controllers's revision history. The history consists of all revisions not represented by a currently applied reversion.
+  revisionHistoryLimit: 10
+
   # -- Update strategy for updating deployed Pods.
   updateStrategy: {}
 
