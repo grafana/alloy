@@ -127,7 +127,6 @@ func (c *Component) Run(ctx context.Context) error {
 			if c.tailer != nil {
 				c.tailer.Stop()
 			}
-
 		})
 	}()
 
