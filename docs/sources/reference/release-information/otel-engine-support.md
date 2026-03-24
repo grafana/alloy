@@ -14,7 +14,7 @@ Different parts of the {{< param "OTEL_ENGINE" >}} have different levels of stab
 
 {{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-While the {{< param "OTEL_ENGINE" >}} remains experimental, all components are subject to the caveats of the experimental stability level, including possible breaking changes and removal without notice.
+While the {{< param "OTEL_ENGINE" >}} remains experimental, all parts of it are subject to the caveats of the experimental stability level, including possible breaking changes and removal without notice.
 The support levels described in this document represent the target support model for the {{< param "OTEL_ENGINE" >}}.
 They apply fully once the feature reaches general availability.
 
@@ -29,15 +29,15 @@ They apply fully once the feature reaches general availability.
 | Custom builds (OCB) with a subset of standard {{< param "PRODUCT_NAME" >}} components | Supported; upstream-dependent resolution |
 | Custom builds (OCB) with custom or non-bundled components | Best effort / not supported |
 
-## {{< param "PRODUCT_NAME" >}}-maintained components
+## {{< param "PRODUCT_NAME" >}}-maintained features
 
-The {{< param "PRODUCT_NAME" >}} maintainers implement and maintain the following parts of the {{< param "OTEL_ENGINE" >}}:
+The {{< param "PRODUCT_NAME" >}} maintainers implement and maintain the following features of the {{< param "OTEL_ENGINE" >}}:
 
 - **The `alloy otel` CLI**: The command-line interface for starting and managing the {{< param "OTEL_ENGINE" >}}.
 - **The `alloyengine` extension**: The extension that runs the {{< param "DEFAULT_ENGINE" >}} alongside the {{< param "OTEL_ENGINE" >}}.
 - **The {{< param "PRODUCT_NAME" >}} binary**: The overall binary, build, and release process.
 
-These components follow the same [backward compatibility][] guarantees as the rest of {{< param "PRODUCT_NAME" >}}, subject to the current [stability level](https://grafana.com/docs/release-life-cycle/) of the {{< param "OTEL_ENGINE" >}} feature.
+These features follow the same [backward compatibility][] guarantees as the rest of {{< param "PRODUCT_NAME" >}}, subject to the current [stability level](https://grafana.com/docs/release-life-cycle/) of the {{< param "OTEL_ENGINE" >}} feature.
 
 ## Upstream OpenTelemetry Collector components
 
