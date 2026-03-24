@@ -23,7 +23,6 @@ type AuthExtensionScheduler struct {
 
 	schedMut        sync.Mutex
 	schedComponents []otelcomponent.Component
-	host            otelcomponent.Host
 }
 
 // NewAuthExtensionScheduler creates a scheduler for auth extensions.
@@ -46,7 +45,6 @@ func (s *AuthExtensionScheduler) Schedule(ctx context.Context, h otelcomponent.H
 	if err != nil {
 		level.Error(s.log).Log("msg", "failed to start some scheduled components", "err", err)
 	}
-	s.host = h
 }
 
 // Stop stops all running components.
