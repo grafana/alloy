@@ -31,17 +31,6 @@ Choose one source for dashboards:
 If you need alert rules, use the source repository path `operations/alloy-mixin/rendered/alerts/`.
 The release zip archive contains dashboard JSON files only.
 
-To regenerate rendered files from source, run:
-
-```sh
-make generate-rendered-mixin
-```
-
-The command writes:
-
-- Dashboard files to `operations/alloy-mixin/rendered/dashboards/*.json`.
-- Alert rule files to `operations/alloy-mixin/rendered/alerts/*.yaml`.
-
 ## Import dashboards from JSON files
 
 Use the Grafana dashboard import UI to import each rendered dashboard JSON file:
