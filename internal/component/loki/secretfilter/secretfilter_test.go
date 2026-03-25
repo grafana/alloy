@@ -864,8 +864,8 @@ func TestTimeoutLabel(t *testing.T) {
 		wantRedaction bool
 	}{
 		{
-			name:     "no findings on timeout",
-			findings: nil,
+			name:      "no findings on timeout",
+			findings:  nil,
 			wantLabel: true,
 		},
 		{
