@@ -539,7 +539,6 @@ require (
 	github.com/containers/common v0.64.2 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/cpuguy83/dockercfg v0.3.2 // indirect
-	github.com/creack/pty v1.1.24 // indirect
 	github.com/cyphar/filepath-securejoin v0.6.0 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
@@ -553,7 +552,7 @@ require (
 	github.com/digitalocean/go-metadata v0.0.0-20250129100319-e3650a3df44b // indirect
 	github.com/digitalocean/godo v1.171.0 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/cli v28.1.1+incompatible // indirect
+	github.com/docker/cli v29.2.0+incompatible // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/dvsekhvalnov/jose2go v1.7.0 // indirect
@@ -1056,6 +1055,8 @@ require (
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/minio/minio-go/v7 v7.0.95 // indirect
 	github.com/minio/minlz v1.0.0 // indirect
+	github.com/moby/moby/api v1.54.0 // indirect
+	github.com/moby/moby/client v0.3.0 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/nwaples/rardecode/v2 v2.1.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/credentialsfile v0.147.0 // indirect
