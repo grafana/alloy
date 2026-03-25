@@ -321,7 +321,8 @@ func (w *Storage) resetWALReplayResources() {
 // but has not been fully removed from the WAL via a wlog.Checkpoint yet.
 func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, currentSegmentOrCheckpoint int) (err error) {
 	var (
-		dec     = record.NewDecoder(nil, slog.New(logging.NewSlogGoKitHandler(w.logger)))
+		syms    = labels.NewSymbolTable() // One table for the whole WAL.
+		dec     = record.NewDecoder(syms, slog.New(logging.NewSlogGoKitHandler(w.logger)))
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
 
 		decoded = make(chan any, 10)
@@ -349,7 +350,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 				decoded <- series
 			case record.Samples:
-				// TODO: add "record.SamplesV2" when Prometheus will be upgraded.
+				// TODO(x1unix): add "record.SamplesV2" when Prometheus will be upgraded.
 				samples := w.walReplaySamplesPool.Get()[:0]
 				samples, err = dec.Samples(rec, samples)
 				if err != nil {
@@ -600,6 +601,7 @@ func (w *Storage) Truncate(mint int64) error {
 	// Convert go-kit logger to slog logger
 	slogLogger := slog.New(logging.NewSlogGoKitHandler(w.logger))
 
+	// TODO(x1unix): pass EnableSTStorage when Prometheus will be upgraded
 	if _, err = wlog.Checkpoint(slogLogger, w.wal, first, last, keep, mint); err != nil {
 		return fmt.Errorf("create checkpoint: %w", err)
 	}
