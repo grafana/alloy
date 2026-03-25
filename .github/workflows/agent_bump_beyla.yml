@@ -7,6 +7,11 @@ on:
         description: Beyla release tag to sync from, for example v3.6.1
         required: true
         type: string
+      beyla_ref:
+        description: Optional Beyla git ref override for pre-release testing, for example main or release/v3.7
+        required: false
+        default: ""
+        type: string
       source_ref:
         description: Alloy ref to branch from
         required: false
@@ -19,7 +24,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: agent-bump-beyla-${{ inputs.source_ref }}-${{ inputs.beyla_release_tag }}
+  group: agent-bump-beyla-${{ inputs.source_ref }}-${{ inputs.beyla_ref || inputs.beyla_release_tag }}
   cancel-in-progress: true
 
 jobs:
@@ -104,6 +109,7 @@ jobs:
             # Update Alloy's Beyla integration for a Beyla release
 
             **Target Beyla release tag**: `${{ inputs.beyla_release_tag }}`
+            **Beyla ref override**: `${{ inputs.beyla_ref }}`
             **Branch from**: `${{ inputs.source_ref }}`
             **Repository**: `grafana/alloy`
 
@@ -118,10 +124,13 @@ jobs:
 
             ## Source of truth
 
-            Fetch the Beyla source for tag `${{ inputs.beyla_release_tag }}` from `grafana/beyla`.
-            Read `go.mod` there to determine:
-            - the exact Beyla module version to use in Alloy
-            - the exact Grafana OBI replacement version from the `replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation ...` line
+            Fetch the Beyla source from `grafana/beyla`.
+            Use `${{ inputs.beyla_ref }}` if it is non-empty; otherwise use tag `${{ inputs.beyla_release_tag }}`.
+            Read `go.mod` there to determine the exact Beyla module version to use in Alloy.
+            Derive the exact Grafana OBI replacement version from the Beyla `.obi-src` gitlink commit:
+            - resolve the pinned `.obi-src` SHA for the selected Beyla ref
+            - resolve that SHA into a Go pseudo-version for `github.com/grafana/opentelemetry-ebpf-instrumentation`
+            - if the module proxy stalls, use `GOPROXY=direct` for the resolution step
 
             You may use public GitHub raw URLs, `gh api`, or a shallow temporary clone outside the repo.
 
@@ -142,7 +151,7 @@ jobs:
 
             ## Implementation requirements
 
-            1. Bump the OBI replacement version in:
+            1. Bump the OBI replacement version derived from Beyla's pinned `.obi-src` SHA in:
                - `collector/builder-config.yaml`
                - `dependency-replacements.yaml`
                - `collector/go.mod`
