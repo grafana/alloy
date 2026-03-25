@@ -39,7 +39,7 @@ func TestServer(t *testing.T) {
 		)
 		defer srv.ForceShutdown()
 
-		resp := doPost(t, srv, "/logs")
+		resp := doPost(t, srv)
 		require.NoError(t, resp.Body.Close())
 		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
 
@@ -63,7 +63,7 @@ func TestServer(t *testing.T) {
 		)
 		defer srv.ForceShutdown()
 
-		resp := doPost(t, srv, "/logs")
+		resp := doPost(t, srv)
 		require.NoError(t, resp.Body.Close())
 
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
@@ -87,7 +87,7 @@ func TestServer(t *testing.T) {
 		)
 		defer srv.ForceShutdown()
 
-		resp := doPost(t, srv, "/logs")
+		resp := doPost(t, srv)
 		require.NoError(t, resp.Body.Close())
 
 		assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
@@ -112,7 +112,7 @@ func TestServer(t *testing.T) {
 		)
 		defer srv.ForceShutdown()
 
-		resp, err := doPostWithContext(t, context.Background(), srv, "/logs")
+		resp, err := doPostWithContext(t, context.Background(), srv)
 		require.NoError(t, err)
 		require.NoError(t, resp.Body.Close())
 
@@ -128,7 +128,7 @@ func TestServer(t *testing.T) {
 				ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 				defer cancel()
 
-				_, err := doPostWithContext(t, ctx, srv, "/logs")
+				_, err := doPostWithContext(t, ctx, srv)
 				if !errors.Is(err, context.DeadlineExceeded) {
 					errs <- fmt.Errorf("expected context deadline exceeded, got %v", err)
 					return
@@ -163,7 +163,7 @@ func TestServer_Update(t *testing.T) {
 		)
 		defer srv.Shutdown()
 
-		resp := doPost(t, srv, "/logs")
+		resp := doPost(t, srv)
 		require.NoError(t, resp.Body.Close())
 		assertReceivedLogs(t, recv, []loki.Entry{
 			loki.NewEntry(model.LabelSet{"version": "before"}, push.Entry{Line: "hello"}),
@@ -174,7 +174,7 @@ func TestServer_Update(t *testing.T) {
 		})
 		recv.Clear()
 
-		resp = doPost(t, srv, "/logs")
+		resp = doPost(t, srv)
 		resp.Body.Close()
 		assertReceivedLogs(t, recv, []loki.Entry{
 			loki.NewEntry(model.LabelSet{"version": "after"}, push.Entry{Line: "hello"}),
@@ -373,18 +373,18 @@ func testServerConfig(timeout time.Duration) *fnet.ServerConfig {
 	}
 }
 
-func doPost(t *testing.T, srv *Server, path string) *http.Response {
+func doPost(t *testing.T, srv *Server) *http.Response {
 	t.Helper()
 
-	resp, err := doPostWithContext(t, t.Context(), srv, path)
+	resp, err := doPostWithContext(t, t.Context(), srv)
 	require.NoError(t, err)
 	return resp
 }
 
-func doPostWithContext(t *testing.T, ctx context.Context, srv *Server, path string) (*http.Response, error) {
+func doPostWithContext(t *testing.T, ctx context.Context, srv *Server) (*http.Response, error) {
 	t.Helper()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("http://%s%s", srv.HTTPAddr(), path), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("http://%s/logs", srv.HTTPAddr()), nil)
 	require.NoError(t, err)
 
 	return http.DefaultClient.Do(req)

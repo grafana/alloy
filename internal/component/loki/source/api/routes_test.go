@@ -148,7 +148,8 @@ func newPushRequest(t *testing.T, labels string, entries []push.Entry, headers m
 	}, lutil.RawSnappy)
 	require.NoError(t, err)
 
-	req, err := http.NewRequest(http.MethodPost, "http://localhost"+pathLokiPush, &body)
+	// NOTE: URL do no matter here.
+	req, err := http.NewRequest(http.MethodPost, "", &body)
 	require.NoError(t, err)
 	req.Header.Set("Content-Type", "application/x-protobuf")
 	for k, v := range headers {
@@ -160,7 +161,8 @@ func newPushRequest(t *testing.T, labels string, entries []push.Entry, headers m
 func newPlainTextRequest(t *testing.T, body string, headers map[string]string) *http.Request {
 	t.Helper()
 
-	req, err := http.NewRequest(http.MethodPost, "http://localhost"+pathLokiRaw, bytes.NewBufferString(body))
+	// NOTE: URL do no matter here.
+	req, err := http.NewRequest(http.MethodPost, "", bytes.NewBufferString(body))
 	require.NoError(t, err)
 	for k, v := range headers {
 		req.Header.Set(k, v)

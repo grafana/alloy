@@ -450,7 +450,11 @@ func TestDefaultServerConfig(t *testing.T) {
 
 	require.Eventuallyf(t, func() bool {
 		resp, err := http.Get(fmt.Sprintf("http://%s/ready", comp.server.HTTPAddr()))
-		return err == nil && resp.StatusCode == 200
+		if err != nil {
+			return false
+		}
+		require.NoError(t, err)
+		return resp.StatusCode == 200
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 
@@ -599,8 +603,12 @@ func waitForServerToBeReady(t *testing.T, comp *Component, useTls bool) {
 
 	require.Eventuallyf(t, func() bool {
 		resp, err := client.Get(url)
+		if err != nil {
+			return false
+		}
 
-		return err == nil && resp != nil && resp.StatusCode == 404
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 
