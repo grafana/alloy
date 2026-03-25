@@ -10,9 +10,11 @@ internal API changes are not present.
 Unreleased
 ----------
 
-### Enhancements
+### Bug fixes
 
 - Fix `alloy.extraPorts` not applying `nodePort` when `service.type` is `NodePort`. (@siyu77)
+
+### Enhancements
 
 - Set a `K8S_NODE_NAME` environment variable used by the `otelcol.processor.resourcedetection` component. (@armsnyder)
 
