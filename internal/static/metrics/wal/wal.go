@@ -27,6 +27,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 	"github.com/prometheus/prometheus/util/compression"
+	"github.com/prometheus/prometheus/util/zeropool"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -148,6 +149,13 @@ type Storage struct {
 	appenderPool sync.Pool
 	bufPool      sync.Pool
 
+	// These pools are only used during WAL replay and are reset at the end.
+	// NOTE: Adjust resetWALReplayResources() upon changes to the pools.
+	walReplaySeriesPool          zeropool.Pool[[]record.RefSeries]
+	walReplaySamplesPool         zeropool.Pool[[]record.RefSample]
+	walReplayHistogramsPool      zeropool.Pool[[]record.RefHistogramSample]
+	walReplayFloatHistogramsPool zeropool.Pool[[]record.RefFloatHistogramSample]
+
 	nextRef *atomic.Uint64
 	series  *stripeSeries
 	deleted map[chunks.HeadSeriesRef]int // Deleted series, and what WAL segment they must be kept until.
@@ -228,6 +236,7 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 func (w *Storage) replayWAL() error {
 	w.walMtx.RLock()
 	defer w.walMtx.RUnlock()
+	defer w.resetWALReplayResources()
 
 	if w.walClosed {
 		return ErrWALClosed
@@ -287,6 +296,13 @@ func (w *Storage) replayWAL() error {
 	return nil
 }
 
+func (w *Storage) resetWALReplayResources() {
+	w.walReplaySeriesPool = zeropool.Pool[[]record.RefSeries]{}
+	w.walReplaySamplesPool = zeropool.Pool[[]record.RefSample]{}
+	w.walReplayHistogramsPool = zeropool.Pool[[]record.RefHistogramSample]{}
+	w.walReplayFloatHistogramsPool = zeropool.Pool[[]record.RefFloatHistogramSample]{}
+}
+
 // loadWAL reads the WAL and populates the in-memory series.
 // duplicateRefToValidRef tracks SeriesRefs that are duplicates by their labels, and maps them to the valid SeriesRef
 // that should be used instead. Duplicate SeriesRefs for the same labels can happen when a series is gc'ed from memory
@@ -296,28 +312,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 		dec     = record.NewDecoder(nil, slog.New(logging.NewSlogGoKitHandler(w.logger)))
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
 
-		decoded    = make(chan any, 10)
-		errCh      = make(chan error, 1)
-		seriesPool = sync.Pool{
-			New: func() any {
-				return []record.RefSeries{}
-			},
-		}
-		samplesPool = sync.Pool{
-			New: func() any {
-				return []record.RefSample{}
-			},
-		}
-		histogramsPool = sync.Pool{
-			New: func() any {
-				return []record.RefHistogramSample{}
-			},
-		}
-		floatHistogramsPool = sync.Pool{
-			New: func() any {
-				return []record.RefFloatHistogramSample{}
-			},
-		}
+		decoded = make(chan any, 10)
+		errCh   = make(chan error, 1)
 	)
 
 	go func() {
@@ -329,7 +325,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 			// right now each call will be logged as if the metadata changed.
 			switch dec.Type(rec) {
 			case record.Series:
-				series := seriesPool.Get().([]record.RefSeries)[:0]
+				series := w.walReplaySeriesPool.Get()[:0]
 				series, err = dec.Series(rec, series)
 				if err != nil {
 					errCh <- &wlog.CorruptionErr{
@@ -341,7 +337,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 				decoded <- series
 			case record.Samples:
-				samples := samplesPool.Get().([]record.RefSample)[:0]
+				samples := w.walReplaySamplesPool.Get()[:0]
 				samples, err = dec.Samples(rec, samples)
 				if err != nil {
 					errCh <- &wlog.CorruptionErr{
@@ -352,7 +348,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 				decoded <- samples
 			case record.HistogramSamples:
-				histograms := histogramsPool.Get().([]record.RefHistogramSample)[:0]
+				histograms := w.walReplayHistogramsPool.Get()[:0]
 				histograms, err = dec.HistogramSamples(rec, histograms)
 				if err != nil {
 					errCh <- &wlog.CorruptionErr{
@@ -364,7 +360,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 				decoded <- histograms
 			case record.FloatHistogramSamples:
-				floatHistograms := floatHistogramsPool.Get().([]record.RefFloatHistogramSample)[:0]
+				floatHistograms := w.walReplayFloatHistogramsPool.Get()[:0]
 				floatHistograms, err = dec.FloatHistogramSamples(rec, floatHistograms)
 				if err != nil {
 					errCh <- &wlog.CorruptionErr{
@@ -404,25 +400,38 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 
 				series := &memSeries{ref: s.Ref, lset: s.Labels, lastTs: 0}
 				series, created := w.series.GetOrSet(s.Labels.Hash(), s.Labels, series)
+
 				if !created {
+					// We don't need to check if entry.Ref exists / if the value is not series.ref because GetOrSet
+					// enforces that the same labels will always get the same Ref. If we did not create a new ref
+					// the only possible ref it should ever be in the WAL is series.ref.
 					duplicateRefToValidRef[s.Ref] = series.ref
-					// Make sure we keep the duplicate SeriesRef checkpoints while it might still exist in the WAL.
-					w.deleted[s.Ref] = currentSegmentOrCheckpoint
+
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[s.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[s.Ref] = currentSegmentOrCheckpoint
+					}
 				} else {
 					w.metrics.numActiveSeries.Inc()
 					w.metrics.totalCreatedSeries.Inc()
 				}
 			}
-
-			//nolint:staticcheck
-			seriesPool.Put(v)
+			for i := range v { // Zero out to avoid retaining label data.
+				v[i].Labels = labels.EmptyLabels()
+			}
+			w.walReplaySeriesPool.Put(v[:0])
 		case []record.RefSample:
 			for _, s := range v {
 				if ref, ok := duplicateRefToValidRef[s.Ref]; ok {
-					// Make sure we keep the duplicate SeriesRef in checkpoints until we get past the current segment.
-					w.deleted[s.Ref] = currentSegmentOrCheckpoint
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[s.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[s.Ref] = currentSegmentOrCheckpoint
+					}
 					s.Ref = ref
 				}
+
 				series := w.series.GetByID(s.Ref)
 				if series == nil {
 					nonExistentSeriesRefs.Inc()
@@ -435,11 +444,15 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 			}
 
-			//nolint:staticcheck
-			samplesPool.Put(v)
+			w.walReplaySamplesPool.Put(v)
 		case []record.RefHistogramSample:
 			for _, entry := range v {
 				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[entry.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[entry.Ref] = currentSegmentOrCheckpoint
+					}
 					entry.Ref = ref
 				}
 				series := w.series.GetByID(entry.Ref)
@@ -453,12 +466,16 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 					series.lastTs = entry.T
 				}
 			}
-
-			//nolint:staticcheck
-			histogramsPool.Put(v)
+			clear(v) // Zero out to avoid retaining histogram data.
+			w.walReplayHistogramsPool.Put(v[:0])
 		case []record.RefFloatHistogramSample:
 			for _, entry := range v {
 				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[entry.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[entry.Ref] = currentSegmentOrCheckpoint
+					}
 					entry.Ref = ref
 				}
 				series := w.series.GetByID(entry.Ref)
@@ -472,9 +489,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 					series.lastTs = entry.T
 				}
 			}
-
-			//nolint:staticcheck
-			floatHistogramsPool.Put(v)
+			clear(v) // Zero out to avoid retaining histogram data.
+			w.walReplayFloatHistogramsPool.Put(v[:0])
 		default:
 			panic(fmt.Errorf("unexpected decoded type: %T", d))
 		}
