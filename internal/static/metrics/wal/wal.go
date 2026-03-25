@@ -413,7 +413,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 
 				series := &memSeries{ref: s.Ref, lset: s.Labels, lastTs: 0}
-				series, created := w.series.GetOrSet(s.Labels.Hash(), s.Labels, series)
+				series, created := w.series.GetOrSet(s.Labels.Hash(), series)
 
 				if !created {
 					// We don't need to check if entry.Ref exists / if the value is not series.ref because GetOrSet

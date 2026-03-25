@@ -252,12 +252,12 @@ func (s *stripeSeries) Set(hash uint64, series *memSeries) {
 
 // GetOrSet returns the existing series for the given hash and label set, or sets it if it does not exist.
 // It returns the series and a boolean indicating whether it was newly created.
-func (s *stripeSeries) GetOrSet(hash uint64, lset labels.Labels, series *memSeries) (*memSeries, bool) {
+func (s *stripeSeries) GetOrSet(hash uint64, series *memSeries) (*memSeries, bool) {
 	hashLock := s.hashLock(hash)
 
 	s.locks[hashLock].Lock()
 	// If it already exists in hashes, return it.
-	if prev := s.hashes[hashLock].Get(hash, lset); prev != nil {
+	if prev := s.hashes[hashLock].Get(hash, series.lset); prev != nil {
 		s.locks[hashLock].Unlock()
 		return prev, false
 	}
