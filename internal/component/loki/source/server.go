@@ -115,7 +115,7 @@ func (s *Server) HTTPAddr() string {
 
 // Shutdown stops the server.
 func (s *Server) Shutdown() {
-	level.Info(s.logger).Log("msg", "stopping push API server")
+	level.Info(s.logger).Log("msg", "stopping server")
 	// StopAndShutdown tries to gracefully shutdown.
 	// It will stop idle and incoming connections
 	// and try to wait for all in-flight connections
@@ -130,7 +130,7 @@ func (s *Server) Shutdown() {
 
 // ForceShutdown stops the server without waiting for in-flight requests.
 func (s *Server) ForceShutdown() {
-	level.Info(s.logger).Log("msg", "force shutdown of push API server")
+	level.Info(s.logger).Log("msg", "force shutdown of server")
 	s.once.Do(func() { close(s.forceShutdown) })
 	s.server.StopAndShutdown()
 }
