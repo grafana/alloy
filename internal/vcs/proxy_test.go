@@ -65,7 +65,7 @@ func Test_newProxyOptions_NoProxy(t *testing.T) {
 	proxyURL, _ := url.Parse("http://username:password@proxy.example.com:8080")
 	cfg := &config.ProxyConfig{
 		ProxyURL: config.URL{URL: proxyURL},
-		NoProxy: "github.com",
+		NoProxy:  "github.com",
 	}
 	opts, err := newProxyOptions("https://github.com/example/repo.git", cfg)
 	require.NoError(t, err)
