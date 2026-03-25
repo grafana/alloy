@@ -3,14 +3,16 @@ canonical: https://grafana.com/docs/alloy/latest/reference/components/database_o
 description: Learn about database_observability.postgres
 title: database_observability.postgres
 labels:
-  stage: public-preview
+  stage: general-availability
   products:
     - oss
 ---
 
 # `database_observability.postgres`
 
-{{< docs/shared lookup="stability/public_preview.md" source="alloy" version="<ALLOY_VERSION>" >}}
+`database_observability.postgres` connects to a PostgreSQL database and collects observability data from system catalogs and the `pg_stat_statements` extension.
+The component collects query details, schema information, explain plans, query samples, and processes PostgreSQL logs.
+It forwards this data as log entries to Loki receivers and exports targets for Prometheus scraping.
 
 ## Usage
 
@@ -118,6 +120,7 @@ The `azure` block supplies the identifying information for the database being mo
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+| `statements_limit` | `integer`  | Max number of recent queries to collect details for. | `100`   | no       |
 
 ### `query_samples`
 

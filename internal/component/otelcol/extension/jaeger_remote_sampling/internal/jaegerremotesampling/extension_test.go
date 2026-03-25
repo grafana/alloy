@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/configgrpc"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configtls"
 )
@@ -166,7 +167,10 @@ func (s *samplingServer) GetSamplingStrategy(ctx context.Context, params *api_v2
 
 func testConfig() *Config {
 	cfg := createDefaultConfig().(*Config)
-	cfg.HTTPServerConfig.Endpoint = "127.0.0.1:5778"
+	cfg.HTTPServerConfig.NetAddr = confignet.AddrConfig{
+		Endpoint:  "127.0.0.1:5778",
+		Transport: confignet.TransportTypeTCP,
+	}
 	cfg.GRPCServerConfig.NetAddr.Endpoint = "127.0.0.1:14250"
 	return cfg
 }

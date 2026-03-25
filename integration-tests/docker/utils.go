@@ -38,10 +38,11 @@ type fileInfo struct {
 	relPath string
 }
 
-func executeCommand(command string, args []string, taskDescription string) {
+func executeCommandInDir(dir, command string, args []string, taskDescription string) {
 	fmt.Printf("%s...\n", taskDescription)
 
 	cmd := exec.Command(command, args...)
+	cmd.Dir = dir
 
 	// Assign os.Stdout and os.Stderr to the command's output streams
 	cmd.Stdout = os.Stdout
@@ -53,7 +54,7 @@ func executeCommand(command string, args []string, taskDescription string) {
 }
 
 func buildAlloy() {
-	executeCommand("make", []string{"-C", "../../", "ALLOY_IMAGE=" + alloyImageName, "alloy-image"}, "Building Alloy")
+	executeCommandInDir(repoRootDir, "make", []string{"ALLOY_IMAGE=" + alloyImageName, "alloy-image"}, "Building Alloy")
 }
 
 // Setup container files for mounting into the test container
@@ -304,7 +305,7 @@ func runTest(ctx context.Context, testDir string, port int, stateful bool, testT
 }
 
 func runAllTests(ctx context.Context) {
-	testDirs, err := filepath.Glob("./tests/*")
+	testDirs, err := filepath.Glob(filepath.Join(testsRootDir, "tests", "*"))
 	if err != nil {
 		panic(err)
 	}
@@ -319,6 +320,30 @@ func runAllTests(ctx context.Context) {
 		}(testDir, i)
 	}
 	wg.Wait()
+}
+
+func mustFindRepoRoot() string {
+	dir, err := os.Getwd()
+	if err != nil {
+		panic(fmt.Sprintf("failed to get current working directory: %v", err))
+	}
+
+	for {
+		if pathExists(filepath.Join(dir, "go.mod")) && pathExists(filepath.Join(dir, "integration-tests", "docker", "main.go")) {
+			return dir
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			panic("failed to find repository root containing integration-tests/docker")
+		}
+		dir = parent
+	}
+}
+
+func pathExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // runComposeTest runs a test that has its own docker-compose.yaml defining

@@ -26,19 +26,21 @@ type prereleaseParams struct {
 
 func main() {
 	var (
-		dryRun        bool
-		releaseBranch string
+		dryRun bool
+		branch string
 	)
 	flag.BoolVar(&dryRun, "dry-run", false, "Dry run (do not create tag or release)")
-	flag.StringVar(&releaseBranch, "branch", "", "Release branch to create RC for (e.g., release/v1.15)")
+	flag.StringVar(&branch, "branch", "", "Branch to create RC for (e.g., main or release/v1.15)")
 	flag.Parse()
 
-	if releaseBranch == "" {
-		log.Fatal("Release branch is required (use --branch flag, e.g., --branch release/v1.15)")
+	if branch == "" {
+		log.Fatal("Branch is required (use --branch flag, e.g., --branch main)")
 	}
 
-	if _, err := version.ParseReleaseBranch(releaseBranch); err != nil {
-		log.Fatal(err)
+	if branch != "main" {
+		if _, err := version.ParseReleaseBranch(branch); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	ctx := context.Background()
@@ -49,7 +51,7 @@ func main() {
 	}
 
 	// Find the release-please PR for the specified branch
-	pr, err := findReleasePleasePR(ctx, client, releaseBranch)
+	pr, err := findReleasePleasePR(ctx, client, branch)
 	if err != nil {
 		log.Fatalf("Failed to find release-please PR: %v", err)
 	}
@@ -65,6 +67,15 @@ func main() {
 	}
 	fmt.Printf("Target version: %s\n", ver)
 
+	isPatch, err := version.IsPatch(ver)
+	if err != nil {
+		log.Fatalf("Failed to parse version: %v", err)
+	}
+	if branch == "main" && isPatch {
+		mm, _ := version.MajorMinor(ver)
+		log.Fatalf("Cannot create a patch release RC from main. Use the release branch instead: --branch release/v%s", mm)
+	}
+
 	// Find existing RC tags and determine next RC number
 	rcNumber, err := findNextRCNumber(ctx, client, ver)
 	if err != nil {
@@ -74,18 +85,22 @@ func main() {
 	rcTag := fmt.Sprintf("v%s-rc.%d", ver, rcNumber)
 	fmt.Printf("Next RC tag: %s\n", rcTag)
 
-	if dryRun {
-		fmt.Println("\n🏃 DRY RUN - No changes made")
-		fmt.Printf("Would create tag: %s\n", rcTag)
-		fmt.Printf("From branch: %s\n", pr.GetHead().GetRef())
-		return
-	}
-
 	// Get the SHA of the PR branch head
 	branchSHA := pr.GetHead().GetSHA()
 	fmt.Printf("Branch HEAD SHA: %s\n", branchSHA)
 
-	// Draft releases don't create tags until published, but we need it to pre-load artifacts to the draft
+	if dryRun {
+		fmt.Println("\n🏃 DRY RUN - No changes made")
+		fmt.Printf("Would create tag: %s\n", rcTag)
+		fmt.Printf("Base branch: %s\n", branch)
+		fmt.Printf("Release-please branch: %s\n", pr.GetHead().GetRef())
+		fmt.Printf("Head commit: %s\n", branchSHA)
+		return
+	}
+
+	// Draft releases don't create tags until published. Tag creation is what triggers artifacts to
+	// build and get attached to releases. So we create a tag here like how release-please does with
+	// force-tag-creation.
 	if err := client.CreateTag(ctx, gh.CreateTagParams{
 		Tag:     rcTag,
 		SHA:     branchSHA,

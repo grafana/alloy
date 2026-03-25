@@ -92,21 +92,19 @@ func (a *Arguments) SetToDefault() {
 type Component struct {
 	opts component.Options
 
-	mut    sync.RWMutex
-	fanout []loki.LogsReceiver
-	target *kt.TargetSyncer
-
 	handler loki.LogsReceiver
+	fanout  *loki.Fanout
+
+	mut    sync.Mutex
+	target *kt.TargetSyncer
 }
 
 // New creates a new loki.source.kafka component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:    o,
-		mut:     sync.RWMutex{},
-		fanout:  args.ForwardTo,
-		target:  nil,
 		handler: loki.NewLogsReceiver(),
+		fanout:  loki.NewFanout(args.ForwardTo),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -120,30 +118,21 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.mut.Lock()
-		defer c.mut.Unlock()
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
 
-		level.Info(c.opts.Logger).Log("msg", "loki.source.kafka component shutting down, stopping target")
-		if c.target != nil {
-			err := c.target.Stop()
-			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "error while stopping kafka target", "err", err)
+			level.Info(c.opts.Logger).Log("msg", "loki.source.kafka component shutting down, stopping target")
+			if c.target != nil {
+				if err := c.target.Stop(); err != nil {
+					level.Error(c.opts.Logger).Log("msg", "error while stopping kafka target", "err", err)
+				}
 			}
-		}
+		})
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
-		}
-	}
+	loki.Consume(ctx, c.handler, c.fanout)
+	return nil
 }
 
 // Update implements component.Component.
@@ -152,7 +141,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	if c.target != nil {
 		err := c.target.Stop()

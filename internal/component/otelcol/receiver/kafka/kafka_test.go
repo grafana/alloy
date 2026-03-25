@@ -23,6 +23,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ClientID:        "otel-collector",
 				RackID:          "",
 				UseLeaderEpoch:  true,
+				ConnIdleTimeout: 9 * time.Minute,
 				Metadata: configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -42,8 +43,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					Interval: 1 * time.Second,
 				},
 				MinFetchSize:           1,
-				DefaultFetchSize:       1048576,
-				MaxFetchSize:           0,
+				MaxFetchSize:           1048576,
 				MaxPartitionFetchSize:  1048576,
 				MaxFetchWait:           250 * time.Millisecond,
 				GroupRebalanceStrategy: "range",
@@ -143,7 +143,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					max_elapsed_time = "1m"
 				}
 				min_fetch_size = 2
-				default_fetch_size = 10000
 				max_fetch_size = 20
 				max_partition_fetch_size = 30000
 				rack_id = "test-rack"
@@ -171,6 +170,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					ClientID:        "test_client_id",
 					RackID:          "test-rack",
 					UseLeaderEpoch:  true,
+					ConnIdleTimeout: 9 * time.Minute,
 					Metadata: configkafka.MetadataConfig{
 						Full:            true,
 						RefreshInterval: 10 * time.Minute,
@@ -190,7 +190,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						Interval: 12 * time.Second,
 					},
 					MinFetchSize:           2,
-					DefaultFetchSize:       10000,
 					MaxFetchSize:           20,
 					MaxPartitionFetchSize:  30000,
 					MaxFetchWait:           2 * time.Second,
@@ -263,13 +262,13 @@ func TestArguments_Auth(t *testing.T) {
 				"client_id":                "otel-collector",
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
-				"default_fetch_size":       1048576,
-				"max_fetch_size":           0,
+				"max_fetch_size":           1048576,
 				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
 				"rack_id":                  "",
 				"use_leader_epoch":         true,
+				"conn_idle_timeout":        9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -344,13 +343,13 @@ func TestArguments_Auth(t *testing.T) {
 				"client_id":                "otel-collector",
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
-				"default_fetch_size":       1048576,
-				"max_fetch_size":           0,
+				"max_fetch_size":           1048576,
 				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
 				"rack_id":                  "",
 				"use_leader_epoch":         true,
+				"conn_idle_timeout":        9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -431,13 +430,13 @@ func TestArguments_Auth(t *testing.T) {
 				"client_id":                "otel-collector",
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
-				"default_fetch_size":       1048576,
-				"max_fetch_size":           0,
+				"max_fetch_size":           1048576,
 				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
 				"rack_id":                  "",
 				"use_leader_epoch":         true,
+				"conn_idle_timeout":        9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -519,13 +518,13 @@ func TestArguments_Auth(t *testing.T) {
 				"client_id":                "otel-collector",
 				"initial_offset":           "latest",
 				"min_fetch_size":           1,
-				"default_fetch_size":       1048576,
-				"max_fetch_size":           0,
+				"max_fetch_size":           1048576,
 				"max_partition_fetch_size": 1048576,
 				"max_fetch_wait":           250 * time.Millisecond,
 				"group_rebalance_strategy": "range",
 				"rack_id":                  "",
 				"use_leader_epoch":         true,
+				"conn_idle_timeout":        9 * time.Minute,
 				"metadata": configkafka.MetadataConfig{
 					Full:            true,
 					RefreshInterval: 10 * time.Minute,
@@ -633,18 +632,10 @@ func TestDeprecatedTopicShouldBeMigratedToNewTopics(t *testing.T) {
 	// The deprecated `topic` should be migrated into `topics`, matching upstream behavior.
 	require.Equal(t, []string{"my_custom_logs_topic"}, converted.Logs.Topics,
 		"deprecated logs.topic should be migrated to logs.topics")
-	require.Empty(t, converted.Logs.Topic,
-		"deprecated logs.topic should be cleared after migration")
-
 	require.Equal(t, []string{"my_custom_metrics_topic"}, converted.Metrics.Topics,
 		"deprecated metrics.topic should be migrated to metrics.topics")
-	require.Empty(t, converted.Metrics.Topic,
-		"deprecated metrics.topic should be cleared after migration")
-
 	require.Equal(t, []string{"my_custom_traces_topic"}, converted.Traces.Topics,
 		"deprecated traces.topic should be migrated to traces.topics")
-	require.Empty(t, converted.Traces.Topic,
-		"deprecated traces.topic should be cleared after migration")
 }
 
 func TestDebugMetricsConfig(t *testing.T) {

@@ -99,13 +99,19 @@ You can use the following blocks with `otelcol.processor.filter`:
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
-| [`logs`][logs]                   | Statements which filter logs.                                              | no       |
-| [`metrics`][metrics]             | Statements which filter metrics.                                           | no       |
-| [`traces`][traces]               | Statements which filter traces.                                            | no       |
+| [`log_conditions`][log_conditions]       | Inferred-context conditions for logs.                                                              | no |
+| [`logs`][logs]                           | Deprecated. Statements which filter logs. Use [`log_conditions`][log_conditions] instead.          | no |
+| [`metric_conditions`][metric_conditions] | Inferred-context conditions for metrics.                                                           | no |
+| [`metrics`][metrics]                     | Deprecated. Statements which filter metrics. Use [`metric_conditions`][metric_conditions] instead. | no |
+| [`trace_conditions`][trace_conditions]   | Inferred-context conditions for traces.                                                            | no |
+| [`traces`][traces]                       | Deprecated. Statements which filter traces. Use [`trace_conditions`][trace_conditions] instead.    | no |
 
 [traces]: #traces
 [metrics]: #metrics
 [logs]: #logs
+[trace_conditions]: #trace_conditions
+[metric_conditions]: #metric_conditions
+[log_conditions]: #log_conditions
 [output]: #output
 [debug_metrics]: #debug_metrics
 
@@ -123,6 +129,10 @@ You can use the following blocks with `otelcol.processor.filter`:
 
 ### `logs`
 
+{{< admonition type="note" >}}
+The `logs` block is deprecated. Use [`log_conditions`][log_conditions] instead.
+{{< /admonition >}}
+
 The `logs` block specifies statements that filter log telemetry signals.
 Only `logs` blocks can be specified.
 
@@ -137,6 +147,10 @@ The syntax of OTTL statements depends on the OTTL context. Refer to the OpenTele
 Only one of the statements inside the list of statements has to be satisfied.
 
 ### `metrics`
+
+{{< admonition type="note" >}}
+The `metrics` block is deprecated. Use [`metric_conditions`][metric_conditions] instead.
+{{< /admonition >}}
 
 The `metrics` block specifies statements that filter metric telemetry signals.
 Only one `metrics` blocks can be specified.
@@ -163,6 +177,10 @@ If all datapoints for a metric are dropped, the metric will also be dropped.
 
 ### `traces`
 
+{{< admonition type="note" >}}
+The `traces` block is deprecated. Use [`trace_conditions`][trace_conditions] instead.
+{{< /admonition >}}
+
 The `traces` block specifies statements that filter trace telemetry signals.
 Only one `traces` block can be specified.
 
@@ -185,6 +203,58 @@ If at least one `span` condition is satisfied, the `spanevent` conditions won't 
 Only one of the statements inside the list of statements has to be satisfied.
 
 If all span events for a span are dropped, the span will be left intact.
+
+### `trace_conditions`
+
+The `trace_conditions` block specifies inferred-context OTTL conditions for traces.
+
+| Name         | Type           | Description                             | Default | Required |
+| ------------ | -------------- | --------------------------------------- | ------- | -------- |
+| `conditions` | `list(string)` | List of OTTL conditions.                |         | yes      |
+| `context`    | `string`       | OTTL context for evaluating conditions. |         | no       |
+
+Supported `context` values are:
+
+* `resource`
+* `span`
+* `spanevent`
+
+For more details on available contexts, refer to [filterprocessor context documentation][Filterprocessor context].
+
+### `metric_conditions`
+
+The `metric_conditions` block specifies inferred-context OTTL conditions for metrics.
+
+| Name         | Type           | Description                             | Default | Required |
+| ------------ | -------------- | --------------------------------------- | ------- | -------- |
+| `conditions` | `list(string)` | List of OTTL conditions.                |         | yes      |
+| `context`    | `string`       | OTTL context for evaluating conditions. |         | no       |
+
+Supported `context` values are:
+
+* `resource`
+* `metric`
+* `datapoint`
+
+For more details on available contexts, refer to [filterprocessor context documentation][Filterprocessor context].
+
+### `log_conditions`
+
+The `log_conditions` block specifies inferred-context OTTL conditions for logs.
+
+| Name         | Type           | Description                             | Default | Required |
+| ------------ | -------------- | --------------------------------------- | ------- | -------- |
+| `conditions` | `list(string)` | List of OTTL conditions.                |         | yes      |
+| `context`    | `string`       | OTTL context for evaluating conditions. |         | no       |
+
+Supported `context` values are:
+
+* `resource`
+* `log`
+
+For more details on available contexts, refer to [filterprocessor context documentation][Filterprocessor context].
+
+`trace_conditions`, `metric_conditions`, and `log_conditions` can't be used together with `traces`, `metrics`, and `logs` blocks in the same component.
 
 ## Exported fields
 
@@ -296,6 +366,7 @@ otelcol.processor.filter "default" {
 [HasAttrOnDataPoint]: https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/<OTEL_VERSION>/processor/filterprocessor/README.md#hasattrondatapoint
 [OTTL booleans]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl#booleans
 [OTTL math expressions]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/pkg/ottl#math-expressions
+[Filterprocessor context]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/<OTEL_VERSION>/processor/filterprocessor#context
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
