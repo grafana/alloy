@@ -71,6 +71,12 @@ func (args *GitArguments) Validate() error {
 	case "HEAD", "FETCH_HEAD", "ORIG_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD":
 		return fmt.Errorf("revision cannot be a special git reference such as HEAD, FETCH_HEAD, ORIG_HEAD, MERGE_HEAD, or CHERRY_PICK_HEAD")
 	}
+	if err := args.ProxyConfig.Validate(); err != nil {
+		return err
+	}
+	if err := args.TLSConfig.Validate(); err != nil {
+		return err
+	}
 
 	return nil
 }
