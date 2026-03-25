@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -37,6 +39,9 @@ type Config struct {
 	SamplesPerSecond          int64
 	Demangle                  string
 	ReporterUnsymbolizedStubs bool
+	PIDLabel                  bool
+	CommMode                  args.CommMode
+	KernelFrames              bool
 }
 type PPROFReporter struct {
 	cfg *Config
@@ -196,6 +201,17 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
+		comm := traceKey.Comm.String()
+		sampleLabels := map[string][]string{}
+		if comm != "" && p.cfg.CommMode.Label() {
+			sampleLabels["comm"] = []string{comm}
+		}
+		if p.cfg.PIDLabel {
+			sampleLabels["pid"] = []string{strconv.FormatInt(traceKey.Pid, 10)}
+		}
+		if len(sampleLabels) > 0 {
+			s.Label = sampleLabels
+		}
 
 		switch origin {
 		case support.TraceOriginSampling:
@@ -212,6 +228,9 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 
 		for i := range traceInfo.Frames {
 			fr := traceInfo.Frames[i].Value()
+			if !p.cfg.KernelFrames && fr.Type == libpf.KernelFrame {
+				continue
+			}
 			var (
 				mapping  *profile.Mapping
 				location *profile.Location
@@ -281,6 +300,9 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 				continue
 			}
 			s.Location = append(s.Location, location)
+		}
+		if comm != "" && p.cfg.CommMode.Stackframe() {
+			s.Location = append(s.Location, b.CommLocation(comm))
 		}
 	}
 	res := make([]PPROF, 0, len(bs.Builders))

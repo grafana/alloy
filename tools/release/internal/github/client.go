@@ -157,7 +157,15 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 	// Try as a tag
 	tagRef, _, err := c.api.Git.GetRef(ctx, c.owner, c.repo, "tags/"+ref)
 	if err == nil {
-		return tagRef.GetObject().GetSHA(), nil
+		sha := tagRef.GetObject().GetSHA()
+		if tagRef.GetObject().GetType() == "tag" {
+			tagObj, _, tagErr := c.api.Git.GetTag(ctx, c.owner, c.repo, sha)
+			if tagErr != nil {
+				return "", fmt.Errorf("dereferencing annotated tag %s: %w", ref, tagErr)
+			}
+			sha = tagObj.GetObject().GetSHA()
+		}
+		return sha, nil
 	}
 
 	// Try as a commit SHA

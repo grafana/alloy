@@ -86,8 +86,7 @@ type logsExporter struct {
 	sourceMaps sourceMapsStore
 	format     LogFormat
 
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
+	fanout *loki.Fanout
 
 	labelsMut sync.RWMutex
 	labels    model.LabelSet
@@ -100,16 +99,14 @@ func newLogsExporter(log log.Logger, sourceMaps sourceMapsStore, format LogForma
 		log:        log,
 		sourceMaps: sourceMaps,
 		format:     format,
+		fanout:     loki.NewFanout([]loki.LogsReceiver{}),
 	}
 }
 
 // SetReceivers updates the set of logs receivers which will receive logs
 // emitted by the exporter.
 func (exp *logsExporter) SetReceivers(receivers []loki.LogsReceiver) {
-	exp.receiversMut.Lock()
-	defer exp.receiversMut.Unlock()
-
-	exp.receivers = receivers
+	exp.fanout.UpdateChildren(receivers)
 }
 
 func (exp *logsExporter) Name() string { return "logs exporter" }
@@ -152,14 +149,6 @@ func (exp *logsExporter) Export(ctx context.Context, p payload.Payload) error {
 }
 
 func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payload.KeyVal) error {
-	// Grab the current value of exp.receivers so sendKeyValsToLogsPipeline
-	// doesn't block updating receivers.
-	exp.receiversMut.RLock()
-	var (
-		receivers = exp.receivers
-	)
-	exp.receiversMut.RUnlock()
-
 	var (
 		line []byte
 		err  error
@@ -178,27 +167,12 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 		return err
 	}
 
-	ent := loki.Entry{
-		Labels: exp.labelSet(kv),
-		Entry: push.Entry{
-			Timestamp: time.Now(),
-			Line:      string(line),
-		},
-	}
-
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second) // TODO(rfratto): potentially make this configurable
 	defer cancel()
-
-	for _, receiver := range receivers {
-		select {
-		case <-ctx.Done():
-			return err
-		case receiver.Chan() <- ent:
-			continue
-		}
-	}
-
-	return nil
+	return exp.fanout.Send(ctx, loki.NewEntry(exp.labelSet(kv), push.Entry{
+		Timestamp: time.Now(),
+		Line:      string(line),
+	}))
 }
 
 func (exp *logsExporter) labelSet(kv *payload.KeyVal) model.LabelSet {

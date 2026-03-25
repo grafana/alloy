@@ -5,7 +5,7 @@
   new(name='', tag='alloy-mixin'):: {
     title: name,
     timezone: 'utc',
-    refresh: '10s',
+    refresh: '30s',
     schemaVersion: 36,
     graphTooltip: 1,  // shared crosshair for all graphs
     tags: [tag],
@@ -86,6 +86,18 @@
     query: query,
   },
 
+  newGroupByTemplateVariable(query, defaultValue='instance'):: std.prune(
+    $.newTemplateVariableCustom('groupby', query) {
+      label: 'Group by',
+      allowCustomValue: true,
+      current: {
+        selected: true,
+        text: defaultValue,
+        value: defaultValue,
+      },
+    }
+  ),
+
   newLokiAnnotation(name, expression, color):: {
     name: name,
     datasource: '$loki_datasource',
@@ -96,11 +108,17 @@
     titleFormat: '{{cluster}}/{{namespace}}',
   },
 
-  newMultiTemplateVariable(name, query, setenceCaseLabels=false):: $.newTemplateVariable(name, query, setenceCaseLabels) {
-    multi: true,
-    allValue: '.*',
-    includeAll: true,
-  },
+  newMultiTemplateVariable(name, query, setenceCaseLabels=false, defaultToAll=true)::
+    $.newTemplateVariable(name, query, setenceCaseLabels) {
+      multi: true,
+    } + (
+      if defaultToAll then {
+        allValue: '.*',
+        includeAll: true,
+      } else {
+        allowCustomValue: true,
+      }
+    ),
 
   withPanelsMixin(panels):: { panels+: panels },
 

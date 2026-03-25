@@ -21,12 +21,28 @@ const (
 
 func main() {
 	var (
-		dryRun    bool
-		sourceRef string
+		dryRun bool
+		tag    string
 	)
 	flag.BoolVar(&dryRun, "dry-run", false, "Dry run (do not create branch)")
-	flag.StringVar(&sourceRef, "source", "main", "Source ref to branch from")
+	flag.StringVar(&tag, "tag", "", "Release tag to branch from (e.g., v1.29.0)")
 	flag.Parse()
+
+	if tag == "" {
+		log.Fatal("Release tag is required (use --tag flag, e.g., --tag v1.29.0)")
+	}
+
+	majorMinor, err := version.MajorMinor(tag)
+	if err != nil {
+		log.Fatalf("Failed to parse version from tag %q: %v", tag, err)
+	}
+	fmt.Printf("Release tag: %s (major.minor: %s)\n", tag, majorMinor)
+
+	branchName := fmt.Sprintf("%s%s", releaseBranchPrefix, majorMinor)
+	fmt.Printf("Release branch: %s\n", branchName)
+
+	backportLabel := fmt.Sprintf("%s%s", backportLabelPrefix, majorMinor)
+	fmt.Printf("Backport label: %s\n", backportLabel)
 
 	ctx := context.Background()
 
@@ -35,59 +51,34 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Read manifest to determine current version
-	manifest, err := client.ReadManifest(ctx, sourceRef)
-	if err != nil {
-		log.Fatalf("Failed to read manifest: %v", err)
-	}
-
-	currentVersion, ok := manifest["."]
-	if !ok {
-		log.Fatal("No root version found in manifest (expected '.' key)")
-	}
-	fmt.Printf("Current version in manifest: %s\n", currentVersion)
-
-	// Calculate next minor version
-	nextMinor, err := version.NextMinor(currentVersion)
-	if err != nil {
-		log.Fatalf("Failed to calculate next minor version: %v", err)
-	}
-	fmt.Printf("Next minor version: %s\n", nextMinor)
-
-	branchName := fmt.Sprintf("%s%s", releaseBranchPrefix, nextMinor)
-	fmt.Printf("Release branch: %s\n", branchName)
-
-	backportLabel := fmt.Sprintf("%s%s", backportLabelPrefix, nextMinor)
-	fmt.Printf("Backport label: %s\n", backportLabel)
-
-	// Check if branch already exists
 	exists, err := client.BranchExists(ctx, branchName)
 	if err != nil {
 		log.Fatalf("Failed to check if branch exists: %v", err)
 	}
 	if exists {
-		log.Fatalf("Branch %s already exists", branchName)
+		fmt.Printf("Branch %s already exists, skipping creation\n", branchName)
+		return
 	}
 
 	if dryRun {
 		fmt.Println("\n🏃 DRY RUN - No changes made")
 		fmt.Printf("Would create branch: %s\n", branchName)
 		fmt.Printf("Would create label: %s\n", backportLabel)
-		fmt.Printf("From: %s\n", sourceRef)
+		fmt.Printf("From tag: %s\n", tag)
 		return
 	}
 
-	// Get the SHA of the source ref
-	sourceSHA, err := client.GetRefSHA(ctx, sourceRef)
+	// Get the SHA of the tag
+	tagSHA, err := client.GetRefSHA(ctx, tag)
 	if err != nil {
-		log.Fatalf("Failed to get SHA for %s: %v", sourceRef, err)
+		log.Fatalf("Failed to get SHA for tag %s: %v", tag, err)
 	}
-	fmt.Printf("Source SHA: %s\n", sourceSHA)
+	fmt.Printf("Tag SHA: %s\n", tagSHA)
 
-	// Create the branch
+	// Create the release branch
 	err = client.CreateBranch(ctx, gh.CreateBranchParams{
 		Branch: branchName,
-		SHA:    sourceSHA,
+		SHA:    tagSHA,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create branch: %v", err)

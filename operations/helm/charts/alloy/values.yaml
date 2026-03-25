@@ -94,8 +94,10 @@ alloy:
   extraArgs: []
 
   # -- Extra ports to expose on the Alloy container.
+  # If `service.type` is `NodePort`, each item may set `nodePort` to choose the Service NodePort for that port.
   extraPorts: []
   # - name: "faro"
+  #   nodePort: 31129
   #   port: 12347
   #   targetPort: 12347
   #   protocol: "TCP"
@@ -285,6 +287,9 @@ controller:
   # -- Termination grace period in seconds for the Grafana Alloy pods.
   # The default value used by Kubernetes if unspecifed is 30 seconds.
   terminationGracePeriodSeconds: null
+
+  # -- The maximum number of revisions that will be maintained in the Controllers's revision history. The history consists of all revisions not represented by a currently applied reversion.
+  revisionHistoryLimit: 10
 
   # -- Update strategy for updating deployed Pods.
   updateStrategy: {}

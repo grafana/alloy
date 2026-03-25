@@ -49,10 +49,12 @@ jobs:
         uses: grafana/shared-workflows/actions/send-slack-message@0941e3408fa4789fec9062c44a2a9e1832146ba6 #v2.0.1
         env:
           SLACK_MESSAGE: |
-            :alloy: *Grafana Alloy ${{ env.RELEASE_TAG }} is now available!* :alloy:
+            :alloy: :alloy: :alloy:
+            *Grafana Alloy ${{ env.RELEASE_TAG }} is now available!*
 
             *Release:* <${{ env.RELEASE_URL }}|${{ env.RELEASE_TAG }}>
             *Full changelog:* <https://github.com/${{ github.repository }}/blob/${{ env.RELEASE_TAG }}/CHANGELOG.md|CHANGELOG.md>
+            :alloy: :alloy: :alloy:
         with:
           method: chat.postMessage
           payload-templated: false
