@@ -25,7 +25,7 @@ type Batch struct {
 // NewBatch creates an empty Batch.
 func NewBatch() Batch {
 	b := Batch{
-		created:  time.Now().UnixMicro(),
+		created:  0,
 		streams:  []Stream{},
 		entryLen: 0,
 	}
@@ -36,6 +36,9 @@ func NewBatch() Batch {
 // Ownership of the stream data is transferred to the batch and it must not be
 // mutated or retained after calling Add.
 func (b *Batch) Add(stream Stream) {
+	if b.created == 0 {
+		b.created = time.Now().UnixMicro()
+	}
 	b.add(stream.Labels, stream.Entries...)
 	b.entryLen += len(stream.Entries)
 }
@@ -157,7 +160,7 @@ func (b *Batch) ConsumeStreams(fn func(Stream)) {
 
 // Reset clears the batch so it can be reused.
 func (b *Batch) Reset() {
-	b.created = time.Now().UnixMicro()
+	b.created = 0
 	b.entryLen = 0
 	b.streams = b.streams[:0]
 }
