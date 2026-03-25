@@ -9,6 +9,7 @@ on:
       - synchronize
       - reopened
       - labeled
+      - unlabeled
 
 concurrency:
   group: "${{ github.ref_name }}-${{ github.head_ref }}-code-freeze-guard"
