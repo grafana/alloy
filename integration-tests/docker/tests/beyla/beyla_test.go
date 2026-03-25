@@ -21,7 +21,7 @@ func TestBeylaMetrics(t *testing.T) {
 func TestBeylaTraces(t *testing.T) {
 	// Test that traces are being generated and sent to Tempo
 	tags := map[string]string{
-		"service.name": "main", // This should match the instrumented app
+		"service.name": "mimir",
 	}
 	common.TracesTest(t, tags, "beyla")
 }
