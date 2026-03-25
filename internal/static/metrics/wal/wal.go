@@ -52,6 +52,7 @@ type storageMetrics struct {
 	totalAppendedSamples   prometheus.Counter
 	totalAppendedExemplars prometheus.Counter
 	totalAppendedMetadata  prometheus.Counter
+	walTotalReplayDuration prometheus.Gauge
 }
 
 func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
@@ -96,6 +97,11 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		Help: "Total number of metadata updates sent through the WAL",
 	})
 
+	m.walTotalReplayDuration = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "prometheus_remote_write_data_replay_duration_seconds",
+		Help: "Time taken to replay the data on disk.",
+	})
+
 	if r != nil {
 		m.numActiveSeries = util.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
 		m.numDeletedSeries = util.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
@@ -105,6 +111,7 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		m.totalAppendedSamples = util.MustRegisterOrGet(r, m.totalAppendedSamples).(prometheus.Counter)
 		m.totalAppendedExemplars = util.MustRegisterOrGet(r, m.totalAppendedExemplars).(prometheus.Counter)
 		m.totalAppendedMetadata = util.MustRegisterOrGet(r, m.totalAppendedMetadata).(prometheus.Counter)
+		m.walTotalReplayDuration = util.MustRegisterOrGet(r, m.walTotalReplayDuration).(prometheus.Gauge)
 	}
 
 	return &m
@@ -123,6 +130,7 @@ func (m *storageMetrics) Unregister() {
 		m.totalAppendedSamples,
 		m.totalAppendedExemplars,
 		m.totalAppendedMetadata,
+		m.walTotalReplayDuration,
 	}
 	for _, c := range cs {
 		m.r.Unregister(c)
@@ -237,6 +245,7 @@ func (w *Storage) replayWAL() error {
 	w.walMtx.RLock()
 	defer w.walMtx.RUnlock()
 	defer w.resetWALReplayResources()
+	start := time.Now()
 
 	if w.walClosed {
 		return ErrWALClosed
@@ -292,6 +301,9 @@ func (w *Storage) replayWAL() error {
 		}
 		level.Info(w.logger).Log("msg", "WAL segment loaded", "segment", i, "maxSegment", lastSegment)
 	}
+
+	walReplayDuration := time.Since(start)
+	w.metrics.walTotalReplayDuration.Set(walReplayDuration.Seconds())
 
 	return nil
 }
