@@ -12,6 +12,8 @@ Unreleased
 
 ### Enhancements
 
+- Fix `alloy.extraPorts` not applying `nodePort` when `service.type` is `NodePort`. (@siyu77)
+
 - Set a `K8S_NODE_NAME` environment variable used by the `otelcol.processor.resourcedetection` component. (@armsnyder)
 
 1.6.2 (2026-03-05)
