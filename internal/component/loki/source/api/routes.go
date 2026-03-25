@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafana/dskit/tenant"
 	"github.com/grafana/dskit/user"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
@@ -29,9 +30,15 @@ const (
 	pathLokiRaw = "/loki/api/v1/raw"
 
 	pathReady = "/ready"
+
+	defaultMaxMessageSize = 100 << 20
 )
 
 func newRoutes(maxMessageSize int) ([]source.LogsRoute, []source.HandlerRoute) {
+	if maxMessageSize <= 0 {
+		maxMessageSize = defaultMaxMessageSize
+	}
+
 	return []source.LogsRoute{
 			newLokiRoute(pathPush, maxMessageSize),
 			newLokiRoute(pathLokiPush, maxMessageSize),
@@ -65,7 +72,7 @@ func (h *lokiRoute) Path() string {
 }
 
 func (h *lokiRoute) Logs(r *http.Request, cfg *source.LogsConfig) ([]loki.Entry, int, error) {
-	req, err := loghttp.ParsePushRequest(r, int(h.maxMessageSize))
+	req, err := loghttp.ParsePushRequest(r, h.maxMessageSize)
 	if err != nil {
 		return nil, http.StatusBadRequest, err
 	}
@@ -74,8 +81,8 @@ func (h *lokiRoute) Logs(r *http.Request, cfg *source.LogsConfig) ([]loki.Entry,
 		lastErr error
 		entries []loki.Entry
 
-		created        = time.Now()
-		tenantID, _, _ = user.ExtractOrgIDFromHTTPRequest(r)
+		created  = time.Now()
+		tenantID = getTenantID(r)
 	)
 	for _, stream := range req.Streams {
 		ls, err := promql_parser.ParseMetric(stream.Labels)
@@ -208,4 +215,10 @@ func (r *readyRoute) Method() string {
 
 func (r *readyRoute) ServeHTTP(w http.ResponseWriter, _ *http.Request) {
 	_, _ = w.Write([]byte("ready"))
+}
+
+func getTenantID(r *http.Request) string {
+	_, ctx, _ := user.ExtractOrgIDFromHTTPRequest(r)
+	tenantID, _ := tenant.TenantID(ctx)
+	return tenantID
 }
