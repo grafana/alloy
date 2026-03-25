@@ -94,7 +94,7 @@ alloy:
   extraArgs: []
 
   # -- Extra ports to expose on the Alloy container.
-  # NodePort `nodePort`. Only takes effect when `service.type: NodePort`
+  # If `service.type` is `NodePort`, each item may set `nodePort` to choose the Service NodePort for that port.
   extraPorts: []
   # - name: "faro"
   #   nodePort: 31129
