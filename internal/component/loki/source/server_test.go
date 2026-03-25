@@ -31,13 +31,11 @@ func TestServer(t *testing.T) {
 			recv,
 			testServerConfig(time.Second),
 			&LogsConfig{},
-			[]LogsRoute{
-				newTestLogsRoute("/logs", "", func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
-					return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "hello"})},
-						http.StatusAccepted,
-						nil
-				}),
-			},
+			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
+				return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "hello"})},
+					http.StatusAccepted,
+					nil
+			}),
 		)
 		defer srv.ForceShutdown()
 
@@ -59,11 +57,9 @@ func TestServer(t *testing.T) {
 			recv,
 			testServerConfig(time.Second),
 			&LogsConfig{},
-			[]LogsRoute{
-				newTestLogsRoute("/logs", "", func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
-					return nil, http.StatusBadRequest, errors.New("bad request")
-				}),
-			},
+			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
+				return nil, http.StatusBadRequest, errors.New("bad request")
+			}),
 		)
 		defer srv.ForceShutdown()
 
@@ -83,13 +79,11 @@ func TestServer(t *testing.T) {
 			recv,
 			testServerConfig(time.Second),
 			&LogsConfig{},
-			[]LogsRoute{
-				newTestLogsRoute("/logs", "", func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
-					return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "partial"})},
-						http.StatusUnprocessableEntity,
-						errors.New("partial failure")
-				}),
-			},
+			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
+				return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "partial"})},
+					http.StatusUnprocessableEntity,
+					errors.New("partial failure")
+			}),
 		)
 		defer srv.ForceShutdown()
 
@@ -110,13 +104,11 @@ func TestServer(t *testing.T) {
 			recv,
 			testServerConfig(time.Second),
 			&LogsConfig{},
-			[]LogsRoute{
-				newTestLogsRoute("/logs", "", func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
-					return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "hello"})},
-						http.StatusNoContent,
-						nil
-				}),
-			},
+			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
+				return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "hello"})},
+					http.StatusNoContent,
+					nil
+			}),
 		)
 		defer srv.ForceShutdown()
 
@@ -165,11 +157,9 @@ func TestServer_Update(t *testing.T) {
 			&LogsConfig{
 				FixedLabels: model.LabelSet{"version": "before"},
 			},
-			[]LogsRoute{
-				newTestLogsRoute("/logs", "", func(_ *http.Request, cfg *LogsConfig) ([]loki.Entry, int, error) {
-					return []loki.Entry{loki.NewEntry(cfg.FixedLabels.Clone(), push.Entry{Line: "hello"})}, http.StatusNoContent, nil
-				}),
-			},
+			newTestLogsRoute(func(_ *http.Request, cfg *LogsConfig) ([]loki.Entry, int, error) {
+				return []loki.Entry{loki.NewEntry(cfg.FixedLabels.Clone(), push.Entry{Line: "hello"})}, http.StatusNoContent, nil
+			}),
 		)
 		defer srv.Shutdown()
 
@@ -200,7 +190,6 @@ func TestServer_Update(t *testing.T) {
 			recv,
 			testServerConfig(time.Second),
 			&LogsConfig{},
-			nil,
 		)
 		defer srv.ForceShutdown()
 
@@ -220,12 +209,10 @@ func TestServer_Shutdown(t *testing.T) {
 			loki.NewLogsBatchReceiver(),
 			testServerConfig(25*time.Millisecond),
 			&LogsConfig{},
-			[]LogsRoute{
-				newTestLogsRoute("/logs", "", func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
-					close(requestReceived)
-					return []loki.Entry{loki.NewEntry(model.LabelSet{}, push.Entry{Line: "blocked"})}, http.StatusNoContent, nil
-				}),
-			},
+			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
+				close(requestReceived)
+				return []loki.Entry{loki.NewEntry(model.LabelSet{}, push.Entry{Line: "blocked"})}, http.StatusNoContent, nil
+			}),
 		)
 
 		status := make(chan int, 1)
@@ -266,12 +253,10 @@ func TestServer_Shutdown(t *testing.T) {
 			loki.NewLogsBatchReceiver(),
 			testServerConfig(time.Second),
 			&LogsConfig{},
-			[]LogsRoute{
-				newTestLogsRoute("/logs", "", func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
-					close(requestReceived)
-					return []loki.Entry{loki.NewEntry(model.LabelSet{}, push.Entry{Line: "blocked"})}, http.StatusNoContent, nil
-				}),
-			},
+			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
+				close(requestReceived)
+				return []loki.Entry{loki.NewEntry(model.LabelSet{}, push.Entry{Line: "blocked"})}, http.StatusNoContent, nil
+			}),
 		)
 
 		status := make(chan int, 1)
@@ -305,29 +290,22 @@ func TestServer_Shutdown(t *testing.T) {
 	})
 }
 
-func newTestLogsRoute(path, method string, logsFn func(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error)) *testLogsRoute {
+func newTestLogsRoute(logsFn func(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error)) *testLogsRoute {
 	return &testLogsRoute{
-		path:   path,
-		method: method,
 		logsFn: logsFn,
 	}
 }
 
 type testLogsRoute struct {
-	path   string
-	method string
 	logsFn func(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error)
 }
 
 func (r testLogsRoute) Path() string {
-	return r.path
+	return "/logs"
 }
 
 func (r testLogsRoute) Method() string {
-	if r.method == "" {
-		return http.MethodPost
-	}
-	return r.method
+	return http.MethodPost
 }
 
 func (r testLogsRoute) Logs(req *http.Request, opts *LogsConfig) ([]loki.Entry, int, error) {
@@ -355,13 +333,13 @@ func (r testHandlerRoute) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.handler.ServeHTTP(w, req)
 }
 
-func newTestServer(t *testing.T, recv loki.LogsBatchReceiver, cfg *fnet.ServerConfig, logsConfig *LogsConfig, logs []LogsRoute) *Server {
+func newTestServer(t *testing.T, recv loki.LogsBatchReceiver, cfg *fnet.ServerConfig, logsConfig *LogsConfig, logsRoutes ...LogsRoute) *Server {
 	t.Helper()
 
 	srv, err := NewServer(util.TestLogger(t), prometheus.NewRegistry(), recv, "test_server", cfg, logsConfig)
 	require.NoError(t, err)
 
-	err = srv.Run(logs, []HandlerRoute{testHandlerRoute{
+	err = srv.Run(logsRoutes, []HandlerRoute{testHandlerRoute{
 		path: "/ready",
 		handler: http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
