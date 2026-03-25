@@ -70,7 +70,7 @@ func TestServer(t *testing.T) {
 		assertReceivedLogs(t, recv, nil)
 	})
 
-	t.Run("forwards entries and report partial failiure", func(t *testing.T) {
+	t.Run("forwards entries and report partial failure", func(t *testing.T) {
 		recv := loki.NewCollectingBatchReceiver()
 		defer recv.Stop()
 
