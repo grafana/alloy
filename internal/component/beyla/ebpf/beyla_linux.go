@@ -468,15 +468,6 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 	return p
 }
 
-func (args Metrics) hasNetworkFeature() bool {
-	for _, feature := range args.Features {
-		if feature == "network" {
-			return true
-		}
-	}
-	return false
-}
-
 func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
