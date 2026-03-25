@@ -1,10 +1,5 @@
 package cloudflare
 
-// This code is copied from Promtail (a1c1152b79547a133cc7be520a0b2e6db8b84868).
-// The cloudflaretarget package is used to configure and run a target that can
-// read from the Cloudflare Logpull API and forward entries to other loki
-// components.
-
 import (
 	"context"
 	"fmt"
@@ -138,7 +133,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 		// NOTE: We need to stop posFile first so we don't record entries we are draining.
 		c.posFile.Stop()
-		loki.Drain(c.handler, func() {
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			c.tailer.stop()

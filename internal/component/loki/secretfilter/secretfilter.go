@@ -97,8 +97,8 @@ type Component struct {
 	mut      sync.RWMutex
 	args     Arguments
 	receiver loki.LogsReceiver
-	fanout   []loki.LogsReceiver
-	detector *detect.Detector
+	fanout   *loki.Fanout
+	detector secretDetector
 
 	// redactPercent is the effective percentage (1-100) for gitleaks-style redaction when redact_with is not set. Set at build/update.
 	redactPercent uint
@@ -108,6 +108,11 @@ type Component struct {
 
 	metrics            *metrics
 	debugDataPublisher livedebugging.DebugDataPublisher
+}
+
+//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+type secretDetector interface {
+	DetectContext(ctx context.Context, fragment detect.Fragment) []report.Finding
 }
 
 // Metrics exposed by this component:
@@ -262,6 +267,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:               o,
 		log:                o.Logger,
 		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
+		fanout:             loki.NewFanout(args.ForwardTo),
 		detector:           detector,
 		metrics:            newMetrics(o.Registerer, args.OriginLabel),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
@@ -293,48 +299,32 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	componentID := livedebugging.ComponentID(c.opts.ID)
+	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(entry loki.Entry) (loki.Entry, bool) {
+		c.mut.RLock()
+		defer c.mut.RUnlock()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.receiver.Chan():
-			c.mut.RLock()
-
-			var newEntry loki.Entry
-			if c.shouldProcessEntry() {
-				var dropped bool
-				newEntry, dropped = c.processEntry(ctx, entry)
-				if dropped {
-					level.Debug(c.log).Log("msg", "entry dropped", "reason", "processing_timeout")
-					c.mut.RUnlock()
-					continue
-				}
-				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-					componentID,
-					livedebugging.LokiLog,
-					1,
-					func() string {
-						return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
-					},
-				))
-			} else {
-				newEntry = entry
-				c.metrics.entriesBypassedTotal.Inc()
-				level.Debug(c.log).Log("msg", "entry bypassed by sampling", "rate", c.args.Rate)
+		if c.shouldProcessEntry() {
+			newEntry, dropped := c.processEntry(ctx, entry)
+			if dropped {
+				level.Debug(c.log).Log("msg", "entry dropped", "reason", "processing_timeout")
+				return loki.Entry{}, false
 			}
-
-			for _, f := range c.fanout {
-				select {
-				case <-ctx.Done():
-					c.mut.RUnlock()
-					return nil
-				case f.Chan() <- newEntry:
-				}
-			}
-			c.mut.RUnlock()
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				componentID,
+				livedebugging.LokiLog,
+				1,
+				func() string {
+					return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
+				},
+			))
+			return newEntry, true
 		}
-	}
+
+		c.metrics.entriesBypassedTotal.Inc()
+		level.Debug(c.log).Log("msg", "entry bypassed by sampling", "rate", c.args.Rate)
+		return entry, true
+	})
+	return nil
 }
 
 // shouldProcessEntry returns true if this entry should be processed through the secret filter (rate = probability of process).
@@ -441,7 +431,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = newArgs
-	c.fanout = newArgs.ForwardTo
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
 	c.detector = detector
 	if newArgs.RedactPercent >= 1 && newArgs.RedactPercent <= 100 {
 		c.redactPercent = newArgs.RedactPercent

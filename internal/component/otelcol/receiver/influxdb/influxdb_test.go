@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confighttp"
+	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/collector/receiver/receivertest"
@@ -94,7 +95,10 @@ func TestWriteLineProtocol_Alloy(t *testing.T) {
 	addr := alloycomponenttest.GetFreeAddr(t)
 	config := &influxdbreceiver.Config{
 		ServerConfig: confighttp.ServerConfig{
-			Endpoint: addr,
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  addr,
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 	}
 	nextConsumer := new(mockConsumer)

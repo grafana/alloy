@@ -33,7 +33,10 @@ func NewFactory() extension.Factory {
 func createDefaultConfig() component.Config {
 	return &Config{
 		HTTPServerConfig: &confighttp.ServerConfig{
-			Endpoint: ":5778",
+			NetAddr: confignet.AddrConfig{
+				Endpoint:  ":5778",
+				Transport: confignet.TransportTypeTCP,
+			},
 		},
 		GRPCServerConfig: &configgrpc.ServerConfig{
 			NetAddr: confignet.AddrConfig{
