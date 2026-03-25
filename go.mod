@@ -183,7 +183,7 @@ require (
 	github.com/ory/dockertest/v3 v3.12.0
 	github.com/oschwald/geoip2-golang v1.13.0
 	github.com/oschwald/maxminddb-golang v1.13.1
-	github.com/percona/mongodb_exporter v0.48.0
+	github.com/percona/mongodb_exporter v0.47.2
 	github.com/phayes/freeport v0.0.0-20220201140144-74d24b5ae9f5
 	github.com/pingcap/tidb/pkg/parser v0.0.0-20250501143621-a50a2323f4ba
 	github.com/pkg/errors v0.9.1
@@ -817,7 +817,7 @@ require (
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/percona/percona-backup-mongodb v1.8.1-0.20251124214042-d06cab743541 // indirect
+	github.com/percona/percona-backup-mongodb v1.8.1-0.20250429102026-063dab6cc946 // indirect
 	github.com/peterbourgon/ff/v3 v3.4.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
@@ -1026,9 +1026,6 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0 // indirect
 	github.com/STARRY-S/zip v0.2.1 // indirect
 	github.com/alecthomas/repr v0.5.2 // indirect
-	github.com/alibabacloud-go/debug v1.0.1 // indirect
-	github.com/aliyun/alibabacloud-oss-go-sdk-v2 v1.3.0 // indirect
-	github.com/aliyun/credentials-go v1.4.10 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.7 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

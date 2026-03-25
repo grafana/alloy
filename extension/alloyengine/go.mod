@@ -203,9 +203,6 @@ require (
 	github.com/alecthomas/participle/v2 v2.1.4 // indirect
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
-	github.com/alibabacloud-go/debug v1.0.1 // indirect
-	github.com/aliyun/alibabacloud-oss-go-sdk-v2 v1.3.0 // indirect
-	github.com/aliyun/credentials-go v1.4.10 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/antchfx/xmlquery v1.5.0 // indirect
 	github.com/antchfx/xpath v1.3.6 // indirect
@@ -733,8 +730,8 @@ require (
 	github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
-	github.com/percona/mongodb_exporter v0.48.0 // indirect
-	github.com/percona/percona-backup-mongodb v1.8.1-0.20251124214042-d06cab743541 // indirect
+	github.com/percona/mongodb_exporter v0.47.2 // indirect
+	github.com/percona/percona-backup-mongodb v1.8.1-0.20250429102026-063dab6cc946 // indirect
 	github.com/peterbourgon/ff/v3 v3.4.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
