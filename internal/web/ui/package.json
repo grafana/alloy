@@ -17,7 +17,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.7.2",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.6",
-    "@grafana/data": "^11.6.9",
+    "@grafana/data": "^11.6.13",
     "@grafana/ui": "^11.6.13",
     "@xyflow/react": "^12.10.1",
     "d3": "^7.9.0",
@@ -33,20 +33,20 @@
     "js-yaml": "^4.1.1"
   },
   "devDependencies": {
-    "@eslint/js": "9.39.2",
+    "@eslint/js": "9.39.4",
     "@types/d3": "7.4.3",
     "@types/d3-zoom": "3.0.8",
-    "@types/react": "18.3.27",
+    "@types/react": "18.3.28",
     "@types/react-dom": "18.3.7",
-    "@vitejs/plugin-react": "5.1.2",
-    "eslint": "9.39.2",
+    "@vitejs/plugin-react": "5.2.0",
+    "eslint": "9.39.4",
     "eslint-plugin-react-hooks": "5.2.0",
-    "eslint-plugin-react-refresh": "0.4.26",
+    "eslint-plugin-react-refresh": "0.5.2",
     "eslint-plugin-simple-import-sort": "12.1.1",
     "globals": "16.5.0",
-    "prettier": "3.7.4",
+    "prettier": "3.8.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.53.0",
+    "typescript-eslint": "8.57.1",
     "vite": "7.3.1"
   }
 }
