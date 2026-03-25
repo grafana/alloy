@@ -59,7 +59,17 @@ func IsPatch(v string) (bool, error) {
 	if !semver.IsValid(v) {
 		return false, fmt.Errorf("invalid semver: %s", v)
 	}
-	return !strings.HasSuffix(v, ".0"), nil
+
+	canonical := semver.Canonical(v)
+	pre := semver.Prerelease(canonical)
+	base := strings.TrimSuffix(canonical, pre)
+
+	var major, minor, patch int
+	_, err := fmt.Sscanf(base, "v%d.%d.%d", &major, &minor, &patch)
+	if err != nil {
+		return false, fmt.Errorf("parsing version %s: %w", v, err)
+	}
+	return patch != 0, nil
 }
 
 // ParseReleaseBranch extracts the major.minor version from a release branch name.
