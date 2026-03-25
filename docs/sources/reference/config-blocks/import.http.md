@@ -89,17 +89,17 @@ The `tls_config` block configures TLS settings for connecting to HTTPS servers.
 
 ## Behavior when the remote server is unavailable
 
-`import.http` must successfully fetch the remote module the first time {{< param "PRODUCT_NAME" >}} evaluates it, such as during startup or when applying a configuration change.
-If this initial fetch fails, the configuration that depends on the remote module fails to evaluate and {{< param "PRODUCT_NAME" >}} doesn't continue using a remote module that was never loaded for this run.
+- **Initial evaluation in this process:** A failed fetch means the configuration that imports the remote module fails to evaluate, so nothing that only the remote module would define runs.
+- **After at least one successful fetch in this process:** A failed poll keeps the running configuration on the last successfully loaded module in memory; {{< param "PRODUCT_NAME" >}} retries at each `poll_frequency` interval.
 
-After {{< param "PRODUCT_NAME" >}} fetches and evaluates a remote module at least once in the current process, temporary failures to reach the configured URL don't interrupt the running configuration.
-{{< param "PRODUCT_NAME" >}} continues operating with the last successfully loaded remote module held in memory and retries fetching the remote module at the next `poll_frequency` interval.
+The first evaluation happens when {{< param "PRODUCT_NAME" >}} evaluates `import.http` during startup or when it reapplies configuration after a change.
+If that fetch fails, there's no remote module content from this process to fall back on.
 
 Remote module contents aren't persisted across process restarts.
 On a cold start or restart, {{< param "PRODUCT_NAME" >}} must again successfully complete the initial fetch.
 If the remote server is unavailable at that time, evaluation of the configuration that uses `import.http` fails.
 
-{{< param "PRODUCT_NAME" >}} writes errors retrieving the configuration to the logs in all of these cases, which you can use for troubleshooting and alerting.
+{{< param "PRODUCT_NAME" >}} writes configuration retrieval errors to the logs in all of these cases, which you can use for troubleshooting and alerting.
 
 ## Monitor configuration fetch failures
 

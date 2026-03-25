@@ -8,7 +8,10 @@ weight: 700
 
 # Load configuration from remote sources
 
-{{< param "PRODUCT_NAME" >}} provides several methods to load configuration from remote sources.
+{{< param "PRODUCT_NAME" >}} provides several methods to load an {{< param "PRODUCT_NAME" >}} configuration from remote sources.
+Loading a configuration from a remote source doesn't mean you point {{< param "PRODUCT_NAME" >}} directly at a URL for a complete configuration file.
+You always start with a local configuration file.
+From that file, you import modules from remote sources or connect to a remote configuration API, such as Fleet Management in Grafana Cloud.
 The method you choose depends on your use case and infrastructure.
 
 ## Before you begin
@@ -17,6 +20,21 @@ You should have a basic understanding of [{{< param "PRODUCT_NAME" >}} configura
 
 [syntax]: ../../get-started/syntax/
 [modules]: ../../get-started/modules/
+
+## How remote configuration works
+
+{{< param "PRODUCT_NAME" >}} supports two patterns for remote configuration.
+
+- **Module imports:** `import.http`, `import.git`, and `import.file` load {{< param "PRODUCT_NAME" >}} modules into your local root configuration.
+  {{< param "PRODUCT_NAME" >}} fetches or watches the source.
+  It reads the returned {{< param "PRODUCT_NAME" >}} text as module content.
+  It reevaluates the local configuration when the module changes.
+- **Remote configuration API:** `remotecfg` connects to a compatible remote configuration API.
+  {{< param "PRODUCT_NAME" >}} identifies the collector, sends its attributes, and polls the API for updates.
+  The server decides which configuration to return.
+
+If you want to read {{< param "PRODUCT_NAME" >}} configuration text from a generic HTTP endpoint, use `import.http`.
+If you want a server to choose configuration based on collector identity or attributes, use `remotecfg`.
 
 ## Choose a method
 
@@ -39,24 +57,32 @@ Use the following table to choose the appropriate method for your use case:
 Use `import.http` to load configuration modules from an HTTP server.
 This is the recommended approach when you have configuration modules hosted on a web server.
 
-{{< param "PRODUCT_NAME" >}} treats remote files loaded with `import.http` as modules.
-Modules define reusable components using `declare` blocks, which the local configuration then instantiates.
-After you import a module, you must instantiate its declared components in the local configuration for them to run.
+{{< param "PRODUCT_NAME" >}} periodically makes HTTP requests to the configured URL and treats the response body as {{< param "PRODUCT_NAME" >}} module content.
+The response doesn't need a special API.
+A standard HTTP server that returns {{< param "PRODUCT_NAME" >}} text is enough.
+
+{{< param "PRODUCT_NAME" >}} loads remote content with `import.http` and treats it as a module, not as a complete top-level configuration file.
+Modules define reusable components in `declare` blocks.
+After you import a module, you must instantiate its declared components in the local configuration so they run.
 
 {{< admonition type="note" >}}
 You can't point {{< param "PRODUCT_NAME" >}} directly at a remote URL on startup.
-You must have a local configuration file that uses `import.http` to import modules from the remote server.
-The remote file must define reusable components using `declare` blocks.
+At a minimum, you must have a local configuration file that uses `import.http` to import modules from the remote server.
+
+The HTTP response body must contain {{< param "PRODUCT_NAME" >}} module content, not a complete top-level configuration file.
 {{< /admonition >}}
 
 {{< param "PRODUCT_NAME" >}} periodically polls the URL to detect and apply configuration changes.
 
 ### Module requirements
 
-Modules must define reusable components using `declare` blocks and can't contain top-level configuration blocks such as `logging` or `remotecfg`.
-You configure CLI flags when starting {{< param "PRODUCT_NAME" >}}, not within modules.
+Modules can contain top-level `declare` blocks and nested `import.*` blocks.
+They can't contain top-level configuration blocks such as `logging` or `remotecfg`.
+Set CLI flags when you start {{< param "PRODUCT_NAME" >}}.
+You can't set CLI flags inside modules.
 
-The following module is invalid because it contains a `logging` block, which isn't allowed in modules:
+The following example shows an **invalid** module.
+It includes a `logging` block, which isn't allowed in modules:
 
 ```alloy
 logging {
@@ -70,7 +96,7 @@ declare "pipeline" {
 }
 ```
 
-The following module is valid because it only contains `declare` blocks:
+The following module is **valid** because it only contains `declare` blocks which is the simplest module pattern:
 
 ```alloy
 declare "pipeline" {
@@ -85,7 +111,7 @@ Global configuration such as `logging` must remain in the local configuration fi
 ### Create the remote configuration file
 
 Create a configuration file on your HTTP server.
-The file must be a valid {{< param "PRODUCT_NAME" >}} module, using top-level `declare` blocks to define the reusable configuration you’ll import.
+The file must be a valid {{< param "PRODUCT_NAME" >}} module, using top-level `declare` blocks to define a reusable configuration that you import and instantiate locally.
 
 The following example creates a reusable Prometheus scrape configuration:
 

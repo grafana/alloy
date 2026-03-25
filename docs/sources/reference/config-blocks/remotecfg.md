@@ -136,7 +136,7 @@ If {{< param "PRODUCT_NAME" >}} fails to load configuration using `remotecfg`, c
 - `401` or `403` errors: Verify that authentication settings are correct, such as `basic_auth`, `authorization`, OAuth2, or bearer token.
 - `404` errors: Confirm that the configured `url` points to a server implementing the alloy-remote-config API.
   Static HTTP servers can't serve configuration for `remotecfg`.
-- `415 Unsupported Media Type` errors: Ensure the server implements the alloy-remote-config API and returns the expected response format.
+- `415 Unsupported Media Type` errors: Ensure the server implements the [alloy-remote-config API][[API definition]] and returns the expected response format.
 - Connection timeouts: Check network connectivity, proxy settings, and firewall rules between the collector and the remote server.
 
 If you only want to load a static configuration file from an HTTP server, use [`import.http`][import.http] instead.
