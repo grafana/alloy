@@ -853,3 +853,62 @@ func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
 }
+
+func TestTimeoutLabel(t *testing.T) {
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+
+	tests := []struct {
+		name          string
+		findings      []report.Finding // returned by the mock detector on timeout
+		wantLabel     bool
+		wantRedaction bool
+	}{
+		{
+			name:     "no findings on timeout",
+			findings: nil,
+			wantLabel: true,
+		},
+		{
+			name:          "partial findings on timeout",
+			findings:      []report.Finding{{Secret: secret, RuleID: "grafana-api-key"}},
+			wantLabel:     true,
+			wantRedaction: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			line := "log line with secret " + secret + " end"
+			c, err := New(component.Options{
+				Logger:         util.TestLogger(t),
+				OnStateChange:  func(e component.Exports) {},
+				GetServiceData: testhelper.GetServiceData,
+				Registerer:     prometheus.NewRegistry(),
+			}, Arguments{
+				ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
+				ProcessingTimeout: 10 * time.Millisecond,
+				LabelTimedOut:     true,
+			})
+			require.NoError(t, err)
+			findings := tc.findings
+			//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+			c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+				<-ctx.Done()
+				return findings
+			})
+
+			entry := loki.Entry{
+				Labels: model.LabelSet{"job": "myservice"},
+				Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+			}
+			processed, dropped := c.processEntry(context.Background(), entry)
+
+			require.False(t, dropped)
+			require.Equal(t, model.LabelValue("timed-out"), processed.Labels["secretfilter"])
+			require.Equal(t, model.LabelValue("myservice"), processed.Labels["job"], "existing labels should be preserved")
+			if tc.wantRedaction {
+				require.NotEqual(t, line, processed.Entry.Line, "partial findings should still be redacted")
+			}
+		})
+	}
+}

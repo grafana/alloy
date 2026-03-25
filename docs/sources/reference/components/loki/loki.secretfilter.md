@@ -46,16 +46,17 @@ loki.secretfilter "<LABEL>" {
 
 You can use the following arguments with `loki.secretfilter`:
 
-| Name                 | Type                 | Description                                                                                                          | Default | Required |
-| -------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`         | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
-| `gitleaks_config`    | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
-| `origin_label`       | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.              | `""`    | no       |
-| `rate`               | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged.      | `1.0`   | no       |
+| Name                 | Type                 | Description                                                                                                                 | Default | Required |
+| -------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`         | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                                   |         | yes      |
+| `gitleaks_config`    | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                                  | `""`    | no       |
+| `origin_label`       | `string`             | Loki label to use for the `secrets_redacted_by_origin` metric. If empty, that metric is not registered.                     | `""`    | no       |
+| `rate`               | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged.             | `1.0`   | no       |
 | `redact_with`        | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`, for example, `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
-| `redact_percent`     | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction.                 | `80`    | no       |
-| `drop_on_timeout`    | `bool`               | When true, drop entries that exceed `processing_timeout` instead of forwarding them unredacted.                      | `false` | no       |
-| `processing_timeout` | `duration`           | Maximum time allowed to process a single log entry. `0` disables the timeout.                                        | `0`     | no       |
+| `redact_percent`     | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction.                        | `80`    | no       |
+| `drop_on_timeout`    | `bool`               | When true, drop entries that exceed `processing_timeout` instead of forwarding them unredacted.                             | `false` | no       |
+| `processing_timeout` | `duration`           | Maximum time allowed to process a single log entry. `0` disables the timeout.                                               | `0`     | no       |
+| `label_timed_out`    | `bool`               | When true, adds `secretfilter="timed-out"` to entries forwarded after a processing timeout.                                 | `false` | no       |
 
 The `gitleaks_config` argument is the path to a custom [Gitleaks TOML config file][gitleaks-config].
 The file supports the standard Gitleaks structure (rules, allowlists, and `[extend]` to extend the default config).
@@ -87,6 +88,9 @@ Monitor `loki_secretfilter_entries_bypassed_total` to observe how many entries w
 When the timeout is exceeded, the `loki_secretfilter_lines_timed_out_total` metric is incremented.
 By default (`drop_on_timeout = false`), the original unredacted entry is forwarded so no log lines are lost.
 When `drop_on_timeout = true`, entries that exceed the timeout are dropped and the `loki_secretfilter_lines_dropped_total` metric is incremented.
+
+Use `label_timed_out = true` to add `secretfilter="timed-out"` to any entry that was forwarded after a timeout, making timed-out lines queryable in Loki (for example, `{secretfilter="timed-out"}`).
+This label is only applied to forwarded entries; dropped entries (when `drop_on_timeout = true`) are not labeled.
 
 {{< admonition type="caution" >}}
 Setting `drop_on_timeout = true` means log lines can be silently dropped.
@@ -126,7 +130,6 @@ The following fields are exported and can be referenced by other components:
 | `loki_secretfilter_secrets_redacted_by_rule_total` | Counter | Number of secrets redacted, partitioned by rule name.                                          |
 | `loki_secretfilter_secrets_redacted_by_origin`     | Counter | Number of secrets redacted, partitioned by origin label, when `origin_label` is set.           |
 
-
 ## Example
 
 This example uses `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`.
@@ -164,8 +167,8 @@ loki.write "local_loki" {
 
 Replace the following:
 
-* _`<PATH_TARGETS>`_: The paths to the log files to monitor.
-* _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
+- _`<PATH_TARGETS>`_: The paths to the log files to monitor.
+- _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
