@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -508,7 +509,7 @@ func (args Metrics) Validate() error {
 	return nil
 }
 
-func (args Network) Convert(enable bool) obi.NetworkConfig {
+func (args Network) Convert() obi.NetworkConfig {
 	networks := beyla.DefaultConfig().NetworkFlows
 	if args.Source != "" {
 		networks.Source = args.Source
@@ -700,6 +701,36 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 	}
 
 	return i, nil
+}
+
+func (args Injector) Validate() error {
+	if args.Webhook.Enable {
+		if args.Webhook.CertPath == "" {
+			return fmt.Errorf("injector.webhook.cert_path must be set when injector.webhook.enable is true")
+		}
+		if args.Webhook.KeyPath == "" {
+			return fmt.Errorf("injector.webhook.key_path must be set when injector.webhook.enable is true")
+		}
+	}
+
+	for _, sdk := range args.EnabledSDKs {
+		var it beylaSvc.InstrumentableType
+		if err := it.UnmarshalText([]byte(sdk)); err != nil {
+			return fmt.Errorf("injector.enabled_sdks: %w", err)
+		}
+	}
+
+	if args.OTELEndpoint != "" {
+		endpoint, err := url.Parse(args.OTELEndpoint)
+		if err != nil {
+			return fmt.Errorf("injector.otel_endpoint: %w", err)
+		}
+		if endpoint.Scheme == "" || endpoint.Host == "" {
+			return fmt.Errorf("injector.otel_endpoint: URL %q must have a scheme and a host", args.OTELEndpoint)
+		}
+	}
+
+	return nil
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -902,7 +933,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	if a.Metrics.Features != nil {
 		cfg.Metrics.Features = export.LoadFeatures(a.Metrics.Features)
 	}
-	cfg.NetworkFlows = a.Metrics.Network.Convert(a.Metrics.hasNetworkFeature())
+	cfg.NetworkFlows = a.Metrics.Network.Convert()
 	cfg.EnforceSysCaps = a.EnforceSysCaps
 
 	ebpf, err := a.EBPF.Convert()
@@ -952,6 +983,10 @@ func (args *Arguments) Validate() error {
 	}
 
 	if err := args.Traces.Validate(); err != nil {
+		return err
+	}
+
+	if err := args.Injector.Validate(); err != nil {
 		return err
 	}
 

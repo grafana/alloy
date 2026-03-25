@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -886,7 +887,7 @@ func TestConvert_Network(t *testing.T) {
 	expectedConfig.Print = false
 	expectedConfig.CIDRs = args.CIDRs
 
-	config := args.Convert(true)
+	config := args.Convert()
 
 	require.Equal(t, expectedConfig, config)
 }
@@ -1069,6 +1070,80 @@ func TestConvert_Injector(t *testing.T) {
 	config, err := args.Convert()
 	require.NoError(t, err)
 	require.Equal(t, expectedConfig, config)
+}
+
+func TestInjector_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Injector
+		wantErr string
+	}{
+		{
+			name: "valid injector config",
+			args: Injector{
+				Webhook: InjectorWebhook{
+					Enable:   true,
+					CertPath: "/etc/certs/tls.crt",
+					KeyPath:  "/etc/certs/tls.key",
+				},
+				EnabledSDKs:  []string{"java", "dotnet"},
+				OTELEndpoint: "http://otel-collector:4318",
+			},
+		},
+		{
+			name: "missing webhook cert path",
+			args: Injector{
+				Webhook: InjectorWebhook{
+					Enable:  true,
+					KeyPath: "/etc/certs/tls.key",
+				},
+			},
+			wantErr: "injector.webhook.cert_path must be set",
+		},
+		{
+			name: "missing webhook key path",
+			args: Injector{
+				Webhook: InjectorWebhook{
+					Enable:   true,
+					CertPath: "/etc/certs/tls.crt",
+				},
+			},
+			wantErr: "injector.webhook.key_path must be set",
+		},
+		{
+			name: "invalid enabled sdk",
+			args: Injector{
+				EnabledSDKs: []string{"invalid-sdk"},
+			},
+			wantErr: "injector.enabled_sdks:",
+		},
+		{
+			name: "invalid otel endpoint",
+			args: Injector{
+				OTELEndpoint: "not-a-url",
+			},
+			wantErr: fmt.Sprintf("injector.otel_endpoint: URL %q must have a scheme and a host", "not-a-url"),
+		},
+		{
+			name: "malformed otel endpoint",
+			args: Injector{
+				OTELEndpoint: "http://[::1",
+			},
+			wantErr: "injector.otel_endpoint:",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
 }
 
 func TestServices_Validate(t *testing.T) {
@@ -1375,6 +1450,26 @@ func TestArguments_Validate(t *testing.T) {
 				},
 			},
 			wantErr: "invalid sampler configuration in discovery.services[0]: sampler \"traceidratio\" requires an arg parameter",
+		},
+		{
+			name: "invalid injector webhook configuration",
+			args: Arguments{
+				Injector: Injector{
+					Webhook: InjectorWebhook{
+						Enable: true,
+					},
+				},
+			},
+			wantErr: "injector.webhook.cert_path must be set when injector.webhook.enable is true",
+		},
+		{
+			name: "invalid injector otel endpoint configuration",
+			args: Arguments{
+				Injector: Injector{
+					OTELEndpoint: (&url.URL{Path: "missing-host"}).String(),
+				},
+			},
+			wantErr: `injector.otel_endpoint: URL "missing-host" must have a scheme and a host`,
 		},
 	}
 
