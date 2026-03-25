@@ -734,6 +734,7 @@ func (a *appender) AppendExemplar(ref storage.SeriesRef, _ labels.Labels, e exem
 	// Ensure no empty labels have gotten through.
 	e.Labels = e.Labels.WithoutEmpty()
 
+	// NOTE: prometheus moved exemplar validation into appenderBase.validateExemplar() to share logic with AppenderV2.
 	if lbl, dup := e.Labels.HasDuplicateLabelNames(); dup {
 		return 0, fmt.Errorf("label name %q is not unique: %w", lbl, tsdb.ErrInvalidExemplar)
 	}
