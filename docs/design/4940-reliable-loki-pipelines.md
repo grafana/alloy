@@ -97,10 +97,6 @@ Not every Loki backend (or other downstream endpoint) has out-of-order ingestion
 
 Pipeline components like loki.process, loki.relabel, loki.write, and fan-out all implement Consumer. These components are stream-agnostic — they process whatever entries they receive and do not perform sharding. The entries they receive will already be grouped by stream.
 
-**Note on label mutation**: loki.process and loki.relabel can change an entry's labels, which changes its stream identity. This is safe because sharding happens before these components run, based on the original stream labels. All entries from the same original stream are on the same worker and processed in order — this ordering is preserved through mutations. When entries reach loki.write, it reshards internally based on final labels. If entries from different original streams end up in the same target stream after relabeling, their interleaving is fine — they had no ordering relationship before relabeling.
-
-The existing loki.Entry already carries `model.LabelSet` which identifies the stream, so no changes to the entry type are needed.
-
 ### ShardingConsumer
 
 Source components (loki.source.api, loki.source.file) receive entries that may belong to multiple streams. A ShardingConsumer sits at the boundary between source and pipeline. It groups entries by stream, dispatches each group to a worker goroutine (by stream hash), and waits for all workers to complete. Each worker calls a plain Consumer chain (e.g. loki.process → loki.write) with entries from a single stream.
@@ -112,6 +108,8 @@ type ShardingConsumer struct { ... }
 // for all to complete. Returns error if any stream's processing failed.
 func (s *ShardingConsumer) Consume(ctx context.Context, entries []loki.Entry) error
 ```
+
+**Note on label mutation**: loki.process and loki.relabel can change an entry's labels, which changes its stream identity. This is safe because sharding happens before these components run, based on the original stream labels. All entries from the same original stream are on the same worker and processed in order — this ordering is preserved through mutations. When entries reach loki.write, it reshards internally based on final labels. If entries from different original streams end up in the same target stream after relabeling, their interleaving is fine — they had no ordering relationship before relabeling.
 
 ### FanoutConsumer
 
