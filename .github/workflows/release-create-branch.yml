@@ -43,6 +43,7 @@ jobs:
         with:
           go-version-file: tools/go.mod
           cache-dependency-path: tools/go.sum
+          cache: false
 
       - name: Run create-release-branch tool 🌿
         env:
