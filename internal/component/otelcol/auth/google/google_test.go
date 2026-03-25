@@ -43,6 +43,8 @@ func TestRoundTripper(t *testing.T) {
 	}))
 	defer srvProvidingTokens.Close()
 	t.Setenv("GCE_METADATA_HOST", srvProvidingTokens.Listener.Addr().String())
+	t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", "")
+	t.Setenv("HOME", t.TempDir()) // Prevent picking up user's application default credentials
 
 	// Create and run our component
 	l := util.TestLogger(t)
@@ -66,7 +68,7 @@ func TestRoundTripper(t *testing.T) {
 	startedComponent, err := ctrl.GetComponent()
 	require.NoError(t, err, "no component added in controller.")
 	require.Eventually(t, func() bool {
-		return startedComponent.(*auth.Auth).CurrentHealth().Health == component.HealthTypeHealthy
+		return startedComponent.(component.HealthComponent).CurrentHealth().Health == component.HealthTypeHealthy
 	}, time.Second, 10*time.Millisecond, "timed out waiting for component to be healthy")
 
 	// Get the authentication extension from our component and use it to make a
