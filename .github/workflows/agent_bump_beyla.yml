@@ -1,0 +1,197 @@
+name: Update Beyla Component From Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      beyla_release_tag:
+        description: Beyla release tag to sync from, for example v3.6.1
+        required: true
+        type: string
+      source_ref:
+        description: Alloy ref to branch from
+        required: false
+        default: main
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
+
+concurrency:
+  group: agent-bump-beyla-${{ inputs.source_ref }}-${{ inputs.beyla_release_tag }}
+  cancel-in-progress: true
+
+jobs:
+  update-beyla:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Get secrets
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ANTHROPIC_API_KEY=anthropic-token:token
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Install golangci-lint
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v2.4.0
+
+      - name: Get GitHub App identity
+        id: get-app
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          APP_ID="$(gh api "/apps/${APP_SLUG}" --jq .id)"
+          echo "app-id=${APP_ID}" >> "${GITHUB_OUTPUT}"
+          echo "app-login=${APP_SLUG}[bot]" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure Git
+        env:
+          APP_ID: ${{ steps.get-app.outputs.app-id }}
+          APP_LOGIN: ${{ steps.get-app.outputs.app-login }}
+        run: |
+          git config user.name "${APP_LOGIN}"
+          git config user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1.0.72
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          DISABLE_TELEMETRY: "1"
+          DISABLE_ERROR_REPORTING: "1"
+        with:
+          anthropic_api_key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_commit_signing: "false"
+          claude_args: >-
+            --max-turns 120
+            --allowedTools
+            "Bash(awk:*),Bash(cat:*),Bash(curl:*),Bash(date:*),Bash(gh:*),
+            Bash(git:*),Bash(go:*),Bash(grep:*),Bash(head:*),Bash(jq:*),
+            Bash(ls:*),Bash(make:*),Bash(mkdir:*),Bash(pwd:*),Bash(rg:*),
+            Bash(sed:*),Bash(sort:*),Bash(tail:*),Bash(tr:*),Bash(wc:*),
+            Edit,MultiEdit,Glob,Grep,LS,Read,Write,Task,TodoWrite"
+          prompt: |
+            # Update Alloy's Beyla integration for a Beyla release
+
+            **Target Beyla release tag**: `${{ inputs.beyla_release_tag }}`
+            **Branch from**: `${{ inputs.source_ref }}`
+            **Repository**: `grafana/alloy`
+
+            Your job is to update Alloy's Beyla integration for the requested Beyla release, verify it locally, and open a **draft PR** only after lint and tests pass.
+
+            ## Required output
+
+            Create a branch from `${{ inputs.source_ref }}`, implement the required updates, run verification, push the branch, and open a draft PR against `${{ inputs.source_ref }}`.
+
+            If there are no changes to make, do not open a PR.
+            If verification fails, do not open a PR.
+
+            ## Source of truth
+
+            Fetch the Beyla source for tag `${{ inputs.beyla_release_tag }}` from `grafana/beyla`.
+            Read `go.mod` there to determine:
+            - the exact Beyla module version to use in Alloy
+            - the exact Grafana OBI replacement version from the `replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation ...` line
+
+            You may use public GitHub raw URLs, `gh api`, or a shallow temporary clone outside the repo.
+
+            ## Files to update
+
+            Update only what is required in these files:
+            - `collector/builder-config.yaml`
+            - `dependency-replacements.yaml`
+            - `collector/go.mod`
+            - `go.mod`
+            - `docs/sources/_index.md.t`
+            - `internal/component/beyla/ebpf/args.go`
+            - `internal/component/beyla/ebpf/beyla_linux.go`
+            - `internal/component/beyla/ebpf/beyla_linux_test.go`
+            - `docs/sources/reference/components/beyla/beyla.ebpf.md`
+
+            You may also update `go.sum` or `collector/go.sum` if the module changes require it. Do not touch unrelated files.
+
+            ## Implementation requirements
+
+            1. Bump the OBI replacement version in:
+               - `collector/builder-config.yaml`
+               - `dependency-replacements.yaml`
+               - `collector/go.mod`
+
+            2. Bump the Beyla version in:
+               - `go.mod`
+               - `docs/sources/_index.md.t`
+
+            3. Compare the current Alloy Beyla integration against the target Beyla release and add any newly added fields needed for parity in:
+               - `internal/component/beyla/ebpf/args.go`
+               - `internal/component/beyla/ebpf/beyla_linux.go`
+               - `internal/component/beyla/ebpf/beyla_linux_test.go`
+               - `docs/sources/reference/components/beyla/beyla.ebpf.md`
+
+            4. When determining newly added fields, inspect the relevant Beyla changes instead of guessing. Update only fields and behavior that are newly required for this release.
+
+            5. In `beyla_linux.go`, add matching convert and validate logic for the new fields, preserving existing defaults and zero-value behavior.
+
+            6. In `beyla_linux_test.go`, add focused tests for the new fields and any new validation behavior.
+
+            ## Style constraints
+
+            - Keep the changes minimal and consistent with the surrounding Alloy code.
+            - Do not add unnecessary comments.
+            - Do not refactor unrelated code.
+            - Preserve field ordering and naming patterns where possible.
+            - Keep docs concise and consistent with existing wording and table format.
+            - Do not add compatibility shims unless they are strictly required by the target Beyla release.
+
+            ## Verification
+
+            Run all of the following after editing:
+            - `golangci-lint run --timeout=10m ./internal/component/beyla/...`
+            - `make run-alloylint`
+            - `go test ./internal/component/beyla/ebpf/...`
+            - `make GO_TAGS="nodocker" test`
+
+            Fix any failures caused by your changes before continuing.
+
+            ## Git and PR workflow
+
+            - Create a branch named `agent/bump-beyla-${{ inputs.beyla_release_tag }}`
+            - Commit with message `beyla: bump to ${{ inputs.beyla_release_tag }}`
+            - Push the branch to `origin`
+            - Open a **draft PR** against `${{ inputs.source_ref }}`
+
+            Use a concise PR title and body that summarize:
+            - the Beyla version bump
+            - the OBI replacement bump
+            - any newly mapped Beyla fields
+
+            Do not force-push. Do not open a non-draft PR.
