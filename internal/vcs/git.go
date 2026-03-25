@@ -107,7 +107,12 @@ func NewGitRepo(ctx context.Context, storagePath string, opts GitRepoOptions) (*
 		proxy:    *proxyOptions,
 	}
 
-	return gitRepo, gitRepo.Update(ctx)
+	err = gitRepo.Update(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return gitRepo, nil
 }
 
 func isRepoCloned(dir string) bool {
