@@ -1,9 +1,9 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/monitor/import-mixin-dashboards/
+canonical: https://grafana.com/docs/alloy/latest/troubleshoot/import-mixin-dashboards/
 description: Import rendered Alloy mixin dashboards into Grafana
 menuTitle: Import mixin dashboards
 title: Import rendered mixin dashboards into Grafana
-weight: 650
+weight: 700
 ---
 
 # Import rendered mixin dashboards into Grafana
@@ -43,5 +43,5 @@ For full UI details and options, refer to the official Grafana documentation on 
 
 ## Next steps
 
-- Refer to [Monitor metrics and logs with Grafana Alloy](../) for end-to-end monitoring tasks.
+- Refer to [Troubleshoot Grafana Alloy](../) for additional troubleshooting tasks.
 - Refer to the [Alloy mixin source](https://github.com/grafana/alloy/tree/main/operations/alloy-mixin) for rendered files and customization options.
