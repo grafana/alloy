@@ -1112,7 +1112,7 @@ replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter 
 
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.12.2-0.20260318145328-e31c5acda289 // points to v1.15
+replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.12.2-0.20260318145328-e31c5acda289
 
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260216144214-241376220646
 
