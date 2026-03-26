@@ -248,7 +248,10 @@ func NewRoundTripperFromConfigWithContext(ctx context.Context, cfg commonconfig.
 					return nil, fmt.Errorf("unable to use client secret: %w", err)
 				}
 			}
-			rt = newOAuth2RoundTripper(oauthCredential, cfg.OAuth2, rt, &opts)
+			rt, err = newOAuth2RoundTripper(oauthCredential, cfg.OAuth2, rt, &opts)
+			if err != nil {
+				return nil, fmt.Errorf("unable to create OAuth2RoundTripper: %w", err)
+			}
 		}
 
 		if cfg.HTTPHeaders != nil {
