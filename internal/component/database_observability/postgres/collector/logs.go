@@ -129,8 +129,7 @@ func (l *Logs) Receiver() loki.LogsReceiver {
 func (l *Logs) Start(ctx context.Context) error {
 	level.Debug(l.logger).Log("msg", "collector started")
 
-	l.wg.Add(1)
-	go l.run()
+	l.wg.Go(l.run)
 
 	return nil
 }
@@ -149,8 +148,6 @@ func (l *Logs) Stopped() bool {
 }
 
 func (l *Logs) run() {
-	defer l.wg.Done()
-
 	level.Debug(l.logger).Log("msg", "collector running, waiting for log entries")
 
 	for {

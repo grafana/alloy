@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -123,6 +124,7 @@ type QuerySamples struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
@@ -249,13 +251,11 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.fetchQuerySample(c.ctx); err != nil {
@@ -269,7 +269,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -278,9 +278,11 @@ func (c *QuerySamples) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *QuerySamples) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
@@ -396,7 +398,7 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 	return key, nil
 }
 
-func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
+func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 	if c.disableQueryRedaction {
 		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
 			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)

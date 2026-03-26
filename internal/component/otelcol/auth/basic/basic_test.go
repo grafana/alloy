@@ -162,6 +162,57 @@ func TestClientAuth(t *testing.T) {
 	}
 }
 
+func TestClientAuthWithCredentialFiles(t *testing.T) {
+	usernameFile := createTempCredentialFile(t, "username", clientAuthUsername)
+	passwordFile := createTempCredentialFile(t, "password", clientAuthPassword)
+
+	testCfg := fmt.Sprintf(`
+		username = "%s"
+		password = "%s"
+
+		client_auth {
+			username_file = "%s"
+			password_file = "%s"
+		}
+	`, actualUsername, actualPasswordSHA512, usernameFile, passwordFile)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		username, password, ok := r.BasicAuth()
+		assert.True(t, ok, "no basic auth found")
+		assert.Equal(t, clientAuthUsername, username, "basic auth username didn't match")
+		assert.Equal(t, clientAuthPassword, password, "basic auth password didn't match")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+
+	ctx := componenttest.TestContext(t)
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	ctrl := newTestComponent(t, ctx, testCfg)
+	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
+	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+
+	exports := ctrl.Exports().(auth.Exports)
+	require.NotNil(t, exports.Handler)
+
+	clientExtension, err := exports.Handler.GetExtension(auth.Client)
+	require.NoError(t, err)
+	require.NotNil(t, clientExtension)
+	clientAuth, ok := clientExtension.Extension.(extauth.HTTPClient)
+	require.True(t, ok, "handler does not implement configauth.ClientAuthenticator")
+
+	rt, err := clientAuth.RoundTripper(http.DefaultTransport)
+	require.NoError(t, err)
+	cli := &http.Client{Transport: rt}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, srv.URL, nil)
+	require.NoError(t, err)
+	resp, err := cli.Do(req)
+	require.NoError(t, err, "HTTP request failed")
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 // TestServerAuth verifies the server auth component starts up properly and we can
 // authenticate with the provided credentials.
 func TestServerAuth(t *testing.T) {
@@ -250,6 +301,22 @@ func deleteTestHtpasswdFile(t *testing.T, path string) {
 	t.Helper()
 	err := os.Remove(path)
 	require.NoError(t, err)
+}
+
+func createTempCredentialFile(t *testing.T, path, value string) string {
+	t.Helper()
+
+	file, err := os.CreateTemp(t.TempDir(), path)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Remove(file.Name())
+	})
+
+	_, err = file.WriteString(value)
+	require.NoError(t, err)
+	require.NoError(t, file.Close())
+
+	return file.Name()
 }
 
 // newTestComponent brings up and runs the test component.

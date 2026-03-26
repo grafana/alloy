@@ -68,9 +68,12 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		NativeHistogramMinResetDuration: 1 * time.Hour,
 	}, []string{labelHost, labelTenant})
 	m.requestSize = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name:    "loki_write_request_size_bytes",
-		Help:    "Number of bytes for requests.",
-		Buckets: []float64{1 * KiB, 4 * KiB, 16 * KiB, 64 * KiB, 256 * KiB, 512 * KiB, 1 * MiB, 2 * MiB, 4 * MiB, 8 * MiB, 16 * MiB, 20 * MiB},
+		Name:                            "loki_write_request_size_bytes",
+		Help:                            "Number of bytes for requests.",
+		Buckets:                         []float64{1 * KiB, 4 * KiB, 16 * KiB, 64 * KiB, 256 * KiB, 512 * KiB, 1 * MiB, 2 * MiB, 4 * MiB, 8 * MiB, 16 * MiB, 20 * MiB},
+		NativeHistogramBucketFactor:     1.1,
+		NativeHistogramMaxBucketNumber:  100,
+		NativeHistogramMinResetDuration: 1 * time.Hour,
 	}, []string{labelHost, labelTenant})
 	m.requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name: "loki_write_request_duration_seconds",
