@@ -1,0 +1,24 @@
+prometheusRules:
+  additionalLabels:
+    release: prometheus
+  rules:
+    controller:
+      groups:
+        controller:
+          rules:
+            - alert: UnhealthyComponents
+              expr: sum by (cluster, namespace, job) (alloy_component_controller_running_components{health_type!="healthy"}) > 0
+              for: 15m
+              labels:
+                severity: warning
+              annotations:
+                summary: Unhealthy components detected.
+                description: "Unhealthy components detected under job {{ $labels.job }}"
+            - alert: SlowComponentEvaluations
+              expr: sum by (cluster, namespace, job, component_path, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0
+              for: 15m
+              labels:
+                severity: warning
+              annotations:
+                summary: Component evaluations are taking too long.
+                description: "Component evaluations are taking too long under job {{ $labels.job }}, component_path {{ $labels.component_path }}, component_id {{ $labels.component_id }}."

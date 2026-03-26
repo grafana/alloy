@@ -17,6 +17,7 @@ Unreleased
 ### Enhancements
 
 - Set a `K8S_NODE_NAME` environment variable used by the `otelcol.processor.resourcedetection` component. (@armsnyder)
+- Add `prometheusRule` support to create PrometheusRule resources via Helm values. (@TheRealNoob)
 
 1.6.2 (2026-03-05)
 ----------

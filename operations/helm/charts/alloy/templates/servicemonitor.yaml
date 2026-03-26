@@ -1,5 +1,5 @@
 {{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
-{{- if and .Values.service.enabled .Values.serviceMonitor.enabled -}}
+{{- if and .Values.service.enabled .Values.serviceMonitor.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") -}}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
