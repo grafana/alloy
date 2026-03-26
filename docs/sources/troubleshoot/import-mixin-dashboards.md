@@ -1,15 +1,14 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/troubleshoot/import-mixin-dashboards/
-description: Import rendered Alloy mixin dashboards into Grafana
+description: Import rendered Grafana Alloy mixin dashboards 
 menuTitle: Import mixin dashboards
-title: Import rendered mixin dashboards into Grafana
-weight: 700
+title: Import rendered mixin dashboards
+weight: 250
 ---
 
-# Import rendered mixin dashboards into Grafana
+# Import rendered mixin dashboards
 
-Use this task to import dashboards generated from the Grafana Alloy mixin into your Grafana instance.
-You can import dashboards from the {{< param "FULL_PRODUCT_NAME" >}} mixin into your Grafana instance.
+The {{< param "FULL_PRODUCT_NAME" >}} mixin defines dashboards you can use to monitor collector health, resource use, and internal pipeline metrics. You can import these dashboards from the {{< param "FULL_PRODUCT_NAME" >}} mixin directly into your Grafana instance.
 The dashboards are available as rendered JSON files in the source repository or in the release archive.
 
 ## Before you begin
