@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"net/http"
 	"runtime"
 	"strings"
@@ -385,6 +386,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 			URL:       url,
 			BatchWait: 1 * time.Hour,
 			BatchSize: 1,
+			Timeout:   20 * time.Second,
 			Client:    config.DefaultHTTPClientConfig,
 			QueueConfig: QueueConfig{
 				Capacity:        1,
@@ -402,10 +404,16 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 		// to send, one batch that is queued and one batch that we are currently working with filling up.
 		require.NoError(t, e.enqueue(entry, 0))
 		require.NoError(t, e.enqueue(entry, 0))
-		// The third enqueue is a bit flaky because it will depend if a shard has grabbed a queued batch or not.
-		// So we ignore this and the fourth one will for sure fail.
-		e.enqueue(entry, 0)
-		require.ErrorIs(t, e.enqueue(entry, 0), errQueueIsFull)
+		err3 := e.enqueue(entry, 0)
+		err4 := e.enqueue(entry, 0)
+
+		// Which enqueue fails depends on whether the shard worker has already
+		// consumed the queued batch after the third call. If the third call loses that race,
+		// it returns errQueueIsFull, otherwise the fourth call does.
+		require.True(t,
+			errors.Is(err3, errQueueIsFull) || errors.Is(err4, errQueueIsFull),
+			"expected either the third or fourth enqueue to fail with queue full",
+		)
 	})
 
 	t.Run("should block until queue has space when BlockOnOverflow is true", func(t *testing.T) {
