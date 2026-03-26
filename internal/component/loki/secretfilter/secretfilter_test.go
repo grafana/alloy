@@ -21,11 +21,29 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"github.com/zricethezav/gitleaks/v8/detect"
+	"github.com/zricethezav/gitleaks/v8/report"
 )
 
+//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+type detectorFunc func(context.Context, detect.Fragment) []report.Finding
+
+//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+func (f detectorFunc) DetectContext(ctx context.Context, fragment detect.Fragment) []report.Finding {
+	return f(ctx, fragment)
+}
 func TestSecretFiltering(t *testing.T) {
 	// One component, one config load; all default cases run through it.
 	RunTestCases(t, testhelper.TestConfigs["default"], DefaultTestCases())
+}
+
+// TestDefaultRate_Unmarshalled verifies that when rate is not set in config, the default (1.0) is used.
+// The syntax package calls SetToDefault() before decoding, so omitted optional fields keep their default.
+func TestDefaultRate_Unmarshalled(t *testing.T) {
+	var args Arguments
+	config := `forward_to = []`
+	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
+	require.Equal(t, defaultRate, args.Rate, "rate should default to 1.0 when not set in config")
 }
 
 // TestGitleaksConfig_InvalidPath checks that a missing config path returns an error.
@@ -91,6 +109,46 @@ func TestRate_ZeroBypassesAll(t *testing.T) {
 	received := <-downstream.Chan()
 	require.Equal(t, line, received.Line, "entry should be forwarded unchanged when rate=0")
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.entriesBypassedTotal))
+}
+
+// TestRate_OneForwardsProcessedEntry verifies that when rate=1 (all entries processed), the
+// entry forwarded to downstream is the processed (redacted) entry, not an empty or zero value.
+// This guards against bugs where the Run loop assigns to a shadowed variable and forwards
+// the wrong value.
+func TestRate_OneForwardsProcessedEntry(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	downstream := loki.NewLogsReceiver()
+	args := Arguments{
+		ForwardTo:     []loki.LogsReceiver{downstream},
+		Rate:          1,
+		RedactPercent: 100,
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = c.Run(ctx) }()
+
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+	lineWithSecret := "log with secret " + secret + " end"
+	entry := loki.Entry{
+		Labels: model.LabelSet{},
+		Entry:  push.Entry{Timestamp: time.Now(), Line: lineWithSecret},
+	}
+	c.receiver.Chan() <- entry
+	received := <-downstream.Chan()
+
+	require.NotEmpty(t, received.Line, "processed entry must not be empty when forwarded")
+	require.NotContains(t, received.Line, secret, "forwarded entry must contain redacted content, not the raw secret")
+	require.Contains(t, received.Line, "REDACTED", "forwarded entry should contain redaction placeholder")
+	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.entriesBypassedTotal), "no entries should be bypassed when rate=1")
 }
 
 // TestRate_Half approximates that with rate=0.5 about half of entries are processed and half bypassed.
@@ -714,9 +772,14 @@ func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
 		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ProcessingTimeout: 1 * time.Nanosecond, // guaranteed to expire before DetectString returns
+		ProcessingTimeout: 10 * time.Millisecond,
 	})
 	require.NoError(t, err)
+	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+	c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+		<-ctx.Done()
+		return nil
+	})
 
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
@@ -742,10 +805,15 @@ func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
 		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ProcessingTimeout: 1 * time.Nanosecond, // guaranteed to expire before DetectString returns
+		ProcessingTimeout: 10 * time.Millisecond,
 		DropOnTimeout:     true,
 	})
 	require.NoError(t, err)
+	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+	c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+		<-ctx.Done()
+		return nil
+	})
 
 	entry := loki.Entry{
 		Labels: model.LabelSet{},

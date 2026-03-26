@@ -30,9 +30,15 @@ func init() {
 type Arguments struct {
 	// ErrorMode determines how the processor reacts to errors that occur while processing a statement.
 	ErrorMode ottl.ErrorMode `alloy:"error_mode,attr,optional"`
-	Traces    TraceConfig    `alloy:"traces,block,optional"`
-	Metrics   MetricConfig   `alloy:"metrics,block,optional"`
-	Logs      LogConfig      `alloy:"logs,block,optional"`
+
+	// These are deprecated in favor of Condition variants below.
+	Traces  TraceConfig  `alloy:"traces,block,optional"`
+	Metrics MetricConfig `alloy:"metrics,block,optional"`
+	Logs    LogConfig    `alloy:"logs,block,optional"`
+
+	TraceConditions  ContextConditionsSlice `alloy:"trace_conditions,block,optional"`
+	MetricConditions ContextConditionsSlice `alloy:"metric_conditions,block,optional"`
+	LogConditions    ContextConditionsSlice `alloy:"log_conditions,block,optional"`
 
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -87,6 +93,18 @@ func (args Arguments) convertImpl() (*filterprocessor.Config, error) {
 
 	if len(args.Logs.LogRecord) > 0 {
 		input["logs"] = args.Logs.convert()
+	}
+
+	if len(args.TraceConditions) > 0 {
+		input["trace_conditions"] = args.TraceConditions.convert()
+	}
+
+	if len(args.MetricConditions) > 0 {
+		input["metric_conditions"] = args.MetricConditions.convert()
+	}
+
+	if len(args.LogConditions) > 0 {
+		input["log_conditions"] = args.LogConditions.convert()
 	}
 
 	result := filterprocessor.NewFactory().CreateDefaultConfig().(*filterprocessor.Config)

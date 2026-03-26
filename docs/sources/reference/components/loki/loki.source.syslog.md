@@ -112,12 +112,14 @@ The `listener` block defines the listen address and protocol where the listener 
 The following arguments can be used to configure a `listener`.
 Only the `address` field is required and any omitted fields take their default values.
 
-| Name                              | Type          | Description                                                                            | Default     | Required |
-|-----------------------------------|---------------|----------------------------------------------------------------------------------------|-------------|----------|
-| `address`                         | `string`      | The `<host:port>` address to listen to for syslog messages.                            |             | yes      |
-| `idle_timeout`                    | `duration`    | The idle timeout for TCP connections.                                                  | `"120s"`    | no       |
-| `label_structured_data`           | `bool`        | Whether to translate syslog structured data to Loki labels.                            | `false`     | no       |
-| `labels`                          | `map(string)` | The labels to associate with each received syslog record.                              | `{}`        | no       |
+| Name                      | Type          | Description                                                                                                                                          | Default  | Required |
+|---------------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------|
+| `address`                 | `string`      | The `<host:port>` address to listen to for syslog messages.                                                                                          |          | yes      |
+| `allow_empty_rfc5424_msg` | `bool`        | Whether to forward RFC5424 messages with empty MSG content. When `false`, such messages are dropped. Only applies when `syslog_format` is `rfc5424`. | `false`  | no       |
+| `idle_timeout`            | `duration`    | The idle timeout for TCP connections.                                                                                                                | `"120s"` | no       |
+| `label_structured_data`   | `bool`        | Whether to translate syslog structured data to Loki labels.                                                                                          | `false`  | no       |
+| `labels`                  | `map(string)` | The labels to associate with each received syslog record.                                                                                            | `{}`     | no       |
+
 | `max_message_length`              | `int`         | The maximum limit to the length of syslog messages.                                    | `8192`      | no       |
 | `protocol`                        | `string`      | The protocol to listen to for syslog messages. Must be either `tcp` or `udp`.          | `"tcp"`     | no       |
 | `rfc3164_default_to_current_year` | `bool`        | Whether to default the incoming timestamp of an `rfc3164` message to the current year. | `false`     | no       |
@@ -146,13 +148,18 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
 
 * **`rfc3164`**
   A legacy syslog format, also known as BSD syslog.
-  Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`
+  Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`.
+  `loki.source.syslog` drops messages with empty MSG content and increments the `loki_source_syslog_empty_messages_total` counter.
 * **`rfc5424`**
   A modern, structured syslog format. Uses ISO 8601 for timestamps.
   Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
+  `loki.source.syslog` drops messages with empty MSG content by default.
+  Set `rfc5424_allow_empty_msg` to `true` to forward them.
+  `loki.source.syslog` increments the `loki_source_syslog_empty_messages_total` counter in both cases for debugging.
 * **`raw`**
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
+  `loki.source.syslog` drops messages with nil or empty body and increments the `loki_source_syslog_empty_messages_total` counter.
 
 [cef]: https://www.splunk.com/en_us/blog/learn/common-event-format-cef.html
 

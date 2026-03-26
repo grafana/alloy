@@ -12,27 +12,23 @@
 
 ### Brief description of Pull Request
 
-<!--
-  Add a human-readable description of the PR that may be used as the commit body
-  (i.e. "Extended description") when it gets merged.
--->
+<!-- Human-readable description of the PR used as squash commit body. -->
+
 
 ### Pull Request Details
 
-<!-- Add a more detailed descripion of the Pull Request here, if needed. -->
+<!-- Detailed descripion of the Pull Request, if needed. -->
+
 
 ### Issue(s) fixed by this Pull Request
 
-<!--
-  Uncomment the following line and fill in an issue number if you want a GitHub
-  issue to be closed automatically when this PR gets merged.
--->
-
 <!-- Fixes #issue_id -->
+
 
 ### Notes to the Reviewer
 
-<!-- Add any relevant notes for the reviewers and testers of this PR. -->
+<!-- Relevant notes for reviewers/testers. -->
+
 
 ### PR Checklist
 
