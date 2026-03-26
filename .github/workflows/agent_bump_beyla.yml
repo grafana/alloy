@@ -18,11 +18,6 @@ on:
         default: main
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
-
 concurrency:
   group: agent-bump-beyla-${{ inputs.source_ref }}-${{ inputs.beyla_ref || inputs.beyla_release_tag }}
   cancel-in-progress: true
@@ -31,6 +26,9 @@ jobs:
   plan-beyla-update:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Get secrets
@@ -152,6 +150,10 @@ jobs:
     needs: plan-beyla-update
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
 
     steps:
       - name: Get secrets
