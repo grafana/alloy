@@ -68,11 +68,8 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 		FileName: libpf.Intern(filePath),
 	})
 
-	traceKey := samples.TraceAndMetaKey{
-		Pid: 123,
-	}
-	events := samples.KeyToEventMapping{
-		traceKey: &samples.TraceEvents{
+	events := samples.SampleToEvents{
+		{}: &samples.TraceEvents{
 			Frames: singleFrameTrace(libpf.PythonFrame, mappingFile, 0x30,
 				funcName, filePath, 1234),
 			Timestamps: []uint64{42},
@@ -80,7 +77,7 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 	}
 
 	profiles := rep.createProfile(
-		libpf.Intern(""),
+		samples.ResourceKey{PID: 123},
 		support.TraceOriginSampling,
 		events,
 	)
@@ -129,17 +126,14 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 		FileName: libpf.Intern(filePath),
 	})
 
-	traceKey := samples.TraceAndMetaKey{
-		Pid: 123,
-	}
-	events := samples.KeyToEventMapping{
-		traceKey: &samples.TraceEvents{
+	events := samples.SampleToEvents{
+		{}: &samples.TraceEvents{
 			Frames:     singleFrameNative(mappingFile, 0x1000, 0x1000, 0x2000, 0x100),
 			Timestamps: []uint64{789},
 		},
 	}
 	profiles := rep.createProfile(
-		libpf.Intern(""),
+		samples.ResourceKey{PID: 123},
 		support.TraceOriginSampling,
 		events,
 	)
@@ -172,18 +166,15 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 		AddressOrLineno: 0x2000,
 	})
 
-	traceKey := samples.TraceAndMetaKey{
-		Pid: 123,
-	}
-	events := samples.KeyToEventMapping{
-		traceKey: &samples.TraceEvents{
+	events := samples.SampleToEvents{
+		{}: &samples.TraceEvents{
 			Frames:     frames,
 			Timestamps: []uint64{42},
 		},
 	}
 
 	profiles := rep.createProfile(
-		libpf.Intern(""),
+		samples.ResourceKey{PID: 123},
 		support.TraceOriginSampling,
 		events,
 	)
@@ -231,18 +222,15 @@ func TestPPROFReporter_Bug(t *testing.T) {
 		SourceLine:   240,
 	})
 
-	traceKey := samples.TraceAndMetaKey{
-		Pid: 123,
-	}
-	events := samples.KeyToEventMapping{
-		traceKey: &samples.TraceEvents{
+	events := samples.SampleToEvents{
+		{}: &samples.TraceEvents{
 			Frames:     frames,
 			Timestamps: []uint64{42},
 		},
 	}
 
 	profiles := rep.createProfile(
-		libpf.Intern(""),
+		samples.ResourceKey{PID: 123},
 		support.TraceOriginSampling,
 		events,
 	)
@@ -322,18 +310,15 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 		}),
 	})
 
-	traceKey := samples.TraceAndMetaKey{
-		Pid: 123,
-	}
-	events := samples.KeyToEventMapping{
-		traceKey: &samples.TraceEvents{
+	events := samples.SampleToEvents{
+		{}: &samples.TraceEvents{
 			Frames:     frames,
 			Timestamps: []uint64{42},
 		},
 	}
 
 	profiles := rep.createProfile(
-		libpf.Intern(""),
+		samples.ResourceKey{PID: 123},
 		support.TraceOriginSampling,
 		events,
 	)
@@ -388,18 +373,15 @@ func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 		}),
 	})
 
-	traceKey := samples.TraceAndMetaKey{
-		Pid: 123,
-	}
-	events := samples.KeyToEventMapping{
-		traceKey: &samples.TraceEvents{
+	events := samples.SampleToEvents{
+		{}: &samples.TraceEvents{
 			Frames:     frames,
 			Timestamps: []uint64{42},
 		},
 	}
 
 	profiles := rep.createProfile(
-		libpf.Intern(""),
+		samples.ResourceKey{PID: 123},
 		support.TraceOriginSampling,
 		events,
 	)
