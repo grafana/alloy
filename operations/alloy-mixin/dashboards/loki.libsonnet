@@ -94,7 +94,7 @@ local filename = 'alloy-loki.json';
     (
       panel.new(title='Write latency in $cluster', type='timeseries') +
       panel.withDescription(|||
-        Bytes dropped per second.
+        Percentile write latency.
       |||) +
       panel.withUnit('s') +
       panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
@@ -159,14 +159,83 @@ local filename = 'alloy-loki.json';
       panel.withDescription(|||
         Bytes dropped per second.
       |||) +
-      panel.withStacked() +
       panel.withUnit('Bps') +
+      panel.withStacked(stackingMode='off') +
       panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
       panel.withQueries([
         panel.newQuery(
           expr=|||
-            sum by(${groupby}) (rate(loki_write_dropped_bytes_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
+            sum by(${groupby}, reason) (rate(loki_write_dropped_bytes_total{%(instanceSelector)s, host=~"$url"}[$__rate_interval]))
           ||| % $._config,
+          legendFormat='{{${groupby}}}: {{reason}}'
+        ),
+      ])
+    ),
+
+    // Loki write request size distribution
+    (
+      panel.newNativeHistogramHeatmap('Write request size distribution in $cluster', 'bytes') +
+      panel.withDescription(|||
+        Shows distribution of write request sizes over time.
+      |||) +
+      panel.withPosition({ x: 0, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withQueries([
+		panel.newQuery(
+            expr= |||
+              sum(increase(loki_write_request_size_bytes{%(instanceSelector)s}[$__rate_interval]))
+              or ignoring (le)
+              sum by (le) (increase(loki_write_request_size_bytes_bucket{%(instanceSelector)s}[$__rate_interval]))
+            ||| % $._config,
+            format='heatmap',
+            legendFormat='{{le}}',
+          ),
+      ])
+    ),
+
+    // Loki entry propagation latency
+	(
+      panel.new(title='Entry propagation latency in $cluster', type='timeseries') +
+      panel.withDescription(|||
+        p99 and p50 of entry propagation latency. Prefers native histogram, falls back to classic histogram when native is unavailable.
+      |||) +
+      panel.withUnit('s') +
+      panel.withPosition({ x: 12, y: 1 + y_offset, w: 12, h: 10 }) +
+      panel.withQueries([
+        panel.newQuery(
+          expr=|||
+			histogram_quantile(
+			  0.99,
+			  sum by (${groupby}) (
+				rate(loki_write_entry_propagation_latency_seconds{%(instanceSelector)s}[$__rate_interval])
+			  )
+			)
+			or ignoring(le)
+			histogram_quantile(
+			  0.99,
+			  sum by (le, ${groupby}) (
+				rate(loki_write_entry_propagation_latency_seconds_bucket{%(instanceSelector)s}[$__rate_interval])
+			  )
+			)
+          ||| % $._config,
+          legendFormat='{{${groupby}}} p99'
+        ),
+        panel.newQuery(
+          expr=|||
+			histogram_quantile(
+			  0.50,
+			  sum by (${groupby}) (
+				rate(loki_write_entry_propagation_latency_seconds{%(instanceSelector)s}[$__rate_interval])
+			  )
+			)
+			or ignoring(le)
+			histogram_quantile(
+			  0.50,
+			  sum by (le, ${groupby}) (
+				rate(loki_write_entry_propagation_latency_seconds_bucket{%(instanceSelector)s}[$__rate_interval])
+			  )
+			)
+          ||| % $._config,
+          legendFormat='{{${groupby}}} p50'
         ),
       ])
     ),

@@ -10,7 +10,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
-	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -90,7 +89,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		source.Drain(c.processOut, func() {
+		loki.Drain(c.processOut, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			if c.entryHandler != nil {
@@ -103,7 +102,7 @@ func (c *Component) Run(ctx context.Context) error {
 	wg.Go(func() { c.handleIn(ctx) })
 
 	wg.Go(func() {
-		source.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) loki.Entry {
+		loki.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
 			// The log entry is the same for every fanout,
 			// so we can publish it only once.
 			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -126,7 +125,7 @@ func (c *Component) Run(ctx context.Context) error {
 				},
 			))
 
-			return e
+			return e, true
 		})
 	})
 

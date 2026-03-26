@@ -5,15 +5,16 @@ import (
 	"maps"
 	"time"
 
+	otelcomponent "go.opentelemetry.io/collector/component"
+	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.opentelemetry.io/collector/exporter/otlpexporter"
+	"go.opentelemetry.io/collector/pipeline"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
-	otelcomponent "go.opentelemetry.io/collector/component"
-	otelpexporterhelper "go.opentelemetry.io/collector/exporter/exporterhelper"
-	"go.opentelemetry.io/collector/exporter/otlpexporter"
-	"go.opentelemetry.io/collector/pipeline"
 )
 
 func init() {
@@ -36,9 +37,6 @@ type Arguments struct {
 
 	Queue otelcol.QueueArguments `alloy:"sending_queue,block,optional"`
 	Retry otelcol.RetryArguments `alloy:"retry_on_failure,block,optional"`
-
-	// Add BatcherConfig once https://github.com/open-telemetry/opentelemetry-collector/issues/8122 is resolved
-	// BatcherConfig exporterhelper.BatcherConfig `mapstructure:"batcher"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
