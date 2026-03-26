@@ -5,8 +5,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/go-kit/log/level"
-	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
@@ -51,14 +49,13 @@ type Exports struct {
 }
 
 type Component struct {
-	opts    component.Options
-	args    Arguments
-	exports Exports
+	opts     component.Options
+	receiver loki.LogsReceiver
+	fanout   *loki.Fanout
 
 	mut          sync.RWMutex
-	receiver     loki.LogsReceiver
+	args         Arguments
 	targetsCache map[string]model.LabelSet
-	cacheMutex   sync.RWMutex
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -67,30 +64,86 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		args:         args,
 		targetsCache: make(map[string]model.LabelSet),
 		receiver:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
+		fanout:       loki.NewFanout(args.ForwardTo),
 	}
 
-	// Initialize the cache with provided targets
-	c.refreshCacheFromTargets(args.Targets)
+	opts.OnStateChange(Exports{Receiver: c.receiver})
 
-	// Create and immediately export the receiver
-	c.exports.Receiver = c.receiver
-	opts.OnStateChange(c.exports)
+	if err := c.Update(args); err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.receiver.Chan():
-			if err := c.processLog(&entry.Entry, entry.Labels); err != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to process log", "err", err)
+	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
+		return c.processLog(e), true
+	})
+	return nil
+}
+
+func (c *Component) processLog(entry loki.Entry) loki.Entry {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+
+	targetMatchLabel := c.args.TargetMatchLabel
+	logsMatchLabel := c.args.LogsMatchLabel
+	labelsToCopy := append([]string(nil), c.args.LabelsToCopy...)
+
+	// Determine which label to use for matching
+	matchLabel := logsMatchLabel
+	if matchLabel == "" {
+		matchLabel = targetMatchLabel
+	}
+
+	// Get the source value to match against discovered targets
+	sourceValue := string(entry.Labels[model.LabelName(matchLabel)])
+	if sourceValue == "" {
+		// No match label, forward as-is
+		return entry
+	}
+
+	// Look up matching target
+	targetLabels, found := c.targetsCache[sourceValue]
+
+	if !found {
+		// No matching target, forward as-is
+		return entry
+	}
+
+	// Copy entry in case it was forwarded to several components.
+	newEntry := entry.Clone()
+	if len(labelsToCopy) == 0 {
+		// If no specific labels are requested, copy all labels
+		for k, v := range targetLabels {
+			newEntry.Labels[k] = v
+		}
+	} else {
+		// Copy only requested labels
+		for _, label := range labelsToCopy {
+			if value := targetLabels[model.LabelName(label)]; value != "" {
+				newEntry.Labels[model.LabelName(label)] = value
 			}
 		}
 	}
+
+	return newEntry
+}
+
+func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	newArgs := args.(Arguments)
+	c.args = newArgs
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
+	// Update the targets cache with new targets
+	c.refreshCacheFromTargets(newArgs.Targets)
+
+	return nil
 }
 
 func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
@@ -108,89 +161,5 @@ func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
 		}
 	}
 
-	c.cacheMutex.Lock()
 	c.targetsCache = newCache
-	c.cacheMutex.Unlock()
-}
-
-func (c *Component) processLog(entry *push.Entry, labels model.LabelSet) error {
-	// Determine which label to use for matching
-	matchLabel := c.args.LogsMatchLabel
-	if matchLabel == "" {
-		matchLabel = c.args.TargetMatchLabel
-	}
-
-	// Get the source value to match against discovered targets
-	sourceValue := string(labels[model.LabelName(matchLabel)])
-	if sourceValue == "" {
-		// No match label, forward as-is
-		return c.forwardLog(entry, labels)
-	}
-
-	// Look up matching target
-	c.cacheMutex.RLock()
-	targetLabels, found := c.targetsCache[sourceValue]
-	c.cacheMutex.RUnlock()
-
-	if !found {
-		// No matching target, forward as-is
-		return c.forwardLog(entry, labels)
-	}
-
-	// Copy labels from target to log labels
-	newLabels := labels.Clone()
-	if len(c.args.LabelsToCopy) == 0 {
-		// If no specific labels are requested, copy all labels
-		for k, v := range targetLabels {
-			newLabels[k] = v
-		}
-	} else {
-		// Copy only requested labels
-		for _, label := range c.args.LabelsToCopy {
-			if value := targetLabels[model.LabelName(label)]; value != "" {
-				newLabels[model.LabelName(label)] = value
-			}
-		}
-	}
-
-	return c.forwardLog(entry, newLabels)
-}
-
-func (c *Component) forwardLog(entry *push.Entry, labels model.LabelSet) error {
-	c.mut.RLock()
-	fanout := c.args.ForwardTo
-	c.mut.RUnlock()
-
-	for _, receiver := range fanout {
-		receiver.Chan() <- loki.Entry{
-			Labels: labels,
-			Entry:  *entry,
-		}
-	}
-	return nil
-}
-
-func (c *Component) Name() string {
-	return "loki.enrich"
-}
-
-func (c *Component) Ready() bool {
-	return true
-}
-
-func (c *Component) Update(args component.Arguments) error {
-	newArgs := args.(Arguments)
-
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	c.args = newArgs
-
-	// Update the targets cache with new targets
-	c.refreshCacheFromTargets(newArgs.Targets)
-
-	return nil
-}
-
-func (c *Component) Exports() component.Exports {
-	return &c.exports
 }

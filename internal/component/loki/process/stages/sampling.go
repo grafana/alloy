@@ -2,19 +2,16 @@ package stages
 
 import (
 	"fmt"
-	"math"
-	"math/rand"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/uber/jaeger-client-go/utils"
+
+	"github.com/grafana/alloy/internal/sampling"
 )
 
 const (
 	ErrSamplingStageInvalidRate = "sampling stage failed to parse rate,Sampling Rate must be between 0.0 and 1.0, received %f"
 )
-const maxRandomNumber = ^(uint64(1) << 63) // i.e. 0x7fffffffffffffff
 
 var (
 	defaultSamplingpReason = "sampling_stage"
@@ -31,35 +28,27 @@ func (s *SamplingConfig) SetToDefault() {
 }
 
 func (s *SamplingConfig) Validate() error {
-	if s.SamplingRate < 0.0 || s.SamplingRate > 1.0 {
+	if err := sampling.ValidateRate(s.SamplingRate); err != nil {
 		return fmt.Errorf(ErrSamplingStageInvalidRate, s.SamplingRate)
 	}
 	return nil
 }
 
-// newSamplingStage creates a SamplingStage from config
-// code from jaeger project.
-// github.com/uber/jaeger-client-go@v2.30.0+incompatible/tracer.go:126
+// newSamplingStage creates a SamplingStage from config using the shared probabilistic sampler.
 func newSamplingStage(logger log.Logger, cfg SamplingConfig, registerer prometheus.Registerer) Stage {
-	samplingRate := math.Max(0.0, math.Min(cfg.SamplingRate, 1.0))
-	samplingBoundary := uint64(float64(maxRandomNumber) * samplingRate)
-	seedGenerator := utils.NewRand(time.Now().UnixNano())
-	source := rand.NewSource(seedGenerator.Int63())
 	return &samplingStage{
-		logger:           log.With(logger, "component", "stage", "type", "sampling"),
-		cfg:              cfg,
-		dropCount:        getDropCountMetric(registerer),
-		samplingBoundary: samplingBoundary,
-		source:           source,
+		logger:    log.With(logger, "component", "stage", "type", "sampling"),
+		cfg:       cfg,
+		dropCount: getDropCountMetric(registerer),
+		sampler:   sampling.NewSampler(cfg.SamplingRate),
 	}
 }
 
 type samplingStage struct {
-	logger           log.Logger
-	cfg              SamplingConfig
-	dropCount        *prometheus.CounterVec
-	samplingBoundary uint64
-	source           rand.Source
+	logger    log.Logger
+	cfg       SamplingConfig
+	dropCount *prometheus.CounterVec
+	sampler   *sampling.Sampler
 }
 
 func (m *samplingStage) Run(in chan Entry) chan Entry {
@@ -68,7 +57,7 @@ func (m *samplingStage) Run(in chan Entry) chan Entry {
 		defer close(out)
 		counter := m.dropCount.WithLabelValues(m.cfg.DropReason)
 		for e := range in {
-			if m.isSampled() {
+			if m.sampler.ShouldSample() {
 				out <- e
 				continue
 			}
@@ -76,23 +65,6 @@ func (m *samplingStage) Run(in chan Entry) chan Entry {
 		}
 	}()
 	return out
-}
-
-// code from jaeger project.
-// github.com/uber/jaeger-client-go@v2.30.0+incompatible/sampler.go:144
-// func (s *ProbabilisticSampler) IsSampled(id TraceID, operation string) (bool, []Tag)
-func (m *samplingStage) isSampled() bool {
-	return m.samplingBoundary >= m.randomID()&maxRandomNumber
-}
-func (m *samplingStage) randomID() uint64 {
-	val := m.randomNumber()
-	for val == 0 {
-		val = m.randomNumber()
-	}
-	return val
-}
-func (m *samplingStage) randomNumber() uint64 {
-	return uint64(m.source.Int63())
 }
 
 // Cleanup implements Stage.

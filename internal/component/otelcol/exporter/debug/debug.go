@@ -30,10 +30,11 @@ func init() {
 }
 
 type Arguments struct {
-	Verbosity          string `alloy:"verbosity,attr,optional"`
-	SamplingInitial    int    `alloy:"sampling_initial,attr,optional"`
-	SamplingThereafter int    `alloy:"sampling_thereafter,attr,optional"`
-	UseInternalLogger  bool   `alloy:"use_internal_logger,attr,optional"`
+	Verbosity          string   `alloy:"verbosity,attr,optional"`
+	SamplingInitial    int      `alloy:"sampling_initial,attr,optional"`
+	SamplingThereafter int      `alloy:"sampling_thereafter,attr,optional"`
+	UseInternalLogger  bool     `alloy:"use_internal_logger,attr,optional"`
+	OutputPaths        []string `alloy:"output_paths,attr,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
@@ -83,6 +84,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		SamplingInitial:    args.SamplingInitial,
 		SamplingThereafter: args.SamplingThereafter,
 		UseInternalLogger:  args.UseInternalLogger,
+		OutputPaths:        args.OutputPaths,
 	}, nil
 }
 

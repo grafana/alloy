@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/aws_firehose/internal"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -96,7 +95,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	source.Consume(ctx, c.handler, c.fanout)
+	loki.Consume(ctx, c.handler, c.fanout)
 	return nil
 }
 

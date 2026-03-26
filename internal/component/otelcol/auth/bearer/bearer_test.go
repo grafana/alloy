@@ -223,8 +223,8 @@ func newTestComponent(t *testing.T, ctx context.Context, alloyConfig string) (*c
 		require.NoError(t, err)
 	}()
 
-	require.NoError(t, ctrl.WaitRunning(time.Second), "component never started")
-	require.NoError(t, ctrl.WaitExports(time.Second), "component never exported anything")
+	require.NoError(t, ctrl.WaitRunning(0), "component never started")
+	require.NoError(t, ctrl.WaitExports(0), "component never exported anything")
 
 	return ctrl, args.Header
 }
