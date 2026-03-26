@@ -53,6 +53,7 @@ type storageMetrics struct {
 	totalAppendedExemplars prometheus.Counter
 	totalAppendedMetadata  prometheus.Counter
 	walTotalReplayDuration prometheus.Gauge
+	walTruncateDuration    prometheus.Summary
 }
 
 func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
@@ -102,6 +103,11 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		Help: "Time taken to replay the data on disk.",
 	})
 
+	m.walTruncateDuration = prometheus.NewSummary(prometheus.SummaryOpts{
+		Name: "prometheus_remote_write_wal_truncate_duration_seconds",
+		Help: "Duration of WAL truncation.",
+	})
+
 	if r != nil {
 		m.numActiveSeries = util.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
 		m.numDeletedSeries = util.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
@@ -112,6 +118,7 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		m.totalAppendedExemplars = util.MustRegisterOrGet(r, m.totalAppendedExemplars).(prometheus.Counter)
 		m.totalAppendedMetadata = util.MustRegisterOrGet(r, m.totalAppendedMetadata).(prometheus.Counter)
 		m.walTotalReplayDuration = util.MustRegisterOrGet(r, m.walTotalReplayDuration).(prometheus.Gauge)
+		m.walTruncateDuration = util.MustRegisterOrGet(r, m.walTruncateDuration).(prometheus.Summary)
 	}
 
 	return &m
@@ -131,6 +138,7 @@ func (m *storageMetrics) Unregister() {
 		m.totalAppendedExemplars,
 		m.totalAppendedMetadata,
 		m.walTotalReplayDuration,
+		m.walTruncateDuration,
 	}
 	for _, c := range cs {
 		m.r.Unregister(c)
@@ -628,6 +636,8 @@ func (w *Storage) Truncate(mint int64) error {
 		// They will just be ignored since a higher checkpoint exists.
 		level.Error(w.logger).Log("msg", "delete old checkpoints", "err", err)
 	}
+
+	w.metrics.walTruncateDuration.Observe(time.Since(start).Seconds())
 
 	level.Info(w.logger).Log("msg", "WAL checkpoint complete",
 		"first", first, "last", last, "duration", time.Since(start))
