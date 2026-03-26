@@ -404,14 +404,12 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 		// to send, one batch that is queued and one batch that we are currently working with filling up.
 		require.NoError(t, e.enqueue(entry, 0))
 		require.NoError(t, e.enqueue(entry, 0))
-		err3 := e.enqueue(entry, 0)
-		err4 := e.enqueue(entry, 0)
 
 		// Which enqueue fails depends on whether the shard worker has already
 		// consumed the queued batch after the third call. If the third call loses that race,
 		// it returns errQueueIsFull, otherwise the fourth call does.
 		require.True(t,
-			errors.Is(err3, errQueueIsFull) || errors.Is(err4, errQueueIsFull),
+			errors.Is(e.enqueue(entry, 0), errQueueIsFull) || errors.Is(e.enqueue(entry, 0), errQueueIsFull),
 			"expected either the third or fourth enqueue to fail with queue full",
 		)
 	})
