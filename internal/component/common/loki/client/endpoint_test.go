@@ -408,10 +408,10 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 		// Which enqueue fails depends on whether the shard worker has already
 		// consumed the queued batch after the third call. If the third call loses that race,
 		// it returns errQueueIsFull, otherwise the fourth call does.
-		require.True(t,
-			errors.Is(e.enqueue(entry, 0), errQueueIsFull) || errors.Is(e.enqueue(entry, 0), errQueueIsFull),
-			"expected either the third or fourth enqueue to fail with queue full",
-		)
+		err3 := e.enqueue(entry, 0)
+		err4 := e.enqueue(entry, 0)
+		queueIsFull := errors.Is(err3, errQueueIsFull) || errors.Is(err4, errQueueIsFull)
+		require.True(t, queueIsFull, "expected either the third or fourth enqueue to fail with queue full")
 	})
 
 	t.Run("should block until queue has space when BlockOnOverflow is true", func(t *testing.T) {
