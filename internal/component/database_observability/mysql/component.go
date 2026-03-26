@@ -44,7 +44,7 @@ const selectServerInfo = `SELECT @@server_uuid, @@hostname, VERSION()`
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -132,6 +132,8 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
 	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
+	SampleMinDuration           time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration        time.Duration `alloy:"wait_event_min_duration,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -196,6 +198,8 @@ var DefaultArguments = Arguments{
 		DisableQueryRedaction:       false,
 		AutoEnableSetupConsumers:    false,
 		SetupConsumersCheckInterval: 1 * time.Hour,
+		SampleMinDuration:           0 * time.Millisecond,
+		WaitEventMinDuration:        1 * time.Microsecond,
 	},
 	HealthCheckArguments: HealthCheckArguments{
 		CollectInterval: 1 * time.Hour,
@@ -237,9 +241,9 @@ type Collector interface {
 type Component struct {
 	opts              component.Options
 	args              Arguments
-	mut               sync.RWMutex
-	receivers         []loki.LogsReceiver
 	handler           loki.LogsReceiver
+	fanout            *loki.Fanout
+	mut               sync.RWMutex
 	registry          *prometheus.Registry
 	baseTarget        discovery.Target
 	collectors        []Collector
@@ -258,7 +262,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	c := &Component{
 		opts:      opts,
 		args:      args,
-		receivers: args.ForwardTo,
+		fanout:    loki.NewFanout(args.ForwardTo),
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
@@ -287,22 +291,31 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", name+" component shutting down, stopping collectors")
-		c.mut.RLock()
-		for _, collector := range c.collectors {
-			collector.Stop()
-		}
-		if c.dbConnection != nil {
-			c.dbConnection.Close()
-		}
-		c.mut.RUnlock()
+
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+
+			for _, collector := range c.collectors {
+				collector.Stop()
+			}
+			if c.dbConnection != nil {
+				c.dbConnection.Close()
+			}
+		})
 	}()
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
+
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
+
+	wg.Go(func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
+		defer cancel()
 
 		for {
 			select {
@@ -321,21 +334,10 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 			}
 		}
-	}()
+	})
 
-	for {
-		select {
-		case <-ctx.Done():
-			wg.Wait()
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
-		}
-	}
+	wg.Wait()
+	return nil
 }
 
 func (c *Component) getBaseTarget() (discovery.Target, error) {
@@ -369,6 +371,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = args.(Arguments)
+	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	if err := c.connectAndStartCollectors(context.Background()); err != nil {
 		c.reportError("failed to connect", err)
@@ -580,6 +583,9 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		if c.args.QuerySamplesArguments.AutoEnableSetupConsumers && !c.args.AllowUpdatePerfSchemaSettings {
 			level.Warn(c.opts.Logger).Log("msg", "auto_enable_setup_consumers is true but allow_update_performance_schema_settings is false, setup_consumers will not be enabled")
 		}
+		if c.args.QuerySamplesArguments.SampleMinDuration > 0 && c.args.QuerySamplesArguments.WaitEventMinDuration > c.args.QuerySamplesArguments.SampleMinDuration {
+			level.Warn(c.opts.Logger).Log("msg", "wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
+		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                          c.dbConnection,
@@ -591,6 +597,8 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
 			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
 			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			SampleMinDuration:           c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:        c.args.QuerySamplesArguments.WaitEventMinDuration,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
@@ -685,6 +693,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
+		DB:            c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)

@@ -23,7 +23,10 @@ otelcol.processor.attributes "otlp_metrics" {
 otelcol.processor.batch "otlp_metrics" {
   output {
     metrics = [otelcol.exporter.otlphttp.otlp_metrics.input]
-    traces = [otelcol.exporter.otlphttp.otlp_metrics.input]
+    traces = [
+	otelcol.exporter.otlphttp.otlp_metrics.input,
+	otelcol.exporter.otlphttp.otlp_metrics_failing.input,
+	]
   }
 }
 
@@ -36,6 +39,22 @@ otelcol.exporter.otlphttp "otlp_metrics" {
       insecure             = true
       insecure_skip_verify = true
     }
+  }
+}
+
+otelcol.exporter.otlphttp "otlp_metrics_failing" {
+  metrics_endpoint = "http://mimir:1/otlp/v1/metrics"
+  traces_endpoint = "http://tempo:1/v1/traces"
+  client {
+    endpoint = "ignore"
+    tls {
+      insecure             = true
+      insecure_skip_verify = true
+    }
+  }
+
+  retry_on_failure {
+    enabled = false
   }
 }
 

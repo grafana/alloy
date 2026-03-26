@@ -45,7 +45,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.envFrom | list | `[]` | Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core |
 | alloy.extraArgs | list | `[]` | Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/ |
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
-| alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
+| alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. If `service.type` is `NodePort`, each item may set `nodePort` to choose the Service NodePort for that port. |
 | alloy.hostAliases | list | `[]` | Host aliases to add to the Alloy container. |
 | alloy.initialDelaySeconds | int | `10` | Initial delay for readiness probe. |
 | alloy.lifecycle | object | `{}` | Set lifecycle hooks for the Grafana Alloy container. |
@@ -123,6 +123,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.podLabels | object | `{}` | Extra pod labels to add. |
 | controller.priorityClassName | string | `""` | priorityClassName to apply to Grafana Alloy pods. |
 | controller.replicas | int | `1` | Number of pods to deploy. Ignored when controller.type is 'daemonset'. |
+| controller.revisionHistoryLimit | int | `10` | The maximum number of revisions that will be maintained in the Controllers's revision history. The history consists of all revisions not represented by a currently applied reversion. |
 | controller.terminationGracePeriodSeconds | string | `nil` | Termination grace period in seconds for the Grafana Alloy pods. The default value used by Kubernetes if unspecifed is 30 seconds. |
 | controller.tolerations | list | `[]` | Tolerations to apply to Grafana Alloy pods. |
 | controller.topologySpreadConstraints | list | `[]` | Topology Spread Constraints to apply to Grafana Alloy pods. |

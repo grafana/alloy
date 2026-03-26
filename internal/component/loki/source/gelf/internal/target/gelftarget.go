@@ -39,7 +39,7 @@ var SeverityLevels = map[int32]string{
 type Target struct {
 	metrics       *Metrics
 	logger        log.Logger
-	handler       loki.EntryHandler
+	handler       loki.LogsReceiver
 	config        *scrapeconfig.GelfTargetConfig
 	relabelConfig []*relabel.Config
 	gelfReader    *gelf.Reader
@@ -54,7 +54,7 @@ type Target struct {
 func NewTarget(
 	metrics *Metrics,
 	logger log.Logger,
-	handler loki.EntryHandler,
+	handler loki.LogsReceiver,
 	relabel []*relabel.Config,
 	config *scrapeconfig.GelfTargetConfig,
 ) (*Target, error) {
@@ -167,5 +167,4 @@ func (t *Target) Stop() {
 		level.Error(t.logger).Log("msg", "error while closing gelf reader", "err", err)
 	}
 	t.wg.Wait()
-	t.handler.Stop()
 }

@@ -16,7 +16,7 @@ jobs:
     name: Test (Mac)
     strategy:
       matrix:
-        platform: [macos-latest-xlarge]
+        platform: [macos-15-xlarge]
     runs-on: ${{ matrix.platform }}
     steps:
     - name: Checkout code

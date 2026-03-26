@@ -1,0 +1,88 @@
+name: Release Semantics - Code Freeze
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'release/v*'
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
+
+concurrency:
+  group: "${{ github.ref_name }}-${{ github.head_ref }}-code-freeze-guard"
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check for code freeze 🥶
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for active RC mode 🥶
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_AUTHOR: ${{ github.actor }}
+          PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.event.repository.name }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: |
+          # Always allow release-please bot PRs
+          if [ "$PR_AUTHOR" = "grafana-alloybot[bot]" ]; then
+            echo "✅ Release-please PR. Allowed."
+            exit 0
+          fi
+
+          # Always allow PRs with the freeze-exempt label
+          if echo "$PR_LABELS" | grep -q "freeze-exempt"; then
+            echo "✅ PR has freeze-exempt label. Allowed."
+            exit 0
+          fi
+
+          # Determine which tags to consider based on the target branch.
+          # On main: only minor-release tags (vX.Y.0 / vX.Y.0-rc.N).
+          # On release/vX.Y: all tags in that series (vX.Y.Z / vX.Y.Z-rc.N).
+          if echo "$BASE_BRANCH" | grep -qE '^release/v[0-9]+\.[0-9]+$'; then
+            BRANCH_VERSION=$(echo "$BASE_BRANCH" | grep -oE '[0-9]+\.[0-9]+')
+            TAG_FILTER="^v${BRANCH_VERSION}\.[0-9]+(-rc\.[0-9]+)?$"
+            TAG_LABEL="v${BRANCH_VERSION} series"
+          else
+            TAG_FILTER='^v[0-9]+\.[0-9]+\.0(-rc\.[0-9]+)?$'
+            TAG_LABEL="minor-version"
+          fi
+
+          LATEST_TAG=$(gh api graphql -f query='
+            query($owner: String!, $repo: String!) {
+              repository(owner: $owner, name: $repo) {
+                refs(refPrefix: "refs/tags/", first: 50, orderBy: {field: TAG_COMMIT_DATE, direction: DESC}) {
+                  nodes { name }
+                }
+              }
+            }' -f owner="$REPO_OWNER" -f repo="$REPO_NAME" \
+            --jq '.data.repository.refs.nodes[].name' \
+            | grep -E "$TAG_FILTER" \
+            | head -1)
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "✅ No $TAG_LABEL tags found. Not in RC mode."
+            exit 0
+          fi
+
+          echo "Most recent $TAG_LABEL tag: $LATEST_TAG"
+
+          if echo "$LATEST_TAG" | grep -qE '\-rc\.[0-9]+$'; then
+            echo "❌ Code freeze is active. The most recent $TAG_LABEL tag is $LATEST_TAG."
+            echo ""
+            echo "An RC has been published and $BASE_BRANCH is frozen until the final release."
+            echo "Only critical fixes approved by the release manager may be merged."
+            echo "Add the 'freeze-exempt' label to this PR to bypass the freeze."
+            exit 1
+          fi
+
+          echo "✅ Latest $TAG_LABEL tag is $LATEST_TAG (final release). No code freeze."

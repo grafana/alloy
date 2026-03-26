@@ -25,7 +25,7 @@ import (
 
 type Target struct {
 	subscription  win_eventlog.EvtHandle
-	handler       loki.EntryHandler
+	handler       loki.LogsReceiver
 	cfg           *scrapeconfig.WindowsEventsTargetConfig
 	relabelConfig []*relabel.Config
 	logger        log.Logger
@@ -41,7 +41,7 @@ type Target struct {
 // NewTarget create a new windows targets, that will fetch windows event logs and send them to Loki.
 func NewTarget(
 	logger log.Logger,
-	handler loki.EntryHandler,
+	handler loki.LogsReceiver,
 	relabel []*relabel.Config,
 	cfg *scrapeconfig.WindowsEventsTargetConfig,
 	bookmarkSyncPeriod time.Duration,
@@ -205,7 +205,6 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 func (t *Target) Stop() error {
 	close(t.done)
 	t.wg.Wait()
-	t.handler.Stop()
 	t.saveBookmarkPosition()
 	return t.err
 }
