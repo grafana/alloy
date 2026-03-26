@@ -1,4 +1,4 @@
-{{- if and .Values.prometheusRules.rules (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+{{- if and .Values.prometheusRules.rules (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1/PrometheusRule") }}
 {{- range $ruleName, $rule := .Values.prometheusRules.rules }}
 ---
 apiVersion: monitoring.coreos.com/v1
