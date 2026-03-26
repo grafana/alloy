@@ -44,16 +44,21 @@ var ErrWALClosed = fmt.Errorf("WAL storage closed")
 type storageMetrics struct {
 	r prometheus.Registerer
 
-	numActiveSeries        prometheus.Gauge
-	numDeletedSeries       prometheus.Gauge
-	totalOutOfOrderSamples prometheus.Counter
-	totalCreatedSeries     prometheus.Counter
-	totalRemovedSeries     prometheus.Counter
-	totalAppendedSamples   prometheus.Counter
-	totalAppendedExemplars prometheus.Counter
-	totalAppendedMetadata  prometheus.Counter
-	walTotalReplayDuration prometheus.Gauge
-	walTruncateDuration    prometheus.Summary
+	numActiveSeries         prometheus.Gauge
+	numDeletedSeries        prometheus.Gauge
+	totalOutOfOrderSamples  prometheus.Counter
+	totalCreatedSeries      prometheus.Counter
+	totalRemovedSeries      prometheus.Counter
+	totalAppendedSamples    prometheus.Counter
+	totalAppendedExemplars  prometheus.Counter
+	totalAppendedMetadata   prometheus.Counter
+	walTotalReplayDuration  prometheus.Gauge
+	walTruncateDuration     prometheus.Summary
+	walCorruptionsTotal     prometheus.Counter
+	checkpointDeleteFail    prometheus.Counter
+	checkpointDeleteTotal   prometheus.Counter
+	checkpointCreationFail  prometheus.Counter
+	checkpointCreationTotal prometheus.Counter
 }
 
 func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
@@ -108,6 +113,31 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		Help: "Duration of WAL truncation.",
 	})
 
+	m.walCorruptionsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_corruptions_total",
+		Help: "Total number of WAL corruptions.",
+	})
+
+	m.checkpointDeleteFail = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_checkpoint_deletions_failed_total",
+		Help: "Total number of checkpoint deletions that failed.",
+	})
+
+	m.checkpointDeleteTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_checkpoint_deletions_total",
+		Help: "Total number of checkpoint deletions attempted.",
+	})
+
+	m.checkpointCreationFail = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_checkpoint_creations_failed_total",
+		Help: "Total number of checkpoint creations that failed.",
+	})
+
+	m.checkpointCreationTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_checkpoint_creations_total",
+		Help: "Total number of checkpoint creations attempted.",
+	})
+
 	if r != nil {
 		m.numActiveSeries = util.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
 		m.numDeletedSeries = util.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
@@ -119,6 +149,11 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		m.totalAppendedMetadata = util.MustRegisterOrGet(r, m.totalAppendedMetadata).(prometheus.Counter)
 		m.walTotalReplayDuration = util.MustRegisterOrGet(r, m.walTotalReplayDuration).(prometheus.Gauge)
 		m.walTruncateDuration = util.MustRegisterOrGet(r, m.walTruncateDuration).(prometheus.Summary)
+		m.walCorruptionsTotal = util.MustRegisterOrGet(r, m.walCorruptionsTotal).(prometheus.Counter)
+		m.checkpointDeleteFail = util.MustRegisterOrGet(r, m.checkpointDeleteFail).(prometheus.Counter)
+		m.checkpointDeleteTotal = util.MustRegisterOrGet(r, m.checkpointDeleteTotal).(prometheus.Counter)
+		m.checkpointCreationFail = util.MustRegisterOrGet(r, m.checkpointCreationFail).(prometheus.Counter)
+		m.checkpointCreationTotal = util.MustRegisterOrGet(r, m.checkpointCreationTotal).(prometheus.Counter)
 	}
 
 	return &m
@@ -139,6 +174,11 @@ func (m *storageMetrics) Unregister() {
 		m.totalAppendedMetadata,
 		m.walTotalReplayDuration,
 		m.walTruncateDuration,
+		m.walCorruptionsTotal,
+		m.checkpointDeleteFail,
+		m.checkpointDeleteTotal,
+		m.checkpointCreationFail,
+		m.checkpointCreationTotal,
 	}
 	for _, c := range cs {
 		m.r.Unregister(c)
@@ -609,8 +649,15 @@ func (w *Storage) Truncate(mint int64) error {
 	// Convert go-kit logger to slog logger
 	slogLogger := slog.New(logging.NewSlogGoKitHandler(w.logger))
 
+	w.metrics.checkpointCreationTotal.Inc()
+
 	// TODO(x1unix): pass EnableSTStorage when Prometheus will be upgraded
 	if _, err = wlog.Checkpoint(slogLogger, w.wal, first, last, keep, mint); err != nil {
+		w.metrics.checkpointCreationFail.Inc()
+		var cerr *wlog.CorruptionErr
+		if errors.As(err, &cerr) {
+			w.metrics.walCorruptionsTotal.Inc()
+		}
 		return fmt.Errorf("create checkpoint: %w", err)
 	}
 	if err := w.wal.Truncate(last + 1); err != nil {
@@ -630,11 +677,13 @@ func (w *Storage) Truncate(mint int64) error {
 	}
 	w.metrics.numDeletedSeries.Set(float64(len(w.deleted)))
 
+	w.metrics.checkpointDeleteTotal.Inc()
 	if err := wlog.DeleteCheckpoints(w.wal.Dir(), last); err != nil {
 		// Leftover old checkpoints do not cause problems down the line beyond
 		// occupying disk space.
 		// They will just be ignored since a higher checkpoint exists.
 		level.Error(w.logger).Log("msg", "delete old checkpoints", "err", err)
+		w.metrics.checkpointDeleteFail.Inc()
 	}
 
 	w.metrics.walTruncateDuration.Observe(time.Since(start).Seconds())
