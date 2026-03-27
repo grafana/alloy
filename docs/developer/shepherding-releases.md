@@ -46,6 +46,8 @@ out the section below on modifying a PR's changelog entry after it's been merged
      - Uncheck the `Dry run` box.
    - This will trigger workflows to create a tag for the RC, draft a release on GitHub, build the
      release artifacts, and attach them to the release.
+   - The first RC automatically creates the `backport/vX.Y` label, so PRs can be labeled for
+     backporting during the RC validation phase.
 2. Once everything is attached, add any relevant changelog details to the RC draft release and
    publish it from either the CLI or github.com. For example:
    ```sh
@@ -76,7 +78,8 @@ cut a new RC and repeat step 3.
    attach them to the release.
 3. Once everything is attached, publish the release either from the CLI or from the Releases page on
    github.com.
-4. This will automatically create the corresponding `release/vX.Y` branch and `backport/vX.Y` label.
+4. This will automatically create the corresponding `release/vX.Y` branch (and `backport/vX.Y` label
+   if it wasn't already created during the RC phase).
 
 ### 6. Update Helm Chart
 
