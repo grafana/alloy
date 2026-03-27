@@ -315,8 +315,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
-		// NOTE: This is not Update()-able.
-		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
@@ -484,10 +482,6 @@ func (c *Component) Update(args component.Arguments) error {
 			level.Warn(c.opts.Logger).Log("msg", "scrape_native_histograms cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.ScrapeNativeHistograms, "requested", newArgs.ScrapeNativeHistograms)
 			newArgs.ScrapeNativeHistograms = c.args.ScrapeNativeHistograms
 		}
-		if c.args.ExtraMetrics != newArgs.ExtraMetrics {
-			level.Warn(c.opts.Logger).Log("msg", "extra_metrics cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.ExtraMetrics, "requested", newArgs.ExtraMetrics)
-			newArgs.ExtraMetrics = c.args.ExtraMetrics
-		}
 	}
 
 	c.args = newArgs
@@ -583,6 +577,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.EnableCompression = c.EnableCompression
 	dec.NativeHistogramBucketLimit = c.NativeHistogramBucketLimit
 	dec.NativeHistogramMinBucketFactor = c.NativeHistogramMinBucketFactor
+	dec.ExtraScrapeMetrics = &c.ExtraMetrics
 
 	return &dec
 }

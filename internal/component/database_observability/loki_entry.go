@@ -12,15 +12,13 @@ import (
 )
 
 func BuildLokiEntryWithTimestamp(level logging.Level, op, line string, timestamp int64) loki.Entry {
-	return loki.Entry{
-		Labels: model.LabelSet{
-			"op": model.LabelValue(op),
-		},
-		Entry: push.Entry{
+	return loki.NewEntry(
+		model.LabelSet{"op": model.LabelValue(op)},
+		push.Entry{
 			Timestamp: time.Unix(0, timestamp),
 			Line:      fmt.Sprintf(`level="%s" %s`, level, line),
 		},
-	}
+	)
 }
 
 func BuildLokiEntry(level logging.Level, op, line string) loki.Entry {

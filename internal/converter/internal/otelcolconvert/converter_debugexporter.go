@@ -48,6 +48,7 @@ func toDebugExporter(cfg *debugexporter.Config) *debug.Arguments {
 		SamplingInitial:    cfg.SamplingInitial,
 		SamplingThereafter: cfg.SamplingThereafter,
 		UseInternalLogger:  cfg.UseInternalLogger,
+		OutputPaths:        cfg.OutputPaths,
 		DebugMetrics:       common.DefaultValue[debug.Arguments]().DebugMetrics,
 	}
 }

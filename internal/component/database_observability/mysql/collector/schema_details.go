@@ -272,7 +272,6 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			level.Error(c.logger).Log("msg", "failed to query tables", "err", err)
 			break
 		}
-		defer rs.Close()
 
 		for rs.Next() {
 			var tableName, tableType string
@@ -298,8 +297,11 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			)
 		}
 
-		if err := rs.Err(); err != nil {
-			return fmt.Errorf("failed to iterate over tables result set: %w", err)
+		iterErr := rs.Err()
+		rs.Close()
+
+		if iterErr != nil {
+			return fmt.Errorf("failed to iterate over tables result set: %w", iterErr)
 		}
 	}
 
