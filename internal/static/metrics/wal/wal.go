@@ -407,6 +407,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 						Segment: r.Segment(),
 						Offset:  r.Offset(),
 					}
+					return
 				}
 				decoded <- samples
 			case record.HistogramSamples, record.CustomBucketsHistogramSamples:
