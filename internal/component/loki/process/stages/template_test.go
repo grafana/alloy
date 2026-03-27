@@ -414,7 +414,8 @@ func TestTemplateStage_Process(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			st := newTemplateStage(log.NewNopLogger(), tt.config)
+			st, err := newTemplateStage(log.NewNopLogger(), tt.config)
+			require.NoError(t, err)
 			out := processEntries(st, newEntry(tt.extracted, nil, "not important for this test", time.Time{}))[0]
 			assert.Equal(t, tt.expectedExtracted, out.Extracted)
 		})
@@ -432,10 +433,11 @@ func BenchmarkTemplateStage(b *testing.B) {
 		return m
 	}
 
-	st := newTemplateStage(log.NewNopLogger(), TemplateConfig{
+	st, err := newTemplateStage(log.NewNopLogger(), TemplateConfig{
 		Source:   "1",
 		Template: mustTemplate("{{ .Value }}"),
 	})
+	require.NoError(b, err)
 	entry = newEntry(gen(10), nil, "", time.Now())
 
 	b.ResetTimer()
@@ -447,7 +449,7 @@ func BenchmarkTemplateStage(b *testing.B) {
 }
 
 func mustTemplate(text string) Template {
-	t := Template{text: text}
+	t := Template(text)
 	err := t.UnmarshalText([]byte(text))
 	if err != nil {
 		panic(err)

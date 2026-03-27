@@ -119,7 +119,10 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.TemplateConfig != nil:
-		s = newTemplateStage(logger, *cfg.TemplateConfig)
+		s, err = newTemplateStage(logger, *cfg.TemplateConfig)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.TenantConfig != nil:
 		s, err = newTenantStage(logger, *cfg.TenantConfig)
 		if err != nil {

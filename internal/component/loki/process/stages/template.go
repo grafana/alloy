@@ -79,42 +79,49 @@ func (t *TemplateConfig) Validate() error {
 }
 
 var (
-	_ encoding.TextMarshaler   = Template{}
+	_ encoding.TextMarshaler   = Template("")
 	_ encoding.TextUnmarshaler = (*Template)(nil)
 )
 
-type Template struct {
-	text string
-	*template.Template
-}
+type Template string
 
 func (t *Template) UnmarshalText(text []byte) error {
-	str := string(text)
-	tt, err := template.New("pipeline_template").Funcs(functionMap).Parse(str)
+	str := Template(text)
+	_, err := str.parse()
 	if err != nil {
 		return err
 	}
-	t.text = str
-	t.Template = tt
+	*t = str
 	return nil
 }
 
 func (t Template) MarshalText() (text []byte, err error) {
-	return []byte(t.text), nil
+	return []byte(t), nil
+}
+
+func (t Template) parse() (*template.Template, error) {
+	return template.New("pipeline_template").Funcs(functionMap).Parse(string(t))
 }
 
 // newTemplateStage creates a new templateStage
-func newTemplateStage(logger log.Logger, config TemplateConfig) Stage {
+func newTemplateStage(logger log.Logger, config TemplateConfig) (Stage, error) {
+	templ, err := config.Template.parse()
+	// We should not get an error here when built from alloy syntax.
+	if err != nil {
+		return nil, err
+	}
 	return toStage(&templateStage{
-		cfg:    config,
-		logger: logger,
-	})
+		cfg:      config,
+		template: templ,
+		logger:   logger,
+	}), nil
 }
 
 // templateStage will mutate the incoming entry and set it from extracted data
 type templateStage struct {
-	cfg    TemplateConfig
-	logger log.Logger
+	cfg      TemplateConfig
+	template *template.Template
+	logger   log.Logger
 }
 
 var bufPool = sync.Pool{
@@ -148,7 +155,7 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 		bufPool.Put(buf)
 	}()
 
-	err := o.cfg.Template.Execute(buf, td)
+	err := o.template.Execute(buf, td)
 	if err != nil {
 		if Debug {
 			level.Debug(o.logger).Log("msg", "failed to execute template on extracted value", "err", err)
