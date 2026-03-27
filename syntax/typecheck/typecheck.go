@@ -440,27 +440,9 @@ func typecheckLiteralExpr(expr *ast.LiteralExpr, rv reflect.Value) *diag.Diagnos
 }
 
 func typecheckValue(have value.Value, want reflect.Value) error {
-	// If value can be any type we don't have to check further.
-	if want.Kind() == reflect.Interface {
-		return nil
-	}
-
-	expected := value.AlloyType(want.Type())
-
-	if expected == value.TypeCapsule {
-		ok, _ := value.TryCapsuleConvert(have, want, expected)
-		// FIXME(kalleep): We should probably unwrap the capsule type.
-		if ok {
-			return nil
-		}
-
-		return value.TypeError{Value: have, Expected: expected}
-	}
-
-	if have.Type() != expected {
-		return value.TypeError{Value: have, Expected: expected}
-	}
-	return nil
+	// tmp is a writable destination we decode into.
+	tmp := reflect.New(want.Type())
+	return value.DecodeCopy(have, tmp.Interface())
 }
 
 func valueFromLiteralExpr(expr *ast.LiteralExpr) value.Value {
