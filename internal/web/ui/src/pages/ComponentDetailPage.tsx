@@ -5,26 +5,7 @@ import { ComponentView } from '../features/component/ComponentView';
 import { type ComponentDetail, type ComponentInfo, componentInfoByID } from '../features/component/types';
 import { useComponentInfo } from '../hooks/componentInfo';
 import { parseID } from '../utils/id';
-
-const contentStyle: React.CSSProperties = {
-  maxWidth: '1440px',
-  marginLeft: 'auto',
-  marginRight: 'auto',
-  padding: '20px',
-};
-
-const messageStyle: React.CSSProperties = {
-  color: '#666',
-  fontStyle: 'italic',
-  margin: '0 0 0.5rem 0',
-};
-
-const endpointStyle: React.CSSProperties = {
-  fontSize: '0.875rem',
-  fontFamily: 'monospace',
-  color: '#888',
-  margin: 0,
-};
+import styles from './ComponentDetailPage.module.css';
 
 const ComponentDetailPage: FC = () => {
   const { '*': id } = useParams();
@@ -91,10 +72,10 @@ const ComponentDetailPage: FC = () => {
   }
 
   return (
-    <main style={contentStyle}>
-      <p style={messageStyle}>Loading component data...</p>
-      {loadingEndpoint && <p style={endpointStyle}>Fetching: {loadingEndpoint}</p>}
-    </main>
+    <div className={styles.content}>
+      <p className={styles.message}>Loading component data...</p>
+      {loadingEndpoint && <p className={styles.endpoint}>Fetching: {loadingEndpoint}</p>}
+    </div>
   );
 };
 

@@ -84,7 +84,7 @@ const AsyncStringifiedValue = ({ value, maxLength = 50000 }: AsyncStringifiedVal
 
 /**
  * Renders large values asynchronously with a download button.
- * Shows greyed-out download text immediately, becomes clickable when ready.
+ * Shows a disabled download button immediately, becomes clickable when ready.
  */
 const AsyncLargeValue = ({ value }: { value: Value }) => {
   const [state, setState] = useState<LargeValueState>({ status: 'loading' });
@@ -115,31 +115,14 @@ const AsyncLargeValue = ({ value }: { value: Value }) => {
     };
   }, [value]);
 
-  if (state.status === 'loading') {
-    return (
-      <span
-        style={{
-          display: 'inline-block',
-          fontSize: '10px',
-          padding: '5px',
-          color: '#ffffff',
-          backgroundColor: '#888',
-          border: '1px solid #888',
-          borderRadius: '3px',
-        }}
-      >
-        <FontAwesomeIcon icon={faLink} /> Download the value contents
-      </span>
-    );
-  }
-
-  return <DownloadButton result={state.result} />;
+  const result = state.status === 'ready' ? state.result : '';
+  return <DownloadButton result={result} disabled={state.status === 'loading'} />;
 };
 
 /**
  * A button that downloads the given result as a file.
  */
-const DownloadButton = ({ result }: { result: string }) => {
+const DownloadButton = ({ result, disabled }: { result: string; disabled?: boolean }) => {
   const handleDownload = useCallback(() => {
     const blob = new Blob([result], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -154,6 +137,7 @@ const DownloadButton = ({ result }: { result: string }) => {
 
   return (
     <button
+      disabled={disabled}
       onClick={handleDownload}
       style={{
         display: 'inline-block',
