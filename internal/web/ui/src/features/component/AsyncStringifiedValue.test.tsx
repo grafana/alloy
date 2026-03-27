@@ -1,13 +1,10 @@
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { largeDiscOutput } from '../../test/fixtures/generateLargeDiscOutput';
 import { type Value, ValueType } from '../alloy-syntax-js/types';
 
 import AsyncStringifiedValue from './AsyncStringifiedValue';
-
-// Import the large fixture data generator
-// This generates a structure similar to real discovery.kubernetes output
-import { largeDiscOutput } from '../../test/fixtures/generateLargeDiscOutput';
 
 describe('AsyncStringifiedValue', () => {
   describe('simple values render synchronously', () => {
