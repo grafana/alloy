@@ -67,13 +67,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Verify the target release branch exists
+	// Verify the target release branch exists. If it doesn't, the release
+	// hasn't been finalized yet (we're still in RC mode) and the change will
+	// be included in the release implicitly since it's already on main.
 	exists, err := git.BranchExistsOnRemote(targetBranch)
 	if err != nil {
 		log.Fatalf("Failed to check if target branch exists: %v", err)
 	}
 	if !exists {
-		log.Fatalf("Target branch %s does not exist", targetBranch)
+		fmt.Printf("ℹ️  Target branch %s does not exist yet (release is likely still in RC phase).\n", targetBranch)
+		fmt.Printf("   No backport needed — this change will be included in the release implicitly.\n")
+		return
 	}
 
 	// Check if backport branch already exists (means there's an open PR or work in progress)
