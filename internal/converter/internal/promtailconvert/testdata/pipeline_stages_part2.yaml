@@ -52,7 +52,7 @@ scrape_configs:
       - geoip:
           db: /usr/share/GeoIP/GeoLite2-City.mmdb
           source: internet
-          db_type: mmdb
+          db_type: city
       - decolorize: { }
       - sampling:
           rate: 100

@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"net"
@@ -18,9 +19,9 @@ import (
 )
 
 var (
+	errDBTypeGeoIPStageConfig               = errors.New("db type should be either city, asn or country")
 	errEmptyDBPathGeoIPStageConfig          = errors.New("db path cannot be empty")
 	errEmptySourceGeoIPStageConfig          = errors.New("source cannot be empty")
-	errEmptyDBTypeGeoIPStageConfig          = errors.New("db type should be either city or asn")
 	errEmptyDBTypeAndValuesGeoIPStageConfig = errors.New("db type or values need to be set")
 )
 
@@ -62,7 +63,7 @@ var _ syntax.Validator = (*GeoIPConfig)(nil)
 type GeoIPConfig struct {
 	DB            string              `alloy:"db,attr"`
 	Source        *string             `alloy:"source,attr"`
-	DBType        string              `alloy:"db_type,attr,optional"`
+	DBType        GeoIPDBType         `alloy:"db_type,attr,optional"`
 	CustomLookups map[string]JMESPath `alloy:"custom_lookups,attr,optional"`
 }
 
@@ -80,13 +81,36 @@ func (g *GeoIPConfig) Validate() error {
 		return errEmptyDBTypeAndValuesGeoIPStageConfig
 	}
 
-	switch g.DBType {
-	case "", "asn", "city", "country":
-	default:
-		return errEmptyDBTypeGeoIPStageConfig
-	}
-
 	return nil
+}
+
+var (
+	_ encoding.TextMarshaler   = GeoIPDBType("")
+	_ encoding.TextUnmarshaler = (*GeoIPDBType)(nil)
+)
+
+type GeoIPDBType string
+
+const (
+	geoIPDBTypeASN     GeoIPDBType = "asn"
+	geoIPDBTypeCity    GeoIPDBType = "city"
+	geoIPDBTypeCountry GeoIPDBType = "country"
+)
+
+func (t *GeoIPDBType) UnmarshalText(text []byte) error {
+	typ := GeoIPDBType(text)
+	switch typ {
+	// NOTE: we allow empty type here to not break existing config
+	case "", geoIPDBTypeASN, geoIPDBTypeCity, geoIPDBTypeCountry:
+		*t = typ
+		return nil
+	default:
+		return errDBTypeGeoIPStageConfig
+	}
+}
+
+func (t GeoIPDBType) MarshalText() (text []byte, err error) {
+	return []byte(t), nil
 }
 
 func newGeoIPStage(logger log.Logger, config GeoIPConfig) (Stage, error) {
@@ -310,7 +334,8 @@ func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[
 	}
 }
 
-// Cleanup implements Stage.
-func (*geoIPStage) Cleanup() {
-	// no-op
+func (g *geoIPStage) Cleanup() {
+	if g.mmdb != nil {
+		g.mmdb.Close()
+	}
 }

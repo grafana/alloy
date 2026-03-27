@@ -78,7 +78,7 @@ loki.process "example" {
 	stage.geoip {
 		db      = "/usr/share/GeoIP/GeoLite2-City.mmdb"
 		source  = "internet"
-		db_type = "mmdb"
+		db_type = "city"
 	}
 
 	stage.decolorize { }

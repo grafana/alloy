@@ -67,7 +67,7 @@ func TestUnmarshalGeoIPConfig(t *testing.T) {
 				source = "ip"
 			}
 			`,
-			err: ErrEmptyDBTypeAndValuesGeoIPStageConfig,
+			err: errEmptyDBTypeAndValuesGeoIPStageConfig,
 		},
 		{
 			name: "missing db path",
@@ -78,7 +78,7 @@ func TestUnmarshalGeoIPConfig(t *testing.T) {
 				db_type = "city"
 			}
 			`,
-			err: ErrEmptyDBPathGeoIPStageConfig,
+			err: errEmptyDBPathGeoIPStageConfig,
 		},
 		{
 			name: "empty source",
@@ -89,7 +89,7 @@ func TestUnmarshalGeoIPConfig(t *testing.T) {
 				db_type = "city"
 			}
 			`,
-			err: ErrEmptySourceGeoIPStageConfig,
+			err: errEmptySourceGeoIPStageConfig,
 		},
 		{
 			name: "invalid db type",
@@ -100,7 +100,7 @@ func TestUnmarshalGeoIPConfig(t *testing.T) {
 				db_type = "fake"
 			}
 			`,
-			err: ErrEmptyDBTypeGeoIPStageConfig,
+			err: errDBTypeGeoIPStageConfig,
 		},
 		{
 			name: "invalid custom lookup",

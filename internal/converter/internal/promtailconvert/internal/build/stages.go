@@ -113,11 +113,18 @@ func convertGeoIP(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool) {
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
 	}
+
+	var dbType stages.GeoIPDBType
+	if err := dbType.UnmarshalText([]byte(pCfg.DBType)); err != nil {
+		addInvalidStageError(diags, cfg, err)
+		return stages.StageConfig{}, false
+	}
+
 	return stages.StageConfig{
 		GeoIPConfig: &stages.GeoIPConfig{
 			DB:     pCfg.DB,
 			Source: pCfg.Source,
-			DBType: pCfg.DBType,
+			DBType: dbType,
 		},
 	}, true
 }
