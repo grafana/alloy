@@ -120,6 +120,7 @@ type secretDetector interface {
 //   - loki_secretfilter_secrets_redacted_total: Total number of secrets that have been redacted.
 //   - loki_secretfilter_secrets_redacted_by_rule_total: Number of secrets redacted, partitioned by rule name.
 //   - loki_secretfilter_secrets_redacted_by_origin: Number of secrets redacted, partitioned by origin label value (only registered when origin_label is set).
+//   - loki_secretfilter_secrets_redacted_by_category_total: Number of secrets redacted, partitioned by rule name and origin label value.
 //   - loki_secretfilter_processing_duration_seconds: Summary of time taken to process and redact log entries.
 //   - loki_secretfilter_entries_bypassed_total: Total number of entries forwarded without processing due to sampling.
 //   - loki_secretfilter_lines_timed_out_total: Total number of log lines that exceeded the processing timeout (regardless of whether they were dropped or forwarded).

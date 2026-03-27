@@ -557,6 +557,50 @@ func TestMetrics(t *testing.T) {
 	}
 }
 
+// TestMetrics_NoOriginLabel verifies that when origin_label is not set,
+// secrets_redacted_by_category_total still increments (with origin="") but
+// secrets_redacted_by_origin is not registered at all.
+func TestMetrics_NoOriginLabel(t *testing.T) {
+	registry := prometheus.NewRegistry()
+
+	args := Arguments{
+		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		OriginLabel: "",
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{"job": "test-job"},
+		Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      testhelper.TestLogs["grafana_api_key"].Log,
+		},
+	}
+	c.processEntry(context.Background(), entry)
+
+	// secrets_redacted_by_origin must not be registered
+	count, err := testutil.GatherAndCount(registry, "loki_secretfilter_secrets_redacted_by_origin")
+	require.NoError(t, err)
+	require.Equal(t, 0, count, "secrets_redacted_by_origin should not be registered when origin_label is not set")
+
+	// secrets_redacted_by_category_total must increment with origin=""
+	expected := strings.NewReader(
+		"# HELP loki_secretfilter_secrets_redacted_by_category_total Number of secrets redacted, partitioned by rule name and origin label value.\n" +
+			"# TYPE loki_secretfilter_secrets_redacted_by_category_total counter\n" +
+			`loki_secretfilter_secrets_redacted_by_category_total{origin="",rule="grafana-api-key"} 1` + "\n",
+	)
+	require.NoError(t,
+		testutil.GatherAndCompare(registry, expected, "loki_secretfilter_secrets_redacted_by_category_total"))
+}
+
 // Test to verify that the component registers its metrics with the registry
 func TestMetricsRegistration(t *testing.T) {
 	registry := prometheus.NewRegistry()
