@@ -340,7 +340,7 @@ func convertTemplate(cfg any, diags *diag.Diagnostics) (stages.StageConfig, bool
 		return stages.StageConfig{}, false
 	}
 
-	t := stages.Template{}
+	var t stages.Template
 	if err := t.UnmarshalText([]byte(pTemplate.Template)); err != nil {
 		addInvalidStageError(diags, cfg, err)
 		return stages.StageConfig{}, false
