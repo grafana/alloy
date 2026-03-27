@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"time"
 
 	"github.com/go-kit/log"
 	"github.com/jmespath-community/go-jmespath"
@@ -13,6 +14,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/syntax"
 )
 
 var (
@@ -54,6 +56,8 @@ var fields = map[GeoIPFields]string{
 	ASNORG:          "geoip_autonomous_system_organization",
 }
 
+var _ syntax.Validator = (*GeoIPConfig)(nil)
+
 // GeoIPConfig represents GeoIP stage config
 type GeoIPConfig struct {
 	DB            string            `alloy:"db,attr"`
@@ -62,30 +66,27 @@ type GeoIPConfig struct {
 	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"`
 }
 
-func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {
-	if c.DB == "" {
-		return nil, ErrEmptyDBPathGeoIPStageConfig
-	}
-	if c.Source != nil && *c.Source == "" {
-		return nil, ErrEmptySourceGeoIPStageConfig
+// Validate implements syntax.Validator.
+func (g *GeoIPConfig) Validate() error {
+	if g.DB == "" {
+		return ErrEmptyDBPathGeoIPStageConfig
 	}
 
-	if c.DBType == "" && c.CustomLookups == nil {
-		return nil, ErrEmptyDBTypeAndValuesGeoIPStageConfig
+	if g.Source != nil && *g.Source == "" {
+		return ErrEmptySourceGeoIPStageConfig
 	}
 
-	switch c.DBType {
+	if g.DBType == "" && g.CustomLookups == nil {
+		return ErrEmptyDBTypeAndValuesGeoIPStageConfig
+	}
+
+	switch g.DBType {
 	case "", "asn", "city", "country":
 	default:
-		return nil, ErrEmptyDBTypeGeoIPStageConfig
+		return ErrEmptyDBTypeGeoIPStageConfig
 	}
 
-	if c.CustomLookups == nil {
-		return nil, nil
-	}
-
-	expressions := map[string]jmespath.JMESPath{}
-	for key, expr := range c.CustomLookups {
+	for key, expr := range g.CustomLookups {
 		var err error
 		jmes := expr
 
@@ -94,16 +95,35 @@ func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {
 			jmes = key
 		}
 
-		expressions[key], err = jmespath.Compile(jmes)
+		_, err = jmespath.Compile(jmes)
+		if err != nil {
+			return errors.New(ErrCouldNotCompileJMES)
+		}
+	}
+
+	return nil
+}
+
+func compileJMESPathMap(m map[string]string) (map[string]jmespath.JMESPath, error) {
+	var expressions map[string]jmespath.JMESPath
+	for k, expr := range m {
+		// If there is no expression, use the name as the expression.
+		if expr == "" {
+			expr = k
+		}
+
+		var err error
+		expressions[k], err = jmespath.Compile(expr)
 		if err != nil {
 			return nil, errors.New(ErrCouldNotCompileJMES)
 		}
 	}
+
 	return expressions, nil
 }
 
 func newGeoIPStage(logger log.Logger, config GeoIPConfig) (Stage, error) {
-	valuesExpressions, err := validateGeoIPConfig(config)
+	expressions, err := compileJMESPathMap(config.CustomLookups)
 	if err != nil {
 		return nil, err
 	}
@@ -113,41 +133,22 @@ func newGeoIPStage(logger log.Logger, config GeoIPConfig) (Stage, error) {
 		return nil, err
 	}
 
-	return &geoIPStage{
-		mmdb:              mmdb,
-		logger:            logger,
-		cfgs:              config,
-		valuesExpressions: valuesExpressions,
-	}, nil
+	return toStage(&geoIPStage{
+		mmdb:        mmdb,
+		logger:      logger,
+		cfgs:        config,
+		expressions: expressions,
+	}), nil
 }
 
 type geoIPStage struct {
-	logger            log.Logger
-	mmdb              *maxminddb.Reader
-	cfgs              GeoIPConfig
-	valuesExpressions map[string]jmespath.JMESPath
+	logger      log.Logger
+	mmdb        *maxminddb.Reader
+	cfgs        GeoIPConfig
+	expressions map[string]jmespath.JMESPath
 }
 
-// Run implements Stage
-func (g *geoIPStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		defer g.close()
-		for e := range in {
-			g.process(e.Labels, e.Extracted)
-			out <- e
-		}
-	}()
-	return out
-}
-
-// Cleanup implements Stage.
-func (*geoIPStage) Cleanup() {
-	// no-op
-}
-
-func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
+func (g *geoIPStage) Process(_ model.LabelSet, extracted map[string]any, _ *time.Time, _ *string) {
 	var ip net.IP
 	if g.cfgs.Source != nil {
 		if _, ok := extracted[*g.cfgs.Source]; !ok {
@@ -200,7 +201,7 @@ func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
 			level.Error(g.logger).Log("msg", "unknown database type")
 		}
 	}
-	if g.valuesExpressions != nil {
+	if g.expressions != nil {
 		g.populateExtractedWithCustomFields(ip, extracted)
 	}
 }
@@ -326,7 +327,7 @@ func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[
 		return
 	}
 
-	for key, expr := range g.valuesExpressions {
+	for key, expr := range g.expressions {
 		r, err := expr.Search(record)
 		if err != nil {
 			level.Error(g.logger).Log("msg", "failed to search JMES expression", "err", err)
@@ -340,4 +341,9 @@ func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[
 		}
 		extracted[key] = r
 	}
+}
+
+// Cleanup implements Stage.
+func (*geoIPStage) Cleanup() {
+	// no-op
 }
