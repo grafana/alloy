@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import react from '@vitejs/plugin-react';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -114,4 +115,9 @@ export default defineConfig(({ mode }) => ({
   // Use relative base path so assets work when served from any path prefix
   // The <base> tag in index.html will be set at runtime by the Go server
   base: './',
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['src/test/setup.ts'],
+    globals: true,
+  },
 }));
