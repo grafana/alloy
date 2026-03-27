@@ -60,10 +60,10 @@ var _ syntax.Validator = (*GeoIPConfig)(nil)
 
 // GeoIPConfig represents GeoIP stage config
 type GeoIPConfig struct {
-	DB            string            `alloy:"db,attr"`
-	Source        *string           `alloy:"source,attr"`
-	DBType        string            `alloy:"db_type,attr,optional"`
-	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"`
+	DB            string              `alloy:"db,attr"`
+	Source        *string             `alloy:"source,attr"`
+	DBType        string              `alloy:"db_type,attr,optional"`
+	CustomLookups map[string]JMESPath `alloy:"custom_lookups,attr,optional"`
 }
 
 // Validate implements syntax.Validator.
@@ -86,40 +86,7 @@ func (g *GeoIPConfig) Validate() error {
 		return ErrEmptyDBTypeGeoIPStageConfig
 	}
 
-	for key, expr := range g.CustomLookups {
-		var err error
-		jmes := expr
-
-		// If there is no expression, use the name as the expression.
-		if expr == "" {
-			jmes = key
-		}
-
-		_, err = jmespath.Compile(jmes)
-		if err != nil {
-			return errors.New(ErrCouldNotCompileJMES)
-		}
-	}
-
 	return nil
-}
-
-func compileJMESPathMap(m map[string]string) (map[string]jmespath.JMESPath, error) {
-	var expressions map[string]jmespath.JMESPath
-	for k, expr := range m {
-		// If there is no expression, use the name as the expression.
-		if expr == "" {
-			expr = k
-		}
-
-		var err error
-		expressions[k], err = jmespath.Compile(expr)
-		if err != nil {
-			return nil, errors.New(ErrCouldNotCompileJMES)
-		}
-	}
-
-	return expressions, nil
 }
 
 func newGeoIPStage(logger log.Logger, config GeoIPConfig) (Stage, error) {

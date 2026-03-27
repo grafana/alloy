@@ -141,7 +141,7 @@ func TestJSONConfig_validate(t *testing.T) {
 				},
 			},
 			0,
-			fmt.Errorf("%s: SyntaxError: Unknown char: '#'", ErrCouldNotCompileJMES),
+			fmt.Errorf("%s: SyntaxError: Unknown char: '#'", errCouldNotCompileJMES),
 		},
 		"empty source": {
 			&JSONConfig{

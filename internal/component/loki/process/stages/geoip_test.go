@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"testing"
@@ -20,8 +19,6 @@ var (
 )
 
 func TestUnmarshalGeoIPConfig(t *testing.T) {
-	t.Parallel()
-
 	type testCase struct {
 		name   string
 		config string
@@ -114,7 +111,7 @@ func TestUnmarshalGeoIPConfig(t *testing.T) {
 				custom_lookups = { field = ".-badlookup" }
 			}
 			`,
-			err: errors.New(ErrCouldNotCompileJMES),
+			err: errCouldNotCompileJMES,
 		},
 	}
 
@@ -123,7 +120,7 @@ func TestUnmarshalGeoIPConfig(t *testing.T) {
 			var config Configs
 			err := syntax.Unmarshal([]byte(tt.config), &config)
 			if tt.err != nil {
-				require.EqualError(t, err, tt.err.Error())
+				require.ErrorIs(t, err, err)
 				return
 			}
 
