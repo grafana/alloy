@@ -18,10 +18,10 @@ import (
 )
 
 var (
-	ErrEmptyDBPathGeoIPStageConfig          = errors.New("db path cannot be empty")
-	ErrEmptySourceGeoIPStageConfig          = errors.New("source cannot be empty")
-	ErrEmptyDBTypeGeoIPStageConfig          = errors.New("db type should be either city or asn")
-	ErrEmptyDBTypeAndValuesGeoIPStageConfig = errors.New("db type or values need to be set")
+	errEmptyDBPathGeoIPStageConfig          = errors.New("db path cannot be empty")
+	errEmptySourceGeoIPStageConfig          = errors.New("source cannot be empty")
+	errEmptyDBTypeGeoIPStageConfig          = errors.New("db type should be either city or asn")
+	errEmptyDBTypeAndValuesGeoIPStageConfig = errors.New("db type or values need to be set")
 )
 
 type GeoIPFields int
@@ -69,21 +69,21 @@ type GeoIPConfig struct {
 // Validate implements syntax.Validator.
 func (g *GeoIPConfig) Validate() error {
 	if g.DB == "" {
-		return ErrEmptyDBPathGeoIPStageConfig
+		return errEmptyDBPathGeoIPStageConfig
 	}
 
 	if g.Source != nil && *g.Source == "" {
-		return ErrEmptySourceGeoIPStageConfig
+		return errEmptySourceGeoIPStageConfig
 	}
 
 	if g.DBType == "" && g.CustomLookups == nil {
-		return ErrEmptyDBTypeAndValuesGeoIPStageConfig
+		return errEmptyDBTypeAndValuesGeoIPStageConfig
 	}
 
 	switch g.DBType {
 	case "", "asn", "city", "country":
 	default:
-		return ErrEmptyDBTypeGeoIPStageConfig
+		return errEmptyDBTypeGeoIPStageConfig
 	}
 
 	return nil
