@@ -860,19 +860,37 @@ func TestTimeoutLabel(t *testing.T) {
 	tests := []struct {
 		name          string
 		findings      []report.Finding // returned by the mock detector on timeout
+		labelTimedOut bool
+		dropOnTimeout bool
 		wantLabel     bool
+		wantDropped   bool
 		wantRedaction bool
 	}{
 		{
-			name:      "no findings on timeout",
-			findings:  nil,
-			wantLabel: true,
+			name:          "label_timed_out=true, no findings on timeout",
+			findings:      nil,
+			labelTimedOut: true,
+			wantLabel:     true,
 		},
 		{
-			name:          "partial findings on timeout",
+			name:          "label_timed_out=true, partial findings on timeout",
 			findings:      []report.Finding{{Secret: secret, RuleID: "grafana-api-key"}},
+			labelTimedOut: true,
 			wantLabel:     true,
 			wantRedaction: true,
+		},
+		{
+			name:          "label_timed_out=false, timeout exceeded",
+			findings:      nil,
+			labelTimedOut: false,
+			wantLabel:     false,
+		},
+		{
+			name:          "label_timed_out=true, drop_on_timeout=true",
+			findings:      nil,
+			labelTimedOut: true,
+			dropOnTimeout: true,
+			wantDropped:   true,
 		},
 	}
 
@@ -887,7 +905,8 @@ func TestTimeoutLabel(t *testing.T) {
 			}, Arguments{
 				ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
 				ProcessingTimeout: 10 * time.Millisecond,
-				LabelTimedOut:     true,
+				LabelTimedOut:     tc.labelTimedOut,
+				DropOnTimeout:     tc.dropOnTimeout,
 			})
 			require.NoError(t, err)
 			findings := tc.findings
@@ -903,11 +922,17 @@ func TestTimeoutLabel(t *testing.T) {
 			}
 			processed, dropped := c.processEntry(context.Background(), entry)
 
-			require.False(t, dropped)
-			require.Equal(t, model.LabelValue("timed-out"), processed.Labels["secretfilter"])
-			require.Equal(t, model.LabelValue("myservice"), processed.Labels["job"], "existing labels should be preserved")
-			if tc.wantRedaction {
-				require.NotEqual(t, line, processed.Entry.Line, "partial findings should still be redacted")
+			require.Equal(t, tc.wantDropped, dropped)
+			if !dropped {
+				if tc.wantLabel {
+					require.Equal(t, model.LabelValue("timed-out"), processed.Labels["secretfilter"])
+					require.Equal(t, model.LabelValue("myservice"), processed.Labels["job"], "existing labels should be preserved")
+				} else {
+					require.NotContains(t, processed.Labels, model.LabelName("secretfilter"))
+				}
+				if tc.wantRedaction {
+					require.NotEqual(t, line, processed.Entry.Line, "partial findings should still be redacted")
+				}
 			}
 		})
 	}
