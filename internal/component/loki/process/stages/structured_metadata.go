@@ -140,7 +140,7 @@ func (s *structuredMetadataStage) extractFromLabels(e Entry) Entry {
 		delete(labels, fl)
 	}
 
-	if s.regex != nil {
+	if !s.regex.IsEmpty() {
 		// Handle remaining labels matching the regex
 		foundLabels = []model.LabelName{}
 		for lName, lValue := range labels {

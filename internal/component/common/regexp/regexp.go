@@ -56,6 +56,10 @@ func (r *Regexp) UnmarshalText(text []byte) error {
 	return nil
 }
 
+func (r *Regexp) IsEmpty() bool {
+	return r == nil || r.Regexp == nil || r.Regexp.String() == ""
+}
+
 // CompileNonEmpty is like Compile but returns an error if the pattern is empty.
 func CompileNonEmpty(s string) (*NonEmptyRegexp, error) {
 	if s == "" {

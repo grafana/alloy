@@ -62,7 +62,7 @@ func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 	}
 
 	var expr *regexp.Regexp
-	if cfg.Expression != nil {
+	if !cfg.Expression.IsEmpty() {
 		expr = cfg.Expression.Regexp
 	}
 
