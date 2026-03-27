@@ -297,26 +297,30 @@ func (c *Resolver) ResolveAddress(
 	addr uint64,
 ) (SourceInfo, error) {
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 	v, known := c.cache.Get(fid)
-
 	if !known || v == erroredMarker {
 		return SourceInfo{}, errUnknownFile
 	}
+
+	c.mutex.Lock()
 	t, ok := c.tables[fid]
 	if ok {
-		return t.Lookup(addr)
+		si, err := t.Lookup(addr)
+		c.mutex.Unlock()
+		return si, err
 	}
 	path := c.tableFilePath(fid)
 	t, err := c.f.OpenTable(path)
 	if err != nil {
+		c.mutex.Unlock()
 		_ = os.Remove(path)
 		c.cache.Remove(fid)
 		return SourceInfo{}, err
 	}
 	c.tables[fid] = t
-	return t.Lookup(addr)
+	si, err := t.Lookup(addr)
+	c.mutex.Unlock()
+	return si, err
 }
 
 func (c *Resolver) Close() error {
