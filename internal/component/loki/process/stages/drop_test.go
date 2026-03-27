@@ -460,6 +460,13 @@ func Test_validateDropConfig(t *testing.T) {
 			expectValidateErr: true,
 		},
 		{
+			name: "empty expression",
+			cfg: `
+				expression = ""
+			`,
+			expectValidateErr: true,
+		},
+		{
 			name: "invalid regex",
 			cfg: `
 				expression = "(?P<ts[0-9]+).*"

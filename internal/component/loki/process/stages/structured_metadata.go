@@ -72,7 +72,7 @@ func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 			e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(labelName), Value: string(labelValue)})
 		})
 		// Handle extracted values matching the regex
-		if s.regex != nil {
+		if !s.regex.IsEmpty() {
 			for lName, lValue := range e.Extracted {
 				if s.regex.MatchString(lName) {
 					str, err := getString(lValue)
