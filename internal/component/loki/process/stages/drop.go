@@ -43,20 +43,23 @@ type DropConfig struct {
 
 // validateDropConfig validates the DropConfig for the dropStage
 func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
-	if cfg == nil ||
-		(cfg.Source == "" && cfg.Expression.IsEmpty() && cfg.OlderThan == emptyDuration && cfg.LongerThan == emptySize) {
+	if cfg == nil || (cfg.Source == "" && cfg.Expression.IsEmpty() && cfg.OlderThan == emptyDuration && cfg.LongerThan == emptySize) {
 
 		return nil, errors.New(ErrDropStageEmptyConfig)
 	}
+
 	if cfg.DropReason == "" {
 		cfg.DropReason = defaultDropReason
 	}
-	if cfg.Value != "" && cfg.Expression != nil {
+
+	if cfg.Value != "" && cfg.Expression.IsEmpty() {
 		return nil, errors.New(ErrDropStageInvalidConfig)
 	}
+
 	if cfg.Separator == "" {
 		cfg.Separator = defaultSeparator
 	}
+
 	if cfg.Value != "" && cfg.Source == "" {
 		return nil, errors.New(ErrDropStageNoSourceWithValue)
 	}
