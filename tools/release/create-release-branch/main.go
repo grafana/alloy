@@ -11,11 +11,7 @@ import (
 )
 
 const (
-	// backportLabelColor is the hex color for backport labels (without '#' prefix).
-	backportLabelColor = "63a504"
-	// releaseBranchPrefix is the prefix for release branches.
 	releaseBranchPrefix = "release/v"
-	// backportLabelPrefix is the prefix for backport labels.
 	backportLabelPrefix = "backport/v"
 )
 
@@ -87,15 +83,17 @@ func main() {
 	fmt.Printf("✅ Created branch: %s\n", branchName)
 	fmt.Printf("🔗 https://github.com/%s/%s/tree/%s\n", client.Owner(), client.Repo(), branchName)
 
-	// Create the backport label
-	err = client.CreateLabel(ctx, gh.CreateLabelParams{
+	created, err := client.EnsureLabel(ctx, gh.CreateLabelParams{
 		Name:        backportLabel,
-		Color:       backportLabelColor,
+		Color:       gh.BackportLabelColor,
 		Description: fmt.Sprintf("Backport to %s", branchName),
 	})
 	if err != nil {
-		log.Fatalf("Failed to create label: %v", err)
+		log.Fatalf("Failed to ensure label: %v", err)
 	}
-
-	fmt.Printf("✅ Created label: %s\n", backportLabel)
+	if created {
+		fmt.Printf("✅ Created label: %s\n", backportLabel)
+	} else {
+		fmt.Printf("Label %s already exists\n", backportLabel)
+	}
 }
