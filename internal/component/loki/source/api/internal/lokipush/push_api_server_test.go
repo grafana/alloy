@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"sync"
 	"testing"
 	"time"
 
@@ -29,44 +28,6 @@ import (
 	frelabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax"
 )
-
-type fakeBatchReceiver struct {
-	entries  chan []loki.Entry
-	received []loki.Entry
-	mtx      sync.Mutex
-	wg       sync.WaitGroup
-}
-
-func newFakeBatchReceiver() *fakeBatchReceiver {
-	c := &fakeBatchReceiver{
-		entries: make(chan []loki.Entry),
-	}
-	c.wg.Go(func() {
-		for batch := range c.entries {
-			c.mtx.Lock()
-			c.received = append(c.received, batch...)
-			c.mtx.Unlock()
-		}
-	})
-	return c
-}
-
-func (c *fakeBatchReceiver) Chan() chan []loki.Entry {
-	return c.entries
-}
-
-func (c *fakeBatchReceiver) Received() []loki.Entry {
-	c.mtx.Lock()
-	defer c.mtx.Unlock()
-	cpy := make([]loki.Entry, len(c.received))
-	copy(cpy, c.received)
-	return cpy
-}
-
-func (c *fakeBatchReceiver) Stop() {
-	close(c.entries)
-	c.wg.Wait()
-}
 
 const localhost = "127.0.0.1"
 
@@ -318,8 +279,7 @@ regex = "dropme"
 
 func TestPlaintextPushTarget(t *testing.T) {
 	logger := log.NewNopLogger()
-	//Create PushAPIServerOld
-	eh := newFakeBatchReceiver()
+	eh := loki.NewCollectingBatchReceiver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -387,9 +347,7 @@ func TestPlaintextPushTarget(t *testing.T) {
 
 func TestPlaintextPushTargetWithXScopeOrgIDHeader(t *testing.T) {
 	logger := log.NewNopLogger()
-	//Create PushAPIServerOld
-
-	eh := newFakeBatchReceiver()
+	eh := loki.NewCollectingBatchReceiver()
 	defer eh.Stop()
 
 	// Get a randomly available port by open and closing a TCP socket
@@ -526,9 +484,8 @@ func getFreePort(t *testing.T) int {
 	return port
 }
 
-func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *fakeBatchReceiver) {
-	//Create PushAPIServerOld
-	eh := newFakeBatchReceiver()
+func createPushServer(t *testing.T, logger log.Logger) (*PushAPIServer, int, *loki.CollectingBatchReceiver) {
+	eh := loki.NewCollectingBatchReceiver()
 	t.Cleanup(func() {
 		eh.Stop()
 	})

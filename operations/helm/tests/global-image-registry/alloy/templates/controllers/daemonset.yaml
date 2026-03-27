@@ -28,7 +28,7 @@ spec:
       serviceAccountName: alloy
       containers:
         - name: alloy
-          image: quay.io/grafana/alloy:v1.13.0
+          image: quay.io/grafana/alloy:v1.14.0
           imagePullPolicy: IfNotPresent
           args:
             - run
@@ -41,6 +41,10 @@ spec:
             - name: ALLOY_DEPLOY_MODE
               value: "helm"
             - name: HOSTNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: K8S_NODE_NAME
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName

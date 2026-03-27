@@ -65,6 +65,12 @@ type multilineState struct {
 	currentLines   uint64        // The number of lines of the current multiline block.
 }
 
+func (s *multilineState) Reset() {
+	// We don't reset startLineEntry here to keep old behaviour.
+	s.buffer.Reset()
+	s.currentLines = 0
+}
+
 // newMultilineStage creates a MulitlineStage from config
 func newMultilineStage(logger log.Logger, config MultilineConfig) Stage {
 	return &multilineStage{
@@ -147,6 +153,7 @@ func (m *multilineStage) runMultiline(in chan Entry, out chan Entry) {
 			if state.buffer.Len() > 0 {
 				state.buffer.WriteRune('\n')
 			}
+
 			line := e.Line
 			if m.cfg.TrimNewlines {
 				line = strings.TrimRight(line, "\r\n")
@@ -166,6 +173,7 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 		level.Debug(m.logger).Log("msg", "nothing to flush", "buffer_len", s.buffer.Len())
 		return
 	}
+
 	// copy extracted data.
 	extracted := make(map[string]any, len(s.startLineEntry.Extracted))
 	for k, v := range s.startLineEntry.Extracted {
@@ -173,17 +181,14 @@ func (m *multilineStage) flush(out chan Entry, s *multilineState) {
 	}
 	collapsed := Entry{
 		Extracted: extracted,
-		Entry: loki.Entry{
-			Labels: s.startLineEntry.Entry.Labels.Clone(),
-			Entry: push.Entry{
-				Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
-				Line:               s.buffer.String(),
-				StructuredMetadata: slices.Clone(s.startLineEntry.Entry.Entry.StructuredMetadata),
-			},
-		},
+		Entry: loki.NewEntryWithCreatedUnixMicro(s.startLineEntry.Entry.Labels.Clone(), s.startLineEntry.Created(), push.Entry{
+			Timestamp:          s.startLineEntry.Entry.Entry.Timestamp,
+			Line:               s.buffer.String(),
+			StructuredMetadata: slices.Clone(s.startLineEntry.Entry.Entry.StructuredMetadata),
+		}),
 	}
-	s.buffer.Reset()
-	s.currentLines = 0
+
+	s.Reset()
 
 	out <- collapsed
 }

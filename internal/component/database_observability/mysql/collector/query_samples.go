@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/blang/semver/v4"
@@ -67,13 +68,14 @@ LEFT JOIN
 	performance_schema.events_waits_history waits
 	ON statements.thread_id = waits.thread_id
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
+	%s
 LEFT JOIN
 	performance_schema.threads threads
 	ON statements.THREAD_ID = threads.THREAD_ID
 WHERE
 	statements.DIGEST IS NOT NULL
 	AND statements.CURRENT_SCHEMA NOT IN %s
-	%s %s`
+	%s %s %s`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -89,6 +91,8 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction       bool
 	AutoEnableSetupConsumers    bool
 	SetupConsumersCheckInterval time.Duration
+	SampleMinDuration           time.Duration
+	WaitEventMinDuration        time.Duration
 
 	Logger log.Logger
 }
@@ -102,11 +106,14 @@ type QuerySamples struct {
 	disableQueryRedaction       bool
 	autoEnableSetupConsumers    bool
 	setupConsumersCheckInterval time.Duration
+	sampleMinDuration           time.Duration
+	waitEventMinDuration        time.Duration
 
 	logger  log.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 
 	timerBookmark float64
 	lastUptime    float64
@@ -122,6 +129,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:       args.DisableQueryRedaction,
 		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
+		sampleMinDuration:           args.SampleMinDuration,
+		waitEventMinDuration:        args.WaitEventMinDuration,
 		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                     &atomic.Bool{},
 	}
@@ -151,16 +160,14 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 	// Start setup_consumers check goroutine if enabled
 	if c.autoEnableSetupConsumers {
-		go c.runSetupConsumersCheck()
+		c.wg.Go(c.runSetupConsumersCheck)
 	}
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
@@ -174,7 +181,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -183,13 +190,16 @@ func (c *QuerySamples) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *QuerySamples) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *QuerySamples) runSetupConsumersCheck() {
 	ticker := time.NewTicker(c.setupConsumersCheckInterval)
+	defer ticker.Stop()
 
 	for {
 		if err := c.updateSetupConsumersSettings(c.ctx); err != nil {
@@ -242,15 +252,25 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	excludedSchemasClause := buildExcludedSchemasClause(c.excludeSchemas)
 
+	var waitDurationClause string
+	if c.waitEventMinDuration > 0 {
+		waitDurationClause = fmt.Sprintf("AND waits.timer_wait >= %.0f", secondsToPicoseconds(c.waitEventMinDuration.Seconds()))
+	}
+
+	var sampleDurationClause string
+	if c.sampleMinDuration > 0 {
+		sampleDurationClause = fmt.Sprintf("AND statements.TIMER_WAIT >= %.0f", secondsToPicoseconds(c.sampleMinDuration.Seconds()))
+	}
+
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, textField, excludedSchemasClause, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, textField, waitDurationClause, excludedSchemasClause, textNotNullClause, sampleDurationClause, timerClause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
 		additionalFields := cpuTimeField + textField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, excludedSchemasClause, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, excludedSchemasClause, textNotNullClause, sampleDurationClause, timerClause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField + textField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, excludedSchemasClause, textNotNullClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, excludedSchemasClause, textNotNullClause, sampleDurationClause, timerClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
@@ -403,10 +423,6 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				row.WaitObjectType.String,
 				waitTime,
 			)
-
-			if c.disableQueryRedaction && row.SQLText.Valid {
-				waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
-			}
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,

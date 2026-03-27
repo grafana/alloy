@@ -43,15 +43,17 @@ otelcol.processor.tail_sampling "<LABEL>" {
 
 You can use the following arguments with `otelcol.processor.tail_sampling`:
 
-| Name                          | Type       | Description                                                                  | Default | Required |
-|-------------------------------|------------|------------------------------------------------------------------------------|---------|----------|
-| `decision_wait`               | `duration` | Wait time since the first span of a trace before making a sampling decision. | `"30s"` | no       |
-| `num_traces`                  | `int`      | Number of traces kept in memory.                                             | `50000` | no       |
-| `block_on_overflow`           | `boolean`  | If `true`, wait for space when the `num_traces` limit is reached. If `false`, old traces will be evicted to make space. | `false` | no       |
-| `expected_new_traces_per_sec` | `int`      | Expected number of new traces (helps in allocating data structures).         | `0`     | no       |
-| `sample_on_first_match`       | `boolean`  | Make a sampling decision as soon as any policy matches.                      | `false` | no       |
-| `drop_pending_traces_on_shutdown` | `boolean` | Drop pending traces on shutdown instead of deciding with partial data.    | `false` | no       |
-| `decision_cache`              | `object`   | Configures caches for sampling decisions.                                    | `{}`    | no       |
+| Name                                | Type       | Description                                                                                                             | Default | Required |
+| ----------------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `decision_wait`                     | `duration` | Wait time since the first span of a trace before making a sampling decision.                                            | `"30s"` | no       |
+| `decision_wait_after_root_received` | `duration` | Wait time since receiving the root span before making a sampling decision.                                              | `"0s"`  | no       |
+| `num_traces`                        | `int`      | Number of traces kept in memory.                                                                                        | `50000` | no       |
+| `block_on_overflow`                 | `boolean`  | If `true`, wait for space when the `num_traces` limit is reached. If `false`, old traces will be evicted to make space. | `false` | no       |
+| `expected_new_traces_per_sec`       | `int`      | Expected number of new traces (helps in allocating data structures).                                                    | `0`     | no       |
+| `sample_on_first_match`             | `boolean`  | Make a sampling decision as soon as any policy matches.                                                                 | `false` | no       |
+| `drop_pending_traces_on_shutdown`   | `boolean`  | Drop pending traces on shutdown instead of deciding with partial data.                                                  | `false` | no       |
+| `maximum_trace_size_bytes`          | `int`      | Drop traces early when they exceed this size in bytes. `0` disables early dropping.                                     | `0`     | no       |
+| `decision_cache`                    | `object`   | Configures caches for sampling decisions.                                                                               | `{}`    | no       |
 
 `decision_wait` determines the number of batches to maintain on a channel.
 Its value must convert to a number of seconds greater than zero.
@@ -66,11 +68,15 @@ If `sample_on_first_match` is `true`, the component makes a decision as soon as 
 
 If `drop_pending_traces_on_shutdown` is `true`, the component drops traces that are still waiting for `decision_wait` when shutdown starts.
 
+If `decision_wait_after_root_received` is greater than `0`, the component can decide relative to root-span arrival time.
+
+If `maximum_trace_size_bytes` is greater than `0`, traces over this size are dropped before decision wait to limit memory usage.
+
 `decision_cache` can contain two keys:
 
-* `sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache, persisting the "keep" decisions for traces that may have already been released from memory.
+- `sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache, persisting the "keep" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
-* `non_sampled_cache_size`: Configures number of trace IDs to be kept in an LRU cache, persisting the "drop" decisions for traces that may have already been released from memory.
+- `non_sampled_cache_size`: Configures the number of trace IDs to be kept in an LRU cache, persisting the "drop" decisions for traces that may have already been released from memory.
   By default, the size is 0 and the cache is inactive.
 
 You may want to vary the size of the `decision_cache` depending on how many "keep" vs "drop" decisions you expect from your policies.
@@ -82,7 +88,7 @@ Additionally, when you use `decision_cache`, configure it with a much higher val
 You can use the following blocks with `otelcol.processor.tail_sampling`:
 
 | Block                                                                                      | Description                                                                                                 | Required |
-|--------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------|----------|
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                                                         | Configures where to send received telemetry data.                                                           | yes      |
 | [`policy`][policy]                                                                         | Policies used to make a sampling decision.                                                                  | yes      |
 | `policy` > [`boolean_attribute`][boolean_attribute]                                        | The policy samples based on a boolean attribute (resource and record).                                      | no       |
@@ -96,6 +102,19 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 | `policy` > [`status_code`][status_code]                                                    | The policy samples based upon the status code.                                                              | no       |
 | `policy` > [`string_attribute`][string_attribute]                                          | The policy samples based on string attributes (resource and record) value matches.                          | no       |
 | `policy` > [`trace_state`][trace_state]                                                    | The policy samples based on TraceState value matches.                                                       | no       |
+| `policy` > [`not`][not]                                                                    | The policy inverts a nested policy decision.                                                                | no       |
+| `policy` > `not` > [`not_sub_policy`][not_sub_policy]                                      | A nested policy for `not` inversion.                                                                        | no       |
+| `policy` > `not` > `not_sub_policy` > [`boolean_attribute`][boolean_attribute]             | The policy samples based on a boolean attribute (resource and record).                                      | no       |
+| `policy` > `not` > `not_sub_policy` > [`latency`][latency]                                 | The policy samples based on the duration of the trace.                                                      | no       |
+| `policy` > `not` > `not_sub_policy` > [`numeric_attribute`][numeric_attribute]             | The policy samples based on number attributes (resource and record).                                        | no       |
+| `policy` > `not` > `not_sub_policy` > [`ottl_condition`][ottl_condition]                   | The policy samples based on a given boolean OTTL condition (span and span event).                           | no       |
+| `policy` > `not` > `not_sub_policy` > [`probabilistic`][probabilistic]                     | The policy samples a percentage of traces.                                                                  | no       |
+| `policy` > `not` > `not_sub_policy` > [`rate_limiting`][rate_limiting]                     | The policy samples based on rate.                                                                           | no       |
+| `policy` > `not` > `not_sub_policy` > [`bytes_limiting`][bytes_limiting]                   | The policy samples based on the rate of bytes per second.                                                   | no       |
+| `policy` > `not` > `not_sub_policy` > [`span_count`][span_count]                           | The policy samples based on the minimum number of spans within a batch.                                     | no       |
+| `policy` > `not` > `not_sub_policy` > [`status_code`][status_code]                         | The policy samples based upon the status code.                                                              | no       |
+| `policy` > `not` > `not_sub_policy` > [`string_attribute`][string_attribute]               | The policy samples based on string attributes (resource and record) value matches.                          | no       |
+| `policy` > `not` > `not_sub_policy` > [`trace_state`][trace_state]                         | The policy samples based on TraceState value matches.                                                       | no       |
 | `policy` > [`and`][and]                                                                    | The policy samples based on multiple policies, creates an `and` policy.                                     | no       |
 | `policy` > `and` > [`and_sub_policy`][and_sub_policy]                                      | A set of policies underneath an `and` policy type.                                                          | no       |
 | `policy` > `and` > `and_sub_policy` > [`boolean_attribute`][boolean_attribute]             | The policy samples based on a boolean attribute (resource and record).                                      | no       |
@@ -110,7 +129,7 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 | `policy` > `and` > `and_sub_policy` > [`string_attribute`][string_attribute]               | The policy samples based on string attributes (resource and record) value matches.                          | no       |
 | `policy` > `and` > `and_sub_policy` > [`trace_state`][trace_state]                         | The policy samples based on TraceState value matches.                                                       | no       |
 | `policy` > [`drop`][drop]                                                                  | The policy drops traces based on multiple sub-policies.                                                     | no       |
-| `policy` > `drop` > [`drop_sub_policy`][drop_sub_policy]                                    | A set of policies underneath a `drop` policy type.                                                          | no       |
+| `policy` > `drop` > [`drop_sub_policy`][drop_sub_policy]                                   | A set of policies underneath a `drop` policy type.                                                          | no       |
 | `policy` > `drop` > `drop_sub_policy` > [`boolean_attribute`][boolean_attribute]           | The policy samples based on a boolean attribute (resource and record).                                      | no       |
 | `policy` > `drop` > `drop_sub_policy` > [`latency`][latency]                               | The policy samples based on the duration of the trace.                                                      | no       |
 | `policy` > `drop` > `drop_sub_policy` > [`numeric_attribute`][numeric_attribute]           | The policy samples based on number attributes (resource and record).                                        | no       |
@@ -149,6 +168,8 @@ You can use the following blocks with `otelcol.processor.tail_sampling`:
 [boolean_attribute]: #boolean_attribute
 [ottl_condition]: #ottl_condition
 [trace_state]: #trace_state
+[not]: #not
+[not_sub_policy]: #not_sub_policy
 [and]: #and
 [and_sub_policy]: #and_sub_policy
 [drop]: #drop
@@ -174,17 +195,22 @@ The `policy` block configures a sampling policy used by the component. At least 
 The following arguments are supported:
 
 | Name   | Type     | Description                            | Default | Required |
-|--------|----------|----------------------------------------|---------|----------|
+| ------ | -------- | -------------------------------------- | ------- | -------- |
 | `name` | `string` | The custom name given to the policy.   |         | yes      |
 | `type` | `string` | The valid policy type for this policy. |         | yes      |
 
+Supported `type` values include:
+`always_sample`, `latency`, `numeric_attribute`, `probabilistic`, `status_code`, `string_attribute`,
+`rate_limiting`, `bytes_limiting`, `span_count`, `trace_state`, `boolean_attribute`, `ottl_condition`,
+`trace_flags`, `and`, `not`, `drop`, and `composite`.
+
 Each policy results in a decision, and the processor evaluates them to make a final decision:
 
-* When there's a "drop" decision, the trace isn't sampled.
-* When there's an "inverted not sample" decision, the trace isn't sampled. ***Deprecated***
-* When there's a "sample" decision, the trace is sampled.
-* When there's an "inverted sample" decision and no "not sample" decisions, the trace is sampled. ***Deprecated***
-* In all other cases, the trace isn't sampled.
+- When there's a "drop" decision, the trace isn't sampled.
+- When there's an "inverted not sample" decision, the trace isn't sampled. **_Deprecated_**
+- When there's a "sample" decision, the trace is sampled.
+- When there's an "inverted sample" decision and no "not sample" decisions, the trace is sampled. **_Deprecated_**
+- In all other cases, the trace isn't sampled.
 
 An "inverted" decision is the one made based on the `invert_match` attribute, such as the one from the string, numeric or boolean tag policy.
 There is an exception to this if the policy is within an and or composite policy, the resulting decision will be either sampled or not sampled.
@@ -198,7 +224,7 @@ The policy samples based on a boolean attribute (resource and record).
 The following arguments are supported:
 
 | Name           | Type     | Description                                                                          | Default | Required |
-|----------------|----------|--------------------------------------------------------------------------------------|---------|----------|
+| -------------- | -------- | ------------------------------------------------------------------------------------ | ------- | -------- |
 | `key`          | `string` | Attribute key to match against.                                                      |         | yes      |
 | `value`        | `bool`   | The boolean value, `true` or `false`, to use when matching against attribute values. |         | yes      |
 | `invert_match` | `bool`   | Indicates that values must not match against attribute values.                       | `false` | no       |
@@ -212,7 +238,7 @@ The duration is determined by looking at the earliest start time and latest end 
 The following arguments are supported:
 
 | Name                 | Type     | Description                                            | Default | Required |
-|----------------------|----------|--------------------------------------------------------|---------|----------|
+| -------------------- | -------- | ------------------------------------------------------ | ------- | -------- |
 | `threshold_ms`       | `number` | Lower latency threshold for sampling, in milliseconds. |         | yes      |
 | `upper_threshold_ms` | `number` | Upper latency threshold for sampling, in milliseconds. | `0`     | no       |
 
@@ -228,7 +254,7 @@ The policy samples based on number attributes (resource and record).
 The following arguments are supported:
 
 | Name           | Type     | Description                                                    | Default | Required |
-|----------------|----------|----------------------------------------------------------------|---------|----------|
+| -------------- | -------- | -------------------------------------------------------------- | ------- | -------- |
 | `key`          | `string` | Tag that the filter is matched against.                        |         | yes      |
 | `min_value`    | `number` | The minimum value of the attribute to be considered a match.   |         | yes      |
 | `max_value`    | `number` | The maximum value of the attribute to be considered a match.   |         | yes      |
@@ -242,16 +268,16 @@ The policy samples based on a given boolean [OTTL](https://github.com/open-telem
 The following arguments are supported:
 
 | Name         | Type           | Description                                         | Default | Required |
-|--------------|----------------|-----------------------------------------------------|---------|----------|
+| ------------ | -------------- | --------------------------------------------------- | ------- | -------- |
 | `error_mode` | `string`       | Error handling if OTTL conditions fail to evaluate. |         | yes      |
 | `span`       | `list(string)` | OTTL conditions for spans.                          | `[]`    | no       |
 | `spanevent`  | `list(string)` | OTTL conditions for span events.                    | `[]`    | no       |
 
 The supported values for `error_mode` are:
 
-* `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
-* `silent`: Ignore errors returned by conditions, don't log them, and continue on to the next condition.
-* `propagate`: Return the error up the pipeline. This results in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
+- `ignore`: Ignore errors returned by conditions, log them, and continue on to the next condition. This is the recommended mode.
+- `silent`: Ignore errors returned by conditions, don't log them, and continue on to the next condition.
+- `propagate`: Return the error up the pipeline. This results in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
 
 At least one of `span` or `spanevent` should be specified. Both `span` and `spanevent` can also be specified.
 
@@ -263,7 +289,7 @@ The policy samples a percentage of traces.
 The following arguments are supported:
 
 | Name                  | Type     | Description                                      | Default | Required |
-|-----------------------|----------|--------------------------------------------------|---------|----------|
+| --------------------- | -------- | ------------------------------------------------ | ------- | -------- |
 | `sampling_percentage` | `number` | The percentage rate at which traces are sampled. |         | yes      |
 | `hash_salt`           | `string` | See below.                                       |         | no       |
 
@@ -280,7 +306,7 @@ The policy samples based on rate.
 The following arguments are supported:
 
 | Name               | Type     | Description                                                         | Default | Required |
-|--------------------|----------|---------------------------------------------------------------------|---------|----------|
+| ------------------ | -------- | ------------------------------------------------------------------- | ------- | -------- |
 | `spans_per_second` | `number` | Sets the maximum number of spans that can be processed each second. |         | yes      |
 
 ### `bytes_limiting`
@@ -290,9 +316,9 @@ The policy samples based on the rate of bytes per second using a token bucket al
 
 The following arguments are supported:
 
-| Name               | Type     | Description                                                                                                       | Default | Required |
-|--------------------|----------|-------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `bytes_per_second` | `number` | Sets the sustained byte throughput limit.                                                                         |         | yes      |
+| Name               | Type     | Description                                                                                                     | Default | Required |
+| ------------------ | -------- | --------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `bytes_per_second` | `number` | Sets the sustained byte throughput limit.                                                                       |         | yes      |
 | `burst_capacity`   | `number` | Sets the maximum burst size in bytes. If omitted, it defaults to `2 * bytes_per_second` in the upstream policy. | `0`     | no       |
 
 ### `span_count`
@@ -304,7 +330,7 @@ If all traces within the batch have fewer spans than the threshold, the batch is
 The following arguments are supported:
 
 | Name        | Type     | Description                         | Default | Required |
-|-------------|----------|-------------------------------------|---------|----------|
+| ----------- | -------- | ----------------------------------- | ------- | -------- |
 | `min_spans` | `number` | Minimum number of spans in a trace. |         | yes      |
 | `max_spans` | `number` | Maximum number of spans in a trace. | `0`     | no       |
 
@@ -318,7 +344,7 @@ The policy samples based upon the status code.
 The following arguments are supported:
 
 | Name           | Type           | Description                                                                               | Default | Required |
-|----------------|----------------|-------------------------------------------------------------------------------------------|---------|----------|
+| -------------- | -------------- | ----------------------------------------------------------------------------------------- | ------- | -------- |
 | `status_codes` | `list(string)` | Holds the configurable settings to create a status code filter sampling policy evaluator. |         | yes      |
 
 `status_codes` values must be `"OK"`, `"ERROR"`, or `"UNSET"`.
@@ -332,7 +358,7 @@ Both exact and regular expression value matches are supported.
 The following arguments are supported:
 
 | Name                     | Type           | Description                                                                                                                                                 | Default | Required |
-|--------------------------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| ------------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `key`                    | `string`       | Tag that the filter is matched against.                                                                                                                     |         | yes      |
 | `values`                 | `list(string)` | Set of values or regular expressions to use when matching against attribute values.                                                                         |         | yes      |
 | `enabled_regex_matching` | `bool`         | Determines whether to match attribute values by regular expression string.                                                                                  | `false` | no       |
@@ -347,9 +373,26 @@ The policy samples based on TraceState value matches.
 The following arguments are supported:
 
 | Name     | Type           | Description                                                      | Default | Required |
-|----------|----------------|------------------------------------------------------------------|---------|----------|
+| -------- | -------------- | ---------------------------------------------------------------- | ------- | -------- |
 | `key`    | `string`       | Tag that the filter is matched against.                          |         | yes      |
 | `values` | `list(string)` | Set of values to use when matching against `trace_state` values. |         | yes      |
+
+### `not`
+
+The `not` block configures a policy of type `not`.
+This policy inverts the decision of a nested `not_sub_policy`.
+
+### `not_sub_policy`
+
+The `not_sub_policy` block configures a sampling policy used by the `not` block.
+Exactly one `not_sub_policy` block is required inside a `not` block.
+
+The following arguments are supported:
+
+| Name   | Type     | Description                            | Default | Required |
+| ------ | -------- | -------------------------------------- | ------- | -------- |
+| `name` | `string` | The custom name given to the policy.   |         | yes      |
+| `type` | `string` | The valid policy type for this policy. |         | yes      |
 
 ### `and`
 
@@ -364,7 +407,7 @@ At least one `and_sub_policy` block is required inside an `and` block.
 The following arguments are supported:
 
 | Name   | Type     | Description                            | Default | Required |
-|--------|----------|----------------------------------------|---------|----------|
+| ------ | -------- | -------------------------------------- | ------- | -------- |
 | `name` | `string` | The custom name given to the policy.   |         | yes      |
 | `type` | `string` | The valid policy type for this policy. |         | yes      |
 
@@ -381,7 +424,7 @@ At least one `drop_sub_policy` block is required inside a `drop` block.
 The following arguments are supported:
 
 | Name   | Type     | Description                            | Default | Required |
-|--------|----------|----------------------------------------|---------|----------|
+| ------ | -------- | -------------------------------------- | ------- | -------- |
 | `name` | `string` | The custom name given to the policy.   |         | yes      |
 | `type` | `string` | The valid policy type for this policy. |         | yes      |
 
@@ -403,7 +446,7 @@ The `composite_sub_policy` block configures a sampling policy used by the `compo
 The following arguments are supported:
 
 | Name   | Type     | Description                            | Default | Required |
-|--------|----------|----------------------------------------|---------|----------|
+| ------ | -------- | -------------------------------------- | ------- | -------- |
 | `name` | `string` | The custom name given to the policy.   |         | yes      |
 | `type` | `string` | The valid policy type for this policy. |         | yes      |
 
@@ -416,7 +459,7 @@ The following arguments are supported:
 The following fields are exported and can be referenced by other components:
 
 | Name    | Type               | Description                                                      |
-|---------|--------------------|------------------------------------------------------------------|
+| ------- | ------------------ | ---------------------------------------------------------------- |
 | `input` | `otelcol.Consumer` | A value that other components can use to send telemetry data to. |
 
 `input` accepts `otelcol.Consumer` data for any telemetry signal (metrics, logs, or traces).

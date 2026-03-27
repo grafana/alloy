@@ -32,6 +32,11 @@ func TestReadLineRaw_OctetCounting(t *testing.T) {
 			inputFile:  "testdata/octetcount-singleline.txt",
 			expectFile: "testdata/octetcount-singleline.json",
 		},
+		{
+			label:      "large",
+			inputFile:  "testdata/octetcount-large.txt",
+			expectFile: "testdata/octetcount-large.json",
+		},
 	}
 
 	for _, tc := range cases {

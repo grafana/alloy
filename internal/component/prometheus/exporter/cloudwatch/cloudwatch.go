@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
 )
@@ -29,6 +30,13 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 	}
 	// yaceSess expects a default value of True
 	fipsEnabled := !a.FIPSDisabled
+
+	if !a.UseAWSSDKVersion2 {
+		level.Warn(opts.Logger).Log(
+			"msg",
+			"the `aws_sdk_version_v2` argument is deprecated and will be removed in future releases - AWS SDK for Go v1 is end-of-life, remove this argument to use AWS SDK for Go v2",
+		)
+	}
 
 	if a.DecoupledScrape.Enabled {
 		exp, err := cloudwatch_exporter.NewDecoupledCloudwatchExporter(opts.ID, opts.Logger, exporterConfig, a.DecoupledScrape.ScrapeInterval, fipsEnabled, a.LabelsSnakeCase, a.Debug, a.UseAWSSDKVersion2)

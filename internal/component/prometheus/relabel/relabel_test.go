@@ -113,6 +113,45 @@ func TestMetrics(t *testing.T) {
 	require.True(t, *(m.Counter.Value) == 1)
 }
 
+func BenchmarkCacheParallel(b *testing.B) {
+	fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+		return ref, nil
+	}))
+	var entry storage.Appendable
+	_, err := New(component.Options{
+		ID:     "1",
+		Logger: util.TestAlloyLogger(b),
+		OnStateChange: func(e component.Exports) {
+			newE := e.(Exports)
+			entry = newE.Receiver
+		},
+		Registerer:     prom.NewRegistry(),
+		GetServiceData: getServiceData,
+	}, Arguments{
+		ForwardTo: []storage.Appendable{fanout},
+		MetricRelabelConfigs: []*alloy_relabel.Config{
+			{
+				SourceLabels: []string{"__address__"},
+				Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+				TargetLabel:  "new_label",
+				Replacement:  "new_value",
+				Action:       "replace",
+			},
+		},
+		CacheSize: 100_000,
+	})
+	require.NoError(b, err)
+
+	lbls := labels.FromStrings("__address__", "localhost")
+	b.RunParallel(func(pb *testing.PB) {
+		app := entry.Appender(b.Context())
+		for pb.Next() {
+			app.Append(0, lbls, time.Now().UnixMilli(), 0)
+		}
+		app.Commit()
+	})
+}
+
 func BenchmarkCache(b *testing.B) {
 	fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 		require.True(b, l.Has("new_label"))

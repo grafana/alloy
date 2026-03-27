@@ -105,8 +105,6 @@ You can use the following blocks with `loki.source.awsfirehose`:
 
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
-| [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
-| `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
@@ -114,12 +112,7 @@ The > symbol indicates deeper levels of nesting.
 For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
-[grpc]: #grpc
 [tls]: #tls
-
-### `grpc`
-
-{{< docs/shared lookup="reference/components/loki-server-grpc.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `http`
 
@@ -148,10 +141,15 @@ The metrics include labels such as `status_code` where relevant, which you can u
 {{< /admonition >}}
 
 * `loki_source_awsfirehose_batch_size` (histogram): Size (in units) of the number of records received per request.
+* `loki_source_awsfirehose_inflight_requests` (gauge): Current number of inflight requests.
+* `loki_source_awsfirehose_request_duration_seconds` (histogram): HTTP request handling time, in seconds.
 * `loki_source_awsfirehose_invalid_static_labels_errors` (counter): Count number of errors while processing Data Firehose static labels.
+* `loki_source_awsfirehose_request_message_bytes` (histogram): Request message size, in bytes.
+* `loki_source_awsfirehose_response_message_bytes` (histogram): Response message size, in bytes.
 * `loki_source_awsfirehose_record_errors` (counter): Count of errors while decoding an individual record.
 * `loki_source_awsfirehose_records_received` (counter): Count of records received.
 * `loki_source_awsfirehose_request_errors` (counter): Count of errors while receiving a request.
+* `loki_source_awsfirehose_tcp_connections` (gauge): Current number of accepted TCP connections.
 
 ## Example
 

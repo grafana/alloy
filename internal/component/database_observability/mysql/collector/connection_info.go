@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"net"
 	"strings"
 
@@ -18,6 +19,7 @@ type ConnectionInfoArguments struct {
 	Registry      *prometheus.Registry
 	EngineVersion string
 	CloudProvider *database_observability.CloudProvider
+	DB            *sql.DB
 }
 
 type ConnectionInfo struct {
@@ -26,8 +28,10 @@ type ConnectionInfo struct {
 	EngineVersion string
 	InfoMetric    *prometheus.GaugeVec
 	CloudProvider *database_observability.CloudProvider
+	dbConnection  *sql.DB
 
 	running *atomic.Bool
+	cancel  context.CancelFunc
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -45,6 +49,7 @@ func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
 		EngineVersion: args.EngineVersion,
 		InfoMetric:    infoMetric,
 		CloudProvider: args.CloudProvider,
+		dbConnection:  args.DB,
 		running:       &atomic.Bool{},
 	}, nil
 }
@@ -105,7 +110,21 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	}
 	c.running.Store(true)
 
-	c.InfoMetric.WithLabelValues(providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion).Set(1)
+	labelValues := []string{providerName, providerRegion, providerAccount, dbInstanceIdentifier, engine, c.EngineVersion}
+	c.InfoMetric.WithLabelValues(labelValues...).Set(1)
+
+	if c.dbConnection != nil {
+		c.cancel = database_observability.RunConnectionInfoMonitor(
+			ctx,
+			c.dbConnection,
+			c.Registry,
+			c.InfoMetric,
+			labelValues,
+			func() { c.running.Store(false) },
+			nil,
+		)
+	}
+
 	return nil
 }
 
@@ -114,6 +133,9 @@ func (c *ConnectionInfo) Stopped() bool {
 }
 
 func (c *ConnectionInfo) Stop() {
+	if c.cancel != nil {
+		c.cancel()
+	}
 	c.Registry.Unregister(c.InfoMetric)
 	c.running.Store(false)
 }
