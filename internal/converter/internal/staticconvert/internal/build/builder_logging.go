@@ -20,9 +20,10 @@ func (b *ConfigBuilder) appendLogging(config *server.Config) {
 }
 
 func toLogging(config *server.Config) *logging.Options {
+	dest := logging.LogDestinationStderr
 	return &logging.Options{
 		Level:       logging.Level(config.LogLevel.String()),
 		Format:      logging.Format(config.LogFormat),
-		Destination: "stderr",
+		Destination: &dest,
 	}
 }

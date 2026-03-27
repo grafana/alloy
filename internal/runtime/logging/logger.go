@@ -115,7 +115,7 @@ func (l *Logger) Update(o Options) error {
 	l.format.Set(o.Format)
 
 	// Handle Windows Event Log configuration
-	if o.Destination == LogDestinationWindowsEventLog {
+	if o.EffectiveDestination() == LogDestinationWindowsEventLog {
 		// Close existing Windows Event Log handler if it exists
 		if l.windowsEventLogHandler != nil {
 			_ = l.windowsEventLogHandler.Close()
@@ -140,7 +140,7 @@ func (l *Logger) Update(o Options) error {
 	// Configure the writer used by the regular handler. It always writes to both
 	// innerWriter (below) and, when set, lokiWriter (write_to). So write_to receives
 	// logs regardless of destination.
-	switch o.Destination {
+	switch o.EffectiveDestination() {
 	case LogDestinationWindowsEventLog:
 		// Handler still writes to l.writer
 		// writerVar.Write() sends to both innerWriter (stderr) and lokiWriter (write_to), so only innerWriter is disabled.

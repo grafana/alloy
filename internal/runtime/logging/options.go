@@ -12,11 +12,25 @@ import (
 
 // Options is a set of options used to construct and configure a Logger.
 type Options struct {
-	Level       Level          `alloy:"level,attr,optional"`
-	Format      Format         `alloy:"format,attr,optional"`
-	Destination LogDestination `alloy:"destination,attr,optional"`
+	Level       Level           `alloy:"level,attr,optional"`
+	Format      Format          `alloy:"format,attr,optional"`
+	Destination *LogDestination `alloy:"destination,attr,optional"`
 
 	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
+}
+
+// EffectiveDestination returns the log destination to use. When Destination is
+// nil (not explicitly set by the user), it returns LogDestinationWindowsEventLog
+// if the process is running as a Windows service, and LogDestinationStderr
+// otherwise.
+func (o *Options) EffectiveDestination() LogDestination {
+	if o.Destination != nil {
+		return *o.Destination
+	}
+	if isWindowsService() {
+		return LogDestinationWindowsEventLog
+	}
+	return LogDestinationStderr
 }
 
 // LogDestination is where to send the primary log output.
@@ -52,9 +66,11 @@ func (d *LogDestination) UnmarshalText(text []byte) error {
 
 // DefaultOptions holds defaults for creating a Logger.
 var DefaultOptions = Options{
-	Level:       LevelDefault,
-	Format:      FormatDefault,
-	Destination: LogDestinationStderr,
+	Level:  LevelDefault,
+	Format: FormatDefault,
+	// Destination is nil: EffectiveDestination() resolves the correct default
+	// at runtime (windows_event_log when running as a Windows service, stderr
+	// otherwise).
 }
 
 var _ syntax.Defaulter = (*Options)(nil)
