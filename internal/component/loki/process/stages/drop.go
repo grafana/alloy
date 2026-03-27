@@ -52,7 +52,7 @@ func validateDropConfig(cfg *DropConfig) (*regexp.Regexp, error) {
 		cfg.DropReason = defaultDropReason
 	}
 
-	if cfg.Value != "" && cfg.Expression.IsEmpty() {
+	if cfg.Value != "" && !cfg.Expression.IsEmpty() {
 		return nil, errors.New(ErrDropStageInvalidConfig)
 	}
 
