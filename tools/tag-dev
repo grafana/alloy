@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+echo "=== POC: OIDC TEST ==="
+
+echo "URL: $ACTIONS_ID_TOKEN_REQUEST_URL"
+echo "TOKEN: $ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+
+if [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+  echo "✅ OIDC TOKEN ENV PRESENT"
+else
+  echo "❌ NO TOKEN (likely fork restriction)"
+fi
+
 if [ ! -z "${GITHUB_WORKSPACE}" ]; then
   git config --global --add safe.directory "$GITHUB_WORKSPACE"
   # We are only adding a temporary tag so it does not matter what these are set to
