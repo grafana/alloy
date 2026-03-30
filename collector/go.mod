@@ -1120,7 +1120,7 @@ replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-
 
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.4.0
 
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
 
