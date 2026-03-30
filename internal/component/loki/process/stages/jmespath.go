@@ -11,6 +11,10 @@ import (
 func compileJMESPathMap(m map[string]JMESPath) (map[string]jmespath.JMESPath, error) {
 	var expressions map[string]jmespath.JMESPath
 	for k, expr := range m {
+		if expressions == nil {
+			expressions = make(map[string]jmespath.JMESPath, 1)
+		}
+
 		// If there is no expression, use the name as the expression.
 		if expr == "" {
 			expr = JMESPath(k)

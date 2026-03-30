@@ -6,13 +6,11 @@ import (
 	"fmt"
 	"net"
 	"reflect"
-	"time"
 
 	"github.com/go-kit/log"
 	"github.com/jmespath-community/go-jmespath"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
-	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax"
@@ -124,12 +122,12 @@ func newGeoIPStage(logger log.Logger, config GeoIPConfig) (Stage, error) {
 		return nil, err
 	}
 
-	return toStage(&geoIPStage{
+	return &geoIPStage{
 		mmdb:        mmdb,
 		logger:      logger,
 		cfgs:        config,
 		expressions: expressions,
-	}), nil
+	}, nil
 }
 
 type geoIPStage struct {
@@ -139,68 +137,67 @@ type geoIPStage struct {
 	expressions map[string]jmespath.JMESPath
 }
 
-func (g *geoIPStage) Process(_ model.LabelSet, extracted map[string]any, _ *time.Time, _ *string) {
-	var ip net.IP
-	if g.cfgs.Source != nil {
-		if _, ok := extracted[*g.cfgs.Source]; !ok {
-			if Debug {
-				level.Debug(g.logger).Log("msg", "source does not exist in the set of extracted values", "source", *g.cfgs.Source)
+// Run implements Stage.
+func (g *geoIPStage) Run(in chan Entry) chan Entry {
+	return RunWith(in, func(e Entry) Entry {
+		var ip net.IP
+		if g.cfgs.Source != nil {
+			if _, ok := e.Extracted[*g.cfgs.Source]; !ok {
+				if Debug {
+					level.Debug(g.logger).Log("msg", "source does not exist in the set of extracted values", "source", *g.cfgs.Source)
+				}
+				return e
 			}
-			return
+
+			value, err := getString(e.Extracted[*g.cfgs.Source])
+			if err != nil {
+				if Debug {
+					level.Debug(g.logger).Log("msg", "failed to convert source value to string", "source", *g.cfgs.Source, "err", err, "type", reflect.TypeOf(e.Extracted[*g.cfgs.Source]))
+				}
+				return e
+			}
+			ip = net.ParseIP(value)
+			if ip == nil {
+				level.Error(g.logger).Log("msg", "source is not an ip", "source", value)
+				return e
+			}
+		}
+		if g.cfgs.DBType != "" {
+			switch g.cfgs.DBType {
+			case "city":
+				var record geoip2.City
+				err := g.mmdb.Lookup(ip, &record)
+				if err != nil {
+					level.Error(g.logger).Log("msg", "unable to get City record for the ip", "err", err, "ip", ip)
+					return e
+				}
+				g.populateExtractedWithCityData(e.Extracted, &record)
+			case "asn":
+				var record geoip2.ASN
+				err := g.mmdb.Lookup(ip, &record)
+				if err != nil {
+					level.Error(g.logger).Log("msg", "unable to get ASN record for the ip", "err", err, "ip", ip)
+					return e
+				}
+				g.populateExtractedWithASNData(e.Extracted, &record)
+			case "country":
+				var record geoip2.Country
+				err := g.mmdb.Lookup(ip, &record)
+				if err != nil {
+					level.Error(g.logger).Log("msg", "unable to get Country record for the ip", "err", err, "ip", ip)
+					return e
+				}
+				g.populateExtractedWithCountryData(e.Extracted, &record)
+			default:
+				level.Error(g.logger).Log("msg", "unknown database type")
+			}
+		}
+		if g.expressions != nil {
+			g.populateExtractedWithCustomFields(e.Extracted, ip)
 		}
 
-		value, err := getString(extracted[*g.cfgs.Source])
-		if err != nil {
-			if Debug {
-				level.Debug(g.logger).Log("msg", "failed to convert source value to string", "source", *g.cfgs.Source, "err", err, "type", reflect.TypeOf(extracted[*g.cfgs.Source]))
-			}
-			return
-		}
-		ip = net.ParseIP(value)
-		if ip == nil {
-			level.Error(g.logger).Log("msg", "source is not an ip", "source", value)
-			return
-		}
-	}
-	if g.cfgs.DBType != "" {
-		switch g.cfgs.DBType {
-		case "city":
-			var record geoip2.City
-			err := g.mmdb.Lookup(ip, &record)
-			if err != nil {
-				level.Error(g.logger).Log("msg", "unable to get City record for the ip", "err", err, "ip", ip)
-				return
-			}
-			g.populateExtractedWithCityData(extracted, &record)
-		case "asn":
-			var record geoip2.ASN
-			err := g.mmdb.Lookup(ip, &record)
-			if err != nil {
-				level.Error(g.logger).Log("msg", "unable to get ASN record for the ip", "err", err, "ip", ip)
-				return
-			}
-			g.populateExtractedWithASNData(extracted, &record)
-		case "country":
-			var record geoip2.Country
-			err := g.mmdb.Lookup(ip, &record)
-			if err != nil {
-				level.Error(g.logger).Log("msg", "unable to get Country record for the ip", "err", err, "ip", ip)
-				return
-			}
-			g.populateExtractedWithCountryData(extracted, &record)
-		default:
-			level.Error(g.logger).Log("msg", "unknown database type")
-		}
-	}
-	if g.expressions != nil {
-		g.populateExtractedWithCustomFields(ip, extracted)
-	}
-}
-
-func (g *geoIPStage) close() {
-	if err := g.mmdb.Close(); err != nil {
-		level.Error(g.logger).Log("msg", "error while closing mmdb", "err", err)
-	}
+		return Entry{}
+	})
 }
 
 func (g *geoIPStage) populateExtractedWithCityData(extracted map[string]any, record *geoip2.City) {
@@ -311,7 +308,7 @@ func (g *geoIPStage) populateExtractedWithCountryData(extracted map[string]any, 
 	}
 }
 
-func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[string]any) {
+func (g *geoIPStage) populateExtractedWithCustomFields(extracted map[string]any, ip net.IP) {
 	var record any
 	if err := g.mmdb.Lookup(ip, &record); err != nil {
 		level.Error(g.logger).Log("msg", "unable to lookup record for the ip", "err", err, "ip", ip)
