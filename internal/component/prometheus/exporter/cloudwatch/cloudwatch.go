@@ -34,7 +34,7 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 	if !a.UseAWSSDKVersion2 {
 		level.Warn(opts.Logger).Log(
 			"msg",
-			"the `aws_sdk_version_v2` argument is deprecated and will be removed in future releases - AWS SDK for Go v1 is end-of-life, remove this argument to use AWS SDK for Go v2",
+			"the `aws_sdk_version_v2` argument is deprecated and has no effect, AWS SDK for Go v2 is always used - remove this argument from your configuration",
 		)
 	}
 
