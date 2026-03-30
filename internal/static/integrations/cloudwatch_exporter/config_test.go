@@ -347,7 +347,7 @@ var expectedConfig3 = model.JobsConfig{
 			EnhancedMetrics: []*model.EnhancedMetricConfig{},
 		},
 		{
-			Regions: []string{"us-east-2"},
+			Regions:   []string{"us-east-2"},
 			Namespace: "AWS/S3",
 			Roles: []model.Role{{
 				RoleArn:    "arn:aws:iam::878167871295:role/yace_testing",
