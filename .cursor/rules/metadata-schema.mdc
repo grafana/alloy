@@ -1,0 +1,329 @@
+---
+globs: "**/metadata.yml"
+alwaysApply: false
+description: Step-by-step guide for creating metadata.yml schema files for Alloy components and wiring them into component documentation.
+---
+
+# Creating `metadata.yml` Schema Files for Alloy Components
+
+`metadata.yml` is a JSON-Schema-compatible YAML file that lives alongside each
+component's Go source (e.g. `internal/component/loki/source/api/metadata.yml`).
+The `make generate-docs-args` target reads every `metadata.yml` it can discover
+and produces markdown argument/block/export tables into
+`docs/sources/shared/generated/components/<component-path>/`.
+
+For concrete schema examples and their expected generator output, refer to the
+test cases in `internal/tools/docs_args_generator/testdata/` — each subdirectory
+contains a `metadata.yml` and an `expected_output/` folder showing exactly what
+the generator should produce.
+
+For a real-world component that has already been fully migrated, use
+`internal/component/loki/source/api/metadata.yml` and its companion doc
+`docs/sources/reference/components/loki/loki.source.api.md` as reference.
+
+---
+
+## Step 1 — Read the Go source
+
+Open the component's main `.go` file and locate:
+
+| What to find | Where to look |
+|---|---|
+| `Arguments` struct | Top-level type tagged with `alloy:"…"` fields |
+| Squashed/embedded structs | Fields tagged `alloy:",squash"` |
+| `Exports` struct | Only if the component exports values |
+| Required fields | Fields whose alloy tag does **not** include `optional` |
+
+### Go → JSON Schema type mapping
+
+| Go type | JSON Schema `type` | Notes / `alloy` overrides |
+|---|---|---|
+| `string` | `string` | |
+| `bool` | `boolean` | |
+| `int`, `int64`, `uint` | `integer` | |
+| `float64` | `number` | |
+| `[]T` (slice) | `array` | add `alloy.type_override: "list(T)"` |
+| `map[string]string` | `object` | add `alloy.type: attribute` + `alloy.type_override: "map(string)"` |
+| `time.Duration` | `string` | add `alloy.type_override: "duration"` |
+| `units.Base2Bytes` | `string` | keep as `string`; set `alloy.default_override` |
+| `relabel.Rules` | `array` | add `alloy.type_override: "RelabelRules"` |
+| Squashed struct | use `allOf.$ref` | see Step 3 |
+
+---
+
+## Step 2 — Identify all schema files that need to be created
+
+Before writing anything, trace every struct referenced by the component's
+`Arguments` and `Exports` types and decide where each one belongs.
+
+**Rule: schema files are co-located with the Go source that defines the struct.**
+
+| Where the struct is defined | Schema file to create or reuse |
+|---|---|
+| Same package as the component | Inline as a property or `$defs` entry inside the component's `metadata.yml` |
+| A different package, regardless of folder depth | A `schema.yml` next to that package's Go files — create one if it doesn't exist, then reference it via `$ref` or `allOf` from `metadata.yml` |
+
+### How to trace structs
+
+1. For every field in `Arguments` and `Exports`:
+   - If it is a primitive, slice, or map of primitives → inline in `metadata.yml`.
+   - If it is a named struct type from the **same package** → add it inline as
+     a property or under `$defs` in `metadata.yml`.
+   - If it is a named struct type from a **different package** (including
+     sub-packages inside the component folder, e.g. `./config/`) → locate that
+     package's directory and check whether a `schema.yml` already exists there.
+     - If it exists, reference it.
+     - If it doesn't exist, add it to the list of files to create.
+   - If the field is tagged `alloy:",squash"` the struct's fields are promoted
+     into the parent — use `allOf` to include the external `schema.yml`.
+
+2. Recurse into each non-primitive struct until all types are accounted for.
+
+3. Before writing any file, present the complete list to yourself:
+   - `internal/component/<path>/metadata.yml` — always created
+   - `internal/<other-package>/schema.yml` — one per external struct package
+     (skip if a `schema.yml` already exists there and already covers the struct)
+
+Confirm this list looks complete before moving on.
+
+### How the `id` field controls generated output location
+
+Every external `schema.yml` **must** have a top-level `id` field. The
+generator strips `grafana/alloy/internal/component/` from the ID and uses the
+remainder as a path relative to `docs/sources/shared/generated/` when writing
+the block's argument table. This is what keeps shared-package output out of
+the component-specific directory.
+
+| Schema `id` | Generated output directory |
+|---|---|
+| `grafana/alloy/internal/component/common/net` | `docs/sources/shared/generated/common/net/` |
+| `grafana/alloy/internal/component/common/config` | `docs/sources/shared/generated/common/config/` |
+| *(no `id`)* | Falls back to the component's own output directory — **avoid this for shared packages** |
+
+Set the `id` to `grafana/alloy/` followed by the Go import path of the
+package (i.e. the path relative to the module root). For example, for a file
+at `internal/component/common/config/schema.yml`:
+
+```yaml
+id: grafana/alloy/internal/component/common/config
+```
+
+---
+
+## Step 2b — Cross-check with existing documentation
+
+Read the component's markdown doc in
+`docs/sources/reference/components/<category>/<component>.md`.
+
+Check each section of the doc individually — Arguments, Blocks, and Exported
+fields. A section uses a generated table if it contains a
+`{{< docs/shared lookup="generated/…" … >}}` shortcode in place of a Markdown
+table. A section is hand-written if it contains a Markdown table directly.
+Both can coexist in the same doc, so check every section independently.
+
+For each section that still contains a **hand-written table**, perform an
+explicit three-way comparison between the Go struct, the doc table,
+and what you intend to write into `metadata.yml`:
+
+1. Build a list of all argument names from the Go `Arguments` struct (using
+   the alloy tag name, not the Go field name).
+2. Build a list of all argument names from the doc table.
+3. Report any discrepancy and **stop** — do not create `metadata.yml` until
+   the user has confirmed how to resolve each one:
+
+   - **In code but not in docs** — the argument is undocumented. Ask the user
+     whether to add it to the doc, omit it from the schema, or whether it is
+     intentionally unexported/internal.
+   - **In docs but not in code** — the doc may be stale or the argument may
+     have been removed. Ask the user to confirm before proceeding.
+   - **Type mismatch** — e.g. the doc says `string` but the Go type maps to
+     `duration`. Flag the specific argument and both values.
+   - **Default mismatch** — e.g. the doc shows `"1m"` but the Go struct tag or
+     zero value implies something different. Flag it.
+   - **Required/optional mismatch** — e.g. the doc marks a field "yes" but the
+     alloy tag includes `optional`, or vice versa.
+
+Only proceed to Step 3 once the comparison is clean **or** the user has
+explicitly told you how to handle each flagged item.
+
+---
+
+## Step 3 — Author `metadata.yml`
+
+### External `schema.yml` (one per shared package)
+
+For each external package identified in Step 2, create
+`internal/<other-package>/schema.yml` if it does not already exist:
+
+```yaml
+id: grafana/alloy/internal/component/<other-package-path>
+
+"$defs":
+  <block_name>:
+    description: >-
+      <Description of the block.>
+    type: object
+    properties:
+      <field_name>:
+        description: >-
+          <Description.>
+        type: <json-schema-type>
+        alloy:
+          type_override: "<alloy-type>"   # omit if not needed
+          default_override: "<value>"     # omit if zero value
+```
+
+The `id` must follow the pattern `grafana/alloy/` + Go import path of the
+package (see the note on output routing in Step 2). Each block defined under
+`$defs` will have its argument table written to
+`docs/sources/shared/generated/<path-after-internal/component/>/`.
+
+---
+
+### Component `metadata.yml`
+
+Create `internal/component/<path>/metadata.yml`:
+
+```yaml
+arguments:
+  type: object
+  description: "Configuration parameters for <component.name>."
+  required:
+    - <required_field_1>
+  # Include allOf only when the Arguments struct squashes a shared config struct.
+  allOf:
+    - "$ref": "<relative-path-from-this-file-to-shared-schema.yml>"
+  properties:
+    <field_name>:
+      description: >-
+        <One-sentence description matching the existing docs.>
+      type: <json-schema-type>
+      alloy:
+        type_override: "<alloy-type>"       # omit if standard mapping suffices
+        default_override: "<value>"         # omit if default is the zero value
+
+# Omit the exports section entirely if the component has no exports.
+exports:
+  type: object
+  description: "Exported fields for <component.name>."
+  properties:
+    <export_name>:
+      description: >-
+        <Description.>
+      type: <json-schema-type>
+      alloy:
+        type_override: "<alloy-type>"
+```
+
+### Key authoring rules
+
+1. **Squashed structs → `allOf`.**  
+   A field tagged `alloy:",squash"` should not appear as a property.  
+   Instead add an entry to `allOf` referencing the shared `schema.yml`.  
+   The path is relative from the `metadata.yml` directory.  
+   Example: `"$ref": "../../../../../internal/component/common/net/schema.yml"`.
+
+2. **Known shared subschemas.**  
+   - `*fnet.ServerConfig` (HTTP/gRPC server) →
+     `internal/component/common/net/schema.yml`  
+   Check for others by searching for `.yml` files in
+   `internal/component/common/`.
+
+3. **Map attributes need explicit `alloy.type`.**  
+   Object-typed fields that are attributes (not blocks) must carry
+   `alloy.type: attribute`, otherwise the generator renders them as blocks.
+
+4. **`default_override` formatting.**  
+   - Duration string: `'"30s"'` (quoted string literal)  
+   - Bytes string: `'"100MiB"'`  
+   - Empty map / object: `"{}"` (unquoted)  
+   - Boolean: `false` (unquoted YAML boolean)  
+   - Empty list: omit (the generator defaults to empty)
+
+5. **`required` list.**  
+   Only list fields that are genuinely required (no `optional` in their alloy
+   tag). The `required` list feeds the "Required" column in the generated table.
+
+---
+
+## Step 4 — Run the generator and inspect output
+
+```sh
+make generate-docs-args
+```
+
+Inspect the generated files for the component under
+`docs/sources/shared/generated/components/<path>/`:
+
+| File | What it contains |
+|---|---|
+| `__arguments.md` | Flat arguments table |
+| `__blocks.md` | Block hierarchy table |
+| `__exports.md` | Exports table |
+
+Any block whose arguments come from a shared subschema is written into the
+shared subschema's own output directory (e.g.
+`docs/sources/shared/generated/common/net/`) rather than the component's
+directory.
+
+---
+
+## Step 5 — Update the component's markdown documentation
+
+If the doc still has hand-written tables, replace them with shortcode
+references. Use any component doc that already uses shortcodes as a formatting
+reference — at the time of writing, `loki.source.api.md` is one such example,
+but check first whether it (or another component) has already been migrated.
+
+**Arguments section — replace the Markdown table with:**
+
+```markdown
+## Arguments
+
+You can use the following arguments with `<component.name>`:
+
+{{< docs/shared lookup="generated/components/<path>/__arguments.md" source="alloy" version="<ALLOY_VERSION>" >}}
+```
+
+**Blocks section — replace the Markdown table with:**
+
+```markdown
+## Blocks
+
+You can use the following blocks with `<component.name>`:
+
+{{< docs/shared lookup="generated/components/<path>/__blocks.md" source="alloy" version="<ALLOY_VERSION>" >}}
+```
+
+**Exported fields section — replace the Markdown table with:**
+
+```markdown
+## Exported fields
+
+{{< docs/shared lookup="generated/components/<path>/__exports.md" source="alloy" version="<ALLOY_VERSION>" >}}
+```
+
+For blocks documented inline under the component (e.g. `### http`), check
+whether the same block content lives in a shared generated file under
+`docs/sources/shared/generated/`. If it does, replace the inline documentation
+with a shortcode rather than duplicating the content.
+
+---
+
+## Validation checklist
+
+Before finishing, verify each item below:
+
+- [ ] Every field in the Go `Arguments` struct appears either as a `properties`
+      entry or is covered by an `allOf` reference.
+- [ ] Required fields (no `optional` in the alloy tag) are listed under
+      `required:`.
+- [ ] Squashed structs use `allOf` references, not inline properties.
+- [ ] `map(string)`-typed attributes carry `alloy.type: attribute`.
+- [ ] The generator runs without errors.
+- [ ] `__arguments.md` columns (name, type, description, default, required)
+      match the previously hand-written table (or the Go source if no table
+      existed).
+- [ ] The component's markdown doc uses shortcodes instead of hand-written
+      tables.
+- [ ] `make generate-docs-args` completes successfully for the component.
