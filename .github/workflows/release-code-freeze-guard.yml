@@ -32,6 +32,7 @@ jobs:
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
           BASE_BRANCH: ${{ github.base_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           # Always allow release-please bot PRs
           if [ "$PR_AUTHOR" = "grafana-alloybot[bot]" ]; then
@@ -51,7 +52,6 @@ jobs:
           #
           EXEMPT_TYPES="docs test ci style proposal"
           #
-          PR_TITLE="${{ github.event.pull_request.title }}"
           CC_TYPE=$(echo "$PR_TITLE" | grep -oE '^[a-z]+' || true)
           if echo "$EXEMPT_TYPES" | grep -qw "$CC_TYPE"; then
             echo "✅ PR type '$CC_TYPE' is exempt from code freeze."
