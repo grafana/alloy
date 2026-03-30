@@ -1,6 +1,7 @@
 package promhttp2
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"unsafe"
@@ -15,26 +16,27 @@ import (
 // We use reflect to create a new instance of the prometheus type and copy each
 // field from our local struct. This is safe as long as the struct layouts match,
 // which is asserted by unit tests in reflect_oauth2_test.go.
-func newOAuth2RoundTripper(oauthCredential commonconfig.SecretReader, config *commonconfig.OAuth2, next http.RoundTripper, opts *httpClientOptions) http.RoundTripper {
+func newOAuth2RoundTripper(oauthCredential commonconfig.SecretReader, config *commonconfig.OAuth2, next http.RoundTripper, opts *httpClientOptions) (http.RoundTripper, error) {
+	if oauthCredential == nil {
+		oauthCredential = commonconfig.NewInlineSecret("")
+	}
+	if config == nil {
+		return nil, fmt.Errorf("newOAuth2RoundTripper: config == nil")
+	}
+	if next == nil {
+		return nil, fmt.Errorf("newOAuth2RoundTripper: next == nil")
+	}
+	if opts == nil {
+		return nil, fmt.Errorf("newOAuth2RoundTripper: opts == nil")
+	}
 	fn := reflect.ValueOf(commonconfig.NewOAuth2RoundTripper)
-	optsType := fn.Type().In(3).Elem()
-	promOpts := reflect.New(optsType)
-	promPtr := promOpts.UnsafePointer()
-	for i := 0; i < optsType.NumField(); i++ {
-		field := optsType.Field(i)
-		src := reflect.NewAt(field.Type, unsafe.Add(unsafe.Pointer(opts), field.Offset)).Elem()
-		dst := reflect.NewAt(field.Type, unsafe.Add(promPtr, field.Offset)).Elem()
-		dst.Set(src)
+	args := []reflect.Value{
+		reflect.ValueOf(oauthCredential),
+		reflect.ValueOf(config),
+		reflect.ValueOf(next),
+		// it is fine to use unsafe as long as the layout of the structs are the same and the tests
+		// in reflect_oauth2_test.go pass and catch any change in the unexported struct layout upstream
+		reflect.NewAt(fn.Type().In(3).Elem(), unsafe.Pointer(opts)), // nosemgrep: use-of-unsafe-block
 	}
-	fnType := fn.Type()
-	args := make([]reflect.Value, 4)
-	for i, v := range []any{oauthCredential, config, next} {
-		if v != nil {
-			args[i] = reflect.ValueOf(v)
-		} else {
-			args[i] = reflect.Zero(fnType.In(i))
-		}
-	}
-	args[3] = promOpts
-	return fn.Call(args)[0].Interface().(http.RoundTripper)
+	return fn.Call(args)[0].Interface().(http.RoundTripper), nil
 }

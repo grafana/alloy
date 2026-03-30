@@ -1527,7 +1527,8 @@ endpoint_params:
 	require.Truef(t, reflect.DeepEqual(unmarshalledConfig, expectedConfig), "Got unmarshalled config %v, expected %v", unmarshalledConfig, expectedConfig)
 
 	secret := commonconfig.NewInlineSecret(string(expectedConfig.ClientSecret))
-	rt := newOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	rt, err := newOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	require.NoError(t, err)
 
 	client := http.Client{
 		Transport: rt,
@@ -1661,7 +1662,8 @@ endpoint_params:
 	require.Truef(t, reflect.DeepEqual(unmarshalledConfig, expectedConfig), "Got unmarshalled config %v, expected %v", unmarshalledConfig, expectedConfig)
 
 	secret := commonconfig.NewFileSecret(expectedConfig.ClientSecretFile)
-	rt := newOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	rt, err := newOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	require.NoError(t, err)
 
 	client := http.Client{
 		Transport: rt,
@@ -1777,7 +1779,8 @@ endpoint_params:
 	require.Truef(t, reflect.DeepEqual(unmarshalledConfig, expectedConfig), "Got unmarshalled config %v, expected %v", unmarshalledConfig, expectedConfig)
 
 	clientCertificateKey := commonconfig.NewFileSecret(expectedConfig.ClientCertificateKeyFile)
-	rt := newOAuth2RoundTripper(clientCertificateKey, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	rt, err := newOAuth2RoundTripper(clientCertificateKey, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	require.NoError(t, err)
 
 	client := http.Client{
 		Transport: rt,
