@@ -3,6 +3,9 @@
 {{- if .Values.configReloader.enabled -}}
 - name: config-reloader
   image: {{ .Values.global.image.registry | default .Values.configReloader.image.registry }}/{{ .Values.configReloader.image.repository }}{{ include "config-reloader.imageId" . }}
+  {{- if .Values.configReloader.image.pullPolicy }}
+  imagePullPolicy: {{ .Values.configReloader.image.pullPolicy }}
+  {{- end }}
   {{- if .Values.configReloader.customArgs }}
   args:
     {{- toYaml .Values.configReloader.customArgs | nindent 4 }}
