@@ -8,28 +8,21 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-type EntryAction uint8
-
-const (
-	ActionKeep EntryAction = iota
-	ActionDrop
-)
-
 type Batch struct {
 	// created is a unix timestamp in micro seconds.
 	created  int64
-	streams  []Stream
 	entryLen int
+	streams  []Stream
 }
 
 // NewBatch creates an empty Batch.
 func NewBatch() Batch {
-	b := Batch{
-		created:  0,
-		streams:  []Stream{},
-		entryLen: 0,
-	}
-	return b
+	return Batch{}
+}
+
+// NewBatchWithCreatedUnixMicro creates an empty Batch with created.
+func NewBatchWithCreatedUnixMicro(created int64) Batch {
+	return Batch{created: created}
 }
 
 // Add adds a stream to the batch.
@@ -56,6 +49,13 @@ func (b *Batch) add(labels model.LabelSet, entries ...push.Entry) {
 	b.streams = append(b.streams, NewStream(labels, entries...))
 }
 
+type EntryAction uint8
+
+const (
+	ActionKeep EntryAction = iota
+	ActionDrop
+)
+
 // IterMut calls fn for each entry in the batch.
 // Kept entries are written back, dropped entries are removed,
 // and entries whose labels change are moved to a different stream.
@@ -71,8 +71,8 @@ func (b *Batch) IterMut(fn func(entry *Entry) EntryAction) {
 	)
 
 	// Process each entry and compact each stream in place.
-	// The callback mutates a temporary Entry view; kept entries are written back,
-	// dropped entries are skipped, and entries whose labels change are deferred
+	// The callback mutates a temporary Entry view. Kept entries are written back,
+	// dropped entries are skipped, and moved entries are deferred
 	// so we do not mutate the stream set while iterating it.
 	for i := range b.streams {
 		var (
@@ -133,6 +133,10 @@ func (b *Batch) EntryLen() int {
 	return b.entryLen
 }
 
+func (b *Batch) Created() int64 {
+	return b.created
+}
+
 // Clone returns a clone of the batch.
 func (b *Batch) Clone() Batch {
 	clone := Batch{
@@ -151,9 +155,9 @@ func (b *Batch) Clone() Batch {
 
 // ConsumeStreams calls fn for each stream in the batch and then resets the batch.
 // The callback receives ownership of the stream.
-func (b *Batch) ConsumeStreams(fn func(Stream)) {
+func (b *Batch) ConsumeStreams(fn func(stream Stream, created int64)) {
 	for _, s := range b.streams {
-		fn(s)
+		fn(s, b.created)
 	}
 	b.Reset()
 }
@@ -187,13 +191,15 @@ func (s Stream) Clone() Stream {
 	}
 	for _, entry := range s.Entries {
 		e := push.Entry{
-			Timestamp:          entry.Timestamp,
-			Line:               entry.Line,
-			StructuredMetadata: make(push.LabelsAdapter, 0, len(entry.StructuredMetadata)),
+			Timestamp: entry.Timestamp,
+			Line:      entry.Line,
 		}
 
-		for _, s := range entry.StructuredMetadata {
-			e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: s.Name, Value: s.Value})
+		if entry.StructuredMetadata != nil {
+			e.StructuredMetadata = make(push.LabelsAdapter, 0, len(entry.StructuredMetadata))
+			for _, s := range entry.StructuredMetadata {
+				e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: s.Name, Value: s.Value})
+			}
 		}
 
 		cloned.Entries = append(cloned.Entries, e)
