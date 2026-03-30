@@ -80,12 +80,6 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3100/ready"]
-      interval: 1s
-      timeout: 5s
-      retries: 60
-      start_period: 30s
     networks:
       - integration-tests
 
