@@ -263,6 +263,7 @@ var expectedConfig = model.JobsConfig{
 			Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
 			DimensionsNames: []string{"InstanceId"},
 		}},
+		EnhancedMetrics: []*model.EnhancedMetricConfig{},
 	}, {
 		Regions:                   []string{"us-east-2"},
 		Namespace:                 "AWS/S3",
@@ -289,6 +290,7 @@ var expectedConfig = model.JobsConfig{
 			Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),
 			DimensionsNames: []string{"BucketName"},
 		}},
+		EnhancedMetrics: []*model.EnhancedMetricConfig{},
 	}},
 	StaticJobs: []model.StaticJob{{
 		Name:       "custom_tesis_metrics",
@@ -342,6 +344,7 @@ var expectedConfig3 = model.JobsConfig{
 				Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
 				DimensionsNames: []string{"InstanceId"},
 			}},
+			EnhancedMetrics: []*model.EnhancedMetricConfig{},
 		},
 		{
 			Regions: []string{"us-east-2"},
@@ -370,6 +373,7 @@ var expectedConfig3 = model.JobsConfig{
 				Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),
 				DimensionsNames: []string{"BucketName"},
 			}},
+			EnhancedMetrics: []*model.EnhancedMetricConfig{},
 		},
 	},
 	StaticJobs: []model.StaticJob{{
@@ -425,6 +429,7 @@ var expectedConfig4 = model.JobsConfig{
 			Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
 			DimensionsNames: []string{"InstanceId"},
 		}},
+		EnhancedMetrics: []*model.EnhancedMetricConfig{},
 	}},
 	StaticJobs: []model.StaticJob{{
 		Name:       "custom_tesis_metrics",

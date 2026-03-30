@@ -258,6 +258,7 @@ var expectedDiscoveryJobConfig = yaceModel.JobsConfig{
 					DimensionsNames: []string{"QueueName"},
 				},
 			},
+			EnhancedMetrics: []*yaceModel.EnhancedMetricConfig{},
 		},
 		{
 			Regions: []string{"us-east-1"},
@@ -289,6 +290,7 @@ var expectedDiscoveryJobConfig = yaceModel.JobsConfig{
 					DimensionsNames: []string{"ClusterName", "ServiceName"},
 				},
 			},
+			EnhancedMetrics: []*yaceModel.EnhancedMetricConfig{},
 		},
 		{
 			Regions: []string{"us-east-1"},
@@ -318,6 +320,7 @@ var expectedDiscoveryJobConfig = yaceModel.JobsConfig{
 					DimensionsNames: []string{"BucketName"},
 				},
 			},
+			EnhancedMetrics: []*yaceModel.EnhancedMetricConfig{},
 		},
 	},
 }
@@ -488,6 +491,7 @@ var expectedDiscoveryJobNilToZeroConfig = yaceModel.JobsConfig{
 					DimensionsNames: []string{"QueueName"},
 				},
 			},
+			EnhancedMetrics: []*yaceModel.EnhancedMetricConfig{},
 		},
 	},
 }
@@ -716,6 +720,7 @@ var expectedDiscoveryJobDefaultPeriodConfig = yaceModel.JobsConfig{
 					DimensionsNames: []string{"QueueName"},
 				},
 			},
+			EnhancedMetrics: []*yaceModel.EnhancedMetricConfig{},
 		},
 	},
 }
@@ -783,6 +788,7 @@ var expectedDiscoveryJobPeriodConfig = yaceModel.JobsConfig{
 					DimensionsNames: []string{"QueueName"},
 				},
 			},
+			EnhancedMetrics: []*yaceModel.EnhancedMetricConfig{},
 		},
 	},
 }
@@ -1017,6 +1023,7 @@ var expectedDiscoveryJobAddCloudwatchTimestampConfig = yaceModel.JobsConfig{
 					DimensionsNames: []string{"QueueName"},
 				},
 			},
+			EnhancedMetrics: []*yaceModel.EnhancedMetricConfig{},
 		},
 	},
 }
@@ -1126,6 +1133,7 @@ var expectedDiscoveryJobDelayConfig = yaceModel.JobsConfig{
 					DimensionsNames: []string{"InstanceId"},
 				},
 			},
+			EnhancedMetrics: []*yaceModel.EnhancedMetricConfig{},
 		},
 	},
 }
