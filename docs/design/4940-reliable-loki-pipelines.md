@@ -93,8 +93,6 @@ type Consumer interface {
 
 This replaces the current Chan() chan<- loki.Entry. The call is synchronous — the caller's goroutine does the work through the pipeline. context.Context scopes the processing lifetime (HTTP request context, shutdown signal). error propagates failures back to the source.
 
-Not every Loki backend (or other downstream endpoint) has out-of-order ingestion enabled, so entries within a single stream must be processed in order. To achieve parallelism without breaking ordering, we assign entire streams to specific goroutines — all entries for a given stream always go to the same goroutine (see ShardingConsumer below).
-
 Pipeline components like loki.process, loki.relabel, loki.write, and fan-out all implement Consumer. These components are stream-agnostic — they process whatever entries they receive and do not perform sharding. The entries they receive will already be grouped by stream.
 
 ### ShardingConsumer
@@ -109,7 +107,6 @@ type ShardingConsumer struct { ... }
 func (s *ShardingConsumer) Consume(ctx context.Context, entries []loki.Entry) error
 ```
 
-**Note on label mutation**: loki.process and loki.relabel can change an entry's labels, which changes its stream identity. This is safe because sharding happens before these components run, based on the original stream labels. All entries from the same original stream are on the same worker and processed in order — this ordering is preserved through mutations. When entries reach loki.write, it reshards internally based on final labels. If entries from different original streams end up in the same target stream after relabeling, their interleaving is fine — they had no ordering relationship before relabeling.
 
 ### FanoutConsumer
 
@@ -170,6 +167,14 @@ loki.source.api. Calls shardingConsumer.Consume(ctx, entries) with all entries f
 loki.source.file. Calls shardingConsumer.Consume(ctx, entries) for each batch read from a file target (already single-stream). If success → advance position. If error → do not advance, will retry. If context is cancelled (shutdown) → do not advance, clean exit.
 
 loki.write. Implements Consumer by appending to a WAL or in-memory queue. Blocks if queue is full; returns error on WAL I/O failure or context cancellation. WAL I/O errors are retryable — another Alloy instance may have a healthy WAL, or the error may be transient.
+
+### Ordering
+
+Some Loki backends, and other possible downstream endpoints, do not accept out-of-order ingestion within a stream. That means Alloy must preserve per-stream ordering even when the pipeline processes multiple streams concurrently.
+
+We preserve that invariant by sharding on the entry's original stream labels at the boundary between the source and the pipeline. All entries from the same stream are assigned to the same worker goroutine and are processed serially on that worker. Different streams can still be processed in parallel.
+
+`loki.process` and `loki.relabel` may change an entry's labels, which can change its final stream identity. That can break ordering for the final stream if entries from different original streams are relabeled into the same output stream. This proposal does not address that behavior. It already exists in the current pipeline design, and the ordering guarantee described here applies only to entries within the original stream seen at the source boundary.
 
 ### Error handling and backpressure
 
