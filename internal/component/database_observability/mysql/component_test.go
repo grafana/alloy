@@ -564,7 +564,6 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		cfg := `
 			data_source_name = ""
 			forward_to = []
-			targets = []
 		`
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
@@ -576,7 +575,6 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		cfg := `
 			data_source_name = ""
 			forward_to = []
-			targets = []
 			prometheus_exporter {}
 		`
 		var args Arguments
@@ -587,11 +585,10 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
 	})
 
-	t.Run("present with defaults when empty block", func(t *testing.T) {
+	t.Run("present with custom collectors", func(t *testing.T) {
 		cfg := `
 			data_source_name = ""
 			forward_to = []
-			targets = []
 			prometheus_exporter {
 			  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
 			}
