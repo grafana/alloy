@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { largeDiscOutput } from '../../test/fixtures/generateLargeDiscOutput';
 import { type Value, ValueType } from '../alloy-syntax-js/types';
-
 import AsyncStringifiedValue from './AsyncStringifiedValue';
 
 describe('AsyncStringifiedValue', () => {
