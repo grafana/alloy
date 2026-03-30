@@ -24,7 +24,6 @@ func init() {
 	})
 }
 
-
 // Arguments configures the otelcol.auth.google component.
 type Arguments struct {
 	// Project is the project telemetry is sent to if the gcp.project.id
