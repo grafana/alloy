@@ -1,5 +1,76 @@
 # Changelog
 
+## [1.15.0](https://github.com/grafana/alloy/compare/v1.14.0...v1.15.0) (2026-03-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* **otelcol:** Upgrade to OTel Collector v0.147.0 ([#5784](https://github.com/grafana/alloy/issues/5784))
+* Renamed undocumented metrics that was previously prefixed with <component_id>_<metric_name> to loki_source_awsfirehose_<metric_name>
+
+### Features 🌟
+
+* **alloy-mixin:** Add filters, groupBy, and multi-select dashboard variables ([#5611](https://github.com/grafana/alloy/issues/5611)) ([3ef714e](https://github.com/grafana/alloy/commit/3ef714ea192ccba5c1536be727d81e02d4a425c1))
+* **beyla.ebpf:** Add support for Prometheus native histograms ([#5812](https://github.com/grafana/alloy/issues/5812)) ([7d806fb](https://github.com/grafana/alloy/commit/7d806fbf5a2b83b42d603e61fc917ddd5a4d272f))
+* **beyla.ebpf:** Bump Beyla to v3.6 ([#5833](https://github.com/grafana/alloy/issues/5833)) ([cd878d5](https://github.com/grafana/alloy/commit/cd878d590abe132d32d14f3b9cb5fb7f29801c7f))
+* **converters:** Support converting Promtail limits_config ([#5777](https://github.com/grafana/alloy/issues/5777)) ([9491385](https://github.com/grafana/alloy/commit/9491385d8f695079e42aa0dd752946037b34f531))
+* **database_observability.mysql:** Add filtering of query samples and wait events by minimum duration ([#5678](https://github.com/grafana/alloy/issues/5678)) ([5a4d03b](https://github.com/grafana/alloy/commit/5a4d03b0b3afe82bcab40ba9e50b212800c32ea1))
+* **database_observability.mysql:** Embed prometheus exporter within db-o11y component ([#5711](https://github.com/grafana/alloy/issues/5711)) ([88bffb0](https://github.com/grafana/alloy/commit/88bffb0dd71d2e4bd5068048856604b6ba560f56))
+* **database_observability.postgres:** Add configurable limit to `pg_stat_statements` query ([#5639](https://github.com/grafana/alloy/issues/5639)) ([0de0a3f](https://github.com/grafana/alloy/commit/0de0a3f1a76c109f62921fa5b795c5f218e59cb6))
+* **database_observability.postgres:** Embed prometheus exporter within db-o11y component ([#5714](https://github.com/grafana/alloy/issues/5714)) ([9dc2e83](https://github.com/grafana/alloy/commit/9dc2e834eb8cba7a13f014f65bd545d25722fbec))
+* **database_observability:** Add scaffolding for db-o11y integration tests ([#5575](https://github.com/grafana/alloy/issues/5575)) ([ca637d8](https://github.com/grafana/alloy/commit/ca637d8594eefa11abf0323609a09972c03b589d))
+* **database_observability:** Promote components to stable ([#5736](https://github.com/grafana/alloy/issues/5736)) ([21a9af6](https://github.com/grafana/alloy/commit/21a9af67b1ccd9c2f3cda6c1a2ff8edfe5127445))
+* Expose Functionality to Handle syslogs with Empty MSG Field ([#5687](https://github.com/grafana/alloy/issues/5687)) ([178b1e6](https://github.com/grafana/alloy/commit/178b1e642eb5da666ccc1c4d79dd78aa1a526573))
+* **helm:** Allow setting `revisionHistoryLimit` in the helm chart ([#5847](https://github.com/grafana/alloy/issues/5847)) ([9713ad4](https://github.com/grafana/alloy/commit/9713ad4314e28b6bed4bbcee9cef5357dc58d4f4))
+* **loki.process:** Support structured metadata as source type of stage.labels for loki.process ([#5055](https://github.com/grafana/alloy/issues/5055)) ([eda3152](https://github.com/grafana/alloy/commit/eda315237843048856706ffbd5a3c0c278f71683))
+* **loki.secretfilter:** Add sampling for secretfilter entries ([#5663](https://github.com/grafana/alloy/issues/5663)) ([9997802](https://github.com/grafana/alloy/commit/9997802c5b6f2570834cf29d814a02320d02ac8b))
+* **loki.source.gcplog:** Add alloy config for MaxOutstandingBytes and MaxOutstandingMessages ([#5760](https://github.com/grafana/alloy/issues/5760)) ([c2b9f0b](https://github.com/grafana/alloy/commit/c2b9f0b5fc6287b4abb61df7f64102c28c06aaad))
+* **loki.write:** Add loki pipeline latency metric ([#5702](https://github.com/grafana/alloy/issues/5702)) ([cc744a1](https://github.com/grafana/alloy/commit/cc744a1f5abbd54f8a3a0680ca23161247a9bf8b))
+* **mixin:** Update loki dashboard ([#5848](https://github.com/grafana/alloy/issues/5848)) ([b616d58](https://github.com/grafana/alloy/commit/b616d585605af017cabb5f1a65124ad4736a63a7))
+* **otelcol.receiver.datadog:** Expose intake proxy and trace_id_cache_size settings ([#5776](https://github.com/grafana/alloy/issues/5776)) ([0384ad4](https://github.com/grafana/alloy/commit/0384ad4bde5ee641e75ec3d27809e4929c4ecdf8))
+* **otelcol:** Upgrade to OTel Collector v0.147.0 ([#5784](https://github.com/grafana/alloy/issues/5784)) ([a9b5396](https://github.com/grafana/alloy/commit/a9b5396142bb84e97854296d093d1625c20d4410))
+* **prometheus.exporter.cloudwatch:** Use aws-sdk-go-v2 by default ([#5768](https://github.com/grafana/alloy/issues/5768)) ([a2f3489](https://github.com/grafana/alloy/commit/a2f34892f52f3a0cfddb3a48f82e5770b77951ba))
+* **pyroscope.ebpf:** Add comm, pid labels and kernel frame options ([#5769](https://github.com/grafana/alloy/issues/5769)) ([4fa7068](https://github.com/grafana/alloy/commit/4fa706876d43684d686f35e05e942f04e0bb3ad8))
+* **pyroscope.ebpf:** Expose OTel eBPF profiler internal metrics to Prometheus ([#5774](https://github.com/grafana/alloy/issues/5774)) ([e713392](https://github.com/grafana/alloy/commit/e71339232b1d0b28fdd11a2b15c2a2ceb93aafc3))
+* **pyroscope:** Copy prometheus common/config HTTP client into promhttp2 package ([#5810](https://github.com/grafana/alloy/issues/5810)) ([0b31aaa](https://github.com/grafana/alloy/commit/0b31aaa01c31f83e9a0146cbd1d3aa9fa21b92b7))
+
+
+### Bug Fixes 🐛
+
+* **beyla:** Inject Beyla version into binary via ldflags ([#5735](https://github.com/grafana/alloy/issues/5735)) ([71c03ec](https://github.com/grafana/alloy/commit/71c03ec65f2c41d24f8d54a4c3c2673b48f6e347))
+* Correctly handle the deprecated topic field in otelcol.receiver.kafka configuration ([#5726](https://github.com/grafana/alloy/issues/5726)) ([538ac75](https://github.com/grafana/alloy/commit/538ac7507e54b046fae46eded742b4d65f4c5e30))
+* **database_observability.mysql:** Ensure result sets are properly closed ([#5893](https://github.com/grafana/alloy/issues/5893)) ([f28f91c](https://github.com/grafana/alloy/commit/f28f91c33dccfd419e10544b4dd0457696841f54))
+* **database_observability:** Ensure all collectors are properly stopped ([#5796](https://github.com/grafana/alloy/issues/5796)) ([6bfa2a7](https://github.com/grafana/alloy/commit/6bfa2a7227db525fb6cfd48d55648304a76bbbc2))
+* **database_observability:** Ensure that `connection_info` metric is only emitted for a given DB instance when it is available ([#5707](https://github.com/grafana/alloy/issues/5707)) ([bf0c3dc](https://github.com/grafana/alloy/commit/bf0c3dce4c80e5d870635e656a79c42449351914))
+* **database_observability:** Solve test flakiness in MySQL and Postgres sample collectors ([#5130](https://github.com/grafana/alloy/issues/5130)) ([a7590d1](https://github.com/grafana/alloy/commit/a7590d1376f64119ce9c75f318d5b120d199bb0e))
+* **deps:** Update module github.com/buger/jsonparser to v1.1.2 [SECURITY] ([#5834](https://github.com/grafana/alloy/issues/5834)) ([b2fee8a](https://github.com/grafana/alloy/commit/b2fee8a8a40bf3259e1b9f35ac4c89d40cef92cb))
+* **deps:** Update module github.com/buger/jsonparser to v1.1.2 [SECURITY] ([#5870](https://github.com/grafana/alloy/issues/5870)) ([698b4e7](https://github.com/grafana/alloy/commit/698b4e7688b1dd3206b158efd1b4ad7006e99b82))
+* **deps:** Update module google.golang.org/grpc to v1.79.3 [SECURITY] ([#5825](https://github.com/grafana/alloy/issues/5825)) ([5cfbcc4](https://github.com/grafana/alloy/commit/5cfbcc430600dba25a65edc255eec8345b72e923))
+* **deps:** Update module google.golang.org/grpc to v1.79.3 [SECURITY] ([#5871](https://github.com/grafana/alloy/issues/5871)) ([259152d](https://github.com/grafana/alloy/commit/259152dbbffdd9e18b4760a6c4f66b569e67d5c3))
+* **deps:** Update npm dependencies ([#5876](https://github.com/grafana/alloy/issues/5876)) ([f0f6a11](https://github.com/grafana/alloy/commit/f0f6a11b9455eda8c4a344d17455eceebc5a2613))
+* **deps:** Update npm deps across repo to address CVE-2026-26996 and  CVE-2026-22029 ([#5872](https://github.com/grafana/alloy/issues/5872)) ([df518dd](https://github.com/grafana/alloy/commit/df518dd738ec9354c37c99bba6a434efbd5e4562))
+* **go:** Update build image to go v1.25.8 ([#5832](https://github.com/grafana/alloy/issues/5832)) ([f9b3043](https://github.com/grafana/alloy/commit/f9b304387fb76167d96f8cb8f719502e6c15bb7d))
+* **go:** Update go to 1.25.8 ([#5844](https://github.com/grafana/alloy/issues/5844)) ([534e7db](https://github.com/grafana/alloy/commit/534e7db016849392b44be851f23cd74f3ae59dcb))
+* Helm: alloy.extraPorts not working with service.type=NodePort [COPY] ([#5892](https://github.com/grafana/alloy/issues/5892)) ([162c6f7](https://github.com/grafana/alloy/commit/162c6f711b2cc34b312ce9f6241da43805e7921f))
+* **loki.enrich:** Use shared loki functions and fix locking ([#5821](https://github.com/grafana/alloy/issues/5821)) ([f916c72](https://github.com/grafana/alloy/commit/f916c72a18eac0df7985c7d1ad9f88b8bce1ec4a))
+* **loki.process:** Multiline no longer pass empty entry if start was flushed ([#5746](https://github.com/grafana/alloy/issues/5746)) ([7bdedf1](https://github.com/grafana/alloy/commit/7bdedf1af98a125f1c6ec4f6375c4f8b1de6e72d))
+* **loki.process:** Protect against json that does not look like docker json format ([#5761](https://github.com/grafana/alloy/issues/5761)) ([0af6eaa](https://github.com/grafana/alloy/commit/0af6eaa238e6967b190c46666a4e21dc39076ff8))
+* **loki.secretfilter:** Fix bug where entries were being shadow dropped ([#5786](https://github.com/grafana/alloy/issues/5786)) ([90243f9](https://github.com/grafana/alloy/commit/90243f9a9e30e847d11c8b755d8a09990cb76d6d))
+* **loki.source.file:** Fix position tracking when component stops ([#5800](https://github.com/grafana/alloy/issues/5800)) ([9762946](https://github.com/grafana/alloy/commit/9762946bb836a166c4815c15a33dc53131993ed8))
+* **loki.source.file:** Keep positions for compressed files when reading is finished ([#5723](https://github.com/grafana/alloy/issues/5723)) ([fb41d0a](https://github.com/grafana/alloy/commit/fb41d0aedc14284533d4579a2715838b01f7e754))
+* **loki.source.gcplog:** Update to pubsub v2 and fix shutdown semantics ([#5713](https://github.com/grafana/alloy/issues/5713)) ([e9d9b69](https://github.com/grafana/alloy/commit/e9d9b69b223ae5dbfa73b45485f145edbdd1a66a))
+* **loki.source.heroku:** Fix shutdown semantics and consume logs in batches ([#5804](https://github.com/grafana/alloy/issues/5804)) ([deda452](https://github.com/grafana/alloy/commit/deda4520fe29acaae5ad4f4a376753774b621875))
+* **loki.write:** Remove noisy log ([#5837](https://github.com/grafana/alloy/issues/5837)) ([8e28f35](https://github.com/grafana/alloy/commit/8e28f353e220c619b9fa5eb2a713a031cbd4a274))
+* **loki:** Make drain forward entries with fallback timeout ([#5830](https://github.com/grafana/alloy/issues/5830)) ([cfbca90](https://github.com/grafana/alloy/commit/cfbca9003399be738d68e7e71513550e3f962bd0))
+* **prometheus.scrape:** Update arguments and targets even if `scrape_native_histograms` and `extra_metrics` are updated ([#5787](https://github.com/grafana/alloy/issues/5787)) ([dc4cb0a](https://github.com/grafana/alloy/commit/dc4cb0a64aa4cbe576d897c9dcb67c4d71acbf80))
+* **pyroscope.ebpf:** Update opentelemetry-ebpf-profiler ([#5904](https://github.com/grafana/alloy/issues/5904)) ([dfaec47](https://github.com/grafana/alloy/commit/dfaec47c4ca2d035b34e9aeb0d28da3d2b380789))
+* Stop components in a deterministic order ([#5613](https://github.com/grafana/alloy/issues/5613)) ([00cd371](https://github.com/grafana/alloy/commit/00cd371e3a896093578ca23cdb71e55412f564d4))
+
+
+### Chores
+
+* Use shared source structures for aws firehose  ([#5739](https://github.com/grafana/alloy/issues/5739)) ([aef19dc](https://github.com/grafana/alloy/commit/aef19dccc245d6f92acd7228023117485c349070))
+
 ## [1.14.0](https://github.com/grafana/alloy/compare/v1.13.0...v1.14.0) (2026-03-06)
 
 ### ⚠ BREAKING CHANGES
