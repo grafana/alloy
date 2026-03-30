@@ -7,7 +7,7 @@ description: Step-by-step guide for creating metadata.yml schema files for Alloy
 # Creating `metadata.yml` Schema Files for Alloy Components
 
 `metadata.yml` is a JSON-Schema-compatible YAML file that lives alongside each
-component's Go source (e.g. `internal/component/loki/source/api/metadata.yml`).
+component's Go source (e.g. `internal/component/loki/write/metadata.yml`).
 The `make generate-docs-args` target reads every `metadata.yml` it can discover
 and produces markdown argument/block/export tables into
 `docs/sources/shared/generated/components/<component-path>/`.
@@ -18,8 +18,8 @@ contains a `metadata.yml` and an `expected_output/` folder showing exactly what
 the generator should produce.
 
 For a real-world component that has already been fully migrated, use
-`internal/component/loki/source/api/metadata.yml` and its companion doc
-`docs/sources/reference/components/loki/loki.source.api.md` as reference.
+`internal/component/loki/write/metadata.yml` and its companion doc
+`docs/sources/reference/components/loki/loki.write.md` as reference.
 
 ---
 
@@ -272,8 +272,7 @@ directory.
 
 If the doc still has hand-written tables, replace them with shortcode
 references. Use any component doc that already uses shortcodes as a formatting
-reference — at the time of writing, `loki.source.api.md` is one such example,
-but check first whether it (or another component) has already been migrated.
+reference — `loki.write.md` is one such example.
 
 **Arguments section — replace the Markdown table with:**
 
