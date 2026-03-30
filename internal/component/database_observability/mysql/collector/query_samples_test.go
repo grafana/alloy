@@ -1242,18 +1242,18 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"5",
 					"0",
 					"0",
-					"200",                           // WAIT_EVENT_ID (outer table handler)
-					"201",                           // WAIT_END_EVENT_ID
-					"wait/io/table/sql/handler",      // WAIT_EVENT_NAME (the handler wrapper)
-					"books",                         // WAIT_OBJECT_NAME
-					"TABLE",                         // WAIT_OBJECT_TYPE
-					"900000000",                     // WAIT_TIMER_WAIT (900ms)
-					"210",                           // NESTED_WAIT_EVENT_ID
-					"211",                           // NESTED_WAIT_END_EVENT_ID
+					"200",                                  // WAIT_EVENT_ID (outer table handler)
+					"201",                                  // WAIT_END_EVENT_ID
+					"wait/io/table/sql/handler",            // WAIT_EVENT_NAME (the handler wrapper)
+					"books",                                // WAIT_OBJECT_NAME
+					"TABLE",                                // WAIT_OBJECT_TYPE
+					"900000000",                            // WAIT_TIMER_WAIT (900ms)
+					"210",                                  // NESTED_WAIT_EVENT_ID
+					"211",                                  // NESTED_WAIT_END_EVENT_ID
 					"wait/io/file/innodb/innodb_data_file", // NESTED_WAIT_EVENT_NAME (actual I/O)
-					"ibdata1",                       // NESTED_WAIT_OBJECT_NAME
-					"FILE",                          // NESTED_WAIT_OBJECT_TYPE
-					"500000000",                     // NESTED_WAIT_TIMER_WAIT (500ms)
+					"ibdata1",                              // NESTED_WAIT_OBJECT_NAME
+					"FILE",                                 // NESTED_WAIT_OBJECT_TYPE
+					"500000000",                            // NESTED_WAIT_TIMER_WAIT (500ms)
 					"some_user",
 					"some_host",
 					"10000000",
@@ -1351,13 +1351,13 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"5",
 					"0",
 					"0",
-					"200",                      // WAIT_EVENT_ID
-					"201",                      // WAIT_END_EVENT_ID
+					"200",                       // WAIT_EVENT_ID
+					"201",                       // WAIT_END_EVENT_ID
 					"wait/io/table/sql/handler", // WAIT_EVENT_NAME (no nested event available)
-					"books",                    // WAIT_OBJECT_NAME
-					"TABLE",                    // WAIT_OBJECT_TYPE
-					"900000000",                // WAIT_TIMER_WAIT (900ms)
-					nil,                        // NESTED_WAIT_EVENT_ID (no nested event)
+					"books",                     // WAIT_OBJECT_NAME
+					"TABLE",                     // WAIT_OBJECT_TYPE
+					"900000000",                 // WAIT_TIMER_WAIT (900ms)
+					nil,                         // NESTED_WAIT_EVENT_ID (no nested event)
 					nil,
 					nil,
 					nil,
@@ -2647,11 +2647,11 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				"some_user",   // PROCESSLIST_USER
-				"some_host",   // PROCESSLIST_HOST
-				555555,        // cpu_time
-				1048576,       // max_controlled_memory (1MB)
-				2097152,       // max_total_memory (2MB)
+				"some_user", // PROCESSLIST_USER
+				"some_host", // PROCESSLIST_HOST
+				555555,      // cpu_time
+				1048576,     // max_controlled_memory (1MB)
+				2097152,     // max_total_memory (2MB)
 			),
 		)
 
@@ -3102,11 +3102,11 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,
 				nil,
 				nil,
-				"some_user",   // PROCESSLIST_USER
-				"some_host",   // PROCESSLIST_HOST
-				555555,        // cpu_time
-				1048576,       // max_controlled_memory (1MB)
-				2097152,       // max_total_memory (2MB)
+				"some_user", // PROCESSLIST_USER
+				"some_host", // PROCESSLIST_HOST
+				555555,      // cpu_time
+				1048576,     // max_controlled_memory (1MB)
+				2097152,     // max_total_memory (2MB)
 			),
 		)
 		mockParser := &parser.MockParser{}
