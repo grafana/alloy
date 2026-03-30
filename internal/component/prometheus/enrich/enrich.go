@@ -6,6 +6,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/cespare/xxhash/v2"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -78,54 +79,36 @@ type Exports struct {
 	Receiver storage.Appendable `alloy:"receiver,attr"`
 }
 
-// FNV-64a helpers (same algorithm as
-// https://github.com/prometheus/common/blob/0dfcdfb00df68e0b14a98f20d90f4b3ff12432e6/model/fnv.go).
-const (
-	offset64 = 14695981039346656037
-	prime64  = 1099511628211
-	sep      = "\xff" // separator to prevent hash collisions across value boundaries
-)
-
-func hashNew() uint64 {
-	return offset64
-}
-
-func hashAdd(h uint64, s string) uint64 {
-	for i := 0; i < len(s); i++ {
-		h ^= uint64(s[i])
-		h *= prime64
-	}
-	return h
-}
+var sep = []byte{0xff} // separator to prevent hash collisions across value boundaries
 
 // hashValuesFromLabelSet hashes the values of the given label names (in order)
 // from a model.LabelSet. Returns (0, false) if any label is missing or empty.
 func hashValuesFromLabelSet(ls model.LabelSet, names []string) (uint64, bool) {
-	h := hashNew()
+	h := xxhash.New()
 	for _, name := range names {
 		v := string(ls[model.LabelName(name)])
 		if v == "" {
 			return 0, false
 		}
-		h = hashAdd(h, v)
-		h = hashAdd(h, sep)
+		_, _ = h.WriteString(v)
+		_, _ = h.Write(sep)
 	}
-	return h, true
+	return h.Sum64(), true
 }
 
 // hashValuesFromLabels hashes the values of the given label names (in order)
 // from a labels.Labels. Returns (0, false) if any label is missing or empty.
 func hashValuesFromLabels(lbls labels.Labels, names []string) (uint64, bool) {
-	h := hashNew()
+	h := xxhash.New()
 	for _, name := range names {
 		v := lbls.Get(name)
 		if v == "" {
 			return 0, false
 		}
-		h = hashAdd(h, v)
-		h = hashAdd(h, sep)
+		_, _ = h.WriteString(v)
+		_, _ = h.Write(sep)
 	}
-	return h, true
+	return h.Sum64(), true
 }
 
 // matchCache holds the hash-based lookup for a match strategy.
