@@ -234,12 +234,11 @@ func TestValidate(t *testing.T) {
 			wantErr: "at least one match mechanism must be specified",
 		},
 		{
-			name: "error: mutually exclusive",
+			name: "new takes precedence over legacy",
 			args: Arguments{
 				TargetMatchLabel:    "service",
 				TargetToMetricMatch: map[string]string{"ns": "namespace"},
 			},
-			wantErr: "mutually exclusive",
 		},
 		{
 			name: "error: metrics_match_label without target_match_label",

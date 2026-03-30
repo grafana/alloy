@@ -63,13 +63,11 @@ func (a Arguments) Validate() error {
 	hasLegacy := a.TargetMatchLabel != "" || a.MetricsMatchLabel != ""
 	hasNew := len(a.TargetToMetricMatch) > 0
 
-	if hasLegacy && hasNew {
-		return fmt.Errorf("target_to_metric_match and legacy fields (target_match_label, metrics_match_label) are mutually exclusive")
-	}
 	if !hasLegacy && !hasNew {
 		return fmt.Errorf("at least one match mechanism must be specified: set target_match_label or target_to_metric_match")
 	}
-	if hasLegacy && a.TargetMatchLabel == "" {
+	// target_to_metric_match takes precedence when set; legacy fields are ignored.
+	if hasLegacy && !hasNew && a.TargetMatchLabel == "" {
 		return fmt.Errorf("target_match_label must be set when using legacy match fields")
 	}
 	return nil

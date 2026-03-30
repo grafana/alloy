@@ -16,26 +16,15 @@ The `prometheus.enrich` component enriches metrics with additional labels from s
 It matches labels from incoming metrics against labels from discovered targets, and copies specified labels from the
 matched target to the metric sample. If no match occurs, the metrics are passed through unchanged.
 
-The component supports two matching modes:
+Use the `target_to_metric_match` argument to specify which target labels correspond to which metric labels. The map keys are target label names and the values are the corresponding metric label names. All labels in the map must match for enrichment to occur.
 
-- **Single-label matching (legacy):** Match on a single label pair using `target_match_label` and optionally `metrics_match_label`.
-- **Multi-label matching:** Match on multiple labels simultaneously using `target_to_metric_match`. The map keys are target label names and the values are the corresponding metric label names. All labels in the map must match for enrichment to occur.
+{{< admonition type="warning" >}}
+The `target_match_label` and `metrics_match_label` arguments are deprecated in favor of `target_to_metric_match`.
+If `target_to_metric_match` is set, it takes precedence. Replace `target_match_label = "hostname"` with `target_to_metric_match = {"hostname" = "hostname"}`.
+These deprecated arguments will be removed in a future release.
+{{< /admonition >}}
 
 ## Usage
-
-### Single-label matching
-
-```alloy
-prometheus.enrich "<LABEL>" {
-  targets = <DISCOVERY_COMPONENT>.targets
-
-  target_match_label = "<LABEL>"
-
-  forward_to = [<RECEIVER_LIST>]
-}
-```
-
-### Multi-label matching
 
 ```alloy
 prometheus.enrich "<LABEL>" {
@@ -54,23 +43,14 @@ prometheus.enrich "<LABEL>" {
 
 You can use the following arguments with `prometheus.enrich`:
 
-| Name                                | Type                           | Description                                                                                        | Default | Required |
-|-------------------------------------|--------------------------------|----------------------------------------------------------------------------------------------------|---------|----------|
-| `forward_to`                        | `list(MetricsReceiver)`        | Where the metrics should be forwarded to, after enrichment.                                        |         | yes      |
-| `targets`                           | `list(map(string))`            | List of targets from a discovery component.                                                        |         | yes      |
-| `target_to_metric_match`            | `map(string)`                  | Map of target label name to metric label name. All entries must match for enrichment.              |         | no       |
-| `target_match_label`                | `string`                       | The label from discovered targets to match against, for example, `"__inventory_consul_service"`.   |         | no       |
-| `metrics_match_label`               | `string`                       | The label from incoming metrics to match against discovered targets, for example `"service_name"`. |         | no       |
-| `labels_to_copy`                    | `list(string)`                 | List of labels to copy from discovered targets to metrics. If empty, all labels are copied.        |         | no       |
-
-
-
-You must specify exactly one of the following:
-
-- `target_match_label` (with optional `metrics_match_label`) for single-label matching
-- `target_to_metric_match` for multi-label matching.
-
-These two modes are mutually exclusive. If you don't set the `metrics_match_label`, it defaults to the value of `target_match_label`.
+| Name                                | Type                           | Description                                                                                                     | Default | Required |
+|-------------------------------------|--------------------------------|-----------------------------------------------------------------------------------------------------------------|---------|----------|
+| `forward_to`                        | `list(MetricsReceiver)`        | Where the metrics should be forwarded to, after enrichment.                                                     |         | yes      |
+| `targets`                           | `list(map(string))`            | List of targets from a discovery component.                                                                     |         | yes      |
+| `target_to_metric_match`            | `map(string)`                  | Map of target label name to metric label name. All entries must match for enrichment.                           |         | no       |
+| `target_match_label`                | `string`                       | (Deprecated) The label from discovered targets to match against, for example, `"__inventory_consul_service"`.   |         | no       |
+| `metrics_match_label`               | `string`                       | (Deprecated) The label from incoming metrics to match against discovered targets, for example `"service_name"`. |         | no       |
+| `labels_to_copy`                    | `list(string)`                 | List of labels to copy from discovered targets to metrics. If empty, all labels are copied.                     |         | no       |
 
 ## Blocks
 
@@ -118,7 +98,9 @@ prometheus.scrape "default" {
 prometheus.enrich "default" {
 	targets = discovery.http.default.targets
 
-	target_match_label = "hostname"
+	target_to_metric_match = {
+		"hostname" = "hostname",
+	}
 
 	forward_to = [prometheus.remote_write.default.receiver]
 }
@@ -132,7 +114,9 @@ prometheus.remote_write "default" {
 
 ### Enrich metrics from `prometheus.receive_http`
 
-The following example enriches cadvisor metrics with Kubernetes Pod metadata, matching on namespace, Pod, and container labels simultaneously.
+The following example shows how the `prometheus.enrich` enriches incoming metrics from
+`prometheus.receive_http.default`, using file-based discovery, and forwards the results to
+`prometheus.remote_write.default` component:
 
 ```alloy
 discovery.file "network_devices" {
@@ -151,7 +135,9 @@ prometheus.receive_http "default" {
 prometheus.enrich "default" {
     targets = discovery.file.network_devices.targets
 
-    target_match_label = "hostname"
+    target_to_metric_match = {
+        "hostname" = "hostname",
+    }
 
     forward_to = [prometheus.remote_write.default.receiver]
 }
@@ -165,8 +151,7 @@ prometheus.remote_write "default" {
 
 ### Multi-label matching with Kubernetes metadata
 
-The following example enriches cadvisor metrics with Kubernetes pod metadata,
-matching on namespace, pod, and container labels simultaneously.
+The following example enriches cadvisor metrics with Kubernetes Pod metadata, matching on namespace, Pod, and container labels simultaneously.
 
 ```alloy
 discovery.kubernetes "pods" {
