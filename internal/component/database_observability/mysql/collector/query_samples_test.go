@@ -156,6 +156,12 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -190,6 +196,12 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -208,6 +220,12 @@ func TestQuerySamples(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -294,6 +312,12 @@ func TestQuerySamples(t *testing.T) {
 						"waits.object_name",
 						"waits.object_type",
 						"waits.timer_wait",
+						"nested_waits.event_id",
+						"nested_waits.end_event_id",
+						"nested_waits.event_name",
+						"nested_waits.object_name",
+						"nested_waits.object_type",
+						"nested_waits.timer_wait",
 						"threads.PROCESSLIST_USER",
 						"threads.PROCESSLIST_HOST",
 						"statements.CPU_TIME",
@@ -381,6 +405,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -406,6 +436,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						"100000000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -482,6 +518,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -507,6 +549,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						nil, // NULL timer_wait
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -583,6 +631,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -608,6 +662,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"150000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -633,6 +693,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"categories",
 						"TABLE",
 						"350000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -658,6 +724,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"500000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -683,6 +755,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"categories",
 						"TABLE",
 						"700000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -765,6 +843,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -790,6 +874,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"150000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -809,6 +899,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						nil,
 						nil,
 						nil,
@@ -910,6 +1006,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -934,6 +1036,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"wait_object_name",
 					"wait_object_type",
 					"100000000",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
@@ -1010,6 +1118,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1030,6 +1144,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"0",
 						"0",
 						nil, // no wait joined (filtered by SQL)
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						nil,
 						nil,
 						nil,
@@ -1110,6 +1230,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1135,6 +1261,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						"1000000000", // 1ms in picoseconds
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -1165,6 +1297,224 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"1.000000ms\"", lokiEntries[1].Line)
+	})
+
+	t.Run("wait/io/table/sql/handler with nested event uses nested event data", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"70000000",
+					"20000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"200",                           // WAIT_EVENT_ID (outer table handler)
+					"201",                           // WAIT_END_EVENT_ID
+					"wait/io/table/sql/handler",      // WAIT_EVENT_NAME (the handler wrapper)
+					"books",                         // WAIT_OBJECT_NAME
+					"TABLE",                         // WAIT_OBJECT_TYPE
+					"900000000",                     // WAIT_TIMER_WAIT (900ms)
+					"210",                           // NESTED_WAIT_EVENT_ID
+					"211",                           // NESTED_WAIT_END_EVENT_ID
+					"wait/io/file/innodb/innodb_data_file", // NESTED_WAIT_EVENT_NAME (actual I/O)
+					"ibdata1",                       // NESTED_WAIT_OBJECT_NAME
+					"FILE",                          // NESTED_WAIT_OBJECT_TYPE
+					"500000000",                     // NESTED_WAIT_TIMER_WAIT (500ms)
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		// The wait event log should use the NESTED wait event details, not the outer handler
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
+	})
+
+	t.Run("wait/io/table/sql/handler without nested event falls back to outer event data", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"70000000",
+					"20000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"200",                      // WAIT_EVENT_ID
+					"201",                      // WAIT_END_EVENT_ID
+					"wait/io/table/sql/handler", // WAIT_EVENT_NAME (no nested event available)
+					"books",                    // WAIT_OBJECT_NAME
+					"TABLE",                    // WAIT_OBJECT_TYPE
+					"900000000",                // WAIT_TIMER_WAIT (900ms)
+					nil,                        // NESTED_WAIT_EVENT_ID (no nested event)
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		// Without nested event data, the outer handler event details are used as fallback
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"200\" wait_end_event_id=\"201\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.900000ms\"", lokiEntries[1].Line)
 	})
 }
 
@@ -1213,6 +1563,12 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1284,6 +1640,12 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1302,6 +1664,12 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1399,6 +1767,12 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1417,6 +1791,12 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1511,6 +1891,12 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1529,6 +1915,12 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1600,6 +1992,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"nested_waits.event_id",
+				"nested_waits.end_event_id",
+				"nested_waits.event_name",
+				"nested_waits.object_name",
+				"nested_waits.object_type",
+				"nested_waits.timer_wait",
 				"threads.PROCESSLIST_USER",
 				"threads.PROCESSLIST_HOST",
 			},
@@ -1617,6 +2015,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1650,6 +2054,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"nested_waits.event_id",
+				"nested_waits.end_event_id",
+				"nested_waits.event_name",
+				"nested_waits.object_name",
+				"nested_waits.object_type",
+				"nested_waits.timer_wait",
 				"threads.PROCESSLIST_USER",
 				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
@@ -1668,6 +2078,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1702,6 +2118,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"nested_waits.event_id",
+				"nested_waits.end_event_id",
+				"nested_waits.event_name",
+				"nested_waits.object_name",
+				"nested_waits.object_type",
+				"nested_waits.timer_wait",
 				"threads.PROCESSLIST_USER",
 				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
@@ -1722,6 +2144,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1887,6 +2315,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1905,6 +2339,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1998,6 +2438,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -2022,6 +2468,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
@@ -2040,6 +2492,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -2150,6 +2608,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -2168,6 +2632,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -2282,6 +2752,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"statements.CPU_TIME",
@@ -2307,6 +2783,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,           // WAIT_OBJECT_NAME
 				nil,           // WAIT_OBJECT_TYPE
 				nil,           // WAIT_TIME
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",   // PROCESSLIST_USER
 				"some_host",   // PROCESSLIST_HOST
 				555555,        // cpu_time
@@ -2382,6 +2864,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2435,6 +2923,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2488,6 +2982,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2531,6 +3031,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2576,6 +3082,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2623,6 +3135,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2700,6 +3218,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2722,6 +3246,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,           // WAIT_OBJECT_NAME
 				nil,           // WAIT_OBJECT_TYPE
 				nil,           // WAIT_TIME
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",   // PROCESSLIST_USER
 				"some_host",   // PROCESSLIST_HOST
 				555555,        // cpu_time
@@ -2955,6 +3485,12 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -2973,6 +3509,12 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,

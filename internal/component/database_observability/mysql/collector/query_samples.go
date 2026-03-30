@@ -59,6 +59,12 @@ SELECT
 	waits.object_name as WAIT_OBJECT_NAME,
 	waits.object_type as WAIT_OBJECT_TYPE,
 	waits.timer_wait as WAIT_TIMER_WAIT,
+	nested_waits.event_id as NESTED_WAIT_EVENT_ID,
+	nested_waits.end_event_id as NESTED_WAIT_END_EVENT_ID,
+	nested_waits.event_name as NESTED_WAIT_EVENT_NAME,
+	nested_waits.object_name as NESTED_WAIT_OBJECT_NAME,
+	nested_waits.object_type as NESTED_WAIT_OBJECT_TYPE,
+	nested_waits.timer_wait as NESTED_WAIT_TIMER_WAIT,
 	threads.PROCESSLIST_USER as QUERY_USER,
 	threads.PROCESSLIST_HOST as QUERY_HOST
 	%s
@@ -69,6 +75,11 @@ LEFT JOIN
 	ON statements.thread_id = waits.thread_id
 	AND statements.EVENT_ID = waits.NESTING_EVENT_ID
 	%s
+LEFT JOIN
+	performance_schema.events_waits_history nested_waits
+	ON waits.thread_id = nested_waits.thread_id
+	AND waits.event_id = nested_waits.nesting_event_id
+	AND waits.event_name = 'wait/io/table/sql/handler'
 LEFT JOIN
 	performance_schema.threads threads
 	ON statements.THREAD_ID = threads.THREAD_ID
@@ -306,13 +317,21 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
 
-			// sample wait info, if any
+			// wait event info
 			WaitEventID    sql.NullString
 			WaitEndEventID sql.NullString
 			WaitEventName  sql.NullString
 			WaitObjectName sql.NullString
 			WaitObjectType sql.NullString
 			WaitTime       sql.NullFloat64
+
+			// nested wait event info (when outer event is wait/io/table/sql/handler)
+			NestedWaitEventID    sql.NullString
+			NestedWaitEndEventID sql.NullString
+			NestedWaitEventName  sql.NullString
+			NestedWaitObjectName sql.NullString
+			NestedWaitObjectType sql.NullString
+			NestedWaitTime       sql.NullFloat64
 
 			// user and host who issued the query
 			User sql.NullString
@@ -338,6 +357,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			&row.WaitObjectName,
 			&row.WaitObjectType,
 			&row.WaitTime,
+			&row.NestedWaitEventID,
+			&row.NestedWaitEndEventID,
+			&row.NestedWaitEventName,
+			&row.NestedWaitObjectName,
+			&row.NestedWaitObjectType,
+			&row.NestedWaitTime,
 			&row.User,
 			&row.Host,
 		}
@@ -402,7 +427,27 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		if row.WaitEventID.Valid && row.WaitTime.Valid {
-			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
+			eventID := row.WaitEventID.String
+			endEventID := row.WaitEndEventID.String
+			eventName := row.WaitEventName.String
+			objectName := row.WaitObjectName.String
+			objectType := row.WaitObjectType.String
+			waitTime := row.WaitTime.Float64
+
+			// When the outer event is wait/io/table/sql/handler it is just a handler
+			// wrapper; use the nested event instead when available to surface the
+			// actual underlying I/O wait.
+			// See https://dev.mysql.com/doc/refman/5.7/en/performance-schema-atom-molecule-events.html
+			if row.NestedWaitEventID.Valid && row.WaitEventName.String == "wait/io/table/sql/handler" {
+				eventID = row.NestedWaitEventID.String
+				endEventID = row.NestedWaitEndEventID.String
+				eventName = row.NestedWaitEventName.String
+				objectName = row.NestedWaitObjectName.String
+				objectType = row.NestedWaitObjectType.String
+				waitTime = row.NestedWaitTime.Float64
+			}
+
+			waitTimeMs := picosecondsToMilliseconds(waitTime)
 
 			if c.enablePreClassifiedWaitEvents {
 				waitV2LogMessage := fmt.Sprintf(
@@ -413,13 +458,13 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					row.ThreadID.String,
 					row.Digest.String,
 					row.StatementEventID.String,
-					row.WaitEventID.String,
-					row.WaitEndEventID.String,
-					row.WaitEventName.String,
-					classifyMySQLWaitEventType(row.WaitEventName.String),
-					row.WaitObjectName.String,
-					row.WaitObjectType.String,
-					waitTime,
+					eventID,
+					endEventID,
+					eventName,
+					classifyMySQLWaitEventType(eventName),
+					objectName,
+					objectType,
+					waitTimeMs,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo,
@@ -436,12 +481,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					row.ThreadID.String,
 					row.Digest.String,
 					row.StatementEventID.String,
-					row.WaitEventID.String,
-					row.WaitEndEventID.String,
-					row.WaitEventName.String,
-					row.WaitObjectName.String,
-					row.WaitObjectType.String,
-					waitTime,
+					eventID,
+					endEventID,
+					eventName,
+					objectName,
+					objectType,
+					waitTimeMs,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo,
