@@ -239,7 +239,7 @@ var expectedConfig = model.JobsConfig{
 	StsRegion: "us-east-2",
 	DiscoveryJobs: []model.DiscoveryJob{{
 		Regions:                   []string{"us-east-2"},
-		Type:                      "AWS/EC2",
+		Namespace:                 "AWS/EC2",
 		Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
 		SearchTags:                []model.SearchTag{{Key: "instance_type", Value: regexp.MustCompile("spot")}},
 		CustomTags:                []model.Tag{{Key: "alias", Value: "tesis"}},
@@ -265,7 +265,7 @@ var expectedConfig = model.JobsConfig{
 		}},
 	}, {
 		Regions:                   []string{"us-east-2"},
-		Type:                      "AWS/S3",
+		Namespace:                 "AWS/S3",
 		Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
 		SearchTags:                []model.SearchTag{},
 		CustomTags:                []model.Tag{},
@@ -320,7 +320,7 @@ var expectedConfig3 = model.JobsConfig{
 	DiscoveryJobs: []model.DiscoveryJob{
 		{
 			Regions:                   []string{"us-east-2"},
-			Type:                      "AWS/EC2",
+			Namespace:                 "AWS/EC2",
 			Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
 			SearchTags:                []model.SearchTag{{Key: "instance_type", Value: regexp.MustCompile("spot")}},
 			CustomTags:                []model.Tag{{Key: "alias", Value: "tesis"}},
@@ -345,7 +345,7 @@ var expectedConfig3 = model.JobsConfig{
 		},
 		{
 			Regions: []string{"us-east-2"},
-			Type:    "AWS/S3",
+			Namespace: "AWS/S3",
 			Roles: []model.Role{{
 				RoleArn:    "arn:aws:iam::878167871295:role/yace_testing",
 				ExternalID: "",
@@ -401,7 +401,7 @@ var expectedConfig4 = model.JobsConfig{
 	StsRegion: "us-east-2",
 	DiscoveryJobs: []model.DiscoveryJob{{
 		Regions:                   []string{"us-east-2"},
-		Type:                      "AWS/EC2",
+		Namespace:                 "AWS/EC2",
 		Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
 		SearchTags:                []model.SearchTag{{Key: "instance_type", Value: regexp.MustCompile("spot")}},
 		CustomTags:                []model.Tag{{Key: "alias", Value: "tesis"}},

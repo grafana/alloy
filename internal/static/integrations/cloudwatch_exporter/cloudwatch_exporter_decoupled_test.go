@@ -23,7 +23,6 @@ func TestDecoupledCloudwatchExporterIntegrationProperSetup(t *testing.T) {
 	givenFipsEnabled := false
 	givenLabelsSnakeCase := true
 	givenDebug := false
-	givenuseAWSSDKVersionV2 := true
 	givenScrapeInterval := 30 * time.Second
 
 	e, err := NewDecoupledCloudwatchExporter(givenName, givenLogger, givenConfig, givenScrapeInterval, givenFipsEnabled, givenLabelsSnakeCase, givenDebug)

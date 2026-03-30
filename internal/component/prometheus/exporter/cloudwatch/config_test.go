@@ -227,7 +227,7 @@ var expectedDiscoveryJobConfig = yaceModel.JobsConfig{
 			// assert an empty role is used as default. IMPORTANT since this
 			// is what YACE looks for delegating to the environment role
 			Roles: []yaceModel.Role{{}},
-			Type:  "AWS/SQS",
+			Namespace:  "AWS/SQS",
 			SearchTags: []yaceModel.SearchTag{{
 				Key: "scrape", Value: regexp.MustCompile("true"),
 			}},
@@ -264,7 +264,7 @@ var expectedDiscoveryJobConfig = yaceModel.JobsConfig{
 			Roles: []yaceModel.Role{{
 				RoleArn: "arn:aws:iam::878167871295:role/yace_testing",
 			}},
-			Type:       "AWS/ECS",
+			Namespace:       "AWS/ECS",
 			SearchTags: []yaceModel.SearchTag{},
 			CustomTags: []yaceModel.Tag{},
 			Metrics: []*yaceModel.MetricConfig{
@@ -295,7 +295,7 @@ var expectedDiscoveryJobConfig = yaceModel.JobsConfig{
 			Roles: []yaceModel.Role{{
 				RoleArn: "arn:aws:iam::878167871295:role/yace_testing",
 			}},
-			Type:                      "AWS/S3",
+			Namespace:                      "AWS/S3",
 			SearchTags:                []yaceModel.SearchTag{},
 			CustomTags:                []yaceModel.Tag{},
 			DimensionNameRequirements: []string{"BucketName"},
@@ -457,7 +457,7 @@ var expectedDiscoveryJobNilToZeroConfig = yaceModel.JobsConfig{
 			// assert an empty role is used as default. IMPORTANT since this
 			// is what YACE looks for delegating to the environment role
 			Roles: []yaceModel.Role{{}},
-			Type:  "AWS/SQS",
+			Namespace:  "AWS/SQS",
 			SearchTags: []yaceModel.SearchTag{{
 				Key: "scrape", Value: regexp.MustCompile("true"),
 			}},
@@ -685,7 +685,7 @@ var expectedDiscoveryJobDefaultPeriodConfig = yaceModel.JobsConfig{
 		{
 			Regions: []string{"us-east-2"},
 			Roles:   []yaceModel.Role{{}},
-			Type:    "AWS/SQS",
+			Namespace:    "AWS/SQS",
 			SearchTags: []yaceModel.SearchTag{{
 				Key: "scrape", Value: regexp.MustCompile("true"),
 			}},
@@ -752,7 +752,7 @@ var expectedDiscoveryJobPeriodConfig = yaceModel.JobsConfig{
 			// assert an empty role is used as default. IMPORTANT since this
 			// is what YACE looks for delegating to the environment role
 			Roles: []yaceModel.Role{{}},
-			Type:  "AWS/SQS",
+			Namespace:  "AWS/SQS",
 			SearchTags: []yaceModel.SearchTag{{
 				Key: "scrape", Value: regexp.MustCompile("true"),
 			}},
@@ -984,7 +984,7 @@ var expectedDiscoveryJobAddCloudwatchTimestampConfig = yaceModel.JobsConfig{
 			// assert an empty role is used as default. IMPORTANT since this
 			// is what YACE looks for delegating to the environment role
 			Roles: []yaceModel.Role{{}},
-			Type:  "AWS/SQS",
+			Namespace:  "AWS/SQS",
 			SearchTags: []yaceModel.SearchTag{{
 				Key: "scrape", Value: regexp.MustCompile("true"),
 			}},
@@ -1097,7 +1097,7 @@ var expectedDiscoveryJobDelayConfig = yaceModel.JobsConfig{
 		{
 			Regions:    []string{"us-east-2"},
 			Roles:      []yaceModel.Role{{}},
-			Type:       "AWS/EC2",
+			Namespace:       "AWS/EC2",
 			SearchTags: []yaceModel.SearchTag{},
 			CustomTags: []yaceModel.Tag{},
 			Metrics: []*yaceModel.MetricConfig{
