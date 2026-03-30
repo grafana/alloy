@@ -1,0 +1,167 @@
+id: grafana/alloy/internal/component/common/config
+"$defs":
+  basic_auth:
+    description: >-
+      Configures basic authentication credentials for HTTP clients.
+    type: object
+    properties:
+      username:
+        description: >-
+          Basic auth username.
+        type: string
+
+      password:
+        description: >-
+          Basic auth password.
+        type: string
+        alloy:
+          type_override: "secret"
+
+      password_file:
+        description: >-
+          File containing the basic auth password.
+        type: string
+
+  authorization:
+    description: >-
+      Configures generic authorization credentials for HTTP clients.
+    type: object
+    properties:
+      type:
+        description: >-
+          Authorization type, for example, "Bearer".
+        type: string
+        alloy:
+          default_override: '"Bearer"'
+
+      credentials:
+        description: >-
+          Authorization credentials.
+        type: string
+        alloy:
+          type_override: "secret"
+
+      credentials_file:
+        description: >-
+          File containing authorization credentials.
+        type: string
+
+  oauth2:
+    description: >-
+      Configures OAuth 2.0 authentication for HTTP clients.
+    type: object
+    properties:
+      client_id:
+        description: >-
+          OAuth2 client ID.
+        type: string
+
+      client_secret:
+        description: >-
+          OAuth2 client secret.
+        type: string
+        alloy:
+          type_override: "secret"
+
+      client_secret_file:
+        description: >-
+          File containing the OAuth2 client secret.
+        type: string
+
+      scopes:
+        description: >-
+          List of scopes to request during authentication.
+        type: array
+        alloy:
+          type_override: "list(string)"
+
+      token_url:
+        description: >-
+          URL to fetch the OAuth2 token from.
+        type: string
+
+      endpoint_params:
+        description: >-
+          Optional parameters to append to the token URL.
+        type: object
+        alloy:
+          type: attribute
+          type_override: "map(string)"
+
+      proxy_url:
+        description: >-
+          HTTP proxy to send token requests through.
+        type: string
+
+      no_proxy:
+        description: >-
+          Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.
+        type: string
+
+      proxy_from_environment:
+        description: >-
+          Use the proxy URL indicated by environment variables.
+        type: boolean
+
+      proxy_connect_header:
+        description: >-
+          Specifies headers to send to proxies during CONNECT requests.
+        type: object
+        alloy:
+          type: attribute
+          type_override: "map(list(secret))"
+
+      tls_config:
+        $ref: "#/$defs/tls_config"
+
+  tls_config:
+    description: >-
+      Configures TLS settings for HTTP clients.
+    type: object
+    properties:
+      ca_pem:
+        description: >-
+          CA certificate in PEM format.
+        type: string
+
+      ca_file:
+        description: >-
+          Path to the CA certificate file.
+        type: string
+
+      cert_pem:
+        description: >-
+          Client certificate in PEM format.
+        type: string
+
+      cert_file:
+        description: >-
+          Path to the client certificate file.
+        type: string
+
+      key_pem:
+        description: >-
+          Client key in PEM format.
+        type: string
+        alloy:
+          type_override: "secret"
+
+      key_file:
+        description: >-
+          Path to the client key file.
+        type: string
+
+      server_name:
+        description: >-
+          Server name used for TLS certificate verification.
+        type: string
+
+      insecure_skip_verify:
+        description: >-
+          Whether to skip TLS certificate verification.
+        type: boolean
+
+      min_version:
+        description: >-
+          Minimum acceptable TLS version.
+        type: string

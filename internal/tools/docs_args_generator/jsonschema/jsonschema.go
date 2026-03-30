@@ -86,6 +86,7 @@ func resolveInternalRefs(schema *Schema, rootDefs map[string]*Schema) {
 // ymlPathDir is the directory used to resolve relative $ref paths (e.g. subschema/schema.yml).
 // schema is the parent schema that will be updated in place; its allOf entries are loaded
 // from the filesystem and their definitions merged into schema.Properties.
+// It recurses into nested properties so that allOf references at any depth are processed.
 func mergeSubschemas(ymlPathDir string, schema *Schema) error {
 	if schema == nil {
 		return nil
@@ -112,6 +113,15 @@ func mergeSubschemas(ymlPathDir string, schema *Schema) error {
 				def.SourceID = parsedProp.ID
 				schema.Properties[name] = def
 			}
+		}
+	}
+
+	// Recurse into nested properties so that allOf references inside blocks are
+	// also resolved. This allows nested blocks (e.g. an endpoint block) to pull
+	// in shared sub-schemas with proper SourceID routing.
+	for _, prop := range schema.Properties {
+		if err := mergeSubschemas(ymlPathDir, prop); err != nil {
+			return err
 		}
 	}
 

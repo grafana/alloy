@@ -1,0 +1,248 @@
+arguments:
+  type: object
+  description: "Configuration parameters for loki.write."
+  properties:
+    external_labels:
+      description: >-
+        Labels to add to logs sent over the network.
+      type: object
+      alloy:
+        type: attribute
+        type_override: "map(string)"
+        default_override: "{}"
+
+    max_streams:
+      description: >-
+        Maximum number of active streams.
+      type: integer
+
+    endpoint:
+      description: >-
+        Location to send logs to. Can be specified multiple times to fan-out logs to multiple destinations.
+      type: object
+      required:
+        - url
+      allOf:
+        - "$ref": "../../common/config/schema.yml"
+      properties:
+        url:
+          description: >-
+            Full URL to send logs to.
+          type: string
+
+        name:
+          description: >-
+            Optional name to identify this endpoint with.
+          type: string
+
+        batch_wait:
+          description: >-
+            Maximum amount of time to wait before sending a batch.
+          type: string
+          alloy:
+            type_override: "duration"
+            default_override: '"1s"'
+
+        batch_size:
+          description: >-
+            Maximum batch size of logs to accumulate before sending.
+          type: string
+          alloy:
+            default_override: '"1MiB"'
+
+        remote_timeout:
+          description: >-
+            Timeout for requests made to the URL.
+          type: string
+          alloy:
+            type_override: "duration"
+            default_override: '"10s"'
+
+        headers:
+          description: >-
+            Extra headers to deliver with the request.
+          type: object
+          alloy:
+            type: attribute
+            type_override: "map(string)"
+
+        min_backoff_period:
+          description: >-
+            Initial backoff time between retries.
+          type: string
+          alloy:
+            type_override: "duration"
+            default_override: '"500ms"'
+
+        max_backoff_period:
+          description: >-
+            Maximum backoff time between retries.
+          type: string
+          alloy:
+            type_override: "duration"
+            default_override: '"5m"'
+
+        max_backoff_retries:
+          description: >-
+            Maximum number of retries.
+          type: integer
+          alloy:
+            default_override: 10
+
+        tenant_id:
+          description: >-
+            The tenant ID used by default to push logs.
+          type: string
+
+        retry_on_http_429:
+          description: >-
+            Retry when an HTTP 429 status code is received.
+          type: boolean
+          alloy:
+            default_override: true
+
+        bearer_token:
+          description: >-
+            Bearer token to authenticate with.
+          type: string
+          alloy:
+            type_override: "secret"
+
+        bearer_token_file:
+          description: >-
+            File containing a bearer token to authenticate with.
+          type: string
+
+        follow_redirects:
+          description: >-
+            Whether redirects returned by the server should be followed.
+          type: boolean
+          alloy:
+            default_override: true
+
+        enable_http2:
+          description: >-
+            Whether HTTP2 is supported for requests.
+          type: boolean
+          alloy:
+            default_override: true
+
+        proxy_url:
+          description: >-
+            HTTP proxy to send requests through.
+          type: string
+
+        no_proxy:
+          description: >-
+            Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying.
+          type: string
+
+        proxy_from_environment:
+          description: >-
+            Use the proxy URL indicated by environment variables.
+          type: boolean
+
+        proxy_connect_header:
+          description: >-
+            Specifies headers to send to proxies during CONNECT requests.
+          type: object
+          alloy:
+            type: attribute
+            type_override: "map(list(secret))"
+
+        http_headers:
+          description: >-
+            Custom HTTP headers to be sent along with each request. The map key is the header name.
+          type: object
+          alloy:
+            type: attribute
+            type_override: "map(list(secret))"
+
+        queue_config:
+          description: >-
+            Configures the queue used to buffer batches before sending to the endpoint.
+          type: object
+          properties:
+            capacity:
+              description: >-
+                Controls the size of the underlying send queue buffer. This setting should be considered a worst-case scenario of memory consumption, in which all enqueued batches are full.
+              type: string
+              alloy:
+                default_override: '"10MiB"'
+
+            min_shards:
+              description: >-
+                Minimum number of concurrent shards sending samples to the endpoint.
+              type: integer
+              alloy:
+                default_override: 1
+
+            drain_timeout:
+              description: >-
+                Configures the maximum time the client can take to drain the send queue upon shutdown. During that time, it enqueues pending batches and drains the send queue sending each.
+              type: string
+              alloy:
+                type_override: "duration"
+                default_override: '"15s"'
+
+            block_on_overflow:
+              description: >-
+                If true, block until there is space in the queue; if false, drop entries when the queue is full.
+              type: boolean
+              alloy:
+                default_override: true
+
+    wal:
+      description: >-
+        Configures the Write-Ahead Log (WAL) used by the remote write client.
+      type: object
+      properties:
+        enabled:
+          description: >-
+            Whether to enable the WAL.
+          type: boolean
+          alloy:
+            default_override: false
+
+        max_segment_age:
+          description: >-
+            Maximum time a WAL segment should be allowed to live. Segments older than this setting are eventually deleted.
+          type: string
+          alloy:
+            type_override: "duration"
+            default_override: '"1h"'
+
+        min_read_frequency:
+          description: >-
+            Minimum backoff time in the backup read mechanism.
+          type: string
+          alloy:
+            type_override: "duration"
+            default_override: '"250ms"'
+
+        max_read_frequency:
+          description: >-
+            Maximum backoff time in the backup read mechanism.
+          type: string
+          alloy:
+            type_override: "duration"
+            default_override: '"1s"'
+
+        drain_timeout:
+          description: >-
+            Maximum time the WAL drain procedure can take, before being forcefully stopped.
+          type: string
+          alloy:
+            type_override: "duration"
+            default_override: '"15s"'
+
+exports:
+  type: object
+  description: "Exported fields for loki.write."
+  properties:
+    receiver:
+      description: >-
+        A value that other components can use to send log entries.
+      type: object
+      alloy:
+        type_override: "LogsReceiver"
