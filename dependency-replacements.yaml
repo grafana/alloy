@@ -111,9 +111,9 @@ replaces:
     dependency: github.com/deneonet/benc
     replacement: github.com/deneonet/benc v1.1.7
 
-  - comment: Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
+  - comment: Pin runc to v1.4.0 (packaging tests disabled due to dockertest v3.12.0 using deprecated libcontainer/user)
     dependency: github.com/opencontainers/runc
-    replacement: github.com/opencontainers/runc v1.2.8
+    replacement: github.com/opencontainers/runc v1.4.0
 
   - comment: Replace controller-runtime with pinned version
     dependency: sigs.k8s.io/controller-runtime
