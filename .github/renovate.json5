@@ -81,6 +81,9 @@
         "github.com/mackerelio/go-osstat",
         "github.com/ncabatoff/process-exporter",
         "github.com/nerdswords/yet-another-cloudwatch-exporter",
+        "github.com/percona/mongodb_exporter", // v0.48+ pulls in percona-backup-mongodb with platform-incompatible syscall usage
+        "github.com/prometheus-community/yet-another-cloudwatch-exporter", // Introduces breaking changes in minor versions
+        "github.com/prometheus/alertmanager", // v0.31+ requires sigv4 v0.4+ which is held
         "github.com/opencontainers/runc",
         "github.com/prometheus-operator/**",
         "github.com/prometheus/consul_exporter",
