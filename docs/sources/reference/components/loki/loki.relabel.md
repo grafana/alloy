@@ -53,11 +53,15 @@ You can use the following arguments with `loki.relabel`:
 
 You can use the following block with `loki.relabel`:
 
+{{< docs/alloy-config >}}
+
 | Name           | Description                                        | Required |
 | -------------- | -------------------------------------------------- | -------- |
 | [`rule`][rule] | Relabeling rules to apply to received log entries. | no       |
 
 [rule]: #rule
+
+{{< /docs/alloy-config >}}
 
 ### `rule`
 

@@ -65,6 +65,8 @@ The following formats are supported:
 
 You can use the following blocks with `beyla.ebpf`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                                  | Description                                                                                        | Required |
 |------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | yes      |
@@ -100,9 +102,6 @@ You can use the following blocks with `beyla.ebpf`:
 | `injector` > [`resources`][injector resources]                         | Configures resource attributes for the injected SDK.                                               | no       |
 | `injector` > [`sampler`][sampler]                                      | Configures default trace sampling for injected SDKs.                                               | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
-
 [routes]: #routes
 [traces]: #traces
 [attributes]: #attributes
@@ -126,6 +125,8 @@ For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined 
 [injector webhook]: #webhook
 [injector export]: #export
 [injector resources]: #resources
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

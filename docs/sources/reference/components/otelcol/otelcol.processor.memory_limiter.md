@@ -72,6 +72,8 @@ The `limit` and `spike_limit` values must be larger than 1 MiB.
 
 You can use the following blocks with `otelcol.processor.memory_limiter`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -79,6 +81,8 @@ You can use the following blocks with `otelcol.processor.memory_limiter`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
