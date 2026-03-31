@@ -2,7 +2,7 @@ dist:
   module: github.com/grafana/alloy/otel_engine
   name: alloy
   description: Alloy OTel Collector distribution.
-  version: v1.14.0 # x-release-please-version
+  version: v1.15.0 # x-release-please-version
   output_path: .
 
 extensions:
@@ -130,9 +130,9 @@ replaces:
   # Use Grafana fork of smimesign
   - github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
   # Replace OpenTelemetry OBI with Grafana fork
-  - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11
+  - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.12.2-0.20260318145328-e31c5acda289
   # Replace OpenTelemetry eBPF profiler with Grafana fork
-  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260216144214-241376220646
+  - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31a19190b9
   # Update openshift/client-go to version compatible with structured-merge-diff v6
   - github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
   # Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13

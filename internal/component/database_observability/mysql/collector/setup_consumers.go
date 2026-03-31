@@ -135,5 +135,9 @@ func (c *SetupConsumers) getSetupConsumers(ctx context.Context) error {
 		}
 	}
 
+	if err := rs.Err(); err != nil {
+		return fmt.Errorf("failed to iterate over setup_consumers result set: %w", err)
+	}
+
 	return nil
 }
