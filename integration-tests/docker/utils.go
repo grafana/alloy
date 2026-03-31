@@ -58,22 +58,21 @@ func buildAlloy() {
 }
 
 // Setup container files for mounting into the test container
-func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, []*os.File, error) {
+func prepareContainerFiles(absTestDir string, cfg TestConfig) ([]testcontainers.ContainerFile, []*os.File, error) {
 	files, err := collectFiles(absTestDir)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to collect config files: %v", err)
 	}
 
-	var containerFiles []testcontainers.ContainerFile
-	var openFiles []*os.File
+	var (
+		containerFiles []testcontainers.ContainerFile
+		openFiles      []*os.File
+	)
 
 	for _, fileToAdd := range files {
 		f, err := os.Open(fileToAdd.path)
 		if err != nil {
-			// Close files opened so far
-			for _, openFile := range openFiles {
-				openFile.Close()
-			}
+			closeFiles(openFiles)
 			return nil, nil, fmt.Errorf("failed to open file %s: %v", fileToAdd.path, err)
 		}
 		openFiles = append(openFiles, f)
@@ -85,7 +84,34 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 		})
 	}
 
+	for _, extraPath := range cfg.Container.ExtraFiles {
+		if !filepath.IsAbs(extraPath) {
+			extraPath = filepath.Join(absTestDir, extraPath)
+		}
+
+		extraPath = filepath.Clean(extraPath)
+		f, err := os.Open(extraPath)
+		if err != nil {
+			closeFiles(openFiles)
+			return nil, nil, fmt.Errorf("failed to open extra file %s: %v", extraPath, err)
+		}
+
+		openFiles = append(openFiles, f)
+
+		containerFiles = append(containerFiles, testcontainers.ContainerFile{
+			Reader:            f,
+			ContainerFilePath: filepath.Join("/etc/alloy", filepath.Base(extraPath)),
+			FileMode:          0o700,
+		})
+	}
+
 	return containerFiles, openFiles, nil
+}
+
+func closeFiles(files []*os.File) {
+	for _, f := range files {
+		f.Close()
+	}
 }
 
 // Create a container request based on the test directory
@@ -199,7 +225,7 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 	}
 
 	// Prepare container files
-	containerFiles, openFiles, err := prepareContainerFiles(absTestDir)
+	containerFiles, openFiles, err := prepareContainerFiles(absTestDir, cfg)
 	if err != nil {
 		panic(err)
 	}

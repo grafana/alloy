@@ -21,6 +21,8 @@ type ContainerConfig struct {
 	SecurityOpt []string `yaml:"security_opts"`
 	// PIDMode is the PID namespace to use for the container.
 	PIDMode string `yaml:"pid_mode"`
+	// ExtraFiles that will be copied into alloy container under "/etc/alloy".
+	ExtraFiles []string `yaml:"extra_files"`
 }
 
 type PortMapping struct {

@@ -1,0 +1,3 @@
+alloy_container: 
+  extra_files:
+    - "../../configs/loki-pipeline/shared.alloy"
