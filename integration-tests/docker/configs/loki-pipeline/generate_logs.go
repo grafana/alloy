@@ -12,7 +12,8 @@ import (
 func GenerateLogs(t *testing.T, w io.Writer) {
 	t.Helper()
 
-	// Write two cri formatted logs for the same stream. One with P flag and another one with F flag.
+	// Write two cri log lines for the same stream that should be parsed by stage.cri.
+	// One with P flag and another one with F flag.
 	buf := bytes.Buffer{}
 	buf.WriteString(time.Now().Format(time.RFC3339Nano))
 	buf.WriteString(" stdout P partial chunk\n")
@@ -20,13 +21,15 @@ func GenerateLogs(t *testing.T, w io.Writer) {
 	buf.WriteString(time.Now().Format(time.RFC3339Nano))
 	buf.WriteString(" stdout F final chunk\n")
 
-	// Write one log in docker json format.
+	// Write one log line that should be parsed by stage.docker.
 	buf.WriteString(`{"log":"docker json line\n","stream":"stderr","time":"`)
 	buf.WriteString(time.Now().Format(time.RFC3339Nano))
-	buf.WriteString(`"}` + "\n")
+	buf.WriteString(`","format":"json"}` + "\n")
+
+	// Write one plain JSON log line that should be parsed by stage.json.
+	buf.WriteString(`{"msg":"plain json line","format":"json"}` + "\n")
 
 	require.NoError(t, writeAll(w, buf.Bytes()))
-
 }
 
 func writeAll(w io.Writer, p []byte) error {

@@ -35,13 +35,19 @@ func TestReadLogFile(t *testing.T) {
 		t,
 		common.ExpectedLogResult{
 			Labels: map[string]string{
-				"source": "cri",
+				"format": "cri",
 			},
 			EntryCount: 1,
 		},
 		common.ExpectedLogResult{
 			Labels: map[string]string{
-				"source": "docker",
+				"format": "docker",
+			},
+			EntryCount: 1,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format": "json",
 			},
 			EntryCount: 1,
 		},

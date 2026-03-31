@@ -21,7 +21,7 @@ declare "process" {
 			selector = `{stream="stdout"}`
 			stage.static_labels {
 			  values = {
-				source = "cri",
+				format = "cri",
 			  }
 			}
 		}
@@ -32,8 +32,23 @@ declare "process" {
 
 			stage.static_labels {
 			  values = {
-				source = "docker",
+				format = "docker",
 			  }
+			}
+		}
+
+		stage.match {
+			// Parse all lines as json except for docker formatted log lines.
+			selector = `{format!="docker"}`
+			
+			stage.json {
+				expressions = { format = "format" }	
+			}
+
+			stage.labels {
+				values = {
+					format = "",
+				}
 			}
 		}
 	
