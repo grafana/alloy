@@ -1,70 +1,54 @@
 loki.source.file "test" {
 	targets = [
-		{__path__ = "/etc/alloy/test.log"},
+		{__path__ = "/etc/alloy/mount/cri.log", format = "cri"},
+		{__path__ = "/etc/alloy/mount/docker.log", format = "docker"},
+		{__path__ = "/etc/alloy/mount/json.log", format = "json"},
+		{__path__ = "/etc/alloy/mount/logfmt.log", format = "logfmt"},
 	]
+	
+	file_match {
+		enabled = true
+	}
+
 	forward_to = [loki.process.p.receiver]
 }
 
 loki.process "p" {
-		forward_to = argument.forward_to.value
+	forward_to = [loki.write.test.receiver]
 
-		// Parse cri log lines.
+	stage.match {
+		selector = `{format="cri"}`
+
 		stage.cri {}
+	}
 
-		// Parse docker json logs.
+	stage.match {
+		selector = `{format="docker"}`
+
 		stage.docker {}
+	}
 
-		stage.match {
-			// We use stream stdout for cri logs.
-			selector = `{stream="stdout"}`
+	stage.match {
+		selector = `{format="json"}`
 
-			stage.static_labels {
-				values = {
-					format = "cri",
-				}
-			}
-		}
-
-		stage.match {
-			// We use stream stderr for docker logs.
-			selector = `{stream="stderr"}`
-
-			stage.static_labels {
-				values = {
-					format = "docker",
-				}
-			}
-		}
-
-		stage.match {
-			// Parse all lines as json except for docker formatted log lines.
-			selector = `{format!="docker"}`
-
-			stage.json {
-				expressions = {format = "format"}
-			}
-		}
-
-		stage.logfmt {
-			mapping = {format = "format"}
-		}
-
-		stage.pattern {
-			pattern            = `<_> - - <_> "<method> <_> <_>" <status> <_> <_> "<_>" <_>`
-			labels_from_groups = true
-		}
-
-		stage.labels {
-			values = {
-				format = "",
-			}
-		}
-
-		// Always drop filename and stream.
-		stage.label_drop {
-			values = ["filename", "stream"]
+		stage.json {
+			expressions = {msg = "msg"}
 		}
 	}
+
+	stage.match {
+		selector = `{format="logfmt"}`
+
+		stage.logfmt {
+			mapping = {msg = "msg"}
+		}
+	}
+
+	// Always drop filename and stream.
+	stage.label_drop {
+		values = ["filename"]
+	}
+}
 
 loki.write "test" {
 	endpoint {
