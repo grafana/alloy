@@ -50,7 +50,7 @@ You can use the following arguments with `loki.secretfilter`:
 | -------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `forward_to`         | `list(LogsReceiver)` | List of receivers to send log entries to.                                                                            |         | yes      |
 | `gitleaks_config`    | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                           | `""`    | no       |
-| `origin_label`       | `string`             | Loki label that supplies the `origin` dimension for `secrets_redacted_by_origin` and `secrets_redacted_by_category_total`. | `""`    | no       |
+| `origin_label`       | `string`             | Loki label to use as the `origin` dimension in `secrets_redacted_by_origin` and `secrets_redacted_by_category_total`. If empty, `secrets_redacted_by_origin` is not registered and the `origin` label on `secrets_redacted_by_category_total` is set to `""`. | `""`    | no       |
 | `origin_label`       | `string`             | Loki label to use as the `origin` dimension in `secrets_redacted_by_origin` and `secrets_redacted_by_category_total`. If empty, `secrets_redacted_by_origin` is not registered and the `origin` label on `secrets_redacted_by_category_total` is set to `""`. | `""`    | no       |
 | `rate`               | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged.      | `1.0`   | no       |
 | `redact_with`        | `string`             | Template for the redaction placeholder. Use `$SECRET_NAME` and `$SECRET_HASH`, for example, `"<$SECRET_NAME:$SECRET_HASH>"` | `""`    | no       |
@@ -67,7 +67,7 @@ The default configuration may change between {{< param "PRODUCT_NAME" >}} versio
 For consistent behavior, use an external configuration file via `gitleaks_config`.
 {{< /admonition >}}
 
-If you leave `origin_label` empty, the component does not register `secrets_redacted_by_origin` and sets the origin label on `secrets_redacted_by_category_total` to `""`.
+If you leave `origin_label` empty, the component doesn't register `secrets_redacted_by_origin` and sets the origin label on `secrets_redacted_by_category_total` to `""`.
 
 **Redaction behavior:**
 
