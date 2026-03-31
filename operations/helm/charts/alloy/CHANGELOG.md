@@ -10,6 +10,9 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.6.3 (2026-03-31)
+----------
+
 ### Bug fixes
 
 - Fix `alloy.extraPorts` not applying `nodePort` when `service.type` is `NodePort`. (@siyu77)
@@ -17,11 +20,6 @@ Unreleased
 ### Enhancements
 
 - Set a `K8S_NODE_NAME` environment variable used by the `otelcol.processor.resourcedetection` component. (@armsnyder)
-
-1.6.3 (2026-03-31)
-----------
-
-### Enhancements
 
 - Update to Grafana Alloy v1.15.0. (@blewis12)
 
