@@ -113,6 +113,8 @@ The `dynatrace` detector reads the following resource attributes from the metada
 
 You can use the following blocks with `otelcol.processor.resourcedetection`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                                                | Required |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                                          | yes      |
@@ -171,6 +173,8 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [scaleway]: #scaleway
 [upcloud]: #upcloud
 [vultr]: #vultr
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

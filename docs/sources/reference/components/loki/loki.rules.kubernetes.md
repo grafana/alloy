@@ -79,6 +79,8 @@ You should set the prefix to a unique value for each deployment.
 
 You can use the following blocks with `loki.rules.kubernetes`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                              | Description                                                | Required |
 | ------------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
 | [`authorization`][authorization]                                   | Configure generic authorization to the endpoint.           | no       |
@@ -93,9 +95,6 @@ You can use the following blocks with `loki.rules.kubernetes`:
 | `oauth2` > [`tls_config`][tls_config]                              | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [extra_query_matchers]: #extra_query_matchers
@@ -104,6 +103,8 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 [matcher]: #matcher
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `authorization`
 

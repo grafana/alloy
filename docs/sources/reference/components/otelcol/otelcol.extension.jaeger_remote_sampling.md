@@ -40,6 +40,8 @@ The `otelcol.extension.jaeger_remote_sampling` component doesn't support any arg
 
 You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                             | Description                                                                      | Required |
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------- |
 | [`source`][source]                                                | Configures the Jaeger remote sampling document.                                  | yes      |
@@ -58,9 +60,6 @@ You can use the following blocks with `otelcol.extension.jaeger_remote_sampling`
 | `grpc` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS `key_file`.                                  | no       |
 | [`debug_metrics`][debug_metrics]                                  | Configures the metrics that this component generates to monitor its state.       | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` block.
-
 [http]: #http
 [tls]: #tls
 [tpm]: #tpm
@@ -74,6 +73,8 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 [tls_client]: #tls-client
 [keepalive_client]: #keepalive-client
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `source`
 

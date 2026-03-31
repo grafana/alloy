@@ -107,6 +107,8 @@ A value of `0` means no limit is applied.
 
 You can use the following blocks with `otelcol.connector.spanmetrics`:
 
+{{< docs/alloy-config >}}
+
 | Block                                      | Description                                                                                                                                                | Required |
 |--------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|
 | [`histogram`][histogram]                   | Configures the histogram derived from spans durations.                                                                                                     | yes      |
@@ -121,9 +123,6 @@ You can use the following blocks with `otelcol.connector.spanmetrics`:
 | `events` > [`dimension`][dimension]        | Span event attributes to add as dimensions to the events metric, _on top of_ the default ones and the ones configured in the top-level `dimension` block.  | no       |
 | [`exemplars`][exemplars]                   | Configures how to attach exemplars to histograms.                                                                                                          | no       |
 
-You must specify either an [`exponential`][exponential] or an [`explicit`][explicit] block.
-You can't specify both blocks in the same configuration.
-
 [calls_dimension]: #calls_dimension
 [dimension]: #dimension
 [histogram]: #histogram
@@ -133,6 +132,11 @@ You can't specify both blocks in the same configuration.
 [events]: #events
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
+
+You must specify either an [`exponential`][exponential] or an [`explicit`][explicit] block.
+You can't specify both blocks in the same configuration.
 
 ### `histogram`
 

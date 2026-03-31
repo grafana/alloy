@@ -66,6 +66,8 @@ A list of valid AWS regions can be found on Amazon's documentation for [Regions,
 
 You can use the following blocks with `otelcol.auth.sigv4`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`assume_role`][assume_role]     | Configuration for assuming a role.                                         | no       |
@@ -73,6 +75,8 @@ You can use the following blocks with `otelcol.auth.sigv4`:
 
 [assume_role]: #assume_role
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `assume_role`
 
