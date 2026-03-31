@@ -556,5 +556,8 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 
 // IsBot checks if a username appears to be a bot account.
 func IsBot(username string) bool {
-	return strings.HasSuffix(username, "[bot]") || strings.HasSuffix(username, "-bot") || username == "Copilot"
+	return strings.HasSuffix(username, "[bot]") ||
+		strings.HasSuffix(username, "-bot") ||
+		username == "Copilot" ||
+		username == "claude"
 }
