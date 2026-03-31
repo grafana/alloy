@@ -46,13 +46,15 @@ var DefaultConfig = Config{
 
 // Config is the configuration for the CloudWatch metrics integration
 type Config struct {
-	STSRegion         string                `yaml:"sts_region"`
-	FIPSDisabled      bool                  `yaml:"fips_disabled"`
-	Discovery         DiscoveryConfig       `yaml:"discovery"`
-	Static            []StaticJob           `yaml:"static"`
-	Debug             bool                  `yaml:"debug"`
-	DecoupledScrape   DecoupledScrapeConfig `yaml:"decoupled_scraping"`
-	UseAWSSDKVersion2 bool                  `yaml:"aws_sdk_version_v2"`
+	STSRegion       string                `yaml:"sts_region"`
+	FIPSDisabled    bool                  `yaml:"fips_disabled"`
+	Discovery       DiscoveryConfig       `yaml:"discovery"`
+	Static          []StaticJob           `yaml:"static"`
+	Debug           bool                  `yaml:"debug"`
+	DecoupledScrape DecoupledScrapeConfig `yaml:"decoupled_scraping"`
+
+	// UseAWSSDKVersion2 is deprecated and has no effect.
+	UseAWSSDKVersion2 bool `yaml:"aws_sdk_version_v2"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
@@ -152,7 +154,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 	}
 
 	if !c.UseAWSSDKVersion2 {
-		level.Warn(l).Log("msg", "the `aws_sdk_version_v2` argument is deprecated and will be removed in future releases - AWS SDK for Go v1 is end-of-life, remove this argument to use AWS SDK for Go v2")
+		level.Warn(l).Log("msg", "the `aws_sdk_version_v2` argument is deprecated and has no effect, AWS SDK for Go v2 is always used - remove this argument from your configuration")
 	}
 
 	if c.DecoupledScrape.Enabled {
@@ -160,10 +162,10 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		if v := c.DecoupledScrape.ScrapeInterval; v != nil {
 			scrapeInterval = *v
 		}
-		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, labelsSnakeCase, c.Debug, c.UseAWSSDKVersion2)
+		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, labelsSnakeCase, c.Debug)
 	}
 
-	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, labelsSnakeCase, c.Debug, c.UseAWSSDKVersion2)
+	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, labelsSnakeCase, c.Debug)
 }
 
 // getHash calculates the MD5 hash of the yaml representation of the config

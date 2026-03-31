@@ -125,6 +125,13 @@ PROPAGATE_VARS := \
 # Constants for targets
 #
 
+# If GO_TAGS does not already contain gore2regex, prepend it.
+# This makes loki.secretfilter use the go-re2 library, which provides
+# a substantial performance improvement over stdlib's regex.
+ifeq ($(filter gore2regex,$(GO_TAGS)),)
+override GO_TAGS := $(strip gore2regex $(GO_TAGS))
+endif
+
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
 VERSION      ?= $(shell bash ./tools/image-tag)
@@ -187,7 +194,7 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	docker pull $(BUILD_IMAGE)
-	go test -tags=packaging -race ./internal/tools/packaging_test
+	go test -tags="gore2regex packaging" -race ./internal/tools/packaging_test
 endif
 
 .PHONY: integration-test-docker
@@ -197,14 +204,14 @@ integration-test-docker:
 .PHONY: integration-test-k8s
 integration-test-k8s: alloy-image
 	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
-	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="alloyintegrationtests" -timeout 30m ./...
+	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="gore2regex alloyintegrationtests" -timeout 30m ./...
 
 # Windows service integration test. Runs only on Windows with Administrator privileges.
 # Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
 .PHONY: integration-test-windows-service
 integration-test-windows-service: dist-alloy-installer-windows
 	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
-		$(GO_ENV) go test -v -tags=alloyintegrationtests -timeout 5m -run TestWindowsService ./...
+		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 5m -run TestWindowsService ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:
