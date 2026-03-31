@@ -32,7 +32,7 @@ type ConnectionInfo struct {
 	dbConnection  *sql.DB
 
 	running *atomic.Bool
-	cancel  context.CancelFunc
+	stop    func()
 }
 
 func NewConnectionInfo(args ConnectionInfoArguments) (*ConnectionInfo, error) {
@@ -120,7 +120,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 	c.InfoMetric.WithLabelValues(labelValues...).Set(1)
 
 	if c.dbConnection != nil {
-		c.cancel = database_observability.RunConnectionInfoMonitor(
+		c.stop = database_observability.RunConnectionInfoMonitor(
 			ctx,
 			c.dbConnection,
 			c.Registry,
@@ -139,8 +139,8 @@ func (c *ConnectionInfo) Stopped() bool {
 }
 
 func (c *ConnectionInfo) Stop() {
-	if c.cancel != nil {
-		c.cancel()
+	if c.stop != nil {
+		c.stop()
 	}
 	c.Registry.Unregister(c.InfoMetric)
 	c.running.Store(false)
