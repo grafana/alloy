@@ -138,6 +138,15 @@ func newTimestampStage(logger *slog.Logger, config TimestampConfig) (Stage, erro
 	}), nil
 }
 
+// timestampCacheEntry holds both the original parsed timestamp and the last
+// adjusted (output) timestamp for a given stream. lastParsed is used for
+// equality comparison so fudging only triggers on truly duplicate inputs,
+// while lastAdjusted is the base for computing the next +1ns offset.
+type timestampCacheEntry struct {
+	lastParsed   time.Time
+	lastAdjusted time.Time
+}
+
 type timestampStage struct {
 	config *TimestampConfig
 	logger *slog.Logger
@@ -169,14 +178,14 @@ func (ts *timestampStage) Process(labels model.LabelSet, extracted map[string]an
 	labelsStr := labels.String()
 	if ts.config.ActionOnDuplicateTimestamp == TimestampActionOnDuplicateTimestampFudge && ts.lastKnownTimestamps != nil {
 		if lastTimestamp, ok := ts.lastKnownTimestamps.Get(labelsStr); ok {
-			lastKnown := lastTimestamp.(time.Time)
-			if !parsedTs.After(lastKnown) {
-				*t = lastKnown.Add(1 * time.Nanosecond)
+			entry := lastTimestamp.(timestampCacheEntry)
+			if parsedTs.Equal(entry.lastParsed) {
+				*t = entry.lastAdjusted.Add(1 * time.Nanosecond)
 			}
 		}
 	}
 	if (ts.config.ActionOnFailure == TimestampActionOnFailureFudge || ts.config.ActionOnDuplicateTimestamp == TimestampActionOnDuplicateTimestampFudge) && ts.lastKnownTimestamps != nil {
-		ts.lastKnownTimestamps.Add(labelsStr, *t)
+		ts.lastKnownTimestamps.Add(labelsStr, timestampCacheEntry{lastParsed: *parsedTs, lastAdjusted: *t})
 	}
 }
 
@@ -225,9 +234,10 @@ func (ts *timestampStage) processActionOnFailureFudge(labels model.LabelSet, t *
 		return
 	}
 
-	// Fudge the timestamp
-	*t = lastTimestamp.(time.Time).Add(1 * time.Nanosecond)
+	// Fudge the timestamp based on the last adjusted (output) value
+	entry := lastTimestamp.(timestampCacheEntry)
+	*t = entry.lastAdjusted.Add(1 * time.Nanosecond)
 
 	// Store the fudged timestamp, so that a subsequent fudged timestamp will be 1ns after it
-	ts.lastKnownTimestamps.Add(labelsStr, *t)
+	ts.lastKnownTimestamps.Add(labelsStr, timestampCacheEntry{lastParsed: entry.lastParsed, lastAdjusted: *t})
 }
