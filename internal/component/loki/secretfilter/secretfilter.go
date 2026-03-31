@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -426,10 +427,7 @@ func hashSecret(secret string) string {
 
 // withLabel returns a copy of the entry with the given label set to value.
 func withLabel(entry loki.Entry, name, value string) loki.Entry {
-	newLabels := make(model.LabelSet, len(entry.Labels)+1)
-	for k, v := range entry.Labels {
-		newLabels[k] = v
-	}
+	newLabels := maps.Clone(entry.Labels)
 	newLabels[model.LabelName(name)] = model.LabelValue(value)
 	entry.Labels = newLabels
 	return entry
