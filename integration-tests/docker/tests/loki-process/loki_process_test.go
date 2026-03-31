@@ -67,7 +67,15 @@ func TestProcessLogFile(t *testing.T) {
 		},
 		common.ExpectedLogResult{
 			Labels: map[string]string{
-				"format": "logfmt",
+				"format":       "logfmt",
+				"service_name": "service-1",
+			},
+			EntryCount: 2,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format":       "logfmt",
+				"service_name": "service-2",
 			},
 			EntryCount: 1,
 		},
@@ -180,6 +188,8 @@ func writeLogfmtLogFile(t *testing.T, mountDir string) {
 	t.Helper()
 
 	var buf bytes.Buffer
-	buf.WriteString("msg=\"plain logfmt line\"\n")
+	buf.WriteString("msg=\"msg 1\" service_name=\"service-1\"\n")
+	buf.WriteString("msg=\"msg 2\" service_name=\"service-1\"\n")
+	buf.WriteString("msg=\"msg 3\" service_name=\"service-2\"\n")
 	writeLogFile(t, filepath.Join(mountDir, "logfmt.log"), buf.String())
 }

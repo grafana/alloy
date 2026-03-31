@@ -40,7 +40,7 @@ loki.process "p" {
 		selector = `{format="logfmt"}`
 
 		stage.logfmt {
-			mapping = {msg = "msg"}
+			mapping = {msg = "msg", service_name = "service_name"}
 		}
 	}
 
