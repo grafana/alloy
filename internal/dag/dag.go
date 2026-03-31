@@ -228,3 +228,7 @@ func (g *Graph) Clone() *Graph {
 	}
 	return newGraph
 }
+
+func (g *Graph) Len() int {
+	return len(g.nodes)
+}

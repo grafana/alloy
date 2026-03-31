@@ -249,16 +249,22 @@ func TestFile(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
+		defer file.Stop()
 
+		appended := make(chan struct{})
+		deleteNow := make(chan struct{})
 		go func() {
-			time.Sleep(50 * time.Millisecond)
 			appendToFile(t, name, "3\n4\n")
-			removeFile(t, name)
+			close(appended)
+			<-deleteNow
+			_ = os.Remove(name)
 		}()
 
 		verifyResult(t, file, &Line{Text: "1", Offset: 2}, nil)
 		verifyResult(t, file, &Line{Text: "2", Offset: 4}, nil)
+		<-appended
 		verifyResult(t, file, &Line{Text: "3", Offset: 6}, nil)
+		close(deleteNow)
 		verifyResult(t, file, &Line{Text: "4", Offset: 8}, nil)
 	})
 

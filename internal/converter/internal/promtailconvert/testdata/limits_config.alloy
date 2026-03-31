@@ -1,0 +1,44 @@
+discovery.kubernetes "example" {
+	role            = "pod"
+	kubeconfig_file = "/home/toby/.kube/config"
+
+	selectors {
+		role  = "pod"
+		field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+	}
+}
+
+loki.process "example" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.limit {
+		rate  = 1000.5
+		burst = 1000
+		drop  = true
+	}
+
+	stage.truncate {
+		rule {
+			limit       = "256KiB"
+			source_type = "line"
+		}
+	}
+}
+
+loki.source.file "example" {
+	targets    = discovery.kubernetes.example.targets
+	forward_to = [loki.process.example.receiver]
+
+	file_match {
+		enabled = true
+	}
+	legacy_positions_file = "/var/log/positions.yaml"
+}
+
+loki.write "default" {
+	endpoint {
+		url = "http://localhost/loki/api/v1/push"
+	}
+	external_labels = {}
+	max_streams     = 100
+}

@@ -138,7 +138,10 @@ func (t *SyslogTarget) handleMessageError(err error) {
 func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc5424.SyslogMessage) {
 	if msg.Message == nil {
 		t.metrics.syslogEmptyMessages.Inc()
-		return
+
+		if !t.config.RFC5424AllowEmptyMsg {
+			return
+		}
 	}
 
 	lb := labels.NewBuilder(connLabels)
@@ -197,7 +200,10 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 		timestamp = time.Now()
 	}
 
-	m := *msg.Message
+	m := ""
+	if msg.Message != nil {
+		m = *msg.Message
+	}
 	if t.config.UseRFC5424Message {
 		fullMsg, err := msg.String()
 		if err != nil {
@@ -220,6 +226,7 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 
 func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc3164.SyslogMessage) {
 	if msg.Message == nil {
+		// Drop RFC3164 messages with an empty Message
 		t.metrics.syslogEmptyMessages.Inc()
 		return
 	}
@@ -283,6 +290,7 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc31
 }
 
 func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg *syslog.Base) {
+	// Drop raw logs with nil or empty message - this would mean the line itself is empty (e.g. "\n")
 	if msg.Message == nil || *msg.Message == "" {
 		t.metrics.syslogEmptyMessages.Inc()
 		return
@@ -338,13 +346,10 @@ func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Messag
 
 func (t *SyslogTarget) messageSender(entries chan<- loki.Entry) {
 	for msg := range t.messages {
-		entries <- loki.Entry{
-			Labels: msg.labels,
-			Entry: push.Entry{
-				Timestamp: msg.timestamp,
-				Line:      msg.message,
-			},
-		}
+		entries <- loki.NewEntry(msg.labels, push.Entry{
+			Timestamp: msg.timestamp,
+			Line:      msg.message,
+		})
 		t.metrics.syslogEntries.Inc()
 	}
 	t.messagesDone <- struct{}{}
