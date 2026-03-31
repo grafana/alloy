@@ -62,15 +62,13 @@ type Component struct {
 	positions positions.Positions
 	cluster   cluster.Cluster
 
+	fanout  *loki.Fanout
+	handler loki.LogsReceiver
+
 	mut         sync.Mutex
 	args        Arguments
 	tailer      *kubetail.Manager
 	lastOptions *kubetail.Options
-
-	handler loki.LogsReceiver
-
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
 }
 
 var (
@@ -105,6 +103,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		log:       o.Logger,
 		opts:      o,
 		handler:   loki.NewLogsReceiver(),
+		fanout:    loki.NewFanout(args.ForwardTo),
 		positions: positionsFile,
 	}
 	if err := c.Update(args); err != nil {
@@ -115,48 +114,35 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	defer c.positions.Stop()
-
 	defer func() {
-		c.mut.Lock()
-		defer c.mut.Unlock()
+		defer c.positions.Stop()
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
 
-		// Guard for safety, but it's not possible for Run to be called without
-		// c.tailer being initialized.
-		if c.tailer != nil {
-			c.tailer.Stop()
-		}
+			// Guard for safety, but it's not possible for Run to be called without
+			// c.tailer being initialized.
+			if c.tailer != nil {
+				c.tailer.Stop()
+			}
+		})
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-
-			for _, receiver := range receivers {
-				receiver.Chan() <- entry
-			}
-		}
-	}
+	loki.Consume(ctx, c.handler, c.fanout)
+	return nil
 }
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update the receivers before anything else, just in case something fails.
-	c.receiversMut.Lock()
-	c.receivers = newArgs.ForwardTo
-	c.receiversMut.Unlock()
-
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
 	c.positions.Update(newArgs.Position)
+	// Update the receivers before anything else, just in case something fails.
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
 	managerOpts, err := c.getTailerOptions(newArgs)
 	if err != nil {
 		return err

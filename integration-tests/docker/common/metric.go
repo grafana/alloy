@@ -52,6 +52,7 @@ type Value struct {
 type Metric struct {
 	TestName string `json:"test_name"`
 	Name     string `json:"__name__"`
+	Version  string `json:"version"`
 }
 
 func (m *MetricResponse) Unmarshal(data []byte) error {

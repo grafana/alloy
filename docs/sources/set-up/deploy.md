@@ -179,3 +179,47 @@ Examples of stateless components:
 - `otelcol.processor.transform`
 - `otelcol.processor.attributes`
 - `otelcol.processor.span`
+
+## Configure autoscaling
+
+You can configure {{< param "PRODUCT_NAME" >}} to automatically scale based on resource utilization using a Kubernetes Horizontal Pod Autoscaler (HPA).
+
+The following example shows how to configure autoscaling using the [Kubernetes Monitoring Helm chart][k8s-monitoring-helm]:
+
+```yaml
+cluster:
+  name: autoscaling-example-cluster
+
+destinations:
+  - name: prometheus
+    type: prometheus
+    url: http://prometheus.prometheus.svc:9090/api/v1/write
+
+clusterMetrics:
+  enabled: true
+
+alloy-metrics:
+  enabled: true
+  alloy:
+    resources:
+      requests:
+        cpu: "1m"
+        memory: "500Mi"
+  controller:
+    autoscaling:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 10
+      targetCPUUtilizationPercentage: 0
+      targetMemoryUtilizationPercentage: 80
+```
+
+This configuration:
+
+- Sets minimum and maximum replica counts. In this example, the range is 2 to 10.
+- Targets 80% memory utilization as the scaling threshold.
+- Disables CPU-based scaling by setting `targetCPUUtilizationPercentage` to 0.
+
+Memory-based scaling is typically more effective for {{< param "PRODUCT_NAME" >}} because memory usage correlates more directly with the number of active series.
+
+[k8s-monitoring-helm]: https://github.com/grafana/k8s-monitoring-helm

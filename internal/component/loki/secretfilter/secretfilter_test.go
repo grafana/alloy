@@ -21,8 +21,17 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+	"github.com/zricethezav/gitleaks/v8/detect"
+	"github.com/zricethezav/gitleaks/v8/report"
 )
 
+//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+type detectorFunc func(context.Context, detect.Fragment) []report.Finding
+
+//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+func (f detectorFunc) DetectContext(ctx context.Context, fragment detect.Fragment) []report.Finding {
+	return f(ctx, fragment)
+}
 func TestSecretFiltering(t *testing.T) {
 	// One component, one config load; all default cases run through it.
 	RunTestCases(t, testhelper.TestConfigs["default"], DefaultTestCases())
@@ -319,7 +328,7 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 
 	// Generate fake log entries with a fixed seed so that it's reproducible
 	fake := faker.NewWithSeed(rand.NewPCG(uint64(2014), uint64(2014)))
-	nbLogs := 100
+	nbLogs := 10000
 	benchInputs := make([]string, nbLogs)
 	for i := range benchInputs {
 		beginningStr := fake.Lorem().Paragraph(2)
@@ -333,6 +342,10 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 
 		benchInputs[i] = beginningStr + middleStr + endingStr
 	}
+
+	// Exclude config parse, New() (detector + regex compile), and fixture generation from
+	// the reported ns/op; only measure processEntry hot path.
+	b.ResetTimer()
 
 	// Run benchmarks
 	for i := 0; i < b.N; i++ {
@@ -763,9 +776,14 @@ func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
 		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ProcessingTimeout: 1 * time.Nanosecond, // guaranteed to expire before DetectString returns
+		ProcessingTimeout: 10 * time.Millisecond,
 	})
 	require.NoError(t, err)
+	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+	c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+		<-ctx.Done()
+		return nil
+	})
 
 	entry := loki.Entry{
 		Labels: model.LabelSet{},
@@ -791,10 +809,15 @@ func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
 		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
-		ProcessingTimeout: 1 * time.Nanosecond, // guaranteed to expire before DetectString returns
+		ProcessingTimeout: 10 * time.Millisecond,
 		DropOnTimeout:     true,
 	})
 	require.NoError(t, err)
+	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+	c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+		<-ctx.Done()
+		return nil
+	})
 
 	entry := loki.Entry{
 		Labels: model.LabelSet{},

@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/go-kit/log"
-	"github.com/oklog/run"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -88,14 +87,12 @@ type Component struct {
 
 	positions positions.Positions
 	handler   loki.LogsReceiver
+	fanout    *loki.Fanout
 
 	mut         sync.RWMutex
 	args        Arguments
 	lastOptions *kubetail.Options
 	restConfig  *rest.Config
-
-	receiversMut sync.RWMutex
-	receivers    []loki.LogsReceiver
 }
 
 var (
@@ -140,6 +137,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 		positions: positionsFile,
 		handler:   loki.NewLogsReceiver(),
+		fanout:    loki.NewFanout(args.ForwardTo),
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -149,74 +147,49 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	defer c.positions.Stop()
-
 	defer func() {
-		c.mut.RLock()
-		defer c.mut.RUnlock()
-
-		// Guard for safety, but it's not possible for Run to be called without
-		// c.tailer being initialized.
-		if c.tailer != nil {
-			c.tailer.Stop()
-		}
+		defer c.positions.Stop()
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			// Guard for safety, but it's not possible for Run to be called without
+			// c.tailer being initialized.
+			if c.tailer != nil {
+				c.tailer.Stop()
+			}
+		})
 	}()
 
-	var g run.Group
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
 
-	g.Add(func() error {
-		c.runHandler(ctx)
-		return nil
-	}, func(_ error) {
-		cancel()
-	})
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
 
-	g.Add(func() error {
-		err := c.controller.Run(ctx)
-		if err != nil {
+	wg.Go(func() {
+		// We cancel consume loop after controller exit.
+		defer cancel()
+		if err := c.controller.Run(ctx); err != nil {
 			level.Error(c.log).Log("msg", "controller exited with error", "err", err)
 		}
-		return err
-	}, func(_ error) {
-		cancel()
 	})
 
-	return g.Run()
-}
-
-func (c *Component) runHandler(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case entry := <-c.handler.Chan():
-			c.receiversMut.RLock()
-			receivers := c.receivers
-			c.receiversMut.RUnlock()
-
-			for _, receiver := range receivers {
-				receiver.Chan() <- entry
-			}
-		}
-	}
+	wg.Wait()
+	return nil
 }
 
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update the receivers before anything else, just in case something fails.
-	c.receiversMut.Lock()
-	c.receivers = newArgs.ForwardTo
-	c.receiversMut.Unlock()
-
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
 	c.positions.Update(newArgs.Position)
+	// Update the receivers before anything else, just in case something fails.
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
 	if err := c.updateTailer(newArgs); err != nil {
 		return err
 	}

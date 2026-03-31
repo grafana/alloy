@@ -44,15 +44,15 @@ type Arguments struct {
 type Component struct {
 	opts    component.Options
 	metrics *st.Metrics
+	fanout  *loki.Fanout
+	handler loki.LogsReceiver
 
 	mut             sync.RWMutex
 	args            Arguments
-	fanout          []loki.LogsReceiver
 	targets         []*st.SyslogTarget
 	liveDbgListener st.DebugListener
 
 	targetsUpdated chan struct{}
-	handler        loki.LogsReceiver
 }
 
 // LiveDebugging implements component.LiveDebugging.
@@ -64,7 +64,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:            o,
 		metrics:         st.NewMetrics(o.Registerer),
 		handler:         loki.NewLogsReceiver(),
-		fanout:          args.ForwardTo,
+		fanout:          loki.NewFanout(args.ForwardTo),
 		targetsUpdated:  make(chan struct{}, 1),
 		targets:         []*st.SyslogTarget{},
 		liveDbgListener: newLiveDebuggingListener(o),
@@ -81,36 +81,39 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		// Start draining routine to prevent potential deadlock if targets attempt to send during Stop().
-		cancel := c.startDrainingRoutine()
-		defer cancel()
-
-		// Stop all targets
-		c.mut.RLock()
-		defer c.mut.RUnlock()
 		level.Info(c.opts.Logger).Log("msg", "loki.source.syslog component shutting down, stopping listeners")
-		for _, l := range c.targets {
-			err := l.Stop()
-			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "error while stopping syslog listener", "err", err)
+
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+			for _, l := range c.targets {
+				if err := l.Stop(); err != nil {
+					level.Error(c.opts.Logger).Log("msg", "error while stopping syslog listener", "err", err)
+				}
 			}
-		}
+		})
 	}()
 
-	for {
-		select {
-		case <-c.targetsUpdated:
-			c.reloadTargets()
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
+
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
+
+	wg.Go(func() {
+		for {
+			select {
+			case <-ctx.Done():
+				cancel()
+				return
+			case <-c.targetsUpdated:
+				c.reloadTargets()
 			}
-			c.mut.RUnlock()
 		}
-	}
+	})
+	wg.Wait()
+	return nil
 }
 
 // Update implements component.Component.
@@ -123,11 +126,10 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
 	prevArgs := c.args
-	c.fanout = newArgs.ForwardTo
-
 	c.args = newArgs
-
 	if listenersChanged(prevArgs.SyslogListeners, newArgs.SyslogListeners) || relabelRulesChanged(prevArgs.RelabelRules, newArgs.RelabelRules) {
 		// trigger targets update
 		select {
@@ -158,31 +160,7 @@ func (c *Component) checkExperimentalFeatures(args Arguments) error {
 	return nil
 }
 
-func (c *Component) startDrainingRoutine() func() {
-	readCtx, cancel := context.WithCancel(context.Background())
-	c.mut.RLock()
-	defer c.mut.RUnlock()
-	fanoutCopy := make([]loki.LogsReceiver, len(c.fanout))
-	copy(fanoutCopy, c.fanout)
-	go func() {
-		for {
-			select {
-			case <-readCtx.Done():
-				return
-			case entry := <-c.handler.Chan():
-				for _, receiver := range fanoutCopy {
-					receiver.Chan() <- entry
-				}
-			}
-		}
-	}()
-	return cancel
-}
-
 func (c *Component) reloadTargets() {
-	// Start draining routine to prevent potential deadlock if targets attempt to send during Stop().
-	cancel := c.startDrainingRoutine()
-
 	// Grab current state
 	c.mut.RLock()
 	var rcs []*relabel.Config
@@ -195,14 +173,10 @@ func (c *Component) reloadTargets() {
 
 	// Stop existing targets
 	for _, l := range targetsToStop {
-		err := l.Stop()
-		if err != nil {
+		if err := l.Stop(); err != nil {
 			level.Error(c.opts.Logger).Log("msg", "error while stopping syslog listener", "err", err)
 		}
 	}
-
-	// Stop draining routine
-	cancel()
 
 	// Create new targets
 	c.mut.Lock()

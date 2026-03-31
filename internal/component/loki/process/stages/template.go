@@ -3,6 +3,7 @@ package stages
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding"
 	"encoding/hex"
 	"errors"
 	"reflect"
@@ -15,10 +16,10 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
+	"golang.org/x/crypto/sha3"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-
-	"golang.org/x/crypto/sha3"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config Errors.
@@ -62,40 +63,65 @@ func init() {
 	}
 }
 
+var _ syntax.Validator = (*TemplateConfig)(nil)
+
 // TemplateConfig configures template value extraction.
 type TemplateConfig struct {
-	Source   string `alloy:"source,attr"`
-	Template string `alloy:"template,attr"`
+	Source   string   `alloy:"source,attr"`
+	Template Template `alloy:"template,attr"`
 }
 
-// validateTemplateConfig validates the templateStage config.
-func validateTemplateConfig(cfg TemplateConfig) (*template.Template, error) {
-	if cfg.Source == "" {
-		return nil, ErrTemplateSourceRequired
+func (t *TemplateConfig) Validate() error {
+	if t.Source == "" {
+		return ErrTemplateSourceRequired
 	}
+	return nil
+}
 
-	return template.New("pipeline_template").Funcs(functionMap).Parse(cfg.Template)
+var (
+	_ encoding.TextMarshaler   = Template("")
+	_ encoding.TextUnmarshaler = (*Template)(nil)
+)
+
+type Template string
+
+func (t *Template) UnmarshalText(text []byte) error {
+	str := Template(text)
+	_, err := str.parse()
+	if err != nil {
+		return err
+	}
+	*t = str
+	return nil
+}
+
+func (t Template) MarshalText() (text []byte, err error) {
+	return []byte(t), nil
+}
+
+func (t Template) parse() (*template.Template, error) {
+	return template.New("pipeline_template").Funcs(functionMap).Parse(string(t))
 }
 
 // newTemplateStage creates a new templateStage
 func newTemplateStage(logger log.Logger, config TemplateConfig) (Stage, error) {
-	t, err := validateTemplateConfig(config)
+	templ, err := config.Template.parse()
+	// We should not get an error here when built from alloy syntax.
 	if err != nil {
 		return nil, err
 	}
-
 	return toStage(&templateStage{
-		cfgs:     config,
+		cfg:      config,
+		template: templ,
 		logger:   logger,
-		template: t,
 	}), nil
 }
 
 // templateStage will mutate the incoming entry and set it from extracted data
 type templateStage struct {
-	cfgs     TemplateConfig
-	logger   log.Logger
+	cfg      TemplateConfig
 	template *template.Template
+	logger   log.Logger
 }
 
 var bufPool = sync.Pool{
@@ -117,7 +143,7 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 			continue
 		}
 		td[k] = s
-		if k == o.cfgs.Source {
+		if k == o.cfg.Source {
 			td["Value"] = s
 		}
 	}
@@ -139,8 +165,8 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 	st := buf.String()
 	// If the template evaluates to an empty string, remove the key from the map
 	if st == "" {
-		delete(extracted, o.cfgs.Source)
+		delete(extracted, o.cfg.Source)
 	} else {
-		extracted[o.cfgs.Source] = st
+		extracted[o.cfg.Source] = st
 	}
 }

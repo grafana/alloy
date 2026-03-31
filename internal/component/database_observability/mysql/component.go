@@ -44,7 +44,7 @@ const selectServerInfo = `SELECT @@server_uuid, @@hostname, VERSION()`
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -241,9 +241,9 @@ type Collector interface {
 type Component struct {
 	opts              component.Options
 	args              Arguments
-	mut               sync.RWMutex
-	receivers         []loki.LogsReceiver
 	handler           loki.LogsReceiver
+	fanout            *loki.Fanout
+	mut               sync.RWMutex
 	registry          *prometheus.Registry
 	baseTarget        discovery.Target
 	collectors        []Collector
@@ -262,7 +262,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	c := &Component{
 		opts:      opts,
 		args:      args,
-		receivers: args.ForwardTo,
+		fanout:    loki.NewFanout(args.ForwardTo),
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
@@ -291,22 +291,31 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", name+" component shutting down, stopping collectors")
-		c.mut.RLock()
-		for _, collector := range c.collectors {
-			collector.Stop()
-		}
-		if c.dbConnection != nil {
-			c.dbConnection.Close()
-		}
-		c.mut.RUnlock()
+
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+
+			for _, collector := range c.collectors {
+				collector.Stop()
+			}
+			if c.dbConnection != nil {
+				c.dbConnection.Close()
+			}
+		})
 	}()
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
+
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
+
+	wg.Go(func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
+		defer cancel()
 
 		for {
 			select {
@@ -325,21 +334,10 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 			}
 		}
-	}()
+	})
 
-	for {
-		select {
-		case <-ctx.Done():
-			wg.Wait()
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
-		}
-	}
+	wg.Wait()
+	return nil
 }
 
 func (c *Component) getBaseTarget() (discovery.Target, error) {
@@ -373,6 +371,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = args.(Arguments)
+	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	if err := c.connectAndStartCollectors(context.Background()); err != nil {
 		c.reportError("failed to connect", err)
@@ -466,10 +465,11 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
-		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger, mysqld_collector.Config{
-			LockTimeout:   exporterCfg.LockWaitTimeout,
-			SlowLogFilter: exporterCfg.LogSlowFilter,
-		})
+		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger,
+			mysqld_collector.EnableLockWaitTimeout(exporterCfg.EnableLockWaitTimeout),
+			mysqld_collector.SetLockWaitTimeout(exporterCfg.LockWaitTimeout),
+			mysqld_collector.SetSlowLogFilter(exporterCfg.LogSlowFilter),
+		)
 		if err := c.registry.Register(exporter); err != nil {
 			return fmt.Errorf("failed to register prometheus_exporter collector: %w", err)
 		}

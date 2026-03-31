@@ -10,7 +10,8 @@ weight: 200
 
 # Release cadence
 
-A new minor release is planned every six weeks for {{< param "PRODUCT_NAME" >}}.
+A new minor release is planned every three weeks for {{< param "PRODUCT_NAME" >}}.
+Patch releases are published every one to two weeks.
 
 The release cadence is best-effort.
 If necessary, releases may be performed outside of this cadence, or a scheduled release date can be moved forwards or backwards.
