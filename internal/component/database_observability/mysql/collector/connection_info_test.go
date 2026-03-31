@@ -135,7 +135,9 @@ func TestConnectionInfo_StopUnregistersMetric(t *testing.T) {
 	require.True(t, found, "metric should be registered after Start")
 
 	col.Stop()
-	require.True(t, col.Stopped())
+	require.Eventually(t, func() bool {
+		return col.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
 
 	// metric is absent after Stop
 	metrics, err = reg.Gather()
@@ -189,7 +191,9 @@ func TestConnectionInfo_MonitorStartedWithDB(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 
 	col.Stop()
-	require.True(t, col.Stopped())
+	require.Eventually(t, func() bool {
+		return col.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
 
 	// Metric is unregistered after Stop
 	metrics, err = reg.Gather()

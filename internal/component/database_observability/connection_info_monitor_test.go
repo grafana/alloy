@@ -46,8 +46,8 @@ func TestRunConnectionInfoMonitor_UnregistersAfterConsecutiveFailures(t *testing
 		CheckInterval:   testCheckInterval,
 		ChecksThreshold: testThreshold,
 	}
-	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
-	defer cancel()
+	stop := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
+	defer stop()
 
 	// Wait for at least 3 tick intervals so the monitor performs 3 failed pings and unregisters
 	time.Sleep(testCheckInterval*time.Duration(testThreshold) + 20*time.Millisecond)
@@ -102,8 +102,8 @@ func TestRunConnectionInfoMonitor_ReregistersAfterConsecutiveSuccesses(t *testin
 		CheckInterval:   testCheckInterval,
 		ChecksThreshold: testThreshold,
 	}
-	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
-	defer cancel()
+	stop := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
+	defer stop()
 
 	// Poll until the metric is re-registered rather than sleeping a fixed duration, which is
 	// unreliable: extra pings after the mock expectations are exhausted return errors, causing
@@ -156,8 +156,8 @@ func TestRunConnectionInfoMonitor_MetricRemainsRegisteredWhilePingsSucceed(t *te
 		CheckInterval:   testCheckInterval,
 		ChecksThreshold: testThreshold,
 	}
-	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
-	defer cancel()
+	stop := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
+	defer stop()
 
 	// Wait for a few tick intervals
 	time.Sleep(testCheckInterval*4 + 20*time.Millisecond)
@@ -206,14 +206,14 @@ func TestRunConnectionInfoMonitor_CancelStopsGoroutine(t *testing.T) {
 		CheckInterval:   testCheckInterval,
 		ChecksThreshold: testThreshold,
 	}
-	cancel := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
+	stop := RunConnectionInfoMonitor(ctx, db, registry, infoMetric, labelValues, onStopped, config)
 
-	// Cancel immediately; onStopped should be called when the goroutine exits
-	cancel()
+	// Stop immediately; onStopped should be called when the goroutine exits
+	stop()
 	select {
 	case <-stopped:
 		// goroutine exited
 	case <-time.After(2 * time.Second):
-		t.Fatal("onStopped was not called after cancel")
+		t.Fatal("onStopped was not called after stop")
 	}
 }

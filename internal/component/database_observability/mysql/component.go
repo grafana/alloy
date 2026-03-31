@@ -465,10 +465,11 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
 		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
-		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger, mysqld_collector.Config{
-			LockTimeout:   exporterCfg.LockWaitTimeout,
-			SlowLogFilter: exporterCfg.LogSlowFilter,
-		})
+		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger,
+			mysqld_collector.EnableLockWaitTimeout(exporterCfg.EnableLockWaitTimeout),
+			mysqld_collector.SetLockWaitTimeout(exporterCfg.LockWaitTimeout),
+			mysqld_collector.SetSlowLogFilter(exporterCfg.LogSlowFilter),
+		)
 		if err := c.registry.Register(exporter); err != nil {
 			return fmt.Errorf("failed to register prometheus_exporter collector: %w", err)
 		}

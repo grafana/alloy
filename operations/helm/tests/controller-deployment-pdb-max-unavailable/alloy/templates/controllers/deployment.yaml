@@ -64,6 +64,7 @@ spec:
               mountPath: /etc/alloy
         - name: config-reloader
           image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
+          imagePullPolicy: IfNotPresent
           args:
             - --watched-dir=/etc/alloy
             - --reload-url=http://localhost:12345/-/reload
