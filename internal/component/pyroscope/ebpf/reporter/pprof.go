@@ -88,41 +88,44 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 			errUnknownOrigin)
 	}
 
-	containerID := meta.ContainerID
-	key := samples.TraceAndMetaKey{
-		Hash:           trace.Hash,
-		Comm:           meta.Comm,
-		ProcessName:    meta.ProcessName,
+	key := samples.ResourceKey{
+		APMServiceName: meta.APMServiceName,
+		ContainerID:    meta.ContainerID,
+		PID:            int64(meta.PID),
 		ExecutablePath: meta.ExecutablePath,
-		ApmServiceName: meta.APMServiceName,
-		Pid:            int64(meta.PID),
-		Tid:            int64(meta.TID),
 	}
 
 	eventsTree := p.traceEvents.WLock()
 	defer p.traceEvents.WUnlock(&eventsTree)
 
-	if _, exists := (*eventsTree)[containerID]; !exists {
-		(*eventsTree)[containerID] =
-			make(map[libpf.Origin]samples.KeyToEventMapping)
+	if _, exists := (*eventsTree)[key]; !exists {
+		(*eventsTree)[key] = samples.ResourceToProfiles{
+			EnvVars: meta.EnvVars,
+			Events:  make(map[libpf.Origin]samples.SampleToEvents),
+		}
 	}
 
-	if _, exists := (*eventsTree)[containerID][meta.Origin]; !exists {
-		(*eventsTree)[containerID][meta.Origin] =
-			make(samples.KeyToEventMapping)
+	rtp := (*eventsTree)[key]
+	if _, exists := rtp.Events[meta.Origin]; !exists {
+		rtp.Events[meta.Origin] = make(samples.SampleToEvents)
 	}
 
-	if events, exists := (*eventsTree)[containerID][meta.Origin][key]; exists {
+	sampleKey := samples.SampleKey{
+		Hash: trace.Hash,
+		Comm: meta.Comm,
+		TID:  int64(meta.TID),
+		CPU:  int64(meta.CPU),
+	}
+	if events, exists := rtp.Events[meta.Origin][sampleKey]; exists {
 		events.Timestamps = append(events.Timestamps, uint64(meta.Timestamp))
 		events.OffTimes = append(events.OffTimes, meta.OffTime)
-		(*eventsTree)[containerID][meta.Origin][key] = events
 		return nil
 	}
-	(*eventsTree)[containerID][meta.Origin][key] = &samples.TraceEvents{
+
+	rtp.Events[meta.Origin][sampleKey] = &samples.TraceEvents{
 		Frames:     trace.Frames,
 		Timestamps: []uint64{uint64(meta.Timestamp)},
 		OffTimes:   []int64{meta.OffTime},
-		EnvVars:    meta.EnvVars,
 		Labels:     trace.CustomLabels,
 	}
 	return nil
@@ -164,9 +167,9 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	*traceEventsPtr = newEvents
 	p.traceEvents.WUnlock(&traceEventsPtr)
 	var profiles []PPROF
-	for containerID, ts := range reportedEvents {
-		for origin, events := range ts {
-			pp := p.createProfile(containerID, origin, events)
+	for resourceKey, rtp := range reportedEvents {
+		for origin, events := range rtp.Events {
+			pp := p.createProfile(resourceKey, origin, events)
 			profiles = append(profiles, pp...)
 		}
 	}
@@ -179,7 +182,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	_ = level.Debug(p.log).Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
-func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin libpf.Origin, events map[samples.TraceAndMetaKey]*samples.TraceEvents) []PPROF {
+func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin libpf.Origin, events map[samples.SampleKey]*samples.TraceEvents) []PPROF {
 	defer func() {
 		if p.symbols != nil {
 			p.symbols.Cleanup()
@@ -192,22 +195,22 @@ func (p *PPROFReporter) createProfile(containerID samples.ContainerID, origin li
 		Origin:        origin,
 	})
 
-	for traceKey, traceInfo := range events {
-		target := p.sd.FindTarget(uint32(traceKey.Pid), containerID.String())
+	for sampleKey, traceInfo := range events {
+		target := p.sd.FindTarget(uint32(resourceKey.PID), resourceKey.ContainerID.String())
 		if target == nil {
 			continue
 		}
-		b := bs.BuilderForSample(target, uint32(traceKey.Pid))
+		b := bs.BuilderForSample(target, uint32(resourceKey.PID))
 		fakeMapping := b.FakeMapping()
 
 		s := b.NewSample(len(traceInfo.Frames))
-		comm := traceKey.Comm.String()
+		comm := sampleKey.Comm.String()
 		sampleLabels := map[string][]string{}
 		if comm != "" && p.cfg.CommMode.Label() {
 			sampleLabels["comm"] = []string{comm}
 		}
 		if p.cfg.PIDLabel {
-			sampleLabels["pid"] = []string{strconv.FormatInt(traceKey.Pid, 10)}
+			sampleLabels["pid"] = []string{strconv.FormatInt(resourceKey.PID, 10)}
 		}
 		if len(sampleLabels) > 0 {
 			s.Label = sampleLabels
