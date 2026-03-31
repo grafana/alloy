@@ -31,7 +31,7 @@ const (
 
 	pathReady = "/ready"
 
-	defaultMaxMessageSize = 100 << 20
+	defaultMaxMessageSize = 100 << 20 // 100MiB
 )
 
 func newRoutes(maxMessageSize int) ([]source.LogsRoute, []source.HandlerRoute) {
