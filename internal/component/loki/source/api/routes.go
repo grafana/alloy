@@ -189,7 +189,7 @@ func (p *plainTextRoute) Logs(r *http.Request, cfg *source.LogsConfig) ([]loki.E
 				},
 			),
 		)
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 	}
