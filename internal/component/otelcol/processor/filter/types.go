@@ -54,3 +54,21 @@ func (args *LogConfig) convert() map[string]any {
 		"log_record": append([]string{}, args.LogRecord...),
 	}
 }
+
+type ContextConditions struct {
+	Context    string   `alloy:"context,attr,optional"`
+	Conditions []string `alloy:"conditions,attr"`
+}
+
+type ContextConditionsSlice []ContextConditions
+
+func (args ContextConditionsSlice) convert() []map[string]any {
+	result := make([]map[string]any, 0, len(args))
+	for _, cond := range args {
+		result = append(result, map[string]any{
+			"context":    cond.Context,
+			"conditions": cond.Conditions,
+		})
+	}
+	return result
+}

@@ -21,6 +21,8 @@ var (
 	stateful        bool
 	testTimeout     time.Duration
 	alwaysPrintLogs bool
+	repoRootDir     string
+	testsRootDir    string
 )
 
 func main() {
@@ -51,26 +53,27 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 	fmt.Printf("Running integration tests (stateful=%v, skip-build=%v, specific-test=%s)\n", stateful, skipBuild, specificTest)
 
 	ctx := cmd.Context()
+	repoRootDir = mustFindRepoRoot()
+	testsRootDir = filepath.Join(repoRootDir, "integration-tests", "docker")
+
 	if !skipBuild {
 		buildAlloy()
 	}
 
 	start := time.Now()
-	executeCommand("docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
+	executeCommandInDir(testsRootDir, "docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
 	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo", "kafka", "loki", "redis"}
-	executeCommand("docker", waitArgs, "Waiting for dependent services to be healthy")
+	executeCommandInDir(testsRootDir, "docker", waitArgs, "Waiting for dependent services to be healthy")
 	waitForHTTPReady("http://localhost:9009/ready", 3*time.Minute)
 	fmt.Printf("Environment setup completed in %s\n", time.Since(start))
 	if !stateful {
-		defer executeCommand("docker", []string{"compose", "down"}, "Stopping dependent services")
+		defer executeCommandInDir(testsRootDir, "docker", []string{"compose", "down"}, "Stopping dependent services")
 	}
 
 	if specificTest != "" {
-		fmt.Println("Running", specificTest)
-		if !filepath.IsAbs(specificTest) && !strings.HasPrefix(specificTest, "./tests/") {
-			specificTest = "./tests/" + specificTest
-		}
-		runTest(ctx, specificTest, 12345, stateful, testTimeout)
+		resolvedTestDir := resolveTestDir(specificTest)
+		fmt.Println("Running", resolvedTestDir)
+		runTest(ctx, resolvedTestDir, 12345, stateful, testTimeout)
 	} else {
 		runAllTests(ctx)
 	}
@@ -79,6 +82,16 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 		log.Fatalf("%d tests failed. See logs for failure", failedTests)
 	}
 	fmt.Println("All integration tests passed!")
+}
+
+func resolveTestDir(test string) string {
+	if filepath.IsAbs(test) {
+		return test
+	}
+	if strings.HasPrefix(test, "./tests/") {
+		return filepath.Join(testsRootDir, strings.TrimPrefix(test, "./"))
+	}
+	return filepath.Join(testsRootDir, "tests", test)
 }
 
 func waitForHTTPReady(url string, timeout time.Duration) {

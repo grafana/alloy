@@ -45,7 +45,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.envFrom | list | `[]` | Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core |
 | alloy.extraArgs | list | `[]` | Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/ |
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
-| alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
+| alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. If `service.type` is `NodePort`, each item may set `nodePort` to choose the Service NodePort for that port. |
 | alloy.hostAliases | list | `[]` | Host aliases to add to the Alloy container. |
 | alloy.initialDelaySeconds | int | `10` | Initial delay for readiness probe. |
 | alloy.lifecycle | object | `{}` | Set lifecycle hooks for the Grafana Alloy container. |
@@ -65,6 +65,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.customArgs | list | `[]` | Override the args passed to the container. |
 | configReloader.enabled | bool | `true` | Enables automatically reloading when the Alloy config changes. |
 | configReloader.image.digest | string | `""` | SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag` |
+| configReloader.image.pullPolicy | string | `"IfNotPresent"` | Config reloader image pull policy. |
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
 | configReloader.image.tag | string | `"v0.81.0"` | Tag of image to use for config reloading. |

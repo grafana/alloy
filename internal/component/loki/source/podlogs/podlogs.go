@@ -178,6 +178,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	})
 
+	wg.Wait()
 	return nil
 }
 

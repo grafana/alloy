@@ -67,7 +67,7 @@ func TestNewOAuth2RoundTripperSignature(t *testing.T) {
 // calls through to the upstream function and returns a non-nil RoundTripper.
 func TestNewOAuth2RoundTripper(t *testing.T) {
 	opts := defaultHTTPClientOptions
-	rt := newOAuth2RoundTripper(
+	rt, err := newOAuth2RoundTripper(
 		commonconfig.NewInlineSecret("test-secret"),
 		&commonconfig.OAuth2{
 			ClientID: "test-client",
@@ -77,13 +77,14 @@ func TestNewOAuth2RoundTripper(t *testing.T) {
 		&opts,
 	)
 	require.NotNil(t, rt)
+	require.NoError(t, err)
 }
 
 // TestNewOAuth2RoundTripperNilCredential verifies that newOAuth2RoundTripper
 // handles a nil SecretReader (the credential arg) without panicking.
 func TestNewOAuth2RoundTripperNilCredential(t *testing.T) {
 	opts := defaultHTTPClientOptions
-	rt := newOAuth2RoundTripper(
+	rt, err := newOAuth2RoundTripper(
 		nil,
 		&commonconfig.OAuth2{
 			ClientID: "test-client",
@@ -93,13 +94,12 @@ func TestNewOAuth2RoundTripperNilCredential(t *testing.T) {
 		&opts,
 	)
 	require.NotNil(t, rt)
+	require.NoError(t, err)
 }
 
-// TestNewOAuth2RoundTripperNilNext verifies that newOAuth2RoundTripper
-// handles a nil next RoundTripper without panicking.
 func TestNewOAuth2RoundTripperNilNext(t *testing.T) {
 	opts := defaultHTTPClientOptions
-	rt := newOAuth2RoundTripper(
+	rt, err := newOAuth2RoundTripper(
 		commonconfig.NewInlineSecret("test-secret"),
 		&commonconfig.OAuth2{
 			ClientID: "test-client",
@@ -108,14 +108,13 @@ func TestNewOAuth2RoundTripperNilNext(t *testing.T) {
 		nil,
 		&opts,
 	)
-	require.NotNil(t, rt)
+	require.Nil(t, rt)
+	require.Error(t, err)
 }
 
-// TestNewOAuth2RoundTripperAllNils verifies that newOAuth2RoundTripper
-// handles all nil interface arguments without panicking.
 func TestNewOAuth2RoundTripperAllNils(t *testing.T) {
 	opts := defaultHTTPClientOptions
-	rt := newOAuth2RoundTripper(
+	rt, err := newOAuth2RoundTripper(
 		nil,
 		&commonconfig.OAuth2{
 			ClientID: "test-client",
@@ -124,7 +123,8 @@ func TestNewOAuth2RoundTripperAllNils(t *testing.T) {
 		nil,
 		&opts,
 	)
-	require.NotNil(t, rt)
+	require.Nil(t, rt)
+	require.Error(t, err)
 }
 
 // TestHttpClientOptionsDefaultsMatch asserts that our defaultHTTPClientOptions

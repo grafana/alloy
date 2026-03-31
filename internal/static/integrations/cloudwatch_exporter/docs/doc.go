@@ -66,9 +66,7 @@ func generateServicesDocSection() string {
 	})
 
 	for i, supportedSvc := range yaceConf.SupportedServices {
-		sb.WriteString(
-			fmt.Sprintf("* Namespace: `%s`", supportedSvc.Namespace),
-		)
+		fmt.Fprintf(&sb, "* Namespace: `%s`", supportedSvc.Namespace) //nolint:errcheck // strings.Builder write cannot fail
 		if i < len(yaceConf.SupportedServices)-1 {
 			sb.WriteString("\n")
 		}

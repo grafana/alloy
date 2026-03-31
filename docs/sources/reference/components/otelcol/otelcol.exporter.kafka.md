@@ -39,11 +39,12 @@ otelcol.exporter.kafka "LABEL" {
 You can use the following arguments with `otelcol.exporter.kafka`:
 
 | Name                                       | Type           | Description                                                                                                                 | Default              | Required |
-|--------------------------------------------|----------------|-----------------------------------------------------------------------------------------------------------------------------|----------------------|----------|
+| ------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------- | -------- |
 | `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                              |                      | yes      |
 | `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                                | `["localhost:9092"]` | no       |
 | `allow_auto_topic_creation`                | `bool`         | Whether to allow automatic topic creation.                                                                                  | `true`               | no       |
 | `client_id`                                | `string`       | Consumer client ID to use. The ID will be used for all produce requests.                                                    | `"otel-collector"`   | no       |
+| `conn_idle_timeout`                        | `duration`     | Time after which idle connections are not reused and may be closed.                                                         | `"9m"`               | no       |
 | `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                           | `"otlp_proto"`       | no       |
 | `include_metadata_keys`                    | `list(string)` | List of metadata keys to propagate as Kafka message headers.                                                                | `[]`                 | no       |
 | `partition_metrics_by_resource_attributes` | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in metric messages sent to Kafka. | `false`              | no       |
@@ -118,33 +119,33 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [debug_metrics]: #debug_metrics
 
 ### `logs`
-	
+
 The `logs` block configures how to send logs to Kafka brokers.
 
-| Name                     | Type     | Description                                                                  | Default        | Required |
-| ------------------------ | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
-| `topic`                  | `string` | The name of the Kafka topic to which logs will be exported.                  | `"otlp_logs"`  | no       |
+| Name                      | Type     | Description                                                                                                                                        | Default        | Required |
+| ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
+| `encoding`                | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                                                                       | `"otlp_proto"` | no       |
+| `topic`                   | `string` | The name of the Kafka topic to which logs will be exported.                                                                                        | `"otlp_logs"`  | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
 ### `metrics`
 
 The `metrics` block configures how to send metrics to Kafka brokers.
 
-| Name                     | Type     | Description                                                                  | Default          | Required |
-| ------------------------ | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
-| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"`   | no       |
-| `topic`                  | `string` | The name of the Kafka topic to which metrics will be exported.               | `"otlp_metrics"` | no       |
+| Name                      | Type     | Description                                                                                                                                        | Default          | Required |
+| ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
+| `encoding`                | `string` | The encoding for metrics. Refer to [Supported encodings](#supported-encodings).                                                                   | `"otlp_proto"`   | no       |
+| `topic`                   | `string` | The name of the Kafka topic to which metrics will be exported.                                                                                     | `"otlp_metrics"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`             | no       |
 
 ### `traces`
 
 The `traces` block configures how to send traces to Kafka brokers.
 
-| Name                     | Type     | Description                                                                  | Default        | Required |
-| ------------------------ | -------- | ---------------------------------------------------------------------------- | -------------- | -------- |
-| `encoding`               | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings). | `"otlp_proto"` | no       |
-| `topic`                  | `string` | The name of the Kafka topic to which traces will be exported.                | `"otlp_spans"` | no       |
+| Name                      | Type     | Description                                                                                                                                        | Default        | Required |
+| ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
+| `encoding`                | `string` | The encoding for traces. Refer to [Supported encodings](#supported-encodings).                                                                     | `"otlp_proto"` | no       |
+| `topic`                   | `string` | The name of the Kafka topic to which traces will be exported.                                                                                      | `"otlp_spans"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
 ### `authentication`
@@ -201,7 +202,7 @@ The following arguments are supported:
 | Name                 | Type     | Description                                         | Default   | Required |
 | -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
 | `compression`        | `string` | The level of compression to use on messages.        | `"none"`  | no       |
-| `flush_max_messages` | `number` | Time to wait between retries.                       | `0`       | no       |
+| `flush_max_messages` | `number` | The maximum number of messages in one request.      | `10000`   | no       |
 | `max_message_bytes`  | `number` | The maximum permitted size of a message in bytes.   | `1000000` | no       |
 | `required_acks`      | `number` | Controls when a message is regarded as transmitted. | `1`       | no       |
 
@@ -219,14 +220,14 @@ The `compression_params` block configures the producer compression parameters.
 
 The following argument is supported:
 
-| Name                 | Type     | Description                                         | Default   | Required |
-| -------------------- | -------- | --------------------------------------------------- | --------- | -------- |
-| `level`              | `int`    | The level of compression to use on messages.        | `0`       | no       |
+| Name    | Type  | Description                                  | Default | Required |
+| ------- | ----- | -------------------------------------------- | ------- | -------- |
+| `level` | `int` | The level of compression to use on messages. | `0`     | no       |
 
 The following levels are valid combinations of `compression` and `level`:
 
 | Compression | Value | Description            |
-|-------------|-------|------------------------|
+| ----------- | ----- | ---------------------- |
 | `gzip`      | `1`   | BestSpeed              |
 | `gzip`      | `9`   | BestCompression        |
 | `gzip`      | `-1`  | DefaultCompression     |
@@ -234,7 +235,6 @@ The following levels are valid combinations of `compression` and `level`:
 | `zstd`      | `3`   | SpeedDefault           |
 | `zstd`      | `6`   | SpeedBetterCompression |
 | `zstd`      | `11`  | SpeedBestCompression   |
-
 
 `lz4` and `snappy` do not currently support compression levels in this component.
 
@@ -272,21 +272,21 @@ The following fields are exported and can be referenced by other components:
 
 Available for all signals:
 
-* `otlp_proto`: Data is encoded as OTLP Protobuf.
-* `otlp_json`: Data is encoded as OTLP JSON.
+- `otlp_proto`: Data is encoded as OTLP Protobuf.
+- `otlp_json`: Data is encoded as OTLP JSON.
 
 Available only for traces:
 
-* `jaeger_proto`: The payload is serialized to a single Jaeger proto `Span`, and keyed by TraceID.
-* `jaeger_json`: The payload is serialized to a single Jaeger JSON Span using `jsonpb`, and keyed by TraceID.
-* `zipkin_proto`: The payload is serialized to Zipkin v2 proto Span.
-* `zipkin_json`: The payload is serialized to Zipkin v2 JSON Span.
+- `jaeger_proto`: The payload is serialized to a single Jaeger proto `Span`, and keyed by TraceID.
+- `jaeger_json`: The payload is serialized to a single Jaeger JSON Span using `jsonpb`, and keyed by TraceID.
+- `zipkin_proto`: The payload is serialized to Zipkin v2 proto Span.
+- `zipkin_json`: The payload is serialized to Zipkin v2 JSON Span.
 
 Available only for logs:
 
-* `raw`: If the log record body is a byte array, it is sent as is.
-   Otherwise, it is serialized to JSON.
-   Resource and record attributes are discarded.
+- `raw`: If the log record body is a byte array, it is sent as is.
+  Otherwise, it is serialized to JSON.
+  Resource and record attributes are discarded.
 
 ## Component health
 

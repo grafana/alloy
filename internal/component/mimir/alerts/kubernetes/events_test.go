@@ -556,7 +556,7 @@ spec:
 				testLogger = util.TestLogger(t)
 			}
 
-			c := fake.NewSimpleClientset(
+			c := fake.NewClientset(
 				&corev1.Secret{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "s-receiver-api-url",

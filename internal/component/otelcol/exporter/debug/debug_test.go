@@ -37,12 +37,14 @@ func Test(t *testing.T) {
 				sampling_initial = 5
 				sampling_thereafter = 20
 				use_internal_logger = false
+				output_paths = ["stdout", "/tmp/alloy-debug.log"]
 			`,
 			expectedReturn: debugexporter.Config{
 				Verbosity:          configtelemetry.LevelDetailed,
 				SamplingInitial:    5,
 				SamplingThereafter: 20,
 				UseInternalLogger:  false,
+				OutputPaths:        []string{"stdout", "/tmp/alloy-debug.log"},
 			},
 		},
 
