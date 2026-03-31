@@ -582,149 +582,147 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 	processedCount := 0
 	for _, qi := range c.queryCache {
-		generatedAt := time.Now().Format(time.RFC3339)
-		nonRecoverableFailureOccurred := false
 		if processedCount >= c.currentBatchSize {
 			break
 		}
-		logger := log.With(c.logger, "digest", qi.digest)
 
-		defer func(nonRecoverableFailureOccurred *bool) {
-			if *nonRecoverableFailureOccurred {
-				qi.failureCount++
-				c.queryDenylist[qi.uniqueKey] = qi
-			}
-			delete(c.queryCache, qi.uniqueKey)
-			processedCount++
-		}(&nonRecoverableFailureOccurred)
-
-		if strings.HasSuffix(qi.queryText, "...") {
-			err := c.sendExplainPlansOutput(
-				qi.schemaName,
-				qi.digest,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query is truncated",
-				nil,
-			)
-			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send truncated query skip explain plan output", "err", err)
-			}
-			continue
+		if c.processExplainPlan(ctx, qi) {
+			qi.failureCount++
+			c.queryDenylist[qi.uniqueKey] = qi
 		}
-
-		containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to check for reserved keywords", "err", err)
-			err := c.sendExplainPlansOutput(
-				qi.schemaName,
-				qi.digest,
-				generatedAt,
-				database_observability.ExplainProcessingResultError,
-				fmt.Sprintf("failed to check for reserved keywords: %s", err.Error()),
-				nil,
-			)
-			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
-			}
-			continue
-		}
-
-		if containsReservedWord {
-			err := c.sendExplainPlansOutput(
-				qi.schemaName,
-				qi.digest,
-				generatedAt,
-				database_observability.ExplainProcessingResultSkipped,
-				"query contains reserved word",
-				nil,
-			)
-			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
-			}
-			continue
-		}
-
-		logger = log.With(logger, "schema_name", qi.schemaName)
-
-		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
-		if err != nil {
-			level.Debug(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
-			for _, code := range unrecoverableSQLCodes {
-				if strings.Contains(err.Error(), fmt.Sprintf("Error %s", code)) {
-					nonRecoverableFailureOccurred = true
-					break
-				}
-			}
-			continue
-		}
-
-		if len(byteExplainPlanJSON) == 0 {
-			level.Error(logger).Log("msg", "explain plan json bytes is empty")
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		if !utf8.Valid(byteExplainPlanJSON) {
-			level.Error(logger).Log("msg", "explain plan json bytes is not valid UTF-8")
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		redactedByteExplainPlanJSON, _, err := redactAttachedConditions(byteExplainPlanJSON)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to redact explain plan json", "err", err)
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		msgBlock, msgDatType, _, err := jsonparser.Get(redactedByteExplainPlanJSON, "query_block", "message")
-		if err != nil {
-			// An explain plan response typically will not have a message field if it is successful.
-			if msgDatType != jsonparser.NotExist {
-				level.Error(logger).Log("msg", "failed to parse explain plan json", "err", err)
-			}
-		} else {
-			if strings.Contains(string(msgBlock), "no matching row in const table") {
-				level.Debug(logger).Log("msg", "explain plan query resulted in no rows, skipping", "message", string(msgBlock))
-				continue
-			}
-		}
-
-		level.Debug(logger).Log("msg", "db native explain plan",
-			"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
-
-		explainPlanOutput, genErr := newExplainPlansOutput(logger, byteExplainPlanJSON)
-		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
-		if err != nil {
-			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		if genErr != nil {
-			level.Error(logger).Log(
-				"msg", "failed to create explain plan output",
-				"incomplete_explain_plan", base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
-				"err", genErr,
-			)
-			nonRecoverableFailureOccurred = true
-			continue
-		}
-
-		if err := c.sendExplainPlansOutput(
-			qi.schemaName,
-			qi.digest,
-			generatedAt,
-			database_observability.ExplainProcessingResultSuccess,
-			"",
-			explainPlanOutput,
-		); err != nil {
-			level.Error(c.logger).Log("msg", "failed to send explain plan output", "err", err)
-		}
+		delete(c.queryCache, qi.uniqueKey)
+		processedCount++
 	}
 
 	return nil
+}
+
+// processExplainPlan processes a single query from the cache.
+// Returns true if the query encountered a non-recoverable failure and should be denylisted.
+func (c *ExplainPlans) processExplainPlan(ctx context.Context, qi *queryInfo) bool {
+	generatedAt := time.Now().Format(time.RFC3339)
+	logger := log.With(c.logger, "digest", qi.digest)
+
+	if strings.HasSuffix(qi.queryText, "...") {
+		err := c.sendExplainPlansOutput(
+			qi.schemaName,
+			qi.digest,
+			generatedAt,
+			database_observability.ExplainProcessingResultSkipped,
+			"query is truncated",
+			nil,
+		)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to send truncated query skip explain plan output", "err", err)
+		}
+		return false
+	}
+
+	containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSMySQL)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to check for reserved keywords", "err", err)
+		err := c.sendExplainPlansOutput(
+			qi.schemaName,
+			qi.digest,
+			generatedAt,
+			database_observability.ExplainProcessingResultError,
+			fmt.Sprintf("failed to check for reserved keywords: %s", err.Error()),
+			nil,
+		)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
+		}
+		return false
+	}
+
+	if containsReservedWord {
+		err := c.sendExplainPlansOutput(
+			qi.schemaName,
+			qi.digest,
+			generatedAt,
+			database_observability.ExplainProcessingResultSkipped,
+			"query contains reserved word",
+			nil,
+		)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
+		}
+		return false
+	}
+
+	logger = log.With(logger, "schema_name", qi.schemaName)
+
+	byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
+	if err != nil {
+		level.Debug(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
+		for _, code := range unrecoverableSQLCodes {
+			if strings.Contains(err.Error(), fmt.Sprintf("Error %s", code)) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if len(byteExplainPlanJSON) == 0 {
+		level.Error(logger).Log("msg", "explain plan json bytes is empty")
+		return true
+	}
+
+	if !utf8.Valid(byteExplainPlanJSON) {
+		level.Error(logger).Log("msg", "explain plan json bytes is not valid UTF-8")
+		return true
+	}
+
+	redactedByteExplainPlanJSON, _, err := redactAttachedConditions(byteExplainPlanJSON)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to redact explain plan json", "err", err)
+		return true
+	}
+
+	msgBlock, msgDatType, _, err := jsonparser.Get(redactedByteExplainPlanJSON, "query_block", "message")
+	if err != nil {
+		// An explain plan response typically will not have a message field if it is successful.
+		if msgDatType != jsonparser.NotExist {
+			level.Error(logger).Log("msg", "failed to parse explain plan json", "err", err)
+		}
+	} else {
+		if strings.Contains(string(msgBlock), "no matching row in const table") {
+			level.Debug(logger).Log("msg", "explain plan query resulted in no rows, skipping", "message", string(msgBlock))
+			return false
+		}
+	}
+
+	level.Debug(logger).Log("msg", "db native explain plan",
+		"db_native_explain_plan", base64.StdEncoding.EncodeToString(redactedByteExplainPlanJSON))
+
+	explainPlanOutput, genErr := newExplainPlansOutput(logger, byteExplainPlanJSON)
+	explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
+	if err != nil {
+		level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
+		return true
+	}
+
+	if genErr != nil {
+		level.Error(logger).Log(
+			"msg", "failed to create explain plan output",
+			"incomplete_explain_plan", base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
+			"err", genErr,
+		)
+		return true
+	}
+
+	if err := c.sendExplainPlansOutput(
+		qi.schemaName,
+		qi.digest,
+		generatedAt,
+		database_observability.ExplainProcessingResultSuccess,
+		"",
+		explainPlanOutput,
+	); err != nil {
+		level.Error(c.logger).Log("msg", "failed to send explain plan output", "err", err)
+	}
+
+	return false
 }
 
 func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
