@@ -1,3 +1,4 @@
 alloy_container: 
   extra_files:
-    - "../../configs/loki-pipeline/shared.alloy"
+    - "../../configs/loki-pipeline/process.alloy"
+  use_mount: true

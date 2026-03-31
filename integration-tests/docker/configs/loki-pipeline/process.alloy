@@ -1,0 +1,15 @@
+declare "process" {
+	argument "forward_to" {
+		optional = false
+	}
+
+	export "receiver" {
+		value = loki.process.p.receiver
+	}
+
+	loki.process "p" {
+		forward_to = argument.forward_to.value
+
+		stage.cri {}
+	}
+}
