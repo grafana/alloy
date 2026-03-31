@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -50,6 +51,7 @@ type Arguments struct {
 	Rate              float64             `alloy:"rate,attr,optional"`               // Sampling rate in [0.0, 1.0]: fraction of entries to process through the secret filter; rest are forwarded unchanged. 1.0 = process all (default).
 	ProcessingTimeout time.Duration       `alloy:"processing_timeout,attr,optional"` // Maximum time allowed to process a single log entry. 0 (default) disables the timeout.
 	DropOnTimeout     bool                `alloy:"drop_on_timeout,attr,optional"`    // When true, entries that exceed processing_timeout are dropped instead of forwarded unredacted. Requires processing_timeout to be set.
+	LabelTimedOut     bool                `alloy:"label_timed_out,attr,optional"`    // When true, adds the label secretfilter="timed-out" to entries forwarded after a processing timeout. False (default) disables the label.
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
@@ -281,6 +283,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		"rate", args.Rate,
 		"processing_timeout", args.ProcessingTimeout,
 		"drop_on_timeout", args.DropOnTimeout,
+		"label_timed_out", args.LabelTimedOut,
 	)
 
 	// Immediately export the receiver which remains the same for the component
@@ -357,6 +360,10 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 			return loki.Entry{}, true
 		}
 
+		if c.args.LabelTimedOut {
+			entry = withLabel(entry, "secretfilter", "timed-out")
+		}
+
 		// Redact any partial findings before forwarding, even if the timeout was hit.
 		if len(findings) > 0 {
 			return c.redactLine(entry, findings), false
@@ -412,6 +419,14 @@ func hashSecret(secret string) string {
 	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
+// withLabel returns a copy of the entry with the given label set to value.
+func withLabel(entry loki.Entry, name, value string) loki.Entry {
+	newLabels := maps.Clone(entry.Labels)
+	newLabels[model.LabelName(name)] = model.LabelValue(value)
+	entry.Labels = newLabels
+	return entry
+}
+
 // Update implements component.Component.
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
@@ -451,6 +466,7 @@ func (c *Component) Update(args component.Arguments) error {
 		"rate", newArgs.Rate,
 		"processing_timeout", newArgs.ProcessingTimeout,
 		"drop_on_timeout", newArgs.DropOnTimeout,
+		"label_timed_out", newArgs.LabelTimedOut,
 	)
 
 	return nil
