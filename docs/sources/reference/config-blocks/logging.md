@@ -25,12 +25,12 @@ logging {
 
 You can use the following arguments with `logging`:
 
-| Name          | Type                 | Description                                  | Default    | Required |
-| ------------- | -------------------- | -------------------------------------------- | ---------- | -------- |
-| `destination` | `string`             | Primary log destination.                     | `"stderr"` | no       |
-| `format`      | `string`             | Format to use for writing log lines.         | `"logfmt"` | no       |
-| `level`       | `string`             | Level at which log lines should be written.  | `"info"`   | no       |
-| `write_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.    | `[]`       | no       |
+| Name          | Type                 | Description                                  | Default       | Required |
+| ------------- | -------------------- | -------------------------------------------- | ------------- | -------- |
+| `destination` | `string`             | Primary log destination.                     | __See below__ | no       |
+| `format`      | `string`             | Format to use for writing log lines.         | `"logfmt"`    | no       |
+| `level`       | `string`             | Level at which log lines should be written.  | `"info"`      | no       |
+| `write_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.    | `[]`          | no       |
 
 ### `level`
 
@@ -60,7 +60,10 @@ The following strings are recognized as valid log destinations:
 * `"stderr"`: Write logs to `stderr`.
 * `"windows_event_log"`:  Windows only. Write logs to the Windows Event Log under the "Alloy" source.
 
-When you run {{< param "PRODUCT_NAME" >}} as a Windows service, logs are written as event logs even if `destination` is set to `"stderr"`.
+The default value of `destination` is set to `"windows_event_log"` when {{< param "PRODUCT_NAME" >}} runs as a Windows service.
+Otherwise, `destination` defaults to `"stderr"`.
+
+Alloy will fail to start if `destination` is set to `"windows_event_log"` and Alloy is not running on Windows.
 
 ## Retrieve logs
 
