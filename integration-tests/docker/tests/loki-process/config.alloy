@@ -5,7 +5,7 @@ loki.source.file "test" {
 		{__path__ = "/etc/alloy/mount/json.log", format = "json"},
 		{__path__ = "/etc/alloy/mount/logfmt.log", format = "logfmt"},
 	]
-	
+
 	file_match {
 		enabled = true
 	}
@@ -19,20 +19,20 @@ loki.process "p" {
 	stage.match {
 		selector = `{format="cri"}`
 
-		stage.cri {}
+		stage.cri { }
 	}
 
 	stage.match {
 		selector = `{format="docker"}`
 
-		stage.docker {}
+		stage.docker { }
 	}
 
 	stage.match {
 		selector = `{format="json"}`
 
 		stage.json {
-			expressions = {msg = "msg"}
+			expressions = {msg = "msg", service_name = "service_name"}
 		}
 	}
 
@@ -44,7 +44,14 @@ loki.process "p" {
 		}
 	}
 
-	// Always drop filename and stream.
+	// Add service_name if present
+	stage.labels {
+		values = {
+			service_name = "",
+		}
+	}
+
+	// Always drop filename.
 	stage.label_drop {
 		values = ["filename"]
 	}

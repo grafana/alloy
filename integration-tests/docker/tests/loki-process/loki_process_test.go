@@ -53,7 +53,15 @@ func TestProcessLogFile(t *testing.T) {
 		},
 		common.ExpectedLogResult{
 			Labels: map[string]string{
-				"format": "json",
+				"format":       "json",
+				"service_name": "service-1",
+			},
+			EntryCount: 2,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format":       "json",
+				"service_name": "service-2",
 			},
 			EntryCount: 1,
 		},
@@ -139,8 +147,32 @@ func writeDockerLogFile(t *testing.T, mountDir string) {
 func writeJSONLogFile(t *testing.T, mountDir string) {
 	t.Helper()
 
+	type jsonLogLine struct {
+		Msg         string `json:"msg"`
+		ServiceName string `json:"service_name"`
+	}
+
 	var buf bytes.Buffer
-	buf.WriteString("{\"msg\":\"plain json line\"}\n")
+	writeLine := func(line jsonLogLine) {
+		b, err := json.Marshal(line)
+		require.NoError(t, err)
+		buf.Write(b)
+		buf.WriteString("\n")
+	}
+
+	writeLine(jsonLogLine{
+		Msg:         "msg 1",
+		ServiceName: "service-1",
+	})
+	writeLine(jsonLogLine{
+		Msg:         "msg 2",
+		ServiceName: "service-1",
+	})
+	writeLine(jsonLogLine{
+		Msg:         "msg 3",
+		ServiceName: "service-2",
+	})
+
 	writeLogFile(t, filepath.Join(mountDir, "json.log"), buf.String())
 }
 
