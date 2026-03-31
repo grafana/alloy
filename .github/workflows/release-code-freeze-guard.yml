@@ -32,6 +32,7 @@ jobs:
           REPO_OWNER: ${{ github.repository_owner }}
           REPO_NAME: ${{ github.event.repository.name }}
           BASE_BRANCH: ${{ github.base_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
           # Always allow release-please bot PRs
           if [ "$PR_AUTHOR" = "grafana-alloybot[bot]" ]; then
@@ -42,6 +43,18 @@ jobs:
           # Always allow PRs with the freeze-exempt label
           if echo "$PR_LABELS" | grep -q "freeze-exempt"; then
             echo "✅ PR has freeze-exempt label. Allowed."
+            exit 0
+          fi
+
+          # Auto-exempt PR types.
+          # The PR title is validated as conventional commit format by
+          # release-lint-pr-title.yml, so we can reliably extract the type.
+          #
+          EXEMPT_TYPES="docs test ci style proposal"
+          #
+          CC_TYPE=$(echo "$PR_TITLE" | grep -oE '^[a-z]+' || true)
+          if echo "$EXEMPT_TYPES" | grep -qw "$CC_TYPE"; then
+            echo "✅ PR type '$CC_TYPE' is exempt from code freeze."
             exit 0
           fi
 
@@ -81,7 +94,12 @@ jobs:
             echo ""
             echo "An RC has been published and $BASE_BRANCH is frozen until the final release."
             echo "Only critical fixes approved by the release manager may be merged."
-            echo "Add the 'freeze-exempt' label to this PR to bypass the freeze."
+            echo ""
+            echo "PRs with type [$EXEMPT_TYPES] are automatically exempt."
+            echo "If this PR qualifies, update the title to use the appropriate conventional"
+            echo "commit type."
+            echo ""
+            echo "Otherwise, add the 'freeze-exempt' label to bypass the freeze."
             exit 1
           fi
 

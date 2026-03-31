@@ -65,6 +65,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.customArgs | list | `[]` | Override the args passed to the container. |
 | configReloader.enabled | bool | `true` | Enables automatically reloading when the Alloy config changes. |
 | configReloader.image.digest | string | `""` | SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag` |
+| configReloader.image.pullPolicy | string | `"IfNotPresent"` | Config reloader image pull policy. |
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
 | configReloader.image.tag | string | `"v0.81.0"` | Tag of image to use for config reloading. |
