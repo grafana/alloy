@@ -9,7 +9,37 @@ declare "process" {
 
 	loki.process "p" {
 		forward_to = argument.forward_to.value
-
+			
+		// Parse cri log lines.
 		stage.cri {}
+	
+		// Parse docker json logs.
+		stage.docker {}
+	
+		stage.match {
+		    // We use stream stdout for cri logs.
+			selector = `{stream="stdout"}`
+			stage.static_labels {
+			  values = {
+				source = "cri",
+			  }
+			}
+		}
+
+		stage.match {
+		    // We use stream stderr for docker logs.
+			selector = `{stream="stderr"}`
+
+			stage.static_labels {
+			  values = {
+				source = "docker",
+			  }
+			}
+		}
+	
+		// Always drop filename and stream.
+		stage.label_drop {
+			values = ["filename", "stream"]
+		}
 	}
 }

@@ -1,28 +1,28 @@
 import.file "shared" {
-  filename = "/etc/alloy/process.alloy"
+	filename = "/etc/alloy/process.alloy"
 }
 
 loki.source.file "test" {
-  targets    = [
-    {__path__ = "/etc/alloy/mount/*.log"},
-  ]
+	targets = [
+		{__path__ = "/etc/alloy/mount/*.log"},
+	]
 
-  file_match {
-	enabled = true
-  }
+	file_match {
+		enabled = true
+	}
 
-  forward_to = [shared.process.p.receiver]
+	forward_to = [shared.process.p.receiver]
 }
 
 shared.process "p" {
-  forward_to = [loki.write.test.receiver]
+	forward_to = [loki.write.test.receiver]
 }
 
 loki.write "test" {
-  endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
-  }
-  external_labels = {
-    test_name = "readlogfile",
-  }
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+	external_labels = {
+		test_name = "readlogfile",
+	}
 }

@@ -35,9 +35,17 @@ func TestReadLogFile(t *testing.T) {
 		t,
 		common.ExpectedLogResult{
 			Labels: map[string]string{
-				"stream": "stderr",
+				"source": "cri",
+			},
+			EntryCount: 1,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"source": "docker",
 			},
 			EntryCount: 1,
 		},
 	)
+
+	common.AssertLabelsNotIndexed(t, "filename", "stream")
 }

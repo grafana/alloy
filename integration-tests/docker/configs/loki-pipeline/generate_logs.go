@@ -20,6 +20,11 @@ func GenerateLogs(t *testing.T, w io.Writer) {
 	buf.WriteString(time.Now().Format(time.RFC3339Nano))
 	buf.WriteString(" stdout F final chunk\n")
 
+	// Write one log in docker json format.
+	buf.WriteString(`{"log":"docker json line\n","stream":"stderr","time":"`)
+	buf.WriteString(time.Now().Format(time.RFC3339Nano))
+	buf.WriteString(`"}` + "\n")
+
 	require.NoError(t, writeAll(w, buf.Bytes()))
 
 }
