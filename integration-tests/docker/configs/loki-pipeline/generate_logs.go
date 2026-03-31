@@ -27,7 +27,10 @@ func GenerateLogs(t *testing.T, w io.Writer) {
 	buf.WriteString(`","format":"json"}` + "\n")
 
 	// Write one plain JSON log line that should be parsed by stage.json.
-	buf.WriteString(`{"msg":"plain json line","format":"json"}` + "\n")
+	buf.WriteString(`{"format":"json","msg":"plain json line"}` + "\n")
+
+	// Write one plain logfmt log line that should be parsed by stage.logfmt.
+	buf.WriteString("format=logfmt msg=\"plain logfmt line\"\n")
 
 	require.NoError(t, writeAll(w, buf.Bytes()))
 }

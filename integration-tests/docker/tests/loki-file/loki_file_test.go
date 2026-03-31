@@ -51,6 +51,12 @@ func TestReadLogFile(t *testing.T) {
 			},
 			EntryCount: 1,
 		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format": "logfmt",
+			},
+			EntryCount: 1,
+		},
 	)
 
 	common.AssertLabelsNotIndexed(t, "filename", "stream")
