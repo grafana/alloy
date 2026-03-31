@@ -1245,8 +1245,8 @@ github.com/grafana/loki/v3 v3.6.5 h1:2r6EDKJb1tWBdrzRBLXvTKXS0LBsHAXu0u+08VMlAbA
 github.com/grafana/loki/v3 v3.6.5/go.mod h1:gPN/AmoFLwS6aaozj2ZiufCHRPYLYZSoWoEjWX6t8sQ=
 github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe h1:yIXAAbLswn7VNWBIvM71O2QsgfgW9fRXZNR0DXe6pDU=
 github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe/go.mod h1:MS2lj3INKhZjWNqd3N0m3J+Jxf3DAOnAH9VT3Sh9MUE=
-github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd h1:FW1Km8Z1mE8r/WLBAbX3LYv14DEZehdZTWOfF4qsqOY=
-github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd/go.mod h1:iEFA+REkm+0WRvVxy0cA1bBhJlFcQB998yymb45TqMU=
+github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16 h1:jx17wA4FO2TxWIHd5Tr79OL8XqD6joZuYKTBBhwuqnc=
+github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16/go.mod h1:oLIOsUDpaRHoUs0+qOoM+Jg3/Fw53mnaVlFXKJ/KW3w=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89 h1:Ab3Z4AXC1Hffr4NbeYq0vTQhJbiGTTO2xd0ZV0kC1v8=
 github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89/go.mod h1:BUJCdmzfsndvLKeFuONqMPsEA0fkeVuAyt8II4Lk0Dg=
 github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966 h1:flIED1bVVc8XGgEM9J2M8oRnllD0R+Gydf/mXHSeww0=
