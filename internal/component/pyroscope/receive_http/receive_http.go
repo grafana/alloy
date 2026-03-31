@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -28,7 +29,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
 )
 
 func init() {
@@ -61,7 +61,6 @@ type Component struct {
 	serverConfig       *fnet.HTTPConfig
 	uncheckedCollector *util.UncheckedCollector
 	appendables        []pyroscope.Appendable
-	grpcServer         *grpc.Server
 	mut                sync.Mutex
 	logger             log.Logger
 	tracer             trace.Tracer
@@ -106,7 +105,7 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) update(args component.Arguments) (bool, error) {
 	shutdown := false
 	newArgs := args.(Arguments)
-	// required for debug info upload over grpc over http2 over http server port
+	// required for debug info upload over connect over http2 over http server port
 	if newArgs.Server.HTTP.HTTP2 == nil {
 		newArgs.Server.HTTP.HTTP2 = &fnet.HTTP2Config{}
 	}
@@ -147,6 +146,9 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 		// mount connect go pushv1
 		pathPush, handlePush := pushv1connect.NewPusherServiceHandler(c)
 		router.PathPrefix(pathPush).Handler(handlePush).Methods(http.MethodPost)
+
+		// mount connect debuginfo upload handler
+		debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(router, c)
 	})
 }
 
@@ -304,10 +306,6 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Component) shutdownServer() {
-	if c.grpcServer != nil {
-		c.grpcServer.GracefulStop()
-		c.grpcServer = nil
-	}
 	if c.server != nil {
 		c.server.StopAndShutdown()
 		c.server = nil

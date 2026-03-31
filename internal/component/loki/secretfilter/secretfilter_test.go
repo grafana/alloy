@@ -328,7 +328,7 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 
 	// Generate fake log entries with a fixed seed so that it's reproducible
 	fake := faker.NewWithSeed(rand.NewPCG(uint64(2014), uint64(2014)))
-	nbLogs := 100
+	nbLogs := 10000
 	benchInputs := make([]string, nbLogs)
 	for i := range benchInputs {
 		beginningStr := fake.Lorem().Paragraph(2)
@@ -342,6 +342,10 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 
 		benchInputs[i] = beginningStr + middleStr + endingStr
 	}
+
+	// Exclude config parse, New() (detector + regex compile), and fixture generation from
+	// the reported ns/op; only measure processEntry hot path.
+	b.ResetTimer()
 
 	// Run benchmarks
 	for i := 0; i < b.N; i++ {

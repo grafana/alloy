@@ -20,11 +20,32 @@ jobs:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
+
     steps:
+      - name: Wait for release branch ⏳
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          BRANCH="release/v$(echo "${TAG}" | sed -E 's/^v([0-9]+\.[0-9]+)\..*/\1/')"
+          echo "Waiting for branch ${BRANCH}..."
+          for i in $(seq 1 60); do
+            if gh api "repos/${{ github.repository }}/branches/${BRANCH}" > /dev/null 2>&1; then
+              echo "Branch ${BRANCH} found."
+              exit 0
+            fi
+            echo "Attempt ${i}/60: branch not found, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::Branch ${BRANCH} did not appear within 10 minutes."
+          exit 1
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
+
       - uses: grafana/writers-toolkit/publish-technical-documentation-release@8cc658b604c6e05c275af30163a1c7728dfe19b2 # publish-technical-documentation-release/v2
         # This internal action's version is left as a tag instead of a pinned hash because renovate
         # does not support this type of tag/version format without custom configuration.
