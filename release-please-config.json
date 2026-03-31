@@ -8,7 +8,6 @@
     { "type": "refactor", "section": "Refactoring", "hidden": true },
     { "type": "perf", "section": "Performance", "hidden": true },
     { "type": "test", "section": "Tests", "hidden": true },
-    { "type": "build", "section": "Build", "hidden": true },
     { "type": "ci", "section": "CI", "hidden": true },
     { "type": "chore", "section": "Chores", "hidden": true },
     { "type": "proposal", "section": "Proposals", "hidden": true },

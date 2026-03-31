@@ -239,7 +239,7 @@ var expectedConfig = model.JobsConfig{
 	StsRegion: "us-east-2",
 	DiscoveryJobs: []model.DiscoveryJob{{
 		Regions:                   []string{"us-east-2"},
-		Type:                      "AWS/EC2",
+		Namespace:                 "AWS/EC2",
 		Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
 		SearchTags:                []model.SearchTag{{Key: "instance_type", Value: regexp.MustCompile("spot")}},
 		CustomTags:                []model.Tag{{Key: "alias", Value: "tesis"}},
@@ -263,9 +263,10 @@ var expectedConfig = model.JobsConfig{
 			Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
 			DimensionsNames: []string{"InstanceId"},
 		}},
+		EnhancedMetrics: []*model.EnhancedMetricConfig{},
 	}, {
 		Regions:                   []string{"us-east-2"},
-		Type:                      "AWS/S3",
+		Namespace:                 "AWS/S3",
 		Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
 		SearchTags:                []model.SearchTag{},
 		CustomTags:                []model.Tag{},
@@ -289,6 +290,7 @@ var expectedConfig = model.JobsConfig{
 			Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),
 			DimensionsNames: []string{"BucketName"},
 		}},
+		EnhancedMetrics: []*model.EnhancedMetricConfig{},
 	}},
 	StaticJobs: []model.StaticJob{{
 		Name:       "custom_tesis_metrics",
@@ -320,7 +322,7 @@ var expectedConfig3 = model.JobsConfig{
 	DiscoveryJobs: []model.DiscoveryJob{
 		{
 			Regions:                   []string{"us-east-2"},
-			Type:                      "AWS/EC2",
+			Namespace:                 "AWS/EC2",
 			Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
 			SearchTags:                []model.SearchTag{{Key: "instance_type", Value: regexp.MustCompile("spot")}},
 			CustomTags:                []model.Tag{{Key: "alias", Value: "tesis"}},
@@ -342,10 +344,11 @@ var expectedConfig3 = model.JobsConfig{
 				Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
 				DimensionsNames: []string{"InstanceId"},
 			}},
+			EnhancedMetrics: []*model.EnhancedMetricConfig{},
 		},
 		{
-			Regions: []string{"us-east-2"},
-			Type:    "AWS/S3",
+			Regions:   []string{"us-east-2"},
+			Namespace: "AWS/S3",
 			Roles: []model.Role{{
 				RoleArn:    "arn:aws:iam::878167871295:role/yace_testing",
 				ExternalID: "",
@@ -370,6 +373,7 @@ var expectedConfig3 = model.JobsConfig{
 				Regexp:          regexp.MustCompile("(?P<BucketName>[^:]+)$"),
 				DimensionsNames: []string{"BucketName"},
 			}},
+			EnhancedMetrics: []*model.EnhancedMetricConfig{},
 		},
 	},
 	StaticJobs: []model.StaticJob{{
@@ -401,7 +405,7 @@ var expectedConfig4 = model.JobsConfig{
 	StsRegion: "us-east-2",
 	DiscoveryJobs: []model.DiscoveryJob{{
 		Regions:                   []string{"us-east-2"},
-		Type:                      "AWS/EC2",
+		Namespace:                 "AWS/EC2",
 		Roles:                     []model.Role{{RoleArn: "arn:aws:iam::878167871295:role/yace_testing", ExternalID: ""}},
 		SearchTags:                []model.SearchTag{{Key: "instance_type", Value: regexp.MustCompile("spot")}},
 		CustomTags:                []model.Tag{{Key: "alias", Value: "tesis"}},
@@ -425,6 +429,7 @@ var expectedConfig4 = model.JobsConfig{
 			Regexp:          regexp.MustCompile("instance/(?P<InstanceId>[^/]+)"),
 			DimensionsNames: []string{"InstanceId"},
 		}},
+		EnhancedMetrics: []*model.EnhancedMetricConfig{},
 	}},
 	StaticJobs: []model.StaticJob{{
 		Name:       "custom_tesis_metrics",

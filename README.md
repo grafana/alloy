@@ -107,7 +107,8 @@ Check out our [documentation][] to see:
 
 ## Release cadence
 
-A new minor release is planned every six weeks.
+A new minor release is planned every three weeks.
+Patch releases are published every one to two weeks.
 
 The release cadence is best-effort: if necessary, releases may be performed
 outside of this cadence, or a scheduled release date can be moved forwards or

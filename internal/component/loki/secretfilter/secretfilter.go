@@ -258,17 +258,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	detector, err := newDetectorFromArgs(args)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gitleaks detector: %w", err)
-	}
-
 	c := &Component{
 		opts:               o,
 		log:                o.Logger,
 		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 		fanout:             loki.NewFanout(args.ForwardTo),
-		detector:           detector,
 		metrics:            newMetrics(o.Registerer, args.OriginLabel),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
