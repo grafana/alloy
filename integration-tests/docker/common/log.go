@@ -24,3 +24,12 @@ func (m *LogResponse) Unmarshal(data []byte) error {
 type PushRequest struct {
 	Streams []LogData `json:"streams"`
 }
+
+type LogSeriesResponse struct {
+	Status string              `json:"status"`
+	Data   []map[string]string `json:"data"`
+}
+
+func (m *LogSeriesResponse) Unmarshal(data []byte) error {
+	return json.Unmarshal(data, m)
+}
