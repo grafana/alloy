@@ -22,8 +22,8 @@ type Server struct {
 	logger  log.Logger
 	metrics *serverMetrics
 
-	server       *fnet.TargetServer
-	serverConfig *fnet.ServerConfig
+	server    *fnet.TargetServer
+	netConfig *fnet.ServerConfig
 
 	mut        sync.RWMutex
 	logsConfig *LogsConfig
@@ -55,24 +55,30 @@ type HandlerRoute interface {
 	http.Handler
 }
 
+type ServerConfig struct {
+	Namespace  string
+	NetConfig  *fnet.ServerConfig
+	LogsConfig *LogsConfig
+}
+
 type LogsConfig struct {
 	FixedLabels          model.LabelSet
 	RelabelRules         []*relabel.Config
 	UseIncomingTimestamp bool
 }
 
-func NewServer(logger log.Logger, reg prometheus.Registerer, recv loki.LogsBatchReceiver, namespace string, serverConfig *fnet.ServerConfig, logsConfig *LogsConfig) (*Server, error) {
-	server, err := fnet.NewTargetServer(logger, namespace, reg, serverConfig)
+func NewServer(logger log.Logger, reg prometheus.Registerer, recv loki.LogsBatchReceiver, cfg ServerConfig) (*Server, error) {
+	server, err := fnet.NewTargetServer(logger, cfg.Namespace, reg, cfg.NetConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Server{
 		logger:        logger,
-		metrics:       newServerMetrics(namespace, reg),
+		metrics:       newServerMetrics(cfg.Namespace, reg),
 		server:        server,
-		serverConfig:  serverConfig,
-		logsConfig:    logsConfig,
+		netConfig:     cfg.NetConfig,
+		logsConfig:    cfg.LogsConfig,
 		recv:          recv,
 		once:          sync.Once{},
 		forceShutdown: make(chan struct{}),
@@ -100,12 +106,12 @@ func (s *Server) Update(logsConfig *LogsConfig) {
 }
 
 // NeedsRestart reports whether a new server instance is required.
-func (s *Server) NeedsRestart(serverConfig *fnet.ServerConfig) bool {
+func (s *Server) NeedsRestart(netConfig *fnet.ServerConfig) bool {
 	if s == nil {
 		return true
 	}
 
-	return !reflect.DeepEqual(serverConfig, s.serverConfig)
+	return !reflect.DeepEqual(netConfig, s.netConfig)
 }
 
 // HTTPAddr returns the server HTTP listen address.

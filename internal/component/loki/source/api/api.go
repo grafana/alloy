@@ -133,10 +133,14 @@ func (c *Component) Update(args component.Arguments) error {
 		c.uncheckedCollector.SetCollector(reg)
 
 		var err error
-		c.server, err = source.NewServer(c.opts.Logger, reg, c.handler, "loki_source_api", newArgs.Server, &source.LogsConfig{
-			FixedLabels:          newArgs.labelSet(),
-			RelabelRules:         relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
-			UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
+		c.server, err = source.NewServer(c.opts.Logger, reg, c.handler, source.ServerConfig{
+			Namespace: "loki_source_api",
+			NetConfig: newArgs.Server,
+			LogsConfig: &source.LogsConfig{
+				FixedLabels:          newArgs.labelSet(),
+				RelabelRules:         relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
+				UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
+			},
 		})
 
 		if err != nil {
@@ -147,6 +151,8 @@ func (c *Component) Update(args component.Arguments) error {
 		if err = c.server.Run(logsRoutes, handlerRoutes); err != nil {
 			return fmt.Errorf("failed to run embedded server: %v", err)
 		}
+
+		return nil
 	}
 
 	if c.server != nil {

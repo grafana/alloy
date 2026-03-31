@@ -2,6 +2,7 @@ package api
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"net/http"
 	"strings"

@@ -29,8 +29,7 @@ func TestServer(t *testing.T) {
 		srv := newTestServer(
 			t,
 			recv,
-			testServerConfig(time.Second),
-			&LogsConfig{},
+			testServerConfig(time.Second, &LogsConfig{}),
 			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
 				return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "hello"})},
 					http.StatusAccepted,
@@ -55,8 +54,7 @@ func TestServer(t *testing.T) {
 		srv := newTestServer(
 			t,
 			recv,
-			testServerConfig(time.Second),
-			&LogsConfig{},
+			testServerConfig(time.Second, &LogsConfig{}),
 			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
 				return nil, http.StatusBadRequest, errors.New("bad request")
 			}),
@@ -77,8 +75,7 @@ func TestServer(t *testing.T) {
 		srv := newTestServer(
 			t,
 			recv,
-			testServerConfig(time.Second),
-			&LogsConfig{},
+			testServerConfig(time.Second, &LogsConfig{}),
 			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
 				return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "partial"})},
 					http.StatusUnprocessableEntity,
@@ -102,8 +99,7 @@ func TestServer(t *testing.T) {
 		srv := newTestServer(
 			t,
 			recv,
-			testServerConfig(time.Second),
-			&LogsConfig{},
+			testServerConfig(time.Second, &LogsConfig{}),
 			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
 				return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "hello"})},
 					http.StatusNoContent,
@@ -153,10 +149,7 @@ func TestServer_Update(t *testing.T) {
 		srv := newTestServer(
 			t,
 			recv,
-			testServerConfig(time.Second),
-			&LogsConfig{
-				FixedLabels: model.LabelSet{"version": "before"},
-			},
+			testServerConfig(time.Second, &LogsConfig{FixedLabels: model.LabelSet{"version": "before"}}),
 			newTestLogsRoute(func(_ *http.Request, cfg *LogsConfig) ([]loki.Entry, int, error) {
 				return []loki.Entry{loki.NewEntry(cfg.FixedLabels.Clone(), push.Entry{Line: "hello"})}, http.StatusNoContent, nil
 			}),
@@ -188,16 +181,15 @@ func TestServer_Update(t *testing.T) {
 		srv := newTestServer(
 			t,
 			recv,
-			testServerConfig(time.Second),
-			&LogsConfig{},
+			testServerConfig(time.Second, &LogsConfig{}),
 		)
 		defer srv.ForceShutdown()
 
-		assert.False(t, srv.NeedsRestart(srv.serverConfig))
+		assert.False(t, srv.NeedsRestart(srv.netConfig))
 
-		restartedConfig := testServerConfig(time.Second)
-		restartedConfig.HTTP.ListenPort = 12345
-		assert.True(t, srv.NeedsRestart(restartedConfig))
+		restartedConfig := testServerConfig(time.Second, &LogsConfig{})
+		restartedConfig.NetConfig.HTTP.ListenPort = 12345
+		assert.True(t, srv.NeedsRestart(restartedConfig.NetConfig))
 	})
 }
 
@@ -207,8 +199,7 @@ func TestServer_Shutdown(t *testing.T) {
 		srv := newTestServer(
 			t,
 			loki.NewLogsBatchReceiver(),
-			testServerConfig(25*time.Millisecond),
-			&LogsConfig{},
+			testServerConfig(25*time.Millisecond, &LogsConfig{}),
 			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
 				close(requestReceived)
 				return []loki.Entry{loki.NewEntry(model.LabelSet{}, push.Entry{Line: "blocked"})}, http.StatusNoContent, nil
@@ -251,8 +242,7 @@ func TestServer_Shutdown(t *testing.T) {
 		srv := newTestServer(
 			t,
 			loki.NewLogsBatchReceiver(),
-			testServerConfig(time.Second),
-			&LogsConfig{},
+			testServerConfig(time.Second, &LogsConfig{}),
 			newTestLogsRoute(func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
 				close(requestReceived)
 				return []loki.Entry{loki.NewEntry(model.LabelSet{}, push.Entry{Line: "blocked"})}, http.StatusNoContent, nil
@@ -333,10 +323,10 @@ func (r testHandlerRoute) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	r.handler.ServeHTTP(w, req)
 }
 
-func newTestServer(t *testing.T, recv loki.LogsBatchReceiver, cfg *fnet.ServerConfig, logsConfig *LogsConfig, logsRoutes ...LogsRoute) *Server {
+func newTestServer(t *testing.T, recv loki.LogsBatchReceiver, cfg ServerConfig, logsRoutes ...LogsRoute) *Server {
 	t.Helper()
 
-	srv, err := NewServer(util.TestLogger(t), prometheus.NewRegistry(), recv, "test_server", cfg, logsConfig)
+	srv, err := NewServer(util.TestLogger(t), prometheus.NewRegistry(), recv, cfg)
 	require.NoError(t, err)
 
 	err = srv.Run(logsRoutes, []HandlerRoute{testHandlerRoute{
@@ -359,17 +349,21 @@ func newTestServer(t *testing.T, recv loki.LogsBatchReceiver, cfg *fnet.ServerCo
 	return srv
 }
 
-func testServerConfig(timeout time.Duration) *fnet.ServerConfig {
-	return &fnet.ServerConfig{
-		HTTP: &fnet.HTTPConfig{
-			ListenAddress: "127.0.0.1",
-			ListenPort:    0,
+func testServerConfig(timeout time.Duration, logsConfig *LogsConfig) ServerConfig {
+	return ServerConfig{
+		Namespace:  "test",
+		LogsConfig: logsConfig,
+		NetConfig: &fnet.ServerConfig{
+			HTTP: &fnet.HTTPConfig{
+				ListenAddress: "127.0.0.1",
+				ListenPort:    0,
+			},
+			GRPC: &fnet.GRPCConfig{
+				ListenAddress: "127.0.0.1",
+				ListenPort:    0,
+			},
+			GracefulShutdownTimeout: timeout,
 		},
-		GRPC: &fnet.GRPCConfig{
-			ListenAddress: "127.0.0.1",
-			ListenPort:    0,
-		},
-		GracefulShutdownTimeout: timeout,
 	}
 }
 
