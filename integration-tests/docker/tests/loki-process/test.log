@@ -1,0 +1,6 @@
+2026-03-31T12:00:00.000000001Z stdout P partial chunk
+2026-03-31T12:00:00.000000002Z stdout F final chunk
+{"log":"docker json line\n","stream":"stderr","time":"2026-03-31T12:00:00.000000003Z","format":"json"}
+{"format":"json","msg":"plain json line"}
+format=logfmt msg="plain logfmt line"
+203.0.113.0 - - [04/Aug/2021:21:12:04 +0000] "GET /healthz HTTP/1.1" 200 15 "-" "GoogleHC/1.0" "-" "-" "-" "-"

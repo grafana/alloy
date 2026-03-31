@@ -1,0 +1,76 @@
+loki.source.file "test" {
+	targets = [
+		{__path__ = "/etc/alloy/test.log"},
+	]
+	forward_to = [loki.process.p.receiver]
+}
+
+loki.process "p" {
+		forward_to = argument.forward_to.value
+
+		// Parse cri log lines.
+		stage.cri {}
+
+		// Parse docker json logs.
+		stage.docker {}
+
+		stage.match {
+			// We use stream stdout for cri logs.
+			selector = `{stream="stdout"}`
+
+			stage.static_labels {
+				values = {
+					format = "cri",
+				}
+			}
+		}
+
+		stage.match {
+			// We use stream stderr for docker logs.
+			selector = `{stream="stderr"}`
+
+			stage.static_labels {
+				values = {
+					format = "docker",
+				}
+			}
+		}
+
+		stage.match {
+			// Parse all lines as json except for docker formatted log lines.
+			selector = `{format!="docker"}`
+
+			stage.json {
+				expressions = {format = "format"}
+			}
+		}
+
+		stage.logfmt {
+			mapping = {format = "format"}
+		}
+
+		stage.pattern {
+			pattern            = `<_> - - <_> "<method> <_> <_>" <status> <_> <_> "<_>" <_>`
+			labels_from_groups = true
+		}
+
+		stage.labels {
+			values = {
+				format = "",
+			}
+		}
+
+		// Always drop filename and stream.
+		stage.label_drop {
+			values = ["filename", "stream"]
+		}
+	}
+
+loki.write "test" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+	external_labels = {
+		test_name = "processlogfile",
+	}
+}
