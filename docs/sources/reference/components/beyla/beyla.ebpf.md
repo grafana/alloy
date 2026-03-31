@@ -65,6 +65,8 @@ The following formats are supported:
 
 You can use the following blocks with `beyla.ebpf`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                                  | Description                                                                                        | Required |
 |------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | yes      |
@@ -92,9 +94,6 @@ You can use the following blocks with `beyla.ebpf`:
 | `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
-
 [routes]: #routes
 [traces]: #traces
 [attributes]: #attributes
@@ -112,6 +111,8 @@ For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined 
 [network metrics]: #network-metrics
 [network filters]: #network-filters
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

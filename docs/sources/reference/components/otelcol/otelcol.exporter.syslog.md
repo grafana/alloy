@@ -78,6 +78,8 @@ The `protocol` argument specifies the syslog format supported by the endpoint.
 
 You can use the following blocks with `otelcol.exporter.syslog`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                    | Required |
 | -------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.     | no       |
@@ -87,15 +89,14 @@ You can use the following blocks with `otelcol.exporter.syslog`:
 | [`tls`][tls]                           | Configures TLS for a TCP connection.                                           | no       |
 | `tls` > [`tpm`][tpm]                   | Configures TPM settings for the TLS `key_file`.                                | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `tls` > `tpm` refers to a `tpm` block defined inside a `tls` block.
-
 [tls]: #tls
 [tpm]: #tpm
 [sending_queue]: #sending_queue
 [batch]: #batch
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 

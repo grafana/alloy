@@ -90,6 +90,8 @@ loki.relabel "syslog" {
 
 You can use the following blocks with `loki.source.syslog`:
 
+{{< docs/alloy-config >}}
+
 | Name                                                        | Description                                                                 | Required |
 |-------------------------------------------------------------|-----------------------------------------------------------------------------|----------|
 | [`listener`][listener]                                      | Configures a listener for Syslog messages.                                  | no       |
@@ -97,13 +99,12 @@ You can use the following blocks with `loki.source.syslog`:
 | `listener` > [`rfc3164_cisco_components`][cisco_components] | Configures parsing of non-standard Cisco IOS syslog extensions.             | no       |
 | `listener` > [`tls_config`][tls_config]                     | Configures TLS settings for connecting to the endpoint for TCP connections. | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `listener` > `tls_config` refers to a `tls_config` block defined inside a `listener` block.
-
 [listener]: #listener
 [tls_config]: #tls_config
 [raw_format_options]: #raw_format_options
 [cisco_components]: #rfc3164_cisco_components
+
+{{< /docs/alloy-config >}}
 
 ### `listener`
 

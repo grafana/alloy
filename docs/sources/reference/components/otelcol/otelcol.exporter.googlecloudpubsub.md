@@ -61,6 +61,8 @@ You can use the following arguments with `otelcol.exporter.googlecloudpubsub`:
 
 You can use the following blocks with `otelcol.exporter.googlecloudpubsub`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                                     | Required |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
@@ -74,6 +76,8 @@ You can use the following blocks with `otelcol.exporter.googlecloudpubsub`:
 [retry_on_failure]: #retry_on_failure
 [sending_queue]: #sending_queue
 [watermark]: #watermark
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 

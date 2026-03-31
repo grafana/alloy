@@ -102,34 +102,36 @@ The following order is recommended for AWS:
 
 You can use the following blocks with `otelcol.processor.resourcedetection`:
 
-| Block                                  | Description                                                                                             | Required |
-|----------------------------------------|---------------------------------------------------------------------------------------------------------|----------|
-| [`output`][output]                     | Configures where to send received telemetry data.                                                       | yes      |
-| [`akamai`][akamai]                     | Queries the Akamai connected cloud instance metadata service to retrieve various resource attributes.   | no       |
-| [`aks`][aks]                           | Adds resource attributes related to Azure AKS.                                                          | no       |
-| [`azure`][azure]                       | Queries the Azure Instance Metadata Service to retrieve various resource attributes.                    | no       |
-| [`consul`][consul]                     | Queries a Consul agent and reads its configuration endpoint to retrieve values for resource attributes. | no       |
-| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                              | no       |
-| [`docker`][docker]                     | Queries the Docker daemon to retrieve various resource attributes from the host machine.                | no       |
-| [`digitalocean`][digitalocean]         | Queries the DigitalOcean instance metadata API to retrieve various resource attributes.                 | no       |
-| [`dynatrace`][dynatrace]               | Loads resource information from the `dt_host_metadata.properties` file.                                 | no       |
-| [`ec2`][ec2]                           | Reads resource information from the EC2 instance metadata API.                                          | no       |
-| [`ecs`][ecs]                           | Queries the Task Metadata Endpoint to record information about the current ECS Task.                    | no       |
-| [`eks`][eks]                           | Adds resource attributes for Amazon EKS.                                                                | no       |
-| [`elasticbeanstalk`][elasticbeanstalk] | Reads the AWS X-Ray configuration file available on all Beanstalk instances with X-Ray Enabled.         | no       |
-| [`gcp`][gcp]                           | Detects resource attributes using the Google Cloud Client Libraries for Go.                             | no       |
-| [`heroku`][heroku]                     | Adds resource attributes derived from Heroku dyno metadata.                                             | no       |
-| [`hetzner`][hetzner]                   | Queries the Hetzner cloud instance metadata API to retrieve various resource attributes.               | no       |
-| [`kubeadm`][kubeadm]                   | Queries the Kubernetes API server to retrieve kubeadm resource attributes.                              | no       |
-| [`kubernetes_node`][kubernetes_node]   | Queries the Kubernetes API server to retrieve various node resource attributes.                         | no       |
-| [`lambda`][lambda]                     | Uses the AWS Lambda runtime environment variables to retrieve various resource attributes.              | no       |
-| [`nova`][nova]                         | Queries the OpenStack Nova instance metadata API to retrieve various resource attributes.               | no       |
+{{< docs/alloy-config >}}
+
+| Block                                  | Description                                                                                                | Required |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- | -------- |
+| [`output`][output]                     | Configures where to send received telemetry data.                                                          | yes      |
+| [`akamai`][akamai]                     | Queries the Akamai connected cloud instance metadata service to retrieve various resource attributes.      | no       |
+| [`aks`][aks]                           | Adds resource attributes related to Azure AKS.                                                             | no       |
+| [`azure`][azure]                       | Queries the Azure Instance Metadata Service to retrieve various resource attributes.                       | no       |
+| [`consul`][consul]                     | Queries a Consul agent and reads its configuration endpoint to retrieve values for resource attributes.    | no       |
+| [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                                 | no       |
+| [`docker`][docker]                     | Queries the Docker daemon to retrieve various resource attributes from the host machine.                   | no       |
+| [`digitalocean`][digitalocean]         | Queries the DigitalOcean instance metadata API to retrieve various resource attributes.                    | no       |
+| [`dynatrace`][dynatrace]               | Loads resource information from the `dt_host_metadata.properties` file.                                    | no       |
+| [`ec2`][ec2]                           | Reads resource information from the EC2 instance metadata API.                                             | no       |
+| [`ecs`][ecs]                           | Queries the Task Metadata Endpoint to record information about the current ECS Task.                       | no       |
+| [`eks`][eks]                           | Adds resource attributes for Amazon EKS.                                                                   | no       |
+| [`elasticbeanstalk`][elasticbeanstalk] | Reads the AWS X-Ray configuration file available on all Beanstalk instances with X-Ray Enabled.            | no       |
+| [`gcp`][gcp]                           | Detects resource attributes using the Google Cloud Client Libraries for Go.                                | no       |
+| [`heroku`][heroku]                     | Adds resource attributes derived from Heroku dyno metadata.                                                | no       |
+| [`hetzner`][hetzner]                   | Queries the Hetzner cloud instance metadata API to retrieve various resource attributes.                   | no       |
+| [`kubeadm`][kubeadm]                   | Queries the Kubernetes API server to retrieve kubeadm resource attributes.                                 | no       |
+| [`kubernetes_node`][kubernetes_node]   | Queries the Kubernetes API server to retrieve various node resource attributes.                            | no       |
+| [`lambda`][lambda]                     | Uses the AWS Lambda runtime environment variables to retrieve various resource attributes.                 | no       |
+| [`nova`][nova]                         | Queries the OpenStack Nova instance metadata API to retrieve various resource attributes.                  | no       |
 | [`oraclecloud`][oraclecloud]           | Queries the Oracle Cloud infrastructure instance metadata service to retrieve various resource attributes. | no       |
-| [`scaleway`][scaleway]                 | Queries the Scaleway instance metadata API to retrieve various resource attributes.                     | no       |
-| [`upcloud`][upcloud]                   | Queries the UpCloud instance metadata API to retrieve various resource attributes.                      | no       |
-| [`vultr`][vultr]                       | Queries the Vultr instance metadata API to retrieve various resource attributes.                        | no       |
-| [`openshift`][openshift]               | Queries the OpenShift and Kubernetes APIs to retrieve various resource attributes.                      | no       |
-| [`system`][system]                     | Queries the host machine to retrieve various resource attributes.                                       | no       |
+| [`scaleway`][scaleway]                 | Queries the Scaleway instance metadata API to retrieve various resource attributes.                        | no       |
+| [`upcloud`][upcloud]                   | Queries the UpCloud instance metadata API to retrieve various resource attributes.                         | no       |
+| [`vultr`][vultr]                       | Queries the Vultr instance metadata API to retrieve various resource attributes.                           | no       |
+| [`openshift`][openshift]               | Queries the OpenShift and Kubernetes APIs to retrieve various resource attributes.                         | no       |
+| [`system`][system]                     | Queries the host machine to retrieve various resource attributes.                                          | no       |
 
 [output]: #output
 [debug_metrics]: #debug_metrics
@@ -158,6 +160,8 @@ You can use the following blocks with `otelcol.processor.resourcedetection`:
 [scaleway]: #scaleway
 [upcloud]: #upcloud
 [vultr]: #vultr
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

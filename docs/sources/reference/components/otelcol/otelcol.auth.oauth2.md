@@ -66,6 +66,8 @@ If both are set, `client_secret_file` also takes precedence.
 
 You can use the following blocks with `otelcol.auth.oauth2`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
@@ -75,6 +77,8 @@ You can use the following blocks with `otelcol.auth.oauth2`:
 [tls]: #tls
 [tpm]: #tpm
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 
