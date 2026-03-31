@@ -49,7 +49,6 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t), totalExpected), &logResponse)
 		require.NoError(c, err)
-		require.Len(c, logResponse.Data.Result, len(expected))
 
 		var totalRecv int
 		for _, r := range logResponse.Data.Result {
@@ -60,9 +59,9 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
 
 	for _, e := range expected {
-		values, ok := findStream(e.Labels, logResponse.Data.Result)
-		require.True(t, ok, "no stream with labels %s", e.Labels)
-		assert.Len(t, values, e.EntryCount)
+		got := countMatchingEntries(e.Labels, logResponse.Data.Result)
+		require.Greater(t, got, 0, "no stream with labels %s", e.Labels)
+		assert.Equal(t, e.EntryCount, got, "unexpected entry count for labels %s", e.Labels)
 	}
 }
 
@@ -93,21 +92,25 @@ func WaitForInitalLogs(testName string) error {
 	}
 }
 
-// findStream will try to find a stream from result contaning all label value pairs provided.
-// It will return the first match.
-func findStream(labels map[string]string, result []LogData) ([][2]string, bool) {
+// countMatchingEntries returns the total number of log entries across all
+// streams whose labels are a superset of the provided label set. This is
+// resilient to Loki splitting a logical label set across multiple streams
+// (e.g. when additional labels like service_name are injected).
+func countMatchingEntries(labels map[string]string, result []LogData) int {
+	total := 0
 	for _, r := range result {
-		toFind := len(labels)
-		for k, v := range r.Stream {
-			if rv := labels[k]; rv == v {
-				toFind -= 1
-			}
-
-			if toFind == 0 {
-				return r.Values, true
-			}
+		if streamContainsLabels(r.Stream, labels) {
+			total += len(r.Values)
 		}
 	}
+	return total
+}
 
-	return nil, false
+func streamContainsLabels(stream, labels map[string]string) bool {
+	for k, v := range labels {
+		if stream[k] != v {
+			return false
+		}
+	}
+	return true
 }
