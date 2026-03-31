@@ -1247,13 +1247,13 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"wait/io/table/sql/handler",            // WAIT_EVENT_NAME (the handler wrapper)
 					"books",                                // WAIT_OBJECT_NAME
 					"TABLE",                                // WAIT_OBJECT_TYPE
-					"900000000",                            // WAIT_TIMER_WAIT (900ms)
+					"900000000",                            // WAIT_TIMER_WAIT (0.9ms)
 					"210",                                  // NESTED_WAIT_EVENT_ID
 					"211",                                  // NESTED_WAIT_END_EVENT_ID
 					"wait/io/file/innodb/innodb_data_file", // NESTED_WAIT_EVENT_NAME (actual I/O)
 					"ibdata1",                              // NESTED_WAIT_OBJECT_NAME
 					"FILE",                                 // NESTED_WAIT_OBJECT_TYPE
-					"500000000",                            // NESTED_WAIT_TIMER_WAIT (500ms)
+					"500000000",                            // NESTED_WAIT_TIMER_WAIT (0.5ms)
 					"some_user",
 					"some_host",
 					"10000000",
