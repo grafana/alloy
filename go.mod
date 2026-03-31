@@ -1003,6 +1003,8 @@ require (
 require (
 	buf.build/gen/go/parca-dev/parca/grpc/go v1.6.1-20260206050007-a47b093e4fe5.1
 	buf.build/gen/go/parca-dev/parca/protocolbuffers/go v1.36.11-20260206050007-a47b093e4fe5.1
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.55.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.147.0
 	github.com/spf13/viper v1.21.0
 	github.com/zricethezav/gitleaks/v8 v8.30.0
@@ -1126,8 +1128,8 @@ replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-2026020
 // TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
 replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
-// TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
-replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
+// TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
+replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16
 
 // TODO: replace node_exporter with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
 replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89
