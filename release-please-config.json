@@ -19,6 +19,11 @@
   "draft-pull-request": true,
   "pull-request-title-pattern": "chore${scope}: Release${component} ${version}",
   "packages": {
+    "extension/alloyengine": {
+      "release-type": "go",
+      "component": "extension/alloyengine",
+      "versioning": "minor-breaking"
+    },
     ".": {
       "release-type": "go",
       "versioning": "minor-breaking",
@@ -35,6 +40,10 @@
         {
           "type": "generic",
           "path": "collector/VERSION"
+        },
+        {
+          "type": "generic",
+          "path": "extension/alloyengine/go.mod"
         }
       ]
     }
