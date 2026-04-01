@@ -4,6 +4,7 @@ loki.source.file "test" {
 		{__path__ = "/etc/alloy/mount/docker.log", format = "docker"},
 		{__path__ = "/etc/alloy/mount/json.log", format = "json"},
 		{__path__ = "/etc/alloy/mount/logfmt.log", format = "logfmt"},
+		{__path__ = "/etc/alloy/mount/nginx.log", format = "nginx"},
 	]
 
 	file_match {
@@ -34,6 +35,10 @@ loki.process "p" {
 		stage.json {
 			expressions = {msg = "msg", service_name = "service_name"}
 		}
+
+		stage.output {
+			source = "msg"
+		}
 	}
 
 	stage.match {
@@ -42,16 +47,38 @@ loki.process "p" {
 		stage.logfmt {
 			mapping = {msg = "msg", service_name = "service_name"}
 		}
+
+		stage.output {
+			source = "msg"
+		}
 	}
 
-	// Add service_name if present
+	stage.match {
+		selector = `{format="nginx"}`
+
+		stage.pattern {
+			pattern = `<_> - - [<time>] "<method> <_> <_>" <status> <_> "<_>" "<_>"`
+		}
+
+		stage.timestamp {
+			source = "time"
+			format = "02/Jan/2006:15:04:05 -0700"
+		}
+
+		stage.labels {
+			values = {
+				method = "",
+				status = "",
+			}
+		}
+	}
+
 	stage.labels {
 		values = {
 			service_name = "",
 		}
 	}
 
-	// Always drop filename.
 	stage.label_drop {
 		values = ["filename"]
 	}

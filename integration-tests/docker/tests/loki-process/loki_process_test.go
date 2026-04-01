@@ -79,6 +79,30 @@ func TestProcessLogFile(t *testing.T) {
 			},
 			EntryCount: 1,
 		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format": "nginx",
+				"method": "GET",
+				"status": "200",
+			},
+			EntryCount: 1,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format": "nginx",
+				"method": "POST",
+				"status": "201",
+			},
+			EntryCount: 1,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format": "nginx",
+				"method": "DELETE",
+				"status": "404",
+			},
+			EntryCount: 1,
+		},
 	)
 
 	common.AssertLabelsNotIndexed(t, "filename")
@@ -89,6 +113,7 @@ func generateFiles(t *testing.T, dir string) {
 	writeDockerLogFile(t, dir)
 	writeJSONLogFile(t, dir)
 	writeLogfmtLogFile(t, dir)
+	writeNginxLogFile(t, dir)
 }
 
 func writeLogFile(t *testing.T, path, content string) {
@@ -192,4 +217,34 @@ func writeLogfmtLogFile(t *testing.T, mountDir string) {
 	buf.WriteString("msg=\"msg 2\" service_name=\"service-1\"\n")
 	buf.WriteString("msg=\"msg 3\" service_name=\"service-2\"\n")
 	writeLogFile(t, filepath.Join(mountDir, "logfmt.log"), buf.String())
+}
+
+func writeNginxLogFile(t *testing.T, mountDir string) {
+	t.Helper()
+
+	const dateFormat = "02/Jan/2006:15:04:05 -0700"
+
+	var buf bytes.Buffer
+	writeLine := func(remoteAddr, method, path, status, bodyBytes, userAgent string) {
+		buf.WriteString(remoteAddr)
+		buf.WriteString(` - - [`)
+		buf.WriteString(time.Now().Format(dateFormat))
+		buf.WriteString(`] "`)
+		buf.WriteString(method)
+		buf.WriteString(" ")
+		buf.WriteString(path)
+		buf.WriteString(` HTTP/1.1" `)
+		buf.WriteString(status)
+		buf.WriteString(" ")
+		buf.WriteString(bodyBytes)
+		buf.WriteString(` "-" "`)
+		buf.WriteString(userAgent)
+		buf.WriteString("\"\n")
+	}
+
+	writeLine("203.0.113.0", "GET", "/healthz", "200", "15", "GoogleHC/1.0")
+	writeLine("203.0.113.1", "POST", "/api/v1/items", "201", "42", "curl/8.0.1")
+	writeLine("203.0.113.2", "DELETE", "/api/v1/items/1", "404", "0", "curl/8.0.1")
+
+	writeLogFile(t, filepath.Join(mountDir, "nginx.log"), buf.String())
 }
