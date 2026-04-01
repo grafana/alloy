@@ -81,7 +81,7 @@ Section "install"
   ${EndIf}
 
   # Preemptively stop the existing service if it's running.
-  nsExec::ExecToLog 'net stop "Alloy"'
+  nsExec::ExecToLog 'net stop "Alloy" /y'
   Pop $0
 
   # Configure the out path and copy files to it.
