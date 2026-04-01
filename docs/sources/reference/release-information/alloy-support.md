@@ -16,7 +16,7 @@ For full context, read this page together with [{{< param "PRODUCT_NAME" >}} bac
 ## Support levels
 
 - **Supported:** The feature is maintained by {{< param "PRODUCT_NAME" >}} maintainers or within Grafana open-source projects integrated with {{< param "PRODUCT_NAME" >}}.
-- **Supported with upstream dependency:** The feature depends on upstream projects outside the Grafana open-source ecosystem that are integrated by {{< param "PRODUCT_NAME" >}}. The ultimate resolution of upstream issues may depend on the upstream community's review and release processes.
+- **Supported with upstream dependency:** The feature depends on upstream projects outside the Grafana open-source ecosystem. The ultimate resolution of upstream issues may depend on the upstream community's review and release processes.
 - **Not supported / best effort:** The feature is outside standard supported scope.
 
 ## Supported
@@ -38,7 +38,6 @@ Example features include:
 - {{< param "OTEL_ENGINE" >}} configuration and features that depend on the upstream OpenTelemetry Collector core engine.
 
 The {{< param "PRODUCT_NAME" >}} maintainers can investigate and collaborate upstream, but final resolution may depend on upstream acceptance and release timing.
-However, the final resolution of upstream issues depends on the OpenTelemetry community's review and release processes.
 In some cases, maintainers may carry a temporary patch or fork, but this is case-by-case and not guaranteed.
 
 ## Not supported / best effort
