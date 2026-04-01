@@ -3,20 +3,18 @@ package heroku
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	ht "github.com/grafana/alloy/internal/component/loki/source/heroku/internal/herokutarget"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {
@@ -51,14 +49,14 @@ func (a *Arguments) SetToDefault() {
 // Component implements the loki.source.heroku component.
 type Component struct {
 	opts          component.Options
-	metrics       *ht.Metrics              // Metrics about Heroku entries.
+	metrics       *metrics                 // Metrics about Heroku entries.
 	serverMetrics *util.UncheckedCollector // Metircs about the HTTP server managed by the component.
 
 	mut  sync.RWMutex
 	args Arguments
 
 	fanout *loki.Fanout
-	server *ht.HerokuServer
+	server *source.Server
 
 	handler loki.LogsBatchReceiver
 }
@@ -67,7 +65,7 @@ type Component struct {
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:          o,
-		metrics:       ht.NewMetrics(o.Registerer),
+		metrics:       newMetrics(o.Registerer),
 		mut:           sync.RWMutex{},
 		args:          Arguments{},
 		fanout:        loki.NewFanout(args.ForwardTo),
@@ -107,19 +105,14 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
+
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
-	var rcs []*relabel.Config
-	if len(newArgs.RelabelRules) > 0 {
-		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+	if newArgs.Server == nil {
+		newArgs.Server = &fnet.ServerConfig{}
 	}
 
-	restartRequired := changed(c.args.Server, newArgs.Server) ||
-		changed(c.args.RelabelRules, newArgs.RelabelRules) ||
-		changed(c.args.Labels, newArgs.Labels) ||
-		c.args.UseIncomingTimestamp != newArgs.UseIncomingTimestamp
-
-	if restartRequired {
+	if c.server.NeedsRestart(newArgs.Server) {
 		if c.server != nil {
 			c.server.Shutdown()
 		}
@@ -131,34 +124,48 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		server, err := ht.NewHerokuServer(c.metrics, c.opts.Logger, c.handler, rcs, newArgs.Convert(), registry)
+		server, err := source.NewServer(c.opts.Logger, registry, c.handler, source.ServerConfig{
+			Namespace: "loki_source_heroku_drain_target",
+			NetConfig: newArgs.Server,
+			LogsConfig: &source.LogsConfig{
+				FixedLabels:          newArgs.labelSet(),
+				RelabelRules:         alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
+				UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
+			},
+		})
+
 		if err != nil {
 			return fmt.Errorf("failed to create heroku server: %w", err)
 		}
 
-		if err := server.Run(); err != nil {
+		if err := server.Run(newRoutes(c.opts.Logger, c.metrics), []source.HandlerRoute{newHealthyHandler()}); err != nil {
 			return fmt.Errorf("failed to run heroku server: %w", err)
 		}
 
 		c.server = server
-		c.args = newArgs
+		return nil
 	}
+
+	if c.server != nil {
+		c.server.Update(&source.LogsConfig{
+			FixedLabels:          newArgs.labelSet(),
+			RelabelRules:         alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
+			UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
+		})
+	}
+
+	c.args = newArgs
 
 	return nil
 }
 
-// Convert is used to bridge between the Alloy and Promtail types.
-func (args *Arguments) Convert() *ht.HerokuConfig {
+func (args *Arguments) labelSet() model.LabelSet {
 	lbls := make(model.LabelSet, len(args.Labels))
 	for k, v := range args.Labels {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	return &ht.HerokuConfig{
-		Server:               args.Server,
-		Labels:               lbls,
-		UseIncomingTimestamp: args.UseIncomingTimestamp,
-	}
+	return lbls
 }
 
 // DebugInfo returns information about the status of listener.
@@ -166,19 +173,17 @@ func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
-	var res = readerDebugInfo{
-		Ready:   c.server.Ready(),
-		Address: c.server.HTTPListenAddress(),
+	if c.server == nil {
+		return readerDebugInfo{}
 	}
 
-	return res
+	return readerDebugInfo{
+		Ready:   ready(c.server.HTTPAddr()),
+		Address: c.server.HTTPAddr(),
+	}
 }
 
 type readerDebugInfo struct {
 	Ready   bool   `alloy:"ready,attr"`
 	Address string `alloy:"address,attr"`
-}
-
-func changed(prev, next any) bool {
-	return !reflect.DeepEqual(prev, next)
 }
