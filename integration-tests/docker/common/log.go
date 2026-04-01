@@ -25,7 +25,7 @@ type LogEntry struct {
 }
 
 type LogEntryMetadata struct {
-	StructuredMetadata map[string]string `json:"structuredMetadata,omitempty"`
+	StructuredMetadata map[string]string
 }
 
 func (e LogEntry) MarshalJSON() ([]byte, error) {
