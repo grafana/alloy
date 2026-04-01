@@ -412,6 +412,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 {{< column-list >}}
 
 * Namespace: `/aws/sagemaker/Endpoints`
+* Namespace: `/aws/sagemaker/InferenceComponents`
 * Namespace: `/aws/sagemaker/InferenceRecommendationsJobs`
 * Namespace: `/aws/sagemaker/ProcessingJobs`
 * Namespace: `/aws/sagemaker/TrainingJobs`
@@ -429,6 +430,8 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/AutoScaling`
 * Namespace: `AWS/Backup`
 * Namespace: `AWS/Bedrock`
+* Namespace: `AWS/Bedrock/Agents`
+* Namespace: `AWS/Bedrock/Guardrails`
 * Namespace: `AWS/Billing`
 * Namespace: `AWS/Cassandra`
 * Namespace: `AWS/CertificateManager`
@@ -437,6 +440,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/Cognito`
 * Namespace: `AWS/DataSync`
 * Namespace: `AWS/DDoSProtection`
+* Namespace: `AWS/DirectoryService`
 * Namespace: `AWS/DMS`
 * Namespace: `AWS/DocDB`
 * Namespace: `AWS/DX`
@@ -448,6 +452,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/ECR`
 * Namespace: `AWS/ECS`
 * Namespace: `AWS/EFS`
+* Namespace: `AWS/EKS`
 * Namespace: `AWS/ElastiCache`
 * Namespace: `AWS/ElasticBeanstalk`
 * Namespace: `AWS/ElasticMapReduce`
@@ -488,6 +493,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/QuickSight`
 * Namespace: `AWS/RDS`
 * Namespace: `AWS/Redshift`
+* Namespace: `AWS/Redshift-Serverless`
 * Namespace: `AWS/Route53`
 * Namespace: `AWS/Route53Resolver`
 * Namespace: `AWS/RUM`
@@ -502,6 +508,7 @@ When you configure a discovery job, make sure the `type` field of each `discover
 * Namespace: `AWS/States`
 * Namespace: `AWS/StorageGateway`
 * Namespace: `AWS/Timestream`
+* Namespace: `AWS/Transfer`
 * Namespace: `AWS/TransitGateway`
 * Namespace: `AWS/TrustedAdvisor`
 * Namespace: `AWS/Usage`
