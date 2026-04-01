@@ -10,7 +10,7 @@ internal API changes are not present.
 Unreleased
 ----------
 
-1.6.3 (2026-03-31)
+1.7.0 (2026-03-31)
 ----------
 
 ### Bug fixes
