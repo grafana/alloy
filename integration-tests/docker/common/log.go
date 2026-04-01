@@ -53,6 +53,10 @@ func (e *LogEntry) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 
+	// Query responses use a object in the third array element, for example:
+	// ["<ts>", "<line>", {"structuredMetadata": {...}}]
+	// See https://github.com/grafana/loki/blob/5f06abe88d1a5cb7df12cfd2e07808c9d3238312/pkg/loghttp/entry.go#L63-L73
+	// Because we always use this to unmashal query response we don't have to handle the flat map case.
 	var metadata struct {
 		StructuredMetadata map[string]string `json:"structuredMetadata"`
 	}
@@ -62,10 +66,8 @@ func (e *LogEntry) UnmarshalJSON(data []byte) error {
 
 	if len(metadata.StructuredMetadata) > 0 {
 		e.Metadata.StructuredMetadata = metadata.StructuredMetadata
-		return nil
 	}
-
-	return json.Unmarshal(raw[2], &e.Metadata.StructuredMetadata)
+	return nil
 }
 
 func (m *LogResponse) Unmarshal(data []byte) error {
