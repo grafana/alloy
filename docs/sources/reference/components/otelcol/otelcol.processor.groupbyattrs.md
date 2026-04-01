@@ -51,6 +51,8 @@ If it's empty, the processor performs compaction and reassociates all spans with
 
 You can use the following blocks with `otelcol.processor.groupbyattrs`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -58,6 +60,8 @@ You can use the following blocks with `otelcol.processor.groupbyattrs`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

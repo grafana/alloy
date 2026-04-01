@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -24,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -35,7 +35,6 @@ import (
 	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
 )
 
 const SchemeHTTPS = "https"
@@ -224,23 +223,20 @@ type endpointClient struct {
 }
 
 type fanOutClient struct {
-	endpoints []*endpointClient
-	config    Arguments
-	metrics   *metrics
-	tracer    trace.Tracer
-	logger    log.Logger
-
+	endpoints  []*endpointClient
+	config     Arguments
+	metrics    *metrics
+	tracer     trace.Tracer
+	logger     log.Logger
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) Client() debuginfogrpc.DebuginfoServiceClient {
-	for _, ec := range f.endpoints {
-		cl := ec.debugInfo.Client()
-		if cl != nil {
-			return cl
-		}
+func (f *fanOutClient) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
+	for _, client := range f.endpoints {
+		clients = append(clients, client.debugInfo.DebugInfoClients()...)
 	}
-	return nil
+	return clients
 }
 
 func (f *fanOutClient) Upload(j debuginfo.UploadJob) {
@@ -271,10 +267,6 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 	endpoints := make([]*endpointClient, 0, len(config.Endpoints))
 
 	for i, endpoint := range config.Endpoints {
-		u, err := url.Parse(endpoint.URL)
-		if err != nil {
-			return nil, err
-		}
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
@@ -286,14 +278,13 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		configureTracing(config, httpClient)
 
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		debugInfo := debuginfo.NewClient(logger, func() (*grpc.ClientConn, error) {
-			return newDebugInfoGRPCClient(u, endpoint)
-		}, metrics.debugInfoUploadBytes, endpointDataPath)
-
 		h2Client, err := newHTTP2Client(endpoint)
 		if err != nil {
 			return nil, err
 		}
+
+		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(h2Client, endpoint.URL)
+		debugInfo := debuginfo.NewClient(logger, debugInfoConnect, metrics.debugInfoUploadBytes, endpointDataPath)
 
 		endpoints = append(endpoints, &endpointClient{
 			options:      endpoint,

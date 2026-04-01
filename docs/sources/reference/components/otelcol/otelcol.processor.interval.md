@@ -69,6 +69,8 @@ You can use the following argument with `otelcol.processor.interval`:
 
 You can use the following blocks with `otelcol.processor.interval`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -78,6 +80,8 @@ You can use the following blocks with `otelcol.processor.interval`:
 [output]: #output
 [debug_metrics]: #debug_metrics
 [passthrough]: #passthrough
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

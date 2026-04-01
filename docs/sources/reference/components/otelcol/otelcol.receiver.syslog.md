@@ -79,6 +79,8 @@ The `on_error` argument can take the following values:
 
 You can use the following blocks with `otelcol.receiver.syslog`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                                     | Required |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
@@ -92,11 +94,6 @@ You can use the following blocks with `otelcol.receiver.syslog`:
 | `udp` > [`async`][async]               | Configures rules for asynchronous parsing of incoming messages.                                 | no       |
 | `udp` > [`multiline`][multiline]       | Configures rules for multiline parsing of incoming messages.                                    | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `tcp` > `tls` refers to a `tls` block defined inside a `tcp` block.
-
-A syslog receiver must have either a `udp` or `tcp` block configured.
-
 [tls]: #tls
 [tpm]: #tpm
 [udp]: #udp
@@ -106,6 +103,10 @@ A syslog receiver must have either a `udp` or `tcp` block configured.
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
+
+A syslog receiver must have either a `udp` or `tcp` block configured.
 
 ### `output`
 

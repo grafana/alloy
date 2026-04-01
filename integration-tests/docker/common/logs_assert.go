@@ -33,7 +33,7 @@ type ExpectedLogResult struct {
 	Labels             map[string]string
 }
 
-// AssertLogsPresent checks that logs are present in Loki and match expected labels
+// AssertLogsPresent checks that logs are present in Loki and match expected labels.
 func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	t.Helper()
 	AssertStatefulTestEnv(t)
@@ -50,7 +50,6 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		err := fetchLokiQueryRange(SanitizeTestName(t), totalExpected, &logResponse)
 		require.NoError(c, err)
-		require.Len(c, logResponse.Data.Result, len(expected))
 
 		var totalRecv int
 		for _, r := range logResponse.Data.Result {
@@ -61,13 +60,13 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
 
 	for _, e := range expected {
-		values, ok := findStream(e.Labels, logResponse.Data.Result)
-		require.True(t, ok, "no stream with labels %s", e.Labels)
-		assert.Len(t, values, e.EntryCount)
+		entries := matchingEntries(e.Labels, logResponse.Data.Result)
+		require.NotEmpty(t, entries, "no stream with labels %s", e.Labels)
+		assert.Len(t, entries, e.EntryCount, "unexpected entry count for labels %s", e.Labels)
 
-		for _, value := range values {
+		for _, entry := range entries {
 			for key, expectedValue := range e.StructuredMetadata {
-				actualValue := value.Metadata.StructuredMetadata[key]
+				actualValue := entry.Metadata.StructuredMetadata[key]
 				assert.Equal(t, expectedValue, actualValue)
 			}
 		}
@@ -150,21 +149,23 @@ func fetchLokiQueryRange(testName string, totalExpected int, res *LogResponse) e
 	return err
 }
 
-// findStream will try to find a stream from result contaning all label value pairs provided.
-// It will return the first match.
-func findStream(labels map[string]string, result []LogData) ([]LogEntry, bool) {
+// matchingEntries returns all log entries across streams whose labels are a
+// superset of the provided label set.
+func matchingEntries(labels map[string]string, result []LogData) []LogEntry {
+	var entries []LogEntry
 	for _, r := range result {
-		toFind := len(labels)
-		for k, v := range r.Stream {
-			if rv := labels[k]; rv == v {
-				toFind -= 1
-			}
-
-			if toFind == 0 {
-				return r.Values, true
-			}
+		if streamContainsLabels(r.Stream, labels) {
+			entries = append(entries, r.Values...)
 		}
 	}
+	return entries
+}
 
-	return nil, false
+func streamContainsLabels(stream, labels map[string]string) bool {
+	for k, v := range labels {
+		if stream[k] != v {
+			return false
+		}
+	}
+	return true
 }

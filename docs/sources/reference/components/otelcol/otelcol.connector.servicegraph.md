@@ -135,6 +135,8 @@ An empty list disables the creation of a virtual node.
 
 You can use the following blocks with `otelcol.connector.servicegraph`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send telemetry data.                                   | yes      |
@@ -144,6 +146,8 @@ You can use the following blocks with `otelcol.connector.servicegraph`:
 [store]: #store
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

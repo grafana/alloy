@@ -38,11 +38,15 @@ The `otelcol.receiver.loki` component doesn't support any arguments. You can con
 
 You can use the following blocks with `otelcol.receiver.loki`:
 
+{{< docs/alloy-config >}}
+
 | Block              | Description                                        | Required |
 |--------------------|----------------------------------------------------|----------|
 | [`output`][output] | Configures where to send converted telemetry data. | yes      |
 
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
