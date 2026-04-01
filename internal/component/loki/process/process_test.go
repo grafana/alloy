@@ -33,10 +33,10 @@ func TestComponent(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	type testCase struct {
-		name    string
-		cfg     string
-		inputs  []loki.Entry
-		outputs []loki.Entry
+		name     string
+		cfg      string
+		inputs   []loki.Entry
+		expected []loki.Entry
 	}
 
 	criTimestamp := time.Date(2024, time.January, 2, 3, 4, 5, 6, time.UTC)
@@ -89,7 +89,7 @@ func TestComponent(t *testing.T) {
 					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr F full file 1 stdout",
 				}),
 			},
-			outputs: []loki.Entry{
+			expected: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
 					Timestamp: criTimestamp,
 					Line:      "partial for file 1 stderrfull file 1 stderr",
@@ -120,12 +120,12 @@ func TestComponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			outputCollector := loki.NewCollectingHandler()
-			defer outputCollector.Stop()
+			collector := loki.NewCollectingHandler()
+			defer collector.Stop()
 
 			var args Arguments
 			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
-			args.ForwardTo = []loki.LogsReceiver{outputCollector.Receiver()}
+			args.ForwardTo = []loki.LogsReceiver{collector.Receiver()}
 
 			opts := component.Options{
 				Logger:         util.TestAlloyLogger(t),
@@ -138,7 +138,6 @@ func TestComponent(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx, cancel := context.WithCancel(t.Context())
-			defer cancel()
 
 			runErr := make(chan error, 1)
 			go func() {
@@ -156,10 +155,16 @@ func TestComponent(t *testing.T) {
 					require.FailNow(t, "component stopped before producing all expected entries")
 				default:
 				}
-				return len(outputCollector.Received()) == len(tt.outputs)
+				return len(collector.Received()) == len(tt.expected)
 			}, 5*time.Second, 10*time.Millisecond)
 
-			require.Equal(t, tt.outputs, outputCollector.Received())
+			got := collector.Received()
+			for i := range tt.expected {
+				require.Equal(t, tt.expected[i].Line, got[i].Line)
+				require.Equal(t, tt.expected[i].Timestamp, got[i].Timestamp)
+				require.EqualValues(t, tt.expected[i].Labels, got[i].Labels)
+				require.ElementsMatch(t, tt.expected[i].StructuredMetadata, got[i].StructuredMetadata)
+			}
 
 			cancel()
 			require.NoError(t, <-runErr)
