@@ -348,7 +348,7 @@ func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 			assert.Equal(t, restarted, tc.restartRequired)
 
 			// in order to cleanly shutdown, we want to make sure the server is running first.
-			waitForServerToBeReady(t, comp)
+			waitForServerToBeReady(t, comp, tc.args.Server.HTTP.TLSConfig != nil)
 		})
 	}
 }
@@ -376,7 +376,7 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 	c := startTestComponent(t, opts, args, ctx)
 
 	// Create TLS-enabled Loki client
-	lokiClient := newTestLokiClientTLS(t, c.server.HTTPListenAddress(), opts)
+	lokiClient := newTestLokiClientTLS(t, c.server.HTTPAddr(), opts)
 	defer lokiClient.Stop()
 
 	now := time.Now()
@@ -449,12 +449,12 @@ func TestDefaultServerConfig(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Eventuallyf(t, func() bool {
-		resp, err := http.Get(fmt.Sprintf(
-			"http://%v:%d/wrong/url",
-			"localhost",
-			fnet.DefaultHTTPPort,
-		))
-		return err == nil && resp.StatusCode == 404
+		resp, err := http.Get(fmt.Sprintf("http://%s/ready", comp.server.HTTPAddr()))
+		if err != nil {
+			return false
+		}
+		require.NoError(t, err)
+		return resp.StatusCode == 200
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 
@@ -472,7 +472,7 @@ func startTestComponent(
 		require.NoError(t, err)
 	}()
 
-	waitForServerToBeReady(t, comp)
+	waitForServerToBeReady(t, comp, args.Server.HTTP.TLSConfig != nil)
 	return comp
 }
 
@@ -493,16 +493,16 @@ func TestShutdown(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	waitForServerToBeReady(t, comp)
+	waitForServerToBeReady(t, comp, args.Server.HTTP.TLSConfig != nil)
 
 	// First request should be forwarded on channel
-	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPListenAddress()))
+	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPAddr()))
 	require.NoError(t, err)
 
 	codes := make(chan int)
 	for range 5 {
 		go func() {
-			res, err := http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPListenAddress()))
+			res, err := http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPAddr()))
 			if err != nil || res == nil {
 				// This should not happen but if it does we return -1 here so test will fail.
 				codes <- -1
@@ -546,10 +546,10 @@ func TestCancelRequest(t *testing.T) {
 		require.NoError(t, err)
 	}()
 
-	waitForServerToBeReady(t, comp)
+	waitForServerToBeReady(t, comp, args.Server.HTTP.TLSConfig != nil)
 
 	// First request should be forwarded on channel
-	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPListenAddress()))
+	_, err = http.DefaultClient.Do(newRequest(t, context.Background(), comp.server.HTTPAddr()))
 	require.NoError(t, err)
 
 	var wg sync.WaitGroup
@@ -557,7 +557,7 @@ func TestCancelRequest(t *testing.T) {
 		wg.Go(func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 			defer cancel()
-			res, err := http.DefaultClient.Do(newRequest(t, ctx, comp.server.HTTPListenAddress()))
+			res, err := http.DefaultClient.Do(newRequest(t, ctx, comp.server.HTTPAddr()))
 			require.ErrorIs(t, err, context.DeadlineExceeded)
 			require.Nil(t, res)
 		})
@@ -576,13 +576,12 @@ func newRequest(t *testing.T, ctx context.Context, httpListendAddress string) *h
 	return req
 }
 
-func waitForServerToBeReady(t *testing.T, comp *Component) {
+func waitForServerToBeReady(t *testing.T, comp *Component, useTls bool) {
 	// Determine if TLS is enabled to choose the right protocol
 	protocol := "http"
 	var tlsConfig *tls.Config
 
-	serverConfig := comp.server.ServerConfig()
-	if serverConfig.HTTP.TLSConfig != nil {
+	if useTls {
 		protocol = "https"
 		tlsConfig = &tls.Config{
 			InsecureSkipVerify: true,
@@ -592,7 +591,7 @@ func waitForServerToBeReady(t *testing.T, comp *Component) {
 	url := fmt.Sprintf(
 		"%s://%s/wrong/url",
 		protocol,
-		comp.server.HTTPListenAddress(),
+		comp.server.HTTPAddr(),
 	)
 
 	client := &http.Client{Timeout: 1 * time.Second}
@@ -604,8 +603,12 @@ func waitForServerToBeReady(t *testing.T, comp *Component) {
 
 	require.Eventuallyf(t, func() bool {
 		resp, err := client.Get(url)
+		if err != nil {
+			return false
+		}
 
-		return err == nil && resp != nil && resp.StatusCode == 404
+		require.NoError(t, resp.Body.Close())
+		return resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 

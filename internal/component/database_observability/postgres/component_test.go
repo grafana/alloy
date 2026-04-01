@@ -741,7 +741,6 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
 			forward_to = []
-			targets = []
 		`
 		var args Arguments
 		err := syntax.Unmarshal([]byte(cfg), &args)
@@ -753,7 +752,6 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
 			forward_to = []
-			targets = []
 			prometheus_exporter {}
 		`
 		var args Arguments
@@ -769,7 +767,6 @@ func Test_PrometheusExporterBlock(t *testing.T) {
 		cfg := `
 			data_source_name = "postgresql://user:pass@localhost:5432/db"
 			forward_to = []
-			targets = []
 			prometheus_exporter {
 				disable_settings_metrics = true
 			}
