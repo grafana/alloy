@@ -152,41 +152,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Examples
 
-### Grafana Cloud
-
-This example creates an exporter which can send OTLP logs, metrics, and traces to Grafana Cloud using basic authentication:
-
-```alloy
-otelcol.exporter.otlphttp "default" {
-  client {
-    endpoint = `https://otlp-gateway-prod-gb-south-0.grafana.net/otlp`
-    auth     = otelcol.auth.basic.creds.handler
-  }
-}
-
-otelcol.auth.basic "creds" {
-  client_auth {
-    username = sys.env("OTLP_USERNAME")
-    password = sys.env("OTLP_API_KEY")
-  }
-}
-```
-
-### Local Tempo database
-
-This example creates an exporter to send data to a locally running Grafana Tempo without TLS:
-
-```alloy
-otelcol.exporter.otlphttp "tempo" {
-    client {
-        endpoint = "http://tempo:4318"
-        tls {
-            insecure             = true
-            insecure_skip_verify = true
-        }
-    }
-}
-```
+- [Collect OpenTelemetry data and forward it to a Grafana database](../../../../monitor-applications/opentelemetry-data/)
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

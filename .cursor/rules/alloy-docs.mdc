@@ -1,0 +1,117 @@
+---
+description: Guidelines for writing Alloy collect/task documentation pages in docs/sources/
+globs: docs/sources/monitor-applications/**/*.md,docs/sources/monitor-infrastructure/**/*.md
+alwaysApply: false
+---
+
+# Alloy task-based documentation pages
+
+## General style guidelines
+
+- End sentences that introduce code blocks with a **period**, not a colon.
+- For full style guidance, refer to `.docs/agent/style.md`, `.docs/agent/role.md`, `.docs/agent/grafana.md`, and `docs/developer/writing-docs.md`.
+- Before writing any config, read the reference doc in `docs/sources/reference/components/` for every component used. Check for deprecated arguments, blocks, and components, and always follow the best practices described there. Never use anything marked as deprecated.
+- Always link component names to their reference pages, e.g.: `[`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp]` with a reference definition at the bottom of the file.
+
+## Create Alloy configuration
+
+Before writing the page, create a working Alloy configuration that satisfies the user's requirements:
+
+1. Identify which Alloy components are needed for the task.
+2. Draft the configuration, then validate it (see **Addendum: Validate Alloy configuration**).
+3. Show the validated config to the user and ask them to confirm it makes sense before proceeding to write the page.
+
+## Create the page
+
+Each task page follows this section order:
+
+### Introductory paragraph
+
+- 1–2 sentences that state what the page helps the user accomplish.
+- No heading — this is the opening paragraph directly under the page `h1`.
+- Example: _"{{< param "PRODUCT_NAME" >}} can receive OpenTelemetry metrics, logs, and traces and forward them to any OTLP-compatible endpoint."_
+
+### Configuration
+
+- Start with an inline SVG pipeline diagram (see **Addendum: generating the pipeline diagram** at the end of this file).
+- Follow the diagram with a single sentence that describes what the configuration does, ending with a **period** (not a colon).
+  - Example: _"The following configuration receives OTLP data from your applications, batches it, and exports it over HTTP."_
+- Then include the full working Alloy config block (already validated in **Create Alloy configuration** above).
+- Use `//` comments inside the config to explain every block and argument — do **not** repeat them as prose bullet lists below the block.
+- Add a blank line between commented arguments; omit blank lines between uncommented ones.
+
+### How it works
+
+- Numbered list with one item per component used in the configuration.
+- Each item links the component name to its reference doc.
+- Keep each item to one sentence.
+
+### Additional sections
+
+Before writing a new page, ask the user: "Are there any additional sections you'd like to add, and what content should they cover?"
+
+## Link to the task page from each component reference doc
+
+Examples live in `docs/sources/monitor-applications/` and `docs/sources/monitor-infrastructure/`, not in component reference docs.
+
+When you create a new task page, for each component it uses:
+
+1. Open the component's reference doc in `docs/sources/reference/components/`.
+2. Find the `## Example` or `## Examples` section. Rename it to `## Examples` if it isn't already plural.
+3. Remove all existing example code and prose from that section.
+4. Replace the content with a bullet list linking to the relevant task pages.
+
+The relative path from a component reference doc to a task page is:
+```
+../../../../monitor-applications/<page-slug>/
+../../../../monitor-infrastructure/<page-slug>/
+```
+
+Example:
+```markdown
+## Examples
+
+- [Collect OpenTelemetry data and forward it to a Grafana database](../../../../monitor-applications/opentelemetry-data/)
+```
+
+---
+
+## Addendum
+
+### Validate Alloy configuration
+
+Run `alloy fmt` on the configuration before publishing. It normalises indentation (tabs) and spacing between blocks, and will error on invalid syntax.
+
+```sh
+./build/alloy fmt <file>.alloy
+```
+
+If the binary isn't built yet:
+
+```sh
+SKIP_UI_BUILD=1 make alloy
+```
+
+### Generating the pipeline diagram
+
+<!-- TODO: replace this addendum seciton with a link to a README in internal/web/ui/scripts/alloy-graph/ once one exists. Also find a way to embed the diagram without inlining raw SVG — the current approach is a workaround for Hugo not serving co-located files for non-bundle pages. -->
+
+Generate an SVG using the `alloy-graph` tool and embed it inline at the top of the Configuration section.
+
+**Generate:**
+```sh
+# From the repo root — install dependencies first if needed
+npm install --prefix internal/web/ui
+
+# Write the config to a temp file, then run:
+npm run graph --prefix internal/web/ui -- <config.alloy>
+```
+
+**Embed the output inline:**
+```markdown
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="-2 -2 <W+4> <H+4>" role="img" aria-label="Pipeline diagram: <brief description>">
+  <!-- paste SVG body here -->
+</svg>
+```
+
+The tool outputs `viewBox="0 0 W H"` which clips the 1.5px node stroke. Always expand by 2px on each side: origin `-2 -2`, width `W+4`, height `H+4`.

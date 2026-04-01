@@ -6,6 +6,7 @@ title: Collect Azure Event Hubs logs and forward them to Loki
 weight: 300
 ---
 
+<!-- TODO: move this doc to the Monitor Applications section -->
 # Collect Azure Event Hubs logs and forward them to Loki
 
 You can configure {{< param "PRODUCT_NAME" >}} to collect logs from Azure Event Hubs and forward them to Loki.

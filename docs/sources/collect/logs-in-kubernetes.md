@@ -8,6 +8,7 @@ title:  Collect Kubernetes logs and forward them to Loki
 weight: 250
 ---
 
+<!-- TODO: move this doc to the Monitor Applications section -->
 # Collect Kubernetes logs and forward them to Loki
 
 You can configure {{< param "PRODUCT_NAME" >}} to collect logs and forward them to a [Loki][] database.

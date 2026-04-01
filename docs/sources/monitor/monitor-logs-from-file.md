@@ -6,6 +6,7 @@ title: Monitor logs from a local file with Grafana Alloy
 weight: 300
 ---
 
+<!-- TODO: move this doc to the Monitor Infrastructure section since it uses loki components -->
 # Monitor logs from a local file with {{% param "FULL_PRODUCT_NAME" %}}
 
 Log files record events, activities, and usage patterns within a system, application, or network.

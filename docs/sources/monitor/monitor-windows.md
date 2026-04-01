@@ -6,6 +6,7 @@ title: Monitor Microsoft Windows servers and desktops with Grafana Alloy
 weight: 250
 ---
 
+<!-- TODO: move this doc to the Monitor infrastructure section -->
 # Monitor Microsoft Windows servers and desktops with {{% param "FULL_PRODUCT_NAME" %}}
 
 Microsoft Windows provides tools like Performance Monitor and Event Viewer to track system performance metrics and event logs.

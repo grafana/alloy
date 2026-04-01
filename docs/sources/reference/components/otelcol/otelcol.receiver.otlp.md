@@ -218,36 +218,9 @@ If `allowed_headers` includes `"*"`, all headers are permitted.
 * `rpc_server_response_size_bytes` (histogram): Measures size of RPC response messages (uncompressed).
 * `rpc_server_responses_per_rpc` (histogram): Measures the number of messages received per RPC. Should be 1 for all non-streaming RPCs.
 
-## Example
+## Examples
 
-This example forwards received telemetry data through a batch processor before finally sending it to an OTLP-capable endpoint:
-
-```alloy
-otelcol.receiver.otlp "default" {
-  http {}
-  grpc {}
-
-  output {
-    metrics = [otelcol.processor.batch.default.input]
-    logs    = [otelcol.processor.batch.default.input]
-    traces  = [otelcol.processor.batch.default.input]
-  }
-}
-
-otelcol.processor.batch "default" {
-  output {
-    metrics = [otelcol.exporter.otlphttp.default.input]
-    logs    = [otelcol.exporter.otlphttp.default.input]
-    traces  = [otelcol.exporter.otlphttp.default.input]
-  }
-}
-
-otelcol.exporter.otlphttp "default" {
-  client {
-    endpoint = sys.env("<OTLP_ENDPOINT>")
-  }
-}
-```
+- [Collect OpenTelemetry data and forward it to a Grafana database](../../../../monitor-applications/opentelemetry-data/)
 
 ## Technical details
 

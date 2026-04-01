@@ -8,6 +8,7 @@ title: Collect Amazon Elastic Container Service or AWS Fargate OpenTelemetry dat
 weight: 500
 ---
 
+<!-- TODO: move this doc to the Monitor Applications section -->
 # Collect Amazon Elastic Container Service or AWS Fargate OpenTelemetry data
 
 You can configure {{< param "FULL_PRODUCT_NAME" >}} or AWS ADOT to collect OpenTelemetry-compatible data from Amazon Elastic Container Service (ECS) or AWS Fargate and forward it to any OpenTelemetry-compatible endpoint.
