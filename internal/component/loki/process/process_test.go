@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -31,51 +30,141 @@ import (
 )
 
 func TestComponent(t *testing.T) {
-	t.Run("update with invalid stage config", func(t *testing.T) {
-		ctrl, err := componenttest.NewControllerFromID(log.NewNopLogger(), "loki.process")
-		require.NoError(t, err)
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-		collector := loki.NewCollectingHandler()
-		defer collector.Stop()
+	type testCase struct {
+		name    string
+		cfg     string
+		inputs  []loki.Entry
+		outputs []loki.Entry
+	}
 
-		ctx, cancel := context.WithCancel(context.Background())
+	criTimestamp := time.Date(2024, time.January, 2, 3, 4, 5, 6, time.UTC)
 
-		var wg sync.WaitGroup
-		wg.Go(func() {
-			require.NoError(t, ctrl.Run(ctx, Arguments{ForwardTo: []loki.LogsReceiver{collector.Receiver()}}))
-		})
-		require.NoError(t, ctrl.WaitExports(time.Minute))
+	tests := []testCase{
+		{
+			name: "simple cri pipeline",
+			cfg: `
+			forward_to = []
 
-		recv := ctrl.Exports().(Exports).Receiver
-		fanout := loki.NewFanout([]loki.LogsReceiver{recv})
+			stage.cri {}
 
-		wg.Go(func() {
-			for {
-				// We get error if context is canceled
-				if err := fanout.Send(ctx, loki.Entry{}); err != nil {
-					return
+			stage.structured_metadata {
+					values = {
+						filename = "",
+						stream = "",
+					}
+				}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
 				}
 			}
-		})
 
-		err = ctrl.Update(Arguments{
-			ForwardTo: []loki.LogsReceiver{collector.Receiver()},
-			Stages: []stages.StageConfig{
-				{
-					MatchConfig: &stages.MatchConfig{
-						// {} is not a valid selector.
-						Selector: "{}",
-					},
-				},
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      criTimestamp.Format(time.RFC3339Nano) + " stdout P partial for file 1 stdout",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr P partial for file 1 stderr",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file2"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      criTimestamp.Format(time.RFC3339Nano) + " stdout P partial for file2",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr F full file 1 stderr",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file2"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr F full file 2",
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr F full file 1 stdout",
+				}),
 			},
-		})
-		require.Error(t, err)
+			outputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: criTimestamp,
+					Line:      "partial for file 1 stderrfull file 1 stderr",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "file1"},
+						{Name: "stream", Value: "stderr"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: criTimestamp,
+					Line:      "full file 2",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "file2"},
+						{Name: "stream", Value: "stderr"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: criTimestamp,
+					Line:      "full file 1 stdout",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "file1"},
+						{Name: "stream", Value: "stderr"},
+					},
+				}),
+			},
+		},
+	}
 
-		// Keep sending for a while after update have failed.
-		time.Sleep(100 * time.Millisecond)
-		cancel()
-		wg.Wait()
-	})
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			outputCollector := loki.NewCollectingHandler()
+			defer outputCollector.Stop()
+
+			var args Arguments
+			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
+			args.ForwardTo = []loki.LogsReceiver{outputCollector.Receiver()}
+
+			opts := component.Options{
+				Logger:         util.TestAlloyLogger(t),
+				Registerer:     prometheus.NewRegistry(),
+				OnStateChange:  func(component.Exports) {},
+				GetServiceData: getServiceData,
+			}
+
+			c, err := New(opts, args)
+			require.NoError(t, err)
+
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+
+			runErr := make(chan error, 1)
+			go func() {
+				runErr <- c.Run(ctx)
+			}()
+
+			for _, input := range tt.inputs {
+				c.receiver.Chan() <- input
+			}
+
+			require.Eventually(t, func() bool {
+				select {
+				case err := <-runErr:
+					require.NoError(t, err)
+					require.FailNow(t, "component stopped before producing all expected entries")
+				default:
+				}
+				return len(outputCollector.Received()) == len(tt.outputs)
+			}, 5*time.Second, 10*time.Millisecond)
+
+			require.Equal(t, tt.outputs, outputCollector.Received())
+
+			cancel()
+			require.NoError(t, <-runErr)
+		})
+	}
 }
 
 const logline = `{"log":"log message\n","stream":"stderr","time":"2019-04-30T02:12:41.8443515Z","extra":"{\"user\":\"smith\"}"}`

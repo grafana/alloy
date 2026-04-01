@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"slices"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -75,40 +76,32 @@ func (*structuredMetadataStage) Cleanup() {
 
 func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 	return RunWith(in, func(e Entry) Entry {
-		// Handle extracted values in values map
-		processLabelsConfigs(s.logger, e.Extracted, s.labelsConfig, func(labelName model.LabelName, labelValue model.LabelValue) {
-			e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(labelName), Value: string(labelValue)})
-		})
-		// Handle extracted values matching the regex
-		if s.regex.String() != "" {
-			for lName, lValue := range e.Extracted {
-				if s.regex.MatchString(lName) {
-					str, err := getString(lValue)
-					if err != nil {
-						if Debug {
-							level.Debug(s.logger).Log("msg", "failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
-						}
-						continue
-					}
-					labelValue := model.LabelValue(str)
-					if !labelValue.IsValid() {
-						if Debug {
-							level.Debug(s.logger).Log("msg", "invalid label value parsed", "value", labelValue)
-						}
-						continue
-					}
-					e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: lName, Value: string(labelValue)})
-				}
+		appendStructureMetadata := func(labelName model.LabelName, labelValue model.LabelValue) {
+			if !containsStructuredMetadataLabel(e.StructuredMetadata, string(labelName)) {
+				e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(labelName), Value: string(labelValue)})
 			}
 		}
 
-		return s.extractFromLabels(e)
+		// Try to add structured metdata from extracted map using labelsConfig.
+		processExtractedLabelsByConfig(s.logger, e.Extracted, s.labelsConfig, appendStructureMetadata)
+
+		// Try to add structured metadata from extraced map using regex.
+		processExtractedLabelsByRegex(s.logger, e.Extracted, s.regex, appendStructureMetadata)
+
+		// Try to add structured metadata from labels using labelsConfig.
+		processEntryLabelsByConfig(e.Labels, s.labelsConfig, appendStructureMetadata)
+
+		// Tru to add structured metadata from labels using regex.
+		processEntryLabelsByRegex(e.Labels, s.regex, appendStructureMetadata)
+
+		return e
 	})
 }
 
 type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)
 
-func processLabelsConfigs(logger log.Logger, extracted map[string]any, labelsConfig map[string]string, consumer labelsConsumer) {
+// processExtractedLabelsByConfig adds structured metadata from extracted values selected by labelsConfig.
+func processExtractedLabelsByConfig(logger log.Logger, extracted map[string]any, labelsConfig map[string]string, consumer labelsConsumer) {
 	for lName, lSrc := range labelsConfig {
 		if lValue, ok := extracted[lSrc]; ok {
 			s, err := getString(lValue)
@@ -130,38 +123,75 @@ func processLabelsConfigs(logger log.Logger, extracted map[string]any, labelsCon
 	}
 }
 
-func (s *structuredMetadataStage) extractFromLabels(e Entry) Entry {
-	labels := e.Labels
-	foundLabels := []model.LabelName{}
+// processExtractedLabelsByRegex adds structured metadata from extracted values whose keys match the configured regex.
+func processExtractedLabelsByRegex(logger log.Logger, extracted map[string]any, regex regexp.Regexp, consumer labelsConsumer) {
+	if regex.String() == "" {
+		return
+	}
 
-	// Handle labels in values map
-	for lName, lSrc := range s.labelsConfig {
+	for lName, lValue := range extracted {
+		if !regex.MatchString(lName) {
+			continue
+		}
+
+		str, err := getString(lValue)
+		if err != nil {
+			if Debug {
+				level.Debug(logger).Log("msg", "failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
+			}
+			continue
+		}
+
+		labelValue := model.LabelValue(str)
+		if !labelValue.IsValid() {
+			if Debug {
+				level.Debug(logger).Log("msg", "invalid label value parsed", "value", labelValue)
+			}
+			continue
+		}
+
+		consumer(model.LabelName(lName), labelValue)
+	}
+}
+
+// processEntryLabelsByConfig adds structured metadata from entry labels selected by explicit config mappings and removes those labels.
+func processEntryLabelsByConfig(labels model.LabelSet, labelsConfig map[string]string, consumer labelsConsumer) {
+	foundLabels := make([]model.LabelName, 0, len(labelsConfig))
+
+	for lName, lSrc := range labelsConfig {
 		labelKey := model.LabelName(lSrc)
 		if lValue, ok := labels[labelKey]; ok {
-			e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: lName, Value: string(lValue)})
+			consumer(model.LabelName(lName), lValue)
 			foundLabels = append(foundLabels, labelKey)
 		}
 	}
 
-	// Remove found labels, do this after append to structure metadata
 	for _, fl := range foundLabels {
 		delete(labels, fl)
 	}
+}
 
-	if s.regex.String() != "" {
-		// Handle remaining labels matching the regex
-		foundLabels = []model.LabelName{}
-		for lName, lValue := range labels {
-			if s.regex.MatchString(string(lName)) {
-				e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(lName), Value: string(lValue)})
-				foundLabels = append(foundLabels, lName)
-			}
-		}
-		for _, fl := range foundLabels {
-			delete(labels, fl)
+// processEntryLabelsByRegex adds structured metadata from entry labels whose keys match the configured regex and removes those labels.
+func processEntryLabelsByRegex(labels model.LabelSet, regex regexp.Regexp, consumer labelsConsumer) {
+	if regex.String() == "" {
+		return
+	}
+
+	foundLabels := make([]model.LabelName, 0)
+	for lName, lValue := range labels {
+		if regex.MatchString(string(lName)) {
+			consumer(lName, lValue)
+			foundLabels = append(foundLabels, lName)
 		}
 	}
 
-	e.Labels = labels
-	return e
+	for _, fl := range foundLabels {
+		delete(labels, fl)
+	}
+}
+
+func containsStructuredMetadataLabel(labels push.LabelsAdapter, name string) bool {
+	return slices.ContainsFunc(labels, func(label push.LabelAdapter) bool {
+		return label.Name == name
+	})
 }
