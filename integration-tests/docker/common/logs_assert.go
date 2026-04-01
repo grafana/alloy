@@ -28,8 +28,9 @@ func LogQuery(testName string, limit int) string {
 }
 
 type ExpectedLogResult struct {
-	Labels     map[string]string
-	EntryCount int
+	EntryCount         int
+	StructuredMetadata map[string]string
+	Labels             map[string]string
 }
 
 // AssertLogsPresent checks that logs are present in Loki and match expected labels
@@ -47,7 +48,7 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 	}
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t), totalExpected), &logResponse)
+		err := fetchLokiQueryRange(SanitizeTestName(t), totalExpected, &logResponse)
 		require.NoError(c, err)
 		require.Len(c, logResponse.Data.Result, len(expected))
 
@@ -63,6 +64,13 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 		values, ok := findStream(e.Labels, logResponse.Data.Result)
 		require.True(t, ok, "no stream with labels %s", e.Labels)
 		assert.Len(t, values, e.EntryCount)
+
+		for _, value := range values {
+			for key, expectedValue := range e.StructuredMetadata {
+				actualValue := value.Metadata.StructuredMetadata[key]
+				assert.Equal(t, expectedValue, actualValue)
+			}
+		}
 	}
 }
 
@@ -110,7 +118,8 @@ func WaitForInitalLogs(testName string) error {
 		select {
 		case <-tick.C:
 			var resp LogResponse
-			_, err := FetchDataFromURL(LogQuery(testName, 1), &resp)
+
+			err := fetchLokiQueryRange(testName, 1, &resp)
 			if err != nil {
 				continue
 			}
@@ -125,9 +134,25 @@ func WaitForInitalLogs(testName string) error {
 	}
 }
 
+func fetchLokiQueryRange(testName string, totalExpected int, res *LogResponse) error {
+	// We need to set this header for loki to pass structured_metadata for every entry and
+	// not return it as a label in stream.
+	const (
+		lokiEncodingHeader      = "X-Loki-Response-Encoding-Flags"
+		lokiEncodingHeaderValue = "categorize-labels"
+	)
+
+	_, err := FetchDataFromURLWithHeaders(
+		LogQuery(testName, totalExpected),
+		map[string]string{lokiEncodingHeader: lokiEncodingHeaderValue},
+		res,
+	)
+	return err
+}
+
 // findStream will try to find a stream from result contaning all label value pairs provided.
 // It will return the first match.
-func findStream(labels map[string]string, result []LogData) ([][2]string, bool) {
+func findStream(labels map[string]string, result []LogData) ([]LogEntry, bool) {
 	for _, r := range result {
 		toFind := len(labels)
 		for k, v := range r.Stream {

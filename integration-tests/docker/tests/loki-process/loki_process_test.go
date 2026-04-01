@@ -31,77 +31,107 @@ func TestProcessLogFile(t *testing.T) {
 	common.AssertLogsPresent(
 		t,
 		common.ExpectedLogResult{
+			EntryCount: 1,
 			Labels: map[string]string{
 				"format": "cri",
 				"stream": "stdout",
 			},
-			EntryCount: 1,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/cri.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 1,
 			Labels: map[string]string{
 				"format": "cri",
 				"stream": "stderr",
 			},
-			EntryCount: 1,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/cri.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 1,
 			Labels: map[string]string{
 				"format": "docker",
 				"stream": "stdout",
 			},
-			EntryCount: 1,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/docker.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 2,
 			Labels: map[string]string{
 				"format":       "json",
 				"service_name": "service-1",
 			},
-			EntryCount: 2,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/json.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 1,
 			Labels: map[string]string{
 				"format":       "json",
 				"service_name": "service-2",
 			},
-			EntryCount: 1,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/json.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 2,
 			Labels: map[string]string{
 				"format":       "logfmt",
 				"service_name": "service-1",
 			},
-			EntryCount: 2,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/logfmt.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 1,
 			Labels: map[string]string{
 				"format":       "logfmt",
 				"service_name": "service-2",
 			},
-			EntryCount: 1,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/logfmt.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 1,
 			Labels: map[string]string{
 				"format": "nginx",
 				"method": "GET",
 				"status": "200",
 			},
-			EntryCount: 1,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/nginx.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 1,
 			Labels: map[string]string{
 				"format": "nginx",
 				"method": "POST",
 				"status": "201",
 			},
-			EntryCount: 1,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/nginx.log",
+			},
 		},
 		common.ExpectedLogResult{
+			EntryCount: 1,
 			Labels: map[string]string{
 				"format": "nginx",
 				"method": "DELETE",
 				"status": "404",
 			},
-			EntryCount: 1,
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/nginx.log",
+			},
 		},
 	)
 

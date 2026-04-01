@@ -79,8 +79,10 @@ loki.process "p" {
 		}
 	}
 
-	stage.label_drop {
-		values = ["filename"]
+	stage.structured_metadata {
+		values = {
+			filename = "",
+		}
 	}
 }
 
