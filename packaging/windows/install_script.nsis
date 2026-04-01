@@ -81,7 +81,7 @@ Section "install"
   ${EndIf}
 
   # Preemptively stop the existing service if it's running.
-  nsExec::ExecToLog 'sc stop "Alloy"'
+  nsExec::ExecToLog 'net stop "Alloy" /y'
   Pop $0
 
   # Configure the out path and copy files to it.
@@ -282,7 +282,7 @@ Section "uninstall"
   DetailPrint "Starting uninstaller."
 
   # Stop and remove service.
-  nsExec::ExecToLog 'sc stop "Alloy"'
+  nsExec::ExecToLog 'net stop "Alloy" /y'
   Pop $0
   nsExec::ExecToLog 'sc delete "Alloy"'
   Pop $0
