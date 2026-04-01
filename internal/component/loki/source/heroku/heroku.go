@@ -125,8 +125,9 @@ func (c *Component) Update(args component.Arguments) error {
 		c.serverMetrics.SetCollector(registry)
 
 		server, err := source.NewServer(c.opts.Logger, registry, c.handler, source.ServerConfig{
-			Namespace: "loki_source_heroku_drain_target",
-			NetConfig: newArgs.Server,
+			Namespace:      "loki_source_heroku_drain_target",
+			EntriesWritten: c.metrics.entriesWritten,
+			NetConfig:      newArgs.Server,
 			LogsConfig: &source.LogsConfig{
 				FixedLabels:          newArgs.labelSet(),
 				RelabelRules:         alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
