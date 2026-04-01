@@ -23,20 +23,14 @@ function goTemplatePlugin() {
 /**
  * Available mock fixtures mapped by their localID.
  */
-const MOCK_FIXTURES = [
-  'discovery.kubernetes.heavy',
-  'discovery.kubernetes.light',
-];
+const MOCK_FIXTURES = ['discovery.kubernetes.heavy', 'discovery.kubernetes.light'];
 
 /**
  * Helper to load a fixture by component ID.
  */
 function loadFixture(componentId: string): string | null {
   try {
-    return readFileSync(
-      join(__dirname, `src/test/generated_fixtures/${componentId}.json`),
-      'utf-8'
-    );
+    return readFileSync(join(__dirname, `src/test/generated_fixtures/${componentId}.json`), 'utf-8');
   } catch {
     return null;
   }
