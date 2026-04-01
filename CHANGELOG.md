@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes 🐛
+
+* **loki.rules.kubernetes, mimir.rules.kubernetes:** Add a 30s timeout to remote ruler sync (ListRules) calls to prevent the event loop from hanging indefinitely on transient network issues.
+
 ## [1.15.0](https://github.com/grafana/alloy/compare/v1.14.0...v1.15.0) (2026-03-26)
 
 
