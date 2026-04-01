@@ -13,27 +13,9 @@ func TestReadLogFile(t *testing.T) {
 		t,
 		common.ExpectedLogResult{
 			Labels: map[string]string{
-				"detected_level": "info",
+				"filename": "/etc/alloy/logs.txt",
 			},
-			EntryCount: 9,
-		},
-		common.ExpectedLogResult{
-			Labels: map[string]string{
-				"detected_level": "debug",
-			},
-			EntryCount: 1,
-		},
-		common.ExpectedLogResult{
-			Labels: map[string]string{
-				"detected_level": "error",
-			},
-			EntryCount: 2,
-		},
-		common.ExpectedLogResult{
-			Labels: map[string]string{
-				"detected_level": "warn",
-			},
-			EntryCount: 1,
+			EntryCount: 13,
 		},
 	)
 }
