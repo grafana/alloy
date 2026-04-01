@@ -44,6 +44,8 @@ The `otelcol.processor.attributes` component doesn't support any arguments. You 
 
 You can use the following blocks with `otelcol.processor.attributes`:
 
+{{< docs/alloy-config >}}
+
 | Block                                      | Description                                                                | Required |
 | ------------------------------------------ | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                         | Configures where to send received telemetry data.                          | yes      |
@@ -62,11 +64,6 @@ You can use the following blocks with `otelcol.processor.attributes`:
 | `include` > [`regexp`][regexp]             | Regex cache settings.                                                      | no       |
 | `include` > [`resource`][resource]         | A list of items to match the resources against.                            | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `include` > `attribute` refers to an `attribute` block defined inside an `include` block.
-
-If both an `include` block and an `exclude`block are specified, the `include` properties are checked before the `exclude` properties.
-
 [output]: #output
 [action]: #action
 [include]: #include
@@ -77,6 +74,10 @@ If both an `include` block and an `exclude`block are specified, the `include` pr
 [library]: #library
 [log_severity]: #log_severity
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
+
+If both an `include` block and an `exclude`block are specified, the `include` properties are checked before the `exclude` properties.
 
 ### `output`
 

@@ -20,7 +20,6 @@ It forwards this data as log entries to Loki receivers and exports targets for P
 database_observability.postgres "<LABEL>" {
   data_source_name = <DATA_SOURCE_NAME>
   forward_to       = [<LOKI_RECEIVERS>]
-  targets          = "<TARGET_LIST>"
 }
 ```
 
@@ -32,7 +31,7 @@ You can use the following arguments with `database_observability.postgres`:
 |----------------------|----------------------|-------------------------------------------------------------|---------|----------|
 | `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
 | `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
-| `targets`            | `list(map(string))`  | List of targets to scrape.                                  |         | yes      |
+| `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
 | `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
@@ -65,6 +64,8 @@ The following collectors are configurable:
 
 You can use the following blocks with `database_observability.postgres`:
 
+{{< docs/alloy-config >}}
+
 | Block                              | Description                                       | Required |
 |------------------------------------|---------------------------------------------------|----------|
 | [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.               | no       |
@@ -74,10 +75,8 @@ You can use the following blocks with `database_observability.postgres`:
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
-| [`health_check`][health_check]     | Configure the health check collector.             | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
+| [`health_check`][health_check]               | Configure the health check collector.   | no       |
+| [`prometheus_exporter`][prometheus_exporter] | Configure the embedded postgres_exporter. | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
@@ -87,6 +86,9 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
 [health_check]: #health_check
+[prometheus_exporter]: #prometheus_exporter
+
+{{< /docs/alloy-config >}}
 
 ### `cloud_provider`
 
@@ -150,6 +152,13 @@ The `azure` block supplies the identifying information for the database being mo
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1h"`  | no       |
+
+### `prometheus_exporter`
+
+The `prometheus_exporter` block configures the embedded postgres_exporter scrapers.
+The `data_source_name` is inherited from the parent block.
+
+Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) docs for the full list of supported arguments and sub-blocks.
 
 ## `logs` collector
 

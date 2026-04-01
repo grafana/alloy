@@ -115,11 +115,15 @@ If `service_name` isn't specified and couldn't be inferred, then it's set to `un
 
 You can use the following block with `pyroscope.java`:
 
+{{< docs/alloy-config >}}
+
 | Block                                 | Description                             | Required |
 | ------------------------------------- | --------------------------------------- | -------- |
 | [profiling_config`][profiling_config] | Describes java profiling configuration. | no       |
 
 [profiling_config]: #profiling_config
+
+{{< /docs/alloy-config >}}
 
 ### `profiling_config`
 

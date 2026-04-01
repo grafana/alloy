@@ -46,6 +46,8 @@ The `otelcol.exporter.splunkhec` component doesn't support any arguments. You ca
 
 You can use the following blocks with `otelcol.exporter.splunkhec`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                      | Description                                                                    | Required |
 |------------------------------------------------------------|--------------------------------------------------------------------------------|----------|
 | [`splunk`][splunk]                                         | Configures the Splunk HEC exporter.                                            | yes      |
@@ -60,9 +62,6 @@ You can use the following blocks with `otelcol.exporter.splunkhec`:
 | `sending_queue` > [`batch`][batch]                         | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | [`retry_on_failure`][retry_on_failure]                     | Configures retry mechanism for failed requests.                                | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `splunk` > `batcher` refers to a `batcher` block defined inside a `splunk` block.
-
 [splunk]: #splunk
 [otel_to_hec_fields]: #otel_to_hec_fields
 [telemetry]: #telemetry
@@ -74,6 +73,8 @@ For example, `splunk` > `batcher` refers to a `batcher` block defined inside a `
 [sending_queue]: #sending_queue
 [batch]: #batch
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `splunk`
 

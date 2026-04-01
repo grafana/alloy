@@ -44,6 +44,8 @@ The `otelcol.auth.headers` component doesn't support any arguments. You can conf
 
 You can use the following blocks with `otelcol.auth.headers`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`header`][header]               | Custom header to attach to requests.                                       | yes      |
@@ -51,6 +53,8 @@ You can use the following blocks with `otelcol.auth.headers`:
 
 [header]: #header
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `header`
 

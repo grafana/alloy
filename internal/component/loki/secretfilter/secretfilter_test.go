@@ -857,3 +857,87 @@ func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
 }
+
+func TestTimeoutLabel(t *testing.T) {
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+
+	tests := []struct {
+		name          string
+		findings      []report.Finding // returned by the mock detector on timeout
+		labelTimedOut bool
+		dropOnTimeout bool
+		wantLabel     bool
+		wantDropped   bool
+		wantRedaction bool
+	}{
+		{
+			name:          "label_timed_out=true, no findings on timeout",
+			findings:      nil,
+			labelTimedOut: true,
+			wantLabel:     true,
+		},
+		{
+			name:          "label_timed_out=true, partial findings on timeout",
+			findings:      []report.Finding{{Secret: secret, RuleID: "grafana-api-key"}},
+			labelTimedOut: true,
+			wantLabel:     true,
+			wantRedaction: true,
+		},
+		{
+			name:          "label_timed_out=false, timeout exceeded",
+			findings:      nil,
+			labelTimedOut: false,
+			wantLabel:     false,
+		},
+		{
+			name:          "label_timed_out=true, drop_on_timeout=true",
+			findings:      nil,
+			labelTimedOut: true,
+			dropOnTimeout: true,
+			wantDropped:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			line := "log line with secret " + secret + " end"
+			c, err := New(component.Options{
+				Logger:         util.TestLogger(t),
+				OnStateChange:  func(e component.Exports) {},
+				GetServiceData: testhelper.GetServiceData,
+				Registerer:     prometheus.NewRegistry(),
+			}, Arguments{
+				ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
+				ProcessingTimeout: 10 * time.Millisecond,
+				LabelTimedOut:     tc.labelTimedOut,
+				DropOnTimeout:     tc.dropOnTimeout,
+			})
+			require.NoError(t, err)
+			findings := tc.findings
+			//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+			c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+				<-ctx.Done()
+				return findings
+			})
+
+			entry := loki.Entry{
+				Labels: model.LabelSet{"job": "myservice"},
+				Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+			}
+			processed, dropped := c.processEntry(context.Background(), entry)
+
+			require.Equal(t, tc.wantDropped, dropped)
+			if !dropped {
+				if tc.wantLabel {
+					require.Equal(t, model.LabelValue("timed-out"), processed.Labels["secretfilter"])
+					require.Equal(t, model.LabelValue("myservice"), processed.Labels["job"], "existing labels should be preserved")
+				} else {
+					require.NotContains(t, processed.Labels, model.LabelName("secretfilter"))
+				}
+				if tc.wantRedaction {
+					require.NotEqual(t, line, processed.Entry.Line, "partial findings should still be redacted")
+				}
+			}
+		})
+	}
+}

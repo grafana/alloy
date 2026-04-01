@@ -20,7 +20,6 @@ It forwards this data as log entries to Loki receivers and exports targets for P
 database_observability.mysql "<LABEL>" {
   data_source_name = <DATA_SOURCE_NAME>
   forward_to       = [<LOKI_RECEIVERS>]
-  targets          = "<TARGET_LIST>"
 }
 ```
 
@@ -32,7 +31,7 @@ You can use the following arguments with `database_observability.mysql`:
 |--------------------------------------------|----------------------|-----------------------------------------------------------------------------|---------|----------|
 | `data_source_name`                         | `secret`             | [Data Source Name][] for the MySQL server to connect to.                    |         | yes      |
 | `forward_to`                               | `list(LogsReceiver)` | Where to forward log entries after processing.                              |         | yes      |
-| `targets`                                  | `list(map(string))`  | List of targets to scrape.                                                  |         | yes      |
+| `targets`                                  | `list(map(string))`  | List of external targets to scrape.                                         |         | no       |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               |         | no       |
@@ -54,22 +53,22 @@ The following collectors are configurable:
 
 You can use the following blocks with `database_observability.mysql`:
 
-| Block                                | Description                                       | Required |
-|--------------------------------------|---------------------------------------------------|----------|
-| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
-| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
-| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
-| [`setup_consumers`][setup_consumers] | Configure the `setup_consumers` collector.        | no       |
-| [`setup_actors`][setup_actors]       | Configure the `setup_actors` collector.           | no       |
-| [`query_details`][query_details]     | Configure the queries collector.                  | no       |
-| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
-| [`explain_plans`][explain_plans]     | Configure the explain plans collector.            | no       |
-| [`locks`][locks]                     | Configure the locks collector.                    | no       |
-| [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
-| [`health_check`][health_check]       | Configure the health check collector.             | no       |
+{{< docs/alloy-config >}}
 
-The > symbol indicates deeper levels of nesting.
-For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
+| Block                                            | Description                                       | Required |
+|--------------------------------------------------|---------------------------------------------------|----------|
+| [`cloud_provider`][cloud_provider]               | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]                  | Provide AWS database host information.            | no       |
+| `cloud_provider` > [`azure`][azure]              | Provide Azure database host information.          | no       |
+| [`setup_consumers`][setup_consumers]             | Configure the `setup_consumers` collector.        | no       |
+| [`setup_actors`][setup_actors]                   | Configure the `setup_actors` collector.           | no       |
+| [`query_details`][query_details]                 | Configure the queries collector.                  | no       |
+| [`schema_details`][schema_details]               | Configure the schema and table details collector. | no       |
+| [`explain_plans`][explain_plans]                 | Configure the explain plans collector.            | no       |
+| [`locks`][locks]                                 | Configure the locks collector.                    | no       |
+| [`query_samples`][query_samples]                 | Configure the query samples collector.            | no       |
+| [`health_check`][health_check]                   | Configure the health check collector.             | no       |
+| [`prometheus_exporter`][prometheus_exporter]     | Configure the embedded mysqld_exporter.           | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
@@ -82,6 +81,9 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [query_samples]: #query_samples
 [setup_actors]: #setup_actors
 [health_check]: #health_check
+[prometheus_exporter]: #prometheus_exporter
+
+{{< /docs/alloy-config >}}
 
 ### `cloud_provider`
 
@@ -165,12 +167,18 @@ The `azure` block supplies the identifying information for the database being mo
 | `collect_interval`         | `duration` | How frequently to check if `setup_actors` are configured correctly.    | `"1h"`  | no       |
 
 
-### `health_checks`
+### `health_check`
 
 | Name                       | Type       | Description                                                            | Default | Required |
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval`         | `duration` | How frequently to run health checks.                                   | `"1h"`  | no       |
 
+### `prometheus_exporter`
+
+The `prometheus_exporter` block configures the embedded mysqld_exporter scrapers.
+The `data_source_name` is inherited from the parent block.
+
+Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 
 ## Example
 

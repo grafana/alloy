@@ -50,6 +50,8 @@ The `otelcol.receiver.jaeger` component doesn't support any arguments. You can c
 
 You can use the following blocks with `otelcol.receiver.jaeger`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                                           | Description                                                                | Required |
 | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                                              | Configures where to send received telemetry data.                          | yes      |
@@ -68,9 +70,6 @@ You can use the following blocks with `otelcol.receiver.jaeger`:
 | `protocols` > [`thrift_compact`][thrift_compact]                                | Configures a Thrift compact UDP server to receive traces.                  | no       |
 | [`debug_metrics`][debug_metrics]                                                | Configures the metrics that this component generates to monitor its state. | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `protocols` > `grpc` refers to a `grpc` block defined inside a `protocols` block.
-
 [protocols]: #protocols
 [grpc]: #grpc
 [tls]: #tls
@@ -84,6 +83,8 @@ For example, `protocols` > `grpc` refers to a `grpc` block defined inside a `pro
 [thrift_compact]: #thrift_compact
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

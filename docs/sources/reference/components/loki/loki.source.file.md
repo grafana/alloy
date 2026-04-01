@@ -73,6 +73,8 @@ When `legacy_positions_file` is set, Alloy will try to find previous positions f
 
 You can use the following blocks with `loki.source.file`:
 
+{{< docs/alloy-config >}}
+
 | Name                             | Description                                                                  | Required |
 | -------------------------------- | ---------------------------------------------------------------------------- | -------- |
 | [`decompression`][decompression] | Configure reading logs from compressed files.                                | no       |
@@ -82,6 +84,8 @@ You can use the following blocks with `loki.source.file`:
 [decompression]: #decompression
 [file_watch]: #file_watch
 [file_match]: #file_match
+
+{{< /docs/alloy-config >}}
 
 ### `decompression`
 

@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"sync"
 
 	"github.com/alecthomas/units"
@@ -14,7 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/loki/source/api/internal/lokipush"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -61,7 +60,7 @@ type Component struct {
 	uncheckedCollector *util.UncheckedCollector
 
 	serverMut sync.Mutex
-	server    *lokipush.PushAPIServer
+	server    *source.Server
 
 	fanout *loki.Fanout
 }
@@ -120,8 +119,8 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.serverMut.Lock()
 	defer c.serverMut.Unlock()
-	serverNeedsRestarting := c.server == nil || !reflect.DeepEqual(c.server.ServerConfig(), *newArgs.Server)
-	if serverNeedsRestarting {
+
+	if c.server.NeedsRestart(newArgs.Server) {
 		if c.server != nil {
 			c.server.Shutdown()
 		}
@@ -130,23 +129,39 @@ func (c *Component) Update(args component.Arguments) error {
 		// avoid issues with re-registering metrics with the same name, we create a
 		// new registry for the server every time we create one, and pass it to an
 		// unchecked collector to bypass uniqueness checking.
-		serverRegistry := prometheus.NewRegistry()
-		c.uncheckedCollector.SetCollector(serverRegistry)
+		reg := prometheus.NewRegistry()
+		c.uncheckedCollector.SetCollector(reg)
 
 		var err error
-		c.server, err = lokipush.NewPushAPIServer(c.opts.Logger, newArgs.Server, c.handler, serverRegistry, int64(newArgs.MaxSendMessageSize))
+		c.server, err = source.NewServer(c.opts.Logger, reg, c.handler, source.ServerConfig{
+			Namespace: "loki_source_api",
+			NetConfig: newArgs.Server,
+			LogsConfig: &source.LogsConfig{
+				FixedLabels:          newArgs.labelSet(),
+				RelabelRules:         relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
+				UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
+			},
+		})
+
 		if err != nil {
 			return fmt.Errorf("failed to create embedded server: %v", err)
 		}
 
-		if err = c.server.Run(); err != nil {
+		logsRoutes, handlerRoutes := newRoutes(int(newArgs.MaxSendMessageSize))
+		if err = c.server.Run(logsRoutes, handlerRoutes); err != nil {
 			return fmt.Errorf("failed to run embedded server: %v", err)
 		}
+
+		return nil
 	}
 
-	c.server.SetLabels(newArgs.labelSet())
-	c.server.SetRelabelRules(newArgs.RelabelRules)
-	c.server.SetKeepTimestamp(newArgs.UseIncomingTimestamp)
+	if c.server != nil {
+		c.server.Update(&source.LogsConfig{
+			FixedLabels:          newArgs.labelSet(),
+			RelabelRules:         relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
+			UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
+		})
+	}
 
 	return nil
 }
