@@ -95,7 +95,7 @@ replaces:
 
   - comment: Replace OpenTelemetry OBI with Grafana fork
     dependency: go.opentelemetry.io/obi
-    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.12.2-0.20260318145328-e31c5acda289
+    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.16.2
 
   - comment: Replace OpenTelemetry eBPF profiler with Grafana fork
     dependency: go.opentelemetry.io/ebpf-profiler

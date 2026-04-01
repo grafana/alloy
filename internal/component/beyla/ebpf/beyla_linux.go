@@ -82,7 +82,8 @@ var validInstrumentations = map[string]struct{}{
 }
 
 func (args Routes) Convert() *transform.RoutesConfig {
-	routes := beyla.DefaultConfig().Routes
+	defaultRoutes := *beyla.DefaultConfig().Routes
+	routes := &defaultRoutes
 	if args.Unmatch != "" {
 		routes.Unmatch = transform.UnmatchType(args.Unmatch)
 	}
@@ -491,6 +492,7 @@ func (args Metrics) Validate() error {
 		"application_span_sizes": {}, "application_host": {},
 		"application_service_graph": {}, "application_process": {},
 		"network": {}, "network_inter_zone": {},
+		"stats": {},
 	}
 	for _, feature := range args.Features {
 		if _, ok := validFeatures[feature]; !ok {
@@ -532,6 +534,24 @@ func (args Network) Convert() obi.NetworkConfig {
 	networks.Sampling = args.Sampling
 	networks.CIDRs = args.CIDRs
 	return networks
+}
+
+func (args Stats) Convert() obi.StatsConfig {
+	stats := beyla.DefaultConfig().Stats
+	if args.AgentIP != "" {
+		stats.AgentIP = args.AgentIP
+	}
+	if args.AgentIPIface != "" {
+		stats.AgentIPIface = obi.AgentTypeIface(args.AgentIPIface)
+	}
+	if args.AgentIPType != "" {
+		stats.AgentIPType = args.AgentIPType
+	}
+	if args.CIDRs != nil {
+		stats.CIDRs = args.CIDRs
+	}
+	stats.Print = args.Print
+	return stats
 }
 
 func (args EBPF) Convert() (*obiCfg.EBPFTracer, error) {
@@ -925,6 +945,7 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		cfg.Metrics.Features = export.LoadFeatures(a.Metrics.Features)
 	}
 	cfg.NetworkFlows = a.Metrics.Network.Convert()
+	cfg.Stats = a.Stats.Convert()
 	cfg.EnforceSysCaps = a.EnforceSysCaps
 
 	ebpf, err := a.EBPF.Convert()

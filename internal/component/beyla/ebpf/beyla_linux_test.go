@@ -308,6 +308,7 @@ func TestArguments_ConvertDefaultConfig(t *testing.T) {
 	require.Equal(t, cfg.NetworkFlows, beyla.DefaultConfig().NetworkFlows)
 	require.Equal(t, cfg.Discovery, beyla.DefaultConfig().Discovery)
 	require.Equal(t, cfg.EnforceSysCaps, beyla.DefaultConfig().EnforceSysCaps)
+	require.Equal(t, cfg.Stats, beyla.DefaultConfig().Stats)
 }
 
 func TestArguments_ValidationErrors(t *testing.T) {

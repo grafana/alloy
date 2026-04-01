@@ -101,6 +101,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `injector` > [`export`][injector export]                               | Configures which telemetry signals the injected SDK exports.                                       | no       |
 | `injector` > [`resources`][injector resources]                         | Configures resource attributes for the injected SDK.                                               | no       |
 | `injector` > [`sampler`][sampler]                                      | Configures default trace sampling for injected SDKs.                                               | no       |
+| [`stats`][stats]                                                       | Configures stats observability options for Beyla.                                                  | no       |
 
 [routes]: #routes
 [traces]: #traces
@@ -125,6 +126,7 @@ You can use the following blocks with `beyla.ebpf`:
 [injector webhook]: #webhook
 [injector export]: #export
 [injector resources]: #resources
+[stats]: #stats
 
 {{< /docs/alloy-config >}}
 
@@ -584,6 +586,7 @@ The `metrics` block configures which metrics Beyla collects.
 * `application_host` exports application-level host metrics for host-based pricing.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
+* `stats` exports kernel-level connection statistics per service.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
@@ -766,6 +769,22 @@ The `resources` block configures resource attributes attached to telemetry emitt
 | `add_k8s_attributes`| `bool`             | Add Kubernetes UID attributes (e.g. `k8s.deployment.uid`) to the resource.         | `false` | no       |
 | `attributes`        | `map(string)`      | Map of additional resource attributes to add (e.g. `{environment = "production"}`). | `{}`    | no       |
 | `use_labels`        | `bool`             | Use common Kubernetes labels as resource attributes (e.g. `app.kubernetes.io/name` as `service.name`). | `false` | no       |
+
+### `stats`
+
+The `stats` block configures stats observability options for Beyla. You must append `stats` to the `features` list in the `metrics` block to enable stats collection.
+
+| Name             | Type           | Description                                                                       | Default      | Required |
+|------------------|----------------|-----------------------------------------------------------------------------------|--------------|----------|
+| `agent_ip`       | `string`       | Overrides the reported agent IP address in stats records.                         | `""`         | no       |
+| `agent_ip_iface` | `string`       | Network interface to obtain the agent IP from.                                    | `"external"` | no       |
+| `agent_ip_type`  | `string`       | Type of IP address to use.                                                        | `"any"`      | no       |
+| `cidrs`          | `list(string)` | List of CIDR ranges used to decorate `src.cidr` and `dst.cidr` attributes.        | `[]`         | no       |
+| `print_stats`    | `bool`         | Print stats records to stdout for debugging.                                      | `false`      | no       |
+
+You can set `agent_ip_iface` to `external` (default), `local`, or `name:<interface name>`, for example `name:eth0`.
+
+You can set `agent_ip_type` to `ipv4`, `ipv6`, or `any` (default).
 
 ## Exported fields
 
