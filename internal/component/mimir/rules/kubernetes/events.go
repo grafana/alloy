@@ -38,6 +38,7 @@ type eventProcessor struct {
 	namespaceSelector  labels.Selector
 	ruleSelector       labels.Selector
 	namespacePrefix    string
+	namespaceSeparator string
 	externalLabels     map[string]string
 	extraQueryMatchers *ExtraQueryMatchers
 
@@ -177,7 +178,7 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.MimirRuleGroup
 	desiredState := make(kubernetes.MimirRuleGroupsByNamespace)
 	for _, rules := range kubernetesState {
 		for _, rule := range rules {
-			mimirNs := mimirNamespaceForRuleCRD(e.namespacePrefix, rule)
+			mimirNs := mimirNamespaceForRuleCRD(e.namespacePrefix, e.namespaceSeparator, rule)
 			groups, err := convertCRDRuleGroupToRuleGroup(rule.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert rule group: %w", err)
@@ -376,21 +377,21 @@ func (e *eventProcessor) getKubernetesState() (map[string][]*promv1.PrometheusRu
 }
 
 // mimirNamespaceForRuleCRD returns the namespace that the rule CRD should be
-// stored in mimir. This function, along with isManagedNamespace, is used to
+// stored in mimir. This function, along with isManagedMimirNamespace, is used to
 // determine if a rule CRD is managed by Alloy.
-func mimirNamespaceForRuleCRD(prefix string, pr *promv1.PrometheusRule) string {
-	return fmt.Sprintf("%s/%s/%s/%s", prefix, pr.Namespace, pr.Name, pr.UID)
+func mimirNamespaceForRuleCRD(prefix, separator string, pr *promv1.PrometheusRule) string {
+	return fmt.Sprintf("%s%s%s%s%s%s%s", prefix, separator, pr.Namespace, separator, pr.Name, separator, pr.UID)
 }
 
 // isManagedMimirNamespace returns true if the namespace is managed by Alloy.
 // Unmanaged namespaces are left as is by the operator.
+// The check is separator-agnostic so that rules created with a previous separator
+// are still recognised and garbage-collected when the separator changes.
 func isManagedMimirNamespace(prefix, namespace string) bool {
 	prefixPart := regexp.QuoteMeta(prefix)
-	namespacePart := `.+`
-	namePart := `.+`
 	uuidPart := `[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}`
 	managedNamespaceRegex := regexp.MustCompile(
-		fmt.Sprintf("^%s/%s/%s/%s$", prefixPart, namespacePart, namePart, uuidPart),
+		fmt.Sprintf(`^%s.+%s$`, prefixPart, uuidPart),
 	)
 	return managedNamespaceRegex.MatchString(namespace)
 }

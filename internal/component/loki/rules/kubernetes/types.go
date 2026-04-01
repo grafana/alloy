@@ -18,7 +18,8 @@ type Arguments struct {
 	UseLegacyRoutes     bool                    `alloy:"use_legacy_routes,attr,optional"`
 	HTTPClientConfig    config.HTTPClientConfig `alloy:",squash"`
 	SyncInterval        time.Duration           `alloy:"sync_interval,attr,optional"`
-	LokiNameSpacePrefix string                  `alloy:"loki_namespace_prefix,attr,optional"`
+	LokiNameSpacePrefix    string                  `alloy:"loki_namespace_prefix,attr,optional"`
+	LokiNamespaceSeparator string                  `alloy:"loki_namespace_separator,attr,optional"`
 	ExtraQueryMatchers  *ExtraQueryMatchers     `alloy:"extra_query_matchers,block,optional"`
 
 	RuleSelector          kubernetes.LabelSelector `alloy:"rule_selector,block,optional"`
@@ -36,9 +37,10 @@ var (
 )
 
 var DefaultArguments = Arguments{
-	SyncInterval:        30 * time.Second,
-	LokiNameSpacePrefix: "alloy",
-	HTTPClientConfig:    config.DefaultHTTPClientConfig,
+	SyncInterval:           30 * time.Second,
+	LokiNameSpacePrefix:    "alloy",
+	LokiNamespaceSeparator: "-",
+	HTTPClientConfig:       config.DefaultHTTPClientConfig,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -53,6 +55,9 @@ func (args *Arguments) Validate() error {
 	}
 	if args.LokiNameSpacePrefix == "" {
 		return fmt.Errorf("loki_namespace_prefix must not be empty")
+	}
+	if args.LokiNamespaceSeparator == "" {
+		return fmt.Errorf("loki_namespace_separator must not be empty")
 	}
 	if err := args.ExtraQueryMatchers.Validate(); err != nil {
 		return err
