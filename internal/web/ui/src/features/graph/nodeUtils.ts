@@ -1,6 +1,6 @@
 import type { ComponentInfo } from '../component/types';
 
-const AVERAGE_CHAR_WIDTH = 7.5;
+const AVERAGE_CHAR_WIDTH = 13.0;
 const PADDING = 30;
 const MIN_WIDTH = 120;
 const MAX_WIDTH = 600;

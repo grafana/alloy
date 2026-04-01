@@ -10,7 +10,8 @@
     "format:fix": "prettier --write .",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "graph": "tsx ./scripts/alloy-graph/index.ts"
   },
   "dependencies": {
     "@dagrejs/dagre": "^1.1.8",
@@ -45,6 +46,7 @@
     "eslint-plugin-simple-import-sort": "12.1.1",
     "globals": "16.5.0",
     "prettier": "3.8.1",
+    "tsx": "^4.21.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.1",
     "vite": "7.3.1"
