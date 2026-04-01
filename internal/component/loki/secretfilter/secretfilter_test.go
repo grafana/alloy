@@ -670,7 +670,6 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	// We should have 3 redacted secrets (2 grafana-api-key and 1 gcp-api-key)
 	require.Equal(t, float64(3), testutil.ToFloat64(c.metrics.secretsRedactedTotal),
 		"secretsRedactedTotal should count all secrets across multiple entries")
-
 }
 
 // TestArgumentsUpdate validates that the secretfilter component works correctly
