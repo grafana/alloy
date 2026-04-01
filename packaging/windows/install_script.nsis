@@ -136,7 +136,7 @@ Section "install"
   Pop $0
 
   # Auto-restart Alloy on failure with progressive delays. Reset failure counter after 1 day without failure.
-  nsExec::ExecToLog `sc failure "Alloy" reset= 86400 actions= restart/60000/restart/300000/restart/300000`
+  nsExec::ExecToLog `sc failure "Alloy" reset= 86400 actions= restart/30000/restart/60000/restart/300000`
   Pop $0
 SectionEnd
 
