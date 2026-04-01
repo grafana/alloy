@@ -103,6 +103,50 @@ func TestProcessLogFile(t *testing.T) {
 		common.ExpectedLogResult{
 			EntryCount: 1,
 			Labels: map[string]string{
+				"format": "multiline",
+				"method": "GET",
+				"route":  "/hello",
+			},
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/multiline.log",
+			},
+		},
+		common.ExpectedLogResult{
+			EntryCount: 2,
+			Labels: map[string]string{
+				"format": "multiline",
+				"method": "GET",
+				"route":  "/error",
+			},
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/multiline.log",
+			},
+		},
+		common.ExpectedLogResult{
+			EntryCount: 1,
+			Labels: map[string]string{
+				"format": "multiline",
+				"method": "POST",
+				"route":  "/hello",
+			},
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/multiline.log",
+			},
+		},
+		common.ExpectedLogResult{
+			EntryCount: 1,
+			Labels: map[string]string{
+				"format": "multiline",
+				"method": "PUT",
+				"route":  "/hello",
+			},
+			StructuredMetadata: map[string]string{
+				"filename": "/etc/alloy/mount/multiline.log",
+			},
+		},
+		common.ExpectedLogResult{
+			EntryCount: 1,
+			Labels: map[string]string{
 				"format": "nginx",
 				"method": "GET",
 				"status": "200",
@@ -143,6 +187,7 @@ func generateFiles(t *testing.T, dir string) {
 	writeDockerLogFile(t, dir)
 	writeJSONLogFile(t, dir)
 	writeLogfmtLogFile(t, dir)
+	writeMultilineLogFile(t, dir)
 	writeNginxLogFile(t, dir)
 }
 
@@ -247,6 +292,45 @@ func writeLogfmtLogFile(t *testing.T, mountDir string) {
 	buf.WriteString("msg=\"msg 2\" service_name=\"service-1\"\n")
 	buf.WriteString("msg=\"msg 3\" service_name=\"service-2\"\n")
 	writeLogFile(t, filepath.Join(mountDir, "logfmt.log"), buf.String())
+}
+
+func writeMultilineLogFile(t *testing.T, mountDir string) {
+	t.Helper()
+
+	const dateFormat = "2006-01-02 15:04:05"
+
+	var buf bytes.Buffer
+	writeLine := func(line string) {
+		buf.WriteString("[")
+		buf.WriteString(time.Now().UTC().Format(dateFormat))
+		buf.WriteString("] ")
+		buf.WriteString(line)
+		buf.WriteString("\n")
+	}
+
+	writeLine(`"GET /hello HTTP/1.1" 200 -`)
+	writeLine(`ERROR in app: Exception on /error [GET]`)
+	buf.WriteString("Traceback (most recent call last):\n")
+	buf.WriteString("  File \"/home/pallets/.pyenv/versions/3.8.5/lib/python3.8/site-packages/flask/app.py\", line 2447, in wsgi_app\n")
+	buf.WriteString("    response = self.full_dispatch_request()\n")
+	buf.WriteString("  File \"/home/pallets/.pyenv/versions/3.8.5/lib/python3.8/site-packages/flask/app.py\", line 1952, in full_dispatch_request\n")
+	buf.WriteString("    rv = self.handle_user_exception(e)\n")
+	buf.WriteString("  File \"/home/pallets/.pyenv/versions/3.8.5/lib/python3.8/site-packages/flask/app.py\", line 1821, in handle_user_exception\n")
+	buf.WriteString("    reraise(exc_type, exc_value, tb)\n")
+	buf.WriteString("  File \"/home/pallets/.pyenv/versions/3.8.5/lib/python3.8/site-packages/flask/_compat.py\", line 39, in reraise\n")
+	buf.WriteString("    raise value\n")
+	buf.WriteString("  File \"/home/pallets/.pyenv/versions/3.8.5/lib/python3.8/site-packages/flask/app.py\", line 1950, in full_dispatch_request\n")
+	buf.WriteString("    rv = self.dispatch_request()\n")
+	buf.WriteString("  File \"/home/pallets/.pyenv/versions/3.8.5/lib/python3.8/site-packages/flask/app.py\", line 1936, in dispatch_request\n")
+	buf.WriteString("    return self.view_functions[rule.endpoint](**req.view_args)\n")
+	buf.WriteString("  File \"/home/pallets/src/deployment_tools/hello.py\", line 10, in error\n")
+	buf.WriteString("    raise Exception(\"Sorry, this route always breaks\")\n")
+	buf.WriteString("Exception: Sorry, this route always breaks\n")
+	writeLine(`"GET /error HTTP/1.1" 500 -`)
+	writeLine(`"POST /hello HTTP/1.1" 200 -`)
+	writeLine(`"PUT /hello HTTP/1.1" 202 -`)
+
+	writeLogFile(t, filepath.Join(mountDir, "multiline.log"), buf.String())
 }
 
 func writeNginxLogFile(t *testing.T, mountDir string) {

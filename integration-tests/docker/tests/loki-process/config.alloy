@@ -4,6 +4,7 @@ loki.source.file "test" {
 		{__path__ = "/etc/alloy/mount/docker.log", format = "docker"},
 		{__path__ = "/etc/alloy/mount/json.log", format = "json"},
 		{__path__ = "/etc/alloy/mount/logfmt.log", format = "logfmt"},
+		{__path__ = "/etc/alloy/mount/multiline.log", format = "multiline"},
 		{__path__ = "/etc/alloy/mount/nginx.log", format = "nginx"},
 	]
 
@@ -46,6 +47,53 @@ loki.process "p" {
 
 		stage.logfmt {
 			mapping = {msg = "msg", service_name = "service_name"}
+		}
+
+		stage.output {
+			source = "msg"
+		}
+	}
+
+	stage.match {
+		selector = `{format="multiline"}`
+
+		stage.multiline {
+			firstline     = `^\[\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2}\]`
+			max_wait_time = "1s"
+		}
+
+		stage.regex {
+			expression = `^\[(?P<time>\d{4}-\d{2}-\d{2} \d{1,2}:\d{2}:\d{2})\] (?P<msg>(?s:.*))$`
+		}
+
+		stage.timestamp {
+			source = "time"
+			format = "2006-01-02 15:04:05"
+		}
+
+		stage.match {
+			selector = `{format="multiline"} |= "Exception on"`
+
+			stage.regex {
+				source     = "msg"
+				expression = `^ERROR in app: Exception on (?P<route>\S+) \[(?P<method>\S+)\](?s:.*)$`
+			}
+		}
+
+		stage.match {
+			selector = `{format="multiline"} != "Exception on"`
+
+			stage.regex {
+				source     = "msg"
+				expression = `^"(?P<method>\S+) (?P<route>\S+) \S+" \d+ -(?s:.*)$`
+			}
+		}
+
+		stage.labels {
+			values = {
+				method = "",
+				route  = "",
+			}
 		}
 
 		stage.output {
