@@ -282,7 +282,7 @@ Section "uninstall"
   DetailPrint "Starting uninstaller."
 
   # Stop and remove service.
-  nsExec::ExecToLog 'net stop "Alloy"'
+  nsExec::ExecToLog 'net stop "Alloy" /y'
   Pop $0
   nsExec::ExecToLog 'sc delete "Alloy"'
   Pop $0
