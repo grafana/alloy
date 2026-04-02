@@ -60,7 +60,7 @@ You can use the following blocks with `database_observability.mysql`:
 | [`cloud_provider`][cloud_provider]               | Provide Cloud Provider information.               | no       |
 | `cloud_provider` > [`aws`][aws]                  | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]              | Provide Azure database host information.          | no       |
-| `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no
+| `cloud_provider` > [`gcp`][gcp]                  | Provide GCP database host information.            | no       |
 | [`setup_consumers`][setup_consumers]             | Configure the `setup_consumers` collector.        | no       |
 | [`setup_actors`][setup_actors]                   | Configure the `setup_actors` collector.           | no       |
 | [`query_details`][query_details]                 | Configure the queries collector.                  | no       |
