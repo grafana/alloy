@@ -186,12 +186,18 @@ func runFileRotationTest(t *testing.T, fn rotateFn) {
 		return
 	}
 
-	var expected []common.ExpectedLogResult
+	var (
+		expected   []common.ExpectedLogResult
+		totalCount int
+	)
 	for _, r := range results {
 		expected = append(expected, r...)
 	}
+	for _, e := range expected {
+		totalCount += e.EntryCount
+	}
 
-	common.AssertLogsPresent(t, expected...)
+	common.AssertLogsPresent(t, totalCount, expected...)
 }
 
 func cleanup(t *testing.T, testDir string) {

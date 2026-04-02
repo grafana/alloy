@@ -32,22 +32,15 @@ type ExpectedLogResult struct {
 	EntryCount int
 }
 
-// AssertLogsPresent checks that logs are present in Loki and match expected labels
-func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
+// AssertLogsPresent checks that logs are present in Loki and match expected labels.
+func AssertLogsPresent(t *testing.T, totalCount int, expected ...ExpectedLogResult) {
 	t.Helper()
 	AssertStatefulTestEnv(t)
 
-	var (
-		totalExpected int
-		logResponse   LogResponse
-	)
-
-	for _, e := range expected {
-		totalExpected += e.EntryCount
-	}
+	var logResponse LogResponse
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t), totalExpected), &logResponse)
+		_, err := FetchDataFromURL(LogQuery(SanitizeTestName(t), totalCount), &logResponse)
 		require.NoError(c, err)
 
 		var totalRecv int
@@ -55,7 +48,7 @@ func AssertLogsPresent(t *testing.T, expected ...ExpectedLogResult) {
 			totalRecv += len(r.Values)
 		}
 
-		require.Equal(c, totalExpected, totalRecv)
+		require.Equal(c, totalCount, totalRecv)
 	}, TestTimeoutEnv(t), DefaultRetryInterval)
 
 	for _, e := range expected {

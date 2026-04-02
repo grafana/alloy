@@ -41,6 +41,21 @@ func TestLokiSyslog(t *testing.T) {
 
 	common.AssertLogsPresent(
 		t,
+		20,
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format":   "rfc5424",
+				"protocol": "tcp",
+			},
+			EntryCount: 5,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format":   "rfc5424",
+				"protocol": "udp",
+			},
+			EntryCount: 5,
+		},
 		common.ExpectedLogResult{
 			Labels: map[string]string{
 				"format":   "rfc5424",
@@ -75,6 +90,20 @@ func TestLokiSyslog(t *testing.T) {
 				"severity": "error",
 			},
 			EntryCount: 2,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format":   "rfc3164",
+				"protocol": "tcp",
+			},
+			EntryCount: 5,
+		},
+		common.ExpectedLogResult{
+			Labels: map[string]string{
+				"format":   "rfc3164",
+				"protocol": "udp",
+			},
+			EntryCount: 5,
 		},
 		common.ExpectedLogResult{
 			Labels: map[string]string{
