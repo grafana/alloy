@@ -178,7 +178,7 @@ The `logs` collector processes PostgreSQL logs received through the `logs_receiv
 The `logs_receiver` entry point must be fed by `loki` log source components, for example:
 
 - `loki.source.file`: to read and process PostgreSQL log files from a self-hosted database instance
-- `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for and AWS RDS instance
+- `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for an AWS RDS instance
 
 {{< admonition type="note" >}}
 Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.
