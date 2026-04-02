@@ -61,7 +61,7 @@ You can use the following arguments with `mimir.rules.kubernetes`:
 | `follow_redirects`       | `bool`              | Whether to follow redirects returned by the server.                                              | `true`          | no       |
 | `http_headers`           | `map(list(secret))` | Custom HTTP headers to send with each request. The map key is the header name.                   |                 | no       |
 | `mimir_namespace_prefix`    | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.                  | `"alloy"`       | no       |
-| `mimir_namespace_separator` | `string`            | Separator between components of the Mimir namespace string. Use a character that does not require URL-encoding (for example `_`) when a reverse proxy sits in front of Mimir and does not preserve encoded slashes. | `"/"`           | no       |
+| `mimir_namespace_separator` | `string`            | Separator for Mimir namespace segments. Use a character that doesn’t require URL encoding when a reverse proxy drops encoded slashes. | `"/"`           | no       |
 | `no_proxy`               | `string`            | Comma-separated list of IP addresses, CIDR notations, and domain names to exclude from proxying. |                 | no       |
 | `prometheus_http_prefix` | `string`            | Path prefix for the [Mimir Prometheus endpoint][gem-path-prefix].                                | `"/prometheus"` | no       |
 | `proxy_connect_header`   | `map(list(secret))` | Specifies headers to send to proxies during CONNECT requests.                                    |                 | no       |
