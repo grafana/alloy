@@ -11,6 +11,7 @@ import (
 func TestReadLogFile(t *testing.T) {
 	common.AssertLogsPresent(
 		t,
+		13,
 		common.ExpectedLogResult{
 			Labels: map[string]string{
 				"detected_level": "info",
