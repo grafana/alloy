@@ -1,0 +1,358 @@
+name: Update Beyla Component From Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      beyla_release_tag:
+        description: Beyla release tag to sync from, for example v3.6.1
+        required: true
+        type: string
+      beyla_ref:
+        description: Optional Beyla git ref override for pre-release testing, for example main or release/v3.7
+        required: false
+        default: ""
+        type: string
+      source_ref:
+        description: Alloy ref to branch from
+        required: false
+        default: main
+        type: string
+
+concurrency:
+  group: agent-bump-beyla-${{ inputs.source_ref }}-${{ inputs.beyla_ref || inputs.beyla_release_tag }}
+  cancel-in-progress: true
+
+jobs:
+  plan-beyla-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Get secrets
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ANTHROPIC_API_KEY=anthropic-token:token
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 1
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Prepare plan output
+        run: mkdir -p .github/agent-output
+
+      - name: Run Claude Code plan job
+        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1.0.72
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          DISABLE_TELEMETRY: "1"
+          DISABLE_ERROR_REPORTING: "1"
+        with:
+          anthropic_api_key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_commit_signing: "false"
+          claude_args: "--max-turns 60 --allowedTools \"Bash(awk:*),Bash(cat:*),Bash(curl:*),Bash(date:*),Bash(gh:*),Bash(git:*),Bash(go:*),Bash(grep:*),Bash(head:*),Bash(jq:*),Bash(ls:*),Bash(make:*),Bash(mkdir:*),Bash(pwd:*),Bash(rg:*),Bash(sed:*),Bash(sort:*),Bash(tail:*),Bash(tr:*),Bash(wc:*),Edit,MultiEdit,Glob,Grep,LS,Read,Write,Task,TodoWrite\""
+          prompt: |
+            # Plan Alloy's Beyla update
+
+            **Target Beyla release tag**: `${{ inputs.beyla_release_tag }}`
+            **Beyla ref override**: `${{ inputs.beyla_ref }}`
+            **Branch from**: `${{ inputs.source_ref }}`
+            **Repository**: `grafana/alloy`
+
+            Your job is to inspect the target Beyla release, compare it with the current Alloy integration, and write an execution plan to `.github/agent-output/plan.md`.
+
+            Do not edit Alloy source files.
+            Do not create a branch.
+            Do not commit, push, or open a PR.
+
+            ## Source of truth
+
+            Fetch the Beyla source from `grafana/beyla`.
+            Use `${{ inputs.beyla_ref }}` if it is non-empty; otherwise use tag `${{ inputs.beyla_release_tag }}`.
+            Read `go.mod` there to determine the exact Beyla module version to use in Alloy.
+            Derive the exact Grafana OBI replacement version from the Beyla `.obi-src` gitlink commit:
+            - resolve the pinned `.obi-src` SHA for the selected Beyla ref
+            - resolve that SHA into a Go pseudo-version for `github.com/grafana/opentelemetry-ebpf-instrumentation`
+            - if the module proxy stalls, use `GOPROXY=direct` for the resolution step
+
+            You may use public GitHub raw URLs, `gh api`, or a shallow temporary clone outside the repo.
+
+            ## Files the implementation job may update
+
+            - `collector/builder-config.yaml`
+            - `dependency-replacements.yaml`
+            - `collector/go.mod`
+            - `go.mod`
+            - `docs/sources/_index.md.t`
+            - `internal/component/beyla/ebpf/args.go`
+            - `internal/component/beyla/ebpf/beyla_linux.go`
+            - `internal/component/beyla/ebpf/beyla_linux_test.go`
+            - `docs/sources/reference/components/beyla/beyla.ebpf.md`
+
+            `go.sum` and `collector/go.sum` may change only if required by module updates.
+
+            ## Required contents of `.github/agent-output/plan.md`
+
+            Write a concise Markdown plan with these sections:
+            - Target versions
+            - Required file updates
+            - Beyla field parity changes
+            - Verification steps
+            - Risks or likely failure points
+
+            Include the exact Beyla module version and OBI pseudo-version you resolved, identify the new fields or behavior Alloy needs for parity, and list the exact commands the implementation job should run to verify the change.
+
+      - name: Upload plan artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: beyla-update-plan
+          path: .github/agent-output/plan.md
+          if-no-files-found: warn
+
+      - name: Add plan to job summary
+        if: always()
+        run: |
+          {
+            echo "## Beyla update plan"
+            echo
+            cat .github/agent-output/plan.md
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+  implement-beyla-update:
+    needs: plan-beyla-update
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - name: Get secrets
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ANTHROPIC_API_KEY=anthropic-token:token
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token
+        id: app-token
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 1
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: beyla-update-plan
+          path: .github/agent-input
+
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Get GitHub App identity
+        id: get-app
+        env:
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          APP_ID="$(gh api "/apps/${APP_SLUG}" --jq .id)"
+          echo "app-id=${APP_ID}" >> "${GITHUB_OUTPUT}"
+          echo "app-login=${APP_SLUG}[bot]" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure Git
+        env:
+          APP_ID: ${{ steps.get-app.outputs.app-id }}
+          APP_LOGIN: ${{ steps.get-app.outputs.app-login }}
+        run: |
+          git config user.name "${APP_LOGIN}"
+          git config user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
+
+      - name: Prepare implementation outputs
+        run: |
+          mkdir -p .github/agent-output
+          cat > .github/agent-output/implement-status.md <<'EOF'
+          # Beyla update implementation status
+
+          State: not started
+          EOF
+
+      - name: Run Claude Code implement job
+        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1.0.72
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          DISABLE_TELEMETRY: "1"
+          DISABLE_ERROR_REPORTING: "1"
+        with:
+          anthropic_api_key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ANTHROPIC_API_KEY }}
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_commit_signing: "false"
+          claude_args: "--max-turns 120 --allowedTools \"Bash(awk:*),Bash(cat:*),Bash(curl:*),Bash(date:*),Bash(gh:*),Bash(git:*),Bash(go:*),Bash(grep:*),Bash(head:*),Bash(jq:*),Bash(ls:*),Bash(make:*),Bash(mkdir:*),Bash(pwd:*),Bash(rg:*),Bash(sed:*),Bash(sort:*),Bash(tail:*),Bash(tr:*),Bash(wc:*),Edit,MultiEdit,Glob,Grep,LS,Read,Write,Task,TodoWrite\""
+          prompt: |
+            # Update Alloy's Beyla integration for a Beyla release
+
+            **Target Beyla release tag**: `${{ inputs.beyla_release_tag }}`
+            **Beyla ref override**: `${{ inputs.beyla_ref }}`
+            **Branch from**: `${{ inputs.source_ref }}`
+            **Repository**: `grafana/alloy`
+            **Plan file**: `.github/agent-input/plan.md`
+            **Status file**: `.github/agent-output/implement-status.md`
+
+            Your job is to implement the Beyla update described in `.github/agent-input/plan.md`, verify it locally, and open a **draft PR** only after tests pass.
+
+            Treat the plan as a starting point, but re-check any assumption that looks stale while you work.
+
+            ## Required output
+
+            Create a branch from `${{ inputs.source_ref }}`, implement the required updates, run verification, push the branch, and open a draft PR against `${{ inputs.source_ref }}`.
+
+            If there are no changes to make, do not open a PR.
+            If verification fails, do not open a PR.
+
+            ## Status tracking
+
+            Keep `.github/agent-output/implement-status.md` updated throughout the run so a human can continue from it if this job fails.
+
+            Update that file:
+            - before making changes, with the plan you are executing
+            - after each major edit batch
+            - after each verification cycle
+            - whenever a command fails, including the exact command and a short failure summary
+            - at the end, with the final outcome
+
+            The status file should stay concise, but it must include what you tried, what failed, and what remains to do.
+
+            ## Files to update
+
+            Update only what is required in these files:
+            - `collector/builder-config.yaml`
+            - `dependency-replacements.yaml`
+            - `collector/go.mod`
+            - `go.mod`
+            - `docs/sources/_index.md.t`
+            - `internal/component/beyla/ebpf/args.go`
+            - `internal/component/beyla/ebpf/beyla_linux.go`
+            - `internal/component/beyla/ebpf/beyla_linux_test.go`
+            - `docs/sources/reference/components/beyla/beyla.ebpf.md`
+
+            You may also update `go.sum` or `collector/go.sum` if the module changes require it. Do not touch unrelated files.
+
+            ## Implementation requirements
+
+            1. Bump the OBI replacement version derived from Beyla's pinned `.obi-src` SHA in:
+               - `collector/builder-config.yaml`
+               - `dependency-replacements.yaml`
+               - `collector/go.mod`
+
+            2. Bump the Beyla version in:
+               - `go.mod`
+               - `docs/sources/_index.md.t`
+
+            3. After bumping module versions, run:
+               - `go mod tidy`
+               - `(cd collector && go mod tidy)`
+
+            4. Compare the current Alloy Beyla integration against the target Beyla release and add any newly added fields needed for parity in:
+               - `internal/component/beyla/ebpf/args.go`
+               - `internal/component/beyla/ebpf/beyla_linux.go`
+               - `internal/component/beyla/ebpf/beyla_linux_test.go`
+               - `docs/sources/reference/components/beyla/beyla.ebpf.md`
+
+            5. When determining newly added fields, inspect the relevant Beyla changes instead of guessing. Update only fields and behavior that are newly required for this release.
+
+            6. In `beyla_linux.go`, add matching convert and validate logic for the new fields, preserving existing defaults and zero-value behavior.
+
+            7. In `beyla_linux_test.go`, add focused tests for the new fields and any new validation behavior.
+
+            ## Style constraints
+
+            - Keep the changes minimal and consistent with the surrounding Alloy code.
+            - Do not add unnecessary comments.
+            - Do not refactor unrelated code.
+            - Preserve field ordering and naming patterns where possible.
+            - Keep docs concise and consistent with existing wording and table format.
+            - Do not add compatibility shims unless they are strictly required by the target Beyla release.
+
+            ## Verification
+
+            Run the following after editing:
+            - `go test ./internal/component/beyla/ebpf/...`
+
+            Fix any failures caused by your changes before continuing.
+
+            ## Git and PR workflow
+
+            - Create a branch named `agent/bump-beyla-${{ inputs.beyla_release_tag }}`
+            - Commit with message `chore(beyla): Bump to ${{ inputs.beyla_release_tag }}`
+            - Push the branch to `origin`
+            - Open a **draft PR** against `${{ inputs.source_ref }}`
+            - Use a conventional PR title, for example `chore(beyla): Bump to ${{ inputs.beyla_release_tag }}`
+
+            Use a concise PR body that summarizes:
+            - the Beyla version bump
+            - the OBI replacement bump
+            - any newly mapped Beyla fields
+
+            Do not force-push. Do not open a non-draft PR.
+
+      - name: Upload implementation status artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: beyla-update-implementation-status
+          path: .github/agent-output/implement-status.md
+          if-no-files-found: warn
+
+      - name: Add implementation status to job summary
+        if: always()
+        run: |
+          {
+            echo "## Beyla update implementation status"
+            echo
+            cat .github/agent-output/implement-status.md
+          } >> "${GITHUB_STEP_SUMMARY}"

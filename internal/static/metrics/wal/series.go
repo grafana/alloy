@@ -178,7 +178,7 @@ func (s *stripeSeries) gc(mint int64) map[chunks.HeadSeriesRef]struct{} {
 
 		// The series is stale. We need to obtain a second lock for the
 		// ref if it's different than the hash lock.
-		refLock := int(series.ref) & (s.size - 1)
+		refLock := int(s.refLock(series.ref))
 		if hashLock != refLock {
 			s.locks[refLock].Lock()
 		}
@@ -252,12 +252,12 @@ func (s *stripeSeries) Set(hash uint64, series *memSeries) {
 
 // GetOrSet returns the existing series for the given hash and label set, or sets it if it does not exist.
 // It returns the series and a boolean indicating whether it was newly created.
-func (s *stripeSeries) GetOrSet(hash uint64, lset labels.Labels, series *memSeries) (*memSeries, bool) {
+func (s *stripeSeries) GetOrSet(hash uint64, series *memSeries) (*memSeries, bool) {
 	hashLock := s.hashLock(hash)
 
 	s.locks[hashLock].Lock()
 	// If it already exists in hashes, return it.
-	if prev := s.hashes[hashLock].Get(hash, lset); prev != nil {
+	if prev := s.hashes[hashLock].Get(hash, series.lset); prev != nil {
 		s.locks[hashLock].Unlock()
 		return prev, false
 	}

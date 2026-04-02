@@ -516,6 +516,22 @@ func TestMetrics(t *testing.T) {
 						"loki_secretfilter_secrets_redacted_by_origin"))
 			}
 
+			// Check secretsRedactedByCategory
+			if len(tc.expectedRedactedByRule) > 0 {
+				jobValue := string(labels[model.LabelName("job")])
+				var metricStrings strings.Builder
+				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_category_total Number of secrets redacted, partitioned by rule name and origin label value.\n")
+				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_redacted_by_category_total counter\n")
+				for ruleName, count := range tc.expectedRedactedByRule {
+					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_category_total{origin="%s",rule="%s"} %d`,
+						jobValue, ruleName, count)
+					metricStrings.WriteString(metric + "\n")
+				}
+				require.NoError(t,
+					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
+						"loki_secretfilter_secrets_redacted_by_category_total"))
+			}
+
 			// Check processingDuration metric
 			// We don't validate the exact value since it will vary, but we verify it exists and has the right structure
 			count, err := testutil.GatherAndCount(registry, "loki_secretfilter_processing_duration_seconds")
@@ -545,6 +561,50 @@ func TestMetrics(t *testing.T) {
 	}
 }
 
+// TestMetrics_NoOriginLabel verifies that when origin_label is not set,
+// secrets_redacted_by_category_total still increments (with origin="") but
+// secrets_redacted_by_origin is not registered at all.
+func TestMetrics_NoOriginLabel(t *testing.T) {
+	registry := prometheus.NewRegistry()
+
+	args := Arguments{
+		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		OriginLabel: "",
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{"job": "test-job"},
+		Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      testhelper.TestLogs["grafana_api_key"].Log,
+		},
+	}
+	c.processEntry(context.Background(), entry)
+
+	// secrets_redacted_by_origin must not be registered
+	count, err := testutil.GatherAndCount(registry, "loki_secretfilter_secrets_redacted_by_origin")
+	require.NoError(t, err)
+	require.Equal(t, 0, count, "secrets_redacted_by_origin should not be registered when origin_label is not set")
+
+	// secrets_redacted_by_category_total must increment with origin=""
+	expected := strings.NewReader(
+		"# HELP loki_secretfilter_secrets_redacted_by_category_total Number of secrets redacted, partitioned by rule name and origin label value.\n" +
+			"# TYPE loki_secretfilter_secrets_redacted_by_category_total counter\n" +
+			`loki_secretfilter_secrets_redacted_by_category_total{origin="",rule="grafana-api-key"} 1` + "\n",
+	)
+	require.NoError(t,
+		testutil.GatherAndCompare(registry, expected, "loki_secretfilter_secrets_redacted_by_category_total"))
+}
+
 // Test to verify that the component registers its metrics with the registry
 func TestMetricsRegistration(t *testing.T) {
 	registry := prometheus.NewRegistry()
@@ -570,6 +630,7 @@ func TestMetricsRegistration(t *testing.T) {
 	c.metrics.secretsRedactedTotal.Inc()
 	c.metrics.secretsRedactedByRule.WithLabelValues("test_rule").Inc()
 	c.metrics.secretsRedactedByOrigin.WithLabelValues("test_value").Inc()
+	c.metrics.secretsRedactedByCategory.WithLabelValues("test_rule", "test_value").Inc()
 	c.metrics.processingDuration.Observe(0.123)
 
 	// Check that the metrics are registered
@@ -578,10 +639,11 @@ func TestMetricsRegistration(t *testing.T) {
 
 	// Create a map of expected metrics
 	expectedMetrics := map[string]bool{
-		"loki_secretfilter_secrets_redacted_total":         false,
-		"loki_secretfilter_secrets_redacted_by_rule_total": false,
-		"loki_secretfilter_secrets_redacted_by_origin":     false,
-		"loki_secretfilter_processing_duration_seconds":    false,
+		"loki_secretfilter_secrets_redacted_total":             false,
+		"loki_secretfilter_secrets_redacted_by_rule_total":     false,
+		"loki_secretfilter_secrets_redacted_by_origin":         false,
+		"loki_secretfilter_secrets_redacted_by_category_total": false,
+		"loki_secretfilter_processing_duration_seconds":        false,
 	}
 
 	// Check each metric family
@@ -856,4 +918,88 @@ func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
 	require.NotEqual(t, line, processed.Entry.Line, "secret should be redacted when no timeout is set")
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
+}
+
+func TestTimeoutLabel(t *testing.T) {
+	secret := testhelper.FakeSecrets["grafana-api-key"].Value
+
+	tests := []struct {
+		name          string
+		findings      []report.Finding // returned by the mock detector on timeout
+		labelTimedOut bool
+		dropOnTimeout bool
+		wantLabel     bool
+		wantDropped   bool
+		wantRedaction bool
+	}{
+		{
+			name:          "label_timed_out=true, no findings on timeout",
+			findings:      nil,
+			labelTimedOut: true,
+			wantLabel:     true,
+		},
+		{
+			name:          "label_timed_out=true, partial findings on timeout",
+			findings:      []report.Finding{{Secret: secret, RuleID: "grafana-api-key"}},
+			labelTimedOut: true,
+			wantLabel:     true,
+			wantRedaction: true,
+		},
+		{
+			name:          "label_timed_out=false, timeout exceeded",
+			findings:      nil,
+			labelTimedOut: false,
+			wantLabel:     false,
+		},
+		{
+			name:          "label_timed_out=true, drop_on_timeout=true",
+			findings:      nil,
+			labelTimedOut: true,
+			dropOnTimeout: true,
+			wantDropped:   true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			line := "log line with secret " + secret + " end"
+			c, err := New(component.Options{
+				Logger:         util.TestLogger(t),
+				OnStateChange:  func(e component.Exports) {},
+				GetServiceData: testhelper.GetServiceData,
+				Registerer:     prometheus.NewRegistry(),
+			}, Arguments{
+				ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
+				ProcessingTimeout: 10 * time.Millisecond,
+				LabelTimedOut:     tc.labelTimedOut,
+				DropOnTimeout:     tc.dropOnTimeout,
+			})
+			require.NoError(t, err)
+			findings := tc.findings
+			//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
+			c.detector = detectorFunc(func(ctx context.Context, _ detect.Fragment) []report.Finding {
+				<-ctx.Done()
+				return findings
+			})
+
+			entry := loki.Entry{
+				Labels: model.LabelSet{"job": "myservice"},
+				Entry:  push.Entry{Timestamp: time.Now(), Line: line},
+			}
+			processed, dropped := c.processEntry(context.Background(), entry)
+
+			require.Equal(t, tc.wantDropped, dropped)
+			if !dropped {
+				if tc.wantLabel {
+					require.Equal(t, model.LabelValue("timed-out"), processed.Labels["secretfilter"])
+					require.Equal(t, model.LabelValue("myservice"), processed.Labels["job"], "existing labels should be preserved")
+				} else {
+					require.NotContains(t, processed.Labels, model.LabelName("secretfilter"))
+				}
+				if tc.wantRedaction {
+					require.NotEqual(t, line, processed.Entry.Line, "partial findings should still be redacted")
+				}
+			}
+		})
+	}
 }

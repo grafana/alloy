@@ -62,7 +62,7 @@ var (
 type Arguments struct {
 	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets                       []discovery.Target  `alloy:"targets,attr"`
+	Targets                       []discovery.Target  `alloy:"targets,attr,optional"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
@@ -460,7 +460,11 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		c.exporterCollector = nil
 	}
 
-	if c.args.PrometheusExporter != nil {
+	if len(c.args.Targets) == 0 {
+		if c.args.PrometheusExporter == nil {
+			d := PrometheusExporterArguments(exporter_mysql.DefaultArguments)
+			c.args.PrometheusExporter = &d
+		}
 		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
