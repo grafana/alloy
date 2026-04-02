@@ -77,9 +77,17 @@ func (*structuredMetadataStage) Cleanup() {
 func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 	return RunWith(in, func(e Entry) Entry {
 		appendStructureMetadata := func(labelName model.LabelName, labelValue model.LabelValue) {
-			if !containsStructuredMetadataLabel(e.StructuredMetadata, string(labelName)) {
-				e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: string(labelName), Value: string(labelValue)})
+			metadata := push.LabelAdapter{Name: string(labelName), Value: string(labelValue)}
+
+			i := slices.IndexFunc(e.StructuredMetadata, func(label push.LabelAdapter) bool {
+				return label.Name == metadata.Name
+			})
+			if i != -1 {
+				e.StructuredMetadata[i] = metadata
+				return
 			}
+
+			e.StructuredMetadata = append(e.StructuredMetadata, metadata)
 		}
 
 		// Try to add structured metdata from extracted map using labelsConfig.
@@ -188,10 +196,4 @@ func processEntryLabelsByRegex(labels model.LabelSet, regex regexp.Regexp, consu
 	for _, fl := range foundLabels {
 		delete(labels, fl)
 	}
-}
-
-func containsStructuredMetadataLabel(labels push.LabelsAdapter, name string) bool {
-	return slices.ContainsFunc(labels, func(label push.LabelAdapter) bool {
-		return label.Name == name
-	})
 }

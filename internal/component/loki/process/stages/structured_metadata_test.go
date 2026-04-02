@@ -17,9 +17,10 @@ import (
 
 func TestStructuredMetadataStage(t *testing.T) {
 	type testCase struct {
-		name                       string
-		config                     string
-		line                       string
+		name   string
+		config string
+		entry  Entry
+
 		expectedLabels             model.LabelSet
 		expectedStructuredMetadata push.LabelsAdapter
 	}
@@ -36,7 +37,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					values = { "app" = "" }
 				}
 			`,
-			line:                       "app=loki component=ingester",
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: "app=loki component=ingester"}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "loki"}},
 		},
 		{
@@ -50,7 +51,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					values = { "app" = "" }
 				}
 			`,
-			line:                       `{"app":"loki" ,"component":"ingester"}`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `{"app":"loki" ,"component":"ingester"}`}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "loki"}},
 		},
 		{
@@ -64,7 +65,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					values = { "stream" = "" }
 				}
 			`,
-			line:                       `2019-01-01T01:00:00.000000001Z stderr P i'm a log message!`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `2019-01-01T01:00:00.000000001Z stderr P i'm a log message!`}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "stream", Value: "stderr"}},
 		},
 		{
@@ -79,7 +80,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					regex  = "stream"
 				}
 			`,
-			line:                       `2019-01-01T01:00:00.000000001Z stderr P i'm a log message!`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `2019-01-01T01:00:00.000000001Z stderr P i'm a log message!`}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "stream", Value: "stderr"}},
 		},
 		{
@@ -91,7 +92,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					values = { "stream" = "" }
 				}
 			`,
-			line:                       `2019-01-01T01:00:00.000000001Z stderr F i'm a log message!`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `2019-01-01T01:00:00.000000001Z stderr F i'm a log message!`}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "stream", Value: "stderr"}},
 		},
 		{
@@ -110,7 +111,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					values = { "app" = "" }
 				}
 			`,
-			line:                       `{"app":"loki" ,"component":"ingester"}`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `{"app":"loki" ,"component":"ingester"}`}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "LOKI"}},
 		},
 		{
@@ -128,7 +129,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					values = { "component" = "" }
 				}
 			`,
-			line:                       `{"app":"loki" ,"component":"ingester"}`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `{"app":"loki" ,"component":"ingester"}`}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "loki"}},
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("ingester")},
 		},
@@ -143,7 +144,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					values = { "pod" = "" }
 				}
 			`,
-			line:                       `sample log line`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `sample log line`}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "pod", Value: "loki-querier-664f97db8d-qhnwg"}},
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("querier")},
 		},
@@ -158,7 +159,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					values = { "pod_name" = "pod" }
 				}
 			`,
-			line:                       `sample log line`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `sample log line`}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "pod_name", Value: "loki-querier-664f97db8d-qhnwg"}},
 			expectedLabels:             model.LabelSet{model.LabelName("component"): model.LabelValue("querier")},
 		},
@@ -173,7 +174,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					regex = "label_.*"
 				}
 			`,
-			line: `sample log line`,
+			entry: newTestEntry(nil, nil, push.Entry{Line: `sample log line`}),
 			expectedStructuredMetadata: push.LabelsAdapter{
 				{Name: "label_app_kubernetes_io_component", Value: "querier"},
 				{Name: "label_app_kubernetes_io_name", Value: "loki"},
@@ -192,7 +193,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					regex  = "label_.*"
 				}
 			`,
-			line: `sample log line`,
+			entry: newTestEntry(nil, nil, push.Entry{Line: `sample log line`}),
 			expectedStructuredMetadata: push.LabelsAdapter{
 				{Name: "label_app_kubernetes_io_component", Value: "querier"},
 				{Name: "label_app_kubernetes_io_name", Value: "loki"},
@@ -212,7 +213,7 @@ func TestStructuredMetadataStage(t *testing.T) {
 					regex  = "metadata_.*"
 				}
 			`,
-			line: `pod=loki-querier-664f97db8d-qhnwg metadata_name=loki metadata_component=querier msg="sample log line"`,
+			entry: newTestEntry(nil, nil, push.Entry{Line: `pod=loki-querier-664f97db8d-qhnwg metadata_name=loki metadata_component=querier msg="sample log line"`}),
 			expectedStructuredMetadata: push.LabelsAdapter{
 				{Name: "metadata_component", Value: "querier"},
 				{Name: "metadata_name", Value: "loki"},
@@ -230,11 +231,44 @@ func TestStructuredMetadataStage(t *testing.T) {
 					regex = "component_.*"
 				}
 			`,
-			line: `{"app":"loki", "component_nested": {"name":"ingester", "props":{"n1": "v1", "n2": "v2"}}, "component_non_nested": "non_nested_val"}`,
+			entry: newTestEntry(nil, nil, push.Entry{Line: `{"app":"loki", "component_nested": {"name":"ingester", "props":{"n1": "v1", "n2": "v2"}}, "component_non_nested": "non_nested_val"}`}),
 			expectedStructuredMetadata: push.LabelsAdapter{
 				{Name: "component_nested", Value: `{"name":"ingester","props":{"n1":"v1","n2":"v2"}}`},
 				{Name: "component_non_nested", Value: "non_nested_val"},
 			},
+		},
+		{
+			name: "expected later structured metadata stage to replace earlier stage output",
+			config: `
+				stage.logfmt {
+					mapping = { "app" = "", "next_app" = "" }
+				}
+
+				stage.structured_metadata {
+					values = { "app" = "app" }
+				}
+
+				stage.structured_metadata {
+					values = { "app" = "next_app" }
+				}
+			`,
+			entry:                      newTestEntry(nil, nil, push.Entry{Line: `app=first next_app=second`}),
+			expectedStructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "second"}},
+		},
+		{
+			name: "expected later source within a stage to replace existing structured metadata",
+			config: `
+				stage.structured_metadata {
+					values = { "app" = "" }
+				}
+			`,
+			entry: newTestEntry(map[string]any{"app": "from-extracted"}, model.LabelSet{
+					"app": "from-labels",
+				}, push.Entry{
+					Line:               `sample log line`,
+					StructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "original"}},
+				}),
+			expectedStructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "from-labels"}},
 		},
 	}
 
@@ -243,7 +277,10 @@ func TestStructuredMetadataStage(t *testing.T) {
 			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(tt.config), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
-			result := processEntries(pl, newEntry(nil, nil, tt.line, time.Now()))[0]
+			entry := tt.entry
+			entry.Timestamp = time.Now()
+
+			result := processEntries(pl, entry)[0]
 
 			require.ElementsMatch(t, normalizeStructuredMetadata(tt.expectedStructuredMetadata), normalizeStructuredMetadata(result.StructuredMetadata))
 
