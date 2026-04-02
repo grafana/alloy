@@ -23,14 +23,21 @@ const (
 )
 
 func TestLokiSyslog(t *testing.T) {
-	var wg sync.WaitGroup
+	var (
+		wg   sync.WaitGroup
+		errs [4]error
+	)
 
-	wg.Go(func() { sendSyslog(t, "tcp", tcpRFC5424Addr, formatRFC5424Message) })
-	wg.Go(func() { sendSyslog(t, "udp", udpRFC5424Addr, formatRFC5424Message) })
-	wg.Go(func() { sendSyslog(t, "tcp", tcpRFC3164Addr, formatRFC3164Message) })
-	wg.Go(func() { sendSyslog(t, "udp", udpRFC3164Addr, formatRFC3164Message) })
+	wg.Go(func() { errs[0] = sendSyslog("tcp", tcpRFC5424Addr, formatRFC5424Message) })
+	wg.Go(func() { errs[1] = sendSyslog("udp", udpRFC5424Addr, formatRFC5424Message) })
+	wg.Go(func() { errs[2] = sendSyslog("tcp", tcpRFC3164Addr, formatRFC3164Message) })
+	wg.Go(func() { errs[3] = sendSyslog("udp", udpRFC3164Addr, formatRFC3164Message) })
 
 	wg.Wait()
+
+	for _, err := range errs {
+		require.NoError(t, err)
+	}
 
 	common.AssertLogsPresent(
 		t,
@@ -107,36 +114,35 @@ func TestLokiSyslog(t *testing.T) {
 	)
 }
 
-func sendSyslog(t *testing.T, network, addr string, producer func(string) []string) {
-	t.Helper()
-
+func sendSyslog(network, addr string, producer func(string) []string) error {
 	conn, err := net.DialTimeout(network, addr, 5*time.Second)
-	require.NoError(t, err)
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 
 	messages := producer(network)
 	if network == "tcp" {
-		sendTCPMessages(t, conn, messages)
-		return
+		return sendTCPMessages(conn, messages)
 	}
 
-	sendUDPMessages(t, conn, messages)
+	return sendUDPMessages(conn, messages)
 }
 
-func sendTCPMessages(t *testing.T, conn net.Conn, messages []string) {
-	t.Helper()
-
+func sendTCPMessages(conn net.Conn, messages []string) error {
 	_, err := conn.Write([]byte(strings.Join(messages, "\n") + "\n"))
-	require.NoError(t, err)
+	return err
 }
 
-func sendUDPMessages(t *testing.T, conn net.Conn, messages []string) {
-	t.Helper()
-
+func sendUDPMessages(conn net.Conn, messages []string) error {
 	for _, msg := range messages {
 		_, err := conn.Write([]byte(msg))
-		require.NoError(t, err)
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 const local0PRIBase = 16 * 8
@@ -144,7 +150,7 @@ const local0PRIBase = 16 * 8
 func formatRFC5424Message(network string) []string {
 	return produceMessages(func(severityCode int) string {
 		return fmt.Sprintf(
-			`<%d>1 %s alloy-test app - - [example@32473 protocol="%s"] rfc5424 integration test message`,
+			`<%d>1 %s alloy-test app - - [example@32473 protocol="%s"] rfc5424 message`,
 			local0PRIBase+severityCode,
 			time.Now().UTC().Format(time.RFC3339),
 			network,
@@ -155,7 +161,7 @@ func formatRFC5424Message(network string) []string {
 func formatRFC3164Message(_ string) []string {
 	return produceMessages(func(severityCode int) string {
 		return fmt.Sprintf(
-			`<%d>%s alloy-test rfc3164 integration test message`,
+			`<%d>%s alloy-test rfc3164 message`,
 			local0PRIBase+severityCode,
 			time.Now().Format("Jan _2 15:04:05"),
 		)
