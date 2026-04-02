@@ -50,8 +50,8 @@ You can use the following arguments with `loki.rules.kubernetes`:
 | `enable_http2`          | `bool`              | Whether HTTP2 is supported for requests.                                                | `true`    | no       |
 | `follow_redirects`      | `bool`              | Whether redirects returned by the server should be followed.                            | `true`    | no       |
 | `http_headers`          | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name. |           | no       |
-| `loki_namespace_prefix`    | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.         | `"alloy"` | no       |
-| `loki_namespace_separator` | `string`            | Separator between components of the Loki namespace string.                              | `"-"`     | no       |
+| `loki_namespace_prefix`    | `string`         | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.         | `"alloy"` | no       |
+| `loki_namespace_separator` | `string`         | Separator between components of the Loki namespace string.                              | `"-"`     | no       |
 | `proxy_url`             | `string`            | HTTP proxy to proxy requests through.                                                   |           | no       |
 | `sync_interval`         | `duration`          | Amount of time between reconciliations with Loki.                                       | `"30s"`   | no       |
 | `tenant_id`             | `string`            | Loki tenant ID.                                                                         |           | no       |
