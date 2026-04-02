@@ -263,11 +263,11 @@ func TestStructuredMetadataStage(t *testing.T) {
 				}
 			`,
 			entry: newTestEntry(map[string]any{"app": "from-extracted"}, model.LabelSet{
-					"app": "from-labels",
-				}, push.Entry{
-					Line:               `sample log line`,
-					StructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "original"}},
-				}),
+				"app": "from-labels",
+			}, push.Entry{
+				Line:               `sample log line`,
+				StructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "original"}},
+			}),
 			expectedStructuredMetadata: push.LabelsAdapter{{Name: "app", Value: "from-labels"}},
 		},
 	}
