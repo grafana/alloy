@@ -109,6 +109,7 @@ jobs:
             - `collector/builder-config.yaml`
             - `dependency-replacements.yaml`
             - `collector/go.mod`
+            - `extension/alloyengine/go.mod`
             - `go.mod`
             - `docs/sources/_index.md.t`
             - `internal/component/beyla/ebpf/args.go`
@@ -116,7 +117,7 @@ jobs:
             - `internal/component/beyla/ebpf/beyla_linux_test.go`
             - `docs/sources/reference/components/beyla/beyla.ebpf.md`
 
-            `go.sum` and `collector/go.sum` may change only if required by module updates.
+            `go.sum`, `collector/go.sum`, and `extension/alloyengine/go.sum` may change only if required by module updates.
 
             ## Required contents of `.github/agent-output/plan.md`
 
@@ -128,6 +129,8 @@ jobs:
             - Risks or likely failure points
 
             Include the exact Beyla module version and OBI pseudo-version you resolved, identify the new fields or behavior Alloy needs for parity, and list the exact commands the implementation job should run to verify the change.
+            If the implementation is likely to introduce any new helper, converter, or validator functions, call out the unit tests that must be added for them.
+            If Beyla's OpenTelemetry dependency versions diverge from Alloy's current versions, call that out as expected drift and do not propose resolving it in this task.
 
       - name: Upload plan artifact
         if: always()
@@ -212,15 +215,6 @@ jobs:
           git config user.name "${APP_LOGIN}"
           git config user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
 
-      - name: Prepare implementation outputs
-        run: |
-          mkdir -p .github/agent-output
-          cat > .github/agent-output/implement-status.md <<'EOF'
-          # Beyla update implementation status
-
-          State: not started
-          EOF
-
       - name: Run Claude Code implement job
         uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1.0.72
         env:
@@ -241,7 +235,6 @@ jobs:
             **Branch from**: `${{ inputs.source_ref }}`
             **Repository**: `grafana/alloy`
             **Plan file**: `.github/agent-input/plan.md`
-            **Status file**: `.github/agent-output/implement-status.md`
 
             Your job is to implement the Beyla update described in `.github/agent-input/plan.md`, verify it locally, and open a **draft PR** only after tests pass.
 
@@ -254,25 +247,13 @@ jobs:
             If there are no changes to make, do not open a PR.
             If verification fails, do not open a PR.
 
-            ## Status tracking
-
-            Keep `.github/agent-output/implement-status.md` updated throughout the run so a human can continue from it if this job fails.
-
-            Update that file:
-            - before making changes, with the plan you are executing
-            - after each major edit batch
-            - after each verification cycle
-            - whenever a command fails, including the exact command and a short failure summary
-            - at the end, with the final outcome
-
-            The status file should stay concise, but it must include what you tried, what failed, and what remains to do.
-
             ## Files to update
 
             Update only what is required in these files:
             - `collector/builder-config.yaml`
             - `dependency-replacements.yaml`
             - `collector/go.mod`
+            - `extension/alloyengine/go.mod`
             - `go.mod`
             - `docs/sources/_index.md.t`
             - `internal/component/beyla/ebpf/args.go`
@@ -280,34 +261,46 @@ jobs:
             - `internal/component/beyla/ebpf/beyla_linux_test.go`
             - `docs/sources/reference/components/beyla/beyla.ebpf.md`
 
-            You may also update `go.sum` or `collector/go.sum` if the module changes require it. Do not touch unrelated files.
+            You may also update `go.sum`, `collector/go.sum`, or `extension/alloyengine/go.sum` if the module changes require it. Do not touch unrelated files.
+            Do not create, stage, or commit `.github/agent-output/implement-status.md` or any similar tracking file.
+            Prefer updating source-of-truth files and then using the repo Make targets to regenerate derived module files. Do not hand-edit `collector/go.mod` when `make generate-otel-collector-distro` can regenerate it.
 
             ## Implementation requirements
 
             1. Bump the OBI replacement version derived from Beyla's pinned `.obi-src` SHA in:
                - `collector/builder-config.yaml`
                - `dependency-replacements.yaml`
-               - `collector/go.mod`
 
             2. Bump the Beyla version in:
+               - `extension/alloyengine/go.mod`
                - `go.mod`
                - `docs/sources/_index.md.t`
 
-            3. After bumping module versions, run:
-               - `go mod tidy`
-               - `(cd collector && go mod tidy)`
+            3. After updating the source-of-truth files, run:
+               - `make generate-module-dependencies`
+               - `make generate-otel-collector-distro`
 
-            4. Compare the current Alloy Beyla integration against the target Beyla release and add any newly added fields needed for parity in:
+            4. Review and keep the generated module changes produced by those Make targets as needed, including:
+               - `collector/go.mod`
+               - `collector/go.sum`
+               - `go.mod`
+               - `go.sum`
+               - `extension/alloyengine/go.mod`
+               - `extension/alloyengine/go.sum`
+
+            5. Compare the current Alloy Beyla integration against the target Beyla release and add any newly added fields needed for parity in:
                - `internal/component/beyla/ebpf/args.go`
                - `internal/component/beyla/ebpf/beyla_linux.go`
                - `internal/component/beyla/ebpf/beyla_linux_test.go`
                - `docs/sources/reference/components/beyla/beyla.ebpf.md`
 
-            5. When determining newly added fields, inspect the relevant Beyla changes instead of guessing. Update only fields and behavior that are newly required for this release.
+            6. When determining newly added fields, inspect the relevant Beyla changes instead of guessing. Update only fields and behavior that are newly required for this release.
 
-            6. In `beyla_linux.go`, add matching convert and validate logic for the new fields, preserving existing defaults and zero-value behavior.
+            7. In `beyla_linux.go`, add matching convert and validate logic for the new fields, preserving existing defaults and zero-value behavior.
 
-            7. In `beyla_linux_test.go`, add focused tests for the new fields and any new validation behavior.
+            8. In `beyla_linux_test.go`, add focused tests for the new fields and any new validation behavior.
+            9. Every newly added function must have focused unit test coverage. If you add a helper, converter, or validator function, add or extend tests that exercise that function directly instead of relying only on broader end-to-end behavior.
+            10. If Beyla's OpenTelemetry dependency versions differ from Alloy's current versions after the bump, leave that divergence in place and mention it in the PR body instead of trying to reconcile it here.
 
             ## Style constraints
 
@@ -317,10 +310,13 @@ jobs:
             - Preserve field ordering and naming patterns where possible.
             - Keep docs concise and consistent with existing wording and table format.
             - Do not add compatibility shims unless they are strictly required by the target Beyla release.
+            - Do not introduce a new function without also introducing the unit test coverage for it.
+            - `make alloy` is fine as a build check, but it does not replace `make generate-module-dependencies` or `make generate-otel-collector-distro` for dependency and collector regeneration.
 
             ## Verification
 
             Run the following after editing:
+            - `SKIP_UI_BUILD=1 make alloy`
             - `go test ./internal/component/beyla/ebpf/...`
 
             Fix any failures caused by your changes before continuing.
@@ -328,31 +324,15 @@ jobs:
             ## Git and PR workflow
 
             - Create a branch named `agent/bump-beyla-${{ inputs.beyla_release_tag }}`
-            - Commit with message `chore(beyla): Bump to ${{ inputs.beyla_release_tag }}`
+            - Commit with message `feat(beyla.ebpf): Bump to ${{ inputs.beyla_release_tag }}`
             - Push the branch to `origin`
             - Open a **draft PR** against `${{ inputs.source_ref }}`
-            - Use a conventional PR title, for example `chore(beyla): Bump to ${{ inputs.beyla_release_tag }}`
+            - Use a conventional PR title, for example `feat(beyla.ebpf): Bump to ${{ inputs.beyla_release_tag }}`
 
             Use a concise PR body that summarizes:
             - the Beyla version bump
             - the OBI replacement bump
             - any newly mapped Beyla fields
+            - any expected OpenTelemetry version divergence that is intentionally left for a follow-up task
 
             Do not force-push. Do not open a non-draft PR.
-
-      - name: Upload implementation status artifact
-        if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: beyla-update-implementation-status
-          path: .github/agent-output/implement-status.md
-          if-no-files-found: warn
-
-      - name: Add implementation status to job summary
-        if: always()
-        run: |
-          {
-            echo "## Beyla update implementation status"
-            echo
-            cat .github/agent-output/implement-status.md
-          } >> "${GITHUB_STEP_SUMMARY}"
