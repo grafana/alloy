@@ -156,7 +156,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 
 | Name               | Type       | Description                                                                            | Default | Required |
 | ------------------ | ---------- | -------------------------------------------------------------------------------------- | ------- | -------- |
-| `collect_interval` | `duration` | How frequently to collect information from database.                                   | `"1m"`  | no       |
+| `collect_interval` | `duration` | How frequently to collect information from database.                                   | `"30s"`  | no       |
 | `threshold`        | `duration` | Threshold for locks to be considered slow. Locks that exceed this duration are logged. | `"1s"`  | no       |
 
 ### `query_samples`
