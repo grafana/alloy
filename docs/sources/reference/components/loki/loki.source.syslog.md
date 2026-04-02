@@ -22,6 +22,7 @@ If your messages aren't RFC5424 compliant, you can use `raw` syslog format in co
 Please note, that the `raw` syslog format is an [experimental][] feature.
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
+
 {{< /admonition >}}
 
 The component starts a new syslog listener for each of the given `config` blocks and fans out incoming entries to the list of receivers in `forward_to`.
@@ -46,7 +47,7 @@ loki.source.syslog "<LABEL>" {
 You can use the following arguments with `loki.source.syslog`:
 
 | Name            | Type                 | Description                               | Default | Required |
-|-----------------|----------------------|-------------------------------------------|---------|----------|
+| --------------- | -------------------- | ----------------------------------------- | ------- | -------- |
 | `forward_to`    | `list(LogsReceiver)` | List of receivers to send log entries to. |         | yes      |
 | `relabel_rules` | `RelabelRules`       | Relabeling rules to apply on log entries. | `{}`    | no       |
 
@@ -54,19 +55,19 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 
 `loki.source.syslog` applies the following labels to log entries from the client information if possible.
 
-* `__syslog_connection_ip_address`
-* `__syslog_connection_hostname`
+- `__syslog_connection_ip_address`
+- `__syslog_connection_hostname`
 
 `loki.source.syslog` applies the following labels to log entries if they have been parsed from the syslog message.
 
-* `__syslog_message_severity`
-* `__syslog_message_facility`
-* `__syslog_message_hostname`
-* `__syslog_message_app_name`
-* `__syslog_message_proc_id`
-* `__syslog_message_msg_id`
-* `__syslog_message_msg_counter`
-* `__syslog_message_sequence`
+- `__syslog_message_severity`
+- `__syslog_message_facility`
+- `__syslog_message_hostname`
+- `__syslog_message_app_name`
+- `__syslog_message_proc_id`
+- `__syslog_message_msg_id`
+- `__syslog_message_msg_counter`
+- `__syslog_message_sequence`
 
 If there is [RFC5424](https://www.rfc-editor.org/rfc/rfc5424) compliant structured data in the parsed message, it will be applied to the log entry as a label with prefix `__syslog_message_sd_`.
 For example, if the structured data provided is `[example@99999 test="value"]`, the log entry will have the label `__syslog_message_sd_example_99999_test` with a value of `value`.
@@ -93,7 +94,7 @@ You can use the following blocks with `loki.source.syslog`:
 {{< docs/alloy-config >}}
 
 | Name                                                        | Description                                                                 | Required |
-|-------------------------------------------------------------|-----------------------------------------------------------------------------|----------|
+| ----------------------------------------------------------- | --------------------------------------------------------------------------- | -------- |
 | [`listener`][listener]                                      | Configures a listener for Syslog messages.                                  | no       |
 | `listener` > [`raw_format_options`][raw_format_options]     | Configures `raw` syslog format behavior.                                    | no       |
 | `listener` > [`rfc3164_cisco_components`][cisco_components] | Configures parsing of non-standard Cisco IOS syslog extensions.             | no       |
@@ -113,20 +114,19 @@ The `listener` block defines the listen address and protocol where the listener 
 The following arguments can be used to configure a `listener`.
 Only the `address` field is required and any omitted fields take their default values.
 
-| Name                      | Type          | Description                                                                                                                                          | Default  | Required |
-|---------------------------|---------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------|----------|
-| `address`                 | `string`      | The `<host:port>` address to listen to for syslog messages.                                                                                          |          | yes      |
-| `allow_empty_rfc5424_msg` | `bool`        | Whether to forward RFC5424 messages with empty MSG content. When `false`, such messages are dropped. Only applies when `syslog_format` is `rfc5424`. | `false`  | no       |
-| `idle_timeout`            | `duration`    | The idle timeout for TCP connections.                                                                                                                | `"120s"` | no       |
-| `label_structured_data`   | `bool`        | Whether to translate syslog structured data to Loki labels.                                                                                          | `false`  | no       |
-| `labels`                  | `map(string)` | The labels to associate with each received syslog record.                                                                                            | `{}`     | no       |
-
-| `max_message_length`              | `int`         | The maximum limit to the length of syslog messages.                                    | `8192`      | no       |
-| `protocol`                        | `string`      | The protocol to listen to for syslog messages. Must be either `tcp` or `udp`.          | `"tcp"`     | no       |
-| `rfc3164_default_to_current_year` | `bool`        | Whether to default the incoming timestamp of an `rfc3164` message to the current year. | `false`     | no       |
-| `syslog_format`                   | `string`      | The format for incoming messages. See [supported formats](#supported-formats).         | `"rfc5424"` | no       |
-| `use_incoming_timestamp`          | `bool`        | Whether to set the timestamp to the incoming syslog record timestamp.                  | `false`     | no       |
-| `use_rfc5424_message`             | `bool`        | Whether to forward the full RFC5424-formatted syslog message.                          | `false`     | no       |
+| Name                              | Type          | Description                                                                                                                                          | Default     | Required |
+| --------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- | -------- |
+| `address`                         | `string`      | The `<host:port>` address to listen to for syslog messages.                                                                                          |             | yes      |
+| `idle_timeout`                    | `duration`    | The idle timeout for TCP connections.                                                                                                                | `"120s"`    | no       |
+| `label_structured_data`           | `bool`        | Whether to translate syslog structured data to Loki labels.                                                                                          | `false`     | no       |
+| `labels`                          | `map(string)` | The labels to associate with each received syslog record.                                                                                            | `{}`        | no       |
+| `max_message_length`              | `int`         | The maximum limit to the length of syslog messages.                                                                                                  | `8192`      | no       |
+| `protocol`                        | `string`      | The protocol to listen to for syslog messages. Must be either `tcp` or `udp`.                                                                        | `"tcp"`     | no       |
+| `rfc3164_default_to_current_year` | `bool`        | Whether to default the incoming timestamp of an `rfc3164` message to the current year.                                                               | `false`     | no       |
+| `rfc5424_allow_empty_msg`         | `bool`        | Whether to forward RFC5424 messages with empty MSG content. When `false`, such messages are dropped. Only applies when `syslog_format` is `rfc5424`. | `false`     | no       |
+| `syslog_format`                   | `string`      | The format for incoming messages. See [supported formats](#supported-formats).                                                                       | `"rfc5424"` | no       |
+| `use_incoming_timestamp`          | `bool`        | Whether to set the timestamp to the incoming syslog record timestamp.                                                                                | `false`     | no       |
+| `use_rfc5424_message`             | `bool`        | Whether to forward the full RFC5424-formatted syslog message.                                                                                        | `false`     | no       |
 
 By default, the component assigns the log entry timestamp as the time it was processed.
 
@@ -135,7 +135,7 @@ The `labels` map is applied to every message that the component reads.
 All header fields from the parsed RFC5424 messages are brought in as internal labels, prefixed with `__syslog_`.
 
 If `label_structured_data` is set, structured data in the syslog header is also translated to internal labels in the form of `__syslog_message_sd_<ID>_<KEY>`.
-For example, a  structured data entry of `[example@99999 test="yes"]` becomes the label `__syslog_message_sd_example_99999_test` with the value `"yes"`.
+For example, a structured data entry of `[example@99999 test="yes"]` becomes the label `__syslog_message_sd_example_99999_test` with the value `"yes"`.
 
 The `rfc3164_default_to_current_year` argument is only relevant when `use_incoming_timestamp` is also set to `true`.
 `rfc3164` message timestamps don't contain a year, and this component's default behavior is to mimic Promtail behavior and leave the year as 0.
@@ -147,17 +147,17 @@ The `rfc3164_default_to_current_year`, `use_incoming_timestamp` and `use_rfc5424
 
 #### Supported formats
 
-* **`rfc3164`**
+- **`rfc3164`**
   A legacy syslog format, also known as BSD syslog.
   Example: `<34>Oct 11 22:14:15 my-server-01 sshd[1234]: Failed password for root from 192.168.1.10 port 22 ssh2`.
   `loki.source.syslog` drops messages with empty MSG content and increments the `loki_source_syslog_empty_messages_total` counter.
-* **`rfc5424`**
+- **`rfc5424`**
   A modern, structured syslog format. Uses ISO 8601 for timestamps.
   Example: `<165>1 2025-12-18T00:33:00Z web01 nginx - - [audit@123 id="456"] Login failed`.
   `loki.source.syslog` drops messages with empty MSG content by default.
   Set `rfc5424_allow_empty_msg` to `true` to forward them.
   `loki.source.syslog` increments the `loki_source_syslog_empty_messages_total` counter in both cases for debugging.
-* **`raw`**
+- **`raw`**
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.
   `loki.source.syslog` drops messages with nil or empty body and increments the `loki_source_syslog_empty_messages_total` counter.
@@ -171,6 +171,7 @@ To enable and use an experimental feature, you must set the `stability.level` [f
 
 [flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 [experimental]: https://grafana.com/docs/release-life-cycle/
+
 {{< /admonition >}}
 
 ### `raw_format_options`
@@ -186,14 +187,14 @@ This block can only be used when you set `syslog_format` to `raw`.
 The following argument is supported:
 
 | Name                            | Type   | Description                                                                 | Default | Required |
-|---------------------------------|--------|-----------------------------------------------------------------------------|---------|----------|
+| ------------------------------- | ------ | --------------------------------------------------------------------------- | ------- | -------- |
 | `use_null_terminator_delimiter` | `bool` | Use null-terminator (`\0`) instead of line break (`\n`) to split log lines. | `false` | no       |
 
 ### `rfc3164_cisco_components`
 
 {{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `rfc3164_cisco_components` configures parsing of non-standard Cisco IOS syslog extensions. 
+The `rfc3164_cisco_components` configures parsing of non-standard Cisco IOS syslog extensions.
 
 {{< admonition type="note" >}}
 This block can only be used when you set `syslog_format` to `rfc3164`.
@@ -201,20 +202,20 @@ This block can only be used when you set `syslog_format` to `rfc3164`.
 
 The following arguments are supported:
 
-| Name               | Type   | Description                                     | Default | Required |
-|--------------------|--------|-------------------------------------------------|---------|----------|
-| `enable_all`       | `bool` | Enables all components below.                   | `false` | no       |
-| `message_counter`  | `bool` | Enables syslog message counter field parsing.   | `false` | no       |
-| `sequence_number`  | `bool` | Enables service sequence number field parsing.  | `false` | no       |
-| `hostname`         | `bool` | Enables origin hostname field parsing.          | `false` | no       |
-| `second_fractions` | `bool` | Enables milliseconds parsing in timestamp field.| `false` | no       |
+| Name               | Type   | Description                                      | Default | Required |
+| ------------------ | ------ | ------------------------------------------------ | ------- | -------- |
+| `enable_all`       | `bool` | Enables all components below.                    | `false` | no       |
+| `message_counter`  | `bool` | Enables syslog message counter field parsing.    | `false` | no       |
+| `sequence_number`  | `bool` | Enables service sequence number field parsing.   | `false` | no       |
+| `hostname`         | `bool` | Enables origin hostname field parsing.           | `false` | no       |
+| `second_fractions` | `bool` | Enables milliseconds parsing in timestamp field. | `false` | no       |
 
 {{< admonition type="note" >}}
 At least one option has to be enabled if `enable_all` is set to `false`.
 {{< /admonition >}}
 
 {{< admonition type="caution" >}}
-The `rfc3164_cisco_components` configuration must match your Cisco device configuration. 
+The `rfc3164_cisco_components` configuration must match your Cisco device configuration.
 The `loki.source.syslog` component cannot auto-detect which components are present because they share similar formats.
 {{< /admonition >}}
 
@@ -241,9 +242,9 @@ ntp server <your-ntp-server>
 
 #### Current Limitations
 
-* **Component Ordering**: When Cisco components are selectively disabled on the device but the parser expects them, parsing will fail or produce incorrect results. 
+- **Component Ordering**: When Cisco components are selectively disabled on the device but the parser expects them, parsing will fail or produce incorrect results.
   Always match your parser configuration to your device configuration.
-* **Structured Data**: Messages with RFC5424-style structured data blocks (from `logging host X session-id` or `sequence-num-session`) are not currently supported.
+- **Structured Data**: Messages with RFC5424-style structured data blocks (from `logging host X session-id` or `sequence-num-session`) are not currently supported.
   See the [upstream issue][go-syslog-issue] for details.
 
 [go-syslog-issue]: https://github.com/leodido/go-syslog/issues/35
@@ -265,15 +266,15 @@ configuration.
 
 `loki.source.syslog` exposes some debug information per syslog listener:
 
-* Whether the listener is running.
-* The listen address.
-* The labels that the listener applies to incoming log entries.
+- Whether the listener is running.
+- The listen address.
+- The labels that the listener applies to incoming log entries.
 
 ## Debug metrics
 
-* `loki_source_syslog_empty_messages_total` (counter): Total number of empty messages received from the syslog component.
-* `loki_source_syslog_entries_total` (counter): Total number of successful entries sent to the syslog component.
-* `loki_source_syslog_parsing_errors_total` (counter): Total number of parsing errors while receiving syslog messages.
+- `loki_source_syslog_empty_messages_total` (counter): Total number of empty messages received from the syslog component.
+- `loki_source_syslog_entries_total` (counter): Total number of successful entries sent to the syslog component.
+- `loki_source_syslog_parsing_errors_total` (counter): Total number of parsing errors while receiving syslog messages.
 
 ## Example
 
