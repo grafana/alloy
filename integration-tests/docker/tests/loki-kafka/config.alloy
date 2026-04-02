@@ -1,0 +1,25 @@
+loki.relabel "kafka" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__meta_kafka_topic"]
+		target_label  = "topic"
+	}
+}
+
+loki.source.kafka "kafka" {
+	brokers       = ["kafka:9092"]
+	topics        = ["test1", "test2", "test3"]
+	forward_to    = [loki.write.test.receiver]
+	relabel_rules = loki.relabel.kafka.rules
+}
+
+loki.write "test" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+
+	external_labels = {
+		test_name = "lokikafka",
+	}
+}
