@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
 	"go.opentelemetry.io/obi/pkg/filter"
 	"go.opentelemetry.io/obi/pkg/kube/kubeflags"
+	"go.opentelemetry.io/obi/pkg/obi"
 	"go.opentelemetry.io/obi/pkg/transform"
 
 	"github.com/go-kit/log"
@@ -887,6 +888,27 @@ func TestConvert_Network(t *testing.T) {
 	expectedConfig.Sampling = 1
 	expectedConfig.Print = false
 	expectedConfig.CIDRs = args.CIDRs
+
+	config := args.Convert()
+
+	require.Equal(t, expectedConfig, config)
+}
+
+func TestConvert_Stats(t *testing.T) {
+	args := Stats{
+		AgentIP:      "0.0.0.0",
+		AgentIPIface: "local",
+		AgentIPType:  "ipv4",
+		CIDRs:        []string{"10.0.0.0/8"},
+		Print:        true,
+	}
+
+	expectedConfig := beyla.DefaultConfig().Stats
+	expectedConfig.AgentIP = args.AgentIP
+	expectedConfig.AgentIPIface = obi.AgentTypeIface(args.AgentIPIface)
+	expectedConfig.AgentIPType = args.AgentIPType
+	expectedConfig.CIDRs = args.CIDRs
+	expectedConfig.Print = args.Print
 
 	config := args.Convert()
 
