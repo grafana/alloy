@@ -52,7 +52,7 @@ You can use the following arguments with `loki.secretfilter`:
 | `drop_on_timeout`    | `bool`               | When true, drop entries that exceed `processing_timeout` instead of forwarding them unredacted.                             | `false` | no       |
 | `gitleaks_config`    | `string`             | Path to a custom Gitleaks TOML config file. If empty, the default Gitleaks config is used.                                  | `""`    | no       |
 | `label_timed_out`    | `bool`               | When true, adds `secretfilter="timed-out"` to entries forwarded after a processing timeout.                                 | `false` | no       |
-| `origin_label`       | `string`             | Loki label to use as the `origin` dimension in `secrets_redacted_by_category_total`. If empty, the `origin` label on `secrets_redacted_by_category_total` is set to `""`. | `""`    | no       |
+| `origin_label`       | `string`             | Loki label to use as the `origin` dimension in `secrets_redacted_by_category_total`.                                        | `""`    | no       |
 | `processing_timeout` | `duration`           | Maximum time allowed to process a single log entry. `0` disables the timeout.                                               | `0`     | no       |
 | `rate`               | `float`              | Entry sampling rate in `[0.0, 1.0]` where `1` processes all entries. Unsampled entries are forwarded unchanged.             | `1.0`   | no       |
 | `redact_percent`     | `uint`               | When `redact_with` is not set: percent of the secret to redact (1–100), where 100 is full redaction.                        | `80`    | no       |
