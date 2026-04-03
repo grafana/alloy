@@ -45,42 +45,27 @@ func validateSHA(sha string) error {
 	return nil
 }
 
-// run executes a command with stdout/stderr connected to the terminal. Both streams are captured in
-// a buffer for error messaging.
-func run(args ...string) error {
-	cmd := exec.Command(args[0], args[1:]...)
+// run executes a command with stdout/stderr connected to the terminal. Both streams are captured
+// together and returned as a single string.
+func run(args ...string) (string, error) {
 	var combined bytes.Buffer
-	w := io.MultiWriter(os.Stdout, &combined)
-	cmd.Stdout = w
-	cmd.Stderr = w
-	if err := cmd.Run(); err != nil {
-		if msg := strings.TrimSpace(combined.String()); msg != "" {
-			return fmt.Errorf("%w:\n%s", err, msg)
-		}
-		return err
-	}
-	return nil
-}
 
-// runOutput executes a command and returns its stdout.
-// On error, stderr is included in the error message for better diagnostics.
-func runOutput(args ...string) (string, error) {
 	cmd := exec.Command(args[0], args[1:]...)
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
-		if stderr.Len() > 0 {
-			return "", fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
-		}
-		return "", err
+	cmd.Stdout = io.MultiWriter(os.Stdout, &combined)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &combined)
+
+	err := cmd.Run()
+	out := strings.TrimSpace(combined.String())
+	if err != nil {
+		return out, fmt.Errorf("%w:\n%s", err, out)
 	}
-	return strings.TrimSpace(stdout.String()), nil
+
+	return out, nil
 }
 
 // AmendCommit amends the current HEAD commit with any staged changes.
 func AmendCommit() error {
-	if err := run("git", "commit", "--amend", "--no-edit"); err != nil {
+	if _, err := run("git", "commit", "--amend", "--no-edit"); err != nil {
 		return fmt.Errorf("amending commit: %w", err)
 	}
 	return nil
@@ -91,7 +76,7 @@ func BranchExistsOnRemote(branch string) (bool, error) {
 	if err := validateBranchName(branch); err != nil {
 		return false, err
 	}
-	out, err := runOutput("git", "ls-remote", "--heads", "origin", branch)
+	out, err := run("git", "ls-remote", "--heads", "origin", branch)
 	if err != nil {
 		return false, fmt.Errorf("checking remote branch %s: %w", branch, err)
 	}
@@ -103,7 +88,7 @@ func Checkout(branch string) error {
 	if err := validateBranchName(branch); err != nil {
 		return err
 	}
-	if err := run("git", "checkout", branch); err != nil {
+	if _, err := run("git", "checkout", branch); err != nil {
 		return fmt.Errorf("checking out branch %s: %w", branch, err)
 	}
 	return nil
@@ -122,7 +107,7 @@ func CherryPick(sha string, shouldCommit bool) error {
 		args = append(args, "-x") // Adds "(cherry picked from commit ...)" reference
 	}
 	args = append(args, sha)
-	if err := run(args...); err != nil {
+	if _, err := run(args...); err != nil {
 		return fmt.Errorf("cherry-picking commit %s: %w", sha, err)
 	}
 	return nil
@@ -130,10 +115,10 @@ func CherryPick(sha string, shouldCommit bool) error {
 
 // ConfigureUser configures git with the given user identity for commit authorship.
 func ConfigureUser(name, email string) error {
-	if err := run("git", "config", "user.name", name); err != nil {
+	if _, err := run("git", "config", "user.name", name); err != nil {
 		return fmt.Errorf("setting user.name: %w", err)
 	}
-	if err := run("git", "config", "user.email", email); err != nil {
+	if _, err := run("git", "config", "user.email", email); err != nil {
 		return fmt.Errorf("setting user.email: %w", err)
 	}
 	return nil
@@ -149,7 +134,7 @@ func CheckoutNewBranch(branch, base string) error {
 	if err := validateBranchName(baseBranch); err != nil {
 		return fmt.Errorf("invalid base: %w", err)
 	}
-	if err := run("git", "checkout", "-b", branch, base); err != nil {
+	if _, err := run("git", "checkout", "-b", branch, base); err != nil {
 		return fmt.Errorf("checking out new branch %s based on %s: %w", branch, base, err)
 	}
 	return nil
@@ -160,7 +145,7 @@ func Fetch(branch string) error {
 	if err := validateBranchName(branch); err != nil {
 		return err
 	}
-	if err := run("git", "fetch", "origin", branch); err != nil {
+	if _, err := run("git", "fetch", "origin", branch); err != nil {
 		return fmt.Errorf("fetching branch %s: %w", branch, err)
 	}
 	return nil
@@ -172,7 +157,7 @@ func MergeOurs(branch, message string) error {
 	if err := validateBranchName(branch); err != nil {
 		return err
 	}
-	if err := run("git", "merge", "--strategy", "ours", "origin/"+branch, "--message", message); err != nil {
+	if _, err := run("git", "merge", "--strategy", "ours", "origin/"+branch, "--message", message); err != nil {
 		return fmt.Errorf("merging branch %s with ours strategy: %w", branch, err)
 	}
 	return nil
@@ -183,7 +168,7 @@ func Push(branch string) error {
 	if err := validateBranchName(branch); err != nil {
 		return err
 	}
-	if err := run("git", "push", "origin", branch); err != nil {
+	if _, err := run("git", "push", "origin", branch); err != nil {
 		return fmt.Errorf("pushing branch %s: %w", branch, err)
 	}
 	return nil
@@ -194,7 +179,7 @@ func MergeFFOnly(branch string) error {
 	if err := validateBranchName(branch); err != nil {
 		return err
 	}
-	if err := run("git", "merge", "--ff-only", branch); err != nil {
+	if _, err := run("git", "merge", "--ff-only", branch); err != nil {
 		return fmt.Errorf("merging branch %s (ff-only): %w", branch, err)
 	}
 	return nil
@@ -202,16 +187,14 @@ func MergeFFOnly(branch string) error {
 
 // CurrentBranch returns the name of the currently checked-out branch.
 func CurrentBranch() (string, error) {
-	out, err := runOutput("git", "rev-parse", "--abbrev-ref", "HEAD")
+	out, err := run("git", "rev-parse", "--abbrev-ref", "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("getting current branch: %w", err)
 	}
 	return out, nil
 }
 
-// AbortCherryPick attempts to abort an in-progress cherry-pick. Output is
-// suppressed so callers can use this best-effort without noisy errors when no
-// cherry-pick is in progress.
+// AbortCherryPick attempts to abort an in-progress cherry-pick.
 func AbortCherryPick() error {
 	if err := exec.Command("git", "cherry-pick", "--abort").Run(); err != nil {
 		return fmt.Errorf("aborting cherry-pick: %w", err)
@@ -221,7 +204,7 @@ func AbortCherryPick() error {
 
 // ResetHard resets the index and working tree to HEAD, discarding all changes.
 func ResetHard() error {
-	if err := run("git", "reset", "--hard"); err != nil {
+	if _, err := run("git", "reset", "--hard"); err != nil {
 		return fmt.Errorf("resetting working copy: %w", err)
 	}
 	return nil
@@ -232,7 +215,7 @@ func DeleteLocalBranch(branch string) error {
 	if err := validateBranchName(branch); err != nil {
 		return err
 	}
-	if err := run("git", "branch", "-D", branch); err != nil {
+	if _, err := run("git", "branch", "-D", branch); err != nil {
 		return fmt.Errorf("deleting local branch %s: %w", branch, err)
 	}
 	return nil
