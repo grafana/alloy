@@ -2,6 +2,7 @@
 
 ## [1.15.0](https://github.com/grafana/alloy/compare/v1.14.0...v1.15.0) (2026-03-26)
 
+
 ### ⚠ BREAKING CHANGES
 
 * **otelcol:** Upgrade to OTel Collector v0.147.0 ([#5784](https://github.com/grafana/alloy/issues/5784))
