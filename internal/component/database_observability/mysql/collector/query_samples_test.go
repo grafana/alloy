@@ -2369,6 +2369,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"event_id",
 			"end_event_id",
 			"digest",
+			"sql_text",
 			"timer_end",
 			"timer_wait",
 			"rows_examined",
@@ -2386,7 +2387,6 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
-			"sql_text",
 		}))
 
 		c := &QuerySamples{
@@ -2423,6 +2423,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"event_id",
 			"end_event_id",
 			"digest",
+			"sql_text",
 			"timer_end",
 			"timer_wait",
 			"rows_examined",
@@ -2439,7 +2440,6 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
-			"sql_text",
 		}))
 		c := &QuerySamples{
 			dbConnection:  db,
@@ -2477,6 +2477,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"end_event_id",
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"rows_examined",
 			"rows_sent",
@@ -2492,7 +2493,6 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
-			"sql_text",
 		}))
 		c := &QuerySamples{
 			dbConnection:  db,
@@ -2520,6 +2520,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"thread_id",
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"rows_examined",
 			"rows_sent",
@@ -2535,7 +2536,6 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
-			"sql_text",
 		}))
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
 
@@ -2565,6 +2565,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"thread_id",
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"rows_examined",
 			"rows_sent",
@@ -2580,7 +2581,6 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
-			"sql_text",
 		}))
 		c := &QuerySamples{
 			dbConnection:  db,
@@ -2612,6 +2612,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"thread_id",
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"rows_examined",
 			"rows_sent",
@@ -2627,7 +2628,6 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
-			"sql_text",
 		}))
 		c := &QuerySamples{
 			dbConnection:  db,
@@ -2687,6 +2687,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		).WillReturnRows(sqlmock.NewRows([]string{
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_end",
 			"timer_wait",
 			"rows_examined",
@@ -2704,11 +2705,11 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
-			"sql_text",
 		}).
 			AddRow(
 				"test_schema", // current_schema
 				"some digest", // digest
+				nil,           // sql_text
 				2e12,          // timer_end
 				2e12,          // timer_wait
 				1000,          // rows_examined
@@ -2726,7 +2727,6 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				555555,        // cpu_time
 				1048576,       // max_controlled_memory (1MB)
 				2097152,       // max_total_memory (2MB)
-				nil,           // SQL_TEXT
 			),
 		)
 		mockParser := &parser.MockParser{}
@@ -3068,10 +3068,10 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 	customClause := buildExcludedSchemasClause([]string{"excluded_schema"})
 	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", customClause, "", endOfTimeline)).
 		WithArgs(1e12, 1e12).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-		"current_schema", "thread_id", "event_id", "end_event_id", "digest",
+		"current_schema", "thread_id", "event_id", "end_event_id", "digest", "sql_text",
 		"timer_end", "timer_wait", "rows_examined", "rows_sent", "rows_affected",
 		"errors", "object_schema", "object_name", "object_type", "index_name",
-		"lock_time", "digest_text", "threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST", "cpu_time", "max_controlled_memory", "max_total_memory", "sql_text",
+		"lock_time", "digest_text", "threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST", "cpu_time", "max_controlled_memory", "max_total_memory",
 	}))
 
 	c.fetchQuerySamples(t.Context())
