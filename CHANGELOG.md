@@ -1,9 +1,5 @@
 # Changelog
 
-### Features 🌟
-
-* **mimir.rules.kubernetes, loki.rules.kubernetes:** Add `mimir_namespace_separator` and `loki_namespace_separator` arguments to allow using a URL-safe separator instead of the default `/`/`-`, avoiding issues with reverse proxies that decode encoded slashes.
-
 ## [1.15.0](https://github.com/grafana/alloy/compare/v1.14.0...v1.15.0) (2026-03-26)
 
 ### ⚠ BREAKING CHANGES
