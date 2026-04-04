@@ -119,18 +119,18 @@ func TestEventLoop(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
-		stopChan:          make(chan struct{}),
-		health:            &fakeHealthReporter{},
-		mimirClient:       newFakeMimirClient(),
-		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-		ruleLister:        promListers.NewPrometheusRuleLister(ruleIndexer),
-		namespaceSelector: labels.Everything(),
-		ruleSelector:      labels.Everything(),
-		namespacePrefix:   "alloy",
+		queue:              workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		stopChan:           make(chan struct{}),
+		health:             &fakeHealthReporter{},
+		mimirClient:        newFakeMimirClient(),
+		namespaceLister:    coreListers.NewNamespaceLister(nsIndexer),
+		ruleLister:         promListers.NewPrometheusRuleLister(ruleIndexer),
+		namespaceSelector:  labels.Everything(),
+		ruleSelector:       labels.Everything(),
+		namespacePrefix:    "alloy",
 		namespaceSeparator: "/",
-		metrics:           newMetrics(),
-		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		metrics:            newMetrics(),
+		logger:             log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
 	}
 
 	ctx := t.Context()
@@ -223,19 +223,19 @@ func TestAdditionalLabels(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
-		stopChan:          make(chan struct{}),
-		health:            &fakeHealthReporter{},
-		mimirClient:       newFakeMimirClient(),
-		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-		ruleLister:        promListers.NewPrometheusRuleLister(ruleIndexer),
-		namespaceSelector: labels.Everything(),
-		ruleSelector:      labels.Everything(),
-		namespacePrefix:   "alloy",
+		queue:              workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		stopChan:           make(chan struct{}),
+		health:             &fakeHealthReporter{},
+		mimirClient:        newFakeMimirClient(),
+		namespaceLister:    coreListers.NewNamespaceLister(nsIndexer),
+		ruleLister:         promListers.NewPrometheusRuleLister(ruleIndexer),
+		namespaceSelector:  labels.Everything(),
+		ruleSelector:       labels.Everything(),
+		namespacePrefix:    "alloy",
 		namespaceSeparator: "/",
-		metrics:           newMetrics(),
-		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
-		externalLabels:    map[string]string{"foo": "bar"},
+		metrics:            newMetrics(),
+		logger:             log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		externalLabels:     map[string]string{"foo": "bar"},
 	}
 
 	ctx := t.Context()
@@ -323,18 +323,18 @@ func TestExtraQueryMatchers(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
-		stopChan:          make(chan struct{}),
-		health:            &fakeHealthReporter{},
-		mimirClient:       newFakeMimirClient(),
-		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-		ruleLister:        promListers.NewPrometheusRuleLister(ruleIndexer),
-		namespaceSelector: labels.Everything(),
-		ruleSelector:      labels.Everything(),
-		namespacePrefix:   "alloy",
+		queue:              workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		stopChan:           make(chan struct{}),
+		health:             &fakeHealthReporter{},
+		mimirClient:        newFakeMimirClient(),
+		namespaceLister:    coreListers.NewNamespaceLister(nsIndexer),
+		ruleLister:         promListers.NewPrometheusRuleLister(ruleIndexer),
+		namespaceSelector:  labels.Everything(),
+		ruleSelector:       labels.Everything(),
+		namespacePrefix:    "alloy",
 		namespaceSeparator: "/",
-		metrics:           newMetrics(),
-		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		metrics:            newMetrics(),
+		logger:             log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
 		extraQueryMatchers: &ExtraQueryMatchers{Matchers: []Matcher{
 			{
 				Name:      "cluster",
@@ -439,18 +439,18 @@ func TestSourceTenants(t *testing.T) {
 	}
 
 	processor := &eventProcessor{
-		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
-		stopChan:          make(chan struct{}),
-		health:            &fakeHealthReporter{},
-		mimirClient:       newFakeMimirClient(),
-		namespaceLister:   coreListers.NewNamespaceLister(nsIndexer),
-		ruleLister:        promListers.NewPrometheusRuleLister(ruleIndexer),
-		namespaceSelector: labels.Everything(),
-		ruleSelector:      labels.Everything(),
-		namespacePrefix:   "alloy",
+		queue:              workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		stopChan:           make(chan struct{}),
+		health:             &fakeHealthReporter{},
+		mimirClient:        newFakeMimirClient(),
+		namespaceLister:    coreListers.NewNamespaceLister(nsIndexer),
+		ruleLister:         promListers.NewPrometheusRuleLister(ruleIndexer),
+		namespaceSelector:  labels.Everything(),
+		ruleSelector:       labels.Everything(),
+		namespacePrefix:    "alloy",
 		namespaceSeparator: "/",
-		metrics:           newMetrics(),
-		logger:            log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
+		metrics:            newMetrics(),
+		logger:             log.With(log.NewLogfmtLogger(os.Stdout), "ts", log.DefaultTimestampUTC),
 	}
 
 	ctx := t.Context()
