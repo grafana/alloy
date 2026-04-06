@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"maps"
 	"os"
@@ -392,6 +393,14 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 // redactLine redacts each finding in the log line and records metrics.
 func (c *Component) redactLine(entry loki.Entry, findings []report.Finding) loki.Entry {
 	line := entry.Line
+
+	originValue := ""
+	if c.args.OriginLabel != "" && len(entry.Labels) > 0 {
+		if value, ok := entry.Labels[model.LabelName(c.args.OriginLabel)]; ok {
+			originValue = string(value)
+		}
+	}
+
 	for i := range findings {
 		finding := &findings[i]
 		ruleName := finding.RuleID
@@ -413,12 +422,8 @@ func (c *Component) redactLine(entry loki.Entry, findings []report.Finding) loki
 
 		c.metrics.secretsRedactedTotal.Inc()
 		c.metrics.secretsRedactedByRule.WithLabelValues(ruleName).Inc()
-		originValue := ""
-		if c.args.OriginLabel != "" && len(entry.Labels) > 0 {
-			if value, ok := entry.Labels[model.LabelName(c.args.OriginLabel)]; ok {
-				originValue = string(value)
-				c.metrics.secretsRedactedByOrigin.WithLabelValues(originValue).Inc()
-			}
+		if originValue != "" {
+			c.metrics.secretsRedactedByOrigin.WithLabelValues(originValue).Inc()
 		}
 		c.metrics.secretsRedactedByCategory.WithLabelValues(ruleName, originValue).Inc()
 	}
@@ -428,9 +433,8 @@ func (c *Component) redactLine(entry loki.Entry, findings []report.Finding) loki
 
 // hashSecret returns a short hex-encoded SHA1 hash of the secret for use in redaction placeholders.
 func hashSecret(secret string) string {
-	hasher := sha1.New()
-	hasher.Write([]byte(secret))
-	return fmt.Sprintf("%x", hasher.Sum(nil))
+	sum := sha1.Sum([]byte(secret))
+	return hex.EncodeToString(sum[:])
 }
 
 // withLabel returns a copy of the entry with the given label set to value.
