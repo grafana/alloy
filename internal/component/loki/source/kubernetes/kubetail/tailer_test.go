@@ -199,7 +199,7 @@ func Test_processLogStream(t *testing.T) {
 
 			// Process the log stream in a goroutine
 			go func() {
-				_ = tailer.processLogStream(ctx, stream, handler, tc.lastReadTime, positionsEnt, calc)
+				_ = tailer.processLogStream(ctx, stream, handler, tc.lastReadTime, positionsEnt, calc, func() {})
 			}()
 
 			// Collect all entries

@@ -216,11 +216,18 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 			continue
 		}
 
-		if len(podLogs.Spec.PipelineStages) > 0 {
-			activePipelineKeys[podLogs.Namespace+"/"+podLogs.Name] = struct{}{}
-		}
-
 		targets, discoveredPodLogs := r.reconcilePodLogs(ctx, cli, podLogs)
+
+		// Populate activePipelineKeys only when a pipeline was successfully created
+		// (ensurePipeline may fail or reconcilePodLogs may return early). Checking
+		// r.pipelines after the call is safe: ensurePipeline holds pipelinesMut while
+		// inserting, so by the time reconcilePodLogs returns the map is up to date.
+		pipelineKey := podLogs.Namespace + "/" + podLogs.Name
+		r.pipelinesMut.Lock()
+		if _, ok := r.pipelines[pipelineKey]; ok {
+			activePipelineKeys[pipelineKey] = struct{}{}
+		}
+		r.pipelinesMut.Unlock()
 
 		newTasks = append(newTasks, targets...)
 		newDebugInfo = append(newDebugInfo, discoveredPodLogs)
