@@ -51,7 +51,7 @@ func TestLokiKafka(t *testing.T) {
 	for _, t := range topics {
 		assertions = append(assertions, common.ExpectedLogResult{
 			Labels: map[string]string{
-				"topic": t,
+				"service_name": t,
 			},
 			EntryCount: messagesPerTopic,
 		})

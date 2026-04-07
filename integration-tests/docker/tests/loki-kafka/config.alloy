@@ -10,16 +10,31 @@ loki.relabel "kafka" {
 loki.source.kafka "kafka" {
 	brokers       = ["kafka:9092"]
 	topics        = ["test1", "test2", "test3"]
-	forward_to    = [loki.write.test.receiver]
+	forward_to    = [loki.process.test.receiver]
 	relabel_rules = loki.relabel.kafka.rules
+}
+
+loki.process "test" {
+	forward_to = [loki.relabel.test.receiver]
+	
+	stage.static_labels {
+		values = {
+			test_name = "lokikafka",
+		}
+	}
+}
+
+loki.relabel "test" {
+	forward_to = [loki.write.test.receiver]
+
+	rule {
+		source_labels = ["topic"]
+		target_label  = "service_name"
+	}
 }
 
 loki.write "test" {
 	endpoint {
 		url = "http://loki:3100/loki/api/v1/push"
-	}
-
-	external_labels = {
-		test_name = "lokikafka",
 	}
 }
