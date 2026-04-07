@@ -14,13 +14,12 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
 )
 
 // Server exposes HTTP routes that ingest log entries and forward them in batches.
 type Server struct {
-	logger  log.Logger
-	metrics *serverMetrics
+	logger         log.Logger
+	entriesWritten prometheus.Counter
 
 	server    *fnet.TargetServer
 	netConfig *fnet.ServerConfig
@@ -56,9 +55,10 @@ type HandlerRoute interface {
 }
 
 type ServerConfig struct {
-	Namespace  string
-	NetConfig  *fnet.ServerConfig
-	LogsConfig *LogsConfig
+	Namespace      string
+	EntriesWritten prometheus.Counter
+	NetConfig      *fnet.ServerConfig
+	LogsConfig     *LogsConfig
 }
 
 type LogsConfig struct {
@@ -74,14 +74,14 @@ func NewServer(logger log.Logger, reg prometheus.Registerer, recv loki.LogsBatch
 	}
 
 	return &Server{
-		logger:        logger,
-		metrics:       newServerMetrics(cfg.Namespace, reg),
-		server:        server,
-		netConfig:     cfg.NetConfig,
-		logsConfig:    cfg.LogsConfig,
-		recv:          recv,
-		once:          sync.Once{},
-		forceShutdown: make(chan struct{}),
+		logger:         logger,
+		entriesWritten: cfg.EntriesWritten,
+		server:         server,
+		netConfig:      cfg.NetConfig,
+		logsConfig:     cfg.LogsConfig,
+		recv:           recv,
+		once:           sync.Once{},
+		forceShutdown:  make(chan struct{}),
 	}, nil
 }
 
@@ -167,7 +167,7 @@ func (s *Server) logsHandler(logsFn func(r *http.Request, opts *LogsConfig) ([]l
 				return
 			}
 
-			s.metrics.entriesWritten.Add(float64(numEntries))
+			s.entriesWritten.Add(float64(numEntries))
 
 			if err != nil {
 				level.Warn(s.logger).Log("msg", "at least one entry failed to be processed", "err", err)
@@ -178,22 +178,4 @@ func (s *Server) logsHandler(logsFn func(r *http.Request, opts *LogsConfig) ([]l
 
 		w.WriteHeader(status)
 	})
-}
-
-type serverMetrics struct {
-	entriesWritten prometheus.Counter
-}
-
-func newServerMetrics(namespace string, reg prometheus.Registerer) *serverMetrics {
-	m := &serverMetrics{
-		entriesWritten: prometheus.NewCounter(prometheus.CounterOpts{
-			Namespace: namespace,
-			Name:      "entries_written",
-			Help:      "Total number of entries written.",
-		}),
-	}
-
-	m.entriesWritten = util.MustRegisterOrGet(reg, m.entriesWritten).(prometheus.Counter)
-
-	return m
 }
