@@ -63,6 +63,7 @@ func readTestData(t *testing.T, name string) string {
 
 func TestRoute(t *testing.T) {
 	type testcase struct {
+		Name          string
 		TenantID      string
 		UseIncomingTs bool
 		Body          string
@@ -71,8 +72,9 @@ func TestRoute(t *testing.T) {
 		AssertMetrics func(t *testing.T, m []*dto.MetricFamily)
 	}
 
-	tests := map[string]testcase{
-		"direct put data": {
+	tests := []testcase{
+		{
+			Name: "direct put data",
 			Body: readTestData(t, "testdata/direct_put.json"),
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
 				var r firehoseResponse
@@ -86,7 +88,8 @@ func TestRoute(t *testing.T) {
 				}
 			},
 		},
-		"direct put data, with tenant ID": {
+		{
+			Name:     "direct put data, with tenant ID",
 			Body:     readTestData(t, "testdata/direct_put.json"),
 			TenantID: "20",
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
@@ -100,7 +103,8 @@ func TestRoute(t *testing.T) {
 				}
 			},
 		},
-		"direct put data, relabeling req id and source arn": {
+		{
+			Name: "direct put data, relabeling req id and source arn",
 			Body: readTestData(t, "testdata/direct_put.json"),
 			Relabels: []*relabel.Config{
 				keepLabelRule("__aws_firehose_request_id", "aws_request_id"),
@@ -119,7 +123,8 @@ func TestRoute(t *testing.T) {
 				}
 			},
 		},
-		"direct put data with non JSON data": {
+		{
+			Name: "direct put data with non JSON data",
 			Body: readTestData(t, "testdata/direct_put_with_non_json_message.json"),
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
 				var r firehoseResponse
@@ -131,7 +136,8 @@ func TestRoute(t *testing.T) {
 				require.Len(t, entries, 1)
 			},
 		},
-		"direct put data, using incoming timestamp": {
+		{
+			Name:          "direct put data, using incoming timestamp",
 			Body:          readTestData(t, "testdata/direct_put.json"),
 			UseIncomingTs: true,
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
@@ -147,7 +153,8 @@ func TestRoute(t *testing.T) {
 				}
 			},
 		},
-		"cloudwatch logs-subscription data": {
+		{
+			Name: "cloudwatch logs-subscription data",
 			Body: readTestData(t, "testdata/cw_logs_mixed.json"),
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
 				var r firehoseResponse
@@ -162,7 +169,8 @@ func TestRoute(t *testing.T) {
 				}
 			},
 		},
-		"cloudwatch logs-subscription data, using incoming timestamp": {
+		{
+			Name:          "cloudwatch logs-subscription data, using incoming timestamp",
 			Body:          readTestData(t, "testdata/cw_logs_mixed.json"),
 			UseIncomingTs: true,
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
@@ -177,7 +185,8 @@ func TestRoute(t *testing.T) {
 				}
 			},
 		},
-		"cloudwatch logs-subscription data, with tenant ID": {
+		{
+			Name:     "cloudwatch logs-subscription data, with tenant ID",
 			Body:     readTestData(t, "testdata/cw_logs_with_only_control_messages.json"),
 			TenantID: "20",
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
@@ -189,7 +198,8 @@ func TestRoute(t *testing.T) {
 				require.Equal(t, "20", string(entries[0].Labels["__tenant_id__"]))
 			},
 		},
-		"cloudwatch logs-subscription data, relabeling control message": {
+		{
+			Name: "cloudwatch logs-subscription data, relabeling control message",
 			Body: readTestData(t, "testdata/cw_logs_with_only_control_messages.json"),
 			Relabels: []*relabel.Config{
 				keepLabelRule("__aws_owner", "aws_owner"),
@@ -207,7 +217,8 @@ func TestRoute(t *testing.T) {
 				require.Equal(t, "CONTROL_MESSAGE", string(entries[0].Labels["msg_type"]))
 			},
 		},
-		"cloudwatch logs-subscription data, relabeling log messages": {
+		{
+			Name: "cloudwatch logs-subscription data, relabeling log messages",
 			Body: readTestData(t, "testdata/cw_logs_with_only_data_messages.json"),
 			Relabels: []*relabel.Config{
 				keepLabelRule("__aws_owner", "aws_owner"),
@@ -231,13 +242,15 @@ func TestRoute(t *testing.T) {
 				require.Equal(t, "test_lambdafunction_logfilter", string(entries[0].Labels["filters"]))
 			},
 		},
-		"non json payload": {
+		{
+			Name: "non json payload",
 			Body: `{`,
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, _ []loki.Entry) {
 				require.Equal(t, http.StatusBadRequest, res.Code)
 			},
 		},
-		"cloudwatch logs control message, and invalid gzipped data": {
+		{
+			Name: "cloudwatch logs control message, and invalid gzipped data",
 			Body: readTestData(t, "testdata/cw_logs_control_and_bad_records.json"),
 			Assert: func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry) {
 				var r firehoseResponse
@@ -266,14 +279,14 @@ func TestRoute(t *testing.T) {
 		},
 	}
 
-	for name, tc := range tests {
+	for _, tc := range tests {
 		for _, gzipContentEncoding := range []bool{true, false} {
 			suffix := ""
 			if gzipContentEncoding {
 				suffix = " - with gzip content encoding"
 			}
 
-			t.Run(name+suffix, func(t *testing.T) {
+			t.Run(tc.Name+suffix, func(t *testing.T) {
 				registry := prometheus.NewRegistry()
 				route := &firehoseRoute{metrics: newMetrics(registry)}
 
@@ -311,30 +324,39 @@ func TestRoute(t *testing.T) {
 }
 
 func TestRouteAuth(t *testing.T) {
-	tests := map[string]struct {
+	type testcase struct {
+		Name         string
 		accessKey    string
 		reqAccessKey string
 		expectedCode int
-	}{
-		"auth disabled": {expectedCode: http.StatusOK},
-		"auth enabled, valid key": {
+	}
+
+	tests := []testcase{
+		{
+			Name:         "auth disabled",
+			expectedCode: http.StatusOK,
+		},
+		{
+			Name:         "auth enabled, valid key",
 			accessKey:    "fakekey",
 			reqAccessKey: "fakekey",
 			expectedCode: http.StatusOK,
 		},
-		"auth enabled, invalid key": {
+		{
+			Name:         "auth enabled, invalid key",
 			accessKey:    "fakekey",
 			reqAccessKey: "badkey",
 			expectedCode: http.StatusUnauthorized,
 		},
-		"auth enabled, no key": {
+		{
+			Name:         "auth enabled, no key",
 			accessKey:    "fakekey",
 			expectedCode: http.StatusUnauthorized,
 		},
 	}
 
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
 			route := &firehoseRoute{
 				metrics:   newMetrics(prometheus.NewRegistry()),
 				accessKey: tc.accessKey,
@@ -359,13 +381,17 @@ func TestRouteAuth(t *testing.T) {
 }
 
 func TestRouteWithStaticConfigLabels(t *testing.T) {
-	tests := map[string]struct {
+	type testcase struct {
+		Name               string
 		tenantID           string
 		body               string
 		staticLabelsConfig string
 		assert             func(t *testing.T, res *httptest.ResponseRecorder, entries []loki.Entry)
-	}{
-		"direct put data, static labels": {
+	}
+
+	tests := []testcase{
+		{
+			Name: "direct put data, static labels",
 			body: readTestData(t, "testdata/direct_put.json"),
 			staticLabelsConfig: `
 				{
@@ -386,7 +412,8 @@ func TestRouteWithStaticConfigLabels(t *testing.T) {
 				}
 			},
 		},
-		"cloudwatch logs-subscription data, static labels": {
+		{
+			Name: "cloudwatch logs-subscription data, static labels",
 			body: readTestData(t, "testdata/cw_logs_with_only_control_messages.json"),
 			staticLabelsConfig: `
 				{
@@ -407,8 +434,8 @@ func TestRouteWithStaticConfigLabels(t *testing.T) {
 		},
 	}
 
-	for name, tc := range tests {
-		t.Run(name, func(t *testing.T) {
+	for _, tc := range tests {
+		t.Run(tc.Name, func(t *testing.T) {
 			route := &firehoseRoute{metrics: newMetrics(prometheus.NewRegistry())}
 			req := httptest.NewRequest(http.MethodPost, "https://example.com", strings.NewReader(tc.body))
 			req.Header.Set("X-Amz-Firehose-Request-Id", testRequestID)
@@ -429,11 +456,13 @@ func TestRouteWithStaticConfigLabels(t *testing.T) {
 }
 
 func TestGetStaticLabelsFromRequest(t *testing.T) {
-	tests := []struct {
+	type testcase struct {
 		name   string
 		config string
 		want   model.LabelSet
-	}{
+	}
+
+	tests := []testcase{
 		{
 			name: "single label",
 			config: `
@@ -477,12 +506,14 @@ func TestGetStaticLabelsFromRequest(t *testing.T) {
 }
 
 func TestGetStaticLabelsFromRequest_NoError_InvalidData(t *testing.T) {
-	tests := []struct {
+	type testcase struct {
 		name            string
 		config          string
 		want            model.LabelSet
 		expectedMetrics string
-	}{
+	}
+
+	tests := []testcase{
 		{
 			name:   "invalid config",
 			config: `!@#$%^&*()_`,
