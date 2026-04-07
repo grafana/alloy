@@ -71,14 +71,14 @@ func decodeRecord(rec string) ([]byte, recordOrigin, error) {
 		return decodedRec, originDirectPut, nil
 	}
 
-	gzipReader, err := gzip.NewReader(bytes.NewReader(decodedRec))
+	reader, err := gzip.NewReader(bytes.NewReader(decodedRec))
 	if err != nil {
 		return nil, originCloudwatchLogs, fmt.Errorf("error creating gzip reader: %w", err)
 	}
-	defer gzipReader.Close()
+	defer reader.Close()
 
 	var b bytes.Buffer
-	if _, err := io.Copy(&b, gzipReader); err != nil {
+	if _, err := io.Copy(&b, reader); err != nil {
 		return nil, originCloudwatchLogs, errWithReason{
 			err:    err,
 			reason: "gzip-deflate",
@@ -94,8 +94,5 @@ func decodeRecord(rec string) ([]byte, recordOrigin, error) {
 var gzipPrefix = []byte{0x1f, 0x8b, 8}
 
 func isGzipPayload(data []byte) bool {
-	if len(data) < 3 {
-		return false
-	}
-	return bytes.HasPrefix(data, []byte{0x1f, 0x8b, 8})
+	return bytes.HasPrefix(data, gzipPrefix)
 }

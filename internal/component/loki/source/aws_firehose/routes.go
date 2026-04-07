@@ -156,9 +156,13 @@ func postProcessLabels(lbs labels.Labels, cfg *source.LogsConfig) model.LabelSet
 		if strings.HasPrefix(lbl.Name, "__") && lbl.Name != lokiClient.ReservedLabelTenantID {
 			return
 		}
+
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !model.LabelName(lbl.Name).IsValidLegacy() || !model.LabelValue(lbl.Value).IsValid() {
 			return
 		}
+
 		entryLabels[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
 	})
 
@@ -231,10 +235,26 @@ func (r *firehoseRoute) tryToGetStaticLabelsFromRequest(req *http.Request, tenan
 
 		rawLabelName := strings.TrimPrefix(name, commonAttributesLabelPrefix)
 		labelName := model.LabelName(rawLabelName)
+		// TODO: add support for different validation schemes.
+		//nolint:staticcheck
 		if !labelName.IsValidLegacy() {
+			// try to sanitize label name
 			sanitizedLabelName := yacepromutil.PromString(rawLabelName)
 			labelName = model.LabelName(sanitizedLabelName)
+
+			// TODO: add support for different validation schemes.
+			//nolint:staticcheck
 			if !labelName.IsValidLegacy() {
+				// This situation can happen when:
+				// - the header with label information is a valid JSON
+				// - the label name is not valid and can not be sanitized
+				//
+				// For example:
+				// {
+				//  "commonAttributes": {
+				//   "lbl_0mylabel": "value"
+				//  }
+				// }
 				r.metrics.IncInvalidStaticLabels("invalid_label_name", tenantID)
 				continue
 			}

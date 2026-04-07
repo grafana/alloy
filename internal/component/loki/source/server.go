@@ -160,7 +160,6 @@ func (s *Server) ForceShutdown() {
 }
 
 func (s *Server) logsHandler(route LogsRoute) http.Handler {
-
 	var responseWriter LogsResponseWriter = DefaultLogsResponseWriter{}
 
 	customResponseWriter, ok := route.(LogsResponseWriter)
