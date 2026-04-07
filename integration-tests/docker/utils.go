@@ -23,8 +23,11 @@ import (
 	"github.com/grafana/alloy/integration-tests/docker/common"
 )
 
-const alloyImageName = "alloy-integration-tests"
-const dockerComposeFile = "docker-compose.yaml"
+const (
+	alloyImageName    = "alloy-integration-tests"
+	dockerComposeFile = "docker-compose.yaml"
+	networkName       = "alloy-integration-tests_integration-tests"
+)
 
 type TestLog struct {
 	TestDir    string
@@ -126,6 +129,14 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 			ReadOnly: true,
 		})
 	}
+	if cfg.Container.UseDockerSock {
+		mounts = append(mounts, mount.Mount{
+			Type:     mount.TypeBind,
+			Source:   "/var/run/docker.sock",
+			Target:   "/var/run/docker.sock",
+			ReadOnly: false,
+		})
+	}
 
 	cmd := []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"}
 
@@ -219,8 +230,27 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 		}
 	}
 
+	additionalContainers, err := startAdditionalContainers(ctx, absTestDir, networkName, cfg)
+	if err != nil {
+		addLog(TestLog{
+			TestDir:  dirName,
+			AlloyLog: err.Error(),
+			IsError:  true,
+		})
+		return
+	}
+	defer func() {
+		if err := terminateAdditionalContainers(ctx, additionalContainers); err != nil {
+			addLog(TestLog{
+				TestDir:  dirName,
+				AlloyLog: fmt.Sprintf("failed to terminate additional containers: %v", err),
+				IsError:  true,
+			})
+		}
+	}()
+
 	// Create container request
-	req := createContainerRequest(dirName, testDir, port, "alloy-integration-tests_integration-tests", containerFiles, cfg)
+	req := createContainerRequest(dirName, testDir, port, networkName, containerFiles, cfg)
 
 	// Start container
 	containerStartTime := time.Now()
