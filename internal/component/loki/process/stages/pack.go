@@ -201,3 +201,8 @@ func (m *packStage) pack(e Entry) Entry {
 func (*packStage) Cleanup() {
 	// no-op
 }
+
+// ProcessEntry implements SyncStage.
+func (m *packStage) ProcessEntry(e Entry) []Entry {
+	return []Entry{m.pack(e)}
+}

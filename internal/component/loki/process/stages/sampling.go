@@ -71,3 +71,12 @@ func (m *samplingStage) Run(in chan Entry) chan Entry {
 func (*samplingStage) Cleanup() {
 	// no-op
 }
+
+// ProcessEntry implements SyncStage.
+func (m *samplingStage) ProcessEntry(e Entry) []Entry {
+	if m.sampler.ShouldSample() {
+		return []Entry{e}
+	}
+	m.dropCount.WithLabelValues(m.cfg.DropReason).Inc()
+	return nil
+}

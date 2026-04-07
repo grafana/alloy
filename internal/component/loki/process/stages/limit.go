@@ -193,3 +193,11 @@ func registerCounterVec(registerer prometheus.Registerer, namespace, name, help 
 	}
 	return vec
 }
+
+// ProcessEntry implements SyncStage.
+func (m *limitStage) ProcessEntry(e Entry) []Entry {
+	if m.shouldThrottle(e.Labels) {
+		return nil
+	}
+	return []Entry{e}
+}

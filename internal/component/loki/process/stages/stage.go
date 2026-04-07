@@ -28,6 +28,15 @@ type Stage interface {
 	Cleanup()
 }
 
+// SyncStage is an optional interface that Stage implementations may satisfy to
+// support single-entry processing without spawning goroutines.
+// ProcessEntry returns the resulting entries: nil means the entry was dropped,
+// a single-element slice is the common case, and multiple elements mean the
+// stage expanded one entry into many.
+type SyncStage interface {
+	ProcessEntry(e Entry) []Entry
+}
+
 // stageProcessor Allow to transform a Processor (old synchronous pipeline stage) into an async Stage
 type stageProcessor struct {
 	Processor
@@ -38,6 +47,14 @@ func (s stageProcessor) Run(in chan Entry) chan Entry {
 		s.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
 		return e
 	})
+}
+
+// ProcessEntry implements SyncStage. All Processor-wrapped stages (regex, json,
+// logfmt, labels, template, tenant, timestamp, output, replace, pattern, luhn,
+// label_drop, label_keep, static_labels, docker, …) get this for free.
+func (s stageProcessor) ProcessEntry(e Entry) []Entry {
+	s.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
+	return []Entry{e}
 }
 
 func toStage(p Processor) Stage {

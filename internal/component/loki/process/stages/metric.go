@@ -331,3 +331,9 @@ func getFloatFromString(str string) (float64, error) {
 	}
 	return dur, nil
 }
+
+// ProcessEntry implements SyncStage.
+func (m *metricStage) ProcessEntry(e Entry) []Entry {
+	m.Process(e.Labels, e.Extracted, &e.Timestamp, &e.Line)
+	return []Entry{e}
+}

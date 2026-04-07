@@ -174,3 +174,12 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 func (*jsonStage) Cleanup() {
 	// no-op
 }
+
+// ProcessEntry implements SyncStage.
+func (j *jsonStage) ProcessEntry(e Entry) []Entry {
+	err := j.processEntry(e.Extracted, &e.Line)
+	if err != nil && j.cfg.DropMalformed {
+		return nil
+	}
+	return []Entry{e}
+}

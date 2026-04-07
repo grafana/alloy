@@ -151,3 +151,14 @@ func (l *labelStage) addLabelsFromStructuredMetadata(labels model.LabelSet, meta
 func (*labelStage) Cleanup() {
 	// no-op
 }
+
+// ProcessEntry implements SyncStage.
+func (l *labelStage) ProcessEntry(e Entry) []Entry {
+	switch l.cfg.SourceType {
+	case SourceTypeExtractedMap:
+		l.addLabelFromExtractedMap(e.Labels, e.Extracted)
+	case SourceTypeStructuredMetadata:
+		l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
+	}
+	return []Entry{e}
+}

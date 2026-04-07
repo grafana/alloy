@@ -222,3 +222,65 @@ func getTruncateCountMetric(registerer prometheus.Registerer) *prometheus.Counte
 	}, []string{"field"})
 	return util.MustRegisterOrGet(registerer, truncateCount).(*prometheus.CounterVec)
 }
+
+// ProcessEntry implements SyncStage.
+func (m *truncateStage) ProcessEntry(e Entry) []Entry {
+	truncated := map[string]struct{}{}
+	for _, r := range m.cfg.Rules {
+		switch r.SourceType {
+		case SourceTypeLine:
+			if len(e.Line) > int(r.effectiveLimit) {
+				e.Line = e.Line[:r.effectiveLimit] + r.Suffix
+				markTruncated(m.truncatedCount, truncated, truncateLineField)
+			}
+		case SourceTypeLabel:
+			if len(r.Sources) > 0 {
+				for _, source := range r.Sources {
+					name := model.LabelName(source)
+					if v, ok := e.Labels[name]; ok {
+						m.tryTruncateLabel(r, e.Labels, name, v, truncated)
+					}
+				}
+			} else {
+				for k, v := range e.Labels {
+					m.tryTruncateLabel(r, e.Labels, k, v, truncated)
+				}
+			}
+		case SourceTypeStructuredMetadata:
+			if len(r.Sources) > 0 {
+				for i, v := range e.StructuredMetadata {
+					if slices.Contains(r.Sources, v.Name) {
+						e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
+					}
+				}
+			} else {
+				for i, v := range e.StructuredMetadata {
+					e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
+				}
+			}
+		case SourceTypeExtractedMap:
+			if len(r.Sources) > 0 {
+				for _, source := range r.Sources {
+					if v, ok := e.Extracted[source]; ok {
+						m.tryTruncateExtracted(r, e.Extracted, source, v, truncated)
+					}
+				}
+			} else {
+				for k, v := range e.Extracted {
+					m.tryTruncateExtracted(r, e.Extracted, k, v, truncated)
+				}
+			}
+		}
+	}
+	if len(truncated) > 0 {
+		if existing, ok := e.Extracted["truncated"]; ok {
+			if strExisting, ok := existing.(string); ok {
+				for s := range strings.SplitSeq(strExisting, ",") {
+					truncated[s] = struct{}{}
+				}
+			}
+		}
+		e.Extracted["truncated"] = strings.Join(slices.Sorted(maps.Keys(truncated)), ",")
+	}
+	return []Entry{e}
+}

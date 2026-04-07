@@ -341,3 +341,9 @@ func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[
 		extracted[key] = r
 	}
 }
+
+// ProcessEntry implements SyncStage.
+func (g *geoIPStage) ProcessEntry(e Entry) []Entry {
+	g.process(e.Labels, e.Extracted)
+	return []Entry{e}
+}

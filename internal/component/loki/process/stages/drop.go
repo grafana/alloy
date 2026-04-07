@@ -225,3 +225,12 @@ func splitSource(s string) []string {
 func (*dropStage) Cleanup() {
 	// no-op
 }
+
+// ProcessEntry implements SyncStage.
+func (m *dropStage) ProcessEntry(e Entry) []Entry {
+	if m.shouldDrop(e) {
+		m.dropCount.WithLabelValues(m.cfg.DropReason).Inc()
+		return nil
+	}
+	return []Entry{e}
+}

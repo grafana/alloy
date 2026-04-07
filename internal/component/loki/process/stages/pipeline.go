@@ -151,6 +151,87 @@ func NewPipeline(logger log.Logger, stages []StageConfig, registerer prometheus.
 	}, nil
 }
 
+// CanProcessSync returns true when every stage in the pipeline implements
+// SyncStage. If true, ProcessEntry can be used instead of Start to avoid
+// spawning N+3 goroutines: one goroutine per stage plus two adapter goroutines.
+// The match stage does not currently implement SyncStage, so pipelines that
+// contain it return false and fall back to Start.
+func (p *Pipeline) CanProcessSync() bool {
+	for _, s := range p.stages {
+		if _, ok := s.(SyncStage); !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// ProcessEntry applies all stages to a single entry synchronously.
+// The pipeline must support synchronous processing (CanProcessSync() == true).
+// It initialises the Extracted map from the entry labels, applies each stage in
+// order, and returns the resulting entries (empty = dropped, multiple = expanded).
+func (p *Pipeline) ProcessEntry(e loki.Entry) []loki.Entry {
+	entries := []Entry{{
+		Extracted: make(map[string]any, len(e.Labels)),
+		Entry:     e,
+	}}
+	for k, v := range e.Labels {
+		entries[0].Extracted[string(k)] = string(v)
+	}
+
+	for _, stage := range p.stages {
+		if len(entries) == 0 {
+			break
+		}
+		ss := stage.(SyncStage) // safe: CanProcessSync guarantees this
+		var next []Entry
+		for _, entry := range entries {
+			next = append(next, ss.ProcessEntry(entry)...)
+		}
+		entries = next
+	}
+
+	result := make([]loki.Entry, len(entries))
+	for i, entry := range entries {
+		result[i] = entry.Entry
+	}
+	return result
+}
+
+// StartSync starts the pipeline using a single goroutine instead of the N+3
+// goroutine chain produced by Start. It requires CanProcessSync() == true.
+//
+// Resource usage comparison (N = number of stages):
+//
+//	Start:     N+3 goroutines (1 label-init RunWith + 1 per stage + 2 adapters)
+//	StartSync: 1 goroutine
+func (p *Pipeline) StartSync(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHandler {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	var (
+		wg   sync.WaitGroup
+		once sync.Once
+	)
+
+	wg.Go(func() {
+		defer p.Cleanup()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case e := <-in:
+				for _, result := range p.ProcessEntry(e) {
+					out <- result
+				}
+			}
+		}
+	})
+
+	return loki.NewEntryHandler(in, func() {
+		once.Do(func() { cancel() })
+		wg.Wait()
+	})
+}
+
 // Start will start the pipeline and forward entries to next.
 // The returned EntryHandler should be used to pass entries through the pipeline.
 func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHandler {

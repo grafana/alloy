@@ -184,3 +184,73 @@ func (c *cri) ensureTruncateIfRequired(e *Entry) {
 }
 
 func (c *cri) Cleanup() {}
+
+// ProcessEntry implements SyncStage. It applies CRI parsing inline without goroutines.
+func (c *cri) ProcessEntry(e Entry) []Entry {
+	entries, skip := func(e Entry) ([]Entry, bool) {
+		parsed, ok := crip.ParseCRI(e.Line)
+		if !ok {
+			return []Entry{e}, false
+		}
+
+		e.Extracted[criFlags] = parsed.Flag.String()
+		e.Extracted[criStream] = parsed.Stream.String()
+		e.Extracted[criContent] = parsed.Content
+		e.Extracted[criTime] = parsed.Timestamp
+
+		e.Line = parsed.Content
+
+		ts, err := time.Parse(time.RFC3339Nano, parsed.Timestamp)
+		if err == nil {
+			e.Timestamp = ts
+		}
+
+		e.Labels[criStream] = model.LabelValue(parsed.Stream.String())
+
+		fingerprint := e.Labels.Fingerprint()
+		if parsed.Flag == crip.FlagPartial {
+			if len(c.partialLines) >= c.cfg.MaxPartialLines {
+				level.Warn(c.logger).Log("msg", "cri stage: partial lines upperbound exceeded. merging it to single line", "threshold", c.cfg.MaxPartialLines)
+				if c.partialLinesFlushedMetric != nil {
+					c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
+				}
+				entries := make([]Entry, 0, len(c.partialLines))
+				for _, v := range c.partialLines {
+					entries = append(entries, v)
+				}
+				c.partialLines = make(map[model.Fingerprint]Entry, c.cfg.MaxPartialLines)
+				c.ensureTruncateIfRequired(&e)
+				c.partialLines[fingerprint] = e
+				return entries, false
+			}
+
+			prev, ok := c.partialLines[fingerprint]
+			if ok {
+				var builder strings.Builder
+				builder.WriteString(prev.Line)
+				builder.WriteString(e.Line)
+				e.Line = builder.String()
+			}
+			c.ensureTruncateIfRequired(&e)
+			c.partialLines[fingerprint] = e
+			return nil, true
+		}
+
+		prev, ok := c.partialLines[fingerprint]
+		if ok {
+			var builder strings.Builder
+			builder.WriteString(prev.Line)
+			builder.WriteString(e.Line)
+			e.Line = builder.String()
+			c.ensureTruncateIfRequired(&e)
+			delete(c.partialLines, fingerprint)
+		}
+
+		return []Entry{e}, false
+	}(e)
+
+	if skip {
+		return nil
+	}
+	return entries
+}
