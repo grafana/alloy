@@ -3,7 +3,7 @@ package secretfilter
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
+	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
 	"maps"
@@ -431,9 +431,9 @@ func (c *Component) redactLine(entry loki.Entry, findings []report.Finding) loki
 	return entry
 }
 
-// hashSecret returns a short hex-encoded SHA-256 hash of the secret for use in redaction placeholders.
+// hashSecret returns a short hex-encoded SHA-1 hash of the secret for use in redaction placeholders.
 func hashSecret(secret string) string {
-	sum := sha256.Sum256([]byte(secret))
+	sum := sha1.Sum([]byte(secret))
 	return hex.EncodeToString(sum[:])
 }
 
