@@ -26,9 +26,9 @@ type tenantStage struct {
 
 // TenantConfig configures a tenant stage.
 type TenantConfig struct {
-	Label  string `alloy:"label,attr,optional"`
-	Source string `alloy:"source,attr,optional"`
-	Value  string `alloy:"value,attr,optional"`
+	Label  string `alloy:"label,attr,optional"  json:"label,omitempty"`
+	Source string `alloy:"source,attr,optional" json:"source,omitempty"`
+	Value  string `alloy:"value,attr,optional"  json:"value,omitempty"`
 }
 
 // validateTenantConfig validates the tenant stage configuration

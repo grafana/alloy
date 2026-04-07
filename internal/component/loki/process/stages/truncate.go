@@ -30,14 +30,14 @@ const (
 
 // TruncateConfig contains the configuration for a truncateStage
 type TruncateConfig struct {
-	Rules []*RuleConfig `alloy:"rule,block"`
+	Rules []*RuleConfig `alloy:"rule,block" json:"rules"`
 }
 
 type RuleConfig struct {
-	Limit      units.Base2Bytes `alloy:"limit,attr"`
-	Suffix     string           `alloy:"suffix,attr,optional"`
-	Sources    []string         `alloy:"sources,attr,optional"`
-	SourceType SourceType       `alloy:"source_type,attr,optional"`
+	Limit      units.Base2Bytes `alloy:"limit,attr"                   json:"limit"` // TextMarshaler: serializes as "5MiB"
+	Suffix     string           `alloy:"suffix,attr,optional"         json:"suffix,omitempty"`
+	Sources    []string         `alloy:"sources,attr,optional"        json:"sources,omitempty"`
+	SourceType SourceType       `alloy:"source_type,attr,optional"    json:"sourceType,omitempty"`
 
 	effectiveLimit units.Base2Bytes
 }

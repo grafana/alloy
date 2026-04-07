@@ -23,9 +23,9 @@ var (
 // RegexConfig configures a processing stage uses regular expressions to
 // extract values from log lines into the shared values map.
 type RegexConfig struct {
-	Expression       string  `alloy:"expression,attr"`
-	Source           *string `alloy:"source,attr,optional"`
-	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
+	Expression       string  `alloy:"expression,attr"                   json:"expression"`
+	Source           *string `alloy:"source,attr,optional"              json:"source,omitempty"`
+	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"  json:"labelsFromGroups,omitempty"`
 }
 
 // validateRegexConfig validates the config and return a regex

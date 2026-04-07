@@ -18,15 +18,15 @@ var DefaultHistogramConfig = HistogramConfig{
 // HistogramConfig defines a histogram metric whose values are bucketed.
 type HistogramConfig struct {
 	// Shared fields
-	Name        string        `alloy:"name,attr"`
-	Description string        `alloy:"description,attr,optional"`
-	Source      string        `alloy:"source,attr,optional"`
-	Prefix      string        `alloy:"prefix,attr,optional"`
-	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional"`
-	Value       string        `alloy:"value,attr,optional"`
+	Name        string        `alloy:"name,attr"                       json:"name"`
+	Description string        `alloy:"description,attr,optional"       json:"description,omitempty"`
+	Source      string        `alloy:"source,attr,optional"            json:"source,omitempty"`
+	Prefix      string        `alloy:"prefix,attr,optional"            json:"prefix,omitempty"`
+	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional" json:"-"` // not supported in CRD: time.Duration is nanosecond int64 in JSON
+	Value       string        `alloy:"value,attr,optional"             json:"value,omitempty"`
 
 	// Histogram-specific fields
-	Buckets []float64 `alloy:"buckets,attr"`
+	Buckets []float64 `alloy:"buckets,attr" json:"buckets"`
 }
 
 // SetToDefault implements syntax.Defaulter.

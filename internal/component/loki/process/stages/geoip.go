@@ -56,10 +56,10 @@ var fields = map[GeoIPFields]string{
 
 // GeoIPConfig represents GeoIP stage config
 type GeoIPConfig struct {
-	DB            string            `alloy:"db,attr"`
-	Source        *string           `alloy:"source,attr"`
-	DBType        string            `alloy:"db_type,attr,optional"`
-	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"`
+	DB            string            `alloy:"db,attr"                          json:"db"`
+	Source        *string           `alloy:"source,attr"                      json:"source"`
+	DBType        string            `alloy:"db_type,attr,optional"            json:"dbType,omitempty"`
+	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"     json:"customLookups,omitempty"`
 }
 
 func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {

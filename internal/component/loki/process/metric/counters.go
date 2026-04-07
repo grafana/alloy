@@ -18,17 +18,17 @@ const (
 // CounterConfig defines a counter metric whose value only goes up.
 type CounterConfig struct {
 	// Shared fields
-	Name        string        `alloy:"name,attr"`
-	Description string        `alloy:"description,attr,optional"`
-	Source      string        `alloy:"source,attr,optional"`
-	Prefix      string        `alloy:"prefix,attr,optional"`
-	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional"`
-	Value       string        `alloy:"value,attr,optional"`
+	Name        string        `alloy:"name,attr"                       json:"name"`
+	Description string        `alloy:"description,attr,optional"       json:"description,omitempty"`
+	Source      string        `alloy:"source,attr,optional"            json:"source,omitempty"`
+	Prefix      string        `alloy:"prefix,attr,optional"            json:"prefix,omitempty"`
+	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional" json:"-"` // not supported in CRD: time.Duration is nanosecond int64 in JSON
+	Value       string        `alloy:"value,attr,optional"             json:"value,omitempty"`
 
 	// Counter-specific fields
-	Action          string `alloy:"action,attr"`
-	MatchAll        bool   `alloy:"match_all,attr,optional"`
-	CountEntryBytes bool   `alloy:"count_entry_bytes,attr,optional"`
+	Action          string `alloy:"action,attr"                    json:"action"`
+	MatchAll        bool   `alloy:"match_all,attr,optional"        json:"matchAll,omitempty"`
+	CountEntryBytes bool   `alloy:"count_entry_bytes,attr,optional" json:"countEntryBytes,omitempty"`
 }
 
 // DefaultCounterConfig sets the default for a Counter.

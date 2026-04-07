@@ -22,9 +22,9 @@ const (
 
 // JSONConfig represents a JSON Stage configuration
 type JSONConfig struct {
-	Expressions   map[string]string `alloy:"expressions,attr"`
-	Source        *string           `alloy:"source,attr,optional"`
-	DropMalformed bool              `alloy:"drop_malformed,attr,optional"`
+	Expressions   map[string]string `alloy:"expressions,attr"              json:"expressions"`
+	Source        *string           `alloy:"source,attr,optional"          json:"source,omitempty"`
+	DropMalformed bool              `alloy:"drop_malformed,attr,optional"  json:"dropMalformed,omitempty"`
 }
 
 // validateJSONConfig validates a json config and returns a map of necessary jmespath expressions.
