@@ -20,8 +20,8 @@ import (
 var topics = []string{"test1", "test2", "test3"}
 
 const (
-	numMessages = 5
-	broker      = "localhost:29092"
+	messagesPerTopic = 50
+	broker           = "localhost:29092"
 )
 
 func TestLokiKafka(t *testing.T) {
@@ -35,7 +35,7 @@ func TestLokiKafka(t *testing.T) {
 	)
 
 	for i, t := range topics {
-		wg.Go(func() { errs[i] = sendMessages(producer, t, numMessages) })
+		wg.Go(func() { errs[i] = sendMessages(producer, t, messagesPerTopic) })
 	}
 
 	wg.Wait()
@@ -44,7 +44,7 @@ func TestLokiKafka(t *testing.T) {
 	}
 
 	var (
-		total      = numMessages * len(topics)
+		total      = messagesPerTopic * len(topics)
 		assertions = make([]common.ExpectedLogResult, 0, len(topics))
 	)
 
@@ -53,7 +53,7 @@ func TestLokiKafka(t *testing.T) {
 			Labels: map[string]string{
 				"topic": t,
 			},
-			EntryCount: numMessages,
+			EntryCount: messagesPerTopic,
 		})
 	}
 
