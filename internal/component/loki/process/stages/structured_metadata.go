@@ -90,7 +90,7 @@ func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 			e.StructuredMetadata = append(e.StructuredMetadata, metadata)
 		}
 
-		// Try to add structured metdata from extracted map using labelsConfig.
+		// Try to add structured metadata from extracted map using labelsConfig.
 		processExtractedLabelsByConfig(s.logger, e.Extracted, s.labelsConfig, appendStructureMetadata)
 
 		// Try to add structured metadata from extraced map using regex.
