@@ -94,12 +94,31 @@ func (args *Arguments) Validate() error {
 	if args.KubernetesRole != string(promk8s.RoleEndpointSlice) && args.KubernetesRole != string(promk8s.RoleEndpoint) {
 		return fmt.Errorf("only endpoints and endpointslice are supported")
 	}
+	if args.Clustering.ZoneAware && !args.Clustering.Enabled {
+		return fmt.Errorf("clustering.zone_aware requires clustering.enabled to be true")
+	}
 	return nil
 }
 
 type DebugInfo struct {
 	DiscoveredCRDs []*DiscoveredResource `alloy:"crds,block"`
 	Targets        []scrape.TargetStatus `alloy:"targets,block,optional"`
+	ClusteringInfo *ClusteringDebugInfo  `alloy:"clustering,block,optional"`
+}
+
+// ClusteringDebugInfo contains debug information about zone-aware clustering.
+type ClusteringDebugInfo struct {
+	Enabled         bool     `alloy:"enabled,attr"`
+	ZoneAware       bool     `alloy:"zone_aware,attr"`
+	LocalZone       string   `alloy:"local_zone,attr,optional"`
+	LocalZonePeers  []string `alloy:"local_zone_peers,attr,optional"`
+	TotalPeers      int      `alloy:"total_peers,attr"`
+	TargetsTotal    int      `alloy:"targets_total,attr"`
+	TargetsSameZone int      `alloy:"targets_same_zone,attr"`
+	TargetsDiffZone int      `alloy:"targets_diff_zone,attr"`
+	TargetsNoZone   int      `alloy:"targets_no_zone,attr"`
+	TargetsKept     int      `alloy:"targets_kept,attr"`
+	TargetsDropped  int      `alloy:"targets_dropped,attr"`
 }
 
 type DiscoveredResource struct {

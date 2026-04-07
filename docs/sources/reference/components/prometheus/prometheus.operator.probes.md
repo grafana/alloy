@@ -125,9 +125,10 @@ The following arguments are supported:
 
 ### `clustering`
 
-| Name      | Type   | Description                                       | Default | Required |
-| --------- | ------ | ------------------------------------------------- | ------- | -------- |
-| `enabled` | `bool` | Enables sharing targets with other cluster nodes. | `false` | yes      |
+| Name         | Type   | Description                                                              | Default | Required |
+| ------------ | ------ | ------------------------------------------------------------------------ | ------- | -------- |
+| `enabled`    | `bool` | Enables sharing targets with other cluster nodes.                        | `false` | yes      |
+| `zone_aware` | `bool` | Enables availability-zone-aware target filtering when clustering is on.  | `false` | no       |
 
 When {{< param "PRODUCT_NAME" >}} is running in [clustered mode][], and `enabled` is set to true, then this component instance opts-in to participating in the cluster to distribute scrape load between all cluster nodes.
 
@@ -139,6 +140,24 @@ When a node joins or leaves the cluster, every peer recalculates ownership and c
 This performs better than hashmod sharding where _all_ nodes have to be re-distributed, as only 1/N of the target's ownership is transferred, but is eventually consistent (rather than fully consistent like hashmod sharding is).
 
 If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op, and `prometheus.operator.probes` scrapes every target it receives in its arguments.
+
+#### Zone-aware clustering
+
+When `zone_aware` is set to `true`, each {{< param "PRODUCT_NAME" >}} instance only scrapes targets that are in the same availability zone as the instance itself.
+Targets in a different zone are skipped before the hash ring is consulted, which reduces cross-zone network traffic.
+Targets whose zone can't be determined fall through to normal hash ring distribution so they aren't dropped.
+You should make sure that {{< param "PRODUCT_NAME" >}} is deployed in all availability zones, e.g. by using `topologySpreadConstraints`.
+
+{{< admonition type="note" >}}
+Zone-aware clustering only applies to targets with Kubernetes pod metadata (when Probe targets are discovered through Kubernetes service discovery).
+For Probe resources that target arbitrary IPs or hostnames without pod metadata, the `zone_aware` setting has no effect and targets are distributed using the global cluster ring.
+{{< /admonition >}}
+
+The component determines the local availability zone by reading the `topology.kubernetes.io/zone` label from the Kubernetes node object.
+This requires the `K8S_NODE_NAME` environment variable to be set, typically through the [Kubernetes downward API](https://kubernetes.io/docs/concepts/workloads/pods/downward-api/).
+The default {{< param "PRODUCT_NAME" >}} Helm chart already sets this variable.
+
+Setting `zone_aware` to `true` requires `enabled` to also be `true`.
 
 [clustered mode]: ../../../cli/run/#clustering
 
