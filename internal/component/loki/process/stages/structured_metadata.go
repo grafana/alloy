@@ -99,7 +99,7 @@ func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 		// Try to add structured metadata from labels using labelsConfig.
 		processEntryLabelsByConfig(e.Labels, s.labelsConfig, appendStructureMetadata)
 
-		// Tru to add structured metadata from labels using regex.
+		// Try to add structured metadata from labels using regex.
 		processEntryLabelsByRegex(e.Labels, s.regex, appendStructureMetadata)
 
 		return e
