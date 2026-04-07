@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
+	"github.com/alecthomas/units"
 	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -48,6 +50,41 @@ type StageConfig struct {
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"           json:"windowsevent,omitempty"`
 }
 
+// PodLogsDropConfig is the drop stage config for use in the PodLogs CRD.
+// It mirrors DropConfig but replaces OlderThan (time.Duration, which marshals
+// as a nanosecond int64 in JSON) with a human-readable duration string like
+// "5m" or "1h30s".
+type PodLogsDropConfig struct {
+	DropReason string           `json:"dropReason,omitempty"`
+	Source     string           `json:"source,omitempty"`
+	Value      string           `json:"value,omitempty"`
+	Separator  string           `json:"separator,omitempty"`
+	Expression string           `json:"expression,omitempty"`
+	OlderThan  string           `json:"olderThan,omitempty"` // human-readable duration e.g. "5m"
+	LongerThan units.Base2Bytes `json:"longerThan,omitempty"`
+}
+
+// toDropConfig converts a PodLogsDropConfig to DropConfig.
+// Returns an error if OlderThan is set but cannot be parsed as a duration.
+func (c *PodLogsDropConfig) toDropConfig() (DropConfig, error) {
+	cfg := DropConfig{
+		DropReason: c.DropReason,
+		Source:     c.Source,
+		Value:      c.Value,
+		Separator:  c.Separator,
+		Expression: c.Expression,
+		LongerThan: c.LongerThan,
+	}
+	if c.OlderThan != "" {
+		d, err := time.ParseDuration(c.OlderThan)
+		if err != nil {
+			return DropConfig{}, fmt.Errorf("invalid olderThan duration %q: %w", c.OlderThan, err)
+		}
+		cfg.OlderThan = d
+	}
+	return cfg, nil
+}
+
 // PodLogsMatchConfig is the match stage config for use in the PodLogs CRD.
 // It mirrors MatchConfig but uses PodLogsStageConfig for nested stages so that
 // incompatible stage types (multiline, windowsevent, eventlogmessage) are
@@ -61,14 +98,18 @@ type PodLogsMatchConfig struct {
 }
 
 // toMatchConfig converts a PodLogsMatchConfig to MatchConfig for use with newMatcherStage.
-func (c *PodLogsMatchConfig) toMatchConfig() MatchConfig {
+func (c *PodLogsMatchConfig) toMatchConfig() (MatchConfig, error) {
+	converted, err := ConvertPodLogsStages(c.Stages)
+	if err != nil {
+		return MatchConfig{}, err
+	}
 	return MatchConfig{
 		Selector:     c.Selector,
-		Stages:       ConvertPodLogsStages(c.Stages),
+		Stages:       converted,
 		Action:       c.Action,
 		PipelineName: c.PipelineName,
 		DropReason:   c.DropReason,
-	}
+	}, nil
 }
 
 // PodLogsStageConfig defines a single processing stage for use in the PodLogs CRD.
@@ -81,7 +122,7 @@ type PodLogsStageConfig struct {
 	CRIConfig                    *CRIConfig                    `json:"cri,omitempty"`
 	DecolorizeConfig             *DecolorizeConfig             `json:"decolorize,omitempty"`
 	DockerConfig                 *DockerConfig                 `json:"docker,omitempty"`
-	DropConfig                   *DropConfig                   `json:"drop,omitempty"`
+	DropConfig                   *PodLogsDropConfig            `json:"drop,omitempty"`
 	GeoIPConfig                  *GeoIPConfig                  `json:"geoip,omitempty"`
 	JSONConfig                   *JSONConfig                   `json:"json,omitempty"`
 	LabelAllowConfig             *LabelAllowConfig             `json:"label_keep,omitempty"`
@@ -107,18 +148,31 @@ type PodLogsStageConfig struct {
 	TruncateConfig               *TruncateConfig               `json:"truncate,omitempty"`
 }
 
-// ToStageConfig converts a PodLogsStageConfig to the full StageConfig for use with NewPipeline.
-func (c PodLogsStageConfig) ToStageConfig() StageConfig {
+// ToStageConfig converts a PodLogsStageConfig to the full StageConfig for use
+// with NewPipeline. Returns an error if any field value is invalid (e.g. an
+// unparseable duration in a drop stage).
+func (c PodLogsStageConfig) ToStageConfig() (StageConfig, error) {
+	var dropConfig *DropConfig
+	if c.DropConfig != nil {
+		converted, err := c.DropConfig.toDropConfig()
+		if err != nil {
+			return StageConfig{}, err
+		}
+		dropConfig = &converted
+	}
 	var matchConfig *MatchConfig
 	if c.MatchConfig != nil {
-		converted := c.MatchConfig.toMatchConfig()
+		converted, err := c.MatchConfig.toMatchConfig()
+		if err != nil {
+			return StageConfig{}, err
+		}
 		matchConfig = &converted
 	}
 	return StageConfig{
 		CRIConfig:                    c.CRIConfig,
 		DecolorizeConfig:             c.DecolorizeConfig,
 		DockerConfig:                 c.DockerConfig,
-		DropConfig:                   c.DropConfig,
+		DropConfig:                   dropConfig,
 		GeoIPConfig:                  c.GeoIPConfig,
 		JSONConfig:                   c.JSONConfig,
 		LabelAllowConfig:             c.LabelAllowConfig,
@@ -142,17 +196,21 @@ func (c PodLogsStageConfig) ToStageConfig() StageConfig {
 		TenantConfig:                 c.TenantConfig,
 		TimestampConfig:              c.TimestampConfig,
 		TruncateConfig:               c.TruncateConfig,
-	}
+	}, nil
 }
 
 // ConvertPodLogsStages converts a slice of PodLogsStageConfig to []StageConfig
 // for use with NewPipeline.
-func ConvertPodLogsStages(in []PodLogsStageConfig) []StageConfig {
+func ConvertPodLogsStages(in []PodLogsStageConfig) ([]StageConfig, error) {
 	out := make([]StageConfig, len(in))
 	for i, s := range in {
-		out[i] = s.ToStageConfig()
+		converted, err := s.ToStageConfig()
+		if err != nil {
+			return nil, err
+		}
+		out[i] = converted
 	}
-	return out
+	return out, nil
 }
 
 // Pipeline pass down a log entry to each stage for mutation and/or label extraction.

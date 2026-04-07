@@ -36,7 +36,7 @@ type DropConfig struct {
 	Value      string           `alloy:"value,attr,optional"               json:"value,omitempty"`
 	Separator  string           `alloy:"separator,attr,optional"           json:"separator,omitempty"`
 	Expression string           `alloy:"expression,attr,optional"          json:"expression,omitempty"`
-	OlderThan  time.Duration    `alloy:"older_than,attr,optional"          json:"-"`                    // not supported in CRD: time.Duration is nanosecond int64 in JSON
+	OlderThan  time.Duration    `alloy:"older_than,attr,optional"          json:"olderThan,omitempty"`
 	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"         json:"longerThan,omitempty"` // TextMarshaler: serializes as "5MiB"
 }
 

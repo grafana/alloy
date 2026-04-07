@@ -478,7 +478,11 @@ func (r *reconciler) ensurePipeline(key string, stageConfigs []stages.PodLogsSta
 		"podlogs_name":      name,
 	}, r.registerer)
 
-	pipeline, err := stages.NewPipeline(r.log, stages.ConvertPodLogsStages(stageConfigs), pipelineRegisterer, r.minStability)
+	converted, err := stages.ConvertPodLogsStages(stageConfigs)
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := stages.NewPipeline(r.log, converted, pipelineRegisterer, r.minStability)
 	if err != nil {
 		return nil, err
 	}
