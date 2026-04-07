@@ -44,7 +44,7 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 			Logger:           log.Default(),
 		})
 		if err != nil {
-			terminateAdditionalContainers(ctx, containers)
+			_ = terminateAdditionalContainers(ctx, containers)
 			return nil, fmt.Errorf("failed to start additional container %q: %w", containerCfg.Name, err)
 		}
 
