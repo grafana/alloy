@@ -1,6 +1,7 @@
 package source
 
 import (
+	"errors"
 	"net/http"
 	"reflect"
 	"sync"
@@ -185,10 +186,10 @@ func (s *Server) logsHandler(route LogsRoute) http.Handler {
 			select {
 			case s.recv.Chan() <- entries:
 			case <-r.Context().Done():
-				responseWriter.WriteResponse(w, r, http.StatusServiceUnavailable, nil)
+				responseWriter.WriteResponse(w, r, http.StatusServiceUnavailable, r.Context().Err())
 				return
 			case <-s.forceShutdown:
-				responseWriter.WriteResponse(w, r, http.StatusServiceUnavailable, nil)
+				responseWriter.WriteResponse(w, r, http.StatusServiceUnavailable, errors.New("server shutdown"))
 				return
 			}
 
