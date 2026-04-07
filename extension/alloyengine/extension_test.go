@@ -111,15 +111,14 @@ func TestConfig_MissingPath(t *testing.T) {
 func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 	e := newTestExtension(t, blockingCommand, defaultTestConfig())
 
-	ctx := context.Background()
 	host := componenttest.NewNopHost()
 
-	require.NoError(t, e.Start(ctx, host))
+	require.NoError(t, e.Start(t.Context(), host))
 	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
 	require.NoError(t, e.Ready())
 	require.NoError(t, e.NotReady())
 
-	require.NoError(t, e.Shutdown(context.Background()))
+	require.NoError(t, e.Shutdown(t.Context()))
 
 	// Verify the run goroutine has exited and state is terminated.
 	require.Eventually(t, func() bool {
@@ -135,12 +134,12 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 
 func TestLifecycle_StartTwiceFails(t *testing.T) {
 	e := newTestExtension(t, blockingCommand, defaultTestConfig())
-	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
-	err := e.Start(context.Background(), componenttest.NewNopHost())
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
+	err := e.Start(t.Context(), componenttest.NewNopHost())
 	require.Error(t, err)
 
 	// Cleanup: release the singleton slot so subsequent tests can start extensions
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	t.Cleanup(cancel)
 	require.NoError(t, e.Shutdown(shutdownCtx))
 }
@@ -149,15 +148,15 @@ func TestLifecycle_SecondInstanceFailsWhileFirstRunning(t *testing.T) {
 	ext1 := newTestExtension(t, blockingCommand, defaultTestConfig())
 	ext2 := newTestExtension(t, blockingCommand, defaultTestConfig())
 
-	require.NoError(t, ext1.Start(context.Background(), componenttest.NewNopHost()))
+	require.NoError(t, ext1.Start(t.Context(), componenttest.NewNopHost()))
 	require.Eventually(t, func() bool { return ext1.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "first extension did not reach stateRunning")
 
-	err := ext2.Start(context.Background(), componenttest.NewNopHost())
+	err := ext2.Start(t.Context(), componenttest.NewNopHost())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "only one alloyengine extension can be active per process")
 
 	// Cleanup: shutdown first extension so slot is released
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
 	t.Cleanup(cancel)
 	require.NoError(t, ext1.Shutdown(shutdownCtx))
 }
@@ -170,7 +169,7 @@ func TestLifecycle_NotReadyWhenNotStarted(t *testing.T) {
 
 func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 	e := newTestExtension(t, blockingCommandWithoutReady, defaultTestConfig())
-	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 
 	// Give the run goroutine time to start and block (without calling ready).
 	time.Sleep(50 * time.Millisecond)
@@ -178,7 +177,7 @@ func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 	// We should still be in stateStarting since the ready callback was never invoked.
 	require.Equal(t, stateStarting, e.getState())
 
-	require.NoError(t, e.Shutdown(context.Background()))
+	require.NoError(t, e.Shutdown(t.Context()))
 
 	// Verify the run goroutine has exited and state is terminated.
 	require.Eventually(t, func() bool {
@@ -196,10 +195,10 @@ func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 	expected := errors.New("shutdown error")
 	e := newTestExtension(t, func() *cobra.Command { return shutdownErrorCommand(expected) }, defaultTestConfig())
 
-	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
 
-	require.NoError(t, e.Shutdown(context.Background()))
+	require.NoError(t, e.Shutdown(t.Context()))
 
 	// The internal goroutine should have transitioned to terminated even on error during shutdown.
 	require.Eventually(t, func() bool {
@@ -219,7 +218,7 @@ func TestLifecycle_RunSucceedsAfterRetries(t *testing.T) {
 	cfg := defaultTestConfig()
 	e := newTestExtension(t, factory, cfg)
 
-	require.NoError(t, e.Start(context.Background(), componenttest.NewNopHost()))
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 
 	// Wait for the command to eventually exit
 	require.Eventually(t, func() bool {
