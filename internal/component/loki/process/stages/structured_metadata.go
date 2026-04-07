@@ -176,10 +176,16 @@ func (s *structuredMetadataStage) ProcessEntry(e Entry) []Entry {
 			if s.regex.MatchString(lName) {
 				str, err := getString(lValue)
 				if err != nil {
+					if Debug {
+						level.Debug(s.logger).Log("msg", "failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
+					}
 					continue
 				}
 				labelValue := model.LabelValue(str)
 				if !labelValue.IsValid() {
+					if Debug {
+						level.Debug(s.logger).Log("msg", "invalid label value parsed", "value", labelValue)
+					}
 					continue
 				}
 				e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: lName, Value: string(labelValue)})

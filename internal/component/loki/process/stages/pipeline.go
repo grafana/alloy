@@ -48,6 +48,29 @@ type StageConfig struct {
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"           json:"windowsevent,omitempty"`
 }
 
+// PodLogsMatchConfig is the match stage config for use in the PodLogs CRD.
+// It mirrors MatchConfig but uses PodLogsStageConfig for nested stages so that
+// incompatible stage types (multiline, windowsevent, eventlogmessage) are
+// excluded recursively.
+type PodLogsMatchConfig struct {
+	Selector     string               `json:"selector"`
+	Stages       []PodLogsStageConfig `json:"stages,omitempty"`
+	Action       string               `json:"action,omitempty"`
+	PipelineName string               `json:"pipelineName,omitempty"`
+	DropReason   string               `json:"dropReason,omitempty"`
+}
+
+// toMatchConfig converts a PodLogsMatchConfig to MatchConfig for use with newMatcherStage.
+func (c *PodLogsMatchConfig) toMatchConfig() MatchConfig {
+	return MatchConfig{
+		Selector:     c.Selector,
+		Stages:       ConvertPodLogsStages(c.Stages),
+		Action:       c.Action,
+		PipelineName: c.PipelineName,
+		DropReason:   c.DropReason,
+	}
+}
+
 // PodLogsStageConfig defines a single processing stage for use in the PodLogs CRD.
 // It mirrors StageConfig but excludes stages that are incompatible with a shared
 // per-PodLogs pipeline:
@@ -67,7 +90,7 @@ type PodLogsStageConfig struct {
 	LimitConfig                  *LimitConfig                  `json:"limit,omitempty"`
 	LogfmtConfig                 *LogfmtConfig                 `json:"logfmt,omitempty"`
 	LuhnFilterConfig             *LuhnFilterConfig             `json:"luhn,omitempty"`
-	MatchConfig                  *MatchConfig                  `json:"match,omitempty"`
+	MatchConfig                  *PodLogsMatchConfig           `json:"match,omitempty"`
 	MetricsConfig                *MetricsConfig                `json:"metrics,omitempty"`
 	OutputConfig                 *OutputConfig                 `json:"output,omitempty"`
 	PackConfig                   *PackConfig                   `json:"pack,omitempty"`
@@ -86,6 +109,11 @@ type PodLogsStageConfig struct {
 
 // ToStageConfig converts a PodLogsStageConfig to the full StageConfig for use with NewPipeline.
 func (c PodLogsStageConfig) ToStageConfig() StageConfig {
+	var matchConfig *MatchConfig
+	if c.MatchConfig != nil {
+		converted := c.MatchConfig.toMatchConfig()
+		matchConfig = &converted
+	}
 	return StageConfig{
 		CRIConfig:                    c.CRIConfig,
 		DecolorizeConfig:             c.DecolorizeConfig,
@@ -99,7 +127,7 @@ func (c PodLogsStageConfig) ToStageConfig() StageConfig {
 		LimitConfig:                  c.LimitConfig,
 		LogfmtConfig:                 c.LogfmtConfig,
 		LuhnFilterConfig:             c.LuhnFilterConfig,
-		MatchConfig:                  c.MatchConfig,
+		MatchConfig:                  matchConfig,
 		MetricsConfig:                c.MetricsConfig,
 		OutputConfig:                 c.OutputConfig,
 		PackConfig:                   c.PackConfig,
@@ -151,18 +179,50 @@ func NewPipeline(logger log.Logger, stages []StageConfig, registerer prometheus.
 	}, nil
 }
 
+// syncChecker is an optional interface that stages with nested pipelines (e.g.
+// matcherStage) can implement to report whether their internal pipeline also
+// supports synchronous processing. Pipeline.CanProcessSync checks this in
+// addition to the SyncStage interface so that a match stage with a non-sync
+// inner pipeline does not falsely advertise sync capability.
+type syncChecker interface {
+	canProcessSync() bool
+}
+
 // CanProcessSync returns true when every stage in the pipeline implements
-// SyncStage. If true, ProcessEntry can be used instead of Start to avoid
-// spawning N+3 goroutines: one goroutine per stage plus two adapter goroutines.
-// The match stage does not currently implement SyncStage, so pipelines that
-// contain it return false and fall back to Start.
+// SyncStage and, for stages with nested pipelines (match), that nested pipeline
+// also supports synchronous processing.
 func (p *Pipeline) CanProcessSync() bool {
 	for _, s := range p.stages {
 		if _, ok := s.(SyncStage); !ok {
 			return false
 		}
+		if sc, ok := s.(syncChecker); ok && !sc.canProcessSync() {
+			return false
+		}
 	}
 	return true
+}
+
+// processEntryFull applies all pipeline stages to an already-initialized Entry,
+// preserving the existing Extracted map. This is the inner loop used by
+// ProcessEntry and by matcherStage.ProcessEntry for nested pipelines; it does
+// NOT reinitialize Extracted from labels (unlike the public ProcessEntry).
+// All stages must implement SyncStage; callers are responsible for ensuring
+// CanProcessSync() is true before calling this method.
+func (p *Pipeline) processEntryFull(e Entry) []Entry {
+	entries := []Entry{e}
+	for _, stage := range p.stages {
+		if len(entries) == 0 {
+			break
+		}
+		ss := stage.(SyncStage) // safe: caller guarantees CanProcessSync
+		var next []Entry
+		for _, entry := range entries {
+			next = append(next, ss.ProcessEntry(entry)...)
+		}
+		entries = next
+	}
+	return entries
 }
 
 // ProcessEntry applies all stages to a single entry synchronously.
@@ -170,28 +230,18 @@ func (p *Pipeline) CanProcessSync() bool {
 // It initialises the Extracted map from the entry labels, applies each stage in
 // order, and returns the resulting entries (empty = dropped, multiple = expanded).
 func (p *Pipeline) ProcessEntry(e loki.Entry) []loki.Entry {
-	entries := []Entry{{
+	inner := Entry{
 		Extracted: make(map[string]any, len(e.Labels)),
 		Entry:     e,
-	}}
+	}
 	for k, v := range e.Labels {
-		entries[0].Extracted[string(k)] = string(v)
+		inner.Extracted[string(k)] = string(v)
 	}
 
-	for _, stage := range p.stages {
-		if len(entries) == 0 {
-			break
-		}
-		ss := stage.(SyncStage) // safe: CanProcessSync guarantees this
-		var next []Entry
-		for _, entry := range entries {
-			next = append(next, ss.ProcessEntry(entry)...)
-		}
-		entries = next
-	}
+	processed := p.processEntryFull(inner)
 
-	result := make([]loki.Entry, len(entries))
-	for i, entry := range entries {
+	result := make([]loki.Entry, len(processed))
+	for i, entry := range processed {
 		result[i] = entry.Entry
 	}
 	return result
