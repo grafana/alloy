@@ -46,9 +46,12 @@ func (tt *tailerTask) Equals(other runner.Task) bool {
 	}
 
 	// Slow path: check individual fields which are part of the task.
+	// Handler is compared by pointer: a different pipeline means a different
+	// handler instance, so the tailer must be restarted to pick up the new one.
 	return tt.Options == otherTask.Options &&
 		tt.Target.UID() == otherTask.Target.UID() &&
-		labels.Equal(tt.Target.Labels(), otherTask.Target.Labels())
+		labels.Equal(tt.Target.Labels(), otherTask.Target.Labels()) &&
+		tt.Target.Handler() == otherTask.Target.Handler()
 }
 
 // A tailer tails the logs of a Kubernetes container. It is created by a
@@ -269,7 +272,12 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 // processLogStream reads log lines from a reader and processes them.
 // It returns when the context is done, the stream ends, or an error occurs.
 func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, lastReadTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
+	// Use per-target handler if set (routes entries through a PodLogs pipeline),
+	// otherwise fall back to the global handler from Options.
 	ch := handler.Chan()
+	if h := t.target.Handler(); h != nil {
+		ch = h.Chan()
+	}
 	reader := bufio.NewReader(stream)
 	for {
 		line, err := reader.ReadString('\n')

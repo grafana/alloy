@@ -48,6 +48,85 @@ type StageConfig struct {
 	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"           json:"windowsevent,omitempty"`
 }
 
+// PodLogsStageConfig defines a single processing stage for use in the PodLogs CRD.
+// It mirrors StageConfig but excludes stages that are incompatible with a shared
+// per-PodLogs pipeline:
+//   - multiline: log lines from different pods interleave in the shared pipeline,
+//     causing incorrect multi-line merging across pod boundaries.
+//   - windowsevent / eventlogmessage: not applicable to Linux pod logs.
+type PodLogsStageConfig struct {
+	CRIConfig                    *CRIConfig                    `json:"cri,omitempty"`
+	DecolorizeConfig             *DecolorizeConfig             `json:"decolorize,omitempty"`
+	DockerConfig                 *DockerConfig                 `json:"docker,omitempty"`
+	DropConfig                   *DropConfig                   `json:"drop,omitempty"`
+	GeoIPConfig                  *GeoIPConfig                  `json:"geoip,omitempty"`
+	JSONConfig                   *JSONConfig                   `json:"json,omitempty"`
+	LabelAllowConfig             *LabelAllowConfig             `json:"label_keep,omitempty"`
+	LabelDropConfig              *LabelDropConfig              `json:"label_drop,omitempty"`
+	LabelsConfig                 *LabelsConfig                 `json:"labels,omitempty"`
+	LimitConfig                  *LimitConfig                  `json:"limit,omitempty"`
+	LogfmtConfig                 *LogfmtConfig                 `json:"logfmt,omitempty"`
+	LuhnFilterConfig             *LuhnFilterConfig             `json:"luhn,omitempty"`
+	MatchConfig                  *MatchConfig                  `json:"match,omitempty"`
+	MetricsConfig                *MetricsConfig                `json:"metrics,omitempty"`
+	OutputConfig                 *OutputConfig                 `json:"output,omitempty"`
+	PackConfig                   *PackConfig                   `json:"pack,omitempty"`
+	PatternConfig                *PatternConfig                `json:"pattern,omitempty"`
+	RegexConfig                  *RegexConfig                  `json:"regex,omitempty"`
+	ReplaceConfig                *ReplaceConfig                `json:"replace,omitempty"`
+	SamplingConfig               *SamplingConfig               `json:"sampling,omitempty"`
+	StaticLabelsConfig           *StaticLabelsConfig           `json:"static_labels,omitempty"`
+	StructuredMetadata           *StructuredMetadataConfig     `json:"structured_metadata,omitempty"`
+	StructuredMetadataDropConfig *StructuredMetadataDropConfig `json:"structured_metadata_drop,omitempty"`
+	TemplateConfig               *TemplateConfig               `json:"template,omitempty"`
+	TenantConfig                 *TenantConfig                 `json:"tenant,omitempty"`
+	TimestampConfig              *TimestampConfig              `json:"timestamp,omitempty"`
+	TruncateConfig               *TruncateConfig               `json:"truncate,omitempty"`
+}
+
+// ToStageConfig converts a PodLogsStageConfig to the full StageConfig for use with NewPipeline.
+func (c PodLogsStageConfig) ToStageConfig() StageConfig {
+	return StageConfig{
+		CRIConfig:                    c.CRIConfig,
+		DecolorizeConfig:             c.DecolorizeConfig,
+		DockerConfig:                 c.DockerConfig,
+		DropConfig:                   c.DropConfig,
+		GeoIPConfig:                  c.GeoIPConfig,
+		JSONConfig:                   c.JSONConfig,
+		LabelAllowConfig:             c.LabelAllowConfig,
+		LabelDropConfig:              c.LabelDropConfig,
+		LabelsConfig:                 c.LabelsConfig,
+		LimitConfig:                  c.LimitConfig,
+		LogfmtConfig:                 c.LogfmtConfig,
+		LuhnFilterConfig:             c.LuhnFilterConfig,
+		MatchConfig:                  c.MatchConfig,
+		MetricsConfig:                c.MetricsConfig,
+		OutputConfig:                 c.OutputConfig,
+		PackConfig:                   c.PackConfig,
+		PatternConfig:                c.PatternConfig,
+		RegexConfig:                  c.RegexConfig,
+		ReplaceConfig:                c.ReplaceConfig,
+		SamplingConfig:               c.SamplingConfig,
+		StaticLabelsConfig:           c.StaticLabelsConfig,
+		StructuredMetadata:           c.StructuredMetadata,
+		StructuredMetadataDropConfig: c.StructuredMetadataDropConfig,
+		TemplateConfig:               c.TemplateConfig,
+		TenantConfig:                 c.TenantConfig,
+		TimestampConfig:              c.TimestampConfig,
+		TruncateConfig:               c.TruncateConfig,
+	}
+}
+
+// ConvertPodLogsStages converts a slice of PodLogsStageConfig to []StageConfig
+// for use with NewPipeline.
+func ConvertPodLogsStages(in []PodLogsStageConfig) []StageConfig {
+	out := make([]StageConfig, len(in))
+	for i, s := range in {
+		out[i] = s.ToStageConfig()
+	}
+	return out
+}
+
 // Pipeline pass down a log entry to each stage for mutation and/or label extraction.
 type Pipeline struct {
 	logger    log.Logger

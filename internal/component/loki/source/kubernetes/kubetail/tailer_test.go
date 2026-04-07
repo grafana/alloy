@@ -170,7 +170,7 @@ func Test_processLogStream(t *testing.T) {
 			lset, err := PrepareLabelsWithMetaPreservation(lset, "test", tc.preserveMetaLabels)
 			require.NoError(t, err)
 
-			target := NewTarget(lset, lset, tc.preserveMetaLabels)
+			target := NewTarget(lset, lset, tc.preserveMetaLabels, nil)
 			opts := &Options{
 				Positions: &mockPositions{},
 			}

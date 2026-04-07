@@ -3,6 +3,8 @@ package v1alpha2
 import (
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/grafana/alloy/internal/component/loki/process/stages"
 )
 
 // +genclient
@@ -28,6 +30,13 @@ type PodLogsSpec struct {
 
 	// RelabelConfigs to apply to logs before delivering.
 	RelabelConfigs []*promv1.RelabelConfig `json:"relabelings,omitempty"`
+
+	// PipelineStages defines optional log processing stages applied to each
+	// log line collected by this PodLogs before forwarding. Stages are applied
+	// in order. Note: multiline, windowsevent, and eventlogmessage stages are
+	// not supported because log lines from different pods share the same
+	// pipeline and would be incorrectly merged.
+	PipelineStages []stages.PodLogsStageConfig `json:"pipelineStages,omitempty"`
 }
 
 // +kubebuilder:object:root=true
