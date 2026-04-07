@@ -48,6 +48,24 @@ type LogsRoute interface {
 	Logs(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error)
 }
 
+// LogsResponseWriter can customize the HTTP response written for a LogsRoute
+// after entries have been forwarded or a request has been rejected.
+type LogsResponseWriter interface {
+	WriteResponse(w http.ResponseWriter, r *http.Request, status int, err error)
+}
+
+var _ LogsResponseWriter = DefaultLogsResponseWriter{}
+
+type DefaultLogsResponseWriter struct{}
+
+func (d DefaultLogsResponseWriter) WriteResponse(w http.ResponseWriter, r *http.Request, status int, err error) {
+	if err != nil {
+		http.Error(w, err.Error(), status)
+		return
+	}
+	w.WriteHeader(status)
+}
+
 // HandlerRoute describes an HTTP endpoint handled directly with an http.Handler.
 type HandlerRoute interface {
 	HTTPRoute
@@ -89,7 +107,7 @@ func NewServer(logger log.Logger, reg prometheus.Registerer, recv loki.LogsBatch
 func (s *Server) Run(logs []LogsRoute, handlers []HandlerRoute) error {
 	return s.server.MountAndRun(func(router *mux.Router) {
 		for _, l := range logs {
-			router.Path(l.Path()).Methods(l.Method()).Handler(s.logsHandler(l.Logs))
+			router.Path(l.Path()).Methods(l.Method()).Handler(s.logsHandler(l))
 		}
 
 		for _, h := range handlers {
@@ -141,18 +159,26 @@ func (s *Server) ForceShutdown() {
 	s.server.StopAndShutdown()
 }
 
-func (s *Server) logsHandler(logsFn func(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error)) http.Handler {
+func (s *Server) logsHandler(route LogsRoute) http.Handler {
+
+	var responseWriter LogsResponseWriter = DefaultLogsResponseWriter{}
+
+	customResponseWriter, ok := route.(LogsResponseWriter)
+	if ok {
+		responseWriter = customResponseWriter
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.mut.RLock()
 		logsConfig := s.logsConfig
 		s.mut.RUnlock()
 
-		entries, status, err := logsFn(r, logsConfig)
+		entries, status, err := route.Logs(r, logsConfig)
 		numEntries := len(entries)
 
 		if err != nil && numEntries == 0 {
 			level.Warn(s.logger).Log("msg", "failed to parse request", "err", err)
-			http.Error(w, err.Error(), status)
+			responseWriter.WriteResponse(w, r, status, err)
 			return
 		}
 
@@ -160,10 +186,10 @@ func (s *Server) logsHandler(logsFn func(r *http.Request, opts *LogsConfig) ([]l
 			select {
 			case s.recv.Chan() <- entries:
 			case <-r.Context().Done():
-				w.WriteHeader(http.StatusServiceUnavailable)
+				responseWriter.WriteResponse(w, r, http.StatusServiceUnavailable, nil)
 				return
 			case <-s.forceShutdown:
-				w.WriteHeader(http.StatusServiceUnavailable)
+				responseWriter.WriteResponse(w, r, http.StatusServiceUnavailable, nil)
 				return
 			}
 
@@ -171,11 +197,9 @@ func (s *Server) logsHandler(logsFn func(r *http.Request, opts *LogsConfig) ([]l
 
 			if err != nil {
 				level.Warn(s.logger).Log("msg", "at least one entry failed to be processed", "err", err)
-				http.Error(w, err.Error(), status)
-				return
 			}
 		}
 
-		w.WriteHeader(status)
+		responseWriter.WriteResponse(w, r, status, err)
 	})
 }
