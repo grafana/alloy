@@ -121,8 +121,6 @@ type secretDetector interface {
 // Metrics exposed by this component:
 //
 //   - loki_secretfilter_secrets_redacted_total: Total number of secrets that have been redacted.
-//   - loki_secretfilter_secrets_redacted_by_rule_total: Number of secrets redacted, partitioned by rule name.
-//   - loki_secretfilter_secrets_redacted_by_origin: Number of secrets redacted, partitioned by origin label value (only registered when origin_label is set).
 //   - loki_secretfilter_secrets_redacted_by_category_total: Number of secrets redacted, partitioned by rule name and origin label value.
 //   - loki_secretfilter_processing_duration_seconds: Summary of time taken to process and redact log entries.
 //   - loki_secretfilter_entries_bypassed_total: Total number of entries forwarded without processing due to sampling.
@@ -132,12 +130,6 @@ type secretDetector interface {
 type metrics struct {
 	// Total number of secrets redacted
 	secretsRedactedTotal prometheus.Counter
-
-	// Number of secrets redacted by rule type
-	secretsRedactedByRule *prometheus.CounterVec
-
-	// Number of secrets redacted by specified labels
-	secretsRedactedByOrigin *prometheus.CounterVec
 
 	// Number of secrets redacted by rule and origin (combined)
 	secretsRedactedByCategory *prometheus.CounterVec
@@ -156,7 +148,7 @@ type metrics struct {
 }
 
 // newMetrics creates a new set of metrics for the secretfilter component.
-func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
+func newMetrics(reg prometheus.Registerer) *metrics {
 	var m metrics
 
 	m.secretsRedactedTotal = prometheus.NewCounter(prometheus.CounterOpts{
@@ -164,20 +156,6 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 		Name:      "secrets_redacted_total",
 		Help:      "Total number of secrets that have been redacted.",
 	})
-
-	m.secretsRedactedByRule = prometheus.NewCounterVec(prometheus.CounterOpts{
-		Subsystem: "loki_secretfilter",
-		Name:      "secrets_redacted_by_rule_total",
-		Help:      "Number of secrets redacted, partitioned by rule name.",
-	}, []string{"rule"})
-
-	if originLabel != "" {
-		m.secretsRedactedByOrigin = prometheus.NewCounterVec(prometheus.CounterOpts{
-			Subsystem: "loki_secretfilter",
-			Name:      "secrets_redacted_by_origin",
-			Help:      "Number of secrets redacted, partitioned by origin label value.",
-		}, []string{"origin"})
-	}
 
 	m.secretsRedactedByCategory = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Subsystem: "loki_secretfilter",
@@ -215,10 +193,6 @@ func newMetrics(reg prometheus.Registerer, originLabel string) *metrics {
 
 	if reg != nil {
 		m.secretsRedactedTotal = util.MustRegisterOrGet(reg, m.secretsRedactedTotal).(prometheus.Counter)
-		m.secretsRedactedByRule = util.MustRegisterOrGet(reg, m.secretsRedactedByRule).(*prometheus.CounterVec)
-		if originLabel != "" {
-			m.secretsRedactedByOrigin = util.MustRegisterOrGet(reg, m.secretsRedactedByOrigin).(*prometheus.CounterVec)
-		}
 		m.secretsRedactedByCategory = util.MustRegisterOrGet(reg, m.secretsRedactedByCategory).(*prometheus.CounterVec)
 		m.processingDuration = util.MustRegisterOrGet(reg, m.processingDuration).(prometheus.Summary)
 		m.entriesBypassedTotal = util.MustRegisterOrGet(reg, m.entriesBypassedTotal).(prometheus.Counter)
@@ -277,7 +251,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		log:                o.Logger,
 		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 		fanout:             loki.NewFanout(args.ForwardTo),
-		metrics:            newMetrics(o.Registerer, args.OriginLabel),
+		metrics:            newMetrics(o.Registerer),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -421,10 +395,6 @@ func (c *Component) redactLine(entry loki.Entry, findings []report.Finding) loki
 		line = strings.ReplaceAll(line, originalSecret, replacement)
 
 		c.metrics.secretsRedactedTotal.Inc()
-		c.metrics.secretsRedactedByRule.WithLabelValues(ruleName).Inc()
-		if originValue != "" {
-			c.metrics.secretsRedactedByOrigin.WithLabelValues(originValue).Inc()
-		}
 		c.metrics.secretsRedactedByCategory.WithLabelValues(ruleName, originValue).Inc()
 	}
 	entry.Line = line
@@ -473,7 +443,7 @@ func (c *Component) Update(args component.Arguments) error {
 	} else {
 		c.sampler.Update(newArgs.Rate)
 	}
-	c.metrics = newMetrics(c.opts.Registerer, newArgs.OriginLabel)
+	c.metrics = newMetrics(c.opts.Registerer)
 
 	level.Debug(c.log).Log(
 		"msg", "loki.secretfilter config updated",
