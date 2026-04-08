@@ -4,8 +4,6 @@ services:
     entrypoint: ["/bin/otelcol", "--config=/etc/alloy/config.yaml"]
     volumes:
       - ./config.yaml:/etc/alloy/config.yaml:ro
-    ports:
-      - "13133:13133"
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/13133"]
       interval: 2s
