@@ -92,7 +92,6 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	}
 	dynamicProfilingPolicy := args.PyroscopeDynamicProfilingPolicy
 	discovery := alloydiscovery.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
-	ms := newMetrics(reg)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
@@ -117,6 +116,8 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	} else {
 		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
 	}
+
+	ms := newMetrics(reg)
 
 	res := &Component{
 		cfg:                    cfg,
