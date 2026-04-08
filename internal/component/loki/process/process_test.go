@@ -48,12 +48,12 @@ func TestComponent(t *testing.T) {
 	var (
 		// Use entryTs for push.Entry.Timestamp values set directly on test inputs
 		// and for expected outputs from stages that do not rewrite timestamps.
-		entryTs    = time.Now().UTC().Add(-1 * time.Second)
+		entryTs    = time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC)
 		getEntryTS = func(pos int) time.Time { return entryTs.Add(time.Duration(pos) * time.Second) }
 
 		// Use ts for timestamps encoded into log lines and later parsed back out
 		// by stages such as cri, docker, and multiline.
-		ts       = time.Now().UTC()
+		ts       = time.Date(2025, time.February, 3, 4, 5, 6, 0, time.UTC)
 		getTS    = func(pos int) time.Time { return ts.Add(time.Duration(pos) * time.Second) }
 		formatTs = func(pos int, layout string) string { return getTS(pos).Format(layout) }
 	)
