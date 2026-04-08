@@ -157,6 +157,10 @@ func TestComponent(t *testing.T) {
 					}
 				}
 
+			stage.structured_metadata_drop {
+				values = ["stream"]
+			}
+
 			stage.static_labels {
 				values = {
 					foo = "bar",
@@ -191,7 +195,6 @@ func TestComponent(t *testing.T) {
 					Line:      "docker stdout line\n",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "docker.log"},
-						{Name: "stream", Value: "stdout"},
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
@@ -199,7 +202,6 @@ func TestComponent(t *testing.T) {
 					Line:      "docker stderr line\n",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "docker.log"},
-						{Name: "stream", Value: "stderr"},
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
@@ -222,6 +224,7 @@ func TestComponent(t *testing.T) {
 					app = "",
 					service_name = "",
 				}
+				drop_malformed = true
 			}
 
 			stage.labels {
@@ -268,13 +271,6 @@ func TestComponent(t *testing.T) {
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "json.log"},
 						{Name: "app", Value: "api"},
-					},
-				}),
-				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: getEntryTS(1),
-					Line:      `not json`,
-					StructuredMetadata: push.LabelsAdapter{
-						{Name: "filename", Value: "json.log"},
 					},
 				}),
 			},
@@ -400,11 +396,65 @@ func TestComponent(t *testing.T) {
 					Timestamp: getEntryTS(0),
 					Line:      formatTs(0, time.RFC3339) + ` stderr somewhere, somehow, an error occurred`,
 				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/2.log", "foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `not matching`,
+				}),
 			},
 			expected: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar", "src": "stderr"}, 0, push.Entry{
 					Timestamp: mustParseTime(t, time.RFC3339, formatTs(0, time.RFC3339)),
 					Line:      `somewhere, somehow, an error occurred`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/2.log", "foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `not matching`,
+				}),
+			},
+		},
+		{
+			name: "drop pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.drop {
+				expression = "drop"
+			}
+
+			stage.match {
+				selector = "{filename=\"drop.log\"} |= \"match me\""
+				action   = "drop"
+			}
+
+			stage.limit {
+				rate  = 1
+				burst = 1
+				drop  = true
+			}
+
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `drop me`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `match me`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `keep me`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(3),
+					Line:      `limit me`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "drop.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `keep me`,
 				}),
 			},
 		},
