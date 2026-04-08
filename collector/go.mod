@@ -309,7 +309,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.33.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/autoscaling v1.63.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.53.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.63.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.65.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.61.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.53.6 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.291.0 // indirect

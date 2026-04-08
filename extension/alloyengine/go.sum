@@ -550,8 +550,8 @@ github.com/aws/aws-sdk-go-v2/service/autoscaling v1.63.0 h1:ffFts1+wfxmRrJ6tQJnh
 github.com/aws/aws-sdk-go-v2/service/autoscaling v1.63.0/go.mod h1:8O5Pj92iNpfw/Fa7WdHbn6YiEjDoVdutz+9PGRNoP3Y=
 github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.53.1 h1:ElB5x0nrBHgQs+XcpQ1XJpSJzMFCq6fDTpT6WQCWOtQ=
 github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.53.1/go.mod h1:Cj+LUEvAU073qB2jInKV6Y0nvHX0k7bL7KAga9zZ3jw=
-github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.63.2 h1:9Zc/otv2WzK7gbhXIbDfzV5aWUoaFDV7WHPcpvp4B8o=
-github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.63.2/go.mod h1:dvfInk3WN/sz8is2m5iN5EFYQzIXcQLaT2UnauE8uL4=
+github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.65.0 h1:3yaFbUbuLfN8n1q01wZtQtHRzUDc/jm0VvniMY0IPE8=
+github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.65.0/go.mod h1:PobeppEnIjw4pcgjFryNDZCTH7AiqZw0yb5r98Gvf9c=
 github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.61.5 h1:3d44lDPnuYJn1xSf7R4J2zEEL+CO5ooxci9OjI3xAh8=
 github.com/aws/aws-sdk-go-v2/service/databasemigrationservice v1.61.5/go.mod h1:XKPSi5JA8Wm59aLAmFoshAdBrY6YQnomNDbvYgNr/l8=
 github.com/aws/aws-sdk-go-v2/service/dynamodb v1.53.6 h1:LNmvkGzDO5PYXDW6m7igx+s2jKaPchpfbS0uDICywFc=
