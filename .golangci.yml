@@ -1,4 +1,9 @@
 version: "2"
+# Match Makefile defaults (see GO_TAGS): Oracle collector symbols are behind godror; gore2regex is required elsewhere.
+run:
+  build-tags:
+    - gore2regex
+    - godror
 linters:
   enable:
     - depguard    # Allow/denylist specific imports

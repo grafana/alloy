@@ -9,12 +9,16 @@ import (
 )
 
 func TestOracleDBMetrics(t *testing.T) {
-	// Exporter built-in metrics — always present when the DB is reachable.
-	var oracledbMetrics = []string{
-		"oracledb_up",
+	// The Oracle collector registers exporter-internal metrics (duration, scrape count, last error)
+	// without a per-database label. Query them with test_name only.
+	exporterBuiltin := []string{
 		"oracledb_exporter_last_scrape_duration_seconds",
 		"oracledb_exporter_last_scrape_error",
 		"oracledb_exporter_scrapes_total",
+	}
+	// All other metrics carry the exporter's database label (e.g. default, oracledb_1, ...).
+	dbScoped := []string{
+		"oracledb_up",
 
 		// Session and process counts.
 		"oracledb_sessions_value",
@@ -39,5 +43,29 @@ func TestOracleDBMetrics(t *testing.T) {
 		// Custom metric from custom-metrics.toml (context startup_time → oracledb_startup_time_hours_up).
 		"oracledb_startup_time_hours_up",
 	}
-	common.MimirMetricsTest(t, oracledbMetrics, []string{}, "oracledb_metrics")
+
+	// Single connection_string mode uses internal target name "default" as the exporter `database` label.
+	common.MimirMetricsTestWithLabels(t, exporterBuiltin, []string{}, map[string]string{
+		common.TestNameLabel: "oracledb_metrics",
+	})
+	common.MimirMetricsTestWithLabels(t, dbScoped, []string{}, map[string]string{
+		common.TestNameLabel: "oracledb_metrics",
+		"database":           "default",
+	})
+
+	// Multi-target: one set of exporter-internal series for the whole component.
+	common.MimirMetricsTestWithLabels(t, exporterBuiltin, []string{}, map[string]string{
+		common.TestNameLabel: "oracledb_multi_metrics",
+	})
+	multiDBs := []string{"oracledb_1", "oracledb_2"}
+	for _, db := range multiDBs {
+		db := db
+		t.Run("multi_"+db, func(t *testing.T) {
+			t.Parallel()
+			common.MimirMetricsTestWithLabels(t, dbScoped, []string{}, map[string]string{
+				common.TestNameLabel: "oracledb_multi_metrics",
+				"database":           db,
+			})
+		})
+	}
 }

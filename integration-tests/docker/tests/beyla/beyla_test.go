@@ -31,7 +31,7 @@ func TestBeylaVersion(t *testing.T) {
 	var metricResponse common.MetricResponse
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		_, err := common.FetchDataFromURL(
-			common.MetricQuery("beyla_internal_build_info", "beyla"),
+			common.MetricQuery("beyla_internal_build_info", common.TestNameSelector("beyla")),
 			&metricResponse,
 		)
 		// Ensure the version label is not the default "unset" value

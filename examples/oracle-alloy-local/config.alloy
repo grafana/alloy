@@ -1,0 +1,36 @@
+// Run after:  cd examples/oracle-alloy-local && docker compose up -d
+// Then from repo root (Oracle-capable Alloy binary):
+//   ./build/alloy run examples/oracle-alloy-local/config.alloy
+//
+// Uses published ports from docker-compose.yaml (not Docker DNS names).
+// Password must match ORACLE_PASSWORD in docker-compose.yaml.
+//
+// Scrapes → OTLP → otelcol.exporter.debug (batch summaries on stderr).
+// UI: http://localhost:12345 — Live debugging (enabled below).
+
+livedebugging {
+	enabled = true
+}
+
+logging {
+	level  = "debug"
+	format = "logfmt"
+}
+
+prometheus.exporter.oracledb "both" {
+	database {
+		name              = "oracledb_1"
+		connection_string = "oracle://system:testpassword@localhost:15211/FREEPDB1"
+	}
+	database {
+		name              = "oracledb_2"
+		connection_string = "oracle://system:testpassword@localhost:15222/FREEPDB1"
+	}
+}
+
+prometheus.scrape "both" {
+	targets         = prometheus.exporter.oracledb.both.targets
+	forward_to      = []
+	scrape_interval = "15s"
+	scrape_timeout  = "10s"
+}

@@ -4,7 +4,7 @@
 # https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
 #
 # Layered on alloy-integration-tests. Built via tests/oracledb/test.yaml (alloy_container.dockerfile).
-#   make ALLOY_IMAGE=alloy-integration-tests alloy-image
+#   make DOCKER_PLATFORM=linux/amd64 ALLOY_IMAGE=alloy-integration-tests alloy-image
 #   docker build --platform=linux/amd64 -f integration-tests/docker/tests/oracledb/Dockerfile.alloy -t alloy-integration-tests-oracledb:latest .
 
 FROM --platform=linux/amd64 alloy-integration-tests:latest

@@ -4,6 +4,10 @@ package main
 type TestConfig struct {
 	Container            ContainerConfig             `yaml:"alloy_container"`
 	AdditionalContainers []AdditionalContainerConfig `yaml:"additional_containers"`
+	// TestTimeout, if set, is a Go duration string (e.g. "5m") used as this test's
+	// integration timeout and passed to the test process as TEST_TIMEOUT. When empty,
+	// the runner's --test-timeout flag value is used.
+	TestTimeout string `yaml:"test_timeout"`
 }
 
 // ContainerConfig is used to configure alloy container used for the test.
@@ -42,6 +46,27 @@ type AdditionalContainerConfig struct {
 	Command []string `yaml:"command"`
 	// Environment is passed to the container as KEY=value entries (Docker -e).
 	Environment map[string]string `yaml:"environment"`
+	// WaitForListeningPort, if set (e.g. "1521/tcp"), blocks until that port accepts
+	// connections inside that container before it is considered started (additional
+	// containers may start in parallel). Use for slow-starting services (e.g. Oracle DB).
+	// Cannot be set together with healthcheck (use one readiness mechanism).
+	WaitForListeningPort string `yaml:"wait_for_listening_port"`
+	// WaitStartupTimeout is the maximum time to wait for WaitForListeningPort or for the
+	// container to become healthy when healthcheck is set (Go duration string, e.g. "20m").
+	// If empty, a default of 20m is used.
+	WaitStartupTimeout string `yaml:"wait_startup_timeout"`
+	// Healthcheck, if set, defines a Docker HEALTHCHECK and waits until the container reports
+	// healthy (see wait.ForHealthCheck). Cannot be set together with wait_for_listening_port.
+	Healthcheck *AdditionalContainerHealthcheck `yaml:"healthcheck,omitempty"`
+}
+
+// AdditionalContainerHealthcheck maps to Docker's healthcheck on the container config.
+type AdditionalContainerHealthcheck struct {
+	Test        []string `yaml:"test"`
+	Interval    string   `yaml:"interval,omitempty"`
+	Timeout     string   `yaml:"timeout,omitempty"`
+	StartPeriod string   `yaml:"start_period,omitempty"`
+	Retries     int      `yaml:"retries,omitempty"`
 }
 
 // AdditionalContainerBuildConfig is used to build an additional container image.

@@ -2,7 +2,19 @@ alloy_container:
   dockerfile: Dockerfile.alloy
 
 additional_containers:
-  - name: oracledb
+  - name: oracledb1
     image: gvenzl/oracle-free:23-slim
     environment:
       ORACLE_PASSWORD: testpassword
+    wait_startup_timeout: "25m"
+    healthcheck:
+      test: ["CMD", "/opt/oracle/healthcheck.sh"]
+      interval: 2s
+  - name: oracledb2
+    image: gvenzl/oracle-free:23-slim
+    environment:
+      ORACLE_PASSWORD: testpassword
+    wait_startup_timeout: "25m"
+    healthcheck:
+      test: ["CMD", "/opt/oracle/healthcheck.sh"]
+      interval: 2s

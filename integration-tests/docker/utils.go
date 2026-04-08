@@ -29,6 +29,9 @@ const (
 	networkName       = "alloy-integration-tests_integration-tests"
 	// integrationTestDockerPlatform is used for all integration-test docker builds and testcontainers runs.
 	integrationTestDockerPlatform = "linux/amd64"
+	// alloyContainerWaitTimeout is longer than testcontainers' default 60s ForListeningPort startup timeout:
+	// Oracle-enabled Alloy images often need more time before :12345 accepts connections.
+	alloyContainerWaitTimeout = 5 * time.Minute
 )
 
 type TestLog struct {
@@ -59,7 +62,14 @@ func executeCommandInDir(dir, command string, args []string, taskDescription str
 }
 
 func buildBaseAlloyImage() {
-	executeCommandInDir(repoRootDir, "make", []string{"ALLOY_IMAGE=" + alloyImageName, "alloy-image"}, "Building Alloy")
+	// Layered test images (e.g. Oracle Instant Client) and testcontainers use linux/amd64.
+	// On arm64 hosts, a native-arm64 base image would not satisfy FROM --platform=linux/amd64 in
+	// those Dockerfiles and BuildKit would try docker.io and fail.
+	executeCommandInDir(repoRootDir, "make", []string{
+		"DOCKER_PLATFORM=" + integrationTestDockerPlatform,
+		"ALLOY_IMAGE=" + alloyImageName,
+		"alloy-image",
+	}, "Building Alloy")
 }
 
 // alloyIntegrationImageTag is the image ref for the Alloy container (layered tag when dockerfile is set).
@@ -91,6 +101,35 @@ func alloyDockerBuildCfg(absTestDir, dockerfile string) (AdditionalContainerBuil
 		return AdditionalContainerBuildConfig{}, fmt.Errorf("repo root path: %w", err)
 	}
 	return AdditionalContainerBuildConfig{Context: absRepo, Dockerfile: absDockerfile}, nil
+}
+
+// resolveTestTimeout returns cfg.TestTimeout when set (valid Go duration), otherwise cliTimeout.
+func resolveTestTimeout(cfg TestConfig, cliTimeout time.Duration) time.Duration {
+	s := strings.TrimSpace(cfg.TestTimeout)
+	if s == "" {
+		return cliTimeout
+	}
+	d, err := time.ParseDuration(s)
+	if err != nil {
+		panic(fmt.Sprintf("test.yaml test_timeout: invalid duration %q: %v", cfg.TestTimeout, err))
+	}
+	return d
+}
+
+// goTestProcessTimeoutDuration is how long the `go test` subprocess may run (wall clock).
+// It must exceed TEST_TIMEOUT used inside tests and leave headroom for setup/teardown.
+func goTestProcessTimeoutDuration(testTimeout time.Duration) time.Duration {
+	const minGoTestTimeout = 20 * time.Minute
+	d := testTimeout + 10*time.Minute
+	if d < minGoTestTimeout {
+		return minGoTestTimeout
+	}
+	return d
+}
+
+// goTestProcessTimeout is the string form for `go test -timeout`.
+func goTestProcessTimeout(testTimeout time.Duration) string {
+	return goTestProcessTimeoutDuration(testTimeout).String()
 }
 
 // loadTestYAML reads test.yaml or returns (zero, false) if missing.
@@ -224,12 +263,19 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 		})
 	}
 
-	cmd := []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"}
+	// Match CLI contract: `alloy run [flags] <path>` (see internal/alloycli/cmd_run.go).
+	cmd := []string{
+		"run",
+		"--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port),
+		"--stability.level", "experimental",
+		"--storage.path", "/var/lib/alloy/data",
+		"/etc/alloy/config.alloy",
+	}
 
 	req := testcontainers.ContainerRequest{
 		Image:        alloyImage,
 		ExposedPorts: exposedPorts,
-		WaitingFor:   wait.ForListeningPort(natPort),
+		WaitingFor:   wait.ForListeningPort(natPort).WithStartupTimeout(alloyContainerWaitTimeout),
 		Cmd:          cmd,
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.PortBindings = portBindings
@@ -256,7 +302,11 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 
 // Configure the test command with appropriate environment variables if needed
 func setupTestCommand(testDir string, testTimeout time.Duration) *exec.Cmd {
-	testCmd := exec.Command("go", "test", "-tags", "alloyintegrationtests")
+	testCmd := exec.Command(
+		"go", "test",
+		"-tags", "alloyintegrationtests",
+		"-timeout", goTestProcessTimeout(testTimeout),
+	)
 	testCmd.Dir = testDir
 
 	testCmd.Env = append(testCmd.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
@@ -409,10 +459,17 @@ func hasComposeFile(testDir string) bool {
 // runTest runs a single test, automatically detecting whether to use docker-compose
 // or testcontainers based on the presence of a docker-compose.yaml file.
 func runTest(ctx context.Context, testDir string, port int, stateful bool, testTimeout time.Duration) {
+	absTestDir, err := filepath.Abs(testDir)
+	if err != nil {
+		panic(fmt.Sprintf("failed to resolve absolute path for test dir %q: %v", testDir, err))
+	}
+	cfg, _ := loadTestYAML(absTestDir)
+	effectiveTimeout := resolveTestTimeout(cfg, testTimeout)
+
 	if hasComposeFile(testDir) {
-		runComposeTest(ctx, testDir, stateful, testTimeout)
+		runComposeTest(ctx, testDir, stateful, effectiveTimeout)
 	} else {
-		runTestWithTestcontainers(ctx, testDir, port, stateful, testTimeout)
+		runTestWithTestcontainers(ctx, testDir, port, stateful, effectiveTimeout)
 	}
 }
 
@@ -494,12 +551,15 @@ func runComposeTest(ctx context.Context, testDir string, stateful bool, testTime
 		return
 	}
 
-	// Create a context with timeout to enforce test duration limit
-	testCtx, cancel := context.WithTimeout(ctx, testTimeout)
+	// Enforce the same wall-clock limit as `go test -timeout` (must not be shorter than that).
+	testCtx, cancel := context.WithTimeout(ctx, goTestProcessTimeoutDuration(testTimeout))
 	defer cancel()
 
 	// Setup and run test command with context for timeout enforcement
-	testCmd := exec.CommandContext(testCtx, "go", "test", "-tags", "alloyintegrationtests")
+	testCmd := exec.CommandContext(testCtx, "go", "test",
+		"-tags", "alloyintegrationtests",
+		"-timeout", goTestProcessTimeout(testTimeout),
+	)
 	testCmd.Dir = testDir
 	testCmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
 	if stateful {
@@ -523,7 +583,9 @@ func runComposeTest(ctx context.Context, testDir string, stateful bool, testTime
 		testLogs.IsError = true
 		// Check if the error was due to context timeout
 		if testCtx.Err() == context.DeadlineExceeded {
-			testLogs.TestOutput = fmt.Sprintf("TEST TIMEOUT: test exceeded %v limit\n%s", testTimeout, testOutput)
+			testLogs.TestOutput = fmt.Sprintf(
+				"TEST TIMEOUT: test exceeded go test subprocess limit %v (TEST_TIMEOUT=%v)\n%s",
+				goTestProcessTimeoutDuration(testTimeout), testTimeout, testOutput)
 		}
 	}
 	addLog(testLogs)

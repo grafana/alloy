@@ -13,10 +13,10 @@ import (
 
 func TestEnrichPromMetrics(t *testing.T) {
 	testName := "enrich_prom_metrics"
-	common.AssertMetricsAvailable(t, common.PromDefaultMetrics, []string{}, testName)
+	common.AssertMetricsAvailable(t, common.PromDefaultMetrics, []string{}, common.TestNameSelector(testName))
 
 	var resp MetricsResponse
-	_, err := common.FetchDataFromURL(common.MetricsQuery(testName), &resp)
+	_, err := common.FetchDataFromURL(common.MetricsQuery(common.TestNameSelector(testName)), &resp)
 	assert.NoError(t, err)
 
 	expectedLabels := map[string]string{
@@ -34,10 +34,10 @@ func TestEnrichPromMetrics(t *testing.T) {
 
 func TestEnrichMismatched(t *testing.T) {
 	testName := "enrich_mismatched"
-	common.AssertMetricsAvailable(t, common.PromDefaultMetrics, []string{}, testName)
+	common.AssertMetricsAvailable(t, common.PromDefaultMetrics, []string{}, common.TestNameSelector(testName))
 
 	var resp MetricsResponse
-	_, err := common.FetchDataFromURL(common.MetricsQuery(testName), &resp)
+	_, err := common.FetchDataFromURL(common.MetricsQuery(common.TestNameSelector(testName)), &resp)
 	assert.NoError(t, err)
 
 	missingLabels := []string{

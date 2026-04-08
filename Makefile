@@ -132,6 +132,20 @@ ifeq ($(filter gore2regex,$(GO_TAGS)),)
 override GO_TAGS := $(strip gore2regex $(GO_TAGS))
 endif
 
+# oracle-db-appdev-monitoring/collector gates connect() behind //go:build goora or godror.
+# Default godror matches historical Agent/static behavior (Oracle Instant Client via ODPI-C).
+# TODO: Use go-ora instead. It is pure-Go and has no external dependencies.
+ifeq ($(filter goora godror,$(GO_TAGS)),)
+override GO_TAGS := $(strip godror $(GO_TAGS))
+endif
+
+# GOFLAGS is split on spaces; each token must be a full flag. Use commas inside -tags=...
+# (same meaning as "go build -tags \"a b\"") so multiple tags are not parsed as extra GOFLAGS.
+empty :=
+space := $(empty) $(empty)
+comma := ,
+GO_TAGS_COMMA := $(subst $(space),$(comma),$(GO_TAGS))
+
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
 VERSION      ?= $(shell bash ./tools/image-tag)
@@ -172,11 +186,11 @@ endif
 .PHONY: lint
 lint: alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS_COMMA)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS_COMMA)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
@@ -199,7 +213,7 @@ endif
 
 .PHONY: integration-test-docker
 integration-test-docker:
-	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m
+	cd integration-tests/docker && $(GO_ENV) go run .
 
 .PHONY: integration-test-k8s
 integration-test-k8s: alloy-image
