@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -18,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
+	"k8s.io/utils/ptr"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -35,10 +38,11 @@ func TestComponent(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	type testCase struct {
-		name     string
-		cfg      string
-		inputs   []loki.Entry
-		expected []loki.Entry
+		name          string
+		cfg           string
+		inputs        []loki.Entry
+		expected      []loki.Entry
+		unorderedFrom *int
 	}
 
 	var (
@@ -449,6 +453,84 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 			},
+			unorderedFrom: ptr.To(3),
+		},
+		{
+			name: "pattern pipeline parsing nginx",
+			cfg: `
+			forward_to = []
+
+			stage.pattern {
+				pattern = "<_> <_> <user> [<timestamp>] \"<method> <path> <protocol>\" <status> <size> \"<referer>\" \"<useragent>\""
+			}
+
+			stage.timestamp {
+				source = "timestamp"
+				format = "02/Jan/2006:15:04:05 -0700"
+			}
+
+			stage.labels {
+				values = {
+					method = "",
+					status = "",
+				}
+			}
+
+			stage.structured_metadata {
+				values = {
+					filename = "",
+					path = "",
+					user = "",
+				}
+			}
+
+			stage.output {
+				source = "path"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "access.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `11.11.11.11 - frank [` + formatTs(0, "02/Jan/2006:15:04:05 -0700") + `] "GET /index.html HTTP/1.1" 200 932 "-" "test-agent"`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "access.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `22.22.22.22 - mary [` + formatTs(1, "02/Jan/2006:15:04:05 -0700") + `] "POST /api/users HTTP/1.1" 201 128 "-" "api-client"`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "access.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `33.33.33.33 - jane [` + formatTs(2, "02/Jan/2006:15:04:05 -0700") + `] "DELETE /api/users/42 HTTP/2.0" 204 0 "-" "cleanup-bot"`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"method": "GET", "status": "200"}, 0, push.Entry{
+					Timestamp: mustParseTime(t, "02/Jan/2006:15:04:05 -0700", formatTs(0, "02/Jan/2006:15:04:05 -0700")),
+					Line:      "/index.html",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "access.log"},
+						{Name: "path", Value: "/index.html"},
+						{Name: "user", Value: "frank"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"method": "POST", "status": "201"}, 0, push.Entry{
+					Timestamp: mustParseTime(t, "02/Jan/2006:15:04:05 -0700", formatTs(1, "02/Jan/2006:15:04:05 -0700")),
+					Line:      "/api/users",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "access.log"},
+						{Name: "path", Value: "/api/users"},
+						{Name: "user", Value: "mary"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"method": "DELETE", "status": "204"}, 0, push.Entry{
+					Timestamp: mustParseTime(t, "02/Jan/2006:15:04:05 -0700", formatTs(2, "02/Jan/2006:15:04:05 -0700")),
+					Line:      "/api/users/42",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "access.log"},
+						{Name: "path", Value: "/api/users/42"},
+						{Name: "user", Value: "jane"},
+					},
+				}),
+			},
 		},
 	}
 
@@ -483,12 +565,15 @@ func TestComponent(t *testing.T) {
 			require.Eventually(t, func() bool { return len(collector.Received()) == len(tt.expected) }, 5*time.Second, 10*time.Millisecond)
 
 			got := collector.Received()
-			for i := range tt.expected {
-				require.Equal(t, tt.expected[i].Line, got[i].Line)
-				require.Equal(t, tt.expected[i].Timestamp, got[i].Timestamp)
-				require.EqualValues(t, tt.expected[i].Labels, got[i].Labels)
-				require.ElementsMatch(t, tt.expected[i].StructuredMetadata, got[i].StructuredMetadata)
+
+			if tt.unorderedFrom == nil {
+				tt.unorderedFrom = ptr.To(len(tt.expected))
 			}
+
+			for i := range *tt.unorderedFrom {
+				assertEntry(t, tt.expected[i], got[i])
+			}
+			assertEntriesUnordered(t, tt.expected[*tt.unorderedFrom:], got[*tt.unorderedFrom:])
 
 			cancel()
 			require.NoError(t, <-runErr)
@@ -503,6 +588,73 @@ func mustMarshalJSON(t *testing.T, v any) string {
 	require.NoError(t, err)
 
 	return string(data)
+}
+
+func mustParseTime(t *testing.T, layout, value string) time.Time {
+	t.Helper()
+
+	parsed, err := time.Parse(layout, value)
+	require.NoError(t, err)
+
+	return parsed
+}
+
+func assertEntry(t *testing.T, expected, actual loki.Entry) {
+	t.Helper()
+
+	require.Equal(t, expected.Line, actual.Line)
+	require.Equal(t, expected.Timestamp, actual.Timestamp)
+	require.EqualValues(t, expected.Labels, actual.Labels)
+	require.ElementsMatch(t, expected.StructuredMetadata, actual.StructuredMetadata)
+}
+
+func assertEntriesUnordered(t *testing.T, expected, actual []loki.Entry) {
+	t.Helper()
+
+	require.Len(t, actual, len(expected))
+
+	entriesEqual := func(expected, actual loki.Entry) bool {
+		if expected.Line != actual.Line {
+			return false
+		}
+		if !expected.Timestamp.Equal(actual.Timestamp) {
+			return false
+		}
+		if !reflect.DeepEqual(expected.Labels, actual.Labels) {
+			return false
+		}
+
+		expectedStructured := append(push.LabelsAdapter(nil), expected.StructuredMetadata...)
+		actualStructured := append(push.LabelsAdapter(nil), actual.StructuredMetadata...)
+		slices.SortFunc(expectedStructured, func(a, b push.LabelAdapter) int {
+			if a.Name != b.Name {
+				return strings.Compare(a.Name, b.Name)
+			}
+			return strings.Compare(a.Value, b.Value)
+		})
+		slices.SortFunc(actualStructured, func(a, b push.LabelAdapter) int {
+			if a.Name != b.Name {
+				return strings.Compare(a.Name, b.Name)
+			}
+			return strings.Compare(a.Value, b.Value)
+		})
+
+		return reflect.DeepEqual(expectedStructured, actualStructured)
+	}
+
+	remaining := append([]loki.Entry(nil), actual...)
+	for _, exp := range expected {
+		found := -1
+		for i, got := range remaining {
+			if entriesEqual(exp, got) {
+				found = i
+				break
+			}
+		}
+
+		require.NotEqual(t, -1, found)
+		remaining = append(remaining[:found], remaining[found+1:]...)
+	}
 }
 
 func TestComponent_UpdateInvalidConfig(t *testing.T) {
