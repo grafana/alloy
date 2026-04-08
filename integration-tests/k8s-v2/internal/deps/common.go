@@ -90,6 +90,7 @@ func applyManifest(ctx context.Context, kubeconfig string, manifest string) erro
 	if cfg.Debug {
 		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] applying manifest file %s\n", tmp.Name())
 	}
+	fmt.Fprintf(os.Stderr, "[k8s-v2] Applying manifest %s\n", tmp.Name())
 
 	_, err = runKubectl(ctx, kubeconfig, "apply", "-f", tmp.Name())
 	return err
@@ -115,6 +116,7 @@ func deleteManifest(ctx context.Context, kubeconfig string, manifest string) err
 	if cfg.Debug {
 		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] deleting manifest file %s with timeout %s\n", tmp.Name(), cfg.UninstallGrace)
 	}
+	fmt.Fprintf(os.Stderr, "[k8s-v2] Deleting manifest %s\n", tmp.Name())
 
 	_, err = runKubectl(deleteCtx, kubeconfig, "delete", "--ignore-not-found=true", "-f", tmp.Name())
 	return err
@@ -126,6 +128,7 @@ func waitForDeployment(ctx context.Context, kubeconfig, namespace, deployment st
 	if cfg.Debug {
 		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] waiting for deployment/%s in namespace %s with timeout %s\n", deployment, namespace, cfg.ReadinessTimeout)
 	}
+	fmt.Fprintf(os.Stderr, "[k8s-v2] Waiting for deployment/%s to be available\n", deployment)
 
 	_, err := runKubectl(waitCtx, kubeconfig,
 		"-n", namespace,
@@ -137,6 +140,7 @@ func waitForDeployment(ctx context.Context, kubeconfig, namespace, deployment st
 	if err != nil {
 		return fmt.Errorf("kubernetes readiness check failed for deployment/%s: timeout=%s: %w", deployment, cfg.ReadinessTimeout, err)
 	}
+	fmt.Fprintf(os.Stderr, "[k8s-v2] deployment/%s is available\n", deployment)
 	return nil
 }
 
@@ -178,6 +182,7 @@ func checkServiceReadyEndpoint(
 
 	readyCtx, readyCancel := context.WithTimeout(ctx, cfg.ReadinessTimeout)
 	defer readyCancel()
+	fmt.Fprintf(os.Stderr, "[k8s-v2] Waiting for service %s readiness endpoint %s\n", service, readyURL)
 
 	var lastErr error
 	for {
@@ -189,6 +194,7 @@ func checkServiceReadyEndpoint(
 		resp, err := http.DefaultClient.Do(req)
 		if err == nil && resp != nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
 			_ = resp.Body.Close()
+			fmt.Fprintf(os.Stderr, "[k8s-v2] Service %s is ready\n", service)
 			return nil
 		}
 		if resp != nil {

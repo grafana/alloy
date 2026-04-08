@@ -3,6 +3,7 @@ package deps
 import (
 	"context"
 	"fmt"
+	"os"
 	"slices"
 	"sort"
 )
@@ -45,10 +46,12 @@ func (r Registry) Validate(requirements []string) error {
 
 func (r Registry) Install(ctx context.Context, kubeconfig string, requirements []string) error {
 	for _, dep := range requirements {
+		fmt.Fprintf(os.Stderr, "[k8s-v2] Installing dependency %s\n", dep)
 		installer := r.installers[dep]
 		if err := installer.Install(ctx, kubeconfig); err != nil {
 			return fmt.Errorf("install %q: %w", dep, err)
 		}
+		fmt.Fprintf(os.Stderr, "[k8s-v2] Dependency %s is ready\n", dep)
 	}
 	return nil
 }
@@ -57,10 +60,12 @@ func (r Registry) Uninstall(ctx context.Context, kubeconfig string, requirements
 	reversed := slices.Clone(requirements)
 	slices.Reverse(reversed)
 	for _, dep := range reversed {
+		fmt.Fprintf(os.Stderr, "[k8s-v2] Uninstalling dependency %s\n", dep)
 		installer := r.installers[dep]
 		if err := installer.Uninstall(ctx, kubeconfig); err != nil {
 			return fmt.Errorf("uninstall %q: %w", dep, err)
 		}
+		fmt.Fprintf(os.Stderr, "[k8s-v2] Dependency %s removed\n", dep)
 	}
 	return nil
 }

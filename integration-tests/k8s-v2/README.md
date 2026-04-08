@@ -62,6 +62,7 @@ go run ./integration-tests/k8s-v2/runner --test integration-tests/k8s-v2/tests/l
 ```
 
 Each `--test` path is validated:
+
 - the folder must exist,
 - it must map to a discovered k8s-v2 test folder.
 
@@ -76,6 +77,8 @@ Enable debug logging (dependency apply/wait/readiness traces):
 ```sh
 go run ./integration-tests/k8s-v2/runner --test metrics-mimir --debug
 ```
+
+For interactive cluster tooling (for example `k9s`), use `--keep-cluster` and copy the printed `KUBECONFIG` export command from runner output.
 
 Use the Go wrapper directly:
 
@@ -93,3 +96,4 @@ go run ./integration-tests/k8s-v2/runner --test logs-loki -- --count=1
 - The wrapper auto-discovers tests from `tests/*/requirements.yaml` so new tests do not require wrapper code changes.
 - Run `go run ./integration-tests/k8s-v2/runner --help` for full Cobra help and flags.
 - The runner always prints resolved test absolute paths and the exact `go test` command before execution.
+- The harness prints high-level lifecycle steps (cluster setup, dependency readiness, test execution, and cleanup).

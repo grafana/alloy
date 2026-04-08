@@ -39,6 +39,7 @@ var (
 
 func TestMain(m *testing.M) {
 	flag.Parse()
+	logInfo("Starting k8s-v2 test harness setup")
 
 	allTests, err := planner.DiscoverTests(testsRootPath)
 	if err != nil {
@@ -53,6 +54,8 @@ func TestMain(m *testing.M) {
 	}
 
 	required := planner.RequirementUnion(selectedTests)
+	logInfo("Selected tests: %s", strings.Join(testNames(selectedTests), ", "))
+	logInfo("Required dependencies: %s", strings.Join(required, ", "))
 	registry := deps.NewDefaultRegistry()
 	if err := registry.Validate(required); err != nil {
 		fmt.Fprintf(os.Stderr, "k8s-v2 plan failed: %v\n", err)
@@ -66,6 +69,7 @@ func TestMain(m *testing.M) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), *setupTimeoutFlag)
 	defer cancel()
+	logInfo("Setup timeout: %s, readiness timeout: %s", *setupTimeoutFlag, *readinessTimeout)
 
 	clusterName = fmt.Sprintf("alloy-k8s-v2-%d", rand.IntN(1_000_000))
 	provider := kind.NewProvider().WithName(clusterName).SetDefaults()
@@ -78,6 +82,7 @@ func TestMain(m *testing.M) {
 				fmt.Fprintln(os.Stderr, reason)
 			}
 			if installedDeps {
+				logInfo("Uninstalling dependencies")
 				if err := registry.Uninstall(context.Background(), kubeconfig, required); err != nil {
 					fmt.Fprintf(os.Stderr, "k8s-v2 uninstall dependencies warning: %v\n", err)
 					if exitCode == 0 {
@@ -86,6 +91,7 @@ func TestMain(m *testing.M) {
 				}
 			}
 			if hasCluster && !*keepClusterFlag {
+				logInfo("Destroying Kind cluster %s", clusterName)
 				if err := provider.Destroy(context.Background()); err != nil {
 					fmt.Fprintf(os.Stderr, "k8s-v2 destroy kind cluster warning: %v\n", err)
 					if exitCode == 0 {
@@ -93,8 +99,10 @@ func TestMain(m *testing.M) {
 					}
 				}
 			} else if hasCluster && *keepClusterFlag {
-				fmt.Fprintf(os.Stderr, "k8s-v2 keeping cluster %s for debugging\n", clusterName)
+				logInfo("Keeping cluster %s for debugging", clusterName)
+				logInfo("To reconnect: export KUBECONFIG=\"%s\" && k9s", kubeconfig)
 			}
+			logInfo("Harness finished with exit code %d", exitCode)
 			os.Exit(exitCode)
 		})
 	}
@@ -107,12 +115,14 @@ func TestMain(m *testing.M) {
 		cleanup(130, fmt.Sprintf("k8s-v2 received %s, starting cleanup", sig.String()))
 	}()
 
+	logInfo("Creating Kind cluster %s", clusterName)
 	createdKubeconfig, err := provider.Create(ctx)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "k8s-v2 create kind cluster failed: %v\n", err)
 		os.Exit(1)
 	}
 	hasCluster = true
+	logInfo("Kind cluster created: %s", clusterName)
 
 	kubeconfig = createdKubeconfig
 	if kubeconfig == "" {
@@ -121,15 +131,24 @@ func TestMain(m *testing.M) {
 	if kubeconfig == "" {
 		cleanup(1, "k8s-v2 empty kubeconfig from e2e-framework kind provider")
 	}
+	logInfo("Kubeconfig path: %s", kubeconfig)
+	logInfo("To inspect cluster: export KUBECONFIG=\"%s\" && k9s", kubeconfig)
+	if !*keepClusterFlag {
+		logInfo("Cluster will be cleaned up after tests (use --keep-cluster to keep it)")
+	}
 
+	logInfo("Ensuring workload namespace %s", workNamespace)
 	if err := ensureNamespace(ctx, kubeconfig, workNamespace); err != nil {
 		cleanup(1, fmt.Sprintf("k8s-v2 create workload namespace failed: %v", err))
 	}
+	logInfo("Workload namespace is ready")
 
+	logInfo("Installing dependencies")
 	if err := registry.Install(ctx, kubeconfig, required); err != nil {
 		cleanup(1, fmt.Sprintf("k8s-v2 install dependencies %v failed: %v", required, err))
 	}
 	installedDeps = true
+	logInfo("Dependencies installed and ready")
 
 	os.Setenv("ALLOY_K8S_V2_KUBECONFIG", kubeconfig)
 	os.Setenv("ALLOY_K8S_V2_REQUIREMENTS", strings.Join(required, ","))
@@ -146,17 +165,21 @@ func TestPOC(t *testing.T) {
 	for _, tc := range selectedTests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
+			logInfo("Applying workload for test %s", tc.Name)
 			if err := applyWorkloadManifest(context.Background(), kubeconfig, filepath.Join(tc.Dir, "workload.yaml")); err != nil {
 				t.Fatalf("apply workload for %s failed: %v", tc.Name, err)
 			}
 			defer func() {
+				logInfo("Cleaning workload for test %s", tc.Name)
 				_ = deleteWorkloadManifest(context.Background(), kubeconfig, filepath.Join(tc.Dir, "workload.yaml"))
 			}()
 
 			reproCmd := fmt.Sprintf("go test ./integration-tests/k8s-v2 -run TestPOC/%s -args -k8s.v2.tests=%s", tc.Name, tc.Name)
+			logInfo("Running assertions for test %s", tc.Name)
 			if err := runGoTestPackage(tc.Dir, kubeconfig); err != nil {
 				t.Fatalf("test %s failed: %v\nrepro: %s", tc.Name, err, reproCmd)
 			}
+			logInfo("Test %s completed", tc.Name)
 		})
 	}
 }
@@ -204,4 +227,16 @@ func runGoTestPackage(dir, kubeconfigPath string) error {
 	cmd.Stderr = os.Stderr
 	cmd.Env = append(os.Environ(), "ALLOY_K8S_V2_KUBECONFIG="+kubeconfigPath)
 	return cmd.Run()
+}
+
+func testNames(tests []planner.TestCase) []string {
+	names := make([]string, 0, len(tests))
+	for _, tc := range tests {
+		names = append(names, tc.Name)
+	}
+	return names
+}
+
+func logInfo(format string, args ...any) {
+	fmt.Fprintf(os.Stderr, "[k8s-v2] "+format+"\n", args...)
 }
