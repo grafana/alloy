@@ -276,6 +276,68 @@ func TestComponent(t *testing.T) {
 			},
 		},
 		{
+			name: "template pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.json {
+				expressions = {
+					app = "",
+					level = "",
+					msg = "",
+				}
+			}
+
+			stage.template {
+				source   = "app"
+				template = "{{ .Value | ToUpper }} doki"
+			}
+
+			stage.template {
+				source   = "level"
+				template = "{{ if eq .Value \"WARN\" }}{{ Replace .Value \"WARN\" \"OK\" -1 }}{{ else }}{{ .Value }}{{ end }}"
+			}
+
+			stage.template {
+				source   = "type"
+				template = "{{ .app }}-{{ .level }}"
+			}
+
+			stage.labels {
+				values = {
+					app = "",
+					level = "",
+					type = "",
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "template.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line: mustMarshalJSON(t, map[string]string{
+						"app":   "loki",
+						"level": "WARN",
+						"msg":   "template line",
+					}),
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{
+					"filename": "template.log",
+					"app":      "LOKI doki",
+					"level":    "OK",
+					"type":     "LOKI doki-OK",
+				}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      "template line",
+				}),
+			},
+		},
+		{
 			name: "simple logfmt pipeline",
 			cfg: `
 			forward_to = []
