@@ -374,6 +374,41 @@ func TestComponent(t *testing.T) {
 			},
 		},
 		{
+			name: "regex pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.regex {
+				expression = "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<content>.*)$"
+			}
+
+			stage.timestamp {
+				source = "time"
+				format = "RFC3339"
+			}
+
+			stage.output {
+				source = "content"
+			}
+
+			stage.labels {
+				values = { src = "stream" }
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      formatTs(0, time.RFC3339) + ` stderr somewhere, somehow, an error occurred`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar", "src": "stderr"}, 0, push.Entry{
+					Timestamp: mustParseTime(t, time.RFC3339, formatTs(0, time.RFC3339)),
+					Line:      `somewhere, somehow, an error occurred`,
+				}),
+			},
+		},
+		{
 			name: "multiline pipeline",
 			cfg: `
 			forward_to = []
@@ -867,106 +902,6 @@ func TestJSONLabelsStage(t *testing.T) {
 		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}, structured_metadata: {}",
 	}
 	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
-}
-
-func TestRegexTimestampOutput(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-
-	// The first stage will attempt to parse the input line using a regular
-	// expression with named capture groups. The three capture groups (time,
-	// stream and content) will be extracted in the shared map of values.
-	// Since 'source' is empty, it implies that we want to parse the log line
-	// itself.
-	//
-	// The second stage will parse the extracted `time` value as Unix epoch
-	// time and set it to the log entry timestamp.
-	//
-	// The third stage will set the `content` value as the message value.
-	//
-	// The fourth and final stage will set the `stream` value as the label.
-	stg := `
-stage.regex {
-		expression = "^(?s)(?P<time>\\S+?) (?P<stream>stdout|stderr) (?P<content>.*)$"
-}
-stage.timestamp {
-		source = "time"
-		format = "RFC3339"
-}
-stage.output {
-		source = "content"
-}
-stage.labels {
-		values = { src = "stream" }
-}`
-
-	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
-	// an easy way to refer to a loki.LogsReceiver value for the forward_to
-	// argument.
-	type cfg struct {
-		Stages []stages.StageConfig `alloy:"stage,enum"`
-	}
-	var stagesCfg cfg
-	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
-	require.NoError(t, err)
-
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-
-	// Create and run the component, so that it can process and forwards logs.
-	opts := component.Options{
-		Logger:         util.TestAlloyLogger(t),
-		Registerer:     prometheus.NewRegistry(),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
-	}
-	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch1, ch2},
-		Stages:    stagesCfg.Stages,
-	}
-
-	c, err := New(opts, args)
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go c.Run(ctx)
-
-	// Send a log entry to the component's receiver.
-	ts := time.Now()
-	logline := `2022-01-17T08:17:42-07:00 stderr somewhere, somehow, an error occurred`
-	logEntry := loki.Entry{
-		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
-		Entry: push.Entry{
-			Timestamp: ts,
-			Line:      logline,
-		},
-	}
-
-	c.receiver.Chan() <- logEntry
-
-	wantLabelSet := model.LabelSet{
-		"filename": "/var/log/pods/agent/agent/1.log",
-		"foo":      "bar",
-		"src":      "stderr",
-	}
-	wantTimestamp, err := time.Parse(time.RFC3339, "2022-01-17T08:17:42-07:00")
-	wantLogline := `somewhere, somehow, an error occurred`
-	require.NoError(t, err)
-
-	// The log entry should be received in both channels, with the processing
-	// stages correctly applied.
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.Equal(t, wantLogline, logEntry.Line)
-			require.Equal(t, wantTimestamp, logEntry.Timestamp)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.Equal(t, wantLogline, logEntry.Line)
-			require.Equal(t, wantTimestamp, logEntry.Timestamp)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
 }
 
 func TestEntrySentToTwoProcessComponents(t *testing.T) {
