@@ -89,6 +89,10 @@ func TestComponent(t *testing.T) {
 					Timestamp: time.Now(),
 					Line:      now.Format(time.RFC3339Nano) + " stderr F full file 1 stdout",
 				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file3"}, 0, push.Entry{
+					Timestamp: now.Add(3 * time.Second),
+					Line:      "not a cri line",
+				}),
 			},
 			expected: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
@@ -113,6 +117,13 @@ func TestComponent(t *testing.T) {
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "file1"},
 						{Name: "stream", Value: "stderr"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: now.Add(3 * time.Second),
+					Line:      "not a cri line",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "file3"},
 					},
 				}),
 			},
@@ -185,6 +196,74 @@ func TestComponent(t *testing.T) {
 				}),
 			},
 		},
+		{
+			name: "simple json pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.json {
+				expressions = {
+					msg = "",
+					app = "",
+					service_name = "",
+				}
+			}
+
+			stage.labels {
+				values = {
+					service_name = "",
+				}
+			}
+
+			stage.structured_metadata {
+				values = {
+					filename = "",
+					app = "",
+				}
+			}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "json.log"}, 0, push.Entry{
+					Timestamp: now.Add(4 * time.Second),
+					Line: mustMarshalJSON(t, map[string]string{
+						"msg":          "json line 1",
+						"app":          "api",
+						"service_name": "service-a",
+					}),
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "json.log"}, 0, push.Entry{
+					Timestamp: now.Add(5 * time.Second),
+					Line:      `not json`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar", "service_name": "service-a"}, 0, push.Entry{
+					Timestamp: now.Add(4 * time.Second),
+					Line:      "json line 1",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "json.log"},
+						{Name: "app", Value: "api"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: now.Add(5 * time.Second),
+					Line:      `not json`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "json.log"},
+					},
+				}),
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -209,23 +288,13 @@ func TestComponent(t *testing.T) {
 			ctx, cancel := context.WithCancel(t.Context())
 
 			runErr := make(chan error, 1)
-			go func() {
-				runErr <- c.Run(ctx)
-			}()
+			go func() { runErr <- c.Run(ctx) }()
 
 			for _, input := range tt.inputs {
 				c.receiver.Chan() <- input
 			}
 
-			require.Eventually(t, func() bool {
-				select {
-				case err := <-runErr:
-					require.NoError(t, err)
-					require.FailNow(t, "component stopped before producing all expected entries")
-				default:
-				}
-				return len(collector.Received()) == len(tt.expected)
-			}, 5*time.Second, 10*time.Millisecond)
+			require.Eventually(t, func() bool { return len(collector.Received()) == len(tt.expected) }, 5*time.Second, 10*time.Millisecond)
 
 			got := collector.Received()
 			for i := range tt.expected {
