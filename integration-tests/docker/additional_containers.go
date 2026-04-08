@@ -14,7 +14,7 @@ import (
 )
 
 func startAdditionalContainers(ctx context.Context, absTestDir, networkName string, cfg TestConfig) ([]testcontainers.Container, error) {
-	containers := make([]testcontainers.Container, 0, len(cfg.AdditionalContainers))
+	requests := make([]testcontainers.ContainerRequest, 0, len(cfg.AdditionalContainers))
 
 	for i, containerCfg := range cfg.AdditionalContainers {
 		if containerCfg.Image == "" {
@@ -38,17 +38,23 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 			}
 		}
 
+		requests = append(requests, req)
+	}
+
+	containers := make([]testcontainers.Container, 0, len(cfg.AdditionalContainers))
+	for _, r := range requests {
 		container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-			ContainerRequest: req,
+			ContainerRequest: r,
 			Started:          true,
 			Logger:           log.Default(),
 		})
 		if err != nil {
 			_ = terminateAdditionalContainers(ctx, containers)
-			return nil, fmt.Errorf("failed to start additional container %q: %w", containerCfg.Name, err)
+			return nil, fmt.Errorf("failed to start additional container %q: %w", r.Name, err)
 		}
 
 		containers = append(containers, container)
+
 	}
 
 	return containers, nil
