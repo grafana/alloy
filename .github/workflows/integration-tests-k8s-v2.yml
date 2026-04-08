@@ -1,0 +1,25 @@
+name: Integration Tests on Kubernetes v2
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  run_tests:
+    runs-on:
+      labels: github-hosted-ubuntu-x64-large
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      with:
+        persist-credentials: false
+    - name: Setup Go
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+      with:
+        go-version-file: go.mod
+    - name: Run k8s-v2 integration tests
+      run: make integration-test-k8s-v2

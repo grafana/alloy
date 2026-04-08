@@ -27,49 +27,63 @@ They are loaded by the dependency installers via `go:embed`.
 
 ## Commands
 
-List available tests and aliases:
-
-```sh
-make integration-test-k8s-v2-list
-```
-
 Run all k8s-v2 tests:
 
 ```sh
-make integration-test-k8s-v2-all
+make integration-test-k8s-v2
+# equivalent:
+go run ./integration-tests/k8s-v2/runner --all
 ```
 
-Run one test:
+Run selected tests manually (exact folder names):
 
 ```sh
-make integration-test-k8s-v2-metrics
-make integration-test-k8s-v2-logs
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir --test logs-loki
 ```
 
-Run selected tests (exact names or aliases like `metrics`, `logs`):
-
-```sh
-make integration-test-k8s-v2 TESTS=metrics-mimir,logs-loki
-```
+`--all` and `--test` are mutually exclusive. Use one or the other.
 
 Keep the KinD cluster for debugging:
 
 ```sh
-make integration-test-k8s-v2 TESTS=metrics KEEP_CLUSTER=1
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster
 ```
 
 Pass extra `go test` flags:
 
 ```sh
-make integration-test-k8s-v2 TESTS=metrics EXTRA_GO_TEST_ARGS="-count=1"
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir -- --count=1
+```
+
+Pass test folder paths (relative to your current directory):
+
+```sh
+go run ./integration-tests/k8s-v2/runner --test integration-tests/k8s-v2/tests/logs-loki
+```
+
+Each `--test` path is validated:
+- the folder must exist,
+- it must map to a discovered k8s-v2 test folder.
+
+Tune setup/readiness timeouts:
+
+```sh
+go run ./integration-tests/k8s-v2/runner --all --setup-timeout 30m --readiness-timeout 5m
+```
+
+Enable debug logging (dependency apply/wait/readiness traces):
+
+```sh
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir --debug
 ```
 
 Use the Go wrapper directly:
 
 ```sh
-go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --list
-go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests metrics,logs
-go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests metrics -- --count=1
+go run ./integration-tests/k8s-v2/runner --help
+go run ./integration-tests/k8s-v2/runner list
+go run ./integration-tests/k8s-v2/runner --all
+go run ./integration-tests/k8s-v2/runner --test logs-loki -- --count=1
 ```
 
 ## Notes
@@ -77,3 +91,5 @@ go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests metrics -- --count=1
 - The runner creates a KinD cluster through e2e-framework and installs only selected dependencies.
 - On child test failure, output includes a deterministic repro command.
 - The wrapper auto-discovers tests from `tests/*/requirements.yaml` so new tests do not require wrapper code changes.
+- Run `go run ./integration-tests/k8s-v2/runner --help` for full Cobra help and flags.
+- The runner always prints resolved test absolute paths and the exact `go test` command before execution.

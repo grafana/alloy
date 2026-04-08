@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -17,6 +18,33 @@ const (
 	defaultReadyTimeout   = 2 * time.Minute
 	defaultUninstallGrace = 30 * time.Second
 )
+
+type Config struct {
+	ReadinessTimeout time.Duration
+	PollInterval     time.Duration
+	UninstallGrace   time.Duration
+	Debug            bool
+}
+
+var cfg = Config{
+	ReadinessTimeout: defaultReadyTimeout,
+	PollInterval:     defaultPollInterval,
+	UninstallGrace:   defaultUninstallGrace,
+	Debug:            false,
+}
+
+func Configure(config Config) {
+	if config.ReadinessTimeout > 0 {
+		cfg.ReadinessTimeout = config.ReadinessTimeout
+	}
+	if config.PollInterval > 0 {
+		cfg.PollInterval = config.PollInterval
+	}
+	if config.UninstallGrace > 0 {
+		cfg.UninstallGrace = config.UninstallGrace
+	}
+	cfg.Debug = config.Debug
+}
 
 //go:embed manifests/*.yaml
 var manifestFS embed.FS
@@ -30,9 +58,15 @@ func readManifest(filename string) (string, error) {
 }
 
 func runKubectl(ctx context.Context, kubeconfig string, args ...string) ([]byte, error) {
+	if cfg.Debug {
+		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] kubectl --kubeconfig %s %s\n", kubeconfig, strings.Join(args, " "))
+	}
 	fullArgs := append([]string{"--kubeconfig", kubeconfig}, args...)
 	cmd := exec.CommandContext(ctx, "kubectl", fullArgs...)
 	out, err := cmd.CombinedOutput()
+	if cfg.Debug && len(out) > 0 {
+		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] kubectl output:\n%s\n", string(out))
+	}
 	if err != nil {
 		return out, fmt.Errorf("kubectl %v failed: %w: %s", args, err, string(out))
 	}
@@ -52,6 +86,9 @@ func applyManifest(ctx context.Context, kubeconfig string, manifest string) erro
 	}
 	if err := tmp.Close(); err != nil {
 		return fmt.Errorf("close manifest temp file: %w", err)
+	}
+	if cfg.Debug {
+		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] applying manifest file %s\n", tmp.Name())
 	}
 
 	_, err = runKubectl(ctx, kubeconfig, "apply", "-f", tmp.Name())
@@ -73,26 +110,32 @@ func deleteManifest(ctx context.Context, kubeconfig string, manifest string) err
 		return fmt.Errorf("close manifest temp file: %w", err)
 	}
 
-	deleteCtx, cancel := context.WithTimeout(ctx, defaultUninstallGrace)
+	deleteCtx, cancel := context.WithTimeout(ctx, cfg.UninstallGrace)
 	defer cancel()
+	if cfg.Debug {
+		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] deleting manifest file %s with timeout %s\n", tmp.Name(), cfg.UninstallGrace)
+	}
 
 	_, err = runKubectl(deleteCtx, kubeconfig, "delete", "--ignore-not-found=true", "-f", tmp.Name())
 	return err
 }
 
 func waitForDeployment(ctx context.Context, kubeconfig, namespace, deployment string) error {
-	waitCtx, cancel := context.WithTimeout(ctx, defaultReadyTimeout)
+	waitCtx, cancel := context.WithTimeout(ctx, cfg.ReadinessTimeout)
 	defer cancel()
+	if cfg.Debug {
+		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] waiting for deployment/%s in namespace %s with timeout %s\n", deployment, namespace, cfg.ReadinessTimeout)
+	}
 
 	_, err := runKubectl(waitCtx, kubeconfig,
 		"-n", namespace,
 		"wait",
 		"--for=condition=Available",
-		"--timeout=120s",
+		"--timeout="+cfg.ReadinessTimeout.String(),
 		"deployment/"+deployment,
 	)
 	if err != nil {
-		return fmt.Errorf("kubernetes readiness check failed for deployment/%s: timeout=%s: %w", deployment, defaultReadyTimeout, err)
+		return fmt.Errorf("kubernetes readiness check failed for deployment/%s: timeout=%s: %w", deployment, cfg.ReadinessTimeout, err)
 	}
 	return nil
 }
@@ -133,7 +176,7 @@ func checkServiceReadyEndpoint(
 		_ = cmd.Wait()
 	}()
 
-	readyCtx, readyCancel := context.WithTimeout(ctx, defaultReadyTimeout)
+	readyCtx, readyCancel := context.WithTimeout(ctx, cfg.ReadinessTimeout)
 	defer readyCancel()
 
 	var lastErr error
@@ -159,9 +202,9 @@ func checkServiceReadyEndpoint(
 		case <-readyCtx.Done():
 			return fmt.Errorf(
 				"service readiness check failed: dependency=%s check=GET %s timeout=%s last_state=%v",
-				service, readyURL, defaultReadyTimeout, lastErr,
+				service, readyURL, cfg.ReadinessTimeout, lastErr,
 			)
-		case <-time.After(defaultPollInterval):
+		case <-time.After(cfg.PollInterval):
 		}
 	}
 }
