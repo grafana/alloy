@@ -1,0 +1,17 @@
+local.file_match "test_logs" {
+  path_targets = [{
+    __path__ = "/var/log/k8s-v2/app.log",
+    job      = "k8s-v2-file-logs",
+  }]
+}
+
+loki.source.file "test_logs" {
+  targets    = local.file_match.test_logs.targets
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki.k8s-v2-observability.svc.cluster.local:3100/loki/api/v1/push"
+  }
+}

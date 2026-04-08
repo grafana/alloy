@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: k8s-v2-workloads
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alloy-logs-config
+  namespace: k8s-v2-workloads
+data:
+  config.alloy: |
+    local.file_match "test_logs" {
+      path_targets = [{
+        __path__ = "/var/log/k8s-v2/app.log",
+        job      = "k8s-v2-file-logs",
+      }]
+    }
+
+    loki.source.file "test_logs" {
+      targets    = local.file_match.test_logs.targets
+      forward_to = [loki.write.default.receiver]
+    }
+
+    loki.write "default" {
+      endpoint {
+        url = "http://loki.k8s-v2-observability.svc.cluster.local:3100/loki/api/v1/push"
+      }
+    }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logs-source
+  namespace: k8s-v2-workloads
+data:
+  app.log: |
+    k8s-v2-log-line: this line should arrive in Loki
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alloy-logs
+  namespace: k8s-v2-workloads
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alloy-logs
+  template:
+    metadata:
+      labels:
+        app: alloy-logs
+    spec:
+      containers:
+        - name: alloy
+          image: grafana/alloy:latest
+          args:
+            - "run"
+            - "/etc/alloy/config.alloy"
+          volumeMounts:
+            - name: config
+              mountPath: /etc/alloy
+            - name: logs
+              mountPath: /var/log/k8s-v2
+      volumes:
+        - name: config
+          configMap:
+            name: alloy-logs-config
+        - name: logs
+          configMap:
+            name: logs-source
