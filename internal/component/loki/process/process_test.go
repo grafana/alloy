@@ -41,11 +41,13 @@ func TestComponent(t *testing.T) {
 		expected []loki.Entry
 	}
 
-	now := time.Now().UTC()
+	var (
+		lineTimestamp = time.Now().UTC()
+	)
 
 	tests := []testCase{
 		{
-			name: "simple cri pipeline",
+			name: "cri pipeline",
 			cfg: `
 			forward_to = []
 
@@ -67,36 +69,36 @@ func TestComponent(t *testing.T) {
 			inputs: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      now.Format(time.RFC3339Nano) + " stdout P partial for file 1 stdout",
+					Line:      lineTimestamp.Format(time.RFC3339Nano) + " stdout P partial for file 1 stdout",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      now.Format(time.RFC3339Nano) + " stderr P partial for file 1 stderr",
+					Line:      lineTimestamp.Format(time.RFC3339Nano) + " stderr P partial for file 1 stderr",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file2"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      now.Format(time.RFC3339Nano) + " stdout P partial for file2",
+					Line:      lineTimestamp.Format(time.RFC3339Nano) + " stdout P partial for file2",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      now.Format(time.RFC3339Nano) + " stderr F full file 1 stderr",
+					Line:      lineTimestamp.Format(time.RFC3339Nano) + " stderr F full file 1 stderr",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file2"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      now.Format(time.RFC3339Nano) + " stderr F full file 2",
+					Line:      lineTimestamp.Format(time.RFC3339Nano) + " stderr F full file 2",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      now.Format(time.RFC3339Nano) + " stderr F full file 1 stdout",
+					Line:      lineTimestamp.Format(time.RFC3339Nano) + " stderr F full file 1 stdout",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file3"}, 0, push.Entry{
-					Timestamp: now.Add(3 * time.Second),
+					Timestamp: lineTimestamp.Add(3 * time.Second),
 					Line:      "not a cri line",
 				}),
 			},
 			expected: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now,
+					Timestamp: lineTimestamp,
 					Line:      "partial for file 1 stderrfull file 1 stderr",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "file1"},
@@ -104,7 +106,7 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now,
+					Timestamp: lineTimestamp,
 					Line:      "full file 2",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "file2"},
@@ -112,7 +114,7 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now,
+					Timestamp: lineTimestamp,
 					Line:      "full file 1 stdout",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "file1"},
@@ -120,7 +122,7 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now.Add(3 * time.Second),
+					Timestamp: lineTimestamp.Add(3 * time.Second),
 					Line:      "not a cri line",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "file3"},
@@ -129,7 +131,7 @@ func TestComponent(t *testing.T) {
 			},
 		},
 		{
-			name: "simple docker pipeline",
+			name: "docker pipeline",
 			cfg: `
 			forward_to = []
 
@@ -154,7 +156,7 @@ func TestComponent(t *testing.T) {
 					Line: mustMarshalJSON(t, map[string]string{
 						"log":    "docker stdout line\n",
 						"stream": "stdout",
-						"time":   now.Format(time.RFC3339Nano),
+						"time":   lineTimestamp.Format(time.RFC3339Nano),
 					}),
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "docker.log"}, 0, push.Entry{
@@ -162,17 +164,17 @@ func TestComponent(t *testing.T) {
 					Line: mustMarshalJSON(t, map[string]string{
 						"log":    "docker stderr line\n",
 						"stream": "stderr",
-						"time":   now.Add(time.Second).Format(time.RFC3339Nano),
+						"time":   lineTimestamp.Add(time.Second).Format(time.RFC3339Nano),
 					}),
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "docker.log"}, 0, push.Entry{
-					Timestamp: now.Add(2 * time.Second),
+					Timestamp: lineTimestamp.Add(2 * time.Second),
 					Line:      `{"msg":"not docker format"}`,
 				}),
 			},
 			expected: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now,
+					Timestamp: lineTimestamp,
 					Line:      "docker stdout line\n",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "docker.log"},
@@ -180,7 +182,7 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now.Add(time.Second),
+					Timestamp: lineTimestamp.Add(time.Second),
 					Line:      "docker stderr line\n",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "docker.log"},
@@ -188,7 +190,7 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now.Add(2 * time.Second),
+					Timestamp: lineTimestamp.Add(2 * time.Second),
 					Line:      `{"msg":"not docker format"}`,
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "docker.log"},
@@ -197,7 +199,7 @@ func TestComponent(t *testing.T) {
 			},
 		},
 		{
-			name: "simple json pipeline",
+			name: "json pipeline",
 			cfg: `
 			forward_to = []
 
@@ -234,7 +236,7 @@ func TestComponent(t *testing.T) {
 			`,
 			inputs: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "json.log"}, 0, push.Entry{
-					Timestamp: now.Add(4 * time.Second),
+					Timestamp: lineTimestamp.Add(4 * time.Second),
 					Line: mustMarshalJSON(t, map[string]string{
 						"msg":          "json line 1",
 						"app":          "api",
@@ -242,13 +244,13 @@ func TestComponent(t *testing.T) {
 					}),
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "json.log"}, 0, push.Entry{
-					Timestamp: now.Add(5 * time.Second),
+					Timestamp: lineTimestamp.Add(5 * time.Second),
 					Line:      `not json`,
 				}),
 			},
 			expected: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar", "service_name": "service-a"}, 0, push.Entry{
-					Timestamp: now.Add(4 * time.Second),
+					Timestamp: lineTimestamp.Add(4 * time.Second),
 					Line:      "json line 1",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "json.log"},
@@ -256,7 +258,7 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now.Add(5 * time.Second),
+					Timestamp: lineTimestamp.Add(5 * time.Second),
 					Line:      `not json`,
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "json.log"},
@@ -302,17 +304,17 @@ func TestComponent(t *testing.T) {
 			`,
 			inputs: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "logfmt.log"}, 0, push.Entry{
-					Timestamp: now.Add(6 * time.Second),
+					Timestamp: lineTimestamp.Add(6 * time.Second),
 					Line:      `msg="logfmt line 1" app=api service_name=service-b`,
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "logfmt.log"}, 0, push.Entry{
-					Timestamp: now.Add(7 * time.Second),
+					Timestamp: lineTimestamp.Add(7 * time.Second),
 					Line:      `not logfmt`,
 				}),
 			},
 			expected: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar", "service_name": "service-b"}, 0, push.Entry{
-					Timestamp: now.Add(6 * time.Second),
+					Timestamp: lineTimestamp.Add(6 * time.Second),
 					Line:      "logfmt line 1",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "logfmt.log"},
@@ -320,10 +322,121 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: now.Add(7 * time.Second),
+					Timestamp: lineTimestamp.Add(7 * time.Second),
 					Line:      `not logfmt`,
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "logfmt.log"},
+					},
+				}),
+			},
+		},
+		{
+			name: "multiline pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.multiline {
+				firstline     = "^\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\]"
+				max_wait_time = "50ms"
+			}
+
+			stage.regex {
+				expression = "^\\[(?P<time>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})\\] (?P<msg>(?s:.*))$"
+			}
+
+			stage.timestamp {
+				source = "time"
+				format = "2006-01-02 15:04:05"
+			}
+
+			stage.structured_metadata {
+				values = {
+					filename = "",
+				}
+			}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(8 * time.Second),
+					Line:      `not a multiline start`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(9 * time.Second),
+					Line:      `[2024-01-02 03:04:05] "GET /one HTTP/1.1" 200 -`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(10 * time.Second),
+					Line:      `[2024-01-02 03:04:06] "POST /two HTTP/1.1" 201 -`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(11 * time.Second),
+					Line:      `line 1`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "other-multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(11*time.Second + 500*time.Millisecond),
+					Line:      `[2024-01-02 03:04:08] "PATCH /other HTTP/1.1" 204 -`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(12 * time.Second),
+					Line:      `line 2`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(13 * time.Second),
+					Line:      `[2024-01-02 03:04:07] "PUT /three HTTP/1.1" 202 -`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "other-multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(13*time.Second + 500*time.Millisecond),
+					Line:      `other line 1`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "multiline.log"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(14 * time.Second),
+					Line:      `line 1`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: lineTimestamp.Add(8 * time.Second),
+					Line:      `not a multiline start`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "multiline.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: time.Date(2024, time.January, 2, 3, 4, 5, 0, time.UTC),
+					Line:      `"GET /one HTTP/1.1" 200 -`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "multiline.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: time.Date(2024, time.January, 2, 3, 4, 6, 0, time.UTC),
+					Line:      "\"POST /two HTTP/1.1\" 201 -\nline 1\nline 2",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "multiline.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: time.Date(2024, time.January, 2, 3, 4, 8, 0, time.UTC),
+					Line:      "\"PATCH /other HTTP/1.1\" 204 -\nother line 1",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "other-multiline.log"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: time.Date(2024, time.January, 2, 3, 4, 7, 0, time.UTC),
+					Line:      "\"PUT /three HTTP/1.1\" 202 -\nline 1",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "multiline.log"},
 					},
 				}),
 			},
