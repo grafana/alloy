@@ -22,6 +22,9 @@ type options struct {
 	all              bool
 	tests            []string
 	keepCluster      bool
+	keepDeps         bool
+	reuseCluster     string
+	reuseDeps        bool
 	verbose          bool
 	debug            bool
 	timeout          time.Duration
@@ -50,7 +53,8 @@ func main() {
 			"  go run ./integration-tests/k8s-v2/runner --all\n" +
 			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir --test logs-loki\n" +
 			"  go run ./integration-tests/k8s-v2/runner --test integration-tests/k8s-v2/tests/logs-loki\n" +
-			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster --debug\n" +
+			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster --keep-deps --debug\n" +
+			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-k8s-v2-dev --reuse-deps\n" +
 			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir -- --count=1",
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, passthrough []string) error {
@@ -61,6 +65,9 @@ func main() {
 	rootCmd.Flags().BoolVar(&opts.all, "all", false, "Run all discovered tests")
 	rootCmd.Flags().StringArrayVar(&opts.tests, "test", nil, "Test name or test folder path; can be specified multiple times")
 	rootCmd.Flags().BoolVar(&opts.keepCluster, "keep-cluster", false, "Keep KinD cluster after run")
+	rootCmd.Flags().BoolVar(&opts.keepDeps, "keep-deps", false, "Keep installed dependencies after run (requires --keep-cluster)")
+	rootCmd.Flags().StringVar(&opts.reuseCluster, "reuse-cluster", "", "Reuse an existing Kind cluster by name")
+	rootCmd.Flags().BoolVar(&opts.reuseDeps, "reuse-deps", false, "When reusing a cluster, skip dependency install/uninstall checks")
 	rootCmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "Enable verbose go test output")
 	rootCmd.Flags().BoolVar(&opts.debug, "debug", false, "Enable debug logging for setup and dependency checks")
 	rootCmd.Flags().DurationVar(&opts.timeout, "timeout", 30*time.Minute, "go test timeout")
@@ -89,6 +96,13 @@ func main() {
 }
 
 func run(opts options, passthrough []string) error {
+	if opts.keepDeps && !opts.keepCluster {
+		return fmt.Errorf("--keep-deps requires --keep-cluster")
+	}
+	if opts.reuseDeps && opts.reuseCluster == "" {
+		return fmt.Errorf("--reuse-deps requires --reuse-cluster")
+	}
+
 	allTests, err := planner.DiscoverTests(testsRoot)
 	if err != nil {
 		return fmt.Errorf("discover k8s-v2 tests: %w", err)
@@ -273,6 +287,15 @@ func buildGoTestArgs(opts options, selected []selectedTest, passthrough []string
 	)
 	if opts.keepCluster {
 		args = append(args, "-k8s.v2.keep-cluster=true")
+	}
+	if opts.keepDeps {
+		args = append(args, "-k8s.v2.keep-deps=true")
+	}
+	if opts.reuseCluster != "" {
+		args = append(args, "-k8s.v2.reuse-cluster="+opts.reuseCluster)
+	}
+	if opts.reuseDeps {
+		args = append(args, "-k8s.v2.reuse-deps=true")
 	}
 	if opts.debug {
 		args = append(args, "-k8s.v2.debug=true")

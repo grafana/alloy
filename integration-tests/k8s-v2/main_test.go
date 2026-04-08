@@ -28,6 +28,9 @@ const (
 var (
 	selectedTestsFlag = flag.String("k8s.v2.tests", "all", "Comma-separated k8s-v2 tests to run (default: all)")
 	keepClusterFlag   = flag.Bool("k8s.v2.keep-cluster", false, "Keep KinD cluster after test run for debugging")
+	keepDepsFlag      = flag.Bool("k8s.v2.keep-deps", false, "Keep installed dependencies after test run (requires k8s.v2.keep-cluster=true)")
+	reuseClusterFlag  = flag.String("k8s.v2.reuse-cluster", "", "Reuse an existing Kind cluster by name")
+	reuseDepsFlag     = flag.Bool("k8s.v2.reuse-deps", false, "When reusing a cluster, skip dependency install/uninstall checks")
 	setupTimeoutFlag  = flag.Duration("k8s.v2.setup-timeout", 20*time.Minute, "Setup timeout for cluster create and dependency install")
 	readinessTimeout  = flag.Duration("k8s.v2.readiness-timeout", 2*time.Minute, "Readiness timeout for dependency checks")
 	debugFlag         = flag.Bool("k8s.v2.debug", false, "Enable debug logging for setup and dependency checks")
@@ -40,6 +43,14 @@ var (
 func TestMain(m *testing.M) {
 	flag.Parse()
 	logInfo("Starting k8s-v2 test harness setup")
+	if *keepDepsFlag && !*keepClusterFlag {
+		fmt.Fprintln(os.Stderr, "k8s-v2.keep-deps requires k8s.v2.keep-cluster=true")
+		os.Exit(1)
+	}
+	if *reuseDepsFlag && *reuseClusterFlag == "" {
+		fmt.Fprintln(os.Stderr, "k8s-v2.reuse-deps requires k8s.v2.reuse-cluster")
+		os.Exit(1)
+	}
 
 	allTests, err := planner.DiscoverTests(testsRootPath)
 	if err != nil {
@@ -72,35 +83,45 @@ func TestMain(m *testing.M) {
 	logInfo("Setup timeout: %s, readiness timeout: %s", *setupTimeoutFlag, *readinessTimeout)
 
 	clusterName = fmt.Sprintf("alloy-k8s-v2-%d", rand.IntN(1_000_000))
+	if *reuseClusterFlag != "" {
+		clusterName = *reuseClusterFlag
+	}
 	provider := kind.NewProvider().WithName(clusterName).SetDefaults()
 	hasCluster := false
 	installedDeps := false
+	reusedCluster := *reuseClusterFlag != ""
 	var cleanupOnce sync.Once
 	cleanup := func(exitCode int, reason string) {
 		cleanupOnce.Do(func() {
 			if reason != "" {
 				fmt.Fprintln(os.Stderr, reason)
 			}
-			if installedDeps {
-				logInfo("Uninstalling dependencies")
+			if installedDeps && !*keepDepsFlag && !*reuseDepsFlag {
+				logInfo("Starting: uninstall dependencies")
+				start := time.Now()
 				if err := registry.Uninstall(context.Background(), kubeconfig, required); err != nil {
 					fmt.Fprintf(os.Stderr, "k8s-v2 uninstall dependencies warning: %v\n", err)
 					if exitCode == 0 {
 						exitCode = 1
 					}
 				}
+				logInfo("Finished: uninstall dependencies (%s)", formatStepDuration(time.Since(start)))
+			} else if installedDeps && (*keepDepsFlag || *reuseDepsFlag) {
+				logInfo("Keeping installed dependencies untouched")
 			}
-			if hasCluster && !*keepClusterFlag {
-				logInfo("Destroying Kind cluster %s", clusterName)
+			if hasCluster && !*keepClusterFlag && !reusedCluster {
+				logInfo("Starting: destroy Kind cluster %s", clusterName)
+				start := time.Now()
 				if err := provider.Destroy(context.Background()); err != nil {
 					fmt.Fprintf(os.Stderr, "k8s-v2 destroy kind cluster warning: %v\n", err)
 					if exitCode == 0 {
 						exitCode = 1
 					}
 				}
-			} else if hasCluster && *keepClusterFlag {
+				logInfo("Finished: destroy Kind cluster %s (%s)", clusterName, formatStepDuration(time.Since(start)))
+			} else if hasCluster && (*keepClusterFlag || reusedCluster) {
 				logInfo("Keeping cluster %s for debugging", clusterName)
-				logInfo("To reconnect: export KUBECONFIG=\"%s\" && k9s", kubeconfig)
+				logInfo("To reconnect: export KUBECONFIG=\"%s\"", kubeconfig)
 			}
 			logInfo("Harness finished with exit code %d", exitCode)
 			os.Exit(exitCode)
@@ -115,45 +136,79 @@ func TestMain(m *testing.M) {
 		cleanup(130, fmt.Sprintf("k8s-v2 received %s, starting cleanup", sig.String()))
 	}()
 
-	logInfo("Creating Kind cluster %s", clusterName)
-	createdKubeconfig, err := provider.Create(ctx)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "k8s-v2 create kind cluster failed: %v\n", err)
-		os.Exit(1)
-	}
-	hasCluster = true
-	logInfo("Kind cluster created: %s", clusterName)
+	if reusedCluster {
+		logInfo("Starting: reuse Kind cluster %s", clusterName)
+		reuseStart := time.Now()
+		exists, existsErr := kindClusterExists(ctx, clusterName)
+		if existsErr != nil {
+			cleanup(1, fmt.Sprintf("k8s-v2 check reused cluster %s failed: %v", clusterName, existsErr))
+		}
+		if !exists {
+			cleanup(1, fmt.Sprintf("k8s-v2 reuse cluster %s not found", clusterName))
+		}
+		kcfg, kcfgErr := kindGetKubeconfig(ctx, clusterName)
+		if kcfgErr != nil {
+			cleanup(1, fmt.Sprintf("k8s-v2 get kubeconfig for reused cluster %s failed: %v", clusterName, kcfgErr))
+		}
+		kubeconfig = kcfg
+		hasCluster = true
+		logInfo("Finished: reuse Kind cluster %s (%s)", clusterName, formatStepDuration(time.Since(reuseStart)))
+	} else {
+		logInfo("Starting: create Kind cluster %s", clusterName)
+		clusterCreateStart := time.Now()
+		createdKubeconfig, err := provider.Create(ctx)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "k8s-v2 create kind cluster failed: %v\n", err)
+			os.Exit(1)
+		}
+		hasCluster = true
+		logInfo("Finished: create Kind cluster %s (%s)", clusterName, formatStepDuration(time.Since(clusterCreateStart)))
 
-	kubeconfig = createdKubeconfig
-	if kubeconfig == "" {
-		kubeconfig = provider.GetKubeconfig()
+		kubeconfig = createdKubeconfig
+		if kubeconfig == "" {
+			kubeconfig = provider.GetKubeconfig()
+		}
 	}
 	if kubeconfig == "" {
 		cleanup(1, "k8s-v2 empty kubeconfig from e2e-framework kind provider")
 	}
 	logInfo("Kubeconfig path: %s", kubeconfig)
-	logInfo("To inspect cluster: export KUBECONFIG=\"%s\" && k9s", kubeconfig)
-	if !*keepClusterFlag {
+	logInfo("To inspect cluster: export KUBECONFIG=\"%s\"", kubeconfig)
+	if reusedCluster {
+		logInfo("Reused cluster will be left untouched by cleanup")
+	} else if !*keepClusterFlag {
 		logInfo("Cluster will be cleaned up after tests (use --keep-cluster to keep it)")
 	}
+	if *keepDepsFlag {
+		logInfo("Dependencies will be kept after tests")
+	}
 
-	logInfo("Ensuring workload namespace %s", workNamespace)
+	logInfo("Starting: ensure workload namespace %s", workNamespace)
+	namespaceStart := time.Now()
 	if err := ensureNamespace(ctx, kubeconfig, workNamespace); err != nil {
 		cleanup(1, fmt.Sprintf("k8s-v2 create workload namespace failed: %v", err))
 	}
-	logInfo("Workload namespace is ready")
+	logInfo("Finished: ensure workload namespace %s (%s)", workNamespace, formatStepDuration(time.Since(namespaceStart)))
 
-	logInfo("Installing dependencies")
-	if err := registry.Install(ctx, kubeconfig, required); err != nil {
-		cleanup(1, fmt.Sprintf("k8s-v2 install dependencies %v failed: %v", required, err))
+	if *reuseDepsFlag {
+		logInfo("Skipping dependency install because reuse-deps is enabled")
+	} else {
+		logInfo("Starting: install dependencies")
+		installStart := time.Now()
+		if err := registry.Install(ctx, kubeconfig, required); err != nil {
+			cleanup(1, fmt.Sprintf("k8s-v2 install dependencies %v failed: %v", required, err))
+		}
+		installedDeps = true
+		logInfo("Finished: install dependencies (%s)", formatStepDuration(time.Since(installStart)))
 	}
-	installedDeps = true
-	logInfo("Dependencies installed and ready")
 
 	os.Setenv("ALLOY_K8S_V2_KUBECONFIG", kubeconfig)
 	os.Setenv("ALLOY_K8S_V2_REQUIREMENTS", strings.Join(required, ","))
 
+	logInfo("Starting: execute selected tests")
+	testRunStart := time.Now()
 	code := m.Run()
+	logInfo("Finished: execute selected tests (%s)", formatStepDuration(time.Since(testRunStart)))
 	cleanup(code, "")
 }
 
@@ -165,21 +220,29 @@ func TestPOC(t *testing.T) {
 	for _, tc := range selectedTests {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
-			logInfo("Applying workload for test %s", tc.Name)
+			logInfo("Starting: test %s", tc.Name)
+			testStart := time.Now()
+			logInfo("Starting: apply workload for test %s", tc.Name)
+			applyStart := time.Now()
 			if err := applyWorkloadManifest(context.Background(), kubeconfig, filepath.Join(tc.Dir, "workload.yaml")); err != nil {
 				t.Fatalf("apply workload for %s failed: %v", tc.Name, err)
 			}
+			logInfo("Finished: apply workload for test %s (%s)", tc.Name, formatStepDuration(time.Since(applyStart)))
 			defer func() {
-				logInfo("Cleaning workload for test %s", tc.Name)
+				logInfo("Starting: cleanup workload for test %s", tc.Name)
+				cleanupStart := time.Now()
 				_ = deleteWorkloadManifest(context.Background(), kubeconfig, filepath.Join(tc.Dir, "workload.yaml"))
+				logInfo("Finished: cleanup workload for test %s (%s)", tc.Name, formatStepDuration(time.Since(cleanupStart)))
 			}()
 
 			reproCmd := fmt.Sprintf("go test ./integration-tests/k8s-v2 -run TestPOC/%s -args -k8s.v2.tests=%s", tc.Name, tc.Name)
-			logInfo("Running assertions for test %s", tc.Name)
+			logInfo("Starting: assertions for test %s", tc.Name)
+			assertStart := time.Now()
 			if err := runGoTestPackage(tc.Dir, kubeconfig); err != nil {
 				t.Fatalf("test %s failed: %v\nrepro: %s", tc.Name, err, reproCmd)
 			}
-			logInfo("Test %s completed", tc.Name)
+			logInfo("Finished: assertions for test %s (%s)", tc.Name, formatStepDuration(time.Since(assertStart)))
+			logInfo("Finished: test %s (%s)", tc.Name, formatStepDuration(time.Since(testStart)))
 		})
 	}
 }
@@ -229,6 +292,41 @@ func runGoTestPackage(dir, kubeconfigPath string) error {
 	return cmd.Run()
 }
 
+func kindClusterExists(ctx context.Context, name string) (bool, error) {
+	cmd := exec.CommandContext(ctx, "kind", "get", "clusters")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return false, fmt.Errorf("kind get clusters failed: %w: %s", err, string(out))
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.TrimSpace(line) == name {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func kindGetKubeconfig(ctx context.Context, name string) (string, error) {
+	cmd := exec.CommandContext(ctx, "kind", "get", "kubeconfig", "--name", name)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("kind get kubeconfig --name %s failed: %w: %s", name, err, string(out))
+	}
+
+	tmpFile, err := os.CreateTemp("", fmt.Sprintf("kind-cluster-%s-kubecfg", name))
+	if err != nil {
+		return "", fmt.Errorf("create kubeconfig temp file: %w", err)
+	}
+	if _, err := tmpFile.Write(out); err != nil {
+		_ = tmpFile.Close()
+		return "", fmt.Errorf("write kubeconfig temp file: %w", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		return "", fmt.Errorf("close kubeconfig temp file: %w", err)
+	}
+	return tmpFile.Name(), nil
+}
+
 func testNames(tests []planner.TestCase) []string {
 	names := make([]string, 0, len(tests))
 	for _, tc := range tests {
@@ -239,4 +337,11 @@ func testNames(tests []planner.TestCase) []string {
 
 func logInfo(format string, args ...any) {
 	fmt.Fprintf(os.Stderr, "[k8s-v2] "+format+"\n", args...)
+}
+
+func formatStepDuration(d time.Duration) time.Duration {
+	if d < time.Second {
+		return d.Round(10 * time.Millisecond)
+	}
+	return d.Round(time.Second)
 }

@@ -49,6 +49,24 @@ Keep the KinD cluster for debugging:
 go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster
 ```
 
+Keep cluster and dependencies untouched:
+
+```sh
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster --keep-deps
+```
+
+Reuse an existing Kind cluster:
+
+```sh
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-k8s-v2-dev
+```
+
+Reuse an existing Kind cluster and skip dependency install/uninstall:
+
+```sh
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-k8s-v2-dev --reuse-deps
+```
+
 Pass extra `go test` flags:
 
 ```sh
@@ -78,7 +96,7 @@ Enable debug logging (dependency apply/wait/readiness traces):
 go run ./integration-tests/k8s-v2/runner --test metrics-mimir --debug
 ```
 
-For interactive cluster tooling (for example `k9s`), use `--keep-cluster` and copy the printed `KUBECONFIG` export command from runner output.
+For interactive cluster tooling, use `--keep-cluster` and copy the printed `KUBECONFIG` export command from runner output.
 
 Use the Go wrapper directly:
 
@@ -97,3 +115,6 @@ go run ./integration-tests/k8s-v2/runner --test logs-loki -- --count=1
 - Run `go run ./integration-tests/k8s-v2/runner --help` for full Cobra help and flags.
 - The runner always prints resolved test absolute paths and the exact `go test` command before execution.
 - The harness prints high-level lifecycle steps (cluster setup, dependency readiness, test execution, and cleanup).
+- High-level lifecycle step logs include durations to help identify slow areas.
+- `--reuse-cluster` reuses an existing cluster by name. Reused clusters are left untouched by cleanup.
+- `--reuse-deps` skips dependency install/uninstall when reusing a cluster; no dependency validation is performed.
