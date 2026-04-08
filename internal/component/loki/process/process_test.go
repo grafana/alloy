@@ -264,6 +264,70 @@ func TestComponent(t *testing.T) {
 				}),
 			},
 		},
+		{
+			name: "simple logfmt pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.logfmt {
+				mapping = {
+					msg = "",
+					app = "",
+					service_name = "",
+				}
+			}
+
+			stage.labels {
+				values = {
+					service_name = "",
+				}
+			}
+
+			stage.structured_metadata {
+				values = {
+					filename = "",
+					app = "",
+				}
+			}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+
+			stage.output {
+				source = "msg"
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "logfmt.log"}, 0, push.Entry{
+					Timestamp: now.Add(6 * time.Second),
+					Line:      `msg="logfmt line 1" app=api service_name=service-b`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "logfmt.log"}, 0, push.Entry{
+					Timestamp: now.Add(7 * time.Second),
+					Line:      `not logfmt`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar", "service_name": "service-b"}, 0, push.Entry{
+					Timestamp: now.Add(6 * time.Second),
+					Line:      "logfmt line 1",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "logfmt.log"},
+						{Name: "app", Value: "api"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: now.Add(7 * time.Second),
+					Line:      `not logfmt`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "logfmt.log"},
+					},
+				}),
+			},
+		},
 	}
 
 	for _, tt := range tests {
