@@ -5,7 +5,6 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -59,7 +58,7 @@ func (r *firehoseRoute) Logs(req *http.Request, cfg *source.LogsConfig) ([]loki.
 		}
 	}
 
-	var bodyReader io.ReadCloser = req.Body
+	bodyReader := req.Body
 	// firehose allows the user to configure gzip content-encoding, in that case
 	// decompress in the reader during unmarshalling
 	if req.Header.Get("Content-Encoding") == "gzip" {
