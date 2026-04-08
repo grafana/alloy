@@ -805,6 +805,8 @@ func TestComponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			collector1, collector2 := loki.NewCollectingHandler(), loki.NewCollectingHandler()
 			defer collector1.Stop()
 			defer collector2.Stop()
@@ -878,7 +880,7 @@ func assertEntry(t *testing.T, expected, actual loki.Entry) {
 	t.Helper()
 
 	require.Equal(t, expected.Line, actual.Line)
-	require.Equal(t, expected.Timestamp, actual.Timestamp)
+	require.True(t, expected.Timestamp.Equal(actual.Timestamp))
 	require.EqualValues(t, expected.Labels, actual.Labels)
 	require.ElementsMatch(t, expected.StructuredMetadata, actual.StructuredMetadata)
 }
@@ -899,14 +901,18 @@ func assertEntriesUnordered(t *testing.T, expected, actual []loki.Entry) {
 			return false
 		}
 
-		expectedStructured := append(push.LabelsAdapter(nil), expected.StructuredMetadata...)
-		actualStructured := append(push.LabelsAdapter(nil), actual.StructuredMetadata...)
+		var (
+			actualStructured   = slices.Clone(actual.StructuredMetadata)
+			expectedStructured = slices.Clone(expected.StructuredMetadata)
+		)
+
 		slices.SortFunc(expectedStructured, func(a, b push.LabelAdapter) int {
 			if a.Name != b.Name {
 				return strings.Compare(a.Name, b.Name)
 			}
 			return strings.Compare(a.Value, b.Value)
 		})
+
 		slices.SortFunc(actualStructured, func(a, b push.LabelAdapter) int {
 			if a.Name != b.Name {
 				return strings.Compare(a.Name, b.Name)
