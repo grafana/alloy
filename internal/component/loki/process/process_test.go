@@ -344,6 +344,36 @@ func TestComponent(t *testing.T) {
 			},
 		},
 		{
+			name: "labe_drop and label_keep pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.static_labels {
+				values = { "foo" = "fooval", "bar" = "barval", "baz" = "bazval", "qux" = "quxval" }
+			}
+
+			stage.label_drop {
+				values = [ "foo", "bar" ]
+			}
+
+			stage.label_keep {
+				values = [ "foo", "baz", "filename" ]
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "env": "dev"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      "line",
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "baz": "bazval"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      "line",
+				}),
+			},
+		},
+		{
 			name: "multiline pipeline",
 			cfg: `
 			forward_to = []
@@ -837,91 +867,6 @@ func TestJSONLabelsStage(t *testing.T) {
 		"[OUT]: timestamp: 2019-04-30T02:12:41.8443515Z, entry: {\"log\":\"log message\\n\",\"stream\":\"stderr\",\"time\":\"2019-04-30T02:12:41.8443515Z\",\"extra\":\"{\\\"user\\\":\\\"smith\\\"}\"}, labels: {filename=\"/var/log/pods/agent/agent/1.log\", foo=\"bar\", stream=\"stderr\", ts=\"2019-04-30T02:12:41.8443515Z\", user=\"smith\"}, structured_metadata: {}",
 	}
 	require.Equal(t, expectedLiveDebuggingLog, liveDebuggingLog.Get())
-}
-
-func TestStaticLabelsLabelAllowLabelDrop(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-
-	// The following stages manipulate the label set of a log entry.
-	// The first stage will define a static set of labels (foo, bar, baz, qux)
-	// to add to the entry along the `filename` and `dev` labels.
-	// The second stage will drop the foo and bar labels.
-	// The third stage will keep only a subset of the remaining labels.
-	stg := `
-stage.static_labels {
-    values = { "foo" = "fooval", "bar" = "barval", "baz" = "bazval", "qux" = "quxval" }
-}
-stage.label_drop {
-    values = [ "foo", "bar" ]
-}
-stage.label_keep {
-    values = [ "foo", "baz", "filename" ]
-}`
-
-	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
-	// an easy way to refer to a loki.LogsReceiver value for the forward_to
-	// argument.
-	type cfg struct {
-		Stages []stages.StageConfig `alloy:"stage,enum"`
-	}
-	var stagesCfg cfg
-	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
-	require.NoError(t, err)
-
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-
-	// Create and run the component, so that it can process and forwards logs.
-	opts := component.Options{
-		Logger:         util.TestAlloyLogger(t),
-		Registerer:     prometheus.NewRegistry(),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: getServiceData,
-	}
-	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch1, ch2},
-		Stages:    stagesCfg.Stages,
-	}
-
-	c, err := New(opts, args)
-	require.NoError(t, err)
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	go c.Run(ctx)
-
-	// Send a log entry to the component's receiver.
-	ts := time.Now()
-	logline := `{"log":"log message\n","stream":"stderr","time":"2022-01-09T08:37:45.8233626Z"}`
-	logEntry := loki.Entry{
-		Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "env": "dev"},
-		Entry: push.Entry{
-			Timestamp: ts,
-			Line:      logline,
-		},
-	}
-
-	c.receiver.Chan() <- logEntry
-
-	wantLabelSet := model.LabelSet{
-		"filename": "/var/log/pods/agent/agent/1.log",
-		"baz":      "bazval",
-	}
-
-	// The log entry should be received in both channels, with the processing
-	// stages correctly applied.
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, logline, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, logline, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
 }
 
 func TestRegexTimestampOutput(t *testing.T) {
