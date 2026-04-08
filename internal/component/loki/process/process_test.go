@@ -601,12 +601,13 @@ func TestComponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			collector := loki.NewCollectingHandler()
-			defer collector.Stop()
+			collector1, collector2 := loki.NewCollectingHandler(), loki.NewCollectingHandler()
+			defer collector1.Stop()
+			defer collector2.Stop()
 
 			var args Arguments
 			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
-			args.ForwardTo = []loki.LogsReceiver{collector.Receiver()}
+			args.ForwardTo = []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()}
 
 			opts := component.Options{
 				Logger:         log.NewNopLogger(),
@@ -627,18 +628,23 @@ func TestComponent(t *testing.T) {
 				c.receiver.Chan() <- input
 			}
 
-			require.Eventually(t, func() bool { return len(collector.Received()) == len(tt.expected) }, 5*time.Second, 10*time.Millisecond)
-
-			got := collector.Received()
+			require.Eventually(t, func() bool {
+				return len(collector1.Received()) == len(tt.expected) && len(collector2.Received()) == len(tt.expected)
+			}, 5*time.Second, 10*time.Millisecond)
 
 			if tt.unorderedFrom == nil {
 				tt.unorderedFrom = ptr.To(len(tt.expected))
 			}
 
-			for i := range *tt.unorderedFrom {
-				assertEntry(t, tt.expected[i], got[i])
+			assert := func(t *testing.T, unorderedFrom int, expected, got []loki.Entry) {
+				for i := range unorderedFrom {
+					assertEntry(t, expected[i], got[i])
+				}
+				assertEntriesUnordered(t, expected[unorderedFrom:], got[unorderedFrom:])
 			}
-			assertEntriesUnordered(t, tt.expected[*tt.unorderedFrom:], got[*tt.unorderedFrom:])
+
+			assert(t, *tt.unorderedFrom, tt.expected, collector1.Received())
+			assert(t, *tt.unorderedFrom, tt.expected, collector2.Received())
 
 			cancel()
 			require.NoError(t, <-runErr)
