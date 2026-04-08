@@ -494,7 +494,7 @@ func TestComponent(t *testing.T) {
 			},
 		},
 		{
-			name: "labe_drop and label_keep pipeline",
+			name: "label_drop and label_keep pipeline",
 			cfg: `
 			forward_to = []
 
