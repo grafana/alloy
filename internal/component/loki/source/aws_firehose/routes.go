@@ -59,7 +59,7 @@ func (r *firehoseRoute) Logs(req *http.Request, cfg *source.LogsConfig) ([]loki.
 		}
 	}
 
-	var bodyReader io.Reader = req.Body
+	var bodyReader io.ReadCloser = req.Body
 	// firehose allows the user to configure gzip content-encoding, in that case
 	// decompress in the reader during unmarshalling
 	if req.Header.Get("Content-Encoding") == "gzip" {
@@ -70,6 +70,7 @@ func (r *firehoseRoute) Logs(req *http.Request, cfg *source.LogsConfig) ([]loki.
 			return nil, http.StatusBadRequest, err
 		}
 	}
+	defer bodyReader.Close()
 
 	var firehoseReq firehoseRequest
 	if err := json.NewDecoder(bodyReader).Decode(&firehoseReq); err != nil {

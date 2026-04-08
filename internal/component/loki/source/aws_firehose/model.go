@@ -11,7 +11,6 @@ import (
 // firehoseRequest implements AWS Firehose HTTP request format, according to the following appendix
 // https://docs.aws.amazon.com/firehose/latest/dev/httpdeliveryrequestresponse.html#requestformat
 type firehoseRequest struct {
-	RequestID string           `json:"requestId"`
 	Timestamp int64            `json:"timestamp"`
 	Records   []firehoseRecord `json:"records"`
 }
