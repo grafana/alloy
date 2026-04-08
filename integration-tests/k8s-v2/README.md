@@ -18,33 +18,62 @@ Each test directory contains:
 - `workload.yaml` for test workload manifests
 - `assert_test.go` for backend assertions
 
+Shared dependency manifests are stored in:
+
+- `internal/deps/manifests/mimir.yaml`
+- `internal/deps/manifests/loki.yaml`
+
+They are loaded by the dependency installers via `go:embed`.
+
 ## Commands
+
+List available tests and aliases:
+
+```sh
+make integration-test-k8s-v2-list
+```
 
 Run all k8s-v2 tests:
 
 ```sh
-go test -v ./integration-tests/k8s-v2
+make integration-test-k8s-v2-all
 ```
 
 Run one test:
 
 ```sh
-go test -v ./integration-tests/k8s-v2 -args -k8s.v2.tests=metrics-mimir
+make integration-test-k8s-v2-metrics
+make integration-test-k8s-v2-logs
 ```
 
-Run two tests in one shared lifecycle:
+Run selected tests (exact names or aliases like `metrics`, `logs`):
 
 ```sh
-go test -v ./integration-tests/k8s-v2 -args -k8s.v2.tests=metrics-mimir,logs-loki
+make integration-test-k8s-v2 TESTS=metrics-mimir,logs-loki
 ```
 
 Keep the KinD cluster for debugging:
 
 ```sh
-go test -v ./integration-tests/k8s-v2 -args -k8s.v2.tests=logs-loki -k8s.v2.keep-cluster=true
+make integration-test-k8s-v2 TESTS=metrics KEEP_CLUSTER=1
+```
+
+Pass extra `go test` flags:
+
+```sh
+make integration-test-k8s-v2 TESTS=metrics EXTRA_GO_TEST_ARGS="-count=1"
+```
+
+Use the Go wrapper directly:
+
+```sh
+go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --list
+go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests metrics,logs
+go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests metrics -- --count=1
 ```
 
 ## Notes
 
 - The runner creates a KinD cluster through e2e-framework and installs only selected dependencies.
 - On child test failure, output includes a deterministic repro command.
+- The wrapper auto-discovers tests from `tests/*/requirements.yaml` so new tests do not require wrapper code changes.

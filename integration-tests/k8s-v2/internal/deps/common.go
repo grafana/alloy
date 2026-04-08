@@ -2,6 +2,7 @@ package deps
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,17 @@ const (
 	defaultReadyTimeout   = 2 * time.Minute
 	defaultUninstallGrace = 30 * time.Second
 )
+
+//go:embed manifests/*.yaml
+var manifestFS embed.FS
+
+func readManifest(filename string) (string, error) {
+	raw, err := manifestFS.ReadFile("manifests/" + filename)
+	if err != nil {
+		return "", fmt.Errorf("read embedded manifest %q: %w", filename, err)
+	}
+	return string(raw), nil
+}
 
 func runKubectl(ctx context.Context, kubeconfig string, args ...string) ([]byte, error) {
 	fullArgs := append([]string{"--kubeconfig", kubeconfig}, args...)

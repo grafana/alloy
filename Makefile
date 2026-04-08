@@ -19,6 +19,7 @@
 ##   lint                  Lint code
 ##   integration-test      Run integration tests
 ##   integration-test-k8s  Run Kubernetes integration tests
+##   integration-test-k8s-v2  Run k8s-v2 integration tests (set TESTS=...)
 ##
 ## Targets for building binaries:
 ##
@@ -205,6 +206,22 @@ integration-test-docker:
 integration-test-k8s: alloy-image
 	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
 	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="gore2regex alloyintegrationtests" -timeout 30m ./...
+
+.PHONY: integration-test-k8s-v2 integration-test-k8s-v2-all integration-test-k8s-v2-metrics integration-test-k8s-v2-logs integration-test-k8s-v2-list
+integration-test-k8s-v2:
+	$(GO_ENV) go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests "$(if $(TESTS),$(TESTS),all)" $(if $(KEEP_CLUSTER),--keep-cluster,) -- $(EXTRA_GO_TEST_ARGS)
+
+integration-test-k8s-v2-all:
+	$(GO_ENV) go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests all -- $(EXTRA_GO_TEST_ARGS)
+
+integration-test-k8s-v2-metrics:
+	$(GO_ENV) go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests metrics -- $(EXTRA_GO_TEST_ARGS)
+
+integration-test-k8s-v2-logs:
+	$(GO_ENV) go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --tests logs -- $(EXTRA_GO_TEST_ARGS)
+
+integration-test-k8s-v2-list:
+	$(GO_ENV) go run ./integration-tests/k8s-v2/cmd/k8s-v2-run --list
 
 # Windows service integration test. Runs only on Windows with Administrator privileges.
 # Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
