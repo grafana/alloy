@@ -28,7 +28,7 @@ jobs:
       tests: ${{ steps.find-tests.outputs.tests }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
       - name: Find fuzz tests
@@ -79,12 +79,12 @@ jobs:
         include: ${{ fromJson(needs.find-tests.outputs.tests) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Set up Go
-        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: go.mod
           cache: false
@@ -93,7 +93,7 @@ jobs:
         run: echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
 
       - name: Restore fuzz cache
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ env.FUZZ_CACHE }}
           key: fuzz-${{ matrix.package }}-${{ matrix.function }}-${{ github.sha }}
@@ -107,7 +107,7 @@ jobs:
           # a different module.
           cd "${{ matrix.package }}"
           # Note: -parallel=1 is required to avoid race conditions in the fuzzer until https://github.com/golang/go/issues/56238 is fixed.
-          go test -parallel=1 -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${FUZZ_TIME}" .
+          go test -tags=gore2regex -parallel=1 -fuzz="${{ matrix.function }}\$" -run="${{ matrix.function }}\$" -fuzztime="${FUZZ_TIME}" .
         env:
           FUZZ_TIME: ${{ inputs.fuzz-time }}
 
@@ -135,7 +135,7 @@ jobs:
       - name: Upload fuzz failure as artifact
         id: artifact
         if: ${{ failure() && steps.new-failure.outputs.file != '' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }}
           path: ${{ steps.new-failure.outputs.file }}

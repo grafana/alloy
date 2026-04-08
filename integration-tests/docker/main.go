@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +21,8 @@ var (
 	stateful        bool
 	testTimeout     time.Duration
 	alwaysPrintLogs bool
+	repoRootDir     string
+	testsRootDir    string
 )
 
 func main() {
@@ -49,28 +53,28 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 	fmt.Printf("Running integration tests (stateful=%v, skip-build=%v, specific-test=%s)\n", stateful, skipBuild, specificTest)
 
 	ctx := cmd.Context()
+	repoRootDir = mustFindRepoRoot()
+	testsRootDir = filepath.Join(repoRootDir, "integration-tests", "docker")
+
 	if !skipBuild {
 		buildAlloy()
 	}
 
-	executeCommand("docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
+	start := time.Now()
+	executeCommandInDir(testsRootDir, "docker", []string{"compose", "up", "-d"}, "Starting dependent services with docker compose")
+	waitArgs := []string{"compose", "up", "-d", "--wait", "mimir", "tempo", "kafka", "redis"}
+	executeCommandInDir(testsRootDir, "docker", waitArgs, "Waiting for dependent services to be healthy")
+	waitForHTTPReady("http://localhost:9009/ready", 3*time.Minute)
+	waitForHTTPReady("http://localhost:3100/ready", 3*time.Minute)
+	fmt.Printf("Environment setup completed in %s\n", time.Since(start))
 	if !stateful {
-		defer executeCommand("docker", []string{"compose", "down"}, "Stopping dependent services")
-		fmt.Println("Sleep for 10 seconds to ensure that the env has time to initialize...")
-		time.Sleep(10 * time.Second)
-	} else {
-		// This has been the observed set of services that are required to be healthy for the tests to run. We cannot
-		// wait for all services as we have an init container that is expected to exit.
-		// After all services get a healthcheck we can use this 100% of the time instead of the hardcoded "wait 10 seconds".
-		executeCommand("docker", []string{"compose", "up", "kafka", "loki", "--wait"}, "Waiting for necessary compose services to be healthy")
+		defer executeCommandInDir(testsRootDir, "docker", []string{"compose", "down"}, "Stopping dependent services")
 	}
 
 	if specificTest != "" {
-		fmt.Println("Running", specificTest)
-		if !filepath.IsAbs(specificTest) && !strings.HasPrefix(specificTest, "./tests/") {
-			specificTest = "./tests/" + specificTest
-		}
-		runSingleTest(ctx, specificTest, 12345, stateful, testTimeout)
+		resolvedTestDir := resolveTestDir(specificTest)
+		fmt.Println("Running", resolvedTestDir)
+		runTest(ctx, resolvedTestDir, 12345, stateful, testTimeout)
 	} else {
 		runAllTests(ctx)
 	}
@@ -79,4 +83,34 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 		log.Fatalf("%d tests failed. See logs for failure", failedTests)
 	}
 	fmt.Println("All integration tests passed!")
+}
+
+func resolveTestDir(test string) string {
+	if filepath.IsAbs(test) {
+		return test
+	}
+	if strings.HasPrefix(test, "./tests/") {
+		return filepath.Join(testsRootDir, strings.TrimPrefix(test, "./"))
+	}
+	return filepath.Join(testsRootDir, "tests", test)
+}
+
+func waitForHTTPReady(url string, timeout time.Duration) {
+	fmt.Printf("Waiting for %s to be ready...\n", url)
+	deadline := time.Now().Add(timeout)
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	for time.Now().Before(deadline) {
+		resp, err := client.Get(url)
+		if err == nil {
+			_, _ = io.Copy(io.Discard, resp.Body)
+			resp.Body.Close()
+			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+				return
+			}
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	log.Fatalf("Timed out waiting for %s to be ready", url)
 }

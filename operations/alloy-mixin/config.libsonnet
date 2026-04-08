@@ -1,8 +1,8 @@
 {
     _config+:: {
-        enableK8sCluster: true,
-        enableAlloyCluster: true,
-        enableLokiLogs: true,
+        enableK8sCluster: true, # Whether to add a cluster template variable to all dashboards
+        enableAlloyCluster: true, # Whether to add Alloy clustering dashboards
+        enableLokiLogs: true, 
         filterSelector: '', #use it to filter specific metric label values, ie: job=~"integrations/alloy"
         k8sClusterSelector: 'cluster=~"$cluster", namespace=~"$namespace"',
         groupSelector: if self.enableK8sCluster then self.k8sClusterSelector + ', job=~"$job"' else 'job=~"$job"',

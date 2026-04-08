@@ -1,0 +1,31 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  attributes:
+    actions:
+      - key: test_name
+        value: otel_metrics_basic
+        action: insert
+  batch:
+
+exporters:
+  otlphttp:
+    metrics_endpoint: http://mimir:9009/otlp/v1/metrics
+    tls:
+      insecure: true
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [attributes, batch]
+      exporters: [otlphttp]

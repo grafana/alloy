@@ -5,54 +5,92 @@ might encounter and how to handle them.
 
 ## Cutting a new MINOR release
 
+### Things to know
+
+1. Minor releases are cut from the `main` branch.
+2. Tagging a minor release creates an associated release branch (e.g. release/v1.14).
+3. Patch releases are cut from the corresponding release branch.
+4. Creating an RC against `main` puts the repo into `Code Freeze` until the release-please PR is
+   merged.
+   - PRs with conventional commit types that don't affect the binary (e.g. `docs`, `test`, `ci`,
+     `style`, `proposal`) are auto-exempted from the freeze.
+   - PRs labeled `freeze-exempt` are allowed through the code freeze guard.
+
 ### Prerequisites
 
-- [OTel dependencies](./updating-otel/README.md) should be updated every ~6 weeks.
-- Prometheus dependencies should be updated every ~6 weeks.
+1. One "key dependency" is updated each release (e.g. Prometheus, OTel). Ensure the current update
+   is complete before starting.
+   - See also: [Updating OTel](./updating-otel/README.md)
+2. Any outstanding CVEs and Renovate security PRs should be addressed/merged before starting.
 
-### 1. Run the `Create Release Branch` pinned workflow on the Actions page
+### 1. Mark the release-please PR on `main` as "Ready for review"
 
-**_NOTE: Creating a release branch should be considered as "cutting off" the release. Past this
-point, only critical fixes should be merged into the branch until the release is final._**
+While doing this, review the draft release-please PR and make sure the version updates and changelog
+entries look correct.
 
-1. Leave everything as it is except uncheck the `Dry run` box.
-2. (This will create a new release branch, a new backport tag, and open a draft release-please PR.)
+You might realize that some changelog entries don't look the way you want. To address that, check
+out the section below on modifying a PR's changelog entry after it's been merged.
 
-### 2. When ready, cut an RC by running the `Create Release Candidate` pinned workflow on the Actions page
+### 2. When ready, cut an RC by running the `Create Release Candidate` workflow
 
-1.  For `Use workflow from`, select the release branch in question.
-2.  Make sure to uncheck the `Dry run` box.
-3.  (This will trigger workflows to create a draft release on GitHub, build the release artifacts,
-    and attach them to the release.)
-4.  Once everything is attached, add any relevant changelog details to the RC draft release and
-    publish it.
+> **NOTE:** This will cause the repo to enter a **Code Freeze** 🥶 until the release-please PR is
+> merged. PRs that don't affect the binary (`docs`, `test`, `ci`, `style`, `proposal`) are
+> auto-exempted. Other PRs can be labeled `freeze-exempt` to bypass the guard.
 
-### 3. (Optional) Add critical fixes to the release
+1. Run the workflow using either the GitHub CLI or github.com.
+   - **From the GitHub CLI**
+     - Run the following:
+       ```sh
+       gh workflow run release-create-rc.yml --repo grafana/alloy --ref main --field dry_run=false
+       ```
+   - **From github.com**
+     - Navigate to the pinned workflow on the Actions page.
+     - Select `main` under `Use workflow from`.
+     - Uncheck the `Dry run` box.
+   - This will trigger workflows to create a tag for the RC, draft a release on GitHub, build the
+     release artifacts, and attach them to the release.
+   - The first RC automatically creates the `backport/vX.Y` label, so PRs can be labeled for
+     backporting during the RC validation phase.
+2. Once everything is attached, add any relevant changelog details to the RC draft release and
+   publish it from either the CLI or github.com. For example:
+   ```sh
+   gh release edit <VERSION>-rc.0 --draft=false --repo grafana/alloy
+   ```
 
-1. If you need to add critical fixes to the release branch after testing an RC, check out the
-   section below on backporting fixes to a release branch.
+### 3. Validate the RC on internal deployments
 
-### 4. When ready, cut the release
+1. Deploy the RC to internal clusters following the
+   [Argo Workflows documentation](https://github.com/grafana/alloy-internal/tree/main/Argo-Workflows)
+   in the internal repo.
+2. Validate performance metrics are consistent with the prior version.
+3. Validate components are healthy.
 
-1. Move the release-please PR out of draft and review it.
-   1. You might realize that some changelog entries don't look the way you want. To address that,
-      check out the section below on modifying a PR's changelog entry after it's been merged.
-2. Merge the release-please PR.
-3. (This will trigger workflows to create a draft release on GitHub, build the release artifacts,
-   and attach them to the release.)
-4. Once everything is attached, publish the release.
+### 4. (Optional) Add critical fixes to the release
 
-### 5. Validate the release on internal deployments
+If you find issues during validation, merge only critical fixes into `main`. Once fixes are merged,
+cut a new RC and repeat step 3.
 
-1.  Validate performance metrics are consistent with the prior version.
-2.  Validate components are healthy.
+> **NOTE:** Once an RC has been created, `main` is effectively frozen until the final release. Only
+> critical fixes approved by the release manager should be merged. PRs that don't affect the binary
+> (e.g. `docs`, `test`, `ci`, `style`) are auto-exempt; other PRs can be labeled `freeze-exempt` to
+> bypass the guard.
+
+### 5. When ready, cut the release
+
+1. Merge the release-please PR into `main`.
+2. This will trigger workflows to create a draft release on GitHub, build the release artifacts, and
+   attach them to the release.
+3. Once everything is attached, publish the release either from the CLI or from the Releases page on
+   github.com.
+4. This will automatically create the corresponding `release/vX.Y` branch (and `backport/vX.Y` label
+   if it wasn't already created during the RC phase).
 
 ### 6. Update Helm Chart
 
-1. Create PR against `main` to update the helm chart code as follows:
-   1. Update `Chart.yaml` with the new helm version and app version.
-   2. Update `CHANGELOG.md` with a new section for the helm version.
-   3. Run `make docs rebuild-tests` from the `operations/helm` directory.
+1. Create a PR against `main` to update the helm chart code.
+2. Update `Chart.yaml` with the new helm version and app version.
+3. Update `CHANGELOG.md` with a new section for the helm version.
+4. Run `make docs rebuild-tests` from the `operations/helm` directory.
 
 ### 7. Update Homebrew
 
@@ -78,9 +116,12 @@ channels:
 **Message format:**
 
 ```
-:alloy: Grafana Alloy <RELEASE_VERSION> is now available! :alloy:
-Release: https://github.com/grafana/alloy/releases/tag/<RELEASE_VERSION>
-Full changelog: https://github.com/grafana/alloy/blob/<RELEASE_VERSION>/CHANGELOG.md
+:alloy: :alloy: :alloy:
+*Grafana Alloy <RELEASE_VERSION> is now available!*
+
+*Release:* https://github.com/grafana/alloy/releases/tag/<RELEASE_VERSION>
+*Full changelog:* https://github.com/grafana/alloy/blob/<RELEASE_VERSION>/CHANGELOG.md
+:alloy: :alloy: :alloy:
 ```
 
 > **Note:** The internal Alloy channel is automatically notified via GitHub Workflow.
@@ -89,9 +130,10 @@ Full changelog: https://github.com/grafana/alloy/blob/<RELEASE_VERSION>/CHANGELO
 
 The process for this is exactly the same as a minor release with two notable exceptions:
 
-1. You don't need to create a release branch. Just continue using the appropriate minor release
-   branch.
-2. You need to ensure that the changes on the release branch are **only resulting in a patch version
+1. Backport your changes to the release branch (which is automatically created after the
+   corresponding minor is tagged).
+2. Look for the release-please PR for the release branch in question.
+3. You need to ensure that the changes on the release branch are **only resulting in a patch version
    bump**. If they're not, follow the steps below for modifying PR changelog entries, or if you
    truly goofed and backported a feature instead of a fix, revert it and update changelog entries as
    necessary.
@@ -138,6 +180,9 @@ against the appropriate release branch. Merge it in and you're done!
 If there's no other pending content on the release branch, you'll see a new release-please PR get
 created for the next release.
 
+If the automatic cherry-pick fails, the workflow comments on the original PR with manual backport
+instructions.
+
 > **NOTE**: For backport PRs, **do not modify** the PR title, Commit message, or Extended
 > description.
 
@@ -148,39 +193,6 @@ PR, follow these steps:
 
 1. Remove the `autorelease: pending` label from the existing PR.
 2. Close the PR and delete the head branch.
-3. Go go the Actions page, find the release-please workflow, find the most recent entry for the
-   target branch (e.g. `release/v.1.12`), and re-run it.
+3. Go to the Actions page, find the `release-please` workflow, find the most recent entry for the
+   target branch (for example, `main` or `release/v1.12`), and re-run it.
 4. (The PR will automatically get recreated.)
-
-## Manually forwardporting a release branch to `main`
-
-The forwardport PRs are what allow the changelog, manifest, and related files to be kept up to date
-on the main branch so that subsequent releases have an appropriate starting point when looking for
-changes.
-
-If this job should happen to fail when a release-please PR gets merged into a release branch, here
-are the steps you can take to do it manually:
-
-1. `git checkout` and `git pull` both the release branch and the main branch
-2. Run `git checkout main`
-3. Run `git log -1 release/vA.B` and retain the commit hash
-4. Add a Bypass to the `Important branches require pull requests (except trusted apps)` Ruleset for
-   the `Repository admin` role.
-5. Run the following commands:
-   ```bash
-   git merge --strategy ours origin/release/vN.M --message "chore: Forwardport release A.B.C to main"
-   git cherry-pick --no-commit <release_please_commit_hash_from_earlier>
-   git commit --amend --no-edit
-   git checkout -b tmp/manual-forwardport-for-A.B.C
-   git push -u origin tmp/manual-forwardport-for-A.B.C
-   gh pr create --draft --base main --title "chore: Forwardport release A.B.C to main"
-   ```
-6. **DO NOT MERGE THIS PR**. This is only needed to get a passing `zizmor` check for the new commit.
-7. Once `zizmor` reports green, run the following commands:
-   ```bash
-   git checkout main
-   git push
-   ```
-8. The PR will automatically close itself.
-9. **Delete the Bypass** from `Important branches require pull requests (except trusted apps)` for
-   the `Repository admin` role.

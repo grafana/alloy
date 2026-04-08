@@ -7,6 +7,12 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/phayes/freeport"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/config"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace/noop"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
@@ -14,11 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/service/remotecfg"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/phayes/freeport"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/config"
-	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func TestHTTP(t *testing.T) {
@@ -399,7 +400,7 @@ func (f fakeHost) ListComponents(moduleID string, opts component.InfoOptions) ([
 
 func (fakeHost) GetServiceConsumers(serviceName string) []service.Consumer { return nil }
 
-func (fakeHost) NewController(id string) service.Controller { return nil }
+func (fakeHost) NewController(id string) (service.Controller, error) { return nil, nil }
 
 func (fakeHost) GetService(svc string) (service.Service, bool) {
 	if svc == remotecfg.ServiceName {

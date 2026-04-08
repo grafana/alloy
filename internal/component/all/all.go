@@ -65,6 +65,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/mimir/rules/kubernetes"                   // Import mimir.rules.kubernetes
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/basic"                       // Import otelcol.auth.basic
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/bearer"                      // Import otelcol.auth.bearer
+	_ "github.com/grafana/alloy/internal/component/otelcol/auth/google"                      // Import otelcol.auth.google
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/headers"                     // Import otelcol.auth.headers
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/oauth2"                      // Import otelcol.auth.oauth2
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/sigv4"                       // Import otelcol.auth.sigv4
@@ -180,6 +181,4 @@ import (
 	_ "github.com/grafana/alloy/internal/component/remote/kubernetes/secret"                 // Import remote.kubernetes.secret
 	_ "github.com/grafana/alloy/internal/component/remote/s3"                                // Import remote.s3
 	_ "github.com/grafana/alloy/internal/component/remote/vault"                             // Import remote.vault
-
-	_ "github.com/grafana/alloy/internal/util/otelfeaturegatefix" // Gracefully handle duplicate OTEL feature gates
 )

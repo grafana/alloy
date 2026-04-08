@@ -286,17 +286,31 @@ func TestCreateNodeAndResourcePromToOTLP(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			SetFeatureGateForTest(t, removeOldSemconvFeatureGate, tt.removeOldSemconvFeatureGate)
+			gate := ensureFeatureGate(t, removeOldSemconvFeatureGateID)
+			setFeatureGateForTest(t, gate, tt.removeOldSemconvFeatureGate)
 			got := CreateResource(tt.job, tt.instance, tt.sdLabels)
 			require.Equal(t, tt.want.Attributes().AsRaw(), got.Attributes().AsRaw())
 		})
 	}
 }
 
-func SetFeatureGateForTest(tb testing.TB, gate *featuregate.Gate, enabled bool) func() {
+// ensureFeatureGate returns the gate if already registered (e.g. by the
+// upstream prometheusreceiver), or registers it for standalone test runs.
+func ensureFeatureGate(t *testing.T, id string) *featuregate.Gate {
+	t.Helper()
+	if g := lookupFeatureGate(id); g != nil {
+		return g
+	}
+	g, err := featuregate.GlobalRegistry().Register(id, featuregate.StageAlpha)
+	require.NoError(t, err)
+	return g
+}
+
+func setFeatureGateForTest(tb testing.TB, gate *featuregate.Gate, enabled bool) {
+	tb.Helper()
 	originalValue := gate.IsEnabled()
 	require.NoError(tb, featuregate.GlobalRegistry().Set(gate.ID(), enabled))
-	return func() {
+	tb.Cleanup(func() {
 		require.NoError(tb, featuregate.GlobalRegistry().Set(gate.ID(), originalValue))
-	}
+	})
 }

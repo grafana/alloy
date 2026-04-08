@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
@@ -69,25 +70,28 @@ func serviceConsumersForGraph(graph *dag.Graph, serviceName string, includePeerS
 
 // NewController returns a new, unstarted, isolated Alloy controller so that
 // services can instantiate their own components.
-func (f *Runtime) NewController(id string) service.Controller {
-	return ServiceController{
-		f: newController(controllerOptions{
-			Options: Options{
-				ControllerID:         id,
-				Logger:               f.opts.Logger,
-				Tracer:               f.opts.Tracer,
-				DataPath:             f.opts.DataPath,
-				MinStability:         f.opts.MinStability,
-				Reg:                  f.opts.Reg,
-				Services:             f.opts.Services,
-				EnableCommunityComps: f.opts.EnableCommunityComps,
-				OnExportsChange:      nil, // NOTE(@tpaschalis, @wildum) The isolated controller shouldn't be able to export any values.
-			},
-			IsModule:       true,
-			ModuleRegistry: newModuleRegistry(),
-			WorkerPool:     f.opts.WorkerPool, // NOTE(@tpaschalis) Reuse the worker pool since the worker cleanup is triggered from the root controller.
-		}),
+func (f *Runtime) NewController(id string) (service.Controller, error) {
+	c, err := newController(controllerOptions{
+		Options: Options{
+			ControllerID:         id,
+			Logger:               f.opts.Logger,
+			Tracer:               f.opts.Tracer,
+			DataPath:             f.opts.DataPath,
+			MinStability:         f.opts.MinStability,
+			Reg:                  f.opts.Reg,
+			Services:             f.opts.Services,
+			EnableCommunityComps: f.opts.EnableCommunityComps,
+			OnExportsChange:      nil, // NOTE(@tpaschalis, @wildum) The isolated controller shouldn't be able to export any values.
+		},
+		IsModule:       true,
+		ModuleRegistry: newModuleRegistry(),
+		WorkerPool:     f.opts.WorkerPool, // NOTE(@tpaschalis) Reuse the worker pool since the worker cleanup is triggered from the root controller.
+	})
+	if err != nil {
+		return ServiceController{}, fmt.Errorf("failed to create new service controller: %w", err)
 	}
+
+	return ServiceController{f: c}, nil
 }
 
 type ServiceController struct {

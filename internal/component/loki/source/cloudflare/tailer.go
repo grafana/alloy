@@ -180,13 +180,13 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 				if err != nil {
 					ts = time.Now().UnixNano()
 				}
-				t.handler.Chan() <- loki.Entry{
-					Labels: t.config.Labels.Clone(),
-					Entry: push.Entry{
-						Timestamp: time.Unix(0, ts),
-						Line:      string(line),
-					},
-				}
+
+				// TODO(kalleep): pretty sure we don't have to clone here.
+				t.handler.Chan() <- loki.NewEntry(t.config.Labels.Clone(), push.Entry{
+					Timestamp: time.Unix(0, ts),
+					Line:      string(line),
+				})
+
 				lineRead++
 				t.metrics.Entries.Inc()
 			}

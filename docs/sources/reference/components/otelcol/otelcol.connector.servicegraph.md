@@ -135,6 +135,8 @@ An empty list disables the creation of a virtual node.
 
 You can use the following blocks with `otelcol.connector.servicegraph`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send telemetry data.                                   | yes      |
@@ -144,6 +146,8 @@ You can use the following blocks with `otelcol.connector.servicegraph`:
 [store]: #store
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -197,7 +201,7 @@ otelcol.receiver.otlp "default" {
   }
 
   output {
-    traces  = [otelcol.connector.servicegraph.default.input,otelcol.exporter.otlp.grafana_cloud_traces.input]
+    traces  = [otelcol.connector.servicegraph.default.input,otelcol.exporter.otlphttp.grafana_cloud_traces.input]
   }
 }
 
@@ -223,9 +227,9 @@ prometheus.remote_write "mimir" {
   }
 }
 
-otelcol.exporter.otlp "grafana_cloud_traces" {
+otelcol.exporter.otlphttp "grafana_cloud_traces" {
   client {
-    endpoint = "https://tempo-xxx.grafana.net/tempo"
+    endpoint = `https://otlp-gateway-prod-gb-south-0.grafana.net/otlp`
     auth     = otelcol.auth.basic.grafana_cloud_traces.handler
   }
 }

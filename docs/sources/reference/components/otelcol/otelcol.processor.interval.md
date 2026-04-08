@@ -69,6 +69,8 @@ You can use the following argument with `otelcol.processor.interval`:
 
 You can use the following blocks with `otelcol.processor.interval`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -78,6 +80,8 @@ You can use the following blocks with `otelcol.processor.interval`:
 [output]: #output
 [debug_metrics]: #debug_metrics
 [passthrough]: #passthrough
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -152,27 +156,27 @@ otelcol.auth.basic "grafana_cloud" {
 }
 ```
 
-| Timestamp | Metric Name    | Aggregation Temporarility | Attributes          | Value |
-|-----------|----------------|---------------------------|---------------------|------:|
-| 0         | `test_metric`  | Cumulative                | `labelA: example1`  |   4.0 |
-| 2         | `test_metric`  | Cumulative                | `labelA: example2`  |   3.1 |
-| 4         | `other_metric` | Delta                     | `fruitType: orange` |  77.4 |
-| 6         | `test_metric`  | Cumulative                | `labelA: example1`  |   8.2 |
-| 8         | `test_metric`  | Cumulative                | `labelA: example1`  |  12.8 |
-| 10        | `test_metric`  | Cumulative                | `labelA: example2`  |   6.4 |
+| Timestamp | Metric Name    | Aggregation Temporality | Attributes          | Value |
+| --------- | -------------- | ----------------------- | ------------------- | ----: |
+| 0         | `test_metric`  | Cumulative              | `labelA: example1`  |   4.0 |
+| 2         | `test_metric`  | Cumulative              | `labelA: example2`  |   3.1 |
+| 4         | `other_metric` | Delta                   | `fruitType: orange` |  77.4 |
+| 6         | `test_metric`  | Cumulative              | `labelA: example1`  |   8.2 |
+| 8         | `test_metric`  | Cumulative              | `labelA: example1`  |  12.8 |
+| 10        | `test_metric`  | Cumulative              | `labelA: example2`  |   6.4 |
 
 The processor immediately passes the following metric to the next processor in the chain because it's a Delta metric.
 
-| Timestamp | Metric Name    | Aggregation Temporarility | Attributes          | Value |
-|-----------|----------------|---------------------------|---------------------|------:|
-| 4         | `other_metric` | Delta                     | `fruitType: orange` |  77.4 |
+| Timestamp | Metric Name    | Aggregation Temporality | Attributes          | Value |
+| --------- | -------------- | ----------------------- | ------------------- | ----: |
+| 4         | `other_metric` | Delta                   | `fruitType: orange` |  77.4 |
 
 At the next `interval` (15s by default), the processor passed the following metrics to the next processor in the chain.
 
-| Timestamp | Metric Name   | Aggregation Temporarility | Attributes         | Value |
-|-----------|---------------|---------------------------|--------------------|------:|
-| 8         | `test_metric` | Cumulative                | `labelA: example1` |  12.8 |
-| 10        | `test_metric` | Cumulative                | `labelA: example1` |   6.4 |
+| Timestamp | Metric Name   | Aggregation Temporality | Attributes         | Value |
+| --------- | ------------- | ----------------------- | ------------------ | ----: |
+| 8         | `test_metric` | Cumulative              | `labelA: example1` |  12.8 |
+| 10        | `test_metric` | Cumulative              | `labelA: example1` |   6.4 |
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

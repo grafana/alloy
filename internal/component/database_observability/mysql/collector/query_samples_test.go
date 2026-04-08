@@ -53,6 +53,8 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000",
 				"456",
 				"457",
@@ -61,7 +63,7 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -84,6 +86,8 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000",
 				"456",
 				"457",
@@ -105,6 +109,8 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000",
 				"456",
 				"457",
@@ -114,8 +120,8 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
-				"level=\"info\" schema=\"some_other_schema\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_other_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 	}
@@ -159,7 +165,7 @@ func TestQuerySamples(t *testing.T) {
 					1,
 				))
 
-			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 				1e12, // initial timerBookmark
 				1e12,
 			).RowsWillBeClosed().
@@ -182,6 +188,8 @@ func TestQuerySamples(t *testing.T) {
 						"waits.object_name",
 						"waits.object_type",
 						"waits.timer_wait",
+						"threads.PROCESSLIST_USER",
+						"threads.PROCESSLIST_HOST",
 						"statements.CPU_TIME",
 						"statements.MAX_CONTROLLED_MEMORY",
 						"statements.MAX_TOTAL_MEMORY",
@@ -243,7 +251,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -266,6 +274,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -288,6 +298,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						"100000000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -314,9 +326,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
 	})
 
 	t.Run("wait event with NULL timer_wait is skipped", func(t *testing.T) {
@@ -338,7 +350,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -361,6 +373,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -383,6 +397,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						nil, // NULL timer_wait
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -411,7 +427,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("query sample and multiple wait events are collected", func(t *testing.T) {
@@ -433,7 +449,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -456,6 +472,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -478,6 +496,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"150000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -500,6 +520,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"categories",
 						"TABLE",
 						"350000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -522,6 +544,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"500000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -544,6 +568,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"categories",
 						"TABLE",
 						"700000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -570,15 +596,15 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[2].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"126\" wait_end_event_id=\"126\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000350ms\"", lokiEntries[2].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"126\" wait_end_event_id=\"126\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000350ms\"", lokiEntries[2].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[3].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"127\" wait_end_event_id=\"127\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000500ms\"", lokiEntries[3].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"127\" wait_end_event_id=\"127\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000500ms\"", lokiEntries[3].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[4].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"128\" wait_end_event_id=\"128\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000700ms\"", lokiEntries[4].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"128\" wait_end_event_id=\"128\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"categories\" wait_object_type=\"TABLE\" wait_time=\"0.000700ms\"", lokiEntries[4].Line)
 	})
 
 	t.Run("query sample and its wait event and another query sample are collected", func(t *testing.T) {
@@ -600,7 +626,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -623,6 +649,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -645,6 +673,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"150000",
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -667,6 +697,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						nil,
 						nil,
 						nil,
+						"some_user",
+						"some_host",
 						"10000000",
 						"456",
 						"457",
@@ -693,11 +725,11 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[2].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[2].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[2].Line)
 	})
 
 	t.Run("wait event with disabled sql redaction", func(t *testing.T) {
@@ -736,7 +768,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField+sqlTextField, exclusionClause, sqlTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField+sqlTextField, "", exclusionClause, sqlTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			1e12,
 		).RowsWillBeClosed().
@@ -759,6 +791,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -781,6 +815,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"wait_object_name",
 					"wait_object_type",
 					"100000000",
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -807,9 +843,374 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[1].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
+	})
+
+	t.Run("wait event below wait_min_duration is filtered by SQL", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                   db,
+			EngineVersion:        latestCompatibleVersion,
+			CollectInterval:      time.Second,
+			EntryHandler:         lokiClient,
+			Logger:               log.NewLogfmtLogger(os.Stderr),
+			WaitEventMinDuration: 1 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRows(
+					[]driver.Value{
+						"some_schema",
+						"890",
+						"123",
+						"234",
+						"some_digest",
+						"70000000",
+						"20000000",
+						"5",
+						"5",
+						"0",
+						"0",
+						nil, // no wait joined (filtered by SQL)
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						"some_user",
+						"some_host",
+						"10000000",
+						"456",
+						"457",
+					},
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 1)
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+	})
+
+	t.Run("wait event at or above wait_min_duration is collected", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                   db,
+			EngineVersion:        latestCompatibleVersion,
+			CollectInterval:      time.Second,
+			EntryHandler:         lokiClient,
+			Logger:               log.NewLogfmtLogger(os.Stderr),
+			WaitEventMinDuration: 1 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRows(
+					[]driver.Value{
+						"some_schema",
+						"890",
+						"123",
+						"234",
+						"some_digest",
+						"70000000",
+						"20000000",
+						"5",
+						"5",
+						"0",
+						"0",
+						"124",
+						"124",
+						"wait/io/file/innodb/innodb_data_file",
+						"wait_object_name",
+						"wait_object_type",
+						"1000000000", // 1ms in picoseconds
+						"some_user",
+						"some_host",
+						"10000000",
+						"456",
+						"457",
+					},
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"1.000000ms\"", lokiEntries[1].Line)
+	})
+}
+
+func TestQuerySamples_SampleMinDuration(t *testing.T) {
+	t.Run("query sample below sample_min_duration is filtered by SQL", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                db,
+			EngineVersion:     latestCompatibleVersion,
+			CollectInterval:   time.Second,
+			EntryHandler:      lokiClient,
+			Logger:            log.NewLogfmtLogger(os.Stderr),
+			SampleMinDuration: 1 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		time.Sleep(500 * time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 0)
+	})
+
+	t.Run("query sample at or above sample_min_duration is collected", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                db,
+			EngineVersion:     latestCompatibleVersion,
+			CollectInterval:   time.Second,
+			EntryHandler:      lokiClient,
+			Logger:            log.NewLogfmtLogger(os.Stderr),
+			SampleMinDuration: 1 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"70000000",
+					"1000000000", // 1ms in picoseconds
+					"5",
+					"5",
+					"0",
+					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 1)
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 	})
 }
 
@@ -852,7 +1253,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField+sqlTextField, exclusionClause, sqlTextNotNullClause, endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField+sqlTextField, "", exclusionClause, sqlTextNotNullClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -872,6 +1273,8 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -894,6 +1297,8 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -920,7 +1325,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -960,7 +1365,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -980,6 +1385,8 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -1001,6 +1408,8 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1026,7 +1435,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 }
 
@@ -1063,8 +1472,10 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"threads.PROCESSLIST_USER",
+				"threads.PROCESSLIST_HOST",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.000000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.000000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -1083,6 +1494,8 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 			},
 		},
 		{
@@ -1107,9 +1520,11 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"threads.PROCESSLIST_USER",
+				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -1128,6 +1543,8 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000", // CPU_TIME
 			},
 		},
@@ -1153,11 +1570,13 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"threads.PROCESSLIST_USER",
+				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
 				"statements.MAX_CONTROLLED_MEMORY",
 				"statements.MAX_TOTAL_MEMORY",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="1024b" max_total_memory="2048b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="1024b" max_total_memory="2048b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -1176,6 +1595,8 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				"some_user",
+				"some_host",
 				"10000000", // CPU_TIME
 				"1024",     // MAX_CONTROLLED_MEMORY
 				"2048",     // MAX_TOTAL_MEMORY
@@ -1221,7 +1642,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 					1,
 				))
 
-			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, tc.expectedFields, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, tc.expectedFields, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows(tc.expectedColumns).AddRow(tc.scanValues...),
 				)
@@ -1289,7 +1710,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1309,7 +1730,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1332,6 +1753,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -1353,6 +1776,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1378,7 +1803,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -1417,7 +1842,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(1e12, 2e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(1e12, 2e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -1437,6 +1862,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -1458,6 +1885,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1479,6 +1908,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1504,7 +1935,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -1543,7 +1974,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			2e12,
 		).WillReturnError(fmt.Errorf("connection error"))
@@ -1557,7 +1988,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			2e12,
 		).RowsWillBeClosed().
@@ -1580,6 +2011,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -1601,6 +2034,8 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -1626,7 +2061,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 }
 
@@ -1685,7 +2120,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				5,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1706,6 +2141,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"statements.CPU_TIME",
 			"statements.MAX_CONTROLLED_MEMORY",
 			"statements.MAX_TOTAL_MEMORY",
@@ -1728,6 +2165,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,           // WAIT_OBJECT_NAME
 				nil,           // WAIT_OBJECT_TYPE
 				nil,           // WAIT_TIME
+				"some_user",   // PROCESSLIST_USER
+				"some_host",   // PROCESSLIST_HOST
 				555555,        // cpu_time
 				1048576,       // max_controlled_memory (1MB)
 				2097152,       // max_total_memory (2MB)
@@ -1758,7 +2197,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		assert.Equal(t, model.LabelSet{
 			"op": OP_QUERY_SAMPLE,
 		}, lokiClient.Received()[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"test_schema\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"test_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
 	})
 
 	t.Run("asserts that expected query text is used in the constants", func(t *testing.T) {
@@ -1779,7 +2218,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				5,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1800,6 +2239,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -1830,7 +2271,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
 			3e12,
 			10e12, // uptimeLimit is calculated as uptime "modulo" overflows: (uptime - 1 overflow) in picoseconds
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1850,6 +2291,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -1880,7 +2323,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, beginningAndEndOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", beginningAndEndOfTimeline)).WithArgs(
 			3e12,
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1900,6 +2343,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -1921,7 +2366,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+13,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
 			10e12, // asserts timerBookmark has been updated to the previous uptimeLimit
 			13e12, // asserts uptimeLimit is now updated to the current uptime "modulo" overflows
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1940,6 +2385,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -1963,7 +2410,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			float64(0),
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -1982,6 +2429,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -2007,7 +2456,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			float64(0),
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2026,6 +2475,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -2065,7 +2516,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
 
 		c := &QuerySamples{
 			dbConnection:  db,
@@ -2082,7 +2533,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			2e12,
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2100,6 +2551,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
 			"cpu_time",
 			"max_controlled_memory",
 			"max_total_memory",
@@ -2119,6 +2572,8 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,           // WAIT_OBJECT_NAME
 				nil,           // WAIT_OBJECT_TYPE
 				nil,           // WAIT_TIME
+				"some_user",   // PROCESSLIST_USER
+				"some_host",   // PROCESSLIST_HOST
 				555555,        // cpu_time
 				1048576,       // max_controlled_memory (1MB)
 				2097152,       // max_total_memory (2MB)
@@ -2232,7 +2687,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, exclusionClause, digestTextNotNullClause, endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -2255,6 +2710,8 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
@@ -2276,6 +2733,8 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					"some_user",
+					"some_host",
 					"10000000",
 					"456",
 					"457",
@@ -2379,12 +2838,12 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 
 	// Verify the query uses the custom exclusion clause
 	customClause := buildExcludedSchemasClause([]string{"excluded_schema"})
-	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, customClause, digestTextNotNullClause, endOfTimeline)).
+	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", customClause, digestTextNotNullClause, "", endOfTimeline)).
 		WithArgs(1e12, 1e12).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"current_schema", "thread_id", "event_id", "end_event_id", "digest",
 		"timer_end", "timer_wait", "rows_examined", "rows_sent", "rows_affected",
 		"errors", "object_schema", "object_name", "object_type", "index_name",
-		"lock_time", "digest_text", "cpu_time", "max_controlled_memory", "max_total_memory",
+		"lock_time", "digest_text", "threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST", "cpu_time", "max_controlled_memory", "max_total_memory",
 	}))
 
 	c.fetchQuerySamples(t.Context())

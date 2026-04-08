@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.6.0](https://img.shields.io/badge/Version-1.6.0-informational?style=flat-square) ![AppVersion: v1.13.0](https://img.shields.io/badge/AppVersion-v1.13.0-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.7.0](https://img.shields.io/badge/Version-1.7.0-informational?style=flat-square) ![AppVersion: v1.15.0](https://img.shields.io/badge/AppVersion-v1.15.0-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -45,7 +45,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.envFrom | list | `[]` | Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core |
 | alloy.extraArgs | list | `[]` | Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/ |
 | alloy.extraEnv | list | `[]` | Extra environment variables to pass to the Alloy container. |
-| alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. |
+| alloy.extraPorts | list | `[]` | Extra ports to expose on the Alloy container. If `service.type` is `NodePort`, each item may set `nodePort` to choose the Service NodePort for that port. |
 | alloy.hostAliases | list | `[]` | Host aliases to add to the Alloy container. |
 | alloy.initialDelaySeconds | int | `10` | Initial delay for readiness probe. |
 | alloy.lifecycle | object | `{}` | Set lifecycle hooks for the Grafana Alloy container. |
@@ -65,6 +65,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.customArgs | list | `[]` | Override the args passed to the container. |
 | configReloader.enabled | bool | `true` | Enables automatically reloading when the Alloy config changes. |
 | configReloader.image.digest | string | `""` | SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag` |
+| configReloader.image.pullPolicy | string | `"IfNotPresent"` | Config reloader image pull policy. |
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
 | configReloader.image.tag | string | `"v0.81.0"` | Tag of image to use for config reloading. |
@@ -123,6 +124,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | controller.podLabels | object | `{}` | Extra pod labels to add. |
 | controller.priorityClassName | string | `""` | priorityClassName to apply to Grafana Alloy pods. |
 | controller.replicas | int | `1` | Number of pods to deploy. Ignored when controller.type is 'daemonset'. |
+| controller.revisionHistoryLimit | int | `10` | The maximum number of revisions that will be maintained in the Controllers's revision history. The history consists of all revisions not represented by a currently applied reversion. |
 | controller.terminationGracePeriodSeconds | string | `nil` | Termination grace period in seconds for the Grafana Alloy pods. The default value used by Kubernetes if unspecifed is 30 seconds. |
 | controller.tolerations | list | `[]` | Tolerations to apply to Grafana Alloy pods. |
 | controller.topologySpreadConstraints | list | `[]` | Topology Spread Constraints to apply to Grafana Alloy pods. |

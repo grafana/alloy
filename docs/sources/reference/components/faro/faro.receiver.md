@@ -55,6 +55,8 @@ The following strings are valid log line formats:
 
 You can use the following blocks with `faro.receiver`:
 
+{{< docs/alloy-config >}}
+
 | Block                                        | Description                                          | Required |
 |----------------------------------------------|------------------------------------------------------|----------|
 | [`output`][output]                           | Configures where to send collected telemetry data.   | yes      |
@@ -64,15 +66,14 @@ You can use the following blocks with `faro.receiver`:
 | `sourcemaps` > [`cache`][cache]              | Configures sourcemap caching behavior.               | no       |
 | `sourcemaps` >  [`location`][location]       | Configures on-disk location for sourcemap retrieval. | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `sourcemaps` > `location` refers to a `location` block defined inside a `sourcemaps` block.
-
 [cache]: #cache
 [location]: #location
 [output]: #output
 [rate_limiting]: #rate_limiting
 [server]: #server
 [sourcemaps]: #sourcemaps
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -267,7 +268,7 @@ faro.receiver "default" {
 
     output {
         logs   = [loki.write.default.receiver]
-        traces = [otelcol.exporter.otlp.traces.input]
+        traces = [otelcol.exporter.otlphttp.traces.input]
     }
 }
 
@@ -277,7 +278,7 @@ loki.write "default" {
     }
 }
 
-otelcol.exporter.otlp "traces" {
+otelcol.exporter.otlphttp "traces" {
     client {
         endpoint = "<OTLP_ADDRESS>"
     }
@@ -293,10 +294,10 @@ Replace the following:
 * `LOKI_ADDRESS`: Address of the Loki server to send logs to.
   Refer to [`loki.write`][loki.write] if you want to use authentication to send logs to the Loki server.
 * _`<OTLP_ADDRESS>`_: The address of the OTLP-compatible server to send traces to.
-  Refer to[`otelcol.exporter.otlp`][otelcol.exporter.otlp] if you want to use authentication to send logs to the Loki server.
+  Refer to[`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] if you want to use authentication to send logs to an OTLP server.
 
 [loki.write]: ../../loki/loki.write/
-[otelcol.exporter.otlp]: ../../otelcol/otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../../otelcol/otelcol.exporter.otlphttp/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

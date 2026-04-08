@@ -1877,6 +1877,47 @@ func TestQueryFailureDenylist(t *testing.T) {
 	})
 }
 
+func TestBatchSizeLimitsProcessing(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:             db,
+		Logger:         log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+		ScrapeInterval: time.Second,
+		PerScrapeRatio: 1,
+		EntryHandler:   lokiClient,
+		DBVersion:      "8.0.32",
+	})
+	require.NoError(t, err)
+
+	c.queryCache = map[string]*queryInfo{
+		"s1d1": newQueryInfo("s1", "d1", "select * from t1 where ..."),
+		"s1d2": newQueryInfo("s1", "d2", "select * from t2 where ..."),
+		"s1d3": newQueryInfo("s1", "d3", "select * from t3 where ..."),
+		"s1d4": newQueryInfo("s1", "d4", "select * from t4 where ..."),
+	}
+	c.currentBatchSize = 2
+
+	err = c.fetchExplainPlans(t.Context())
+	require.NoError(t, err)
+
+	require.Equal(t, 2, len(c.queryCache), "batch size limit should leave unprocessed items in cache")
+
+	require.Eventually(t,
+		func() bool { return len(lokiClient.Received()) == 2 },
+		5*time.Second, 10*time.Millisecond,
+		"expected exactly 2 loki entries (one per processed item), got %d", len(lokiClient.Received()),
+	)
+
+	err = mock.ExpectationsWereMet()
+	require.NoError(t, err)
+}
+
 func TestSchemaDenylist(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)

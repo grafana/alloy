@@ -315,8 +315,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
-		// NOTE: This is not Update()-able.
-		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
@@ -331,7 +329,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	targetsGauge := client_prometheus.NewGauge(client_prometheus.GaugeOpts{
 		Name: "prometheus_scrape_targets_gauge",
-		Help: "Number of targets this component is configured to scrape"})
+		Help: "Number of targets this component is configured to scrape",
+	})
 	err = o.Registerer.Register(targetsGauge)
 	if err != nil {
 		return nil, err
@@ -339,7 +338,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	movedTargetsCounter := client_prometheus.NewCounter(client_prometheus.CounterOpts{
 		Name: "prometheus_scrape_targets_moved_total",
-		Help: "Number of targets that have moved from this cluster node to another one"})
+		Help: "Number of targets that have moved from this cluster node to another one",
+	})
 	err = o.Registerer.Register(movedTargetsCounter)
 	if err != nil {
 		return nil, err
@@ -385,6 +385,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer c.scraper.Stop()
 	defer c.unregisterer.UnregisterAll()
+	defer c.appendable.Clear()
 
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
 
@@ -430,12 +431,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}
 }
 
-func (c *Component) distributeTargets(
-	targets []discovery.Target,
-	jobName string,
-	args Arguments,
-) (map[string][]*targetgroup.Group, []*scrape.Target) {
-
+func (c *Component) distributeTargets(targets []discovery.Target, jobName string, args Arguments) (map[string][]*targetgroup.Group, []*scrape.Target) {
 	var (
 		newDistTargets        = discovery.NewDistributedTargets(args.Clustering.Enabled, c.cluster, targets)
 		oldDistributedTargets *discovery.DistributedTargets
@@ -466,16 +462,25 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	// Always store the latest targets and schedule a reload, even if the rest
+	// of the update fails. This ensures the component scrapes the correct set
+	// of targets when running with a partially-updated config.
+	c.args.Targets = newArgs.Targets
+	defer func() {
+		select {
+		case c.reloadTargets <- struct{}{}:
+		default:
+		}
+	}()
+
 	// Some fields are not updateable at runtime - only allow them when Update()
 	// is called for the first time from New().
 	if !c.firstUpdateDone {
 		c.firstUpdateDone = true
 	} else {
 		if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
-			return fmt.Errorf("scrape_native_histograms cannot be updated at runtime")
-		}
-		if c.args.ExtraMetrics != newArgs.ExtraMetrics {
-			return fmt.Errorf("extra_metrics cannot be updated at runtime")
+			level.Warn(c.opts.Logger).Log("msg", "scrape_native_histograms cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.ScrapeNativeHistograms, "requested", newArgs.ScrapeNativeHistograms)
+			newArgs.ScrapeNativeHistograms = c.args.ScrapeNativeHistograms
 		}
 	}
 
@@ -494,11 +499,6 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("error applying scrape configs: %w", err)
 	}
 	level.Debug(c.opts.Logger).Log("msg", "scrape config was updated")
-
-	select {
-	case c.reloadTargets <- struct{}{}:
-	default:
-	}
 
 	return nil
 }
@@ -577,6 +577,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.EnableCompression = c.EnableCompression
 	dec.NativeHistogramBucketLimit = c.NativeHistogramBucketLimit
 	dec.NativeHistogramMinBucketFactor = c.NativeHistogramMinBucketFactor
+	dec.ExtraScrapeMetrics = &c.ExtraMetrics
 
 	return &dec
 }

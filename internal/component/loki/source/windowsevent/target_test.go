@@ -46,7 +46,8 @@ func TestBookmarkUpdate(t *testing.T) {
 		ExcludeUserData:      false,
 		Labels:               util.MapToModelLabelSet(map[string]string{"job": "windows"}),
 	}
-	handle := &handler{handler: make(chan loki.Entry)}
+
+	handle := loki.NewLogsReceiver()
 	winTarget, err := NewTarget(log.NewLogfmtLogger(os.Stderr), handle, nil, scrapeConfig, 1000*time.Millisecond)
 	require.NoError(t, err)
 
@@ -55,7 +56,7 @@ func TestBookmarkUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	select {
-	case e := <-handle.handler:
+	case e := <-handle.Chan():
 		require.Equal(t, model.LabelValue("windows"), e.Labels["job"])
 	case <-time.After(3 * time.Second):
 		require.FailNow(t, "failed waiting for event")

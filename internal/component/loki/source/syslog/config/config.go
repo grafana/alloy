@@ -126,6 +126,9 @@ type SyslogTargetConfig struct {
 	// When false, the year will default to 0.
 	RFC3164DefaultToCurrentYear bool `yaml:"rfc3164_default_to_current_year"`
 
+	// RFC5424AllowEmptyMsg when true, forwards RFC5424 messages with empty MSG content. Default false.
+	RFC5424AllowEmptyMsg bool `yaml:"rfc5424_allow_empty_msg"`
+
 	// RFC3164CiscoComponents enables and configures Cisco IOS syslog parsing.
 	RFC3164CiscoComponents *RFC3164CiscoComponents `yaml:"rfc3164_cisco_components"`
 }

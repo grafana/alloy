@@ -268,7 +268,7 @@ func BenchmarkPipeline(b *testing.B) {
 				for range out {
 				}
 			}()
-			for i := 0; i < b.N; i++ {
+			for b.Loop() {
 				in <- newEntry(nil, lb, bm.entry, ts)
 			}
 			close(in)
@@ -310,7 +310,7 @@ func TestPipeline_Wrap(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 			c := loki.NewCollectingHandler()
-			handler := p.Start(c.Chan())
+			handler := p.Start(make(chan loki.Entry), c.Chan())
 
 			handler.Chan() <- loki.Entry{
 				Labels: tt.labels,
@@ -333,7 +333,6 @@ func TestPipeline_Wrap(t *testing.T) {
 }
 
 func Test_PipelineParallel(t *testing.T) {
-	handler := loki.NewCollectingHandler()
 	cfg := `
 stage.match {
 		selector = "{match=~\".*\"}"
@@ -368,7 +367,9 @@ stage.match {
 	p, err := newPipelineFromConfig(cfg)
 	require.NoError(t, err)
 
-	e1 := p.Start(handler.Chan())
+	out := loki.NewCollectingHandler()
+
+	e1 := p.Start(make(chan loki.Entry), out.Chan())
 	e2 := loki.AddLabelsMiddleware(model.LabelSet{"bar": "foo"}).Wrap(e1)
 	entryhandler := loki.AddLabelsMiddleware(model.LabelSet{"foo": "bar"}).Wrap(e2)
 
@@ -401,6 +402,6 @@ stage.match {
 	entryhandler.Stop()
 	e2.Stop()
 	e1.Stop()
-	handler.Stop()
-	t.Log(handler.Received())
+	out.Stop()
+	t.Log(out.Received())
 }

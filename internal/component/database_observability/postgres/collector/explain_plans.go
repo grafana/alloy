@@ -9,6 +9,7 @@ import (
 	"math"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -38,7 +39,8 @@ const selectQueriesForExplainPlanTemplate = `
 	FROM pg_stat_statements s
 		JOIN pg_database d ON s.dbid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE s.queryid IS NOT NULL AND s.query IS NOT NULL
-		AND d.datname NOT IN %s`
+		AND d.datname NOT IN %s
+		%s`
 
 const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
 
@@ -214,6 +216,7 @@ type ExplainPlansArguments struct {
 	ScrapeInterval   time.Duration
 	PerScrapeRatio   float64
 	ExcludeDatabases []string
+	ExcludeUsers     []string
 	EntryHandler     loki.EntryHandler
 	DBVersion        string
 
@@ -230,6 +233,7 @@ type ExplainPlans struct {
 	queryDenylist       map[string]*queryInfo
 	finishedQueryCache  map[string]*queryInfo
 	excludeDatabases    []string
+	excludeUsers        []string
 	perScrapeRatio      float64
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
@@ -237,6 +241,7 @@ type ExplainPlans struct {
 	running             *atomic.Bool
 	ctx                 context.Context
 	cancel              context.CancelFunc
+	wg                  sync.WaitGroup
 }
 
 func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
@@ -247,6 +252,7 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		scrapeInterval:      args.ScrapeInterval,
 		perScrapeRatio:      args.PerScrapeRatio,
 		excludeDatabases:    args.ExcludeDatabases,
+		excludeUsers:        args.ExcludeUsers,
 		queryCache:          make(map[string]*queryInfo),
 		queryDenylist:       make(map[string]*queryInfo),
 		finishedQueryCache:  make(map[string]*queryInfo),
@@ -313,13 +319,11 @@ func (c *ExplainPlans) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.scrapeInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.fetchExplainPlans(c.ctx); err != nil {
@@ -333,7 +337,7 @@ func (c *ExplainPlans) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -343,16 +347,20 @@ func (c *ExplainPlans) Stopped() bool {
 }
 
 func (c *ExplainPlans) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	var selectStatement string
 	var resetTS time.Time
 	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
+	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(s.userid)")
 	version17Plus := semver.MustParseRange(">=17.0.0")(c.dbVersion)
 	if version17Plus {
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", excludedDatabasesClause)
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", excludedDatabasesClause, excludedUsersClause)
 	} else {
 		statReset := c.dbConnection.QueryRowContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
 		if err := statReset.Err(); err != nil {
@@ -361,7 +369,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		if err := statReset.Scan(&resetTS); err != nil {
 			return fmt.Errorf("failed to scan stats reset time for explain plans: %w", err)
 		}
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", excludedDatabasesClause)
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", excludedDatabasesClause, excludedUsersClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)

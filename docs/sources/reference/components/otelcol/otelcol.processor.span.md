@@ -42,6 +42,8 @@ The `otelcol.processor.span` component doesn't support any arguments. You can co
 
 You can use the following blocks with `otelcol.processor.span`:
 
+{{< docs/alloy-config >}}
+
 | Block                                     | Description                                                                | Required |
 |-------------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                        | Configures where to send received telemetry data.                          | yes      |
@@ -60,11 +62,6 @@ You can use the following blocks with `otelcol.processor.span`:
 | `name` > [`to-attributes`][to-attributes] | Configuration to create attributes from a span name.                       | no       |
 | [`status`][status]                        | Specifies a status which should be set for this span.                      | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `include` > `attribute` refers to an `attribute` block defined inside an `include` block.
-
-If both an `include` block and an `exclude`block are specified, the `include` properties are checked before the `exclude` properties.
-
 [name]: #name
 [to-attributes]: #to_attributes
 [status]: #status
@@ -76,6 +73,10 @@ If both an `include` block and an `exclude`block are specified, the `include` pr
 [resource]: #resource
 [library]: #library
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
+
+If both an `include` block and an `exclude`block are specified, the `include` properties are checked before the `exclude` properties.
 
 ### `output`
 
@@ -246,7 +247,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -280,7 +281,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -312,7 +313,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -332,7 +333,7 @@ otelcol.processor.span "keep_original_name" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -365,7 +366,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -382,7 +383,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -405,7 +406,7 @@ otelcol.processor.span "default" {
   }
 
   output {
-      traces = [otelcol.exporter.otlp.default.input]
+      traces = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```

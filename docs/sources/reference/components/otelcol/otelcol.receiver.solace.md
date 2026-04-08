@@ -51,8 +51,10 @@ You can use the following arguments with `otelcol.receiver.solace`:
 
 You can use the following blocks with `otelcol.receiver.solace`:
 
+{{< docs/alloy-config >}}
+
 | Block                                               | Description                                                                                                                      | Required |
-|-----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|----------|
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                  | Configures where to send received telemetry data.                                                                                | yes      |
 | [`authentication`][authentication]                  | Configures authentication for connecting to the Solace broker.                                                                   | yes      |
 | `authentication` > [`sasl_external`][sasl_external] | Authenticates against the Solace broker with SASL External.                                                                      | no       |
@@ -62,14 +64,7 @@ You can use the following blocks with `otelcol.receiver.solace`:
 | [`flow`][flow]                                      | Configures the behaviour to use when temporary errors are encountered from the next component.                                   | no       |
 | `flow` > [`delayed_retry`][delayed_retry]           | Sets the flow control strategy to `delayed retry` which will wait before trying to push the message to the next component again. | no       |
 | [`tls`][tls]                                        | Configures TLS for connecting to the Solace broker.                                                                              | no       |
-| `tls` > [`tpm`][tpm]                                | Configures TPM settings for the TLS key_file.                                                                                    | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
-
-One SASL authentication block is required in the `authentication` block.
-
-`sasl_external` must be used together with the `tls` block.
+| `tls` > [`tpm`][tpm]                                | Configures TPM settings for the TLS `key_file`.                                                                                  | no       |
 
 [authentication]: #authentication
 [sasl_plain]: #sasl_plain
@@ -81,6 +76,12 @@ One SASL authentication block is required in the `authentication` block.
 [delayed_retry]: #delayed_retry
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
+
+One SASL authentication block is required in the `authentication` block.
+
+`sasl_external` must be used together with the `tls` block.
 
 ### `output`
 
@@ -196,11 +197,11 @@ otelcol.receiver.solace "default" {
 
 otelcol.processor.batch "default" {
   output {
-    traces  = [otelcol.exporter.otlp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }

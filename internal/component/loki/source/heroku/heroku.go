@@ -2,20 +2,19 @@ package heroku
 
 import (
 	"context"
-	"reflect"
+	"fmt"
 	"sync"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	ht "github.com/grafana/alloy/internal/component/loki/source/heroku/internal/herokutarget"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/model/relabel"
 )
 
 func init() {
@@ -50,27 +49,27 @@ func (a *Arguments) SetToDefault() {
 // Component implements the loki.source.heroku component.
 type Component struct {
 	opts          component.Options
-	metrics       *ht.Metrics              // Metrics about Heroku entries.
+	metrics       *metrics                 // Metrics about Heroku entries.
 	serverMetrics *util.UncheckedCollector // Metircs about the HTTP server managed by the component.
 
-	mut    sync.RWMutex
-	args   Arguments
-	fanout []loki.LogsReceiver
-	target *ht.HerokuTarget
+	mut  sync.RWMutex
+	args Arguments
 
-	handler loki.LogsReceiver
+	fanout *loki.Fanout
+	server *source.Server
+
+	handler loki.LogsBatchReceiver
 }
 
 // New creates a new loki.source.heroku component.
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:          o,
-		metrics:       ht.NewMetrics(o.Registerer),
+		metrics:       newMetrics(o.Registerer),
 		mut:           sync.RWMutex{},
 		args:          Arguments{},
-		fanout:        args.ForwardTo,
-		target:        nil,
-		handler:       loki.NewLogsReceiver(),
+		fanout:        loki.NewFanout(args.ForwardTo),
+		handler:       loki.NewLogsBatchReceiver(),
 		serverMetrics: util.NewUncheckedCollector(nil),
 	}
 
@@ -91,26 +90,13 @@ func (c *Component) Run(ctx context.Context) error {
 		defer c.mut.Unlock()
 
 		level.Info(c.opts.Logger).Log("msg", "loki.source.heroku component shutting down, stopping listener")
-		if c.target != nil {
-			err := c.target.Stop()
-			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "error while stopping heroku listener", "err", err)
-			}
+		if c.server != nil {
+			c.server.ForceShutdown()
 		}
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.fanout {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
-		}
-	}
+	loki.ConsumeBatch(ctx, c.handler, c.fanout)
+	return nil
 }
 
 // Update implements component.Component.
@@ -119,23 +105,16 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout = newArgs.ForwardTo
 
-	var rcs []*relabel.Config
-	if len(newArgs.RelabelRules) > 0 {
-		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
+	c.fanout.UpdateChildren(newArgs.ForwardTo)
+
+	if newArgs.Server == nil {
+		newArgs.Server = &fnet.ServerConfig{}
 	}
 
-	restartRequired := changed(c.args.Server, newArgs.Server) ||
-		changed(c.args.RelabelRules, newArgs.RelabelRules) ||
-		changed(c.args.Labels, newArgs.Labels) ||
-		c.args.UseIncomingTimestamp != newArgs.UseIncomingTimestamp
-	if restartRequired {
-		if c.target != nil {
-			err := c.target.Stop()
-			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "error while stopping heroku listener", "err", err)
-			}
+	if c.server.NeedsRestart(newArgs.Server) {
+		if c.server != nil {
+			c.server.Shutdown()
 		}
 
 		// [ht.NewHerokuTarget] registers new metrics every time it is called. To
@@ -145,32 +124,49 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-		t, err := ht.NewHerokuTarget(c.metrics, c.opts.Logger, entryHandler, rcs, newArgs.Convert(), registry)
+		server, err := source.NewServer(c.opts.Logger, registry, c.handler, source.ServerConfig{
+			Namespace:      "loki_source_heroku_drain_target",
+			EntriesWritten: c.metrics.entriesWritten,
+			NetConfig:      newArgs.Server,
+			LogsConfig: &source.LogsConfig{
+				FixedLabels:          newArgs.labelSet(),
+				RelabelRules:         alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
+				UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
+			},
+		})
+
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create heroku listener with provided config", "err", err)
-			return err
+			return fmt.Errorf("failed to create heroku server: %w", err)
 		}
 
-		c.target = t
-		c.args = newArgs
+		if err := server.Run(newRoutes(c.opts.Logger, c.metrics), []source.HandlerRoute{newHealthyHandler()}); err != nil {
+			return fmt.Errorf("failed to run heroku server: %w", err)
+		}
+
+		c.server = server
+		return nil
 	}
+
+	if c.server != nil {
+		c.server.Update(&source.LogsConfig{
+			FixedLabels:          newArgs.labelSet(),
+			RelabelRules:         alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),
+			UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
+		})
+	}
+
+	c.args = newArgs
 
 	return nil
 }
 
-// Convert is used to bridge between the Alloy and Promtail types.
-func (args *Arguments) Convert() *ht.HerokuDrainTargetConfig {
+func (args *Arguments) labelSet() model.LabelSet {
 	lbls := make(model.LabelSet, len(args.Labels))
 	for k, v := range args.Labels {
 		lbls[model.LabelName(k)] = model.LabelValue(v)
 	}
 
-	return &ht.HerokuDrainTargetConfig{
-		Server:               args.Server,
-		Labels:               lbls,
-		UseIncomingTimestamp: args.UseIncomingTimestamp,
-	}
+	return lbls
 }
 
 // DebugInfo returns information about the status of listener.
@@ -178,19 +174,17 @@ func (c *Component) DebugInfo() any {
 	c.mut.RLock()
 	defer c.mut.RUnlock()
 
-	var res = readerDebugInfo{
-		Ready:   c.target.Ready(),
-		Address: c.target.HTTPListenAddress(),
+	if c.server == nil {
+		return readerDebugInfo{}
 	}
 
-	return res
+	return readerDebugInfo{
+		Ready:   ready(c.server.HTTPAddr()),
+		Address: c.server.HTTPAddr(),
+	}
 }
 
 type readerDebugInfo struct {
 	Ready   bool   `alloy:"ready,attr"`
 	Address string `alloy:"address,attr"`
-}
-
-func changed(prev, next any) bool {
-	return !reflect.DeepEqual(prev, next)
 }

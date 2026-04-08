@@ -56,6 +56,8 @@ If the limit of tracked streams is reached, new incoming streams are dropped.
 
 You can use the following blocks with `otelcol.processor.deltatocumulative`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -63,6 +65,8 @@ You can use the following blocks with `otelcol.processor.deltatocumulative`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -103,23 +107,23 @@ The following fields are exported and can be referenced by other components:
 
 ### Basic usage
 
-This example converts delta temporality metrics to cumulative before sending it to [otelcol.exporter.otlp][] for further processing:
+This example converts delta temporality metrics to cumulative before sending it to [otelcol.exporter.otlphttp][] for further processing:
 
 ```alloy
 otelcol.processor.deltatocumulative "default" {
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("<OTLP_SERVER_ENDPOINT>")
   }
 }
 ```
 
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
 
 ### Export Prometheus data
 

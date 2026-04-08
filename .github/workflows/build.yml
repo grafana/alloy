@@ -15,14 +15,14 @@ jobs:
   build_linux:
     name: Build on Linux
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.27@sha256:1c3b0de3d5cdd1d2e8b7fab4da70e1bda6629eede4cfaee846d04c4e80f14708
+    container: grafana/alloy-build-image:v0.1.29@sha256:2500d89efb3bc1cf0a94a00a197ec0f316cc409b7fc031a8de0f6092a782bdd6
     strategy:
       matrix:
         os: [linux]
         arch: [amd64, arm64, ppc64le, s390x]
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
     - name: Set ownership
@@ -31,7 +31,7 @@ jobs:
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go
-      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -41,14 +41,14 @@ jobs:
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.27-boringcrypto@sha256:5fe91132f0ede383a9603a981835cdd0e206e814899755a6167ae5d5a8d3b040
+    container: grafana/alloy-build-image:v0.1.29-boringcrypto@sha256:a0256f8a06b634446f2d856b0325ed416ebd46f2ca097eebbf3c8359912821b4
     strategy:
       matrix:
         os: [linux]
         arch: [amd64, arm64]
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
     - name: Set ownership
@@ -57,7 +57,7 @@ jobs:
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go
-      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -66,14 +66,14 @@ jobs:
 
   build_mac_intel:
     name: Build on MacOS (Intel)
-    runs-on: macos-14-large
+    runs-on: macos-15-large
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
     - name: Set up Go
-      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -82,14 +82,14 @@ jobs:
 
   build_mac_arm:
     name: Build on MacOS (ARM)
-    runs-on: macos-14-xlarge
+    runs-on: macos-15-xlarge
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
     - name: Set up Go
-      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -101,11 +101,11 @@ jobs:
     runs-on: windows-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
     - name: Set up Go
-      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
@@ -118,10 +118,10 @@ jobs:
   build_freebsd:
     name: Build on FreeBSD (AMD64)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.27@sha256:1c3b0de3d5cdd1d2e8b7fab4da70e1bda6629eede4cfaee846d04c4e80f14708
+    container: grafana/alloy-build-image:v0.1.29@sha256:2500d89efb3bc1cf0a94a00a197ec0f316cc409b7fc031a8de0f6092a782bdd6
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
           persist-credentials: false
     - name: Set ownership
@@ -130,7 +130,7 @@ jobs:
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
     - name: Set up Go
-      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
         # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.

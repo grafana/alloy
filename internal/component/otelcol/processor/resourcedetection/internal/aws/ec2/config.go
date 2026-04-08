@@ -18,6 +18,7 @@ type Config struct {
 	MaxAttempts           int                      `alloy:"max_attempts,attr,optional"`
 	MaxBackoff            time.Duration            `alloy:"max_backoff,attr,optional"`
 	FailOnMissingMetadata bool                     `alloy:"fail_on_missing_metadata,attr,optional"`
+	TagsFromIMDS          bool                     `alloy:"tags_from_imds,attr,optional"`
 }
 
 // DefaultArguments holds default settings for Config.
@@ -51,6 +52,7 @@ func (args Config) Convert() map[string]any {
 		"max_attempts":             args.MaxAttempts,
 		"max_backoff":              args.MaxBackoff,
 		"fail_on_missing_metadata": args.FailOnMissingMetadata,
+		"tags_from_imds":           args.TagsFromIMDS,
 	}
 }
 

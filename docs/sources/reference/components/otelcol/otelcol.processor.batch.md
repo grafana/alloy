@@ -94,6 +94,8 @@ The maximum number of distinct combinations is limited to the configured `metada
 
 You can use the following blocks with `otelcol.processor.batch`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -101,6 +103,8 @@ You can use the following blocks with `otelcol.processor.batch`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -142,18 +146,18 @@ The following fields are exported and can be referenced by other components:
 
 ### Basic usage
 
-This example batches telemetry data before sending it to [`otelcol.exporter.otlp`][otelcol.exporter.otlp] for further processing:
+This example batches telemetry data before sending it to [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] for further processing:
 
 ```alloy
 otelcol.processor.batch "default" {
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
-    logs    = [otelcol.exporter.otlp.production.input]
-    traces  = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
+    logs    = [otelcol.exporter.otlphttp.production.input]
+    traces  = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
@@ -172,13 +176,13 @@ otelcol.processor.batch "default" {
   send_batch_max_size = 0
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
-    logs    = [otelcol.exporter.otlp.production.input]
-    traces  = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
+    logs    = [otelcol.exporter.otlphttp.production.input]
+    traces  = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
@@ -212,18 +216,18 @@ otelcol.processor.batch "default" {
   metadata_cardinality_limit = 123
 
   output {
-    traces  = [otelcol.exporter.otlp.production.input]
+    traces  = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
 
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

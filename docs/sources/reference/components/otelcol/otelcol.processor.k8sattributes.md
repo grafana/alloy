@@ -80,6 +80,8 @@ However, they may be unable to send telemetry to `otelcol.processor.k8sattribute
 
 You can use the following blocks with `otelcol.processor.k8sattributes`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                | Required |
 |----------------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]                     | Configures where to send received telemetry data.                          | yes      |
@@ -95,9 +97,6 @@ You can use the following blocks with `otelcol.processor.k8sattributes`:
 | [`pod_association`][pod_association]   | Rules to associate Pod metadata with telemetry signals.                    | no       |
 | `pod_association` > [`source`][source] | Source information to identify a Pod.                                      | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `extract` > `annotation` refers to an `annotation` block defined inside an `extract` block.
-
 [output]: #output
 [extract]: #extract
 [annotation]: #annotation
@@ -110,6 +109,8 @@ For example, `extract` > `annotation` refers to an `annotation` block defined in
 [exclude]: #exclude
 [pod]: #pod
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -343,13 +344,13 @@ otelcol.receiver.otlp "default" {
 
 otelcol.processor.k8sattributes "default" {
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }
@@ -395,13 +396,13 @@ otelcol.processor.k8sattributes "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }

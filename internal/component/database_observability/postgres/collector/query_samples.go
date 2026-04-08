@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -68,6 +69,7 @@ const selectPgStatActivity = `
 		)
 		AND d.datname NOT IN %s
 		%s
+		%s
 `
 
 const excludeCurrentUserClause = `AND s.usesysid != (select oid from pg_roles where rolname = current_user)`
@@ -102,6 +104,7 @@ type QuerySamplesArguments struct {
 	DB                    *sql.DB
 	CollectInterval       time.Duration
 	ExcludeDatabases      []string
+	ExcludeUsers          []string
 	EntryHandler          loki.EntryHandler
 	Logger                log.Logger
 	DisableQueryRedaction bool
@@ -112,6 +115,7 @@ type QuerySamples struct {
 	dbConnection          *sql.DB
 	collectInterval       time.Duration
 	excludeDatabases      []string
+	excludeUsers          []string
 	entryHandler          loki.EntryHandler
 	disableQueryRedaction bool
 	excludeCurrentUser    bool
@@ -120,6 +124,7 @@ type QuerySamples struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 
 	// in-memory state of running samples
 	samples map[SampleKey]*SampleState
@@ -219,6 +224,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		dbConnection:          args.DB,
 		collectInterval:       args.CollectInterval,
 		excludeDatabases:      args.ExcludeDatabases,
+		excludeUsers:          args.ExcludeUsers,
 		entryHandler:          args.EntryHandler,
 		disableQueryRedaction: args.DisableQueryRedaction,
 		excludeCurrentUser:    args.ExcludeCurrentUser,
@@ -245,13 +251,11 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.fetchQuerySample(c.ctx); err != nil {
@@ -265,7 +269,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -274,9 +278,11 @@ func (c *QuerySamples) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *QuerySamples) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
@@ -291,7 +297,8 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	}
 
 	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField)
+	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "s.usename")
+	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
@@ -391,7 +398,7 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 	return key, nil
 }
 
-func (c QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
+func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 	if c.disableQueryRedaction {
 		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
 			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)

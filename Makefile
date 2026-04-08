@@ -39,6 +39,7 @@
 ##   dist-alloy-binaries  Produce release-ready Alloy binaries.
 ##   dist-alloy-packages  Produce release-ready DEB and RPM packages.
 ##   dist-alloy-installer Produce a Windows installer for Alloy.
+##   dist-alloy-mixin-zip Produce release-ready Alloy mixin dashboard archive.
 ##
 ## Targets for generating assets:
 ##
@@ -87,6 +88,8 @@ ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         		?= build/alloy
 SERVICE_BINARY       		?= build/alloy-service
 ALLOYLINT_BINARY     		?= build/alloylint
+BUILDER_USER         		?= $(shell whoami)
+BUILDER_HOST         		?= $(shell hostname)
 BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
@@ -122,19 +125,33 @@ PROPAGATE_VARS := \
 # Constants for targets
 #
 
+# If GO_TAGS does not already contain gore2regex, prepend it.
+# This makes loki.secretfilter use the go-re2 library, which provides
+# a substantial performance improvement over stdlib's regex.
+ifeq ($(filter gore2regex,$(GO_TAGS)),)
+override GO_TAGS := $(strip gore2regex $(GO_TAGS))
+endif
+
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
+BEYLA_MODULE  := $(shell go list -m all | grep "^github.com/grafana/beyla" | head -1)
+BEYLA_VERSION := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f2)
+BEYLA_PKG     := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f1)/pkg/buildinfo
 VPREFIX      := github.com/grafana/alloy/internal/build
 VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
+ifdef SOURCE_DATE_EPOCH
+    DATE_STAMP = -d@$(SOURCE_DATE_EPOCH)
+endif
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
 		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
-                -X $(VPREFIX).BuildUser=$(shell whoami)@$(shell hostname) \
-                -X $(VPREFIX).BuildDate=$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+                -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
+                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ") \
+                -X $(BEYLA_PKG).Version=$(BEYLA_VERSION)
 
 DEFAULT_FLAGS    := $(GO_FLAGS)
 DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
@@ -177,7 +194,7 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	docker pull $(BUILD_IMAGE)
-	go test -tags=packaging -race ./internal/tools/packaging_test
+	go test -tags="gore2regex packaging" -race ./internal/tools/packaging_test
 endif
 
 .PHONY: integration-test-docker
@@ -187,7 +204,14 @@ integration-test-docker:
 .PHONY: integration-test-k8s
 integration-test-k8s: alloy-image
 	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
-	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="alloyintegrationtests" -timeout 30m ./...
+	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="gore2regex alloyintegrationtests" -timeout 30m ./...
+
+# Windows service integration test. Runs only on Windows with Administrator privileges.
+# Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
+.PHONY: integration-test-windows-service
+integration-test-windows-service: dist-alloy-installer-windows
+	cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe" \
+		$(GO_ENV) go test -v -tags="gore2regex alloyintegrationtests" -timeout 5m -run TestWindowsService ./...
 
 .PHONY: test-pyroscope
 test-pyroscope:

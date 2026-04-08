@@ -61,6 +61,8 @@ You can use the following arguments with `otelcol.exporter.googlecloudpubsub`:
 
 You can use the following blocks with `otelcol.exporter.googlecloudpubsub`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                                     | Required |
 | -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
@@ -68,6 +70,14 @@ You can use the following blocks with `otelcol.exporter.googlecloudpubsub`:
 | [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 | [`sending_queue`][sending_queue]       | Configures batching of data before sending.                                                     | no       |
 | [`watermark`][watermark]               | Behaviour of how the ce-time attribute is set.                                                  | no       |
+
+[debug_metrics]: #debug_metrics
+[ordering]: #ordering
+[retry_on_failure]: #retry_on_failure
+[sending_queue]: #sending_queue
+[watermark]: #watermark
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 

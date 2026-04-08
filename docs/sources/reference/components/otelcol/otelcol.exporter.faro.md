@@ -44,20 +44,19 @@ The `otelcol.exporter.faro` component doesn't support any arguments. You can con
 
 You can use the following blocks with `otelcol.exporter.faro`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                 | Description                                                                    | Required |
-|-------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                          | yes      |
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                        | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests.     | no       |
 | `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                            | no       |
-| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                                  | no       |
+| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS `key_file`.                                | no       |
 | [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state.     | no       |
 | [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]                      | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                    | Configures batching requests based on a timeout and a minimum number of items. | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `tls` refers to a `tls` block defined inside a `client` block.
 
 [client]: #client
 [tls]: #tls
@@ -68,6 +67,8 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 [batch]: #batch
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 

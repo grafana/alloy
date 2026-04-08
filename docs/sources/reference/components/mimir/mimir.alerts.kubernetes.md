@@ -84,6 +84,8 @@ At most, one of the following can be provided:
 The following blocks are supported inside the definition of
 `mimir.alerts.kubernetes`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                                            | Description                                                 | Required |
 | -------------------------------------------------------------------------------- | ----------------------------------------------------------- | -------- |
 | [`authorization`][authorization]                                                 | Configure generic authorization to the endpoint.            | no       |
@@ -97,15 +99,14 @@ The following blocks are supported inside the definition of
 | `alertmanagerconfig_matcher`                                                     | Strategy to match alerts to `AlertmanagerConfig` resources. | no       |
 | [`tls_config`][tls_config]                                                       | Configure TLS settings for connecting to the endpoint.      | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [label_selector]: #alertmanagerconfig_selector-and-alertmanagerconfig_namespace_selector
 [match_expression]: #match_expression
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `authorization`
 
@@ -152,7 +153,7 @@ The `values` argument must not be provided when `operator` is set to `"Exists"` 
 
 The `alertmanagerconfig_matcher` block describes the strategy used by AlertmanagerConfig objects to match alerts in the routes and inhibition rules.
 
-Depending on how this block is configured, the final Alertmanger config will have different [matchers][] in its [route][] section.
+Depending on how this block is configured, the final Alertmanager config will have different [matchers][] in its [route][] section.
 
 [matchers]: https://prometheus.io/docs/alerting/latest/configuration/#matcher
 [route]: https://prometheus.io/docs/alerting/latest/configuration/#route

@@ -11,28 +11,32 @@ weight: 225
 The Linux operating system generates a wide range of metrics and logs that you can use to monitor the health and performance of your hardware and operating system.
 With {{< param "PRODUCT_NAME" >}}, you can collect your metrics and logs, forward them to a Grafana stack, and create dashboards to monitor your Linux servers.
 
+This scenario demonstrates how to use {{< param "PRODUCT_NAME" >}} to monitor Linux system metrics and logs using a complete example configuration.
+You'll deploy a containerized monitoring stack that includes {{< param "PRODUCT_NAME" >}}, Prometheus, Loki, and Grafana.
+
 The [`alloy-scenarios`][scenarios] repository contains complete examples of {{< param "PRODUCT_NAME" >}} deployments.
 Clone the repository and use the examples to understand how {{< param "PRODUCT_NAME" >}} collects, processes, and exports telemetry signals.
-
-In this example scenario, {{< param "PRODUCT_NAME" >}} collects Linux metrics and forwards them to a Loki destination.
 
 [scenarios]: https://github.com/grafana/alloy-scenarios/
 
 ## Before you begin
 
-Ensure you have the following:
+Before you begin, ensure you have the following:
 
-* [Docker](https://www.docker.com/)
-* [Git](https://git-scm.com/)
-* A Linux host or Linux running in a Virtual Machine
+* [Docker](https://www.docker.com/) and Docker Compose installed
+* [Git](https://git-scm.com/) for cloning the repository
+* A Linux host or Linux running in a virtual machine
+* Administrator privileges to run Docker commands
+* Available ports: 3000 (Grafana), 9090 (Prometheus), 3100 (Loki), and 12345 ({{< param "PRODUCT_NAME" >}} UI)
 
-{{< admonition type="note" >}}
-You need administrator privileges to run `docker` commands.
-{{< /admonition >}}
+## Clone and deploy the scenario
 
-## Clone and deploy the example
+This scenario runs {{< param "PRODUCT_NAME" >}} in a container alongside Grafana, Prometheus, and Loki, creating a self-contained monitoring stack.
+The {{< param "PRODUCT_NAME" >}} container acts as a demonstration system to show monitoring capabilities.
 
-Follow these steps to clone the repository and deploy the monitoring example:
+In a production environment, you would typically install {{< param "PRODUCT_NAME" >}} directly on each Linux server you want to monitor.
+
+Follow these steps to clone the repository and deploy the monitoring scenario:
 
 1. Clone the {{< param "PRODUCT_NAME" >}} scenarios repository:
 
@@ -53,7 +57,7 @@ Follow these steps to clone the repository and deploy the monitoring example:
    docker ps
    ```
 
-1. (Optional) Stop Docker to shut down the Grafana stack when you finish exploring this example:
+1. (Optional) Stop Docker to shut down the Grafana stack when you finish exploring this scenario:
 
    ```shell
    docker compose down
@@ -61,7 +65,7 @@ Follow these steps to clone the repository and deploy the monitoring example:
 
 ## Monitor and visualize your data
 
-Use Grafana to monitor deployment health and visualize data.
+After deploying the monitoring stack, you can use the {{< param "PRODUCT_NAME" >}} UI to monitor deployment health and Grafana to visualize your collected data.
 
 ### Monitor {{% param "PRODUCT_NAME" %}}
 
@@ -79,40 +83,39 @@ To create a [dashboard](https://grafana.com/docs/grafana/latest/getting-started/
 
 1. Open your browser and go to [http://localhost:3000/dashboards](http://localhost:3000/dashboards).
 1. Download the JSON file for the preconfigured [Linux node dashboard](https://grafana.com/api/dashboards/1860/revisions/37/download).
-1. Go to **Dashboards** > **Import**
+1. Go to **Dashboards** > **Import**.
 1. Upload the JSON file.
-1. Select the Prometheus data source and click **Import**
+1. Select the Prometheus data source and click **Import**.
 
 This community dashboard provides comprehensive system metrics including CPU, memory, disk, and network usage.
 
 ## Understand the {{% param "PRODUCT_NAME" %}} configuration
 
-This example uses a `config.alloy` file to configure {{< param "PRODUCT_NAME" >}} components for metrics and logging.
+This scenario uses a `config.alloy` file to configure {{< param "PRODUCT_NAME" >}} components for metrics and logging.
 You can find this file in the cloned repository at `alloy-scenarios/linux/`.
+The configuration demonstrates how to collect Linux system metrics and logs, then forward them to Prometheus and Loki for storage and visualization.
 
 ### Configure metrics
 
-The metrics configuration in this example requires four components:
+The metrics configuration in this scenario requires four components that work together to collect, process, and forward system metrics.
+The components are configured in this order to create a data pipeline:
 
-* `prometheus.exporter.unix`
-* `discovery.relabel`
-* `prometheus.scrape`
-* `prometheus.remote_write`
+* `prometheus.exporter.unix` - collects system metrics
+* `discovery.relabel` - adds standard labels to metrics
+* `prometheus.scrape` - scrapes metrics from the exporter
+* `prometheus.remote_write` - sends metrics to Prometheus for storage
 
 #### `prometheus.exporter.unix`
 
 The [`prometheus.exporter.unix`][prometheus.exporter.unix] component exposes hardware and Linux kernel metrics.
-This is the primary component that you configure to collect your Linux system metrics.
+This component is the primary data source that collects system performance metrics from your Linux server.
 
-In this example, this component requires the following arguments:
+The component configuration includes several important sections:
 
-* `disable_collectors`: Disable specific collectors to reduce unnecessary overhead.
-* `enable_collectors`: Enable the `meminfo` collector.
-* `fs_types_exclude`: A regular expression of filesystem types to ignore.
-* `mount_points_exclude`: A regular expression of mount types to ignore.
-* `mount_timeout`: How long to wait for a mount to respond before marking it as stale.
-* `ignored_devices`: Regular expression of virtual and container network interfaces to ignore.
-* `device_exclude`: Regular expression of virtual and container network interfaces to exclude.
+* `disable_collectors`: Disables specific collectors to reduce unnecessary overhead
+* `enable_collectors`: Enables the `meminfo` collector for memory information
+* `filesystem`: Configures filesystem monitoring options
+* `netclass` and `netdev`: Configure network interface monitoring
 
 ```alloy
 prometheus.exporter.unix "integrations_node_exporter" {
@@ -135,12 +138,12 @@ prometheus.exporter.unix "integrations_node_exporter" {
 }
 ```
 
-This component provides the `prometheus.exporter.unix.integrations_node_exporter.output` target for `prometheus.scrape`.
+This component provides the `prometheus.exporter.unix.integrations_node_exporter.targets` output that feeds into the `discovery.relabel` component.
 
 #### `discovery.relabel` instance and job labels
 
-There are two `discovery.relabel` components in this configuration.
-This [`discovery.relabel`][discovery.relabel] component replaces the instance and job labels that come in from the `node_exporter` with the hostname of the machine and a standard job name for all metrics.
+The first [`discovery.relabel`][discovery.relabel] component in this configuration replaces the instance and job labels from the `node_exporter` with standardized values.
+This ensures consistent labeling across all metrics for easier querying and dashboard creation.
 
 In this example, this component requires the following arguments:
 
@@ -163,6 +166,8 @@ discovery.relabel "integrations_node_exporter" {
   }
 }
 ```
+
+This component provides the `discovery.relabel.integrations_node_exporter.output` target list that feeds into the `prometheus.scrape` component.
 
 #### `discovery.relabel` for systemd journal logs
 
@@ -200,9 +205,13 @@ discovery.relabel "logs_integrations_integrations_node_exporter_journal_scrape" 
 }
 ```
 
+This component provides the `discovery.relabel.logs_integrations_integrations_node_exporter_journal_scrape.rules` relabeling rules that feed into the `loki.source.journal` component.
+
 #### `prometheus.scrape`
 
 The [`prometheus.scrape`][prometheus.scrape] component scrapes `node_exporter` metrics and forwards them to a receiver.
+This component consumes the labeled targets from the `discovery.relabel.integrations_node_exporter.output`.
+
 In this example, the component requires the following arguments:
 
 * `targets`: The target to scrape metrics from. Use the targets with labels from the `discovery.relabel` component.
@@ -217,14 +226,14 @@ prometheus.scrape "integrations_node_exporter" {
 }
 ```
 
+This component provides scraped metrics that feed into the `prometheus.remote_write.local.receiver` for storage in Prometheus.
+
 #### `prometheus.remote_write`
 
 The [`prometheus.remote_write`][prometheus.remote_write] component sends metrics to a Prometheus server.
 In this example, the component requires the following argument:
 
 * `url`: Defines the full URL endpoint to send metrics to.
-
-This component provides the `prometheus.remote_write.local.receiver` destination for `prometheus.scrape`.
 
 ```alloy
 prometheus.remote_write "local" {
@@ -234,20 +243,24 @@ prometheus.remote_write "local" {
 }
 ```
 
-This component provides the `prometheus.remote_write.local.receiver` destination for `prometheus.scrape`.
+This component provides the `prometheus.remote_write.local.receiver` destination that receives metrics from the `prometheus.scrape` component.
 
 ### Configure logging
 
-The logging configuration in this example requires four components:
+The logging configuration in this scenario collects logs from both systemd journal and standard log files.
+This dual approach ensures comprehensive log coverage for most Linux systems.
+The configuration requires four main components that work together to discover, collect, and forward logs to Loki:
 
-* `loki.source.journal`
-* `local.file_match`
-* `loki.source.file`
-* `loki.write`
+* `loki.source.journal` - collects logs from systemd journal
+* `local.file_match` - discovers standard log files using glob patterns
+* `loki.source.file` - reads logs from discovered files
+* `loki.write` - sends all collected logs to Loki for storage
 
 #### `loki.source.journal`
 
 The [`loki.source.journal`][loki.source.journal] component collects logs from the systemd journal and forwards them to a Loki receiver.
+This component consumes the relabeling rules from `discovery.relabel.logs_integrations_integrations_node_exporter_journal_scrape.rules`.
+
 In this example, the component requires the following arguments:
 
 * `max_age`: Only collect logs from the last 24 hours.
@@ -261,6 +274,8 @@ loki.source.journal "logs_integrations_integrations_node_exporter_journal_scrape
   forward_to    = [loki.write.local.receiver]
 }
 ```
+
+This component provides systemd journal log entries that feed into the `loki.write.local.receiver` for storage in Loki.
 
 #### `local.file_match`
 
@@ -284,9 +299,13 @@ local.file_match "logs_integrations_integrations_node_exporter_direct_scrape" {
 }
 ```
 
+This component provides the `local.file_match.logs_integrations_integrations_node_exporter_direct_scrape.targets` file list that feeds into the `loki.source.file` component.
+
 #### `loki.source.file`
 
 The [`loki.source.file`][loki.source.file] component reads log entries from files and forwards them to other Loki components.
+This component consumes the file targets from `local.file_match.logs_integrations_integrations_node_exporter_direct_scrape.targets`.
+
 In this example, the component requires the following arguments:
 
 * `targets`: The list of files to read logs from.
@@ -298,6 +317,8 @@ loki.source.file "logs_integrations_integrations_node_exporter_direct_scrape" {
   forward_to = [loki.write.local.receiver]
 }
 ```
+
+This component provides file-based log entries that feed into the `loki.write.local.receiver` for storage in Loki.
 
 #### `loki.write`
 
@@ -314,12 +335,12 @@ loki.write "local" {
 }
 ```
 
+This component provides the `loki.write.local.receiver` destination that receives log entries from both `loki.source.journal` and `loki.source.file` components.
+
 ### Configure `livedebugging`
 
-`livedebugging` streams real-time data from your components directly to the {{< param "PRODUCT_NAME" >}} UI.
-Refer to the [Troubleshooting documentation][troubleshooting] for more details about this feature.
-
-[troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
+The `livedebugging` feature streams real-time data from your components directly to the {{< param "PRODUCT_NAME" >}} UI.
+This capability helps you troubleshoot configuration issues and monitor component behavior in real-time.
 
 #### `livedebugging`
 
@@ -330,6 +351,22 @@ You can use an empty configuration for this block and {{< param "PRODUCT_NAME" >
 ```alloy
 livedebugging{}
 ```
+
+For more information about using this feature for troubleshooting, refer to the [Troubleshooting documentation][troubleshooting].
+
+[troubleshooting]: https://grafana.com/docs/alloy/latest/troubleshoot/debug/#live-debugging-page
+
+## Next steps
+
+Now that you've successfully deployed and configured {{< param "PRODUCT_NAME" >}} to monitor Linux systems, you can:
+
+* [Configure {{< param "PRODUCT_NAME" >}} to collect metrics from applications](https://grafana.com/docs/alloy/latest/tutorials/)
+* [Set up alerting rules in Grafana](https://grafana.com/docs/grafana/latest/alerting/)
+* [Explore advanced {{< param "PRODUCT_NAME" >}} component configurations](https://grafana.com/docs/alloy/latest/reference/components/)
+* [Deploy {{< param "PRODUCT_NAME" >}} in production environments](https://grafana.com/docs/alloy/latest/set-up/)
+* [Monitor multiple Linux servers with a centralized configuration](https://grafana.com/docs/alloy/latest/configure/)
+
+For additional examples and configurations, refer to the [alloy-scenarios repository](https://github.com/grafana/alloy-scenarios).
 
 [prometheus.scrape]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.scrape/
 [prometheus.remote_write]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/components/prometheus/prometheus.remote_write/

@@ -12,6 +12,18 @@ Normal, local development is done via `npm run dev` from this folder (internal/w
 
 However, API responses are not currently mocked, so most of the UI will not show any data.
 
+### Mock mode
+
+To develop against fixture data without a running Alloy instance, use:
+
+```sh
+npm run dev:mock
+```
+
+This generates fixture files and starts the Vite dev server with a mock API layer that intercepts requests to `/api/` and serves responses from `src/test/generated_fixtures/`.
+
+### Full build testing
+
 To fully test the UI, run `npm run build`, then run Alloy as normal. This will use the "no built-in assets" version.
 
 You can also run Alloy _with_ built-in assets if you'd like to test it that way.
