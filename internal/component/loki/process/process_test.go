@@ -338,7 +338,99 @@ func TestComponent(t *testing.T) {
 			},
 		},
 		{
-			name: "simple logfmt pipeline",
+			name: "match pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.match {
+				selector = "{filename=\"match-1.log\"}"
+
+				stage.static_labels {
+					values = {
+						match = "one",
+					}
+				}
+			}
+
+			stage.match {
+				selector = "{filename=\"match-2.log\"} |= \"svc=\""
+
+				stage.logfmt {
+					mapping = {
+						msg = "",
+						svc = "",
+					}
+				}
+
+				stage.labels {
+					values = {
+						svc = "",
+					}
+				}
+
+				stage.output {
+					source = "msg"
+				}
+			}
+
+			stage.match {
+				selector = "{filename=\"match-3.log\"} |= \"prefix: \""
+
+				stage.regex {
+					expression = "^prefix: (?P<body>.*)$"
+				}
+
+				stage.structured_metadata {
+					values = {
+						body = "",
+					}
+				}
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-1.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `first`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-2.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `msg="second" svc=api`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-3.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `prefix: third`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-3.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(3),
+					Line:      `no match`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-1.log", "match": "one"}, 0, push.Entry{
+					Timestamp: getEntryTS(0),
+					Line:      `first`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-2.log", "svc": "api"}, 0, push.Entry{
+					Timestamp: getEntryTS(1),
+					Line:      `second`,
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-3.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(2),
+					Line:      `prefix: third`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "body", Value: "third"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "match-3.log"}, 0, push.Entry{
+					Timestamp: getEntryTS(3),
+					Line:      `no match`,
+				}),
+			},
+			// NOTE: we cannot garantuee ordereing between different sub-pipelines.
+			unorderedFrom: ptr.To(0),
+		},
+		{
+			name: "logfmt pipeline",
 			cfg: `
 			forward_to = []
 
