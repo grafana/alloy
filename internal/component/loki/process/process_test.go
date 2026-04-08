@@ -426,7 +426,7 @@ func TestComponent(t *testing.T) {
 					Line:      `no match`,
 				}),
 			},
-			// NOTE: we cannot garantuee ordereing between different sub-pipelines.
+			// NOTE: we cannot guarantee ordering between different sub-pipelines.
 			unorderedFrom: ptr.To(0),
 		},
 		{
