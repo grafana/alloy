@@ -54,7 +54,6 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 		}
 
 		containers = append(containers, container)
-
 	}
 
 	return containers, nil
