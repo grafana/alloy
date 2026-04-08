@@ -2,6 +2,7 @@ package process
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -40,7 +41,7 @@ func TestComponent(t *testing.T) {
 		expected []loki.Entry
 	}
 
-	criTimestamp := time.Date(2024, time.January, 2, 3, 4, 5, 6, time.UTC)
+	now := time.Now().UTC()
 
 	tests := []testCase{
 		{
@@ -62,37 +63,36 @@ func TestComponent(t *testing.T) {
 					foo = "bar",
 				}
 			}
-
 			`,
 			inputs: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      criTimestamp.Format(time.RFC3339Nano) + " stdout P partial for file 1 stdout",
+					Line:      now.Format(time.RFC3339Nano) + " stdout P partial for file 1 stdout",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr P partial for file 1 stderr",
+					Line:      now.Format(time.RFC3339Nano) + " stderr P partial for file 1 stderr",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file2"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      criTimestamp.Format(time.RFC3339Nano) + " stdout P partial for file2",
+					Line:      now.Format(time.RFC3339Nano) + " stdout P partial for file2",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr F full file 1 stderr",
+					Line:      now.Format(time.RFC3339Nano) + " stderr F full file 1 stderr",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file2"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr F full file 2",
+					Line:      now.Format(time.RFC3339Nano) + " stderr F full file 2",
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "file1"}, 0, push.Entry{
 					Timestamp: time.Now(),
-					Line:      criTimestamp.Format(time.RFC3339Nano) + " stderr F full file 1 stdout",
+					Line:      now.Format(time.RFC3339Nano) + " stderr F full file 1 stdout",
 				}),
 			},
 			expected: []loki.Entry{
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: criTimestamp,
+					Timestamp: now,
 					Line:      "partial for file 1 stderrfull file 1 stderr",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "file1"},
@@ -100,7 +100,7 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: criTimestamp,
+					Timestamp: now,
 					Line:      "full file 2",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "file2"},
@@ -108,11 +108,79 @@ func TestComponent(t *testing.T) {
 					},
 				}),
 				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
-					Timestamp: criTimestamp,
+					Timestamp: now,
 					Line:      "full file 1 stdout",
 					StructuredMetadata: push.LabelsAdapter{
 						{Name: "filename", Value: "file1"},
 						{Name: "stream", Value: "stderr"},
+					},
+				}),
+			},
+		},
+		{
+			name: "simple docker pipeline",
+			cfg: `
+			forward_to = []
+
+			stage.docker {}
+
+			stage.structured_metadata {
+					values = {
+						filename = "",
+						stream = "",
+					}
+				}
+
+			stage.static_labels {
+				values = {
+					foo = "bar",
+				}
+			}
+			`,
+			inputs: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "docker.log"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line: mustMarshalJSON(t, map[string]string{
+						"log":    "docker stdout line\n",
+						"stream": "stdout",
+						"time":   now.Format(time.RFC3339Nano),
+					}),
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "docker.log"}, 0, push.Entry{
+					Timestamp: time.Now(),
+					Line: mustMarshalJSON(t, map[string]string{
+						"log":    "docker stderr line\n",
+						"stream": "stderr",
+						"time":   now.Add(time.Second).Format(time.RFC3339Nano),
+					}),
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"filename": "docker.log"}, 0, push.Entry{
+					Timestamp: now.Add(2 * time.Second),
+					Line:      `{"msg":"not docker format"}`,
+				}),
+			},
+			expected: []loki.Entry{
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: now,
+					Line:      "docker stdout line\n",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "docker.log"},
+						{Name: "stream", Value: "stdout"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: now.Add(time.Second),
+					Line:      "docker stderr line\n",
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "docker.log"},
+						{Name: "stream", Value: "stderr"},
+					},
+				}),
+				loki.NewEntryWithCreatedUnixMicro(model.LabelSet{"foo": "bar"}, 0, push.Entry{
+					Timestamp: now.Add(2 * time.Second),
+					Line:      `{"msg":"not docker format"}`,
+					StructuredMetadata: push.LabelsAdapter{
+						{Name: "filename", Value: "docker.log"},
 					},
 				}),
 			},
@@ -171,6 +239,15 @@ func TestComponent(t *testing.T) {
 			require.NoError(t, <-runErr)
 		})
 	}
+}
+
+func mustMarshalJSON(t *testing.T, v any) string {
+	t.Helper()
+
+	data, err := json.Marshal(v)
+	require.NoError(t, err)
+
+	return string(data)
 }
 
 func TestComponent_UpdateInvalidConfig(t *testing.T) {
