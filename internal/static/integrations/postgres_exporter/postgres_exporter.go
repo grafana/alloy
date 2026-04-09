@@ -182,7 +182,6 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 		<-ctx.Done()
 		e.CloseServers()
 		return nil
-
 	}
 
 	if cfg.DisableDefaultMetrics {
