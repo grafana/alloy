@@ -216,8 +216,15 @@ func (c *Component) NotifyClusterChange() {
 // watch, filtered by cluster ownership when clustering is enabled.
 func (c *Component) localNamespaces() iter.Seq[string] {
 	return func(yield func(string) bool) {
+		if c.args.Clustering.Enabled && !c.cluster.Ready() {
+			// When clustering is enabled but the cluster isn't ready yet,
+			// don't watch any namespaces. NotifyClusterChange will be called
+			// once the cluster is ready, triggering a reconcile.
+			return
+		}
+
 		for ns := range getNamespaces(c.args) {
-			if c.args.Clustering.Enabled && c.cluster.Ready() {
+			if c.args.Clustering.Enabled {
 				// Use the namespace name as the hash key. For the "all namespaces"
 				// case (empty string), this results in a single key, so only one
 				// node in the cluster will watch all events.
