@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: k8s-v2-observability
+  name: mimir
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: mimir-config
-  namespace: k8s-v2-observability
+  namespace: mimir
 data:
   config.yaml: |
     multitenancy_enabled: false
@@ -50,7 +50,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mimir
-  namespace: k8s-v2-observability
+  namespace: mimir
 spec:
   replicas: 1
   selector:
@@ -81,7 +81,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mimir
-  namespace: k8s-v2-observability
+  namespace: mimir
 spec:
   selector:
     app: mimir

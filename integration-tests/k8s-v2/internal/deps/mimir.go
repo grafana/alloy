@@ -23,13 +23,13 @@ func (m mimirInstaller) Install(ctx context.Context, kubeconfig string) error {
 	if err := applyManifest(ctx, kubeconfig, manifest); err != nil {
 		return err
 	}
-	if err := waitForDeployment(ctx, kubeconfig, defaultNamespace, "mimir"); err != nil {
+	if err := waitForDeployment(ctx, kubeconfig, mimirNamespace, "mimir"); err != nil {
 		return err
 	}
 	if err := checkServiceReadyEndpoint(
 		ctx,
 		kubeconfig,
-		defaultNamespace,
+		mimirNamespace,
 		"mimir",
 		39009,
 		9009,

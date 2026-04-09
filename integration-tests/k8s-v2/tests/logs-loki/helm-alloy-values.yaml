@@ -1,0 +1,35 @@
+controller:
+  type: deployment
+  replicas: 1
+
+alloy:
+  configMap:
+    content: |
+      discovery.kubernetes "workloads_pods" {
+        role = "pod"
+        namespaces {
+          own_namespace = false
+          names = ["k8s-v2-workloads"]
+        }
+      }
+
+      discovery.relabel "log_generator_pods" {
+        targets = discovery.kubernetes.workloads_pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          regex = "log-generator"
+          action = "keep"
+        }
+      }
+
+      loki.source.kubernetes "pods" {
+        targets    = discovery.relabel.log_generator_pods.output
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.loki.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }

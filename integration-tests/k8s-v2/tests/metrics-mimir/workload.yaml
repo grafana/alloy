@@ -3,27 +3,6 @@ kind: Namespace
 metadata:
   name: k8s-v2-workloads
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: alloy-metrics-config
-  namespace: k8s-v2-workloads
-data:
-  config.alloy: |
-    prometheus.scrape "generator" {
-      targets = [{
-        __address__ = "metrics-generator.k8s-v2-workloads.svc.cluster.local:9090",
-      }]
-
-      forward_to = [prometheus.remote_write.mimir.receiver]
-    }
-
-    prometheus.remote_write "mimir" {
-      endpoint {
-        url = "http://mimir.k8s-v2-observability.svc.cluster.local:9009/api/v1/push"
-      }
-    }
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,32 +39,3 @@ spec:
     - name: http
       port: 9090
       targetPort: 9090
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: alloy-metrics
-  namespace: k8s-v2-workloads
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: alloy-metrics
-  template:
-    metadata:
-      labels:
-        app: alloy-metrics
-    spec:
-      containers:
-        - name: alloy
-          image: grafana/alloy:latest
-          args:
-            - "run"
-            - "/etc/alloy/config.alloy"
-          volumeMounts:
-            - name: config
-              mountPath: /etc/alloy
-      volumes:
-        - name: config
-          configMap:
-            name: alloy-metrics-config

@@ -42,15 +42,15 @@ func SelectTests(all []TestCase, selected string) ([]TestCase, error) {
 	return out, nil
 }
 
-func RequirementUnion(selected []TestCase) []string {
-	union := map[string]struct{}{}
+func RequirementsSet(selected []TestCase) []string {
+	set := map[string]struct{}{}
 	for _, tc := range selected {
 		for _, dep := range tc.Requires {
-			union[dep] = struct{}{}
+			set[dep] = struct{}{}
 		}
 	}
-	out := make([]string, 0, len(union))
-	for dep := range union {
+	out := make([]string, 0, len(set))
+	for dep := range set {
 		out = append(out, dep)
 	}
 	sort.Strings(out)

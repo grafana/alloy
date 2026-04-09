@@ -3,7 +3,6 @@ package deps
 import (
 	"context"
 	"fmt"
-	"os"
 	"slices"
 	"sort"
 )
@@ -45,13 +44,22 @@ func (r Registry) Validate(requirements []string) error {
 }
 
 func (r Registry) Install(ctx context.Context, kubeconfig string, requirements []string) error {
+	installed := make([]string, 0, len(requirements))
 	for _, dep := range requirements {
-		fmt.Fprintf(os.Stderr, "[k8s-v2] Installing dependency %s\n", dep)
+		cfg.Logger.Info("installing dependency", "dependency", dep)
 		installer := r.installers[dep]
 		if err := installer.Install(ctx, kubeconfig); err != nil {
+			cfg.Logger.Warn("dependency install failed", "dependency", dep, "error", err)
+			if len(installed) > 0 {
+				cfg.Logger.Info("rolling back partially installed dependencies", "installed", installed)
+				if uninstallErr := r.Uninstall(ctx, kubeconfig, installed); uninstallErr != nil {
+					return fmt.Errorf("install %q: %w (rollback failed: %w)", dep, err, uninstallErr)
+				}
+			}
 			return fmt.Errorf("install %q: %w", dep, err)
 		}
-		fmt.Fprintf(os.Stderr, "[k8s-v2] Dependency %s is ready\n", dep)
+		installed = append(installed, dep)
+		cfg.Logger.Info("dependency ready", "dependency", dep)
 	}
 	return nil
 }
@@ -60,12 +68,12 @@ func (r Registry) Uninstall(ctx context.Context, kubeconfig string, requirements
 	reversed := slices.Clone(requirements)
 	slices.Reverse(reversed)
 	for _, dep := range reversed {
-		fmt.Fprintf(os.Stderr, "[k8s-v2] Uninstalling dependency %s\n", dep)
+		cfg.Logger.Info("uninstalling dependency", "dependency", dep)
 		installer := r.installers[dep]
 		if err := installer.Uninstall(ctx, kubeconfig); err != nil {
 			return fmt.Errorf("uninstall %q: %w", dep, err)
 		}
-		fmt.Fprintf(os.Stderr, "[k8s-v2] Dependency %s removed\n", dep)
+		cfg.Logger.Info("dependency removed", "dependency", dep)
 	}
 	return nil
 }

@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: k8s-v2-observability
+  name: loki
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: loki-config
-  namespace: k8s-v2-observability
+  namespace: loki
 data:
   config.yaml: |
     auth_enabled: false
@@ -46,7 +46,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: loki
-  namespace: k8s-v2-observability
+  namespace: loki
 spec:
   replicas: 1
   selector:
@@ -77,7 +77,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: loki
-  namespace: k8s-v2-observability
+  namespace: loki
 spec:
   selector:
     app: loki

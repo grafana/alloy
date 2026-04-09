@@ -4,19 +4,21 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"io"
-	"net/http"
+	"log/slog"
 	"os"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/kube"
 )
 
 const (
-	defaultNamespace      = "k8s-v2-observability"
 	defaultPollInterval   = 2 * time.Second
 	defaultReadyTimeout   = 2 * time.Minute
 	defaultUninstallGrace = 30 * time.Second
+	lokiNamespace         = "loki"
+	mimirNamespace        = "mimir"
 )
 
 type Config struct {
@@ -24,6 +26,7 @@ type Config struct {
 	PollInterval     time.Duration
 	UninstallGrace   time.Duration
 	Debug            bool
+	Logger           *slog.Logger
 }
 
 var cfg = Config{
@@ -31,6 +34,7 @@ var cfg = Config{
 	PollInterval:     defaultPollInterval,
 	UninstallGrace:   defaultUninstallGrace,
 	Debug:            false,
+	Logger:           slog.New(slog.NewTextHandler(os.Stderr, nil)),
 }
 
 func Configure(config Config) {
@@ -44,6 +48,9 @@ func Configure(config Config) {
 		cfg.UninstallGrace = config.UninstallGrace
 	}
 	cfg.Debug = config.Debug
+	if config.Logger != nil {
+		cfg.Logger = config.Logger.With("component", "deps")
+	}
 }
 
 //go:embed manifests/*.yaml
@@ -59,13 +66,13 @@ func readManifest(filename string) (string, error) {
 
 func runKubectl(ctx context.Context, kubeconfig string, args ...string) error {
 	if cfg.Debug {
-		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] kubectl --kubeconfig %s %s\n", kubeconfig, strings.Join(args, " "))
+		cfg.Logger.Debug("kubectl command", "kubeconfig", kubeconfig, "args", strings.Join(args, " "))
 	}
 	fullArgs := append([]string{"--kubeconfig", kubeconfig}, args...)
 	cmd := exec.CommandContext(ctx, "kubectl", fullArgs...)
 	out, err := cmd.CombinedOutput()
 	if cfg.Debug && len(out) > 0 {
-		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] kubectl output:\n%s\n", string(out))
+		cfg.Logger.Debug("kubectl output", "output", string(out))
 	}
 	if err != nil {
 		return fmt.Errorf("kubectl %v failed: %w: %s", args, err, string(out))
@@ -88,9 +95,9 @@ func applyManifest(ctx context.Context, kubeconfig string, manifest string) erro
 		return fmt.Errorf("close manifest temp file: %w", err)
 	}
 	if cfg.Debug {
-		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] applying manifest file %s\n", tmp.Name())
+		cfg.Logger.Debug("applying manifest file", "path", tmp.Name())
 	}
-	fmt.Fprintf(os.Stderr, "[k8s-v2] Applying manifest %s\n", tmp.Name())
+	cfg.Logger.Info("applying manifest", "path", tmp.Name())
 
 	return runKubectl(ctx, kubeconfig, "apply", "-f", tmp.Name())
 }
@@ -113,9 +120,9 @@ func deleteManifest(ctx context.Context, kubeconfig string, manifest string) err
 	deleteCtx, cancel := context.WithTimeout(ctx, cfg.UninstallGrace)
 	defer cancel()
 	if cfg.Debug {
-		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] deleting manifest file %s with timeout %s\n", tmp.Name(), cfg.UninstallGrace)
+		cfg.Logger.Debug("deleting manifest file", "path", tmp.Name(), "timeout", cfg.UninstallGrace)
 	}
-	fmt.Fprintf(os.Stderr, "[k8s-v2] Deleting manifest %s\n", tmp.Name())
+	cfg.Logger.Info("deleting manifest", "path", tmp.Name())
 
 	return runKubectl(deleteCtx, kubeconfig, "delete", "--ignore-not-found=true", "-f", tmp.Name())
 }
@@ -124,9 +131,9 @@ func waitForDeployment(ctx context.Context, kubeconfig, namespace, deployment st
 	waitCtx, cancel := context.WithTimeout(ctx, cfg.ReadinessTimeout)
 	defer cancel()
 	if cfg.Debug {
-		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] waiting for deployment/%s in namespace %s with timeout %s\n", deployment, namespace, cfg.ReadinessTimeout)
+		cfg.Logger.Debug("waiting for deployment availability", "deployment", deployment, "namespace", namespace, "timeout", cfg.ReadinessTimeout)
 	}
-	fmt.Fprintf(os.Stderr, "[k8s-v2] Waiting for deployment/%s to be available\n", deployment)
+	cfg.Logger.Info("waiting for deployment availability", "deployment", deployment, "namespace", namespace)
 
 	err := runKubectl(waitCtx, kubeconfig,
 		"-n", namespace,
@@ -138,7 +145,7 @@ func waitForDeployment(ctx context.Context, kubeconfig, namespace, deployment st
 	if err != nil {
 		return fmt.Errorf("kubernetes readiness check failed for deployment/%s: timeout=%s: %w", deployment, cfg.ReadinessTimeout, err)
 	}
-	fmt.Fprintf(os.Stderr, "[k8s-v2] deployment/%s is available\n", deployment)
+	cfg.Logger.Info("deployment is available", "deployment", deployment, "namespace", namespace)
 	return nil
 }
 
@@ -148,68 +155,21 @@ func checkServiceReadyEndpoint(
 	localPort, servicePort int,
 	readyURL string,
 ) error {
-
-	portForwardCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	cmd := exec.CommandContext(
-		portForwardCtx,
-		"kubectl",
-		"--kubeconfig", kubeconfig,
-		"-n", namespace,
-		"port-forward",
-		"svc/"+service,
-		fmt.Sprintf("%d:%d", localPort, servicePort),
-	)
-	stdout, err := cmd.StdoutPipe()
+	handle, err := kube.StartPortForwardAndWait(ctx, kube.PortForwardConfig{
+		Kubeconfig:    kubeconfig,
+		Namespace:     namespace,
+		Service:       service,
+		TargetPort:    servicePort,
+		ReadinessPath: strings.TrimPrefix(readyURL, fmt.Sprintf("http://127.0.0.1:%d", localPort)),
+		PollInterval:  cfg.PollInterval,
+		ReadyTimeout:  cfg.ReadinessTimeout,
+	})
 	if err != nil {
-		return fmt.Errorf("create port-forward stdout pipe: %w", err)
+		return fmt.Errorf("service readiness check failed for dependency=%s: %w", service, err)
 	}
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return fmt.Errorf("create port-forward stderr pipe: %w", err)
+	if err := handle.Close(); err != nil {
+		cfg.Logger.Debug("port-forward close warning", "service", service, "error", err)
 	}
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("start port-forward for %s: %w", service, err)
-	}
-	defer func() {
-		cancel()
-		_, _ = io.ReadAll(stdout)
-		_, _ = io.ReadAll(stderr)
-		_ = cmd.Wait()
-	}()
-
-	readyCtx, readyCancel := context.WithTimeout(ctx, cfg.ReadinessTimeout)
-	defer readyCancel()
-	fmt.Fprintf(os.Stderr, "[k8s-v2] Waiting for service %s readiness endpoint %s\n", service, readyURL)
-
-	var lastErr error
-	for {
-		req, err := http.NewRequestWithContext(readyCtx, http.MethodGet, readyURL, nil)
-		if err != nil {
-			return fmt.Errorf("build readiness request for %s: %w", service, err)
-		}
-
-		resp, err := http.DefaultClient.Do(req)
-		if err == nil && resp != nil && resp.StatusCode >= 200 && resp.StatusCode < 300 {
-			_ = resp.Body.Close()
-			fmt.Fprintf(os.Stderr, "[k8s-v2] Service %s is ready\n", service)
-			return nil
-		}
-		if resp != nil {
-			_ = resp.Body.Close()
-			lastErr = fmt.Errorf("status %d", resp.StatusCode)
-		} else {
-			lastErr = err
-		}
-
-		select {
-		case <-readyCtx.Done():
-			return fmt.Errorf(
-				"service readiness check failed: dependency=%s check=GET %s timeout=%s last_state=%v",
-				service, readyURL, cfg.ReadinessTimeout, lastErr,
-			)
-		case <-time.After(cfg.PollInterval):
-		}
-	}
+	cfg.Logger.Info("service readiness endpoint responded", "service", service, "namespace", namespace)
+	return nil
 }

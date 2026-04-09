@@ -6,31 +6,6 @@ metadata:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: alloy-logs-config
-  namespace: k8s-v2-workloads
-data:
-  config.alloy: |
-    local.file_match "test_logs" {
-      path_targets = [{
-        __path__ = "/var/log/k8s-v2/app.log",
-        job      = "k8s-v2-file-logs",
-      }]
-    }
-
-    loki.source.file "test_logs" {
-      targets    = local.file_match.test_logs.targets
-      forward_to = [loki.write.default.receiver]
-    }
-
-    loki.write "default" {
-      endpoint {
-        url = "http://loki.k8s-v2-observability.svc.cluster.local:3100/loki/api/v1/push"
-      }
-    }
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
   name: logs-source
   namespace: k8s-v2-workloads
 data:
@@ -40,33 +15,33 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: alloy-logs
+  name: log-generator
   namespace: k8s-v2-workloads
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: alloy-logs
+      app: log-generator
   template:
     metadata:
       labels:
-        app: alloy-logs
+        app: log-generator
     spec:
       containers:
-        - name: alloy
-          image: grafana/alloy:latest
+        - name: writer
+          image: busybox:1.36
           args:
-            - "run"
-            - "/etc/alloy/config.alloy"
+            - "sh"
+            - "-c"
+            - "cat /input/app.log > /var/log/k8s-v2/app.log && sleep 600"
           volumeMounts:
-            - name: config
-              mountPath: /etc/alloy
+            - name: input
+              mountPath: /input
             - name: logs
               mountPath: /var/log/k8s-v2
       volumes:
-        - name: config
-          configMap:
-            name: alloy-logs-config
-        - name: logs
+        - name: input
           configMap:
             name: logs-source
+        - name: logs
+          emptyDir: {}

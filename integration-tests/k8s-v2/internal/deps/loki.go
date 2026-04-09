@@ -23,13 +23,13 @@ func (l lokiInstaller) Install(ctx context.Context, kubeconfig string) error {
 	if err := applyManifest(ctx, kubeconfig, manifest); err != nil {
 		return err
 	}
-	if err := waitForDeployment(ctx, kubeconfig, defaultNamespace, "loki"); err != nil {
+	if err := waitForDeployment(ctx, kubeconfig, lokiNamespace, "loki"); err != nil {
 		return err
 	}
 	if err := checkServiceReadyEndpoint(
 		ctx,
 		kubeconfig,
-		defaultNamespace,
+		lokiNamespace,
 		"loki",
 		33100,
 		3100,

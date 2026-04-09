@@ -1,6 +1,6 @@
-# k8s-v2 integration tests (POC)
+# k8s-v2 integration tests
 
-This proof-of-concept runs requirement-driven Kubernetes integration tests with a shared KinD lifecycle.
+Requirement-driven Kubernetes integration tests with a shared KinD lifecycle.
 
 ## What it demonstrates
 
@@ -14,7 +14,7 @@ This proof-of-concept runs requirement-driven Kubernetes integration tests with 
 Each test directory contains:
 
 - `requirements.yaml` for dependency declarations
-- `config.alloy` as test-specific Alloy config
+- `helm-alloy-values.yaml` as test-specific Alloy Helm values
 - `workload.yaml` for test workload manifests
 - `assert_test.go` for backend assertions
 
@@ -97,6 +97,8 @@ Each `--test` path is validated:
 - the folder must exist,
 - it must map to a discovered k8s-v2 test folder.
 
+Each selected test must include `helm-alloy-values.yaml`; the harness installs Alloy from the local chart at `operations/helm/charts/alloy` in namespace `alloy`.
+
 Tune setup/readiness timeouts:
 
 ```sh
@@ -132,3 +134,4 @@ go run ./integration-tests/k8s-v2/runner --test logs-loki -- --count=1
 - `--reuse-cluster` reuses an existing cluster by name. Reused clusters are left untouched by cleanup.
 - `--reuse-deps` skips dependency install/uninstall when reusing a cluster; no dependency validation is performed.
 - k8s-v2 tests are tag-gated so generic `go test ./...` jobs do not run them.
+- Namespaces are explicit by role: Alloy=`alloy`, Loki=`loki`, Mimir=`mimir`, workloads=`k8s-v2-workloads`.

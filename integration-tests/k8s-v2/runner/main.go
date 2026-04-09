@@ -181,23 +181,21 @@ func resolveSelection(opts options, all []planner.TestCase) ([]selectedTest, err
 
 	var resolved []selectedTest
 	seen := map[string]struct{}{}
-	for _, rawToken := range opts.tests {
-		for _, token := range strings.Split(rawToken, ",") {
-			token = strings.TrimSpace(token)
-			if token == "" {
-				continue
-			}
-			selected, err := resolveSingleTest(token, knownByName, knownByLowerName, absDirToName)
-			if err != nil {
-				return nil, fmt.Errorf("%v (valid test names: %s)", err, strings.Join(names, ", "))
-			}
-
-			if _, ok := seen[selected.Name]; ok {
-				continue
-			}
-			seen[selected.Name] = struct{}{}
-			resolved = append(resolved, selected)
+	for _, token := range opts.tests {
+		token = strings.TrimSpace(token)
+		if token == "" {
+			continue
 		}
+		selected, err := resolveSingleTest(token, knownByName, knownByLowerName, absDirToName)
+		if err != nil {
+			return nil, fmt.Errorf("%v (valid test names: %s)", err, strings.Join(names, ", "))
+		}
+
+		if _, ok := seen[selected.Name]; ok {
+			continue
+		}
+		seen[selected.Name] = struct{}{}
+		resolved = append(resolved, selected)
 	}
 
 	if len(resolved) == 0 {
