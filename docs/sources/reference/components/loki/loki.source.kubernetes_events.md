@@ -76,10 +76,12 @@ You can use the following blocks with `loki.source.kubernetes_events`:
 | `client` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`clustering`][clustering]                       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [client]: #client
+[clustering]: #clustering
 [oauth2]: #oauth2
 [tls_config]: #tls_config
 
@@ -131,6 +133,22 @@ The following arguments are supported:
 ### `tls_config`
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `clustering`
+
+| Name      | Type   | Description                                               | Default | Required |
+| --------- | ------ | --------------------------------------------------------- | ------- | -------- |
+| `enabled` | `bool` | Distribute event collection with other cluster nodes.     |         | yes      |
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then this `loki.source.kubernetes_events` component instance opts-in to participating in the cluster to distribute the load of event collection between all cluster nodes.
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and `loki.source.kubernetes_events` collects events from every configured namespace.
+
+When clustering is enabled, each namespace is distributed across cluster nodes using consistent hashing.
+If the `namespaces` argument is empty (watching all namespaces), only a single node in the cluster will collect events, since all replicas share the same "all namespaces" target.
+If specific namespaces are listed, they are distributed across the available cluster nodes.
+
+[using clustering]: ../../../../get-started/clustering/
 
 ## Exported fields
 
