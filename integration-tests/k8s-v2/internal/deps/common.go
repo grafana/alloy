@@ -155,6 +155,7 @@ func checkServiceReadyEndpoint(
 	localPort, servicePort int,
 	readyURL string,
 ) error {
+
 	handle, err := kube.StartPortForwardAndWait(ctx, kube.PortForwardConfig{
 		Kubeconfig:    kubeconfig,
 		Namespace:     namespace,
