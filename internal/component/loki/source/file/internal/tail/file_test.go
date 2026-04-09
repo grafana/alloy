@@ -69,6 +69,21 @@ func TestFile(t *testing.T) {
 	})
 
 	t.Run("does not emit empty line when newline lands on split boundary", func(t *testing.T) {
+		name := createFile(t, "split-max-line-size-boundary", "abcdefgh\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:    name,
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 9}, nil)
+	})
+
+	t.Run("does not emit empty line when newline lands on split boundary with cr", func(t *testing.T) {
 		name := createFile(t, "split-max-line-size-boundary", "abcdefgh\r\n")
 		defer removeFile(t, name)
 
