@@ -288,6 +288,8 @@ func runGoTestPackage(dir, kubeconfigPath string) error {
 		"test",
 		"-count=1",
 		"-v",
+		"-tags",
+		"alloyintegrationtests k8sv2integrationtests",
 		".",
 		"-args",
 		"-k8s.v2.kubeconfig="+kubeconfigPath,
