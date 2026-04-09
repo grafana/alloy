@@ -35,6 +35,13 @@ make integration-test-k8s-v2
 go run ./integration-tests/k8s-v2/runner --all
 ```
 
+The runner automatically sets required Go build tags:
+
+- `alloyintegrationtests`
+- `k8sv2integrationtests`
+
+So manual runs stay ergonomic; you do not need to type tags yourself when using the runner.
+
 Run selected tests manually (exact folder names):
 
 ```sh
@@ -71,6 +78,12 @@ Pass extra `go test` flags:
 
 ```sh
 go run ./integration-tests/k8s-v2/runner --test metrics-mimir -- --count=1
+```
+
+If you run `go test` directly (without the runner), include both tags or the k8s-v2 tests are intentionally excluded:
+
+```sh
+go test -tags "alloyintegrationtests k8sv2integrationtests" ./integration-tests/k8s-v2
 ```
 
 Pass test folder paths (relative to your current directory):
@@ -118,3 +131,4 @@ go run ./integration-tests/k8s-v2/runner --test logs-loki -- --count=1
 - High-level lifecycle step logs include durations to help identify slow areas.
 - `--reuse-cluster` reuses an existing cluster by name. Reused clusters are left untouched by cleanup.
 - `--reuse-deps` skips dependency install/uninstall when reusing a cluster; no dependency validation is performed.
+- k8s-v2 tests are tag-gated so generic `go test ./...` jobs do not run them.

@@ -1,20 +1,24 @@
+//go:build alloyintegrationtests && k8sv2integrationtests
+
 package metricsmimir
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"testing"
 
 	k8sassert "github.com/grafana/alloy/integration-tests/k8s-v2/internal/assert"
 )
 
+var kubeconfigFlag = flag.String("k8s.v2.kubeconfig", "", "Path to kubeconfig used by k8s-v2 harness child tests")
+
 func TestAssertions(t *testing.T) {
-	kubeconfig := os.Getenv("ALLOY_K8S_V2_KUBECONFIG")
+	kubeconfig := *kubeconfigFlag
 	if kubeconfig == "" {
-		t.Skip("skipping harness assertion test outside k8s-v2 harness")
+		t.Skip("skipping k8s-v2 assertion test: -k8s.v2.kubeconfig is required")
 	}
 
 	cancelPortForward, err := startPortForward(kubeconfig, "k8s-v2-observability", "mimir", "39009:9009")

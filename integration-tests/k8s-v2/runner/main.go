@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	testsRoot  = "integration-tests/k8s-v2/tests"
-	packageDir = "./integration-tests/k8s-v2"
+	testsRoot         = "integration-tests/k8s-v2/tests"
+	packageDir        = "./integration-tests/k8s-v2"
+	integrationGoTags = "alloyintegrationtests k8sv2integrationtests"
 )
 
 type options struct {
@@ -276,6 +277,7 @@ func buildGoTestArgs(opts options, selected []selectedTest, passthrough []string
 	if opts.verbose {
 		args = append(args, "-v")
 	}
+	args = append(args, "-tags", integrationGoTags)
 	args = append(args, "-timeout", opts.timeout.String())
 	args = append(args, packageDir)
 	args = append(args, passthrough...)

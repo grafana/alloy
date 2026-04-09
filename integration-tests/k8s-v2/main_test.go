@@ -1,3 +1,5 @@
+//go:build alloyintegrationtests && k8sv2integrationtests
+
 package k8sv2
 
 import (
@@ -82,10 +84,6 @@ func TestMain(m *testing.M) {
 	defer cancel()
 	logInfo("Setup timeout: %s, readiness timeout: %s", *setupTimeoutFlag, *readinessTimeout)
 	reusedCluster := *reuseClusterFlag != ""
-	if err := verifyHarnessPrerequisites(ctx, reusedCluster); err != nil {
-		logInfo("Skipping k8s-v2 harness setup: %v", err)
-		os.Exit(0)
-	}
 
 	clusterName = fmt.Sprintf("alloy-k8s-v2-%d", rand.IntN(1_000_000))
 	if *reuseClusterFlag != "" {
@@ -206,9 +204,6 @@ func TestMain(m *testing.M) {
 		logInfo("Finished: install dependencies (%s)", formatStepDuration(time.Since(installStart)))
 	}
 
-	os.Setenv("ALLOY_K8S_V2_KUBECONFIG", kubeconfig)
-	os.Setenv("ALLOY_K8S_V2_REQUIREMENTS", strings.Join(required, ","))
-
 	logInfo("Starting: execute selected tests")
 	testRunStart := time.Now()
 	code := m.Run()
@@ -239,7 +234,7 @@ func TestPOC(t *testing.T) {
 				logInfo("Finished: cleanup workload for test %s (%s)", tc.Name, formatStepDuration(time.Since(cleanupStart)))
 			}()
 
-			reproCmd := fmt.Sprintf("go test ./integration-tests/k8s-v2 -run TestPOC/%s -args -k8s.v2.tests=%s", tc.Name, tc.Name)
+			reproCmd := fmt.Sprintf("go test -tags \"alloyintegrationtests k8sv2integrationtests\" ./integration-tests/k8s-v2 -run TestPOC/%s -args -k8s.v2.tests=%s", tc.Name, tc.Name)
 			logInfo("Starting: assertions for test %s", tc.Name)
 			assertStart := time.Now()
 			if err := runGoTestPackage(tc.Dir, kubeconfig); err != nil {
@@ -288,11 +283,19 @@ func runGoTestPackage(dir, kubeconfigPath string) error {
 	if *debugFlag {
 		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] running child tests in %s\n", dir)
 	}
-	cmd := exec.Command("go", "test", "-count=1", "-v", ".")
+	cmd := exec.Command(
+		"go",
+		"test",
+		"-count=1",
+		"-v",
+		".",
+		"-args",
+		"-k8s.v2.kubeconfig="+kubeconfigPath,
+	)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = append(os.Environ(), "ALLOY_K8S_V2_KUBECONFIG="+kubeconfigPath)
+	cmd.Env = os.Environ()
 	return cmd.Run()
 }
 
@@ -348,24 +351,4 @@ func formatStepDuration(d time.Duration) time.Duration {
 		return d.Round(10 * time.Millisecond)
 	}
 	return d.Round(time.Second)
-}
-
-func verifyHarnessPrerequisites(ctx context.Context, reusedCluster bool) error {
-	if _, err := exec.LookPath("kubectl"); err != nil {
-		return fmt.Errorf("kubectl is not available in PATH")
-	}
-	if _, err := exec.LookPath("kind"); err != nil {
-		return fmt.Errorf("kind is not available in PATH")
-	}
-	if reusedCluster {
-		return nil
-	}
-	if _, err := exec.LookPath("docker"); err != nil {
-		return fmt.Errorf("docker is not available in PATH")
-	}
-	cmd := exec.CommandContext(ctx, "docker", "info", "--format", "{{json .}}")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("docker is not ready: %w: %s", err, strings.TrimSpace(string(out)))
-	}
-	return nil
 }
