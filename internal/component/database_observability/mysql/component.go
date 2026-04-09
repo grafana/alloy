@@ -83,6 +83,7 @@ type Arguments struct {
 type CloudProvider struct {
 	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
 	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
+	GCP   *GCPCloudProviderInfo   `alloy:"gcp,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
@@ -93,6 +94,10 @@ type AzureCloudProviderInfo struct {
 	SubscriptionID string `alloy:"subscription_id,attr"`
 	ResourceGroup  string `alloy:"resource_group,attr"`
 	ServerName     string `alloy:"server_name,attr,optional"`
+}
+
+type GCPCloudProviderInfo struct {
+	ConnectionName string `alloy:"connection_name,attr"`
 }
 
 type QueryDetailsArguments struct {
@@ -217,6 +222,21 @@ func (a *Arguments) Validate() error {
 	}
 	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
 		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
+	}
+	if a.CloudProvider != nil {
+		count := 0
+		if a.CloudProvider.AWS != nil {
+			count++
+		}
+		if a.CloudProvider.Azure != nil {
+			count++
+		}
+		if a.CloudProvider.GCP != nil {
+			count++
+		}
+		if count > 1 {
+			return fmt.Errorf("cloud_provider: at most one of aws, azure, or gcp must be specified")
+		}
 	}
 	return nil
 }

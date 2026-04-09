@@ -27,6 +27,17 @@ func populateCloudProviderFromConfig(config *CloudProvider) (*database_observabi
 			ServerName:     config.Azure.ServerName,
 		}
 	}
+	if config.GCP != nil {
+		parts := strings.SplitN(config.GCP.ConnectionName, ":", 3)
+		if len(parts) != 3 || parts[0] == "" || parts[1] == "" || parts[2] == "" {
+			return nil, fmt.Errorf("invalid GCP connection name %q: expected format project:region:instance", config.GCP.ConnectionName)
+		}
+		cloudProvider.GCP = &database_observability.GCPCloudProviderInfo{
+			ProjectID:  parts[0],
+			Region:     parts[1],
+			InstanceID: parts[2],
+		}
+	}
 	return &cloudProvider, nil
 }
 
