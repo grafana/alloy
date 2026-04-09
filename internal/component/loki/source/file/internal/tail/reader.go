@@ -90,11 +90,11 @@ type reader struct {
 // next reads and returns the next complete line from the file.
 // It will return EOF if there is no more data to read.
 func (r *reader) next() (string, error) {
-	for {
-		if line, ok := r.consumeLine(); ok {
-			return r.decode(line)
-		}
+	if line, ok := r.consumeLine(); ok {
+		return r.decode(line)
+	}
 
+	for {
 		// Read more data up until the last byte of nl.
 		chunk, err := r.br.ReadSlice(r.lastNl)
 		if len(chunk) > 0 {
@@ -143,13 +143,29 @@ func (r *reader) decode(line []byte) (string, error) {
 // consumeLine checks pending for the delimiter; if found, it splits
 // pending into line and remainder.
 func (r *reader) consumeLine() ([]byte, bool) {
-	// IF we have no pending data we need more.
+	// If we have no pending data we need to read more.
 	if len(r.pending) == 0 {
 		return nil, false
 	}
 
+	i := bytes.Index(r.pending, r.nl)
+
+	// If we have a full line buffered within maxLineSize plus the optional carriage
+	// return bytes, emit the full line instead of splitting it into a boundary chunk.
+	if i >= 0 && r.fitsMaxLineSize(i, len(r.cr)) {
+		// Extract everything up until newline.
+		line := r.pending[:i]
+
+		// Reset pending. We never buffer beyond newline so it is safe to reset.
+		r.pending = r.pending[:0]
+
+		// Advance the position on bytes we have consumed.
+		r.pos += int64(len(line) + len(r.nl))
+		return line, true
+	}
+
 	// If we have buffered over maxLineSize we emit it as a line and advance position.
-	if r.maxLineSize > 0 && len(r.pending) >= r.maxLineSize {
+	if !r.fitsMaxLineSize(len(r.pending), 0) {
 		// Here we need to copy the bytes because we reuse pending between calls.
 		partial := make([]byte, r.maxLineSize)
 		copy(partial, r.pending[:r.maxLineSize])
@@ -163,20 +179,14 @@ func (r *reader) consumeLine() ([]byte, bool) {
 		return partial, true
 	}
 
-	// If we have a full line buffered we emit it and advance position.
-	if i := bytes.Index(r.pending, r.nl); i >= 0 {
-		// Extract everything up until newline.
-		line := r.pending[:i]
-
-		// Reset pending. We never buffer beyond newline so it is safe to reset.
-		r.pending = r.pending[:0]
-
-		// Advance the position on bytes we have consumed.
-		r.pos += int64(len(line) + len(r.nl))
-		return line, true
-	}
-
 	return nil, false
+}
+
+func (r *reader) fitsMaxLineSize(n, extra int) bool {
+	if r.maxLineSize <= 0 {
+		return true
+	}
+	return n <= r.maxLineSize+extra
 }
 
 // position returns the byte offset for completed lines,
