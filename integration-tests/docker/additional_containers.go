@@ -13,7 +13,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 )
 
-func startAdditionalContainers(ctx context.Context, absTestDir, networkName string, cfg TestConfig) ([]testcontainers.Container, error) {
+func startAdditionalContainers(ctx context.Context, absTestDir, networkName string, cfg TestConfig, skipImageBuild bool) ([]testcontainers.Container, error) {
 	requests := make([]testcontainers.ContainerRequest, 0, len(cfg.AdditionalContainers))
 
 	for i, containerCfg := range cfg.AdditionalContainers {
@@ -26,15 +26,20 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 		}
 
 		req := testcontainers.ContainerRequest{
-			Name:     containerCfg.Name,
-			Image:    containerCfg.Image,
-			Cmd:      containerCfg.Command,
-			Networks: []string{networkName},
+			Name:          containerCfg.Name,
+			Image:         containerCfg.Image,
+			ImagePlatform: integrationTestDockerPlatform,
+			Cmd:           containerCfg.Command,
+			Networks:      []string{networkName},
 		}
 
-		if containerCfg.Build.Context != "" {
-			if err := buildAdditionalContainerImage(absTestDir, containerCfg); err != nil {
-				return nil, fmt.Errorf("failed to build additional container %q: %w", containerCfg.Name, err)
+		if containerCfg.Build.Context != "" || containerCfg.Build.Dockerfile != "" {
+			if skipImageBuild {
+				fmt.Printf("skip-build: skipping additional_containers %q image build, using %s\n", containerCfg.Name, containerCfg.Image)
+			} else {
+				if err := buildAdditionalContainerImage(absTestDir, containerCfg); err != nil {
+					return nil, fmt.Errorf("failed to build additional container %q: %w", containerCfg.Name, err)
+				}
 			}
 		}
 
@@ -61,11 +66,14 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 
 func buildAdditionalContainerImage(absTestDir string, cfg AdditionalContainerConfig) error {
 	buildContext := cfg.Build.Context
+	if buildContext == "" && cfg.Build.Dockerfile != "" {
+		buildContext = "."
+	}
 	if !filepath.IsAbs(buildContext) {
 		buildContext = filepath.Join(absTestDir, buildContext)
 	}
 
-	args := []string{"build", "-t", cfg.Image}
+	args := []string{"build", "--platform", integrationTestDockerPlatform, "-t", cfg.Image}
 	if cfg.Build.Dockerfile != "" {
 		dockerfile := cfg.Build.Dockerfile
 		if !filepath.IsAbs(dockerfile) {
