@@ -202,6 +202,8 @@ body:
       - remote.kubernetes.secret
       - remote.s3
       - remote.vault
+      - sigil.receiver
+      - sigil.write
       # End components list
   - type: textarea
     id: feedback
