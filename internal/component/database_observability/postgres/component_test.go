@@ -519,6 +519,27 @@ func Test_parseCloudProvider(t *testing.T) {
 
 		assert.Nil(t, args.CloudProvider)
 	})
+
+	t.Run("multiple cloud providers returns error", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			aws {
+				arn = "arn:aws:rds:us-east-1:123456789012:db:mydb"
+			}
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.EqualError(t, err, "cloud_provider: at most one of aws, azure, or gcp must be specified")
+	})
 }
 
 func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
