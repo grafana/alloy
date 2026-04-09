@@ -55,6 +55,8 @@ func TestBuildGoTestArgs(t *testing.T) {
 		keepDeps:         true,
 		reuseCluster:     "cluster-a",
 		reuseDeps:        true,
+		alloyImage:       "alloy-ci:test-sha",
+		alloyPullPolicy:  "IfNotPresent",
 	}
 	selected := []selectedTest{
 		{Name: "logs-loki"},
@@ -67,6 +69,7 @@ func TestBuildGoTestArgs(t *testing.T) {
 		"-k8s.v2.setup-timeout=10m0s", "-k8s.v2.readiness-timeout=1m30s",
 		"-k8s.v2.keep-cluster=true", "-k8s.v2.keep-deps=true",
 		"-k8s.v2.reuse-cluster=cluster-a", "-k8s.v2.reuse-deps=true", "-k8s.v2.debug=true",
+		"-k8s.v2.alloy-image=alloy-ci:test-sha", "-k8s.v2.alloy-image-pull-policy=IfNotPresent",
 	}
 	for _, fragment := range wantFragments {
 		if !slices.Contains(got, fragment) {

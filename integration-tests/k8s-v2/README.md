@@ -111,6 +111,13 @@ Enable debug logging (dependency apply/wait/readiness traces):
 go run ./integration-tests/k8s-v2/runner --test metrics-mimir --debug
 ```
 
+Run tests against a locally built Alloy image (loaded into Kind and forced in Helm):
+
+```sh
+make ALLOY_IMAGE=alloy-ci:dev alloy-image
+go run ./integration-tests/k8s-v2/runner --all --alloy-image alloy-ci:dev --alloy-image-pull-policy IfNotPresent
+```
+
 For interactive cluster tooling, use `--keep-cluster` and copy the printed `KUBECONFIG` export command from runner output.
 
 Use the Go wrapper directly:
@@ -133,5 +140,6 @@ go run ./integration-tests/k8s-v2/runner --test logs-loki -- --count=1
 - High-level lifecycle step logs include durations to help identify slow areas.
 - `--reuse-cluster` reuses an existing cluster by name. Reused clusters are left untouched by cleanup.
 - `--reuse-deps` skips dependency install/uninstall when reusing a cluster; no dependency validation is performed.
+- `--alloy-image` loads a local image into Kind and overrides Helm `image.repository`/`image.tag` so assertions run against the PR artifact instead of a released image.
 - k8s-v2 tests are tag-gated so generic `go test ./...` jobs do not run them.
 - Namespaces are explicit by role: Alloy=`alloy`, Loki=`loki`, Mimir=`mimir`, workloads=`k8s-v2-workloads`.

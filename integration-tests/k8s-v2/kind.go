@@ -44,3 +44,12 @@ func kindGetKubeconfig(ctx context.Context, name string) (string, error) {
 	}
 	return tmpFile.Name(), nil
 }
+
+func loadImageIntoKind(ctx context.Context, clusterName, imageRef string) error {
+	cmd := exec.CommandContext(ctx, "kind", "load", "docker-image", "--name", clusterName, imageRef)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("kind load docker-image --name %s %s failed: %w: %s", clusterName, imageRef, err, string(out))
+	}
+	return nil
+}

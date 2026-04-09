@@ -164,6 +164,9 @@ func (h *harness) validateFlags() error {
 	if *reuseDepsFlag && *reuseClusterFlag == "" {
 		return fmt.Errorf("k8s-v2.reuse-deps requires k8s.v2.reuse-cluster")
 	}
+	if *alloyPullPolicy != "" && *alloyImageFlag == "" {
+		return fmt.Errorf("k8s.v2.alloy-image-pull-policy requires k8s.v2.alloy-image")
+	}
 	return nil
 }
 
@@ -234,6 +237,12 @@ func (h *harness) prepareCluster(ctx context.Context) error {
 	}
 	if *keepDepsFlag {
 		h.log.Info("dependencies will be kept after tests")
+	}
+	if *alloyImageFlag != "" {
+		if err := loadImageIntoKind(ctx, h.clusterName, *alloyImageFlag); err != nil {
+			return fmt.Errorf("load Alloy image %q into kind cluster %s failed: %w", *alloyImageFlag, h.clusterName, err)
+		}
+		h.log.Info("loaded Alloy image into Kind", "image", *alloyImageFlag, "cluster", h.clusterName)
 	}
 	return nil
 }

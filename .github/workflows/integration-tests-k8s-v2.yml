@@ -21,5 +21,11 @@ jobs:
       uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
       with:
         go-version-file: go.mod
+    - name: Build Alloy image from PR commit
+      run: make ALLOY_IMAGE=alloy-ci:${{ github.sha }} alloy-image
     - name: Run k8s-v2 integration tests
-      run: make integration-test-k8s-v2
+      run: |
+        go run ./integration-tests/k8s-v2/runner \
+          --all \
+          --alloy-image alloy-ci:${{ github.sha }} \
+          --alloy-image-pull-policy IfNotPresent

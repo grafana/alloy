@@ -26,6 +26,8 @@ type options struct {
 	keepDeps         bool
 	reuseCluster     string
 	reuseDeps        bool
+	alloyImage       string
+	alloyPullPolicy  string
 	verbose          bool
 	debug            bool
 	timeout          time.Duration
@@ -69,6 +71,8 @@ func main() {
 	rootCmd.Flags().BoolVar(&opts.keepDeps, "keep-deps", false, "Keep installed dependencies after run (requires --keep-cluster)")
 	rootCmd.Flags().StringVar(&opts.reuseCluster, "reuse-cluster", "", "Reuse an existing Kind cluster by name")
 	rootCmd.Flags().BoolVar(&opts.reuseDeps, "reuse-deps", false, "When reusing a cluster, skip dependency install/uninstall checks")
+	rootCmd.Flags().StringVar(&opts.alloyImage, "alloy-image", "", "Alloy image reference to load into Kind and use in Helm (for example: alloy-ci:pr-sha)")
+	rootCmd.Flags().StringVar(&opts.alloyPullPolicy, "alloy-image-pull-policy", "", "Optional Helm image.pullPolicy override for Alloy")
 	rootCmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "Enable verbose go test output")
 	rootCmd.Flags().BoolVar(&opts.debug, "debug", false, "Enable debug logging for setup and dependency checks")
 	rootCmd.Flags().DurationVar(&opts.timeout, "timeout", 30*time.Minute, "go test timeout")
@@ -300,6 +304,12 @@ func buildGoTestArgs(opts options, selected []selectedTest, passthrough []string
 	}
 	if opts.debug {
 		args = append(args, "-k8s.v2.debug=true")
+	}
+	if opts.alloyImage != "" {
+		args = append(args, "-k8s.v2.alloy-image="+opts.alloyImage)
+	}
+	if opts.alloyPullPolicy != "" {
+		args = append(args, "-k8s.v2.alloy-image-pull-policy="+opts.alloyPullPolicy)
 	}
 	return args
 }
