@@ -137,11 +137,7 @@ func TestLifecycle_StartTwiceFails(t *testing.T) {
 	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 	err := e.Start(t.Context(), componenttest.NewNopHost())
 	require.Error(t, err)
-
-	// Cleanup: release the singleton slot so subsequent tests can start extensions
-	shutdownCtx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	t.Cleanup(cancel)
-	require.NoError(t, e.Shutdown(shutdownCtx))
+	require.NoError(t, e.Shutdown(t.Context())) //
 }
 
 func TestLifecycle_SecondInstanceFailsWhileFirstRunning(t *testing.T) {
