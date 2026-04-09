@@ -149,11 +149,10 @@ func (r *reader) consumeLine() ([]byte, bool) {
 	}
 
 	i := bytes.Index(r.pending, r.nl)
-	hasCr := bytes.Index(r.pending, r.cr) > 0
 
 	// If we have a full line buffered within maxLineSize plus the optional carriage
 	// return bytes, emit the full line instead of splitting it into a boundary chunk.
-	if i >= 0 && r.fitsMaxLineSize(i, hasCr) {
+	if i >= 0 && r.fitsMaxLineSize(r.pending[:i], true) {
 		// Extract everything up until newline.
 		line := r.pending[:i]
 
@@ -166,7 +165,9 @@ func (r *reader) consumeLine() ([]byte, bool) {
 	}
 
 	// If we have buffered over maxLineSize we emit it as a line and advance position.
-	if !r.fitsMaxLineSize(len(r.pending), false) {
+	// Do not include trailing CR bytes here, without a confirmed newline they are
+	// still part of the buffered data and may be followed by more content.
+	if !r.fitsMaxLineSize(r.pending, false) {
 		// Here we need to copy the bytes because we reuse pending between calls.
 		partial := make([]byte, r.maxLineSize)
 		copy(partial, r.pending[:r.maxLineSize])
@@ -183,14 +184,17 @@ func (r *reader) consumeLine() ([]byte, bool) {
 	return nil, false
 }
 
-func (r *reader) fitsMaxLineSize(n int, includeCR bool) bool {
+func (r *reader) fitsMaxLineSize(line []byte, includeCr bool) bool {
 	if r.maxLineSize <= 0 {
 		return true
 	}
-	if includeCR {
-		return n <= r.maxLineSize+len(r.cr)
+
+	maxLineSize := r.maxLineSize
+	if includeCr && bytes.HasSuffix(line, r.cr) {
+		maxLineSize += len(r.cr)
 	}
-	return n <= r.maxLineSize
+
+	return len(line) <= maxLineSize
 }
 
 // position returns the byte offset for completed lines,
