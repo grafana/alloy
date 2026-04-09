@@ -492,8 +492,7 @@ func Test_parseCloudProvider(t *testing.T) {
 		targets = []
 		cloud_provider {
 			gcp {
-				project_id  = "my-gcp-project"
-				instance_id = "my-cloud-sql-instance"
+				connection_name = "my-gcp-project:us-central1:my-cloud-sql-instance"
 			}
 		}
 	`
@@ -504,8 +503,7 @@ func Test_parseCloudProvider(t *testing.T) {
 
 		require.NotNil(t, args.CloudProvider)
 		require.NotNil(t, args.CloudProvider.GCP)
-		assert.Equal(t, "my-gcp-project", args.CloudProvider.GCP.ProjectID)
-		assert.Equal(t, "my-cloud-sql-instance", args.CloudProvider.GCP.InstanceID)
+		assert.Equal(t, "my-gcp-project:us-central1:my-cloud-sql-instance", args.CloudProvider.GCP.ConnectionName)
 	})
 
 	t.Run("empty cloud provider block", func(t *testing.T) {

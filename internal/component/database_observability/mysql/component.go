@@ -97,8 +97,7 @@ type AzureCloudProviderInfo struct {
 }
 
 type GCPCloudProviderInfo struct {
-	ProjectID  string `alloy:"project_id,attr"`
-	InstanceID string `alloy:"instance_id,attr"`
+	ConnectionName string `alloy:"connection_name,attr"`
 }
 
 type QueryDetailsArguments struct {

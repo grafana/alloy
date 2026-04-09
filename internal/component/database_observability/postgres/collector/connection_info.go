@@ -88,6 +88,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		}
 		if c.CloudProvider.GCP != nil {
 			providerName = "gcp"
+			providerRegion = c.CloudProvider.GCP.Region
 			providerAccount = c.CloudProvider.GCP.ProjectID
 			dbInstanceIdentifier = c.CloudProvider.GCP.InstanceID
 		}

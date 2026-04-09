@@ -30,5 +30,6 @@ type AzureCloudProviderInfo struct {
 
 type GCPCloudProviderInfo struct {
 	ProjectID  string
+	Region     string
 	InstanceID string
 }

@@ -122,10 +122,9 @@ The `azure` block supplies the identifying information for the database being mo
 
 The `gcp` block supplies the identifying information for the GCP Cloud SQL database being monitored.
 
-| Name          | Type     | Description                                                 | Default | Required |
-|---------------|----------|-------------------------------------------------------------|---------|----------|
-| `project_id`  | `string` | The GCP project ID that contains the Cloud SQL instance.    |         | yes      |
-| `instance_id` | `string` | The Cloud SQL instance ID.                                  |         | yes      |
+| Name              | Type     | Description                                                                                                                 | Default | Required |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
 ### `query_details`
 

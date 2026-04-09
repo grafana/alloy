@@ -91,10 +91,11 @@ func TestConnectionInfo(t *testing.T) {
 			cloudProvider: &database_observability.CloudProvider{
 				GCP: &database_observability.GCPCloudProviderInfo{
 					ProjectID:  "my-gcp-project",
+					Region:     "us-central1",
 					InstanceID: "my-cloud-sql-instance",
 				},
 			},
-			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "my-cloud-sql-instance", "mysql", "8.0.32", "my-gcp-project", "gcp", "unknown"),
+			expectedMetrics: fmt.Sprintf(baseExpectedMetrics, "my-cloud-sql-instance", "mysql", "8.0.32", "my-gcp-project", "gcp", "us-central1"),
 		},
 	}
 
