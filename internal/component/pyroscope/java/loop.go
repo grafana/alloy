@@ -226,22 +226,26 @@ func (p *profilingLoop) start() error {
 		"-f", p.jfrFile,
 		"-o", "jfr",
 	)
-	if cfg.CPU {
-		argv = append(argv, "-e", cfg.Event)
-		if cfg.PerThread {
-			argv = append(argv, "-t")
+	if len(cfg.CustomArguments) == 0 {
+		if cfg.CPU {
+			argv = append(argv, "-e", cfg.Event)
+			if cfg.PerThread {
+				argv = append(argv, "-t")
+			}
+			profilingInterval := time.Second.Nanoseconds() / int64(cfg.SampleRate)
+			argv = append(argv, "-i", strconv.FormatInt(profilingInterval, 10))
 		}
-		profilingInterval := time.Second.Nanoseconds() / int64(cfg.SampleRate)
-		argv = append(argv, "-i", strconv.FormatInt(profilingInterval, 10))
-	}
-	if cfg.Alloc != "" {
-		argv = append(argv, "--alloc", cfg.Alloc)
-	}
-	if cfg.Lock != "" {
-		argv = append(argv, "--lock", cfg.Lock)
-	}
-	if cfg.LogLevel != "" {
-		argv = append(argv, "-L", cfg.LogLevel)
+		if cfg.Alloc != "" {
+			argv = append(argv, "--alloc", cfg.Alloc)
+		}
+		if cfg.Lock != "" {
+			argv = append(argv, "--lock", cfg.Lock)
+		}
+		if cfg.LogLevel != "" {
+			argv = append(argv, "-L", cfg.LogLevel)
+		}
+	} else {
+		argv = append(argv, cfg.CustomArguments...)
 	}
 
 	argv = append(argv,
