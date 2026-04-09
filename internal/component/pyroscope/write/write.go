@@ -283,7 +283,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 			return nil, err
 		}
 
-		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(h2Client, endpoint.URL)
+		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(h2Client, endpoint.URL, WithUserAgent(userAgent))
 		debugInfo := debuginfo.NewClient(logger, debugInfoConnect, metrics.debugInfoUploadBytes, endpointDataPath)
 
 		endpoints = append(endpoints, &endpointClient{
