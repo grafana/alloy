@@ -1,3 +1,5 @@
+//go:build alloyintegrationtests && k8sv2integrationtests
+
 package k8sv2
 
 import (
