@@ -211,6 +211,7 @@ func resolveSingleTest(
 	knownByLowerName map[string]planner.TestCase,
 	absDirToName map[string]string,
 ) (selectedTest, error) {
+
 	if tc, ok := knownByName[raw]; ok {
 		absPath, err := filepath.Abs(tc.Dir)
 		if err != nil {

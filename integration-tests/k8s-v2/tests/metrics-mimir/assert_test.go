@@ -14,7 +14,7 @@ import (
 func TestAssertions(t *testing.T) {
 	kubeconfig := os.Getenv("ALLOY_K8S_V2_KUBECONFIG")
 	if kubeconfig == "" {
-		t.Fatal("ALLOY_K8S_V2_KUBECONFIG is required")
+		t.Skip("skipping harness assertion test outside k8s-v2 harness")
 	}
 
 	cancelPortForward, err := startPortForward(kubeconfig, "k8s-v2-observability", "mimir", "39009:9009")

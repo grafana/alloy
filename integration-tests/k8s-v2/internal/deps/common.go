@@ -57,7 +57,7 @@ func readManifest(filename string) (string, error) {
 	return string(raw), nil
 }
 
-func runKubectl(ctx context.Context, kubeconfig string, args ...string) ([]byte, error) {
+func runKubectl(ctx context.Context, kubeconfig string, args ...string) error {
 	if cfg.Debug {
 		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] kubectl --kubeconfig %s %s\n", kubeconfig, strings.Join(args, " "))
 	}
@@ -68,9 +68,9 @@ func runKubectl(ctx context.Context, kubeconfig string, args ...string) ([]byte,
 		fmt.Fprintf(os.Stderr, "[k8s-v2][debug] kubectl output:\n%s\n", string(out))
 	}
 	if err != nil {
-		return out, fmt.Errorf("kubectl %v failed: %w: %s", args, err, string(out))
+		return fmt.Errorf("kubectl %v failed: %w: %s", args, err, string(out))
 	}
-	return out, nil
+	return nil
 }
 
 func applyManifest(ctx context.Context, kubeconfig string, manifest string) error {
@@ -92,8 +92,7 @@ func applyManifest(ctx context.Context, kubeconfig string, manifest string) erro
 	}
 	fmt.Fprintf(os.Stderr, "[k8s-v2] Applying manifest %s\n", tmp.Name())
 
-	_, err = runKubectl(ctx, kubeconfig, "apply", "-f", tmp.Name())
-	return err
+	return runKubectl(ctx, kubeconfig, "apply", "-f", tmp.Name())
 }
 
 func deleteManifest(ctx context.Context, kubeconfig string, manifest string) error {
@@ -118,8 +117,7 @@ func deleteManifest(ctx context.Context, kubeconfig string, manifest string) err
 	}
 	fmt.Fprintf(os.Stderr, "[k8s-v2] Deleting manifest %s\n", tmp.Name())
 
-	_, err = runKubectl(deleteCtx, kubeconfig, "delete", "--ignore-not-found=true", "-f", tmp.Name())
-	return err
+	return runKubectl(deleteCtx, kubeconfig, "delete", "--ignore-not-found=true", "-f", tmp.Name())
 }
 
 func waitForDeployment(ctx context.Context, kubeconfig, namespace, deployment string) error {
@@ -130,7 +128,7 @@ func waitForDeployment(ctx context.Context, kubeconfig, namespace, deployment st
 	}
 	fmt.Fprintf(os.Stderr, "[k8s-v2] Waiting for deployment/%s to be available\n", deployment)
 
-	_, err := runKubectl(waitCtx, kubeconfig,
+	err := runKubectl(waitCtx, kubeconfig,
 		"-n", namespace,
 		"wait",
 		"--for=condition=Available",
@@ -150,6 +148,7 @@ func checkServiceReadyEndpoint(
 	localPort, servicePort int,
 	readyURL string,
 ) error {
+
 	portForwardCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

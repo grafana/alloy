@@ -46,9 +46,11 @@ func EventuallyMimirQueryHasSeries(ctx context.Context, baseURL, query string) e
 			_ = resp.Body.Close()
 			if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 				var decoded promQueryResponse
-				if unmarshalErr := json.Unmarshal(body, &decoded); unmarshalErr == nil &&
-					decoded.Status == "success" && len(decoded.Data.Result) > 0 {
-					return nil
+				if unmarshalErr := json.Unmarshal(body, &decoded); unmarshalErr == nil {
+					hasSeries := decoded.Status == "success" && len(decoded.Data.Result) > 0
+					if hasSeries {
+						return nil
+					}
 				}
 				lastSummary = fmt.Sprintf("status=%d body=%s", resp.StatusCode, string(body))
 			} else {
