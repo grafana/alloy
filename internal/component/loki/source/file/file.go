@@ -359,6 +359,7 @@ func (c *Component) scheduleSources() {
 					decompressionConfig:  c.args.DecompressionConfig,
 					fileWatch:            c.args.FileWatch,
 					tailFromEnd:          c.args.TailFromEnd,
+					maxLineSize:          int(c.args.MaxLineSize),
 					onPositionsFileError: c.args.OnPositionsFileError,
 					legacyPositionUsed:   c.args.LegacyPositionsFile != "",
 				},
