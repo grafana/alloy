@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/alecthomas/units"
 	"github.com/grafana/dskit/backoff"
-	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -50,11 +50,12 @@ type Arguments struct {
 	Targets              []discovery.Target   `alloy:"targets,attr"`
 	ForwardTo            []loki.LogsReceiver  `alloy:"forward_to,attr"`
 	Encoding             string               `alloy:"encoding,attr,optional"`
-	DecompressionConfig  DecompressionConfig  `alloy:"decompression,block,optional"`
+	TailFromEnd          bool                 `alloy:"tail_from_end,attr,optional"`
+	MaxLineSize          units.Base2Bytes     `alloy:"max_line_size,attr,optional"`
 	FileWatch            FileWatch            `alloy:"file_watch,block,optional"`
 	FileMatch            FileMatch            `alloy:"file_match,block,optional"`
-	TailFromEnd          bool                 `alloy:"tail_from_end,attr,optional"`
 	LegacyPositionsFile  string               `alloy:"legacy_positions_file,attr,optional"`
+	DecompressionConfig  DecompressionConfig  `alloy:"decompression,block,optional"`
 	OnPositionsFileError OnPositionsFileError `alloy:"on_positions_file_error,attr,optional"`
 }
 
@@ -84,6 +85,7 @@ func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
 func (a *Arguments) SetToDefault() {
 	a.FileWatch.SetToDefault()
 	a.FileMatch.SetToDefault()
+	a.MaxLineSize = 1 * units.MiB
 	a.OnPositionsFileError = OnPositionsFileErrorRestartBeginning
 }
 
@@ -344,16 +346,33 @@ func (c *Component) scheduleSources() {
 
 			c.metrics.totalBytes.WithLabelValues(target.Path).Set(float64(fi.Size()))
 
-			return c.newSource(sourceOptions{
-				path:                 target.Path,
-				labels:               target.Labels,
-				encoding:             c.args.Encoding,
-				decompressionConfig:  c.args.DecompressionConfig,
-				fileWatch:            c.args.FileWatch,
-				tailFromEnd:          c.args.TailFromEnd,
-				onPositionsFileError: c.args.OnPositionsFileError,
-				legacyPositionUsed:   c.args.LegacyPositionsFile != "",
-			})
+			tailer := newTailer(
+				c.metrics,
+				c.opts.Logger,
+				c.handler,
+				c.posFile,
+				c.IsStopping,
+				tailerOptions{
+					path:                 target.Path,
+					labels:               target.Labels,
+					encoding:             c.args.Encoding,
+					decompressionConfig:  c.args.DecompressionConfig,
+					fileWatch:            c.args.FileWatch,
+					tailFromEnd:          c.args.TailFromEnd,
+					onPositionsFileError: c.args.OnPositionsFileError,
+					legacyPositionUsed:   c.args.LegacyPositionsFile != "",
+				},
+			)
+
+			// When decompression is enabled we don't wrap it with retries.
+			if c.args.DecompressionConfig.Enabled {
+				return tailer, nil
+			}
+
+			return source.NewSourceWithRetry(tailer, backoff.Config{
+				MinBackoff: 1 * time.Second,
+				MaxBackoff: 10 * time.Second,
+			}), nil
 		},
 	)
 }
@@ -383,39 +402,6 @@ func (c *Component) DebugInfo() any {
 		}
 	}
 	return res
-}
-
-type sourceOptions struct {
-	path                 string
-	labels               model.LabelSet
-	encoding             string
-	decompressionConfig  DecompressionConfig
-	fileWatch            FileWatch
-	tailFromEnd          bool
-	onPositionsFileError OnPositionsFileError
-	legacyPositionUsed   bool
-}
-
-// newSource will return a decompressor source if enabled, otherwise a tailer source.
-func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
-	tailer := newTailer(
-		c.metrics,
-		c.opts.Logger,
-		c.handler,
-		c.posFile,
-		c.IsStopping,
-		opts,
-	)
-
-	// When decompression is enabled we don't retry starting tailer.
-	if opts.decompressionConfig.Enabled {
-		return tailer, nil
-	}
-
-	return source.NewSourceWithRetry(tailer, backoff.Config{
-		MinBackoff: 1 * time.Second,
-		MaxBackoff: 10 * time.Second,
-	}), nil
 }
 
 func (c *Component) IsStopping() bool {
