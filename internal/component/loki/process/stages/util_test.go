@@ -31,6 +31,22 @@ func newEntry(ex map[string]any, lbs model.LabelSet, line string, ts time.Time) 
 	}
 }
 
+func newTestEntry(extracted map[string]any, labels model.LabelSet, entry push.Entry) Entry {
+	if extracted == nil {
+		extracted = map[string]any{}
+	}
+	if labels == nil {
+		labels = model.LabelSet{}
+	}
+	return Entry{
+		Extracted: extracted,
+		Entry: loki.Entry{
+			Labels: labels,
+			Entry:  entry,
+		},
+	}
+}
+
 // nolint
 func mustParseTime(layout, value string) time.Time {
 	t, err := time.Parse(layout, value)

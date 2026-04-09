@@ -469,6 +469,237 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *test
 	require.Equal(t, expect, actual)
 }
 
+func Test_sourceMapsStoreImpl_ReadFromRemoteLocation(t *testing.T) {
+	var (
+		logger = alloyutil.TestLogger(t)
+
+		httpClient = &mockHTTPClient{
+			responses: []struct {
+				*http.Response
+				error
+			}{
+				{newResponseFromTestData(t, "foo.js.map"), nil},
+			},
+		}
+
+		fileService = newTestFileService()
+	)
+
+	var store = newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Download:            false,
+			DownloadFromOrigins: []string{"*"},
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "http://foo.com/",
+					Path:               "http://baz.com/baz",
+				},
+			},
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
+	)
+
+	expect := &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    37,
+					Filename: "/__parcel_source_root/demo/src/actions.ts",
+					Function: "?",
+					Lineno:   6,
+				},
+				{
+					Colno:    5,
+					Filename: "http://bar.com/foo.js",
+					Function: "callUndefined",
+					Lineno:   6,
+				},
+			},
+		},
+	}
+
+	actual := transformException(logger, store, &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    6,
+					Filename: "http://foo.com/foo.js",
+					Function: "eval",
+					Lineno:   5,
+				},
+				{
+					Colno:    5,
+					Filename: "http://bar.com/foo.js",
+					Function: "callUndefined",
+					Lineno:   6,
+				},
+			},
+		},
+	}, "123")
+
+	require.Equal(t, []string{}, fileService.stats)
+	require.Equal(t, []string{}, fileService.reads)
+	require.Equal(t, []string{"http://baz.com/baz/foo.js.map"}, httpClient.requests)
+	require.Equal(t, expect, actual)
+}
+
+func Test_sourceMapsStoreImpl_ReadFromFileSystemIfBothLocalAndRemoteLocation(t *testing.T) {
+	var (
+		logger = alloyutil.TestLogger(t)
+
+		httpClient = &mockHTTPClient{}
+
+		fileService = newTestFileService()
+	)
+	fileService.files = map[string][]byte{
+		filepath.FromSlash("/var/build/latest/foo.js.map"): loadTestData(t, "foo.js.map"),
+	}
+
+	var store = newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Download:            false,
+			DownloadFromOrigins: []string{"*"},
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "http://foo.com/",
+					Path:               "http://baz.com/baz/",
+				},
+				{
+					MinifiedPathPrefix: "http://foo.com/",
+					Path:               filepath.FromSlash("/var/build/latest/"),
+				},
+			},
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
+	)
+
+	expect := &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    37,
+					Filename: "/__parcel_source_root/demo/src/actions.ts",
+					Function: "?",
+					Lineno:   6,
+				},
+				{
+					Colno:    5,
+					Filename: "http://bar.com/foo.js",
+					Function: "callUndefined",
+					Lineno:   6,
+				},
+			},
+		},
+	}
+
+	actual := transformException(logger, store, &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    6,
+					Filename: "http://foo.com/foo.js",
+					Function: "eval",
+					Lineno:   5,
+				},
+				{
+					Colno:    5,
+					Filename: "http://bar.com/foo.js",
+					Function: "callUndefined",
+					Lineno:   6,
+				},
+			},
+		},
+	}, "123")
+
+	require.Equal(t, []string{"/var/build/latest/foo.js.map"}, fileService.stats)
+	require.Equal(t, []string{"/var/build/latest/foo.js.map"}, fileService.reads)
+	require.Nil(t, httpClient.requests)
+	require.Equal(t, expect, actual)
+}
+
+func Test_sourceMapsStoreImpl_ReadFromRemoteLocationIfBothDownloadAndLocationIsSet(t *testing.T) {
+	var (
+		logger = alloyutil.TestLogger(t)
+
+		httpClient = &mockHTTPClient{
+			responses: []struct {
+				*http.Response
+				error
+			}{
+				{newResponseFromTestData(t, "foo.js.map"), nil},
+			},
+		}
+
+		fileService = newTestFileService()
+	)
+
+	var store = newSourceMapsStore(
+		logger,
+		SourceMapsArguments{
+			Download:            true,
+			DownloadFromOrigins: []string{"*"},
+			Locations: []LocationArguments{
+				{
+					MinifiedPathPrefix: "http://foo.com/",
+					Path:               "http://baz.com/baz/",
+				},
+			},
+		},
+		newSourceMapMetrics(prometheus.NewRegistry()),
+		httpClient,
+		fileService,
+	)
+
+	expect := &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    37,
+					Filename: "/__parcel_source_root/demo/src/actions.ts",
+					Function: "?",
+					Lineno:   6,
+				},
+				{
+					Colno:    5,
+					Filename: "http://bar.com/foo.js",
+					Function: "callUndefined",
+					Lineno:   6,
+				},
+			},
+		},
+	}
+
+	actual := transformException(logger, store, &payload.Exception{
+		Stacktrace: &payload.Stacktrace{
+			Frames: []payload.Frame{
+				{
+					Colno:    6,
+					Filename: "http://foo.com/foo.js",
+					Function: "eval",
+					Lineno:   5,
+				},
+				{
+					Colno:    5,
+					Filename: "http://bar.com/foo.js",
+					Function: "callUndefined",
+					Lineno:   6,
+				},
+			},
+		},
+	}, "123")
+
+	require.Equal(t, []string{}, fileService.stats)
+	require.Equal(t, []string{}, fileService.reads)
+	require.Equal(t, []string{"http://baz.com/baz/foo.js.map"}, httpClient.requests)
+	require.Equal(t, expect, actual)
+}
+
 func Test_sourceMapsStoreImpl_FilepathSanitized(t *testing.T) {
 	var (
 		logger = alloyutil.TestLogger(t)
