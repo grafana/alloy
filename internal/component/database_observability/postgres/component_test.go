@@ -485,6 +485,27 @@ func Test_parseCloudProvider(t *testing.T) {
 		assert.Empty(t, args.CloudProvider.Azure.ServerName)
 	})
 
+	t.Run("parse gcp cloud provider block", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			gcp {
+				connection_name = "my-gcp-project:us-central1:my-cloud-sql-instance"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.GCP)
+		assert.Equal(t, "my-gcp-project:us-central1:my-cloud-sql-instance", args.CloudProvider.GCP.ConnectionName)
+	})
+
 	t.Run("empty cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
@@ -497,6 +518,27 @@ func Test_parseCloudProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Nil(t, args.CloudProvider)
+	})
+
+	t.Run("multiple cloud providers returns error", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			aws {
+				arn = "arn:aws:rds:us-east-1:123456789012:db:mydb"
+			}
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.EqualError(t, err, "cloud_provider: at most one of aws, azure, or gcp must be specified")
 	})
 }
 
