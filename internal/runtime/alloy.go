@@ -205,7 +205,6 @@ func newController(o controllerOptions) (*Runtime, error) {
 		ComponentGlobals: controller.ComponentGlobals{
 			// This needs to remain logging.Logger to support dynamic log changes.
 			Logger:               o.Logger,
-			SLogger:              o.Logger.Slog(),
 			TraceProvider:        tracer,
 			DataPath:             o.DataPath,
 			MinStability:         o.MinStability,

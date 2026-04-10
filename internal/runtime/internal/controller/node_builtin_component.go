@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net"
 	"path"
 	"path/filepath"
@@ -20,6 +19,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/equality"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
@@ -73,8 +73,7 @@ type ModuleControllerOpts struct {
 // ComponentGlobals are used by BuiltinComponentNodes to build managed components. All
 // BuiltinComponentNodes should use the same ComponentGlobals.
 type ComponentGlobals struct {
-	Logger               log.Logger                                       // Logger shared between all managed components.
-	SLogger              *slog.Logger                                     // We are migrating to slog but before components are updated we need to provide both.
+	Logger               *logging.Logger                                  // Logger shared between all managed components.
 	TraceProvider        trace.TracerProvider                             // Tracer shared between all managed components.
 	DataPath             string                                           // Shared directory where component data may be stored
 	MinStability         featuregate.Stability                            // Minimum allowed stability level for features
