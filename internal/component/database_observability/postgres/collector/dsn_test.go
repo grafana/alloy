@@ -39,16 +39,34 @@ func TestReplaceDatabaseNameInDSN(t *testing.T) {
 			expected:  "postgres://postgres:password@localhost:5432/testdb",
 		},
 		{
-			name:      "database name appears in password",
+			name:      "problematic case - database name appears in password",
 			dsn:       "postgres://user:mydb123@localhost:5432/mydb",
 			newDBName: "newdb",
 			expected:  "postgres://user:mydb123@localhost:5432/newdb",
 		},
 		{
-			name:      "database name with special characters",
+			name:      "problematic case - database name with special characters",
 			dsn:       "postgres://user:pass@localhost:5432/my-db_test$1",
 			newDBName: "new_db",
 			expected:  "postgres://user:pass@localhost:5432/new_db",
+		},
+		{
+			name:      "unix socket - minimum postgres DSN",
+			dsn:       "postgres:///mydb?host=/run/postgresql",
+			newDBName: "newdb",
+			expected:  "postgres:///newdb?host=/run/postgresql",
+		},
+		{
+			name:      "unix socket - general postgres DSN",
+			dsn:       "postgres://user:@/mydb?host=/run/postgresql",
+			newDBName: "newdb",
+			expected:  "postgres://user:@/newdb?host=/run/postgresql",
+		},
+		{
+			name:      "unix socket problematic case - hostname and dbname with special characters",
+			dsn:       "postgres://user:pass@ex-amp_le.com:5432/my-db_test$1?host=/run/postgresql",
+			newDBName: "new_db",
+			expected:  "postgres://user:pass@ex-amp_le.com:5432/new_db?host=/run/postgresql",
 		},
 		{
 			name:        "invalid DSN format",
@@ -59,6 +77,18 @@ func TestReplaceDatabaseNameInDSN(t *testing.T) {
 		{
 			name:        "DSN without database name",
 			dsn:         "postgres://user:pass@localhost:5432/",
+			newDBName:   "newdb",
+			expectError: true,
+		},
+		{
+			name:        "DSN with space",
+			dsn:         "postgres://user:pass @localhost:5432/",
+			newDBName:   "newdb",
+			expectError: true,
+		},
+		{
+			name:        "DSN with space in query parameters",
+			dsn:         "postgres://user:pass@localhost:5432/mydb?sslmode=disable &connect_timeout=10",
 			newDBName:   "newdb",
 			expectError: true,
 		},
