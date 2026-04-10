@@ -187,6 +187,14 @@ func (h *harness) plan() error {
 	}
 	h.requiredDeps = planner.RequirementsSet(h.selectedTests)
 
+	if *reuseDepsFlag {
+		h.log.Info("skipping dependency validation because reuse-deps is enabled")
+		h.log.Info("selected tests", "tests", strings.Join(testNames(h.selectedTests), ", "))
+		h.log.Info("required dependencies", "dependencies", strings.Join(h.requiredDeps, ", "))
+		h.log.Info("timeouts", "setup_timeout", *setupTimeoutFlag, "readiness_timeout", *readinessTimeout)
+		return nil
+	}
+
 	if err := h.registry.Validate(h.requiredDeps); err != nil {
 		return fmt.Errorf("k8s-v2 plan failed: %w", err)
 	}

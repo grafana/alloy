@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/imageutil"
 )
 
 const localAlloyChartPath = "operations/helm/charts/alloy"
@@ -90,7 +92,7 @@ func installAlloyFromChart(ctx context.Context, kubeconfigPath, testName, values
 		absValuesPath,
 	)
 	if *alloyImageFlag != "" {
-		repo, tag, err := splitImageReference(*alloyImageFlag)
+		repo, tag, err := imageutil.SplitReference(*alloyImageFlag)
 		if err != nil {
 			return fmt.Errorf("parse k8s.v2.alloy-image %q: %w", *alloyImageFlag, err)
 		}
@@ -108,21 +110,6 @@ func installAlloyFromChart(ctx context.Context, kubeconfigPath, testName, values
 		return fmt.Errorf("helm install Alloy for %q failed: %w: %s", testName, err, string(out))
 	}
 	return nil
-}
-
-func splitImageReference(imageRef string) (string, string, error) {
-	if imageRef == "" {
-		return "", "", fmt.Errorf("image reference is empty")
-	}
-	if strings.Contains(imageRef, "@") {
-		return "", "", fmt.Errorf("digest image references are not supported, use repository:tag")
-	}
-	lastSlash := strings.LastIndex(imageRef, "/")
-	lastColon := strings.LastIndex(imageRef, ":")
-	if lastColon <= lastSlash || lastColon == len(imageRef)-1 {
-		return "", "", fmt.Errorf("missing image tag in %q", imageRef)
-	}
-	return imageRef[:lastColon], imageRef[lastColon+1:], nil
 }
 
 func uninstallAlloyFromChart(ctx context.Context, kubeconfigPath, testName string) error {
