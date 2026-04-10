@@ -1,0 +1,29 @@
+arguments:
+  type: object
+  description: "Test component with two differently-configured blocks sharing the same name."
+  properties:
+    grpc:
+      description: Configures the gRPC server.
+      type: object
+      properties:
+        tls:
+          description: Configures TLS for the gRPC server.
+          type: object
+          properties:
+            key_pem:
+              description: >-
+                Client key in PEM format.
+              type: string
+              alloy:
+                type_override: "secret"
+    http:
+      description: Configures the HTTP server.
+      type: object
+      properties:
+        tls:
+          description: Configures TLS for the HTTP server.
+          type: object
+          properties:
+            cert_file:
+              description: Path to the TLS certificate file.
+              type: string

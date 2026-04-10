@@ -1,0 +1,17 @@
+arguments:
+  type: object
+  description: "Test component with multiple blocks sharing the same sub-block name."
+  properties:
+    grpc: &server_block
+      description: Configures the gRPC server.
+      type: object
+      properties:
+        tls:
+          description: Configures TLS for the server.
+          type: object
+          properties:
+            cert_file:
+              description: Path to the TLS certificate file.
+              type: string
+    http: *server_block
+    otlp: *server_block
