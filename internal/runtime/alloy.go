@@ -48,10 +48,10 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
@@ -61,7 +61,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
@@ -122,7 +121,7 @@ type Options struct {
 
 // Runtime is the Alloy system.
 type Runtime struct {
-	log    log.Logger
+	log    *slog.Logger
 	tracer *tracing.Tracer
 	opts   controllerOptions
 
@@ -168,7 +167,7 @@ type controllerOptions struct {
 // given modReg.
 func newController(o controllerOptions) (*Runtime, error) {
 	var (
-		logger     = log.With(o.Logger, "controller_id", o.ControllerID)
+		logger     = o.Logger.Slog().With("controller_id", o.ControllerID)
 		tracer     = o.Tracer
 		workerPool = o.WorkerPool
 	)
@@ -183,7 +182,7 @@ func newController(o controllerOptions) (*Runtime, error) {
 	}
 
 	if workerPool == nil {
-		level.Info(logger).Log("msg", "no worker pool provided, creating a default pool")
+		logger.Info("no worker pool provided, creating a default pool")
 		workerPool = worker.NewDefaultWorkerPool()
 	}
 
@@ -206,6 +205,7 @@ func newController(o controllerOptions) (*Runtime, error) {
 		ComponentGlobals: controller.ComponentGlobals{
 			// This needs to remain logging.Logger to support dynamic log changes.
 			Logger:               o.Logger,
+			SLogger:              o.Logger.Slog(),
 			TraceProvider:        tracer,
 			DataPath:             o.DataPath,
 			MinStability:         o.MinStability,
@@ -266,12 +266,12 @@ func newController(o controllerOptions) (*Runtime, error) {
 // canceled. Run must only be called once.
 func (f *Runtime) Run(ctx context.Context) {
 	defer func() {
-		level.Debug(f.log).Log("msg", "Alloy controller exiting")
+		f.log.Debug("Alloy controller exiting")
 		f.loader.Cleanup(!f.opts.IsModule)
 		f.sched.Stop()
 	}()
 
-	level.Debug(f.log).Log("msg", "Running alloy controller")
+	f.log.Debug("Running alloy controller")
 
 	for {
 		select {
@@ -285,9 +285,9 @@ func (f *Runtime) Run(ctx context.Context) {
 			all := f.updateQueue.DequeueAll()
 			f.loader.EvaluateDependants(ctx, all)
 		case <-f.loadFinished:
-			level.Info(f.log).Log("msg", "scheduling loaded components and services")
+			f.log.Info("scheduling loaded components and services")
 			if err := f.sched.Synchronize(f.loader.Graph()); err != nil {
-				level.Error(f.log).Log("msg", "failed to load components and services", "err", err)
+				f.log.Error("failed to load components and services", "err", err)
 			}
 			f.loadComplete.Store(true)
 		}
@@ -304,7 +304,7 @@ func (f *Runtime) Run(ctx context.Context) {
 func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath string) error {
 	modulePath, err := util.ExtractDirPath(configPath)
 	if err != nil {
-		level.Warn(f.log).Log("msg", "failed to extract directory path from configPath", "configPath", configPath, "err", err)
+		f.log.Warn("failed to extract directory path from configPath", "configPath", configPath, "err", err)
 	}
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:            args,

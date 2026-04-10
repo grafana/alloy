@@ -3,24 +3,25 @@ package controller_test
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"slices"
 	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
 func TestScheduler_Synchronize(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := logging.NewSlogNop()
 	t.Run("Can start new jobs", func(t *testing.T) {
 		var started, finished sync.WaitGroup
 		started.Add(3)
@@ -124,7 +125,12 @@ func TestScheduler_Synchronize(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			// Create a thread-safe buffer to capture log output
 			var logBuffer syncBuffer
-			logger := log.NewLogfmtLogger(&logBuffer)
+			alloyLogger, err := logging.New(&logBuffer, logging.Options{
+				Level:  logging.LevelDebug,
+				Format: logging.FormatLogfmt,
+			})
+			require.NoError(t, err)
+			logger := alloyLogger.Slog()
 
 			runFunc := func(ctx context.Context) error {
 				<-ctx.Done()
@@ -138,7 +144,7 @@ func TestScheduler_Synchronize(t *testing.T) {
 			g.Add(&fakeRunnable{ID: "blocking-component", Component: mockComponent{RunFunc: runFunc}})
 
 			// Start a component
-			err := sched.Synchronize(g)
+			err = sched.Synchronize(g)
 			require.NoError(t, err)
 
 			syncDone := make(chan struct{})
