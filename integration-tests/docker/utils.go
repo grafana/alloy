@@ -70,31 +70,21 @@ func alloyIntegrationImageTag(dirName, dockerfile string) string {
 	return alloyImageName
 }
 
-// alloyDockerBuildCfg resolves alloy_container.dockerfile to absolute paths and uses the repository root as build context.
+// alloyDockerBuildCfg resolves alloy_container.dockerfile relative to absTestDir and uses the repository root as build context.
 func alloyDockerBuildCfg(absTestDir, dockerfile string) (AdditionalContainerBuildConfig, error) {
 	if dockerfile == "" {
 		return AdditionalContainerBuildConfig{}, fmt.Errorf("empty dockerfile path")
 	}
-	var absDockerfile string
 	if filepath.IsAbs(dockerfile) {
-		if _, err := os.Stat(dockerfile); err != nil {
-			return AdditionalContainerBuildConfig{}, fmt.Errorf("dockerfile %q: %w", dockerfile, err)
-		}
-		ap, err := filepath.Abs(dockerfile)
-		if err != nil {
-			return AdditionalContainerBuildConfig{}, err
-		}
-		absDockerfile = ap
-	} else {
-		p := filepath.Join(absTestDir, dockerfile)
-		if _, err := os.Stat(p); err != nil {
-			return AdditionalContainerBuildConfig{}, fmt.Errorf("alloy_container.dockerfile %q: %w", dockerfile, err)
-		}
-		ap, err := filepath.Abs(p)
-		if err != nil {
-			return AdditionalContainerBuildConfig{}, err
-		}
-		absDockerfile = ap
+		return AdditionalContainerBuildConfig{}, fmt.Errorf("alloy_container.dockerfile must be relative to the test directory, got absolute path %q", dockerfile)
+	}
+	p := filepath.Join(absTestDir, dockerfile)
+	if _, err := os.Stat(p); err != nil {
+		return AdditionalContainerBuildConfig{}, fmt.Errorf("alloy_container.dockerfile %q: %w", dockerfile, err)
+	}
+	absDockerfile, err := filepath.Abs(p)
+	if err != nil {
+		return AdditionalContainerBuildConfig{}, err
 	}
 	absRepo, err := filepath.Abs(repoRootDir)
 	if err != nil {
@@ -136,11 +126,7 @@ func tryBuildAlloyImageFromTestYAML(testDir string) {
 	}
 	tag := alloyIntegrationImageTag(filepath.Base(abs), df)
 	fmt.Printf("Building alloy integration image %s (from test.yaml)...\n", tag)
-	if err := buildAdditionalContainerImage(abs, AdditionalContainerConfig{
-		Name:  "alloy-preflight",
-		Image: tag,
-		Build: buildCfg,
-	}); err != nil {
+	if err := buildDockerImage(abs, tag, buildCfg); err != nil {
 		log.Fatalf("alloy image for %s: %v", abs, err)
 	}
 }

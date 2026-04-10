@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # Layers Oracle Instant Client (ZIP) on the standard Alloy image from the repo root Dockerfile.
-# Matches Oracle’s ZIP install flow: unzip under /opt/oracle, libaio, ld.so.conf.d + ldconfig.
+# Matches Oracle’s ZIP install flow: unzip under /opt/oracle, libaio, ld.so.conf.d + ldconfig:
+# https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
 #
 # Layered on alloy-integration-tests. Built via tests/oracledb/test.yaml (alloy_container.dockerfile).
 #   make ALLOY_IMAGE=alloy-integration-tests alloy-image
@@ -10,8 +11,6 @@ FROM --platform=linux/amd64 alloy-integration-tests:latest
 
 USER root
 
-# libaio (Ubuntu: libaio1t64). ODPI/godror loads libaio.so.1; on noble the package only ships libaio.so.1t64.
-# Use uname -m for the multiarch lib dir: dpkg --print-architecture is "amd64" but libs live under x86_64-linux-gnu.
 RUN apt-get update \
 	&& apt-get install -y --no-install-recommends ca-certificates wget unzip libaio1t64 \
 	&& rm -rf /var/lib/apt/lists/* \
