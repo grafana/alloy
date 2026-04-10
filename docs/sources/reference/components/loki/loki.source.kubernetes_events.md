@@ -148,6 +148,13 @@ When clustering is enabled, each namespace is distributed across cluster nodes u
 If the `namespaces` argument is empty (watching all namespaces), only a single node in the cluster will collect events, since all replicas share the same "all namespaces" target.
 If specific namespaces are listed, they are distributed across the available cluster nodes.
 
+{{< admonition type="caution" >}}
+When a namespace moves from one cluster node to another (for example, during a rollout or pod restart), the new node may re-deliver events that were already sent by the previous node.
+This is because each node tracks its read position locally, and the new node starts from the beginning of the available events.
+The impact is bounded by the Kubernetes event TTL, which defaults to one hour.
+See [issue #3717](https://github.com/grafana/alloy/issues/3717) for more details.
+{{< /admonition >}}
+
 [using clustering]: ../../../../get-started/clustering/
 
 ## Exported fields
