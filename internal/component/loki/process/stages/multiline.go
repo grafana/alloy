@@ -156,15 +156,21 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 						}
 					}
 					m.streams = nil
+					timer.Stop()
 					return
 				}
+				// Capture the stream key before emitting entries downstream.
+				// A downstream stage goroutine may mutate e.Labels concurrently
+				// once the entry is sent on out, which would race with a
+				// post-emit FastFingerprint() call.
+				key := e.Labels.FastFingerprint()
 				for _, r := range m.processEntry(e) {
 					out <- r
 				}
 				// Arm the timer for any stream that now has the earliest deadline,
 				// including streams where currentLines==0 (just hit max_lines) so
 				// the timer fires to remove them if they subsequently go idle.
-				if key := e.Labels.FastFingerprint(); m.streams[key] != nil {
+				if m.streams[key] != nil {
 					if dl := m.streams[key].lastSeen.Add(m.cfg.MaxWaitTime); nearestDeadline.IsZero() || dl.Before(nearestDeadline) {
 						armTimer(dl)
 					}

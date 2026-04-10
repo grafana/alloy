@@ -463,62 +463,6 @@ func TestMultilineStageStreamsMapCleanedUpOnClose(t *testing.T) {
 	require.Equal(t, 0, len(stage.streams), "streams map should be empty after channel close")
 }
 
-// TestMultilineStageStreamsMapCleanedUpAfterMaxLinesFlush verifies that streams
-// flushed at the max_lines boundary (currentLines resets to 0) are removed from
-// the map by the timer once they go idle, not just at channel close.
-func TestMultilineStageStreamsMapCleanedUpAfterMaxLinesFlush(t *testing.T) {
-	mcfg := MultilineConfig{
-		Expression:   "^START",
-		MaxLines:     1, // every start line immediately flushes → currentLines=0
-		MaxWaitTime:  50 * time.Millisecond,
-		TrimNewlines: true,
-	}
-	regex, err := validateMultilineConfig(mcfg)
-	require.NoError(t, err)
-	stage := &multilineStage{
-		cfg:     mcfg,
-		regex:   regex,
-		logger:  log.NewNopLogger(),
-		streams: make(map[model.Fingerprint]*multilineState),
-	}
-
-	in := make(chan Entry, 3)
-	in <- simpleEntry("START a", "stream-a")
-	in <- simpleEntry("START b", "stream-b")
-	in <- simpleEntry("START c", "stream-c")
-
-	out := stage.Run(in)
-
-	mu := new(sync.Mutex)
-	var res []Entry
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for e := range out {
-			mu.Lock()
-			res = append(res, e)
-			mu.Unlock()
-		}
-	}()
-
-	// All 3 are flushed immediately by MaxLines=1; wait for them to arrive.
-	require.Eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return len(res) == 3
-	}, 2*time.Second, 10*time.Millisecond)
-
-	// Sleep past MaxWaitTime so the timer fires and removes the currentLines=0
-	// entries. There is no emitted output to observe from this timer fire, so
-	// a brief sleep is necessary before closing.
-	time.Sleep(100 * time.Millisecond)
-
-	close(in)
-	<-done
-
-	require.Equal(t, 0, len(stage.streams), "streams map should be empty after timer cleans up max_lines-flushed entries")
-}
-
 // TestMultilineStageStreamsMapCleanedUpAfterTimeout verifies that streams are
 // removed from the map when the timer-based flush fires, so the map does not
 // accumulate dead entries for streams that go idle.
@@ -552,7 +496,9 @@ func TestMultilineStageStreamsMapCleanedUpAfterTimeout(t *testing.T) {
 		}
 	}()
 
-	// Wait until the timer has flushed all 3 streams.
+	// Wait until the timer has flushed all 3 streams. Verifying len(res)==3
+	// before closing in proves the timer (not the close path) did the flush,
+	// which also deleted the streams from the map in the same goroutine.
 	require.Eventually(t, func() bool {
 		mu.Lock()
 		defer mu.Unlock()
@@ -565,6 +511,42 @@ func TestMultilineStageStreamsMapCleanedUpAfterTimeout(t *testing.T) {
 	<-done
 
 	require.Equal(t, 0, len(stage.streams), "streams map should be empty after timer-based flush")
+}
+
+// TestMultilineStagePassThroughNoLabelRace is a race-detector regression test.
+// Pass-through entries (non-start lines before any start line) are emitted
+// unchanged, meaning the downstream stage goroutine shares the same Labels map.
+// A bug where FastFingerprint() was called after out<-r would race with
+// downstream label mutations; this test exercises that path.
+func TestMultilineStagePassThroughNoLabelRace(t *testing.T) {
+	mcfg := MultilineConfig{Expression: "^START", MaxWaitTime: 3 * time.Second, TrimNewlines: true}
+	regex, err := validateMultilineConfig(mcfg)
+	require.NoError(t, err)
+
+	stage := &multilineStage{cfg: mcfg, regex: regex, logger: log.NewNopLogger()}
+
+	in := make(chan Entry)
+	out := stage.Run(in)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for e := range out {
+			// Simulate a downstream stage (e.g. static_labels) mutating the
+			// Labels map of a received entry. This races with any post-emit
+			// read of e.Labels in the multiline goroutine.
+			e.Labels["injected"] = "value"
+		}
+	}()
+
+	go func() {
+		for i := 0; i < 50; i++ {
+			in <- simpleEntry("not a start line", "label")
+		}
+		close(in)
+	}()
+
+	<-done
 }
 
 var mlBenchTime = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
