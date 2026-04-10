@@ -3,12 +3,11 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"regexp"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/common/model"
 )
@@ -50,11 +49,11 @@ func validateRegexConfig(c RegexConfig) (*regexp.Regexp, error) {
 type regexStage struct {
 	config     *RegexConfig
 	expression *regexp.Regexp
-	logger     log.Logger
+	logger     *slog.Logger
 }
 
 // newRegexStage creates a newRegexStage
-func newRegexStage(logger log.Logger, config RegexConfig) (Stage, error) {
+func newRegexStage(logger *slog.Logger, config RegexConfig) (Stage, error) {
 	expression, err := validateRegexConfig(config)
 	if err != nil {
 		return nil, err
@@ -62,7 +61,7 @@ func newRegexStage(logger log.Logger, config RegexConfig) (Stage, error) {
 	return toStage(&regexStage{
 		config:     &config,
 		expression: expression,
-		logger:     log.With(logger, "component", "stage", "type", "regex"),
+		logger:     logger.With("stage", "regex"),
 	}), nil
 }
 
@@ -85,7 +84,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 	if r.config.Source != nil {
 		if _, ok := extracted[*r.config.Source]; !ok {
 			if Debug {
-				level.Debug(r.logger).Log("msg", "source does not exist in the set of extracted values", "source", *r.config.Source)
+				r.logger.Debug("source does not exist in the set of extracted values", "source", *r.config.Source)
 			}
 			return
 		}
@@ -93,7 +92,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 		value, err := getString(extracted[*r.config.Source])
 		if err != nil {
 			if Debug {
-				level.Debug(r.logger).Log("msg", "failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
+				r.logger.Debug("failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
 			}
 			return
 		}
@@ -103,7 +102,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 
 	if input == nil {
 		if Debug {
-			level.Debug(r.logger).Log("msg", "cannot parse a nil entry")
+			r.logger.Debug("cannot parse a nil entry")
 		}
 		return
 	}
@@ -111,7 +110,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 	match := r.expression.FindStringSubmatch(*input)
 	if match == nil {
 		if Debug {
-			level.Debug(r.logger).Log("msg", "regex did not match", "input", *input, "regex", r.expression)
+			r.logger.Debug("regex did not match", "input", *input, "regex", r.expression)
 		}
 		return
 	}
@@ -127,14 +126,14 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 				//nolint:staticcheck
 				if !labelName.IsValid() {
 					if Debug {
-						level.Debug(r.logger).Log("msg", "invalid label name from regex capture group", "labelName", labelName)
+						r.logger.Debug("invalid label name from regex capture group", "labelName", labelName)
 					}
 					continue
 				}
 
 				if !labelValue.IsValid() {
 					if Debug {
-						level.Debug(r.logger).Log("msg", "invalid label value from regex capture group", "labelName", labelName, "labelValue", labelValue)
+						r.logger.Debug("invalid label value from regex capture group", "labelName", labelName, "labelValue", labelValue)
 					}
 					continue
 				}
@@ -143,7 +142,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 
 				// Label from capture group will override existing label with same name
 				if Debug && ok {
-					level.Debug(r.logger).Log("msg", "label from regex capture group is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
+					r.logger.Debug("label from regex capture group is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
 				}
 
 				labels[labelName] = labelValue
@@ -151,6 +150,6 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 		}
 	}
 	if Debug {
-		level.Debug(r.logger).Log("msg", "extracted data debug in regex stage", "extracted data", fmt.Sprintf("%v", extracted))
+		r.logger.Debug("extracted data debug in regex stage", "extracted_data", extracted)
 	}
 }

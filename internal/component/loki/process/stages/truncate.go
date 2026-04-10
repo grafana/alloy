@@ -2,13 +2,12 @@ package stages
 
 import (
 	"errors"
+	"log/slog"
 	"maps"
 	"slices"
 	"strings"
 
 	"github.com/alecthomas/units"
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
@@ -76,14 +75,14 @@ func validateTruncateConfig(cfg *TruncateConfig) error {
 }
 
 // newTruncateStage creates a TruncateStage from config
-func newTruncateStage(logger log.Logger, config TruncateConfig, registerer prometheus.Registerer) (Stage, error) {
+func newTruncateStage(logger *slog.Logger, config TruncateConfig, registerer prometheus.Registerer) (Stage, error) {
 	err := validateTruncateConfig(&config)
 	if err != nil {
 		return nil, err
 	}
 
 	return &truncateStage{
-		logger:         log.With(logger, "component", "stage", "type", "truncate"),
+		logger:         logger.With("stage", "truncate"),
 		cfg:            &config,
 		truncatedCount: getTruncateCountMetric(registerer),
 	}, nil
@@ -91,7 +90,7 @@ func newTruncateStage(logger log.Logger, config TruncateConfig, registerer prome
 
 // truncateStage applies Label matchers to determine if the include stages should be run
 type truncateStage struct {
-	logger         log.Logger
+	logger         *slog.Logger
 	cfg            *TruncateConfig
 	truncatedCount *prometheus.CounterVec
 }
@@ -110,7 +109,7 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 						markTruncated(m.truncatedCount, truncated, truncateLineField)
 
 						if Debug {
-							level.Debug(m.logger).Log("msg", "line has been truncated", "limit", r.effectiveLimit, "truncated_line", e.Line)
+							m.logger.Debug("line has been truncated", "limit", r.effectiveLimit, "truncated_line", e.Line)
 						}
 					}
 				case SourceTypeLabel:
@@ -177,7 +176,7 @@ func (m *truncateStage) tryTruncateLabel(rule *RuleConfig, l model.LabelSet, nam
 		markTruncated(m.truncatedCount, truncated, truncateLabelField)
 
 		if Debug {
-			level.Debug(m.logger).Log("msg", "label has been truncated", "limit", rule.effectiveLimit, "name", name, "truncated_value", l[name])
+			m.logger.Debug("label has been truncated", "limit", rule.effectiveLimit, "name", name, "truncated_value", l[name])
 		}
 	}
 }
@@ -188,7 +187,7 @@ func (m *truncateStage) tryTruncateExtracted(rule *RuleConfig, extracted map[str
 		markTruncated(m.truncatedCount, truncated, truncateExtractedField)
 
 		if Debug {
-			level.Debug(m.logger).Log("msg", "extracted has been truncated", "limit", rule.effectiveLimit, "name", name, "truncated_value", extracted[name])
+			m.logger.Debug("extracted has been truncated", "limit", rule.effectiveLimit, "name", name, "truncated_value", extracted[name])
 		}
 	}
 }
@@ -199,7 +198,7 @@ func (m *truncateStage) tryTruncateStructuredMetadata(rule *RuleConfig, metadata
 		markTruncated(m.truncatedCount, truncated, truncateStructuredMetadataField)
 
 		if Debug {
-			level.Debug(m.logger).Log("msg", "structured_metadata has been truncated", "limit", rule.effectiveLimit, "name", metadata.Name, "truncated_value", metadata.Value)
+			m.logger.Debug("structured_metadata has been truncated", "limit", rule.effectiveLimit, "name", metadata.Name, "truncated_value", metadata.Value)
 		}
 	}
 	return metadata

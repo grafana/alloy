@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
@@ -45,7 +45,7 @@ var testOutputLogLineWithMissingKey = `
 
 func TestPipeline_Output(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testOutputAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	out := processEntries(pl, newEntry(nil, nil, testOutputLogLine, time.Now()))[0]
@@ -54,13 +54,13 @@ func TestPipeline_Output(t *testing.T) {
 
 func TestPipelineWithMissingKey_Output(t *testing.T) {
 	var buf bytes.Buffer
-	w := log.NewSyncWriter(&buf)
-	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testOutputAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	logger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+	require.NoError(t, err)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testOutputAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testOutputLogLineWithMissingKey, time.Now()))
-	expectedLog := "level=debug msg=\"extracted output could not be converted to a string\" err=\"can't convert <nil> to string\" type=null"
+	expectedLog := "level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/output.go:46 msg=\"extracted output could not be converted to a string\" stage=output err=\"can't convert <nil> to string\" type=<nil>"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
@@ -68,7 +68,7 @@ func TestPipelineWithMissingKey_Output(t *testing.T) {
 
 func TestOutputValidation(t *testing.T) {
 	emptyConfig := OutputConfig{Source: ""}
-	_, err := newOutputStage(nil, emptyConfig)
+	_, err := newOutputStage(logging.NewSlogNop(), emptyConfig)
 	require.Equal(t, err, ErrOutputSourceRequired)
 }
 
@@ -82,7 +82,7 @@ func TestOutputStage_Process(t *testing.T) {
 	}
 	wantOutput := "outmessage"
 
-	st, err := newOutputStage(nil, cfg)
+	st, err := newOutputStage(logging.NewSlogNop(), cfg)
 	require.NoError(t, err)
 	out := processEntries(st, newEntry(extractedValues, nil, "replaceme", time.Time{}))[0]
 

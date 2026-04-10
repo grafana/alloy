@@ -3,12 +3,11 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"regexp"
 	"slices"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 )
@@ -41,7 +40,7 @@ func validateStructuredMetadataConfig(c map[string]*string) (map[string]string, 
 	return ret, nil
 }
 
-func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataConfig) (Stage, error) {
+func newStructuredMetadataStage(logger *slog.Logger, configs StructuredMetadataConfig) (Stage, error) {
 	var validatedLabelsConfig map[string]string
 	var err error
 
@@ -59,14 +58,14 @@ func newStructuredMetadataStage(logger log.Logger, configs StructuredMetadataCon
 	return &structuredMetadataStage{
 		labelsConfig: validatedLabelsConfig,
 		regex:        *re,
-		logger:       logger,
+		logger:       logger.With("stage", "structured_metadata"),
 	}, nil
 }
 
 type structuredMetadataStage struct {
 	labelsConfig map[string]string
 	regex        regexp.Regexp
-	logger       log.Logger
+	logger       *slog.Logger
 }
 
 // Cleanup implements Stage.
@@ -109,20 +108,20 @@ func (s *structuredMetadataStage) Run(in chan Entry) chan Entry {
 type labelsConsumer func(labelName model.LabelName, labelValue model.LabelValue)
 
 // processExtractedLabelsByConfig adds structured metadata from extracted values selected by labelsConfig.
-func processExtractedLabelsByConfig(logger log.Logger, extracted map[string]any, labelsConfig map[string]string, consumer labelsConsumer) {
+func processExtractedLabelsByConfig(logger *slog.Logger, extracted map[string]any, labelsConfig map[string]string, consumer labelsConsumer) {
 	for lName, lSrc := range labelsConfig {
 		if lValue, ok := extracted[lSrc]; ok {
 			s, err := getString(lValue)
 			if err != nil {
 				if Debug {
-					level.Debug(logger).Log("msg", "failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
+					logger.Debug("failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
 				}
 				continue
 			}
 			labelValue := model.LabelValue(s)
 			if !labelValue.IsValid() {
 				if Debug {
-					level.Debug(logger).Log("msg", "invalid label value parsed", "value", labelValue)
+					logger.Debug("invalid label value parsed", "value", labelValue)
 				}
 				continue
 			}
@@ -132,7 +131,7 @@ func processExtractedLabelsByConfig(logger log.Logger, extracted map[string]any,
 }
 
 // processExtractedLabelsByRegex adds structured metadata from extracted values whose keys match the configured regex.
-func processExtractedLabelsByRegex(logger log.Logger, extracted map[string]any, regex regexp.Regexp, consumer labelsConsumer) {
+func processExtractedLabelsByRegex(logger *slog.Logger, extracted map[string]any, regex regexp.Regexp, consumer labelsConsumer) {
 	if regex.String() == "" {
 		return
 	}
@@ -145,7 +144,7 @@ func processExtractedLabelsByRegex(logger log.Logger, extracted map[string]any, 
 		str, err := getString(lValue)
 		if err != nil {
 			if Debug {
-				level.Debug(logger).Log("msg", "failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
+				logger.Debug("failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
 			}
 			continue
 		}
@@ -153,7 +152,7 @@ func processExtractedLabelsByRegex(logger log.Logger, extracted map[string]any, 
 		labelValue := model.LabelValue(str)
 		if !labelValue.IsValid() {
 			if Debug {
-				level.Debug(logger).Log("msg", "invalid label value parsed", "value", labelValue)
+				logger.Debug("invalid label value parsed", "value", labelValue)
 			}
 			continue
 		}

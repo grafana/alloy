@@ -2,10 +2,9 @@ package stages
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -34,14 +33,14 @@ func (e *EventLogMessageConfig) SetToDefault() {
 
 type eventLogMessageStage struct {
 	cfg    *EventLogMessageConfig
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // Create a event log message stage, including validating any supplied configuration
-func newEventLogMessageStage(logger log.Logger, cfg *EventLogMessageConfig) Stage {
+func newEventLogMessageStage(logger *slog.Logger, cfg *EventLogMessageConfig) Stage {
 	return &eventLogMessageStage{
 		cfg:    cfg,
-		logger: log.With(logger, "component", "stage", "type", "eventlogmessage"),
+		logger: logger.With("stage", "eventlogmessage"),
 	}
 }
 
@@ -67,19 +66,19 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string
 	value, ok := extracted[key]
 	if !ok {
 		if Debug {
-			level.Debug(m.logger).Log("msg", "source not in the extracted values", "source", key)
+			m.logger.Debug("source not in the extracted values", "source", key)
 		}
 		return nil
 	}
 	s, err := getString(value)
 	if err != nil {
-		level.Warn(m.logger).Log("msg", "invalid label value parsed", "value", value)
+		m.logger.Warn("invalid label value parsed", "value", value)
 		return err
 	}
 	for line := range strings.SplitSeq(s, "\r\n") {
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) < 2 {
-			level.Debug(m.logger).Log("msg", "invalid line parsed from message", "line", line)
+			m.logger.Debug("invalid line parsed from message", "line", line)
 			continue
 		}
 		mkey := parts[0]
@@ -88,29 +87,27 @@ func (m *eventLogMessageStage) processEntry(extracted map[string]any, key string
 		if !model.LabelName(mkey).IsValidLegacy() {
 			if m.cfg.DropInvalidLabels {
 				if Debug {
-					level.Debug(m.logger).Log("msg", "invalid label parsed from message", "key", mkey)
+					m.logger.Debug("invalid label parsed from message", "key", mkey)
 				}
 				continue
 			}
 			mkey = SanitizeFullLabelName(mkey)
 		}
 		if _, ok := extracted[mkey]; ok && !m.cfg.OverwriteExisting {
-			level.Info(m.logger).Log("msg", "extracted key that already existed, appending _extracted to key",
-				"key", mkey)
+			m.logger.Info("extracted key already existed, appending _extracted to key", "key", mkey)
 			mkey += "_extracted"
 		}
 		mval := strings.TrimSpace(parts[1])
 		if !model.LabelValue(mval).IsValid() {
 			if Debug {
-				level.Debug(m.logger).Log("msg", "invalid value parsed from message", "value", mval)
+				m.logger.Debug("invalid value parsed from message", "value", mval)
 			}
 			continue
 		}
 		extracted[mkey] = mval
 	}
 	if Debug {
-		level.Debug(m.logger).Log("msg", "extracted data debug in event_log_message stage",
-			"extracted_data", fmt.Sprintf("%v", extracted))
+		m.logger.Debug("extracted data debug in event_log_message stage", "extracted_data", extracted)
 	}
 	return nil
 }

@@ -3,10 +3,9 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/jmespath-community/go-jmespath"
 	json "github.com/json-iterator/go"
 )
@@ -62,11 +61,11 @@ func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, error) {
 type jsonStage struct {
 	cfg         *JSONConfig
 	expressions map[string]jmespath.JMESPath
-	logger      log.Logger
+	logger      *slog.Logger
 }
 
 // newJSONStage creates a new json pipeline stage from a config.
-func newJSONStage(logger log.Logger, cfg JSONConfig) (Stage, error) {
+func newJSONStage(logger *slog.Logger, cfg JSONConfig) (Stage, error) {
 	expressions, err := validateJSONConfig(&cfg)
 	if err != nil {
 		return nil, err
@@ -74,7 +73,7 @@ func newJSONStage(logger log.Logger, cfg JSONConfig) (Stage, error) {
 	return &jsonStage{
 		cfg:         &cfg,
 		expressions: expressions,
-		logger:      log.With(logger, "component", "stage", "type", "json"),
+		logger:      logger.With("stage", "json"),
 	}, nil
 }
 
@@ -101,7 +100,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	if j.cfg.Source != nil {
 		if _, ok := extracted[*j.cfg.Source]; !ok {
 			if Debug {
-				level.Debug(j.logger).Log("msg", "source does not exist in the set of extracted values", "source", *j.cfg.Source)
+				j.logger.Debug("source does not exist in the set of extracted values", "source", *j.cfg.Source)
 			}
 			return nil
 		}
@@ -109,7 +108,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 		value, err := getString(extracted[*j.cfg.Source])
 		if err != nil {
 			if Debug {
-				level.Debug(j.logger).Log("msg", "failed to convert source value to string", "source", *j.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[*j.cfg.Source]))
+				j.logger.Debug("failed to convert source value to string", "source", *j.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[*j.cfg.Source]))
 			}
 			return nil
 		}
@@ -119,7 +118,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 
 	if input == nil {
 		if Debug {
-			level.Debug(j.logger).Log("msg", "cannot parse a nil entry")
+			j.logger.Debug("cannot parse a nil entry")
 		}
 		return nil
 	}
@@ -128,7 +127,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 
 	if err := json.Unmarshal([]byte(*input), &data); err != nil {
 		if Debug {
-			level.Debug(j.logger).Log("msg", "failed to unmarshal log line", "err", err)
+			j.logger.Debug("failed to unmarshal log line", "err", err)
 		}
 		return errors.New(ErrMalformedJSON)
 	}
@@ -137,7 +136,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 		r, err := e.Search(data)
 		if err != nil {
 			if Debug {
-				level.Debug(j.logger).Log("msg", "failed to search JMES expression", "err", err)
+				j.logger.Debug("failed to search JMES expression", "err", err)
 			}
 			continue
 		}
@@ -157,7 +156,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 			jm, err := json.Marshal(r)
 			if err != nil {
 				if Debug {
-					level.Debug(j.logger).Log("msg", "failed to marshal complex type back to string", "err", err)
+					j.logger.Debug("failed to marshal complex type back to string", "err", err)
 				}
 				continue
 			}
@@ -165,7 +164,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 		}
 	}
 	if Debug {
-		level.Debug(j.logger).Log("msg", "extracted data debug in json stage", "extracted_data", fmt.Sprintf("%v", extracted))
+		j.logger.Debug("extracted data debug in json stage", "extracted_data", extracted)
 	}
 	return nil
 }

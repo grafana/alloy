@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestMultilineStageProcess(t *testing.T) {
@@ -22,7 +22,7 @@ func TestMultilineStageProcess(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	out := processEntries(stage,
@@ -49,7 +49,7 @@ func TestMultilineStageMultiStreams(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	out := processEntries(stage,
@@ -89,7 +89,7 @@ func TestMultilineStageProcessLeaveNewlines(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	out := processEntries(stage,
@@ -116,7 +116,7 @@ func TestMultilineStageMaxWaitTime(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	in := make(chan Entry, 2)
@@ -165,7 +165,7 @@ func TestMultilineStageStartLineFlushedBeforeNew(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	startTs := time.Now()
@@ -221,7 +221,7 @@ func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	line1 := Entry{

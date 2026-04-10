@@ -6,10 +6,11 @@ import (
 	"net"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 var (
@@ -131,7 +132,7 @@ func Test_MaxmindAsn(t *testing.T) {
 	}
 	testStage := &geoIPStage{
 		mmdb:              mmdb,
-		logger:            log.NewNopLogger(),
+		logger:            logging.NewSlogNop(),
 		valuesExpressions: valuesExpressions,
 		cfgs:              config,
 	}
@@ -175,7 +176,7 @@ func Test_MaxmindCity(t *testing.T) {
 	}
 	testStage := &geoIPStage{
 		mmdb:              mmdb,
-		logger:            log.NewNopLogger(),
+		logger:            logging.NewSlogNop(),
 		valuesExpressions: valuesExpressions,
 		cfgs:              config,
 	}
@@ -229,7 +230,7 @@ func Test_MaxmindCountry(t *testing.T) {
 	}
 	testStage := &geoIPStage{
 		mmdb:              mmdb,
-		logger:            log.NewNopLogger(),
+		logger:            logging.NewSlogNop(),
 		valuesExpressions: valuesExpressions,
 		cfgs:              config,
 	}

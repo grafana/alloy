@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 var testMetricAlloy = `
@@ -109,7 +109,7 @@ loki_process_custom_total_lines_count{test="app"} 2
 
 func TestMetricsPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testMetricAlloy), registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testMetricAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ stage.metrics {
 				action = "set"
 		}
 } `
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testConfig), registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testConfig), registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,15 +165,15 @@ loki_process_custom_longitude{test="app",vehicle="1"} -10.1234
 
 func TestPipelineWithMissingKey_Metrics(t *testing.T) {
 	var buf bytes.Buffer
-	w := log.NewSyncWriter(&buf)
-	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testMetricAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	logger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+	require.NoError(t, err)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testMetricAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
 	Debug = true
 	processEntries(pl, newEntry(nil, nil, testMetricLogLineWithMissingKey, time.Now()))
-	expectedLog := "level=debug msg=\"failed to convert extracted value to string, can't perform value comparison\" metric=bloki_count err=\"can't convert <nil> to string\""
+	expectedLog := "level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/metric.go:209 msg=\"failed to convert extracted value to string, can't perform value comparison\" stage=metrics metric=bloki_count err=\"can't convert <nil> to string\" type=<nil>"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
@@ -206,7 +206,7 @@ loki_process_custom_loki_count 1
 
 func TestMetricsWithDropInPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testMetricWithDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testMetricWithDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ loki_process_custom_payload_size_bytes_count{test="app"} 1
 	} {
 		t.Run(name, func(t *testing.T) {
 			registry := prometheus.NewRegistry()
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(tc.promtailConfig), registry, featuregate.StabilityGenerallyAvailable)
+			pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(tc.promtailConfig), registry, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 			in := make(chan Entry)
 			out := pl.Run(in)
@@ -448,15 +448,15 @@ func TestMetricStage_Process(t *testing.T) {
 		}}}
 
 	registry := prometheus.NewRegistry()
-	jsonStage, err := New(log.NewNopLogger(), jsonStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	jsonStage, err := New(logging.NewSlogNop(), jsonStageConfig, registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}
-	regexStage, err := New(log.NewNopLogger(), regexStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	regexStage, err := New(logging.NewSlogNop(), regexStageConfig, registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}
-	metricStage, err := New(log.NewNopLogger(), metricsStageConfig, registry, featuregate.StabilityGenerallyAvailable)
+	metricStage, err := New(logging.NewSlogNop(), metricsStageConfig, registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatalf("failed to create stage with metrics: %v", err)
 	}

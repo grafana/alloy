@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -107,13 +107,13 @@ func TestWindowsEvent(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-		testData := testData
-		testData.extractedValues["message"] = testData.msgdata
+			testData := testData
+			testData.extractedValues["message"] = testData.msgdata
 
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testWindowsEventMsgDefaults), prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
+			pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testWindowsEventMsgDefaults), prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
 			require.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]any{
@@ -181,7 +181,7 @@ func TestWindowsEventArgs(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
 
-			pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
+			pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testData.config), prometheus.DefaultRegisterer, featuregate.StabilityExperimental)
 			require.NoError(t, err, "Expected pipeline creation to not result in error")
 			out := processEntries(pl,
 				newEntry(map[string]any{

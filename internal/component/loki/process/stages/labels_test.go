@@ -8,12 +8,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -63,7 +63,7 @@ stage.labels {
 `
 
 func TestLabelsPipeline_LabelsFromExtracted(t *testing.T) {
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestLabelsPipeline_LabelsFromExtracted(t *testing.T) {
 }
 
 func TestLabelsPipeline_LabelsFromStructuredMetadata(t *testing.T) {
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testLabelsStrucuturedMetadataYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testLabelsStrucuturedMetadataYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,9 +91,9 @@ func TestLabelsPipeline_LabelsFromStructuredMetadata(t *testing.T) {
 
 func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 	var buf bytes.Buffer
-	w := log.NewSyncWriter(&buf)
-	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	alloyLogger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+	assert.NoError(t, err)
+	pl, err := NewPipeline(alloyLogger.Slog(), loadConfig(testLabelsYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,8 +101,8 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 
 	_ = processEntries(pl, newEntry(nil, nil, testLabelsLogLineWithMissingKey, time.Now()))
 
-	expectedLog := "level=debug msg=\"failed to convert extracted label value to string\" err=\"can't convert <nil> to string\" type=null"
-	if !(strings.Contains(buf.String(), expectedLog)) {
+	expectedLog := "level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/labels.go:111 msg=\"failed to convert extracted label value to string\" stage=labels err=\"can't convert <nil> to string\" type=<nil>"
+	if !strings.Contains(buf.String(), expectedLog) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
 }
@@ -281,7 +281,7 @@ func TestLabelsStage_Process(t *testing.T) {
 		test := test
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			st, err := newLabelStage(log.NewNopLogger(), test.config)
+			st, err := newLabelStage(logging.NewSlogNop(), test.config)
 			if err != nil {
 				t.Fatal(err)
 			}

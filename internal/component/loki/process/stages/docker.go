@@ -2,25 +2,24 @@ package stages
 
 import (
 	"encoding/json"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type DockerConfig struct{}
 
 // NewDocker creates a predefined pipeline for parsing entries in the Docker json log format.
-func NewDocker(logger log.Logger, _ prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
-	return toStage(&DockerStage{logger}), nil
+func NewDocker(logger *slog.Logger, _ prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
+	return toStage(&DockerStage{logger: logger.With("stage", "docker")}), nil
 }
 
 type DockerStage struct {
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // DockerLog represents the expected json format written by docker:
@@ -41,7 +40,7 @@ func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t
 	var parsed DockerLog
 	if err := json.Unmarshal([]byte(*entry), &parsed); err != nil {
 		if Debug {
-			level.Debug(d.logger).Log("msg", "failed to parse docker log", "err", err)
+			d.logger.Debug("failed to parse docker log", "err", err)
 		}
 		return
 	}
@@ -50,7 +49,7 @@ func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t
 	// To protect against incorrect usage, validate that the log field is present.
 	if parsed.Log == "" {
 		if Debug {
-			level.Debug(d.logger).Log("msg", "not valid docker format")
+			d.logger.Debug("not valid docker format")
 		}
 		return
 	}

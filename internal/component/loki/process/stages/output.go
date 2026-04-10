@@ -2,11 +2,10 @@ package stages
 
 import (
 	"errors"
+	"log/slog"
 	"reflect"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/model"
 )
 
@@ -23,20 +22,20 @@ type OutputConfig struct {
 }
 
 // newOutputStage creates a new outputStage
-func newOutputStage(logger log.Logger, config OutputConfig) (Stage, error) {
+func newOutputStage(logger *slog.Logger, config OutputConfig) (Stage, error) {
 	if config.Source == "" {
 		return nil, ErrOutputSourceRequired
 	}
 	return toStage(&outputStage{
 		config: config,
-		logger: logger,
+		logger: logger.With("stage", "output"),
 	}), nil
 }
 
 // outputStage will mutate the incoming entry and set it from extracted data
 type outputStage struct {
 	config OutputConfig
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // Process implements Stage
@@ -44,11 +43,11 @@ func (o *outputStage) Process(labels model.LabelSet, extracted map[string]any, t
 	if v, ok := extracted[o.config.Source]; ok {
 		s, err := getString(v)
 		if err != nil {
-			level.Debug(o.logger).Log("msg", "extracted output could not be converted to a string", "err", err, "type", reflect.TypeOf(v))
+			o.logger.Debug("extracted output could not be converted to a string", "err", err, "type", reflect.TypeOf(v))
 			return
 		}
 		*entry = s
 	} else {
-		level.Debug(o.logger).Log("msg", "extracted data did not contain output source")
+		o.logger.Debug("extracted data did not contain output source", "source", o.config.Source)
 	}
 }

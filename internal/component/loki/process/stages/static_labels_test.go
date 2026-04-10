@@ -46,7 +46,7 @@ func Test_StaticLabels(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			st, err := newStaticLabelsStage(nil, test.config)
+			st, err := newStaticLabelsStage(test.config)
 			if err != nil {
 				t.Fatal(err)
 			}
