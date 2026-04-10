@@ -3,7 +3,6 @@ package controller_test
 import (
 	"bytes"
 	"context"
-	"log/slog"
 	"slices"
 	"sync"
 	"testing"
