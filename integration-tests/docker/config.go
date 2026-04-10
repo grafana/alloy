@@ -40,6 +40,8 @@ type AdditionalContainerConfig struct {
 	Build AdditionalContainerBuildConfig `yaml:"build"`
 	// Command overrides the default image command.
 	Command []string `yaml:"command"`
+	// Environment is passed to the container as KEY=value entries (Docker -e).
+	Environment map[string]string `yaml:"environment"`
 }
 
 // AdditionalContainerBuildConfig is used to build an additional container image.

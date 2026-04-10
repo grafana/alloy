@@ -165,17 +165,6 @@ services:
     networks:
       - integration-tests
 
-  oracledb:
-    image: gvenzl/oracle-free:23-slim
-    platform: linux/amd64
-    container_name: oracledb
-    ports:
-      - "1521:1521"
-    environment:
-      ORACLE_PASSWORD: testpassword
-    networks:
-      - integration-tests
-
 networks:
   integration-tests:
     driver: bridge

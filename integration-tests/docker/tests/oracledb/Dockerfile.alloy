@@ -5,7 +5,7 @@
 #
 # Layered on alloy-integration-tests. Built via tests/oracledb/test.yaml (alloy_container.dockerfile).
 #   make ALLOY_IMAGE=alloy-integration-tests alloy-image
-#   docker build --platform=linux/amd64 -f integration-tests/docker/tests/oracledb/Dockerfile.oracle -t alloy-integration-tests-oracledb:latest .
+#   docker build --platform=linux/amd64 -f integration-tests/docker/tests/oracledb/Dockerfile.alloy -t alloy-integration-tests-oracledb:latest .
 
 FROM --platform=linux/amd64 alloy-integration-tests:latest
 

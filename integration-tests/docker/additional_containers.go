@@ -29,6 +29,7 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 			Name:          containerCfg.Name,
 			Image:         containerCfg.Image,
 			ImagePlatform: integrationTestDockerPlatform,
+			Env:           containerCfg.Environment,
 			Cmd:           containerCfg.Command,
 			Networks:      []string{networkName},
 		}
