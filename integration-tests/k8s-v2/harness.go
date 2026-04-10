@@ -4,9 +4,9 @@ package k8sv2
 
 import (
 	"context"
+	cryptorand "crypto/rand"
 	"fmt"
 	"log/slog"
-	"math/rand/v2"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -82,7 +82,12 @@ func (h *harness) run(m *testing.M) int {
 	defer cancel()
 
 	h.reusedCluster = *reuseClusterFlag != ""
-	h.clusterName = fmt.Sprintf("alloy-k8s-v2-%d", rand.IntN(1_000_000))
+	clusterName, err := randomClusterName()
+	if err != nil {
+		h.log.Error("failed to generate cluster name", "error", err)
+		return 1
+	}
+	h.clusterName = clusterName
 	if h.reusedCluster {
 		h.clusterName = *reuseClusterFlag
 	}
@@ -344,4 +349,12 @@ func formatStepDuration(d time.Duration) time.Duration {
 		return d.Round(10 * time.Millisecond)
 	}
 	return d.Round(time.Second)
+}
+
+func randomClusterName() (string, error) {
+	b := make([]byte, 4)
+	if _, err := cryptorand.Read(b); err != nil {
+		return "", fmt.Errorf("read random bytes: %w", err)
+	}
+	return fmt.Sprintf("alloy-k8s-v2-%x", b), nil
 }
