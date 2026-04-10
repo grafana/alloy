@@ -2005,7 +2005,13 @@ The line is appended to the previous value, separated by a comma.
 
 Lines in a section without a preceding valid entry (key-value pair) are ignored and discarded.
 
-#### Example with `loki.source.windowsevent`
+#### Examples
+
+- [Monitor Microsoft Windows servers and desktops with Grafana Alloy](../../../monitor/monitor-windows/)
+
+##### Security log pipeline with `loki.source.windowsevent`
+
+The following example reads the **Security** log, applies a `json` stage, then `stage.windowsevent`, and promotes selected fields to labels before forwarding to a `loki.write` component.
 
 ```alloy
 loki.source.windowsevent "security"  {
@@ -2027,7 +2033,7 @@ loki.process "default" {
   stage.labels {
     values = {
       Description = "",
-      Subject_SecurityID  = "",        
+      Subject_SecurityID  = "",
       ReadOP = "Subject_ReadOperation",
     }
   }
@@ -2039,7 +2045,7 @@ The `loki.source.windowsevent` component forwards Windows security events to the
 Given the following event:
 
 ```text
-{"event_id": 1, "Overwritten": "old", "message": ""Special privileges assigned to new logon.\r\n\r\nSubject:\r\n\tSecurity ID:\t\tS-1-1-1\r\n\tAccount Name:\t\tSYSTEM\r\n\tAccount Domain:\t\tNT AUTHORITY\r\n\tLogon ID:\t\t0xAAA\r\n\r\nPrivileges:\t\tSeAssignPrimaryTokenPrivilege\r\n\t\t\tSeTcbPrivilege\r\n\t\t\tSeSecurityPrivilege\r\n\t\t\tSeTakeOwnershipPrivilege\r\n\t\t\tSeLoadDriverPrivilege\r\n\t\t\tSeBackupPrivilege\r\n\t\t\tSeRestorePrivilege\r\n\t\t\tSeDebugPrivilege\r\n\t\t\tSeAuditPrivilege\r\n\t\t\tSeSystemEnvironmentPrivilege\r\n\t\t\tSeImpersonatePrivilege\r\n\t\t\tSeDelegateSessionUserImpersonatePrivilege""}
+{"event_id": 1, "Overwritten": "old", "message": "Special privileges assigned to new logon.\r\n\r\nSubject:\r\n\tSecurity ID:\t\tS-1-1-1\r\n\tAccount Name:\t\tSYSTEM\r\n\tAccount Domain:\t\tNT AUTHORITY\r\n\tLogon ID:\t\t0xAAA\r\n\r\nPrivileges:\t\tSeAssignPrimaryTokenPrivilege\r\n\t\t\tSeTcbPrivilege\r\n\t\t\tSeSecurityPrivilege\r\n\t\t\tSeTakeOwnershipPrivilege\r\n\t\t\tSeLoadDriverPrivilege\r\n\t\t\tSeBackupPrivilege\r\n\t\t\tSeRestorePrivilege\r\n\t\t\tSeDebugPrivilege\r\n\t\t\tSeAuditPrivilege\r\n\t\t\tSeSystemEnvironmentPrivilege\r\n\t\t\tSeImpersonatePrivilege\r\n\t\t\tSeDelegateSessionUserImpersonatePrivilege"}
 ```
 
 The `json` stage would create the following key-value pairs in the set of extracted data:
