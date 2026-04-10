@@ -8,6 +8,10 @@ type TestConfig struct {
 
 // ContainerConfig is used to configure alloy container used for the test.
 type ContainerConfig struct {
+	// Dockerfile layers on the standard integration image; build context is the repository root.
+	// Path is relative to the test directory.
+	// When set, the runner builds and runs alloy-integration-tests-<test_dir>:latest.
+	Dockerfile string `yaml:"dockerfile"`
 	// UseMount when set to true will create "mount" directory inside test
 	// folder that will be mounted into the container.
 	UseMount bool `yaml:"use_mount"`
@@ -36,6 +40,8 @@ type AdditionalContainerConfig struct {
 	Build AdditionalContainerBuildConfig `yaml:"build"`
 	// Command overrides the default image command.
 	Command []string `yaml:"command"`
+	// Environment is passed to the container as KEY=value entries (Docker -e).
+	Environment map[string]string `yaml:"environment"`
 }
 
 // AdditionalContainerBuildConfig is used to build an additional container image.
