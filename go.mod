@@ -846,7 +846,7 @@ require (
 	github.com/sercand/kuberesolver/v6 v6.0.0 // indirect
 	github.com/sergi/go-diff v1.4.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.1 // indirect
-	github.com/shoenig/go-m1cpu v0.1.7 // indirect
+	github.com/shoenig/go-m1cpu v0.2.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.3.1 // indirect
 	github.com/snowflakedb/gosnowflake v1.14.1 // indirect
