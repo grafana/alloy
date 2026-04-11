@@ -90,27 +90,18 @@ func newAlloyEngineExtension(config *Config, settings component.TelemetrySetting
 }
 
 func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) error {
-	var startErr error
-	defer func() {
-		if startErr != nil {
-			running.Store(false)
-		}
-	}()
-
 	currentState := e.getState()
 	switch currentState {
 	case stateNotStarted:
 		break
 	default:
-		startErr = fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
-		return startErr
+		return fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
 	}
 
 	runCommand := e.runCommandFactory()
 	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
 	if err := runCommand.ParseFlags(e.config.flagsAsSlice()); err != nil {
-		startErr = fmt.Errorf("failed to parse flags: %w", err)
-		return startErr
+		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
 	// Here we check if another extension instance is already running, if so we return an error
