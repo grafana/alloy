@@ -27,6 +27,8 @@ const (
 	alloyImageName    = "alloy-integration-tests"
 	dockerComposeFile = "docker-compose.yaml"
 	networkName       = "alloy-integration-tests_integration-tests"
+	// integrationTestDockerPlatform is used for all integration-test docker builds and testcontainers runs.
+	integrationTestDockerPlatform = "linux/amd64"
 )
 
 type TestLog struct {
@@ -56,8 +58,92 @@ func executeCommandInDir(dir, command string, args []string, taskDescription str
 	}
 }
 
-func buildAlloy() {
+func buildBaseAlloyImage() {
 	executeCommandInDir(repoRootDir, "make", []string{"ALLOY_IMAGE=" + alloyImageName, "alloy-image"}, "Building Alloy")
+}
+
+// alloyIntegrationImageTag is the image ref for the Alloy container (layered tag when dockerfile is set).
+func alloyIntegrationImageTag(dirName, dockerfile string) string {
+	if dockerfile != "" {
+		return fmt.Sprintf("%s-%s:latest", alloyImageName, dirName)
+	}
+	return alloyImageName
+}
+
+// alloyDockerBuildCfg resolves alloy_container.dockerfile relative to absTestDir and uses the repository root as build context.
+func alloyDockerBuildCfg(absTestDir, dockerfile string) (AdditionalContainerBuildConfig, error) {
+	if dockerfile == "" {
+		return AdditionalContainerBuildConfig{}, fmt.Errorf("empty dockerfile path")
+	}
+	if filepath.IsAbs(dockerfile) {
+		return AdditionalContainerBuildConfig{}, fmt.Errorf("alloy_container.dockerfile must be relative to the test directory, got absolute path %q", dockerfile)
+	}
+	p := filepath.Join(absTestDir, dockerfile)
+	if _, err := os.Stat(p); err != nil {
+		return AdditionalContainerBuildConfig{}, fmt.Errorf("alloy_container.dockerfile %q: %w", dockerfile, err)
+	}
+	absDockerfile, err := filepath.Abs(p)
+	if err != nil {
+		return AdditionalContainerBuildConfig{}, err
+	}
+	absRepo, err := filepath.Abs(repoRootDir)
+	if err != nil {
+		return AdditionalContainerBuildConfig{}, fmt.Errorf("repo root path: %w", err)
+	}
+	return AdditionalContainerBuildConfig{Context: absRepo, Dockerfile: absDockerfile}, nil
+}
+
+// loadTestYAML reads test.yaml or returns (zero, false) if missing.
+func loadTestYAML(absTestDir string) (TestConfig, bool) {
+	path := filepath.Join(absTestDir, "test.yaml")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return TestConfig{}, false
+		}
+		panic(fmt.Sprintf("failed to read test.yaml: %v", err))
+	}
+	var cfg TestConfig
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		panic(fmt.Sprintf("failed to parse test.yaml %s: %v", path, err))
+	}
+	return cfg, true
+}
+
+func tryBuildAlloyImageFromTestYAML(testDir string) {
+	abs, err := filepath.Abs(testDir)
+	if err != nil {
+		log.Fatalf("alloy test image: abs path %q: %v", testDir, err)
+	}
+	cfg, ok := loadTestYAML(abs)
+	df := cfg.Container.Dockerfile
+	if !ok || df == "" {
+		return
+	}
+	buildCfg, err := alloyDockerBuildCfg(abs, df)
+	if err != nil {
+		log.Fatalf("alloy image for %s: %v", abs, err)
+	}
+	tag := alloyIntegrationImageTag(filepath.Base(abs), df)
+	fmt.Printf("Building alloy integration image %s (from test.yaml)...\n", tag)
+	if err := buildDockerImage(abs, tag, buildCfg); err != nil {
+		log.Fatalf("alloy image for %s: %v", abs, err)
+	}
+}
+
+// buildAlloyImagesFromTestYAMLs builds per-test Alloy images declared in test.yaml after the base image exists.
+func buildAlloyImagesFromTestYAMLs() {
+	if specificTest != "" {
+		tryBuildAlloyImageFromTestYAML(resolveTestDir(specificTest))
+		return
+	}
+	matches, err := filepath.Glob(filepath.Join(testsRootDir, "tests", "*"))
+	if err != nil {
+		log.Fatalf("glob integration test dirs: %v", err)
+	}
+	for _, dir := range matches {
+		tryBuildAlloyImageFromTestYAML(dir)
+	}
 }
 
 // Setup container files for mounting into the test container
@@ -91,8 +177,8 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 	return containerFiles, openFiles, nil
 }
 
-// Create a container request based on the test directory
-func createContainerRequest(dirName, testDir string, port int, networkName string, containerFiles []testcontainers.ContainerFile, cfg TestConfig) testcontainers.ContainerRequest {
+// Create a container request based on the test directory.
+func createContainerRequest(dirName, testDir string, port int, networkName string, containerFiles []testcontainers.ContainerFile, cfg TestConfig, alloyImage string) testcontainers.ContainerRequest {
 	natPort, err := nat.NewPort("tcp", strconv.Itoa(port))
 	if err != nil {
 		panic(fmt.Sprintf("failed to build natPort: %v", err))
@@ -141,7 +227,7 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 	cmd := []string{"run", "/etc/alloy/config.alloy", "--server.http.listen-addr", fmt.Sprintf("0.0.0.0:%d", port), "--stability.level", "experimental"}
 
 	req := testcontainers.ContainerRequest{
-		Image:        alloyImageName,
+		Image:        alloyImage,
 		ExposedPorts: exposedPorts,
 		WaitingFor:   wait.ForListeningPort(natPort),
 		Cmd:          cmd,
@@ -162,6 +248,8 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 		},
 		Privileged: true,
 	}
+
+	req.ImagePlatform = integrationTestDockerPlatform
 
 	return req
 }
@@ -196,18 +284,7 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 		panic(fmt.Sprintf("failed to get absolute path of testDir: %v", err))
 	}
 
-	var cfg TestConfig
-	if _, err := os.Stat(filepath.Join(absTestDir, "test.yaml")); err == nil {
-		file, err := os.Open(filepath.Join(absTestDir, "test.yaml"))
-		if err != nil {
-			panic(fmt.Sprintf("failed to read test.yaml: %v", err))
-		}
-
-		if err := yaml.NewDecoder(file).Decode(&cfg); err != nil {
-			fmt.Println(testDir)
-			panic(fmt.Sprintf("failed to descode test.yaml: %v", err))
-		}
-	}
+	cfg, _ := loadTestYAML(absTestDir)
 
 	// Prepare container files
 	containerFiles, openFiles, err := prepareContainerFiles(absTestDir)
@@ -230,7 +307,13 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 		}
 	}
 
-	additionalContainers, err := startAdditionalContainers(ctx, absTestDir, networkName, cfg)
+	df := cfg.Container.Dockerfile
+	alloyImage := alloyIntegrationImageTag(dirName, df)
+	if skipBuild && df != "" {
+		fmt.Printf("skip-build: skipping alloy_container image build for %s, using %s\n", dirName, alloyImage)
+	}
+
+	additionalContainers, err := startAdditionalContainers(ctx, absTestDir, networkName, cfg, skipBuild)
 	if err != nil {
 		addLog(TestLog{
 			TestDir:  dirName,
@@ -249,8 +332,7 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 		}
 	}()
 
-	// Create container request
-	req := createContainerRequest(dirName, testDir, port, networkName, containerFiles, cfg)
+	req := createContainerRequest(dirName, testDir, port, networkName, containerFiles, cfg, alloyImage)
 
 	// Start container
 	containerStartTime := time.Now()
@@ -504,5 +586,11 @@ func shouldExcludeFile(name string) bool {
 	}
 
 	base := filepath.Base(name)
-	return base == "test.yaml" || base == dockerComposeFile
+	if base == "test.yaml" || base == dockerComposeFile {
+		return true
+	}
+	if strings.HasPrefix(strings.ToLower(base), "dockerfile") {
+		return true
+	}
+	return false
 }
