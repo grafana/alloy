@@ -53,3 +53,17 @@ Refer to the [profile][profile] documentation for more details on how to use thi
 [alloy-repo]: https://github.com/grafana/alloy/issues/
 [backward-compatibility]: ../../introduction/backward-compatibility/
 [remotecfg]: ../../reference/config-blocks/remotecfg/
+
+## Example
+
+You can omit the `?duration=N` segment to return the configured HTTP server write timeout. For most {{< param "PRODUCT_NAME" >}} configurations, you can generate the support bundle then by going to the following URL: 
+
+```
+http://localhost:12345/-/support
+```
+
+If you have a specific duration, you can enter that, as in this example: 
+
+```
+http://localhost:12345/-/support?duration=30
+```
