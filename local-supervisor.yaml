@@ -1,0 +1,26 @@
+server:
+  endpoint: "${env:GCLOUD_FM_URL}/v1/opamp"
+  headers:
+    Authorization: "Basic ${env:GCLOUD_BASIC_AUTH}"
+
+capabilities:
+  accepts_remote_config: true
+  reports_effective_config: true
+  reports_remote_config: true
+  reports_own_metrics: true
+  reports_health: true
+
+agent:
+  executable: ${env:EXECUTABLE_PATH}
+  passthrough_logs: true
+  args:
+    - otel
+    - --feature-gates
+    - service.AllowNoPipelines
+
+storage:
+  directory: ./storage
+
+telemetry:
+  logs:
+    level: debug

@@ -12,6 +12,12 @@ GOARCH="${2:?}"
 OUT="${3:?}"
 GOARM="${4:-}"
 
+# OUT is relative to the repo root; this script later cds into contrib, so resolve now.
+case "$OUT" in
+/*) ;;
+*) OUT="$ROOT/$OUT" ;;
+esac
+
 ver="${OPAMP_SUPERVISOR_VERSION:-}"
 if [[ -z "$ver" ]]; then
   ver="$(grep -m 1 'github.com/open-telemetry/opentelemetry-collector-contrib/' collector/go.mod | awk '{print $NF}')"

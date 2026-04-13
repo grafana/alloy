@@ -24,6 +24,7 @@
 ##
 ##   binaries       Compiles all binaries.
 ##   alloy          Compiles Alloy to $(ALLOY_BINARY)
+##   opampsupervisor  Builds upstream opampsupervisor to $(OPAMP_SUPERVISOR_BINARY) for current GOOS/GOARCH (separate from alloy; needs git + network).
 ##   alloy-service  Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
 ##
 ## Targets for building Docker images:
@@ -82,6 +83,7 @@
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
 ##   OPAMP_SUPERVISOR_VERSION  Override Contrib tag for opampsupervisor (default: from collector/go.mod).
+##   OPAMP_SUPERVISOR_BINARY   Output path for `make opampsupervisor` (default under build/ from GOOS).
 
 include tools/make/*.mk
 
@@ -103,6 +105,13 @@ CGO_ENABLED          		?= 1
 RELEASE_BUILD        		?= 0
 GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
 
+# Local opampsupervisor output (separate from `make alloy`; same GOOS/GOARCH/GOARM as this Makefile).
+ifeq ($(GOOS),windows)
+OPAMP_SUPERVISOR_BINARY		?= build/opampsupervisor.exe
+else
+OPAMP_SUPERVISOR_BINARY		?= build/opampsupervisor
+endif
+
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
 # Uses GNU Make's $(or ...) function for lazy evaluation based on priority.
@@ -122,7 +131,7 @@ PROPAGATE_VARS := \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
-    OPAMP_SUPERVISOR_VERSION \
+    OPAMP_SUPERVISOR_VERSION OPAMP_SUPERVISOR_BINARY \
 
 #
 # Constants for targets
@@ -217,6 +226,23 @@ test-pyroscope:
 
 .PHONY: binaries alloy
 binaries: alloy
+
+$(OPAMP_SUPERVISOR_BINARY):
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	"mkdir" -p build
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh "$(GOOS)" "$(GOARCH)" "$(OPAMP_SUPERVISOR_BINARY)" "$(GOARM)"
+endif
+
+# Phony entrypoint: always run the build when requested (the file rule alone would be skipped if the binary already exists).
+.PHONY: opampsupervisor
+opampsupervisor:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	@$(MAKE) -B $(OPAMP_SUPERVISOR_BINARY)
+endif
 
 alloy: generate-ui
 ifeq ($(USE_CONTAINER),1)
@@ -413,6 +439,7 @@ info:
 	@printf "GO_TAGS             = $(GO_TAGS)\n"
 	@printf "GOEXPERIMENT        = $(GOEXPERIMENT)\n"
 	@printf "OPAMP_SUPERVISOR_VERSION = $(OPAMP_SUPERVISOR_VERSION)\n"
+	@printf "OPAMP_SUPERVISOR_BINARY = $(OPAMP_SUPERVISOR_BINARY)\n"
 
 # awk magic to print out the comment block at the top of this file.
 .PHONY: help
