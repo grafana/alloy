@@ -230,7 +230,7 @@ func newLoggers(t *testing.T, bb, bbSl *bytes.Buffer) (*slog.Logger, *slog.Logge
 	require.NoError(t, err)
 
 	jsonH := slog.NewJSONHandler(bbSl, &slog.HandlerOptions{
-		AddSource:   true,
+		AddSource:   false,
 		Level:       nil,
 		ReplaceAttr: testReplace,
 	})
