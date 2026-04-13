@@ -6,11 +6,13 @@ package opampextension // import "github.com/open-telemetry/opentelemetry-collec
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"maps"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -63,6 +65,11 @@ type opampAgent struct {
 
 	eclk            sync.RWMutex
 	effectiveConfig *confmap.Conf
+
+	remoteConfigMap map[string]*protobufs.AgentConfigFile
+
+	pendingRemoteAckMu      sync.Mutex
+	pendingRemoteConfigHash []byte
 
 	// lifetimeCtx is canceled on Stop of the component
 	lifetimeCtx       context.Context
@@ -176,6 +183,8 @@ func (o *opampAgent) Start(ctx context.Context, host component.Host) error {
 		return err
 	}
 
+	o.hydrateRemoteConfigMapFromDisk()
+
 	o.logger.Debug("Starting OpAMP client...")
 
 	if err := o.opampClient.Start(context.Background(), settings); err != nil {
@@ -229,10 +238,13 @@ func (o *opampAgent) Dependencies() []component.ID {
 }
 
 func (o *opampAgent) NotifyConfig(ctx context.Context, conf *confmap.Conf) error {
-	if o.capabilities.ReportsEffectiveConfig {
+	if o.capabilities.ReportsEffectiveConfig && o.opampClient != nil {
 		o.updateEffectiveConfig(conf)
-		return o.opampClient.UpdateEffectiveConfig(ctx)
+		if err := o.opampClient.UpdateEffectiveConfig(ctx); err != nil {
+			return err
+		}
 	}
+	o.reportPendingRemoteConfigApplied()
 	return nil
 }
 
@@ -424,6 +436,276 @@ func (o *opampAgent) updateAgentIdentity(instanceID uuid.UUID) {
 	o.instanceID = instanceID
 }
 
+// configFilesEqual compares two config file maps by body content.
+func configFilesEqual(a, b map[string]*protobufs.AgentConfigFile) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, va := range a {
+		vb, ok := b[k]
+		if !ok {
+			return false
+		}
+		if !bytesEqual(va.Body, vb.Body) {
+			return false
+		}
+	}
+	return true
+}
+
+func bytesEqual(a, b []byte) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// normalizeRemoteConfigKey maps OpAMP config map keys to a canonical form so the
+// same on-disk file compares equal (e.g. "" vs "config.yaml", or "foo" vs "foo.yaml").
+func normalizeRemoteConfigKey(name string) string {
+	if name == "" || name == "config.yaml" || name == "config.yml" {
+		return ""
+	}
+	if strings.HasSuffix(name, ".yaml") {
+		return strings.TrimSuffix(name, ".yaml")
+	}
+	if strings.HasSuffix(name, ".yml") {
+		return strings.TrimSuffix(name, ".yml")
+	}
+	return name
+}
+
+// configKeyFromFilename is the inverse of saveEffectiveConfig naming for *.yaml / *.yml files.
+func configKeyFromFilename(base string) string {
+	if base == "config.yaml" || base == "config.yml" {
+		return ""
+	}
+	if strings.HasSuffix(base, ".yaml") {
+		return strings.TrimSuffix(base, ".yaml")
+	}
+	if strings.HasSuffix(base, ".yml") {
+		return strings.TrimSuffix(base, ".yml")
+	}
+	return base
+}
+
+func normalizeRemoteYAMLFileBody(body []byte) ([]byte, error) {
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(body, &raw); err != nil {
+		return nil, err
+	}
+	return yaml.Marshal(raw)
+}
+
+// loadRemoteConfigMapFromDisk reads *.yaml / *.yml from dir and builds the same
+// normalized AgentConfigFile map as applyRemoteConfig. Missing directory is not an error.
+func loadRemoteConfigMapFromDisk(logger *zap.Logger, dir string) (map[string]*protobufs.AgentConfigFile, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	out := make(map[string]*protobufs.AgentConfigFile)
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		base := e.Name()
+		switch strings.ToLower(filepath.Ext(base)) {
+		case ".yaml", ".yml":
+		default:
+			continue
+		}
+		key := configKeyFromFilename(base)
+		path := filepath.Join(dir, base)
+		body, err := os.ReadFile(path)
+		if err != nil {
+			logger.Warn("cannot read remote config file", zap.String("path", path), zap.Error(err))
+			continue
+		}
+		if len(body) == 0 {
+			continue
+		}
+		normalized, err := normalizeRemoteYAMLFileBody(body)
+		if err != nil {
+			logger.Warn("cannot parse remote config file on disk; skipping hydrate for this file",
+				zap.String("path", path), zap.Error(err))
+			continue
+		}
+		out[key] = &protobufs.AgentConfigFile{
+			Body:        normalized,
+			ContentType: "text/yaml",
+		}
+	}
+	return out, nil
+}
+
+func (o *opampAgent) hydrateRemoteConfigMapFromDisk() {
+	if !o.capabilities.AcceptsRemoteConfig {
+		return
+	}
+	dir := strings.TrimSpace(o.cfg.RemoteConfigurationDirectory)
+	if dir == "" {
+		return
+	}
+	hydrated, err := loadRemoteConfigMapFromDisk(o.logger, dir)
+	if err != nil {
+		o.logger.Warn("could not hydrate remote config from disk", zap.String("directory", dir), zap.Error(err))
+		return
+	}
+	if len(hydrated) == 0 {
+		return
+	}
+	o.eclk.Lock()
+	o.remoteConfigMap = hydrated
+	o.eclk.Unlock()
+}
+
+func (o *opampAgent) applyRemoteConfig(config *protobufs.AgentRemoteConfig) (configChanged bool, err error) {
+	if !o.capabilities.AcceptsRemoteConfig {
+		return false, errors.New("opamp agent does not accept remote configuration")
+	}
+
+	if config.Config == nil || config.Config.ConfigMap == nil {
+		return false, errors.New("remote config has no config map")
+	}
+
+	parsed := make(map[string]*protobufs.AgentConfigFile, len(config.Config.ConfigMap))
+
+	for name, f := range config.Config.ConfigMap {
+		if f == nil || len(f.Body) == 0 {
+			continue
+		}
+
+		normalized, err := normalizeRemoteYAMLFileBody(f.Body)
+		if err != nil {
+			return false, fmt.Errorf("cannot parse config %q: %w", name, err)
+		}
+
+		key := normalizeRemoteConfigKey(name)
+		parsed[key] = &protobufs.AgentConfigFile{
+			Body:        normalized,
+			ContentType: "text/yaml",
+		}
+	}
+
+	o.eclk.Lock()
+	prev := o.remoteConfigMap
+	if configFilesEqual(prev, parsed) {
+		o.eclk.Unlock()
+		return false, nil
+	}
+
+	o.remoteConfigMap = parsed
+	o.eclk.Unlock()
+
+	dir := o.cfg.RemoteConfigurationDirectory
+	if err := o.saveEffectiveConfig(context.Background(), dir, prev); err != nil {
+		o.eclk.Lock()
+		o.remoteConfigMap = prev
+		o.eclk.Unlock()
+		return false, fmt.Errorf("cannot save effective config to %s: %w", dir, err)
+	}
+
+	return true, nil
+}
+
+// materializeRemoteDir clears dir and writes cfgMap (remote YAML fragments). Empty string
+// keys are written as config.yaml. prev may be nil (treated as empty).
+func (o *opampAgent) materializeRemoteDir(dir string, cfgMap map[string]*protobufs.AgentConfigFile) error {
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("cannot create remote config directory: %w", err)
+	}
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return fmt.Errorf("cannot read remote config directory: %w", err)
+	}
+
+	for _, e := range entries {
+		p := filepath.Join(dir, e.Name())
+		if err := os.RemoveAll(p); err != nil {
+			return fmt.Errorf("cannot remove %s: %w", p, err)
+		}
+	}
+
+	for name, f := range cfgMap {
+		if f == nil || len(f.Body) == 0 {
+			continue
+		}
+		filename := name
+		if filename == "" {
+			filename = "config.yaml"
+		}
+		if !strings.HasSuffix(filename, ".yaml") && !strings.HasSuffix(filename, ".yml") {
+			filename = filename + ".yaml"
+		}
+		p := filepath.Join(dir, filename)
+		if err := os.WriteFile(p, f.Body, 0600); err != nil {
+			_ = os.Remove(p)
+			return fmt.Errorf("cannot write %s: %w", p, err)
+		}
+	}
+
+	return nil
+}
+
+// saveEffectiveConfig writes the current remoteConfigMap to disk; validation and reload are handled by the opamp confmap provider.
+func (o *opampAgent) saveEffectiveConfig(_ context.Context, dir string, _ map[string]*protobufs.AgentConfigFile) error {
+	o.eclk.RLock()
+	current := o.remoteConfigMap
+	o.eclk.RUnlock()
+
+	return o.materializeRemoteDir(dir, current)
+}
+
+func (o *opampAgent) clearPendingRemoteConfigAck() {
+	o.pendingRemoteAckMu.Lock()
+	defer o.pendingRemoteAckMu.Unlock()
+	o.pendingRemoteConfigHash = nil
+}
+
+func (o *opampAgent) setPendingRemoteConfigAck(hash []byte) {
+	o.pendingRemoteAckMu.Lock()
+	defer o.pendingRemoteAckMu.Unlock()
+	o.pendingRemoteConfigHash = append([]byte(nil), hash...)
+}
+
+func (o *opampAgent) takePendingRemoteConfigAck() []byte {
+	o.pendingRemoteAckMu.Lock()
+	defer o.pendingRemoteAckMu.Unlock()
+	h := o.pendingRemoteConfigHash
+	o.pendingRemoteConfigHash = nil
+	if len(h) == 0 {
+		return nil
+	}
+	return append([]byte(nil), h...)
+}
+
+func (o *opampAgent) reportPendingRemoteConfigApplied() {
+	if !o.capabilities.ReportsRemoteConfig || o.opampClient == nil {
+		return
+	}
+	hash := o.takePendingRemoteConfigAck()
+	if len(hash) == 0 {
+		return
+	}
+	rcs := &protobufs.RemoteConfigStatus{
+		LastRemoteConfigHash: hash,
+		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+	}
+	if err := o.opampClient.SetRemoteConfigStatus(rcs); err != nil {
+		o.logger.Error("Failed to set remote config status", zap.Error(err))
+	}
+}
+
 func (o *opampAgent) composeEffectiveConfig() *protobufs.EffectiveConfig {
 	o.eclk.RLock()
 	defer o.eclk.RUnlock()
@@ -451,7 +733,43 @@ func (o *opampAgent) composeEffectiveConfig() *protobufs.EffectiveConfig {
 	}
 }
 
-func (o *opampAgent) onMessage(_ context.Context, msg *types.MessageData) {
+func (o *opampAgent) onMessage(ctx context.Context, msg *types.MessageData) {
+	if msg.RemoteConfig != nil {
+		// Log as hex so self-telemetry OTLP export never receives invalid UTF-8 in string fields
+		// (protobuf requires valid UTF-8 for string types).
+		o.logger.Info("Config received from OpAMP server", zap.String("config_hash", hex.EncodeToString(msg.RemoteConfig.ConfigHash)))
+
+		var status protobufs.RemoteConfigStatuses
+		var applyErr error
+		changed, err := o.applyRemoteConfig(msg.RemoteConfig)
+		if err != nil {
+			o.logger.Error("Failed to apply remote config", zap.Error(err))
+			status = protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED
+			applyErr = err
+			o.clearPendingRemoteConfigAck()
+		} else if changed {
+			status = protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLYING
+			o.setPendingRemoteConfigAck(msg.RemoteConfig.ConfigHash)
+			o.logger.Info("Remote config written; awaiting collector reload before APPLIED")
+		} else {
+			o.clearPendingRemoteConfigAck()
+			status = protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED
+		}
+
+		if o.capabilities.ReportsRemoteConfig && o.opampClient != nil {
+			rcs := &protobufs.RemoteConfigStatus{
+				LastRemoteConfigHash: msg.RemoteConfig.ConfigHash,
+				Status:               status,
+			}
+			if applyErr != nil {
+				rcs.ErrorMessage = applyErr.Error()
+			}
+			if err := o.opampClient.SetRemoteConfigStatus(rcs); err != nil {
+				o.logger.Error("Failed to set remote config status", zap.Error(err))
+			}
+		}
+	}
+
 	if msg.AgentIdentification != nil {
 		instanceID, err := uuid.FromBytes(msg.AgentIdentification.NewInstanceUid)
 		if err != nil {

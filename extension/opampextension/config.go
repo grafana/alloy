@@ -32,6 +32,10 @@ type Config struct {
 	// representation. Auto-generated on start if missing.
 	InstanceUID string `mapstructure:"instance_uid"`
 
+	// RemoteConfigurationDirectory is the directory where remote configuration
+	// received from the OpAMP server is stored.
+	RemoteConfigurationDirectory string `mapstructure:"remote_configuration_directory"`
+
 	// Capabilities contains options to enable a particular OpAMP capability
 	Capabilities Capabilities `mapstructure:"capabilities"`
 
@@ -64,6 +68,10 @@ type Capabilities struct {
 	ReportsHealth bool `mapstructure:"reports_health"`
 	// ReportsAvailableComponents enables the OpAMP ReportsAvailableComponents Capability (default: true)
 	ReportsAvailableComponents bool `mapstructure:"reports_available_components"`
+	// AcceptsRemoteConfig enables the OpAMP AcceptsRemoteConfig Capability, allowing the server to push config. (default: true)
+	AcceptsRemoteConfig bool `mapstructure:"accepts_remote_config"`
+	// ReportsRemoteConfig enables the OpAMP ReportsRemoteConfig Capability, allowing the agent to report config apply status. (default: true)
+	ReportsRemoteConfig bool `mapstructure:"reports_remote_config"`
 }
 
 func (caps Capabilities) toAgentCapabilities() protobufs.AgentCapabilities {
@@ -79,6 +87,12 @@ func (caps Capabilities) toAgentCapabilities() protobufs.AgentCapabilities {
 
 	if caps.ReportsAvailableComponents {
 		agentCapabilities |= protobufs.AgentCapabilities_AgentCapabilities_ReportsAvailableComponents
+	}
+	if caps.AcceptsRemoteConfig {
+		agentCapabilities |= protobufs.AgentCapabilities_AgentCapabilities_AcceptsRemoteConfig
+	}
+	if caps.ReportsRemoteConfig {
+		agentCapabilities |= protobufs.AgentCapabilities_AgentCapabilities_ReportsRemoteConfig
 	}
 
 	return agentCapabilities
@@ -222,6 +236,10 @@ func (cfg *Config) Validate() error {
 		if err != nil {
 			return errors.New("opamp instance_uid is invalid")
 		}
+	}
+
+	if cfg.Capabilities.AcceptsRemoteConfig && cfg.RemoteConfigurationDirectory == "" {
+		return errors.New("remote_configuration_directory is required when accepts_remote_config capability is enabled")
 	}
 
 	return nil
