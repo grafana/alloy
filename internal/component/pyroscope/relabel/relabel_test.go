@@ -12,7 +12,6 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -463,7 +462,7 @@ func (t *TestAppender) Upload(j debuginfo.UploadJob) {
 
 }
 
-func (t *TestAppender) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (t *TestAppender) DebugInfoEndpoints() []debuginfo.Endpoint {
 	return nil
 }
 

@@ -4,8 +4,6 @@ package debuginfo
 
 import (
 	"context"
-
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 )
 
 type UploadJob struct {
@@ -19,7 +17,7 @@ func (c *Client) newUploader(j UploadJob) (*uploader, error) {
 type uploader struct {
 }
 
-func (u uploader) upload(c debuginfov1alpha1connect.DebuginfoServiceClient, j UploadJob) {
+func (u uploader) upload(ep Endpoint, j UploadJob) {
 	// no-op
 }
 

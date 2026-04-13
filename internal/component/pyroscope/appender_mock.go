@@ -4,17 +4,16 @@ import (
 	"context"
 
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/prometheus/prometheus/model/labels"
 )
 
 var _ Appendable = AppenderMock{}
 
 type AppenderMock struct {
-	AppendIngestFunc     func(ctx context.Context, profile *IncomingProfile) error
-	AppendFunc           func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
-	DebugInfoClientsFunc func() []debuginfov1alpha1connect.DebuginfoServiceClient
-	DebugInfoUploadFunc  func(j debuginfo.UploadJob)
+	AppendIngestFunc      func(ctx context.Context, profile *IncomingProfile) error
+	AppendFunc            func(ctx context.Context, labels labels.Labels, samples []*RawSample) error
+	DebugInfoEndpointsFn  func() []debuginfo.Endpoint
+	DebugInfoUploadFunc   func(j debuginfo.UploadJob)
 }
 
 func (a AppenderMock) Append(ctx context.Context, labels labels.Labels, samples []*RawSample) error {
@@ -29,9 +28,9 @@ func (a AppenderMock) Appender() Appender {
 	return a
 }
 
-func (a AppenderMock) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
-	if a.DebugInfoClientsFunc != nil {
-		return a.DebugInfoClientsFunc()
+func (a AppenderMock) DebugInfoEndpoints() []debuginfo.Endpoint {
+	if a.DebugInfoEndpointsFn != nil {
+		return a.DebugInfoEndpointsFn()
 	}
 	return nil
 }

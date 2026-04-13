@@ -105,11 +105,6 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) update(args component.Arguments) (bool, error) {
 	shutdown := false
 	newArgs := args.(Arguments)
-	// required for debug info upload over connect over http2 over http server port
-	if newArgs.Server.HTTP.HTTP2 == nil {
-		newArgs.Server.HTTP.HTTP2 = &fnet.HTTP2Config{}
-	}
-	newArgs.Server.HTTP.HTTP2.Enabled = true
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -147,8 +142,10 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 		pathPush, handlePush := pushv1connect.NewPusherServiceHandler(c)
 		router.PathPrefix(pathPush).Handler(handlePush).Methods(http.MethodPost)
 
-		// mount connect debuginfo upload handler
+		// mount connect debuginfo handlers (ShouldInitiateUpload, UploadFinished)
 		debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(router, c)
+		// mount plain HTTP upload proxy
+		router.Handle("/debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}", c.UploadHTTPHandler()).Methods(http.MethodPost)
 	})
 }
 

@@ -3,12 +3,11 @@
 package reporter
 
 import (
-	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"maps"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter/elfwriter"
 
+	"connectrpc.com/connect"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 
@@ -31,9 +31,11 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
-const (
-	ChunkSize = 1024 * 1024 * 3
-)
+type Endpoint struct {
+	ConnectClient debuginfov1alpha1connect.DebuginfoServiceClient
+	HTTPClient    *http.Client
+	BaseURL       string
+}
 
 const (
 	ReasonUploadInProgress = "A previous upload is still in-progress and not stale yet (only stale uploads can be retried)."
@@ -44,7 +46,7 @@ type uploadRequest struct {
 	fileName string
 	buildID  string
 	open     func() (process.ReadAtCloser, error)
-	client   debuginfov1alpha1connect.DebuginfoServiceClient
+	endpoint Endpoint
 }
 
 type PyroscopeSymbolUploader struct {
@@ -184,7 +186,7 @@ func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 				case <-ctx.Done():
 					return nil
 				case req := <-u.queue:
-					if err := u.attemptUpload(ctx, req.client, req.fileID, req.fileName, req.buildID, req.open); err != nil {
+					if err := u.attemptUpload(ctx, req.endpoint, req.fileID, req.fileName, req.buildID, req.open); err != nil {
 						level.Warn(u.logger).Log("msg", "failed to upload", "file_name", req.fileName, "build_id", req.buildID, "err", err)
 					}
 				}
@@ -197,7 +199,7 @@ func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 
 // Upload enqueues a file for upload if it's not already in progress, or if it
 // is marked not to be retried.
-func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client debuginfov1alpha1connect.DebuginfoServiceClient,
+func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, endpoint Endpoint,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) {
 
@@ -220,7 +222,7 @@ func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client debuginfov1
 	select {
 	case <-ctx.Done():
 		u.inProgressTracker.Remove(fileID)
-	case u.queue <- uploadRequest{fileID: fileID, fileName: fileName, buildID: buildID, open: open, client: client}:
+	case u.queue <- uploadRequest{fileID: fileID, fileName: fileName, buildID: buildID, open: open, endpoint: endpoint}:
 		// Nothing to do, we enqueued the request successfully.
 	default:
 		// The queue is full, we can't enqueue the request.
@@ -229,9 +231,7 @@ func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client debuginfov1
 	}
 }
 
-// attemptUpload attempts to upload the file with the given fileID and buildID
-// using the new Connect bidirectional streaming API.
-func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debuginfov1alpha1connect.DebuginfoServiceClient,
+func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, endpoint Endpoint,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) error {
 
@@ -242,35 +242,17 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 		fileType = debuginfov1alpha1.FileMetadata_TYPE_EXECUTABLE_NO_TEXT
 	}
 
-	// Open bidi stream.
-	stream := client.Upload(ctx)
-
-	// Step 1: Send ShouldInitiateUploadRequest.
-	if err := stream.Send(&debuginfov1alpha1.UploadRequest{
-		Data: &debuginfov1alpha1.UploadRequest_Init{
-			Init: &debuginfov1alpha1.ShouldInitiateUploadRequest{
-				File: &debuginfov1alpha1.FileMetadata{
-					GnuBuildId: buildID,
-					OtelFileId: fileID.StringNoQuotes(),
-					Name:       fileName,
-					Type:       fileType,
-				},
-			},
+	// Step 1: ShouldInitiateUpload (unary RPC).
+	resp, err := endpoint.ConnectClient.ShouldInitiateUpload(ctx, connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{
+		File: &debuginfov1alpha1.FileMetadata{
+			GnuBuildId: buildID,
+			OtelFileId: fileID.StringNoQuotes(),
+			Name:       fileName,
+			Type:       fileType,
 		},
-	}); err != nil {
-		return fmt.Errorf("send init request: %w", err)
-	}
-
-	// Step 2: Receive ShouldInitiateUploadResponse.
-	resp, err := stream.Receive()
+	}))
 	if err != nil {
-		return fmt.Errorf("receive init response: %w", err)
-	}
-
-	initResp := resp.GetInit()
-	if initResp == nil {
-		u.retry.Add(fileID, struct{}{})
-		return fmt.Errorf("unexpected response type, expected init response")
+		return fmt.Errorf("ShouldInitiateUpload: %w", err)
 	}
 
 	l := log.With(u.logger,
@@ -280,11 +262,11 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 	)
 
 	level.Debug(l).Log("msg", "ShouldInitiateUpload result",
-		"should_initiate_upload", initResp.ShouldInitiateUpload,
-		"reason", initResp.Reason)
+		"should_initiate_upload", resp.Msg.ShouldInitiateUpload,
+		"reason", resp.Msg.Reason)
 
-	if !initResp.ShouldInitiateUpload {
-		if initResp.Reason == ReasonUploadInProgress {
+	if !resp.Msg.ShouldInitiateUpload {
+		if resp.Msg.Reason == ReasonUploadInProgress {
 			u.retry.AddWithLifetime(fileID, struct{}{}, 5*time.Minute)
 			return nil
 		}
@@ -292,8 +274,9 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 		return nil
 	}
 
-	// Step 3: Prepare the file data.
+	// Step 2: Prepare the file data.
 	var r io.Reader
+	var fileSize int64
 	if !u.stripTextSection {
 		f, err := open()
 		if err != nil {
@@ -317,6 +300,7 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 			return nil
 		}
 
+		fileSize = size
 		r = io.NewSectionReader(f, 0, size)
 	} else {
 		f, err := os.Create(filepath.Join(u.tmp, fileID.StringNoQuotes()))
@@ -359,55 +343,35 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client debu
 			return nil
 		}
 
+		fileSize = stat.Size()
 		r = f
 	}
 
-	// Step 4: Stream chunks.
-	reader := bufio.NewReader(r)
-	buffer := make([]byte, ChunkSize)
-	var bytesSent uint64
-
-	for {
-		n, err := reader.Read(buffer)
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return fmt.Errorf("read next chunk (%d bytes sent so far): %w", bytesSent, err)
-		}
-
-		if err := stream.Send(&debuginfov1alpha1.UploadRequest{
-			Data: &debuginfov1alpha1.UploadRequest_Chunk{
-				Chunk: &debuginfov1alpha1.UploadChunk{
-					Chunk: buffer[:n],
-				},
-			},
-		}); err != nil {
-			return fmt.Errorf("send chunk (%d bytes sent so far): %w", bytesSent, err)
-		}
-		bytesSent += uint64(n)
+	// Step 3: HTTP POST upload.
+	uploadURL := strings.TrimRight(endpoint.BaseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
+	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, r)
+	if err != nil {
+		return fmt.Errorf("create upload request: %w", err)
+	}
+	httpResp, err := endpoint.HTTPClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("upload POST: %w", err)
+	}
+	io.Copy(io.Discard, httpResp.Body)
+	httpResp.Body.Close()
+	if httpResp.StatusCode != http.StatusOK {
+		return fmt.Errorf("upload POST: HTTP %d", httpResp.StatusCode)
 	}
 
-	// Step 5: Close the send side to signal EOF.
-	if err := stream.CloseRequest(); err != nil {
-		return fmt.Errorf("close send: %w", err)
+	// Step 4: UploadFinished (unary RPC).
+	if _, err := endpoint.ConnectClient.UploadFinished(ctx, connect.NewRequest(&debuginfov1alpha1.UploadFinishedRequest{
+		GnuBuildId: buildID,
+	})); err != nil {
+		return fmt.Errorf("UploadFinished: %w", err)
 	}
 
-	// Step 6: Drain the response stream to catch server-side errors
-	// (e.g., storage write failures after the last chunk).
-	// Context cancellation is tolerated here since all data was already sent.
-	for {
-		_, err := stream.Receive()
-		if err != nil {
-			if errors.Is(err, io.EOF) || ctx.Err() != nil {
-				break
-			}
-			return fmt.Errorf("server error after upload: %w", err)
-		}
-	}
-
-	u.uploadRequestBytes.Add(float64(bytesSent))
-	level.Debug(l).Log("msg", "upload succeeded", "bytes", bytesSent)
+	u.uploadRequestBytes.Add(float64(fileSize))
+	level.Debug(l).Log("msg", "upload succeeded", "bytes", fileSize)
 	u.retry.Add(fileID, struct{}{})
 	return nil
 }

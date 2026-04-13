@@ -218,8 +218,6 @@ type endpointClient struct {
 	pushClient   pushv1connect.PusherServiceClient
 	debugInfo    *debuginfo.Client
 	ingestClient *http.Client
-
-	h2cClient *http.Client
 }
 
 type fanOutClient struct {
@@ -231,12 +229,12 @@ type fanOutClient struct {
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
-	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
+func (f *fanOutClient) DebugInfoEndpoints() []debuginfo.Endpoint {
+	var eps []debuginfo.Endpoint
 	for _, client := range f.endpoints {
-		clients = append(clients, client.debugInfo.DebugInfoClients()...)
+		eps = append(eps, client.debugInfo.DebugInfoEndpoints()...)
 	}
-	return clients
+	return eps
 }
 
 func (f *fanOutClient) Upload(j debuginfo.UploadJob) {
@@ -278,20 +276,15 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		configureTracing(config, httpClient)
 
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		h2Client, err := newHTTP2Client(endpoint)
-		if err != nil {
-			return nil, err
-		}
 
-		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(h2Client, endpoint.URL, WithUserAgent(userAgent))
-		debugInfo := debuginfo.NewClient(logger, debugInfoConnect, metrics.debugInfoUploadBytes, endpointDataPath)
+		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent))
+		debugInfo := debuginfo.NewClient(logger, debugInfoConnect, httpClient, endpoint.URL, metrics.debugInfoUploadBytes, endpointDataPath)
 
 		endpoints = append(endpoints, &endpointClient{
 			options:      endpoint,
 			pushClient:   pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
 			debugInfo:    debugInfo,
 			ingestClient: httpClient,
-			h2cClient:    h2Client,
 		})
 	}
 
@@ -752,33 +745,6 @@ func validateLabels(lbls labels.Labels) error {
 	})
 
 	return err
-}
-
-// newHTTP2Client creates an HTTP/2-guaranteed client for this endpoint.
-// For http:// URLs it uses h2c; for https:// it uses HTTP/2 over TLS.
-func newHTTP2Client(opt *EndpointOptions) (*http.Client, error) {
-	u, err := url.Parse(opt.URL)
-	if err != nil {
-		return nil, err
-	}
-	cfg := *opt.HTTPClientConfig.Convert()
-	switch u.Scheme {
-	case SchemeHTTP:
-		return promhttp2.NewClientFromConfigMirror(promhttp2.HTTPClientConfigMirror{
-			HTTPClientConfig: cfg,
-			H2C:              true,
-		}, opt.Name)
-	case SchemeHTTPS:
-		httpCfg := cfg
-		httpCfg.EnableHTTP2 = true
-		return promhttp2.NewClientFromConfigMirror(promhttp2.HTTPClientConfigMirror{HTTPClientConfig: httpCfg}, opt.Name)
-	default:
-		return nil, fmt.Errorf("unsupported scheme for HTTP/2 client: %s", u.Scheme)
-	}
-}
-
-func (ec *endpointClient) http2Client() *http.Client {
-	return ec.h2cClient
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {
