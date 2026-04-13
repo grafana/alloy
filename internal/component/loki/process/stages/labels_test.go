@@ -99,7 +99,7 @@ func TestLabelsPipelineWithMissingKey_Labels(t *testing.T) {
 	}
 	_ = processEntries(pl, newEntry(nil, nil, testLabelsLogLineWithMissingKey, time.Now()))
 
-	expectedLog := "level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/labels.go:111 msg=\"failed to convert extracted label value to string\" stage=labels err=\"can't convert <nil> to string\" type=<nil>"
+	expectedLog := "level=debug msg=\"failed to convert extracted label value to string\" stage=labels err=\"can't convert <nil> to string\" type=<nil>"
 	if !strings.Contains(buf.String(), expectedLog) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
