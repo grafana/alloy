@@ -113,14 +113,14 @@ func processExtractedLabelsByConfig(logger *slog.Logger, extracted map[string]an
 		if lValue, ok := extracted[lSrc]; ok {
 			s, err := getString(lValue)
 			if err != nil {
-				if Debug {
+				if debugEnabled(logger) {
 					logger.Debug("failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
 				}
 				continue
 			}
 			labelValue := model.LabelValue(s)
 			if !labelValue.IsValid() {
-				if Debug {
+				if debugEnabled(logger) {
 					logger.Debug("invalid label value parsed", "value", labelValue)
 				}
 				continue
@@ -143,7 +143,7 @@ func processExtractedLabelsByRegex(logger *slog.Logger, extracted map[string]any
 
 		str, err := getString(lValue)
 		if err != nil {
-			if Debug {
+			if debugEnabled(logger) {
 				logger.Debug("failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
 			}
 			continue
@@ -151,7 +151,7 @@ func processExtractedLabelsByRegex(logger *slog.Logger, extracted map[string]any
 
 		labelValue := model.LabelValue(str)
 		if !labelValue.IsValid() {
-			if Debug {
+			if debugEnabled(logger) {
 				logger.Debug("invalid label value parsed", "value", labelValue)
 			}
 			continue

@@ -136,7 +136,7 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 	for k, v := range extracted {
 		s, err := getString(v)
 		if err != nil {
-			if Debug {
+			if debugEnabled(o.logger) {
 				o.logger.Debug("extracted template could not be converted to a string", "err", err, "type", reflect.TypeOf(v))
 			}
 			continue
@@ -156,7 +156,7 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 
 	err := o.template.Execute(buf, td)
 	if err != nil {
-		if Debug {
+		if debugEnabled(o.logger) {
 			o.logger.Debug("failed to execute template on extracted value", "err", err)
 		}
 		return

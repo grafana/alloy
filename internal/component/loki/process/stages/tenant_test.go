@@ -41,8 +41,6 @@ func TestPipelineWithMissingKey_Tenant(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	Debug = true
-
 	_ = processEntries(pl, newEntry(nil, nil, testTenantLogLineWithMissingKey, time.Now()))
 	expectedLog := "level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/tenant.go:91 msg=\"failed to convert value to string\" stage=tenant err=\"can't convert <nil> to string\" type=<nil>"
 	if !(strings.Contains(buf.String(), expectedLog)) {

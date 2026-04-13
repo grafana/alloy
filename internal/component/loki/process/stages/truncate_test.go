@@ -15,10 +15,8 @@ import (
 )
 
 func Test_TruncateStage_Process(t *testing.T) {
-	// Enable debug logging
 	cfg := &dskit.Config{}
 	require.Nil(t, cfg.LogLevel.Set("debug"))
-	Debug = true
 
 	tests := []struct {
 		name                       string

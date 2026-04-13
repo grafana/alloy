@@ -72,7 +72,7 @@ func (w *WindowsEventStage) Run(in chan Entry) chan Entry {
 func (w *WindowsEventStage) processEntry(extracted map[string]any, key string) error {
 	value, ok := extracted[key]
 	if !ok {
-		if Debug {
+		if debugEnabled(w.logger) {
 			w.logger.Debug("source not in the extracted values", "source", key)
 		}
 		return nil
@@ -157,7 +157,7 @@ func (w *WindowsEventStage) processEntry(extracted map[string]any, key string) e
 			extracted[sanitizedKey] = sanitizedValue
 		}
 	}
-	if Debug {
+	if debugEnabled(w.logger) {
 		w.logger.Debug("extracted data debug in windowsevent stage", "extracted_data", extracted)
 	}
 	return nil
@@ -189,7 +189,7 @@ func (w *WindowsEventStage) sanitizeValue(evalue string) (string, error) {
 }
 
 func (w *WindowsEventStage) logParseErr(err error) {
-	if Debug {
+	if debugEnabled(w.logger) {
 		w.logger.Debug(err.Error())
 	}
 }

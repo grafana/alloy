@@ -90,7 +90,7 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 
 	if r.config.Source != nil {
 		if _, ok := extracted[*r.config.Source]; !ok {
-			if Debug {
+			if debugEnabled(r.logger) {
 				r.logger.Debug("source does not exist in the set of extracted values", "source", *r.config.Source)
 			}
 			return
@@ -98,7 +98,7 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 
 		value, err := getString(extracted[*r.config.Source])
 		if err != nil {
-			if Debug {
+			if debugEnabled(r.logger) {
 				r.logger.Debug("failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
 			}
 			return
@@ -108,7 +108,7 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 	}
 
 	if input == nil {
-		if Debug {
+		if debugEnabled(r.logger) {
 			r.logger.Debug("cannot parse a nil entry")
 		}
 		return
@@ -116,7 +116,7 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 
 	matches := r.matcher.Matches([]byte(*input))
 	if matches == nil {
-		if Debug {
+		if debugEnabled(r.logger) {
 			r.logger.Debug("pattern did not match", "input", *input, "pattern", r.config.Pattern)
 		}
 		return
@@ -132,21 +132,21 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 
 			// TODO - support UTF8 when loki does
 			if !model.LegacyValidation.IsValidLabelName(name) {
-				if Debug {
+				if debugEnabled(r.logger) {
 					r.logger.Debug("invalid label name from pattern capture", "labelName", labelName)
 				}
 				continue
 			}
 
 			if !labelValue.IsValid() {
-				if Debug {
+				if debugEnabled(r.logger) {
 					r.logger.Debug("invalid label value from pattern capture", "labelName", labelName, "labelValue", labelValue)
 				}
 				continue
 			}
 
 			// Label from capture will override existing label with same name
-			if Debug {
+			if debugEnabled(r.logger) {
 				oldLabelValue, ok := labels[labelName]
 				if ok {
 					r.logger.Debug("label from pattern capture is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
@@ -156,7 +156,7 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 			labels[labelName] = labelValue
 		}
 	}
-	if Debug {
+	if debugEnabled(r.logger) {
 		r.logger.Debug("extracted data debug in pattern stage", "extracted_data", extracted)
 	}
 }

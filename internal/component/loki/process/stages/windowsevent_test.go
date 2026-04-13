@@ -107,8 +107,8 @@ func TestWindowsEvent(t *testing.T) {
 	}
 
 	for testName, testData := range tests {
-			testData := testData
-			testData.extractedValues["message"] = testData.msgdata
+		testData := testData
+		testData.extractedValues["message"] = testData.msgdata
 
 		t.Run(testName, func(t *testing.T) {
 			t.Parallel()

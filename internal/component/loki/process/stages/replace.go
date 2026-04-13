@@ -123,7 +123,7 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 			}
 		}
 	}
-	if Debug {
+	if debugEnabled(r.logger) {
 		r.logger.Debug("extracted data debug in replace stage", "extracted_data", extracted)
 	}
 }

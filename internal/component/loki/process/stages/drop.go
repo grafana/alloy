@@ -136,11 +136,11 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 		cutoff := ct.Add(-m.cfg.OlderThan)
 		if e.Timestamp.Before(cutoff) {
 			// Too old, drop
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("line met drop criteria for age", "current_time", ct, "drop_before", cutoff, "log_timestamp", e.Timestamp)
 			}
 		} else {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("line drop criteria for age not met", "current_time", ct, "drop_before", cutoff, "log_timestamp", e.Timestamp)
 			}
 			return false
@@ -155,12 +155,12 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 			}
 		}
 		if match {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("line met drop criteria for finding source key in extracted map")
 			}
 		} else {
 			// Not found in extact map, don't drop
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("line will not be dropped, the provided source was not found in the extracted map")
 			}
 			return false
@@ -170,12 +170,12 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 	if m.cfg.Source == "" && m.regex != nil {
 		if !m.regex.MatchString(e.Line) {
 			// Not a match to the regex, don't drop
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
 			}
 			return false
 		}
-		if Debug {
+		if debugEnabled(m.logger) {
 			m.logger.Debug("line met drop criteria, the provided regular expression matched the log line")
 		}
 	}
@@ -186,7 +186,7 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 			if e, ok := e.Extracted[src]; ok {
 				s, err := getString(e)
 				if err != nil {
-					if Debug {
+					if debugEnabled(m.logger) {
 						m.logger.Debug("Failed to convert extracted map value to string, cannot test regex line will not be dropped.", "err", err, "type", reflect.TypeOf(e))
 					}
 					return false
@@ -196,18 +196,18 @@ func (m *dropStage) shouldDrop(e Entry) bool {
 		}
 		if !m.regex.MatchString(strings.Join(extractedData, m.cfg.Separator)) {
 			// Not a match to the regex, don't drop
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("line will not be dropped, the provided regular expression did not match the log line")
 			}
 			return false
 		}
-		if Debug {
+		if debugEnabled(m.logger) {
 			m.logger.Debug("line met drop criteria, the provided regular expression matched the log line")
 		}
 	}
 
 	// Everything matched, drop the line
-	if Debug {
+	if debugEnabled(m.logger) {
 		m.logger.Debug("all criteria met, line will be dropped")
 	}
 	return true

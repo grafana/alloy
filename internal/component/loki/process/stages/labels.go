@@ -107,14 +107,14 @@ func (l *labelStage) addLabelFromExtractedMap(labels model.LabelSet, extracted m
 		if lValue, ok := extracted[lSrc]; ok {
 			s, err := getString(lValue)
 			if err != nil {
-				if Debug {
+				if debugEnabled(l.logger) {
 					l.logger.Debug("failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
 				}
 				continue
 			}
 			labelValue := model.LabelValue(s)
 			if !labelValue.IsValid() {
-				if Debug {
+				if debugEnabled(l.logger) {
 					l.logger.Debug("invalid label value parsed", "value", labelValue)
 				}
 				continue
@@ -134,7 +134,7 @@ func (l *labelStage) addLabelsFromStructuredMetadata(labels model.LabelSet, meta
 
 			labelValue := model.LabelValue(kv.Value)
 			if !labelValue.IsValid() {
-				if Debug {
+				if debugEnabled(l.logger) {
 					l.logger.Debug("invalid structured metadata label value", "label", lName, "value", labelValue)
 				}
 				break

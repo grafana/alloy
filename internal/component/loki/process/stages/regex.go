@@ -83,7 +83,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 
 	if r.config.Source != nil {
 		if _, ok := extracted[*r.config.Source]; !ok {
-			if Debug {
+			if debugEnabled(r.logger) {
 				r.logger.Debug("source does not exist in the set of extracted values", "source", *r.config.Source)
 			}
 			return
@@ -91,7 +91,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 
 		value, err := getString(extracted[*r.config.Source])
 		if err != nil {
-			if Debug {
+			if debugEnabled(r.logger) {
 				r.logger.Debug("failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
 			}
 			return
@@ -101,7 +101,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 	}
 
 	if input == nil {
-		if Debug {
+		if debugEnabled(r.logger) {
 			r.logger.Debug("cannot parse a nil entry")
 		}
 		return
@@ -109,7 +109,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 
 	match := r.expression.FindStringSubmatch(*input)
 	if match == nil {
-		if Debug {
+		if debugEnabled(r.logger) {
 			r.logger.Debug("regex did not match", "input", *input, "regex", r.expression)
 		}
 		return
@@ -125,14 +125,14 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 				// TODO: add support for different validation schemes.
 				//nolint:staticcheck
 				if !labelName.IsValid() {
-					if Debug {
+					if debugEnabled(r.logger) {
 						r.logger.Debug("invalid label name from regex capture group", "labelName", labelName)
 					}
 					continue
 				}
 
 				if !labelValue.IsValid() {
-					if Debug {
+					if debugEnabled(r.logger) {
 						r.logger.Debug("invalid label value from regex capture group", "labelName", labelName, "labelValue", labelValue)
 					}
 					continue
@@ -141,7 +141,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 				oldLabelValue, ok := labels[labelName]
 
 				// Label from capture group will override existing label with same name
-				if Debug && ok {
+				if debugEnabled(r.logger) && ok {
 					r.logger.Debug("label from regex capture group is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
 				}
 
@@ -149,7 +149,7 @@ func (r *regexStage) Process(labels model.LabelSet, extracted map[string]any, t 
 			}
 		}
 	}
-	if Debug {
+	if debugEnabled(r.logger) {
 		r.logger.Debug("extracted data debug in regex stage", "extracted_data", extracted)
 	}
 }

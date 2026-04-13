@@ -45,10 +45,8 @@ stage.drop {
 `
 
 func Test_dropStage_Process(t *testing.T) {
-	// Enable debug logging
 	cfg := &dskit.Config{}
 	require.Nil(t, cfg.LogLevel.Set("debug"))
-	Debug = true
 
 	tenBytes, _ := units.ParseBase2Bytes("10B")
 	oneHour := 1 * time.Hour

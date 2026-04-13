@@ -108,7 +108,7 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 						e.Line = e.Line[:r.effectiveLimit] + r.Suffix
 						markTruncated(m.truncatedCount, truncated, truncateLineField)
 
-						if Debug {
+						if debugEnabled(m.logger) {
 							m.logger.Debug("line has been truncated", "limit", r.effectiveLimit, "truncated_line", e.Line)
 						}
 					}
@@ -175,7 +175,7 @@ func (m *truncateStage) tryTruncateLabel(rule *RuleConfig, l model.LabelSet, nam
 		l[name] = val[:rule.effectiveLimit] + model.LabelValue(rule.Suffix)
 		markTruncated(m.truncatedCount, truncated, truncateLabelField)
 
-		if Debug {
+		if debugEnabled(m.logger) {
 			m.logger.Debug("label has been truncated", "limit", rule.effectiveLimit, "name", name, "truncated_value", l[name])
 		}
 	}
@@ -186,7 +186,7 @@ func (m *truncateStage) tryTruncateExtracted(rule *RuleConfig, extracted map[str
 		extracted[name] = strVal[:rule.effectiveLimit] + rule.Suffix
 		markTruncated(m.truncatedCount, truncated, truncateExtractedField)
 
-		if Debug {
+		if debugEnabled(m.logger) {
 			m.logger.Debug("extracted has been truncated", "limit", rule.effectiveLimit, "name", name, "truncated_value", extracted[name])
 		}
 	}
@@ -197,7 +197,7 @@ func (m *truncateStage) tryTruncateStructuredMetadata(rule *RuleConfig, metadata
 		metadata.Value = metadata.Value[:rule.effectiveLimit] + rule.Suffix
 		markTruncated(m.truncatedCount, truncated, truncateStructuredMetadataField)
 
-		if Debug {
+		if debugEnabled(m.logger) {
 			m.logger.Debug("structured_metadata has been truncated", "limit", rule.effectiveLimit, "name", metadata.Name, "truncated_value", metadata.Value)
 		}
 	}

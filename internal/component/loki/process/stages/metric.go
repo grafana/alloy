@@ -174,7 +174,7 @@ func (m *metricStage) recordCounter(name string, counter *metric.Counters, label
 	if counter.Cfg.Value != "" {
 		stringVal, err := getString(v)
 		if err != nil {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("failed to convert extracted value to string, can't perform value comparison", "metric", name, "err", err, "type", reflect.TypeOf(v))
 			}
 			return
@@ -190,7 +190,7 @@ func (m *metricStage) recordCounter(name string, counter *metric.Counters, label
 	case metric.CounterAdd:
 		f, err := getFloat(v)
 		if err != nil {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("failed to convert extracted value to positive float", "metric", name, "err", err)
 			}
 			return
@@ -205,7 +205,7 @@ func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels mode
 	if gauge.Cfg.Value != "" {
 		stringVal, err := getString(v)
 		if err != nil {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("failed to convert extracted value to string, can't perform value comparison", "metric", name, "err", err, "type", reflect.TypeOf(v))
 			}
 			return
@@ -219,7 +219,7 @@ func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels mode
 	case metric.GaugeSet:
 		f, err := getFloat(v)
 		if err != nil {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("failed to convert extracted value to positive float", "metric", name, "err", err)
 			}
 			return
@@ -232,7 +232,7 @@ func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels mode
 	case metric.GaugeAdd:
 		f, err := getFloat(v)
 		if err != nil {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("failed to convert extracted value to positive float", "metric", name, "err", err)
 			}
 			return
@@ -241,7 +241,7 @@ func (m *metricStage) recordGauge(name string, gauge *metric.Gauges, labels mode
 	case metric.GaugeSub:
 		f, err := getFloat(v)
 		if err != nil {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("failed to convert extracted value to positive float", "metric", name, "err", err)
 			}
 			return
@@ -256,7 +256,7 @@ func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms,
 	if histogram.Cfg.Value != "" {
 		stringVal, err := getString(v)
 		if err != nil {
-			if Debug {
+			if debugEnabled(m.logger) {
 				m.logger.Debug("failed to convert extracted value to string, can't perform value comparison", "metric", name, "err", err, "type", reflect.TypeOf(v))
 			}
 			return
@@ -267,7 +267,7 @@ func (m *metricStage) recordHistogram(name string, histogram *metric.Histograms,
 	}
 	f, err := getFloat(v)
 	if err != nil {
-		if Debug {
+		if debugEnabled(m.logger) {
 			m.logger.Debug("failed to convert extracted value to float", "metric", name, "err", err)
 		}
 		return

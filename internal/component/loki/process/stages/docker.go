@@ -39,7 +39,7 @@ const (
 func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t *time.Time, entry *string) {
 	var parsed DockerLog
 	if err := json.Unmarshal([]byte(*entry), &parsed); err != nil {
-		if Debug {
+		if debugEnabled(d.logger) {
 			d.logger.Debug("failed to parse docker log", "err", err)
 		}
 		return
@@ -48,7 +48,7 @@ func (d *DockerStage) Process(labels model.LabelSet, extracted map[string]any, t
 	// NOTE: json.Unmarshal will happily parse any JSON and produce a zero-value struct.
 	// To protect against incorrect usage, validate that the log field is present.
 	if parsed.Log == "" {
-		if Debug {
+		if debugEnabled(d.logger) {
 			d.logger.Debug("not valid docker format")
 		}
 		return

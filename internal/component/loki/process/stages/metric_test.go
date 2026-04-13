@@ -171,7 +171,6 @@ func TestPipelineWithMissingKey_Metrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	Debug = true
 	processEntries(pl, newEntry(nil, nil, testMetricLogLineWithMissingKey, time.Now()))
 	expectedLog := "level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/metric.go:209 msg=\"failed to convert extracted value to string, can't perform value comparison\" stage=metrics metric=bloki_count err=\"can't convert <nil> to string\" type=<nil>"
 	if !(strings.Contains(buf.String(), expectedLog)) {

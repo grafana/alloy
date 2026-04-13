@@ -99,7 +99,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 
 	if j.cfg.Source != nil {
 		if _, ok := extracted[*j.cfg.Source]; !ok {
-			if Debug {
+			if debugEnabled(j.logger) {
 				j.logger.Debug("source does not exist in the set of extracted values", "source", *j.cfg.Source)
 			}
 			return nil
@@ -107,7 +107,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 
 		value, err := getString(extracted[*j.cfg.Source])
 		if err != nil {
-			if Debug {
+			if debugEnabled(j.logger) {
 				j.logger.Debug("failed to convert source value to string", "source", *j.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[*j.cfg.Source]))
 			}
 			return nil
@@ -117,7 +117,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	}
 
 	if input == nil {
-		if Debug {
+		if debugEnabled(j.logger) {
 			j.logger.Debug("cannot parse a nil entry")
 		}
 		return nil
@@ -126,7 +126,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	var data map[string]any
 
 	if err := json.Unmarshal([]byte(*input), &data); err != nil {
-		if Debug {
+		if debugEnabled(j.logger) {
 			j.logger.Debug("failed to unmarshal log line", "err", err)
 		}
 		return errors.New(ErrMalformedJSON)
@@ -135,7 +135,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	for n, e := range j.expressions {
 		r, err := e.Search(data)
 		if err != nil {
-			if Debug {
+			if debugEnabled(j.logger) {
 				j.logger.Debug("failed to search JMES expression", "err", err)
 			}
 			continue
@@ -155,7 +155,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 			// If the value wasn't a string or a number, marshal it back to json
 			jm, err := json.Marshal(r)
 			if err != nil {
-				if Debug {
+				if debugEnabled(j.logger) {
 					j.logger.Debug("failed to marshal complex type back to string", "err", err)
 				}
 				continue
@@ -163,7 +163,7 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 			extracted[n] = string(jm)
 		}
 	}
-	if Debug {
+	if debugEnabled(j.logger) {
 		j.logger.Debug("extracted data debug in json stage", "extracted_data", extracted)
 	}
 	return nil

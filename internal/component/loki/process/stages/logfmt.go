@@ -112,7 +112,7 @@ func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]any, t
 		return
 	}
 
-	if Debug {
+	if debugEnabled(j.logger) {
 		if extractedEntriesCount != len(j.inverseMapping) {
 			j.logger.Debug("found only some configured mappings in logfmt stage", "found", extractedEntriesCount, "configured", len(j.inverseMapping))
 		}

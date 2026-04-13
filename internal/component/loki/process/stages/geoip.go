@@ -149,7 +149,7 @@ func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
 	var ip net.IP
 	if g.cfgs.Source != nil {
 		if _, ok := extracted[*g.cfgs.Source]; !ok {
-			if Debug {
+			if debugEnabled(g.logger) {
 				g.logger.Debug("source does not exist in the set of extracted values", "source", *g.cfgs.Source)
 			}
 			return
@@ -157,7 +157,7 @@ func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
 
 		value, err := getString(extracted[*g.cfgs.Source])
 		if err != nil {
-			if Debug {
+			if debugEnabled(g.logger) {
 				g.logger.Debug("failed to convert source value to string", "source", *g.cfgs.Source, "err", err, "type", reflect.TypeOf(extracted[*g.cfgs.Source]))
 			}
 			return
@@ -331,7 +331,7 @@ func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[
 			continue
 		}
 		if r == nil {
-			if Debug {
+			if debugEnabled(g.logger) {
 				g.logger.Debug("failed find a result with JMES expression", "key", key)
 			}
 			continue
