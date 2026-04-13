@@ -25,14 +25,17 @@ else
   export GITHUB_TAG=""
 fi
 
-DOCKER_FLAGS=""
+DOCKER_FLAGS=()
 if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
-	DOCKER_FLAGS="--push"
+	DOCKER_FLAGS=("--push")
 fi
 
-DOCKER_CACHE_FLAGS=""
+DOCKER_CACHE_FLAGS=()
 if [[ -n "$DOCKER_BUILD_CACHE_SCOPE" ]]; then
-	DOCKER_CACHE_FLAGS="--cache-from type=gha,scope=$DOCKER_BUILD_CACHE_SCOPE --cache-to type=gha,mode=max,scope=$DOCKER_BUILD_CACHE_SCOPE"
+	DOCKER_CACHE_FLAGS=(
+		"--cache-from" "type=gha,scope=$DOCKER_BUILD_CACHE_SCOPE"
+		"--cache-to" "type=gha,mode=max,scope=$DOCKER_BUILD_CACHE_SCOPE"
+	)
 fi
 
 export RELEASE_ALLOY_IMAGE=grafana/alloy
@@ -81,8 +84,8 @@ export BUILD_PLATFORMS_BORINGCRYPTO=linux/amd64,linux/arm64
 
 case "$TARGET_CONTAINER" in
   alloy)
-    docker buildx build $DOCKER_FLAGS         \
-      $DOCKER_CACHE_FLAGS                     \
+    docker buildx build "${DOCKER_FLAGS[@]}"  \
+      "${DOCKER_CACHE_FLAGS[@]}"              \
       --platform $BUILD_PLATFORMS             \
       --build-arg RELEASE_BUILD=1             \
       --build-arg VERSION="$VERSION"          \
@@ -97,8 +100,8 @@ case "$TARGET_CONTAINER" in
       BRANCH_TAG=$BORINGCRYPTO_LATEST
     fi
 
-    docker buildx build $DOCKER_FLAGS                      \
-      $DOCKER_CACHE_FLAGS                                  \
+    docker buildx build "${DOCKER_FLAGS[@]}"               \
+      "${DOCKER_CACHE_FLAGS[@]}"                           \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO             \
       --build-arg RELEASE_BUILD=1                          \
       --build-arg VERSION="$VERSION"                       \
@@ -110,8 +113,8 @@ case "$TARGET_CONTAINER" in
     ;;
 
   alloy-devel)
-    docker buildx build $DOCKER_FLAGS       \
-      $DOCKER_CACHE_FLAGS                   \
+    docker buildx build "${DOCKER_FLAGS[@]}"  \
+      "${DOCKER_CACHE_FLAGS[@]}"              \
       --platform $BUILD_PLATFORMS           \
       --build-arg RELEASE_BUILD=1           \
       --build-arg VERSION="$VERSION"        \
@@ -126,8 +129,8 @@ case "$TARGET_CONTAINER" in
       BRANCH_TAG=$BORINGCRYPTO_LATEST
     fi
 
-    docker buildx build $DOCKER_FLAGS                    \
-      $DOCKER_CACHE_FLAGS                                \
+    docker buildx build "${DOCKER_FLAGS[@]}"  \
+      "${DOCKER_CACHE_FLAGS[@]}"                         \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO           \
       --build-arg RELEASE_BUILD=1                        \
       --build-arg VERSION="$VERSION"                     \
@@ -139,10 +142,10 @@ case "$TARGET_CONTAINER" in
     ;;
 
   alloy-devel-pr)
-	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+    TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
 
-    docker buildx build $DOCKER_FLAGS \
-      $DOCKER_CACHE_FLAGS             \
+    docker buildx build "${DOCKER_FLAGS[@]}"  \
+      "${DOCKER_CACHE_FLAGS[@]}"              \
       --platform $BUILD_PLATFORMS     \
       --build-arg RELEASE_BUILD=1     \
       --build-arg VERSION="$VERSION"  \
@@ -152,10 +155,10 @@ case "$TARGET_CONTAINER" in
     ;;
 
   alloy-devel-boringcrypto-pr)
-	TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
+    TAG="pr-${GITHUB_PR_NUMBER}-${TAG_VERSION}"
 
-    docker buildx build $DOCKER_FLAGS          \
-      $DOCKER_CACHE_FLAGS                      \
+    docker buildx build "${DOCKER_FLAGS[@]}"   \
+      "${DOCKER_CACHE_FLAGS[@]}"               \
       --platform $BUILD_PLATFORMS_BORINGCRYPTO \
       --build-arg RELEASE_BUILD=1              \
       --build-arg VERSION="$VERSION"           \
