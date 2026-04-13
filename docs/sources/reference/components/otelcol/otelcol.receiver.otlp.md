@@ -47,6 +47,8 @@ The `otelcol.receiver.otlp` component doesn't support any arguments. You can con
 
 You can use the following blocks with `otelcol.receiver.otlp`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                             | Description                                                                | Required |
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]                                                | Configures where to send received telemetry data.                          | yes      |
@@ -62,9 +64,6 @@ You can use the following blocks with `otelcol.receiver.otlp`:
 | `http` > [`tls`][tls]                                             | Configures TLS for the HTTP server.                                        | no       |
 | `http` > `tls` > [`tpm`][tpm]                                     | Configures TPM settings for the TLS `key_file`.                            | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` block.
-
 [grpc]: #grpc
 [tls]: #tls
 [tpm]: #tpm
@@ -75,6 +74,8 @@ For example, `grpc` > `tls` refers to a `tls` block defined inside a `grpc` bloc
 [cors]: #cors
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

@@ -50,6 +50,8 @@ After a successful poll, all data is exported with the same field names as the s
 
 You can use the following blocks with `remote.kubernetes.configmap`:
 
+{{< docs/alloy-config >}}
+
 | Block                                            | Description                                                   | Required |
 | ------------------------------------------------ | ------------------------------------------------------------- | -------- |
 | [`client`][client]                               | Configures Kubernetes client used to find ConfigMaps.         | no       |
@@ -59,14 +61,13 @@ You can use the following blocks with `remote.kubernetes.configmap`:
 | `client` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the Kubernetes API.  | no       |
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the Kubernetes API.  | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
-
 [client]: #client
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 

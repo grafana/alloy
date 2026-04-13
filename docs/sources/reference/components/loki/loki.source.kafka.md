@@ -73,6 +73,8 @@ To keep these labels, relabel them using a [`loki.relabel`][loki.relabel] compon
 
 You can use the following blocks with `loki.source.kafka`:
 
+{{< docs/alloy-config >}}
+
 | Name                                                              | Description                                               | Required |
 | ----------------------------------------------------------------- | --------------------------------------------------------- | -------- |
 | [`authentication`][authentication]                                | Optional authentication configuration with Kafka brokers. | no       |
@@ -81,13 +83,12 @@ You can use the following blocks with `loki.source.kafka`:
 | `authentication` > `sasl_config` > [`tls_config`][tls_config]     | Optional authentication configuration with Kafka brokers. | no       |
 | `authentication` >  [`tls_config`][tls_config]                    | Optional authentication configuration with Kafka brokers. | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `authentication` > `sasl_config` refers to a `sasl_config` block defined inside a `authentication` block.
-
 [authentication]: #authentication
 [oauth_config]: #oauth_config
 [sasl_config]: #sasl_config
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `authentication`
 
