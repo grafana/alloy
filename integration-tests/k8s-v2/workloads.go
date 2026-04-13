@@ -67,9 +67,9 @@ func installAlloyFromChart(ctx context.Context, kubeconfigPath, testName, values
 	if _, err := os.Stat(valuesPath); err != nil {
 		return fmt.Errorf("helm values for test %q are required at %q: %w", testName, valuesPath, err)
 	}
-	absChartPath, err := filepath.Abs(localAlloyChartPath)
+	absChartPath, err := resolveAlloyChartPath()
 	if err != nil {
-		return fmt.Errorf("resolve chart path: %w", err)
+		return fmt.Errorf("resolve Alloy chart path: %w", err)
 	}
 	absValuesPath, err := filepath.Abs(valuesPath)
 	if err != nil {
@@ -164,4 +164,26 @@ func renderTemplatedFile(path string, vars map[string]string) (string, error) {
 
 func removeTempFile(path string) {
 	_ = os.Remove(path)
+}
+
+func resolveAlloyChartPath() (string, error) {
+	candidates := []string{
+		localAlloyChartPath,
+		filepath.Join("..", "..", localAlloyChartPath),
+	}
+
+	var checked []string
+	for _, rel := range candidates {
+		abs, err := filepath.Abs(rel)
+		if err != nil {
+			continue
+		}
+		checked = append(checked, abs)
+		info, err := os.Stat(abs)
+		if err == nil && info.IsDir() {
+			return abs, nil
+		}
+	}
+
+	return "", fmt.Errorf("alloy chart not found; checked paths: %s", strings.Join(checked, ", "))
 }
