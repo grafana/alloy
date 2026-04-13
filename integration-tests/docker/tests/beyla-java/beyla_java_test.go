@@ -40,12 +40,12 @@ func generateJavaTraffic(t *testing.T) {
 func TestBeylaJavaSDKTraces(t *testing.T) {
 	generateJavaTraffic(t)
 
-	// The injected OpenTelemetry Java SDK may need a few seconds to finish
-	// initialising its OTLP exporter after Beyla injects it into the JVM.
-	// Keep generating traffic throughout the assertion window so that requests
-	// are captured once the SDK is ready, rather than relying solely on the
-	// initial burst above.
-	ctx, cancel := context.WithTimeout(context.Background(), common.DefaultTimeout)
+	// The eBPF tracer and injected Java SDK can take well over the default 90s
+	// to initialise on CI. Use a longer window and keep generating traffic
+	// throughout so requests are captured once the SDK is ready.
+	const traceTimeout = 3 * time.Minute
+
+	ctx, cancel := context.WithTimeout(context.Background(), traceTimeout)
 	defer cancel()
 	go func() {
 		client := &http.Client{Timeout: 5 * common.DefaultRetryInterval}
@@ -69,5 +69,6 @@ func TestBeylaJavaSDKTraces(t *testing.T) {
 		"telemetry.sdk.name":     "opentelemetry",
 		"telemetry.sdk.language": "java",
 	}
-	common.TracesTest(t, tags, "beyla-java")
+	tags["test_name"] = "beyla-java"
+	common.AssertTracesAvailableWithTimeout(t, tags, traceTimeout)
 }

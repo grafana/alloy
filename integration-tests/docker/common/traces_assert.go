@@ -52,6 +52,11 @@ func TracesTest(t *testing.T, tags map[string]string, testName string) {
 
 // AssertTracesAvailable performs a Tempo search query and expects to eventually find traces with the given tags
 func AssertTracesAvailable(t *testing.T, tags map[string]string) {
+	AssertTracesAvailableWithTimeout(t, tags, DefaultTimeout)
+}
+
+// AssertTracesAvailableWithTimeout is like AssertTracesAvailable but uses a custom timeout.
+func AssertTracesAvailableWithTimeout(t *testing.T, tags map[string]string, timeout time.Duration) {
 	query := TempoSearchQuery(tags)
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		var searchResponse TempoTraceSearchResponse
@@ -73,7 +78,7 @@ func AssertTracesAvailable(t *testing.T, tags map[string]string) {
 				t.Logf("Note: Trace has zero duration (TraceID: %s). This can occur with very fast eBPF-instrumented operations.", trace.TraceID)
 			}
 		}
-	}, DefaultTimeout, DefaultRetryInterval, "No traces found matching the search criteria within the time limit")
+	}, timeout, DefaultRetryInterval, "No traces found matching the search criteria within the time limit")
 }
 
 func (t *TempoTraceSearchResponse) Unmarshal(data []byte) error {
