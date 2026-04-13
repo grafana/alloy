@@ -17,6 +17,7 @@ jobs:
       img-name: alloy-devel-pr
       dev: true
       pr-number: ${{ github.event.pull_request.number }}
+      cache-scope: alloy-pr-${{ github.event.pull_request.number }}-devel-linux
 
   publish_linux_boringcrypto_container:
     if: ${{ github.repository == 'grafana/alloy' && contains(github.event.pull_request.labels.*.name, 'publish-dev:linux-bc')}}
@@ -28,6 +29,7 @@ jobs:
       img-name:  alloy-devel-boringcrypto-pr
       dev: true
       pr-number: ${{ github.event.pull_request.number }}
+      cache-scope: alloy-pr-${{ github.event.pull_request.number }}-devel-linux-boringcrypto
 
   publish_windows_container:
     if: ${{ github.repository == 'grafana/alloy' && contains(github.event.pull_request.labels.*.name, 'publish-dev:windows')}}

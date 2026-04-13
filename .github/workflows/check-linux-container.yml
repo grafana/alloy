@@ -25,6 +25,7 @@ jobs:
     with:
       img-name: alloy-devel
       push: false
+      cache-scope: alloy-pr-${{ github.event.pull_request.number || github.run_id }}-linux
 
   check-linux-boringcrypto-container:
     uses: ./.github/workflows/publish-alloy-linux.yml
@@ -34,3 +35,4 @@ jobs:
     with:
       img-name: alloy-devel-boringcrypto
       push: false
+      cache-scope: alloy-pr-${{ github.event.pull_request.number || github.run_id }}-linux-boringcrypto
