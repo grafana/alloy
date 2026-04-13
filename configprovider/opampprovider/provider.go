@@ -52,7 +52,7 @@ func (p *provider) Retrieve(ctx context.Context, uri string, watcher confmap.Wat
 	if err != nil {
 		return nil, err
 	}
-	remoteDir, err := opampRemoteDirectory(root, basePath)
+	remoteDir, err := opampExtensionPaths(root, basePath)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (p *provider) Retrieve(ctx context.Context, uri string, watcher confmap.Wat
 		return nil, err
 	}
 
-	if watcher == nil {
+	if watcher == nil || remoteWatchDisabled(ctx) {
 		return confmap.NewRetrieved(merged)
 	}
 
@@ -88,19 +88,22 @@ func (p *provider) Retrieve(ctx context.Context, uri string, watcher confmap.Wat
 			return
 		default:
 		}
-		baseBytes, root, err := readBootstrapYAML(basePath)
+
 		if err != nil {
 			p.logger.Error("opamp provider: read bootstrap after watch event", zap.Error(err))
 			return
 		}
-		remoteDir, err := opampRemoteDirectory(root, basePath)
+		remoteDir, err := opampExtensionPaths(root, basePath)
 		if err != nil {
-			p.logger.Error("opamp provider: remote directory after watch event", zap.Error(err))
+			p.logger.Error("opamp provider: opamp paths after watch event", zap.Error(err))
 			return
 		}
-		if _, err := mergedConfigWithRemoteDir(baseBytes, remoteDir); err != nil {
-			p.logger.Error("opamp provider: merge after watch event", zap.Error(err))
-			return
+
+		if ValidateRemoteConfig != nil {
+			if err := ValidateRemoteConfig(context.Background(), remoteDir); err != nil {
+				p.logger.Error("opamp provider: validate merged remote config", zap.Error(err))
+				return
+			}
 		}
 		watcher(&confmap.ChangeEvent{})
 	}

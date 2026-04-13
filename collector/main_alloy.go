@@ -14,6 +14,8 @@ func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
     otelCmd.Short = "Use Alloy with OTel Engine"
     otelCmd.Long = "[EXPERIMENTAL] Use Alloy with OpenTelemetry Collector Engine"
 
+    registerOpAMPValidationURIStash(otelCmd)
+
     flowCmd := flowcmd.RootCommand()
     flowCmd.AddCommand(otelCmd)
 

@@ -22,9 +22,9 @@ func readBootstrapYAML(basePath string) ([]byte, map[string]any, error) {
 	return baseBytes, root, nil
 }
 
-// opampRemoteDirectory returns the absolute extensions.opamp.remote_configuration_directory from the bootstrap root map.
-func opampRemoteDirectory(root map[string]any, basePath string) (string, error) {
-	remoteDir, err := remoteConfigurationDirectory(root)
+// opampExtensionPaths returns remote_configuration_directory from the bootstrap root map.
+func opampExtensionPaths(root map[string]any, basePath string) (remoteDir string, err error) {
+	remoteDir, err = remoteConfigurationDirectory(root)
 	if err != nil {
 		return "", fmt.Errorf("base %s: %w", basePath, err)
 	}
