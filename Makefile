@@ -36,7 +36,8 @@
 ## Targets for packaging:
 ##
 ##   dist                 Produce release assets for everything.
-##   dist-alloy-binaries  Produce release-ready Alloy binaries.
+##   dist-alloy-binaries  Produce release-ready Alloy binaries (includes opampsupervisor).
+##   dist-opampsupervisor-binaries  Build only upstream opampsupervisor release binaries.
 ##   dist-alloy-packages  Produce release-ready DEB and RPM packages.
 ##   dist-alloy-installer Produce a Windows installer for Alloy.
 ##   dist-alloy-mixin-zip Produce release-ready Alloy mixin dashboard archive.
@@ -80,6 +81,7 @@
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
+##   OPAMP_SUPERVISOR_VERSION  Override Contrib tag for opampsupervisor (default: from collector/go.mod).
 
 include tools/make/*.mk
 
@@ -120,6 +122,7 @@ PROPAGATE_VARS := \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
+    OPAMP_SUPERVISOR_VERSION \
 
 #
 # Constants for targets
@@ -295,6 +298,7 @@ else
 		cd ./collector && go mod tidy; \
 	fi
 	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
+	# Release opampsupervisor (tools/install-opampsupervisor.sh) uses the Contrib tag pinned in collector/go.mod; keep them aligned when bumping.
 	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
@@ -408,6 +412,7 @@ info:
 	@printf "VERSION             = $(VERSION)\n"
 	@printf "GO_TAGS             = $(GO_TAGS)\n"
 	@printf "GOEXPERIMENT        = $(GOEXPERIMENT)\n"
+	@printf "OPAMP_SUPERVISOR_VERSION = $(OPAMP_SUPERVISOR_VERSION)\n"
 
 # awk magic to print out the comment block at the top of this file.
 .PHONY: help

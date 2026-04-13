@@ -37,6 +37,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     SKIP_UI_BUILD=1 \
     make alloy
 
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    bash /src/alloy/tools/install-opampsupervisor.sh "$TARGETOS" "$TARGETARCH" /src/alloy/build/opampsupervisor "${TARGETVARIANT#v}"
+
 ###
 
 FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:b1940c8ecf8ff591053cc5db0303fb882f9fafec50f26892a870bcbe1b30d25a
@@ -60,6 +64,7 @@ RUN apt-get update \
 
 
 COPY --from=build --chown=${UID}:${UID} /src/alloy/build/alloy /bin/alloy
+COPY --from=build --chown=${UID}:${UID} /src/alloy/build/opampsupervisor /bin/opampsupervisor
 COPY --chown=${UID}:${UID} example-config.alloy /etc/alloy/config.alloy
 
 # Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with

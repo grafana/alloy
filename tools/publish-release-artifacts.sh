@@ -35,7 +35,7 @@ fi
 # Zip up all the binaries to reduce the download size. DEBs and RPMs
 # aren't included to be easier to work with.
 find dist/ -type f \
-  -name 'alloy*' -not -name '*.deb' -not -name '*.rpm' -not -name '*.zip' -not -name 'alloy-installer-windows-*.exe' \
+  \( -name 'alloy*' -o -name 'opampsupervisor*' \) -not -name '*.deb' -not -name '*.rpm' -not -name '*.zip' -not -name 'alloy-installer-windows-*.exe' \
   -exec zip -j -m "{}.zip" "{}" \;
 
 # For the Windows installer only, we want to keep the original .exe file and create a zipped copy.

@@ -1,6 +1,6 @@
 # This script does the following:
 #
-# 1. Installs alloy-windows-amd64.exe, alloy-service-amd64.exe, and logo.ico.
+# 1. Installs alloy-windows-amd64.exe, opampsupervisor-windows-amd64.exe, alloy-service-amd64.exe, and logo.ico.
 # 2. Creates a Start Menu shortcut.
 # 3. Builds an uninstaller.
 # 4. Adds uninstall information to the registry for Add/Remove Programs.
@@ -93,6 +93,7 @@ Section "install"
     SetOutPath "$INSTDIR"
 
   File "..\..\dist\alloy-windows-amd64.exe"
+  File /oname=opampsupervisor.exe "..\..\dist\opampsupervisor-windows-amd64.exe"
   File "..\..\dist.temp\alloy-service-windows-amd64.exe"
   File "logo.ico"
 

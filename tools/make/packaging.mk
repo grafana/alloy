@@ -2,6 +2,10 @@
 
 PARENT_MAKEFILE := $(firstword $(MAKEFILE_LIST))
 
+# OpenTelemetry Collector Contrib tag for the standalone opampsupervisor binary.
+# Default is derived from collector/go.mod; bump when regenerating the embedded distro.
+OPAMP_SUPERVISOR_VERSION ?= $(shell grep 'github.com/open-telemetry/opentelemetry-collector-contrib/' "$(CURDIR)/collector/go.mod" | head -1 | awk '{print $$NF}')
+
 .PHONY: dist clean-dist
 dist: dist-alloy-binaries              \
       dist-alloy-boringcrypto-binaries \
@@ -35,7 +39,15 @@ dist-alloy-binaries: dist/alloy-linux-amd64                    \
                      dist/alloy-darwin-amd64                   \
                      dist/alloy-darwin-arm64                   \
                      dist/alloy-windows-amd64.exe              \
-                     dist/alloy-freebsd-amd64
+                     dist/alloy-freebsd-amd64                  \
+                     dist/opampsupervisor-linux-amd64          \
+                     dist/opampsupervisor-linux-arm64          \
+                     dist/opampsupervisor-linux-ppc64le        \
+                     dist/opampsupervisor-linux-s390x         \
+                     dist/opampsupervisor-darwin-amd64         \
+                     dist/opampsupervisor-darwin-arm64         \
+                     dist/opampsupervisor-windows-amd64.exe    \
+                     dist/opampsupervisor-freebsd-amd64
 
 dist/alloy-linux-amd64: GO_TAGS += netgo embedalloyui promtail_journal_enabled
 dist/alloy-linux-amd64: GOOS    := linux
@@ -94,6 +106,76 @@ dist/alloy-freebsd-amd64: GOOS    := freebsd
 dist/alloy-freebsd-amd64: GOARCH  := amd64
 dist/alloy-freebsd-amd64: generate-ui
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
+
+#
+# OpenTelemetry opampsupervisor (upstream Contrib cmd at the Git tag matching collector/go.mod)
+#
+
+.PHONY: dist-opampsupervisor-binaries
+dist-opampsupervisor-binaries: dist/opampsupervisor-linux-amd64          \
+                               dist/opampsupervisor-linux-arm64          \
+                               dist/opampsupervisor-linux-ppc64le        \
+                               dist/opampsupervisor-linux-s390x         \
+                               dist/opampsupervisor-darwin-amd64         \
+                               dist/opampsupervisor-darwin-arm64         \
+                               dist/opampsupervisor-windows-amd64.exe    \
+                               dist/opampsupervisor-freebsd-amd64
+
+dist/opampsupervisor-linux-amd64:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh linux amd64 $@
+endif
+
+dist/opampsupervisor-linux-arm64:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh linux arm64 $@
+endif
+
+dist/opampsupervisor-linux-ppc64le:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh linux ppc64le $@
+endif
+
+dist/opampsupervisor-linux-s390x:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh linux s390x $@
+endif
+
+dist/opampsupervisor-darwin-amd64:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh darwin amd64 $@
+endif
+
+dist/opampsupervisor-darwin-arm64:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh darwin arm64 $@
+endif
+
+dist/opampsupervisor-windows-amd64.exe:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh windows amd64 $@
+endif
+
+dist/opampsupervisor-freebsd-amd64:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	OPAMP_SUPERVISOR_VERSION="$(OPAMP_SUPERVISOR_VERSION)" bash ./tools/install-opampsupervisor.sh freebsd amd64 $@
+endif
 
 #
 # Alloy boringcrypto release binaries
@@ -159,6 +241,7 @@ define generate_alloy_fpm =
 		--rpm-rpmbuild-define "_build_id_links none" \
 		--package $(4) \
 			dist/alloy-linux-$(3)=/usr/bin/alloy \
+			dist/opampsupervisor-linux-$(3)=/usr/bin/opampsupervisor \
 			packaging/config.alloy=/etc/alloy/config.alloy \
 			packaging/environment-file=$(ALLOY_ENVIRONMENT_FILE_$(1)) \
 			packaging/$(1)/alloy.service=/usr/lib/systemd/system/alloy.service
@@ -175,7 +258,7 @@ dist-alloy-packages: dist-alloy-packages-amd64   \
                      dist-alloy-packages-s390x
 
 .PHONY: dist-alloy-packages-amd64
-dist-alloy-packages-amd64: dist/alloy-linux-amd64
+dist-alloy-packages-amd64: dist/alloy-linux-amd64 dist/opampsupervisor-linux-amd64
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -184,7 +267,7 @@ else
 endif
 
 .PHONY: dist-alloy-packages-arm64
-dist-alloy-packages-arm64: dist/alloy-linux-arm64
+dist-alloy-packages-arm64: dist/alloy-linux-arm64 dist/opampsupervisor-linux-arm64
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -193,7 +276,7 @@ else
 endif
 
 .PHONY: dist-alloy-packages-ppc64le
-dist-alloy-packages-ppc64le: dist/alloy-linux-ppc64le
+dist-alloy-packages-ppc64le: dist/alloy-linux-ppc64le dist/opampsupervisor-linux-ppc64le
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -202,7 +285,7 @@ else
 endif
 
 .PHONY: dist-alloy-packages-s390x
-dist-alloy-packages-s390x: dist/alloy-linux-s390x
+dist-alloy-packages-s390x: dist/alloy-linux-s390x dist/opampsupervisor-linux-s390x
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -215,7 +298,7 @@ endif
 #
 
 .PHONY: dist-alloy-installer-windows
-dist-alloy-installer-windows: dist/alloy-windows-amd64.exe dist.temp/alloy-service-windows-amd64.exe
+dist-alloy-installer-windows: dist/alloy-windows-amd64.exe dist/opampsupervisor-windows-amd64.exe dist.temp/alloy-service-windows-amd64.exe
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
