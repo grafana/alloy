@@ -44,15 +44,11 @@ spec:
           args:
             - "sh"
             - "-c"
-            - "cat /input/app.log > /var/log/k8s-v2/app.log && sleep 600"
+            - "cat /input/app.log && sleep 600"
           volumeMounts:
             - name: input
               mountPath: /input
-            - name: logs
-              mountPath: /var/log/k8s-v2
       volumes:
         - name: input
           configMap:
             name: logs-source
-        - name: logs
-          emptyDir: {}
