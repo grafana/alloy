@@ -3,8 +3,10 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -37,6 +39,30 @@ func generateJavaTraffic(t *testing.T) {
 
 func TestBeylaJavaSDKTraces(t *testing.T) {
 	generateJavaTraffic(t)
+
+	// The injected OpenTelemetry Java SDK may need a few seconds to finish
+	// initialising its OTLP exporter after Beyla injects it into the JVM.
+	// Keep generating traffic throughout the assertion window so that requests
+	// are captured once the SDK is ready, rather than relying solely on the
+	// initial burst above.
+	ctx, cancel := context.WithTimeout(context.Background(), common.DefaultTimeout)
+	defer cancel()
+	go func() {
+		client := &http.Client{Timeout: 5 * common.DefaultRetryInterval}
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				resp, err := client.Get(javaAppURL)
+				if err == nil {
+					resp.Body.Close()
+				}
+			}
+		}
+	}()
 
 	tags := map[string]string{
 		"service.name":           javaServiceName,
