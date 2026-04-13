@@ -33,14 +33,14 @@ func (o *opampManagerLogger) Errorf(ctx context.Context, format string, v ...int
 	o.lg.Printf("opampmanager (opamp error): "+format, v...)
 }
 
-func Start(ctx context.Context, cfg Config, baseSettings otelcol.CollectorSettings, lg *log.Logger) {
+func Start(ctx context.Context, cfg Config, baseSettings otelcol.CollectorSettings, configURIs, setURIs []string, lg *log.Logger) {
 	if lg == nil {
 		lg = log.Default()
 	}
-	go runManager(ctx, cfg, baseSettings, lg)
+	go runManager(ctx, cfg, baseSettings, configURIs, setURIs, lg)
 }
 
-func runManager(ctx context.Context, cfg Config, baseSettings otelcol.CollectorSettings, lg *log.Logger) {
+func runManager(ctx context.Context, cfg Config, baseSettings otelcol.CollectorSettings, configURIs, setURIs []string, lg *log.Logger) {
 	var applyMu sync.Mutex
 
 	var uid types.InstanceUid
@@ -103,6 +103,12 @@ func runManager(ctx context.Context, cfg Config, baseSettings otelcol.CollectorS
 		body, err := OtelYAMLFromRemoteConfig(msg.RemoteConfig)
 		if err != nil {
 			lg.Printf("opampmanager: remote config: %v", err)
+			_ = c.SetRemoteConfigStatus(remoteStatus(msg.RemoteConfig, body, protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, err.Error()))
+			return
+		}
+		validateURIs := MergeResolverURIsForValidation(configURIs, setURIs, cfg.EffectivePath, body)
+		if err := ValidateOTelYAML(ctx, baseSettings, validateURIs); err != nil {
+			lg.Printf("opampmanager: validate failed: %v", err)
 			_ = c.SetRemoteConfigStatus(remoteStatus(msg.RemoteConfig, body, protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED, err.Error()))
 			return
 		}
