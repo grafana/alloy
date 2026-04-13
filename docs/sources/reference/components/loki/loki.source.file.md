@@ -53,7 +53,9 @@ The `encoding` argument must be a valid [IANA encoding][] name and if not set, i
 the encoding to `UTF-16` if the file includes a Byte Order Mark (BOM) for either `UTF-16BE` or `UTF-16LE`.
 The BOM will be taken into account even if {{< param "PRODUCT_NAME" >}} resumes tailing a file from the middle of the file. This can happen after {{< param "PRODUCT_NAME" >}} is restarted.
 
-The `max_line_size` argument limits the size of a single emitted log line. If a line grows beyond this limit before a newline is encountered, {{< param "PRODUCT_NAME" >}} emits the first `max_line_size` bytes and continues reading the remainder on subsequent reads. Set `max_line_size` to `0` to disable this limit.
+The `max_line_size` argument limits the size of a single emitted log line.
+If a line grows beyond this limit before a newline is encountered, {{< param "PRODUCT_NAME" >}} emits the first `max_line_size` bytes and continues reading the remainder on subsequent reads.
+Set `max_line_size` to `0` to disable this limit.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
