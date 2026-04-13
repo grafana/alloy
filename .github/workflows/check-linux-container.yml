@@ -35,4 +35,4 @@ jobs:
     with:
       img-name: alloy-devel-boringcrypto
       push: false
-      cache-scope: alloy-pr-${{ github.event.pull_request.number || github.run_id }}-linux-boringcrypto
+      cache-scope: alloy-pr-${{ github.event.pull_request.number || github.run_id }}-linux
