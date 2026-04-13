@@ -72,7 +72,8 @@ type Options struct {
 	// Logger the component may use for logging. Logs emitted with the logger
 	// always include the component ID as a field.
 	//
-	// Deprecated: use SLogger instead.
+	// Logger is kept for compatibility with components that have not yet been
+	// migrated to slog. Prefer SLogger for new code.
 	Logger log.Logger
 
 	// SLogger the component may use for logging. Logs emitted with the logger
