@@ -60,7 +60,7 @@ func TestPipelineWithMissingKey_Output(t *testing.T) {
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testOutputLogLineWithMissingKey, time.Now()))
-	expectedLog := "level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/output.go:46 msg=\"extracted output could not be converted to a string\" stage=output err=\"can't convert <nil> to string\" type=<nil>"
+	expectedLog := "level=debug msg=\"extracted output could not be converted to a string\" stage=output err=\"can't convert <nil> to string\" type=<nil>"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}

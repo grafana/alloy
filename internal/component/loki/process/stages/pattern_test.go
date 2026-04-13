@@ -212,7 +212,7 @@ func TestPipelineWithMissingKey_Pattern(t *testing.T) {
 	}
 	_ = processEntries(pl, newEntry(nil, nil, testPatternLogLineWithMissingKey, time.Now()))[0]
 
-	expectedLog := "level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/pattern.go:102 msg=\"failed to convert source value to string\" stage=pattern source=time err=\"can't convert <nil> to string\" type=<nil>"
+	expectedLog := "level=debug msg=\"failed to convert source value to string\" stage=pattern source=time err=\"can't convert <nil> to string\" type=<nil>"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}

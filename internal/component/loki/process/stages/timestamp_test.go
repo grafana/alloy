@@ -66,7 +66,7 @@ func TestPipelineWithMissingKey_Timestamp(t *testing.T) {
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testTimestampLogLineWithMissingKey, time.Now()))
-	expectedLog := fmt.Sprintf("level=debug source=/home/kalle/projects/grafana/alloy/internal/component/loki/process/stages/timestamp.go:165 msg=\"%s\" stage=timestamp err=\"can't convert <nil> to string\" type=<nil>", ErrTimestampConversionFailed)
+	expectedLog := fmt.Sprintf("level=debug msg=\"%s\" stage=timestamp err=\"can't convert <nil> to string\" type=<nil>", ErrTimestampConversionFailed)
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
