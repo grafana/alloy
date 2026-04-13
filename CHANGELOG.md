@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.15.1](https://github.com/grafana/alloy/compare/v1.15.0...v1.15.1) (2026-04-13)
+
+
+### Bug Fixes 🐛
+
+* Correct a formatting issue in OpenTelemetry docs page ([#5995](https://github.com/grafana/alloy/issues/5995)) ([f714154](https://github.com/grafana/alloy/commit/f714154c5c271dcaebbe1144fdb7f6a7c6df16a6))
+* **database_observability:** Ensure connection_info_monitor goroutine exits on Stop [backport] ([#5952](https://github.com/grafana/alloy/issues/5952)) ([a9e01e7](https://github.com/grafana/alloy/commit/a9e01e758cad35a63eb9d49d21889ada0e289046))
+* **deps:** Update module github.com/go-git/go-git/v5 to v5.17.1 [SECURITY] [backport] ([#5984](https://github.com/grafana/alloy/issues/5984)) ([add0a5d](https://github.com/grafana/alloy/commit/add0a5d63440dc672731b7227951efc9609983f0))
+* **deps:** Update module github.com/nwaples/rardecode/v2 to v2.2.0 [SECURITY] [backport] ([910a37b](https://github.com/grafana/alloy/commit/910a37bc58499a8379d8da7843b3a3739290a91d))
+* **deps:** Update module go.opentelemetry.io/otel/sdk to v1.43.0 [SECURITY] [backport] ([#6042](https://github.com/grafana/alloy/issues/6042)) ([833b178](https://github.com/grafana/alloy/commit/833b1782070e70e41cf7b9474a7c608f65030e6a))
+* **deps:** Update npm dependency vite to v7.3.2 [SECURITY] [backport] ([#6043](https://github.com/grafana/alloy/issues/6043)) ([89e5ecf](https://github.com/grafana/alloy/commit/89e5ecf0f89df4f1f82955b93144ec523be95e3d))
+* **go:** Update alloy builder image to Go 1.25.9 [backport] ([#6020](https://github.com/grafana/alloy/issues/6020)) ([126b1b5](https://github.com/grafana/alloy/commit/126b1b57bd3d3440d980fb5ea89fb21651f08e42))
+* **go:** Upgrade to Go 1.25.9 [backport] ([#6024](https://github.com/grafana/alloy/issues/6024)) ([1bfd933](https://github.com/grafana/alloy/commit/1bfd933e06ad424c841d8faa7bdbc6bc0b85c430))
+* **prometheus.exporter.postgres:** Close DB connections on update [backport] ([#6023](https://github.com/grafana/alloy/issues/6023)) ([b9eeb74](https://github.com/grafana/alloy/commit/b9eeb748d0245668a58c98a4748bd7b9c4f8f01c))
+
 ## [1.15.0](https://github.com/grafana/alloy/compare/v1.14.0...v1.15.0) (2026-03-26)
 
 
