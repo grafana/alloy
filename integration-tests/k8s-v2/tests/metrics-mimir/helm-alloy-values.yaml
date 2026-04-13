@@ -7,7 +7,7 @@ alloy:
     content: |
       prometheus.scrape "generator" {
         targets = [{
-          __address__ = "metrics-generator.${TEST_NAMESPACE}.svc.cluster.local:9090",
+          __address__ = "metrics-generator.${TEST_NAMESPACE}.svc.cluster.local:9001",
           test_id     = "${TEST_ID}",
         }]
 

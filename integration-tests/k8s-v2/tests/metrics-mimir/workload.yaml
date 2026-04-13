@@ -21,13 +21,14 @@ spec:
         test-id: ${TEST_ID}
     spec:
       containers:
-        - name: prometheus
-          image: prom/prometheus:v3.5.0
+        - name: avalanche
+          image: quay.io/prometheuscommunity/avalanche:v0.8.0
           args:
-            - "--config.file=/etc/prometheus/prometheus.yml"
-            - "--storage.tsdb.path=/prometheus"
+            - "--metric-count=20"
+            - "--series-count=5"
+            - "--value-interval=500ms"
           ports:
-            - containerPort: 9090
+            - containerPort: 9001
 ---
 apiVersion: v1
 kind: Service
@@ -40,5 +41,5 @@ spec:
     test-id: ${TEST_ID}
   ports:
     - name: http
-      port: 9090
-      targetPort: 9090
+      port: 9001
+      targetPort: 9001

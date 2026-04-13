@@ -21,6 +21,24 @@ type lokiQueryResponse struct {
 }
 
 func EventuallyLokiQueryContainsLine(ctx context.Context, baseURL, query, expectedSubstring string) error {
+	return eventuallyLokiQueryLineMatch(ctx, baseURL, query, func(line string) bool {
+		return strings.Contains(line, expectedSubstring)
+	}, fmt.Sprintf("substring(%q)", expectedSubstring))
+}
+
+func EventuallyLokiQueryContainsExactLine(ctx context.Context, baseURL, query, expectedLine string) error {
+	return eventuallyLokiQueryLineMatch(ctx, baseURL, query, func(line string) bool {
+		return strings.TrimSpace(line) == expectedLine
+	}, fmt.Sprintf("exact_line(%q)", expectedLine))
+}
+
+func eventuallyLokiQueryLineMatch(
+	ctx context.Context,
+	baseURL, query string,
+	matcher func(string) bool,
+	expectedDesc string,
+) error {
+
 	deadlineCtx, cancel := context.WithTimeout(ctx, DefaultTimeout)
 	defer cancel()
 
@@ -50,7 +68,7 @@ func EventuallyLokiQueryContainsLine(ctx context.Context, baseURL, query, expect
 				if unmarshalErr := json.Unmarshal(body, &decoded); unmarshalErr == nil && decoded.Status == "success" {
 					for _, stream := range decoded.Data.Result {
 						for _, value := range stream.Values {
-							if len(value) > 1 && strings.Contains(value[1], expectedSubstring) {
+							if len(value) > 1 && matcher(value[1]) {
 								return nil
 							}
 						}
@@ -67,9 +85,9 @@ func EventuallyLokiQueryContainsLine(ctx context.Context, baseURL, query, expect
 		select {
 		case <-deadlineCtx.Done():
 			return fmt.Errorf(
-				"loki query=%q expected=substring(%q) timeout=%s last_observed=%s",
+				"loki query=%q expected=%s timeout=%s last_observed=%s",
 				query,
-				expectedSubstring,
+				expectedDesc,
 				DefaultTimeout,
 				lastSummary,
 			)

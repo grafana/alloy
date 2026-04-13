@@ -28,7 +28,7 @@ func TestAssertions(t *testing.T) {
 	}
 	defer cancelPortForward()
 
-	query := `prometheus_build_info{test_id="` + *testIDFlag + `"}`
+	query := `up{test_id="` + *testIDFlag + `"}`
 	if err := k8sassert.EventuallyMimirQueryHasSeries(context.Background(), baseURL, query); err != nil {
 		t.Fatalf("metrics to mimir assertion failed: %v", err)
 	}
