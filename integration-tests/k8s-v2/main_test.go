@@ -9,11 +9,7 @@ import (
 	"time"
 )
 
-const (
-	testsRootPath = "tests"
-	workNamespace = "k8s-v2-workloads"
-	alloyRelease  = "alloy-k8s-v2"
-)
+const testsRootPath = "tests"
 
 var (
 	selectedTestsFlag = flag.String("k8s.v2.tests", "all", "Comma-separated k8s-v2 tests to run (default: all)")
@@ -23,6 +19,7 @@ var (
 	reuseDepsFlag     = flag.Bool("k8s.v2.reuse-deps", false, "When reusing a cluster, skip dependency install/uninstall checks")
 	setupTimeoutFlag  = flag.Duration("k8s.v2.setup-timeout", 20*time.Minute, "Setup timeout for cluster create and dependency install")
 	readinessTimeout  = flag.Duration("k8s.v2.readiness-timeout", 2*time.Minute, "Readiness timeout for dependency checks")
+	parallelFlag      = flag.Int("k8s.v2.parallel", 4, "Maximum number of tests to execute in parallel")
 	debugFlag         = flag.Bool("k8s.v2.debug", false, "Enable debug logging for setup and dependency checks")
 	alloyImageFlag    = flag.String("k8s.v2.alloy-image", "", "Alloy image reference to load into Kind and use in Helm (for example: alloy-ci:pr-sha)")
 	alloyPullPolicy   = flag.String("k8s.v2.alloy-image-pull-policy", "", "Optional Helm image.pullPolicy override for Alloy")

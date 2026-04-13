@@ -65,13 +65,13 @@ go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster --k
 Reuse an existing Kind cluster:
 
 ```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-k8s-v2-dev
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-it-dev
 ```
 
 Reuse an existing Kind cluster and skip dependency install/uninstall:
 
 ```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-k8s-v2-dev --reuse-deps
+go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-it-dev --reuse-deps
 ```
 
 Pass extra `go test` flags:
@@ -103,6 +103,12 @@ Tune setup/readiness timeouts:
 
 ```sh
 go run ./integration-tests/k8s-v2/runner --all --setup-timeout 30m --readiness-timeout 5m
+```
+
+Control concurrent test execution (default is 4):
+
+```sh
+go run ./integration-tests/k8s-v2/runner --all --parallel 4
 ```
 
 Enable debug logging (dependency apply/wait/readiness traces):
@@ -140,6 +146,9 @@ go run ./integration-tests/k8s-v2/runner --test logs-loki -- --count=1
 - High-level lifecycle step logs include durations to help identify slow areas.
 - `--reuse-cluster` reuses an existing cluster by name. Reused clusters are left untouched by cleanup.
 - `--reuse-deps` skips dependency install/uninstall when reusing a cluster; no dependency validation is performed.
+- Selected tests run in parallel by default (`--parallel`, default `4`) with isolated per-test namespace/release names.
 - `--alloy-image` loads a local image into Kind and overrides Helm `image.repository`/`image.tag` so assertions run against the PR artifact instead of a released image.
 - k8s-v2 tests are tag-gated so generic `go test ./...` jobs do not run them.
-- Namespaces are explicit by role: Alloy=`alloy`, Loki=`loki`, Mimir=`mimir`, workloads=`k8s-v2-workloads`.
+- Dependencies are shared in fixed namespaces: Loki=`loki`, Mimir=`mimir`.
+- Runtime isolation uses a per-test `test_id` label and a per-test namespace/release derived from the test name.
+- Test assets support `${TEST_ID}` and `${TEST_NAMESPACE}` placeholders. `${TEST_NAMESPACE}` is used for both namespace and Helm release.

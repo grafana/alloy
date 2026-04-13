@@ -9,7 +9,7 @@ alloy:
         role = "pod"
         namespaces {
           own_namespace = false
-          names = ["k8s-v2-workloads"]
+          names = ["${TEST_NAMESPACE}"]
         }
       }
 
@@ -20,6 +20,12 @@ alloy:
           source_labels = ["__meta_kubernetes_pod_label_app"]
           regex = "log-generator"
           action = "keep"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_test_id"]
+          target_label  = "test_id"
+          action        = "replace"
         }
       }
 

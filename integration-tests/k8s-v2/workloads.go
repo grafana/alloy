@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/imageutil"
@@ -42,7 +43,7 @@ func deleteWorkloadManifest(ctx context.Context, kubeconfigPath, manifestPath st
 	return nil
 }
 
-func runGoTestPackage(dir, kubeconfigPath string) error {
+func runGoTestPackage(dir, kubeconfigPath, testID string) error {
 	cmd := exec.Command(
 		"go",
 		"test",
@@ -53,6 +54,7 @@ func runGoTestPackage(dir, kubeconfigPath string) error {
 		".",
 		"-args",
 		"-k8s.v2.kubeconfig="+kubeconfigPath,
+		"-k8s.v2.test-id="+testID,
 	)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
@@ -61,7 +63,7 @@ func runGoTestPackage(dir, kubeconfigPath string) error {
 	return cmd.Run()
 }
 
-func installAlloyFromChart(ctx context.Context, kubeconfigPath, testName, valuesPath string) error {
+func installAlloyFromChart(ctx context.Context, kubeconfigPath, testName, valuesPath, release, namespace string) error {
 	if _, err := os.Stat(valuesPath); err != nil {
 		return fmt.Errorf("helm values for test %q are required at %q: %w", testName, valuesPath, err)
 	}
@@ -79,12 +81,12 @@ func installAlloyFromChart(ctx context.Context, kubeconfigPath, testName, values
 		"helm",
 		"upgrade",
 		"--install",
-		alloyRelease,
+		release,
 		absChartPath,
 		"--kubeconfig",
 		kubeconfigPath,
 		"--namespace",
-		alloyNamespace,
+		namespace,
 		"--wait",
 		"--timeout",
 		readinessTimeout.String(),
@@ -112,20 +114,54 @@ func installAlloyFromChart(ctx context.Context, kubeconfigPath, testName, values
 	return nil
 }
 
-func uninstallAlloyFromChart(ctx context.Context, kubeconfigPath, testName string) error {
+func uninstallAlloyFromChart(ctx context.Context, kubeconfigPath, testName, release, namespace string) error {
 	cmd := exec.CommandContext(
 		ctx,
 		"helm",
 		"uninstall",
-		alloyRelease,
+		release,
 		"--kubeconfig",
 		kubeconfigPath,
 		"--namespace",
-		alloyNamespace,
+		namespace,
 	)
 	out, err := cmd.CombinedOutput()
 	if err != nil && !strings.Contains(string(out), "release: not found") {
 		return fmt.Errorf("helm uninstall Alloy for %q failed: %w: %s", testName, err, string(out))
 	}
 	return nil
+}
+
+func renderTemplatedFile(path string, vars map[string]string) (string, error) {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("read file %q: %w", path, err)
+	}
+
+	content := string(raw)
+	keys := make([]string, 0, len(vars))
+	for key := range vars {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		content = strings.ReplaceAll(content, "${"+key+"}", vars[key])
+	}
+
+	tmp, err := os.CreateTemp("", "k8s-v2-rendered-*.yaml")
+	if err != nil {
+		return "", fmt.Errorf("create rendered temp file: %w", err)
+	}
+	if _, err := tmp.WriteString(content); err != nil {
+		_ = tmp.Close()
+		return "", fmt.Errorf("write rendered temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		return "", fmt.Errorf("close rendered temp file: %w", err)
+	}
+	return tmp.Name(), nil
+}
+
+func removeTempFile(path string) {
+	_ = os.Remove(path)
 }

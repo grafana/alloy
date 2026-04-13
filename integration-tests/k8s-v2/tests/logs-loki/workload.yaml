@@ -1,31 +1,33 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: k8s-v2-workloads
+  name: ${TEST_NAMESPACE}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: logs-source
-  namespace: k8s-v2-workloads
+  namespace: ${TEST_NAMESPACE}
 data:
   app.log: |
-    k8s-v2-log-line: this line should arrive in Loki
+    log-line test_id=${TEST_ID}: this line should arrive in Loki
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: log-generator
-  namespace: k8s-v2-workloads
+  namespace: ${TEST_NAMESPACE}
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: log-generator
+      test-id: ${TEST_ID}
   template:
     metadata:
       labels:
         app: log-generator
+        test-id: ${TEST_ID}
     spec:
       containers:
         - name: writer

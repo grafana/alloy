@@ -26,6 +26,7 @@ type options struct {
 	keepDeps         bool
 	reuseCluster     string
 	reuseDeps        bool
+	parallel         int
 	alloyImage       string
 	alloyPullPolicy  string
 	verbose          bool
@@ -46,6 +47,7 @@ func main() {
 		timeout:          30 * time.Minute,
 		setupTimeout:     20 * time.Minute,
 		readinessTimeout: 2 * time.Minute,
+		parallel:         4,
 	}
 
 	rootCmd := &cobra.Command{
@@ -57,7 +59,7 @@ func main() {
 			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir --test logs-loki\n" +
 			"  go run ./integration-tests/k8s-v2/runner --test integration-tests/k8s-v2/tests/logs-loki\n" +
 			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster --keep-deps --debug\n" +
-			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-k8s-v2-dev --reuse-deps\n" +
+			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-it-dev --reuse-deps\n" +
 			"  go run ./integration-tests/k8s-v2/runner --test metrics-mimir -- --count=1",
 		Args: cobra.ArbitraryArgs,
 		RunE: func(cmd *cobra.Command, passthrough []string) error {
@@ -71,6 +73,7 @@ func main() {
 	rootCmd.Flags().BoolVar(&opts.keepDeps, "keep-deps", false, "Keep installed dependencies after run (requires --keep-cluster)")
 	rootCmd.Flags().StringVar(&opts.reuseCluster, "reuse-cluster", "", "Reuse an existing Kind cluster by name")
 	rootCmd.Flags().BoolVar(&opts.reuseDeps, "reuse-deps", false, "When reusing a cluster, skip dependency install/uninstall checks")
+	rootCmd.Flags().IntVar(&opts.parallel, "parallel", 4, "Maximum number of k8s-v2 tests to execute in parallel")
 	rootCmd.Flags().StringVar(&opts.alloyImage, "alloy-image", "", "Alloy image reference to load into Kind and use in Helm (for example: alloy-ci:pr-sha)")
 	rootCmd.Flags().StringVar(&opts.alloyPullPolicy, "alloy-image-pull-policy", "", "Optional Helm image.pullPolicy override for Alloy")
 	rootCmd.Flags().BoolVarP(&opts.verbose, "verbose", "v", true, "Enable verbose go test output")
@@ -106,6 +109,9 @@ func run(opts options, passthrough []string) error {
 	}
 	if opts.reuseDeps && opts.reuseCluster == "" {
 		return fmt.Errorf("--reuse-deps requires --reuse-cluster")
+	}
+	if opts.parallel < 1 {
+		return fmt.Errorf("--parallel must be >= 1")
 	}
 
 	allTests, err := planner.DiscoverTests(testsRoot)
@@ -289,6 +295,7 @@ func buildGoTestArgs(opts options, selected []selectedTest, passthrough []string
 		"-k8s.v2.tests="+strings.Join(selectedNames, ","),
 		"-k8s.v2.setup-timeout="+opts.setupTimeout.String(),
 		"-k8s.v2.readiness-timeout="+opts.readinessTimeout.String(),
+		"-k8s.v2.parallel="+fmt.Sprintf("%d", opts.parallel),
 	)
 	if opts.keepCluster {
 		args = append(args, "-k8s.v2.keep-cluster=true")

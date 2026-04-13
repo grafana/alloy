@@ -55,6 +55,7 @@ func TestBuildGoTestArgs(t *testing.T) {
 		keepDeps:         true,
 		reuseCluster:     "cluster-a",
 		reuseDeps:        true,
+		parallel:         4,
 		alloyImage:       "alloy-ci:test-sha",
 		alloyPullPolicy:  "IfNotPresent",
 	}
@@ -67,6 +68,7 @@ func TestBuildGoTestArgs(t *testing.T) {
 		"test", "-v", "-tags", integrationGoTags, "-timeout", "30m0s", packageDir,
 		"--count=1", "-args", "-k8s.v2.tests=logs-loki,metrics-mimir",
 		"-k8s.v2.setup-timeout=10m0s", "-k8s.v2.readiness-timeout=1m30s",
+		"-k8s.v2.parallel=4",
 		"-k8s.v2.keep-cluster=true", "-k8s.v2.keep-deps=true",
 		"-k8s.v2.reuse-cluster=cluster-a", "-k8s.v2.reuse-deps=true", "-k8s.v2.debug=true",
 		"-k8s.v2.alloy-image=alloy-ci:test-sha", "-k8s.v2.alloy-image-pull-policy=IfNotPresent",

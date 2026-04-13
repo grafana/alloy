@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
+	"sync"
 )
 
 type Installer interface {
@@ -45,23 +47,44 @@ func (r Registry) Validate(requirements []string) error {
 
 func (r Registry) Install(ctx context.Context, kubeconfig string, requirements []string) error {
 	installed := make([]string, 0, len(requirements))
+	failures := make(map[string]error)
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
 	for _, dep := range requirements {
-		cfg.Logger.Info("installing dependency", "dependency", dep)
+		dep := dep
 		installer := r.installers[dep]
-		if err := installer.Install(ctx, kubeconfig); err != nil {
-			cfg.Logger.Warn("dependency install failed", "dependency", dep, "error", err)
-			if len(installed) > 0 {
-				cfg.Logger.Info("rolling back partially installed dependencies", "installed", installed)
-				if uninstallErr := r.Uninstall(ctx, kubeconfig, installed); uninstallErr != nil {
-					return fmt.Errorf("install %q: %w (rollback failed: %w)", dep, err, uninstallErr)
-				}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cfg.Logger.Info("installing dependency", "dependency", dep)
+			if err := installer.Install(ctx, kubeconfig); err != nil {
+				cfg.Logger.Warn("dependency install failed", "dependency", dep, "error", err)
+				mu.Lock()
+				failures[dep] = err
+				mu.Unlock()
+				return
 			}
-			return fmt.Errorf("install %q: %w", dep, err)
-		}
-		installed = append(installed, dep)
-		cfg.Logger.Info("dependency ready", "dependency", dep)
+			cfg.Logger.Info("dependency ready", "dependency", dep)
+			mu.Lock()
+			installed = append(installed, dep)
+			mu.Unlock()
+		}()
 	}
-	return nil
+
+	wg.Wait()
+	if len(failures) == 0 {
+		return nil
+	}
+
+	sort.Strings(installed)
+	if len(installed) > 0 {
+		cfg.Logger.Info("rolling back partially installed dependencies", "installed", installed)
+		if uninstallErr := r.Uninstall(ctx, kubeconfig, installed); uninstallErr != nil {
+			return fmt.Errorf("dependency installs failed (%s) and rollback failed: %w", formatFailureSummary(failures), uninstallErr)
+		}
+	}
+	return fmt.Errorf("dependency installs failed: %s", formatFailureSummary(failures))
 }
 
 func (r Registry) Uninstall(ctx context.Context, kubeconfig string, requirements []string) error {
@@ -76,4 +99,20 @@ func (r Registry) Uninstall(ctx context.Context, kubeconfig string, requirements
 		cfg.Logger.Info("dependency removed", "dependency", dep)
 	}
 	return nil
+}
+
+func formatFailureSummary(failures map[string]error) string {
+	if len(failures) == 0 {
+		return ""
+	}
+	names := make([]string, 0, len(failures))
+	for dep := range failures {
+		names = append(names, dep)
+	}
+	sort.Strings(names)
+	parts := make([]string, 0, len(names))
+	for _, dep := range names {
+		parts = append(parts, fmt.Sprintf("%s=%v", dep, failures[dep]))
+	}
+	return strings.Join(parts, ", ")
 }
