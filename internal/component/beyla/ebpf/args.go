@@ -25,6 +25,7 @@ type Arguments struct {
 	Filters        Filters                    `alloy:"filters,block,optional"`
 	Output         *otelcol.ConsumerArguments `alloy:"output,block,optional"`
 	Injector       Injector                   `alloy:"injector,block,optional"`
+	Stats          Stats                      `alloy:"stats,block,optional"`
 }
 
 type Exports struct {
@@ -221,6 +222,14 @@ type InjectorSDKResource struct {
 	//   - `app.kubernetes.io/name` becomes `service.name`
 	//   - `app.kubernetes.io/version` becomes `service.version`
 	UseLabelsForResourceAttributes *bool `alloy:"use_labels,attr,optional"`
+}
+
+type Stats struct {
+	AgentIP      string   `alloy:"agent_ip,attr,optional"`
+	AgentIPIface string   `alloy:"agent_ip_iface,attr,optional"`
+	AgentIPType  string   `alloy:"agent_ip_type,attr,optional"`
+	CIDRs        []string `alloy:"cidrs,attr,optional"`
+	Print        bool     `alloy:"print_stats,attr,optional"`
 }
 
 type AttributeFamilies []AttributeFamily
