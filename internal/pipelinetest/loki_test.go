@@ -1,64 +1,73 @@
 package pipelinetest
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"github.com/grafana/loki/pkg/push"
-	"github.com/prometheus/common/model"
-
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/pipelinetest/harness"
+	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/common/model"
 )
 
 func TestLokiPipeline(t *testing.T) {
-	alloy := harness.NewAlloy(t, `
-		pipelinetest.source "in" {
-			forward_to {
-				logs = [loki.relabel.default.receiver]
-			}
-		}
+	type testCase struct {
+		name            string
+		config          string
+		entryPoints     []string
+		inputEntries    []loki.Entry
+		expectedEntries []loki.Entry
+	}
 
-		loki.relabel "default" {
-			forward_to = [loki.write.default.receiver]
+	tests := []testCase{
+		{
+			name: "rename foo label",
+			config: `
+				loki.relabel "default" {
+					forward_to = [loki.write.default.receiver]
 
-			rule {
-				source_labels = ["foo"]
-				target_label = "replaced"
-			}
-	
-			rule {
-				action = "labeldrop"	
-				regex  = "^foo$"
-				
-			}
-		}
+					rule {
+						source_labels = ["foo"]
+						target_label  = "replaced"
+					}
 
-		loki.write "default" {
-			endpoint {
-				url        = pipelinetest.sink.out.loki_push_url
-				batch_wait = "10ms"
-			}
-		}
+					rule {
+						action = "labeldrop"
+						regex  = "^foo$"
+					}
+				}
 
-		pipelinetest.sink "out" {}
-	`)
-
-	now := time.Now()
-
-	source := harness.MustComponent[*harness.Source](t, alloy, "pipelinetest.source.in")
-	source.LokiFanout.Send(context.Background(), loki.NewEntry(
-		model.LabelSet{"foo": "bar"},
-		push.Entry{
-			Timestamp: now,
-			Line:      "test",
+				loki.write "default" {
+					endpoint {
+						url        = pipelinetest.sink.out.loki_push_url
+						batch_wait = "10ms"
+					}
+				}
+			`,
+			entryPoints: []string{"loki.relabel.default.receiver"},
+			inputEntries: []loki.Entry{
+				loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{
+					Timestamp: time.Date(2026, time.April, 14, 12, 53, 51, 470999516, time.Local),
+					Line:      "test",
+				}),
+			},
+			expectedEntries: []loki.Entry{
+				loki.NewEntry(model.LabelSet{"replaced": "bar"}, push.Entry{
+					Timestamp: time.Date(2026, time.April, 14, 12, 53, 51, 470999516, time.Local),
+					Line:      "test",
+				}),
+			},
 		},
-	))
+	}
 
-	sink := harness.MustComponent[*harness.Sink](t, alloy, "pipelinetest.sink.out")
-	sink.AssertEntries(t, loki.NewEntry(model.LabelSet{"replaced": "bar"}, push.Entry{
-		Timestamp: now,
-		Line:      "test",
-	}))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			alloy := harness.NewAlloy(t, harness.Options{
+				Config:          tt.config,
+				LogsEntryPoints: tt.entryPoints,
+			})
+			alloy.SendEntries(tt.inputEntries...)
+			alloy.AssertEntries(tt.expectedEntries...)
+		})
+	}
 }

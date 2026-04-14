@@ -2,8 +2,8 @@ package harness
 
 import (
 	"context"
-	"fmt"
 	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloyruntime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -19,8 +20,27 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-func NewAlloy(t *testing.T, cfg string) *Alloy {
+type Options struct {
+	Config          string
+	LogsEntryPoints []string
+}
+
+func NewAlloy(t *testing.T, opts Options) *Alloy {
 	t.Helper()
+
+	injectedComponents := func(opts Options) string {
+		return `
+			pipelinetest.source "in" {
+				forward_to {
+					logs = [` + strings.Join(opts.LogsEntryPoints, ", ") + `]
+				}
+			}
+
+			pipelinetest.sink "out" {}
+		`
+	}
+
+	require.NotEmpty(t, opts.LogsEntryPoints, "LogsEntryPoints must not be empty")
 
 	logger, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
@@ -46,7 +66,7 @@ func NewAlloy(t *testing.T, cfg string) *Alloy {
 		ctrl.Run(ctx)
 	})
 
-	source, err := alloyruntime.ParseSource(t.Name(), []byte(cfg))
+	source, err := alloyruntime.ParseSource(t.Name(), []byte(injectedComponents(opts)+"\n"+opts.Config))
 	require.NoError(t, err)
 
 	err = ctrl.LoadSource(source, nil, "")
@@ -55,6 +75,9 @@ func NewAlloy(t *testing.T, cfg string) *Alloy {
 	require.Eventually(t, func() bool {
 		return ctrl.LoadComplete()
 	}, 2*time.Second, 50*time.Millisecond)
+
+	a.sink = mustComponent[*Sink](t, a, "pipelinetest.sink.out")
+	a.source = mustComponent[*Source](t, a, "pipelinetest.source.in")
 
 	t.Cleanup(func() {
 		a.cancel()
@@ -69,15 +92,28 @@ type Alloy struct {
 	ctrl   *alloyruntime.Runtime
 	cancel func()
 	wg     sync.WaitGroup
+
+	source *Source
+	sink   *Sink
 }
 
-func (a *Alloy) Component(id string) (component.Component, error) {
+func (a *Alloy) SendEntries(entries ...loki.Entry) {
+	for _, e := range entries {
+		a.source.LokiFanout.Send(context.Background(), e)
+	}
+}
+
+func (a *Alloy) AssertEntries(entries ...loki.Entry) {
+	a.sink.AssertEntries(a.t, entries...)
+}
+
+func mustComponent[T any](t *testing.T, a *Alloy, id string) T {
+	t.Helper()
+
 	info, err := a.ctrl.GetComponent(component.ParseID(id), component.InfoOptions{})
-	if err != nil {
-		return nil, err
-	}
-	if info == nil || info.Component == nil {
-		return nil, fmt.Errorf("component %q is not available", id)
-	}
-	return info.Component, nil
+	require.NoError(t, err)
+
+	typed, ok := info.Component.(T)
+	require.Truef(t, ok, "component %q has type %T, want %T", id, info.Component, *new(T))
+	return typed
 }
