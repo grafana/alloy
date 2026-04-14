@@ -14,7 +14,6 @@ beyla.ebpf "default" {
       name = "petclinic"
       exe_path = "*java"
       containers_only = true
-      exports = ["traces"]
     }
   }
 
@@ -25,10 +24,6 @@ beyla.ebpf "default" {
     enabled_sdks = ["java"]
     // alloy is reachable from java-app on the shared default docker network
     otel_endpoint = "http://alloy:4318"
-  }
-
-  output {
-    traces = [otelcol.processor.attributes.beyla_java.input]
   }
 }
 
