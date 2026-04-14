@@ -40,7 +40,7 @@ func (m *mockDebuginfoHandler) UploadFinished(ctx context.Context, req *connect.
 	return m.uploadFinishedFunc(ctx, req)
 }
 
-func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downstreamResult) debuginfo.DebugInfoClient {
+func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downstreamResult) debuginfo.Client {
 	t.Helper()
 	handler := &mockDebuginfoHandler{
 		shouldInitiateFunc: func(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error) {
@@ -68,7 +68,7 @@ func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downst
 	t.Cleanup(server.Close)
 
 	connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
-	return &write.Client{
+	return &write.DebugInfoClient{
 		DebuginfoServiceClient: connectClient,
 		HTTPClient:             server.Client(),
 		BaseURL:                server.URL,
@@ -76,7 +76,7 @@ func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downst
 }
 
 type debuginfoAppendable struct {
-	clients []debuginfo.DebugInfoClient
+	clients []debuginfo.Client
 }
 
 func (d *debuginfoAppendable) Appender() pyroscope.Appender { return d }
@@ -87,7 +87,7 @@ func (d *debuginfoAppendable) AppendIngest(_ context.Context, _ *pyroscope.Incom
 	return nil
 }
 func (d *debuginfoAppendable) Upload(_ debuginfo.UploadJob) {}
-func (d *debuginfoAppendable) DebugInfoClients() []debuginfo.DebugInfoClient {
+func (d *debuginfoAppendable) DebugInfoClients() []debuginfo.Client {
 	return d.clients
 }
 
@@ -144,7 +144,7 @@ func TestDebugInfoProxy_AcceptsUpload(t *testing.T) {
 	resultCh := make(chan downstreamResult, 2)
 	dsClient := startMockDownstream(t, true, resultCh)
 
-	appendable := &debuginfoAppendable{clients: []debuginfo.DebugInfoClient{dsClient}}
+	appendable := &debuginfoAppendable{clients: []debuginfo.Client{dsClient}}
 	client, srv := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("hello proxy debuginfo upload test data")
@@ -164,7 +164,7 @@ func TestDebugInfoProxy_DeclinesUpload(t *testing.T) {
 	resultCh := make(chan downstreamResult, 1)
 	dsClient := startMockDownstream(t, false, resultCh)
 
-	appendable := &debuginfoAppendable{clients: []debuginfo.DebugInfoClient{dsClient}}
+	appendable := &debuginfoAppendable{clients: []debuginfo.Client{dsClient}}
 	client, srv := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("should-not-be-sent")

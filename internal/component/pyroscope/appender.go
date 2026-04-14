@@ -60,10 +60,10 @@ type Fanout struct {
 	writeLatency prometheus.Histogram
 }
 
-func (f *Fanout) DebugInfoClients() []debuginfo.DebugInfoClient {
+func (f *Fanout) DebugInfoClients() []debuginfo.Client {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
-	var clients []debuginfo.DebugInfoClient
+	var clients []debuginfo.Client
 	for _, c := range f.children {
 		clients = append(clients, c.DebugInfoClients()...)
 	}

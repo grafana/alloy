@@ -205,6 +205,6 @@ func (e *enrichAppendable) Upload(j debuginfo.UploadJob) {
 	e.component.fanout.Upload(j)
 }
 
-func (e *enrichAppendable) DebugInfoClients() []debuginfo.DebugInfoClient {
+func (e *enrichAppendable) DebugInfoClients() []debuginfo.Client {
 	return e.component.fanout.DebugInfoClients()
 }

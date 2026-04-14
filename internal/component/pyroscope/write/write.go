@@ -216,7 +216,7 @@ func (c *Component) Update(newConfig Arguments) error {
 type endpointClient struct {
 	options      *EndpointOptions
 	pushClient   pushv1connect.PusherServiceClient
-	debugInfo    *debuginfo.Client
+	debugInfo    *debuginfo.Uploader
 	ingestClient *http.Client
 }
 
@@ -229,8 +229,8 @@ type fanOutClient struct {
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) DebugInfoClients() []debuginfo.DebugInfoClient {
-	var clients []debuginfo.DebugInfoClient
+func (f *fanOutClient) DebugInfoClients() []debuginfo.Client {
+	var clients []debuginfo.Client
 	for _, client := range f.endpoints {
 		clients = append(clients, client.debugInfo.DebugInfoClients()...)
 	}
@@ -247,7 +247,7 @@ func (f *fanOutClient) Start(ctx context.Context) {
 	for _, ec := range f.endpoints {
 		u := ec.debugInfo
 		f.uploaderWg.Add(1)
-		go func(c *debuginfo.Client) {
+		go func(c *debuginfo.Uploader) {
 			defer f.uploaderWg.Done()
 			if err := c.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				level.Error(f.logger).Log("msg", "debuginfo uploader error", "err", err)
@@ -278,12 +278,12 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
 
 		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent))
-		dic := &Client{
+		dic := &DebugInfoClient{
 			DebuginfoServiceClient: debugInfoConnect,
 			HTTPClient:             httpClient,
 			BaseURL:                endpoint.URL,
 		}
-		debugInfo := debuginfo.NewClient(logger, dic, metrics.debugInfoUploadBytes, endpointDataPath)
+		debugInfo := debuginfo.NewUploader(logger, dic, metrics.debugInfoUploadBytes, endpointDataPath)
 
 		endpoints = append(endpoints, &endpointClient{
 			options:      endpoint,
@@ -752,13 +752,13 @@ func validateLabels(lbls labels.Labels) error {
 	return err
 }
 
-type Client struct {
+type DebugInfoClient struct {
 	debuginfov1alpha1connect.DebuginfoServiceClient
 	HTTPClient *http.Client
 	BaseURL    string
 }
 
-func (c *Client) Upload(ctx context.Context, buildID string, body io.Reader) error {
+func (c *DebugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
 	uploadURL := strings.TrimRight(c.BaseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
 	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
 	if err != nil {

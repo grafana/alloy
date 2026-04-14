@@ -12,17 +12,17 @@ import (
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 )
 
-func (c *Component) getDebugInfoClients() []debuginfo.DebugInfoClient {
+func (c *Component) getDebugInfoClients() []debuginfo.Client {
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	var clients []debuginfo.DebugInfoClient
+	var clients []debuginfo.Client
 	for _, appendable := range c.appendables {
 		clients = append(clients, appendable.DebugInfoClients()...)
 	}
 	return clients
 }
 
-func (c *Component) firstClient() (debuginfo.DebugInfoClient, error) {
+func (c *Component) firstClient() (debuginfo.Client, error) {
 	clients := c.getDebugInfoClients()
 	if len(clients) == 0 {
 		return nil, fmt.Errorf("no downstream endpoints available")

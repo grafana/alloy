@@ -10,14 +10,14 @@ type UploadJob struct {
 	//no-op
 }
 
-func (c *Client) newUploader(j UploadJob) (*uploader, error) {
+func (c *Uploader) newUploader(j UploadJob) (*uploader, error) {
 	return &uploader{}, nil
 }
 
 type uploader struct {
 }
 
-func (u uploader) upload(c DebugInfoClient, j UploadJob) {
+func (u uploader) upload(c Client, j UploadJob) {
 	// no-op
 }
 

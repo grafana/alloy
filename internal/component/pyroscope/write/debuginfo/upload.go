@@ -19,7 +19,7 @@ type UploadJob struct {
 	InitArguments Arguments
 }
 
-func (c *Client) newUploader(j UploadJob) (*uploader, error) {
+func (c *Uploader) newUploader(j UploadJob) (*uploader, error) {
 	args := j.InitArguments
 	u, err := reporter.NewPyroscopeSymbolUploader(
 		c.logger,
@@ -40,7 +40,7 @@ type uploader struct {
 	u *reporter.PyroscopeSymbolUploader
 }
 
-func (u *uploader) upload(c DebugInfoClient, j UploadJob) {
+func (u *uploader) upload(c Client, j UploadJob) {
 	u.u.Upload(context.Background(),
 		c,
 		j.FrameMappingFileData.FileID,

@@ -11,14 +11,14 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type DebugInfoClient interface {
+type Client interface {
 	debuginfov1alpha1connect.DebuginfoServiceClient
 	Upload(ctx context.Context, buildID string, body io.Reader) error
 }
 
 type Appender interface {
 	Upload(j UploadJob)
-	DebugInfoClients() []DebugInfoClient
+	DebugInfoClients() []Client
 }
 
 type Arguments struct {
@@ -30,10 +30,10 @@ type Arguments struct {
 	WorkerNum                    int    `alloy:"worker_num,attr,optional"`
 }
 
-func NewClient(logger log.Logger, client DebugInfoClient,
-	metric prometheus.Counter, dataPath string) *Client {
+func NewUploader(logger log.Logger, client Client,
+	metric prometheus.Counter, dataPath string) *Uploader {
 
-	return &Client{
+	return &Uploader{
 		client:       client,
 		metric:       metric,
 		dataPath:     dataPath,
@@ -42,9 +42,9 @@ func NewClient(logger log.Logger, client DebugInfoClient,
 	}
 }
 
-type Client struct {
+type Uploader struct {
 	logger       log.Logger
-	client       DebugInfoClient
+	client       Client
 	uploaderOnce sync.Once
 	uploader     *uploader
 	uploaderChan chan *uploader
@@ -52,14 +52,14 @@ type Client struct {
 	dataPath     string
 }
 
-func (c *Client) DebugInfoClients() []DebugInfoClient {
+func (c *Uploader) DebugInfoClients() []Client {
 	if c.client != nil {
-		return []DebugInfoClient{c.client}
+		return []Client{c.client}
 	}
 	return nil
 }
 
-func (c *Client) Upload(j UploadJob) {
+func (c *Uploader) Upload(j UploadJob) {
 	if c.client == nil {
 		return
 	}
@@ -80,7 +80,7 @@ func (c *Client) Upload(j UploadJob) {
 	c.uploader.upload(c.client, j)
 }
 
-func (c *Client) Run(ctx context.Context) error {
+func (c *Uploader) Run(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

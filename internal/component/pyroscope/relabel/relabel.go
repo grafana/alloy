@@ -308,6 +308,6 @@ func (c *Component) Upload(j debuginfo.UploadJob) {
 	c.fanout.Upload(j)
 }
 
-func (c *Component) DebugInfoClients() []debuginfo.DebugInfoClient {
+func (c *Component) DebugInfoClients() []debuginfo.Client {
 	return c.fanout.DebugInfoClients()
 }
