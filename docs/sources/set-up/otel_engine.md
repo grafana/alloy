@@ -133,7 +133,9 @@ service:
 
 Replace the following:
 
-- _`<ALLOY_CONFIG_PATH>`_: The path to your {{< param "DEFAULT_ENGINE" >}} configuration file or directory. If you provide a directory, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files in it and loads them as a single configuration source. See the [run command reference](../../reference/cli/run/) for details.
+- _`<ALLOY_CONFIG_PATH>`_: The path to your {{< param "DEFAULT_ENGINE" >}} configuration file or directory.
+  If you provide a directory, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files in it and loads them as a single configuration source.
+  Refer to the [run command reference](../../reference/cli/run/) for more information.
 - _`<USERNAME>`_: Your username. If you're using Grafana Cloud, this is your Grafana Cloud instance ID.
 - _`<PASSWORD>`_: Your password. If you're using Grafana Cloud, this is your Grafana Cloud API token.
 - _`<URL>`_: The URL to export data to. If you're using Grafana Cloud, this is your Grafana Cloud OTLP endpoint URL.
