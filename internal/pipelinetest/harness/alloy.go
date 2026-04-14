@@ -22,8 +22,8 @@ import (
 const injected = `pipelinetest.sink "out" {}`
 
 // NewAlloy creates and starts an in-process Alloy runtime for pipeline tests.
-// It injects the pipelinetest source and sink components into the provided
-// config and wires the source to the configured entry points.
+// It adds the pipelinetest sink component to cfg so tests can assert on
+// the resulting output while the rest of the pipeline is defined by cfg.
 func NewAlloy(t *testing.T, cfg string) *Alloy {
 	t.Helper()
 
