@@ -6,7 +6,6 @@ additional_containers:
     image: gvenzl/oracle-free:23-slim
     environment:
       ORACLE_PASSWORD: testpassword
-    wait_startup_timeout: "25m"
     healthcheck:
       test: ["CMD", "/opt/oracle/healthcheck.sh"]
       interval: 2s
@@ -14,7 +13,6 @@ additional_containers:
     image: gvenzl/oracle-free:23-slim
     environment:
       ORACLE_PASSWORD: testpassword
-    wait_startup_timeout: "25m"
     healthcheck:
       test: ["CMD", "/opt/oracle/healthcheck.sh"]
       interval: 2s

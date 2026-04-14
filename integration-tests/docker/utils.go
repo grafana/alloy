@@ -363,7 +363,7 @@ func runTestWithTestcontainers(ctx context.Context, testDir string, port int, st
 		fmt.Printf("skip-build: skipping alloy_container image build for %s, using %s\n", dirName, alloyImage)
 	}
 
-	additionalContainers, err := startAdditionalContainers(ctx, absTestDir, networkName, cfg, skipBuild)
+	additionalContainers, err := startAdditionalContainers(ctx, absTestDir, networkName, cfg, skipBuild, testTimeout)
 	if err != nil {
 		addLog(TestLog{
 			TestDir:  dirName,

@@ -17,9 +17,7 @@ type Unmarshaler interface {
 
 const (
 	DefaultRetryInterval = 100 * time.Millisecond
-	// DefaultTimeout is used for integration test polling (TEST_TIMEOUT) when the runner
-	// does not override --test-timeout. Docker-based tests often need more than a minute.
-	DefaultTimeout = 5 * time.Minute
+	DefaultTimeout       = 5 * time.Minute
 )
 
 func FetchDataFromURL(url string, target Unmarshaler) (string, error) {

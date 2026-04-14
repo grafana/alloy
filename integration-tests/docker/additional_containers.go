@@ -13,55 +13,9 @@ import (
 	"time"
 
 	dockercontainer "github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
-
-const defaultAdditionalContainerWaitTimeout = 20 * time.Minute
-
-func parseNatPortForWait(s string) (nat.Port, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return "", fmt.Errorf("empty port")
-	}
-	parts := strings.Split(s, "/")
-	switch len(parts) {
-	case 1:
-		return nat.NewPort("tcp", parts[0])
-	case 2:
-		return nat.NewPort(parts[1], parts[0])
-	default:
-		return "", fmt.Errorf("invalid port %q (want e.g. 1521 or 1521/tcp)", s)
-	}
-}
-
-func waitStrategyForAdditionalContainer(cfg AdditionalContainerConfig) (nat.Port, wait.Strategy, error) {
-	if cfg.WaitForListeningPort == "" {
-		return "", nil, nil
-	}
-	natPort, err := parseNatPortForWait(cfg.WaitForListeningPort)
-	if err != nil {
-		return "", nil, fmt.Errorf("wait_for_listening_port: %w", err)
-	}
-	timeout, err := startupTimeoutForAdditionalContainer(cfg)
-	if err != nil {
-		return "", nil, err
-	}
-	w := wait.ForListeningPort(natPort).WithStartupTimeout(timeout)
-	return natPort, w, nil
-}
-
-func startupTimeoutForAdditionalContainer(cfg AdditionalContainerConfig) (time.Duration, error) {
-	if strings.TrimSpace(cfg.WaitStartupTimeout) == "" {
-		return defaultAdditionalContainerWaitTimeout, nil
-	}
-	d, err := time.ParseDuration(cfg.WaitStartupTimeout)
-	if err != nil {
-		return 0, fmt.Errorf("wait_startup_timeout: %w", err)
-	}
-	return d, nil
-}
 
 func parseOptionalDuration(s string, field string) (time.Duration, error) {
 	s = strings.TrimSpace(s)
@@ -114,45 +68,31 @@ func dockerHealthcheck(h *AdditionalContainerHealthcheck) (*dockercontainer.Heal
 	return hc, nil
 }
 
-func applyWaitOrHealthToRequest(req *testcontainers.ContainerRequest, i int, containerCfg AdditionalContainerConfig) error {
+func applyWaitOrHealthToRequest(req *testcontainers.ContainerRequest, i int, containerCfg AdditionalContainerConfig, healthStartupTimeout time.Duration) error {
 	name := containerCfg.Name
-	hasPort := strings.TrimSpace(containerCfg.WaitForListeningPort) != ""
 	hasHealth := containerCfg.Healthcheck != nil && len(containerCfg.Healthcheck.Test) > 0
 
-	if hasPort && hasHealth {
-		return fmt.Errorf("additional_containers[%d] %q: set either wait_for_listening_port or healthcheck, not both", i, name)
-	}
-
-	if hasHealth {
-		hc, err := dockerHealthcheck(containerCfg.Healthcheck)
-		if err != nil {
-			return fmt.Errorf("additional_containers[%d] %q: %w", i, name, err)
-		}
-		prev := req.ConfigModifier
-		req.ConfigModifier = func(c *dockercontainer.Config) {
-			if prev != nil {
-				prev(c)
-			}
-			c.Healthcheck = hc
-		}
-		timeout, err := startupTimeoutForAdditionalContainer(containerCfg)
-		if err != nil {
-			return fmt.Errorf("additional_containers[%d] %q: %w", i, name, err)
-		}
-		req.WaitingFor = wait.ForHealthCheck().WithStartupTimeout(timeout)
+	if !hasHealth {
 		return nil
 	}
 
-	if natPort, w, err := waitStrategyForAdditionalContainer(containerCfg); err != nil {
+	hc, err := dockerHealthcheck(containerCfg.Healthcheck)
+	if err != nil {
 		return fmt.Errorf("additional_containers[%d] %q: %w", i, name, err)
-	} else if w != nil {
-		req.ExposedPorts = []string{string(natPort)}
-		req.WaitingFor = w
 	}
+	prev := req.ConfigModifier
+	req.ConfigModifier = func(c *dockercontainer.Config) {
+		if prev != nil {
+			prev(c)
+		}
+		c.Healthcheck = hc
+	}
+	req.WaitingFor = wait.ForHealthCheck().WithStartupTimeout(healthStartupTimeout)
 	return nil
 }
 
-func startAdditionalContainers(ctx context.Context, absTestDir, networkName string, cfg TestConfig, skipImageBuild bool) ([]testcontainers.Container, error) {
+func startAdditionalContainers(ctx context.Context, absTestDir, networkName string, cfg TestConfig, skipImageBuild bool, testTimeout time.Duration) ([]testcontainers.Container, error) {
+	healthStartupTimeout := goTestProcessTimeoutDuration(testTimeout)
 	requests := make([]testcontainers.ContainerRequest, 0, len(cfg.AdditionalContainers))
 
 	for i, containerCfg := range cfg.AdditionalContainers {
@@ -173,7 +113,7 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 			Networks:      []string{networkName},
 		}
 
-		if err := applyWaitOrHealthToRequest(&req, i, containerCfg); err != nil {
+		if err := applyWaitOrHealthToRequest(&req, i, containerCfg, healthStartupTimeout); err != nil {
 			return nil, err
 		}
 

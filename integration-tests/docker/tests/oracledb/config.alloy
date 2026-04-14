@@ -6,8 +6,6 @@ prometheus.exporter.oracledb "oracledb_metrics" {
 prometheus.scrape "oracledb_metrics" {
 	targets         = prometheus.exporter.oracledb.oracledb_metrics.targets
 	forward_to      = [prometheus.remote_write.oracledb_metrics.receiver]
-	// Generous window so default + custom metrics SQL completes on slow runners (scrape cancel
-	// otherwise drops series while Mimir still receives other metrics).
 	scrape_interval = "60s"
 	scrape_timeout  = "55s"
 }
@@ -29,7 +27,6 @@ prometheus.exporter.oracledb "oracledb_multi" {
 prometheus.scrape "oracledb_multi" {
 	targets         = prometheus.exporter.oracledb.oracledb_multi.targets
 	forward_to      = [prometheus.remote_write.oracledb_multi_metrics.receiver]
-	// One HTTP scrape runs metrics for both DBs; needs a larger budget than the single-target scrape.
 	scrape_interval = "60s"
 	scrape_timeout  = "55s"
 }

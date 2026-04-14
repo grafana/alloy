@@ -46,17 +46,8 @@ type AdditionalContainerConfig struct {
 	Command []string `yaml:"command"`
 	// Environment is passed to the container as KEY=value entries (Docker -e).
 	Environment map[string]string `yaml:"environment"`
-	// WaitForListeningPort, if set (e.g. "1521/tcp"), blocks until that port accepts
-	// connections inside that container before it is considered started (additional
-	// containers may start in parallel). Use for slow-starting services (e.g. Oracle DB).
-	// Cannot be set together with healthcheck (use one readiness mechanism).
-	WaitForListeningPort string `yaml:"wait_for_listening_port"`
-	// WaitStartupTimeout is the maximum time to wait for WaitForListeningPort or for the
-	// container to become healthy when healthcheck is set (Go duration string, e.g. "20m").
-	// If empty, a default of 20m is used.
-	WaitStartupTimeout string `yaml:"wait_startup_timeout"`
 	// Healthcheck, if set, defines a Docker HEALTHCHECK and waits until the container reports
-	// healthy (see wait.ForHealthCheck). Cannot be set together with wait_for_listening_port.
+	// healthy (see wait.ForHealthCheck).
 	Healthcheck *AdditionalContainerHealthcheck `yaml:"healthcheck,omitempty"`
 }
 
