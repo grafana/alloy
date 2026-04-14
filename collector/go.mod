@@ -6,7 +6,7 @@ go 1.26.2
 
 require (
 	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
-	github.com/grafana/alloy/extension/alloyengine v0.1.0
+	github.com/grafana/alloy/extension/alloyengine v0.0.0-00010101000000-000000000000
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0
@@ -538,7 +538,7 @@ require (
 	github.com/grafana/loki/v3 v3.6.5 // indirect
 	github.com/grafana/otel-profiling-go v0.5.1 // indirect
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.9 // indirect
-	github.com/grafana/pyroscope/api v1.3.2 // indirect
+	github.com/grafana/pyroscope/api v1.3.2-0.20260414051146-5eb4b919ec16 // indirect
 	github.com/grafana/pyroscope/ebpf v0.4.11 // indirect
 	github.com/grafana/pyroscope/lidia v0.0.2 // indirect
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
