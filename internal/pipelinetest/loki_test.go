@@ -52,6 +52,7 @@ func TestLokiPipeline(t *testing.T) {
 				}),
 			},
 			assertions: []harness.LokiAssertion{
+				harness.LokiEntryCount(1),
 				harness.LokiEntryMatch(loki.NewEntry(model.LabelSet{"replaced": "bar"}, push.Entry{
 					Timestamp: time.Date(2026, time.April, 14, 12, 53, 51, 470999516, time.Local),
 					Line:      "test",

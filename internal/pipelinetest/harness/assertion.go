@@ -20,6 +20,15 @@ func LokiEntryMatch(want loki.Entry) LokiAssertion {
 	}
 }
 
+func LokiEntryCount(want int) LokiAssertion {
+	return func(s snapshot) error {
+		if want != len(s.loki) {
+			return fmt.Errorf("unexpected entry count: want=%d got=%d", want, len(s.loki))
+		}
+		return nil
+	}
+}
+
 func equalEntry(got, want loki.Entry) bool {
 	return reflect.DeepEqual(got.Labels, want.Labels) &&
 		got.Timestamp.Equal(want.Timestamp) &&
