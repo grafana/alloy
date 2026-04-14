@@ -132,13 +132,6 @@ ifeq ($(filter gore2regex,$(GO_TAGS)),)
 override GO_TAGS := $(strip gore2regex $(GO_TAGS))
 endif
 
-# GOFLAGS is split on spaces; each token must be a full flag. Use commas inside -tags=...
-# (same meaning as "go build -tags \"a b\"") so multiple tags are not parsed as extra GOFLAGS.
-empty :=
-space := $(empty) $(empty)
-comma := ,
-GO_TAGS_COMMA := $(subst $(space),$(comma),$(GO_TAGS))
-
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
 VERSION      ?= $(shell bash ./tools/image-tag)
@@ -179,11 +172,11 @@ endif
 .PHONY: lint
 lint: alloylint
 	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	GOFLAGS="-tags=$(GO_TAGS_COMMA)" $(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	GOFLAGS="-tags=$(GO_TAGS_COMMA)" $(ALLOYLINT_BINARY) ./...
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
