@@ -2,7 +2,7 @@
 
 module github.com/grafana/alloy/otel_engine
 
-go 1.25.9
+go 1.26.2
 
 require (
 	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
@@ -575,7 +575,7 @@ require (
 	github.com/hashicorp/memberlist v0.5.3 // indirect
 	github.com/hashicorp/nomad/api v0.0.0-20260106084653-e8f2200c7039 // indirect
 	github.com/hashicorp/serf v0.10.2 // indirect
-	github.com/hashicorp/vault/api v1.22.0 // indirect
+	github.com/hashicorp/vault/api v1.23.0 // indirect
 	github.com/hashicorp/vault/api/auth/approle v0.2.0 // indirect
 	github.com/hashicorp/vault/api/auth/aws v0.2.0 // indirect
 	github.com/hashicorp/vault/api/auth/azure v0.2.0 // indirect
@@ -766,8 +766,8 @@ require (
 	github.com/opentracing-contrib/go-stdlib v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b // indirect
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
-	github.com/oracle/oci-go-sdk/v65 v65.108.3 // indirect
-	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20260323143131-1e9bbcecf9eb // indirect
+	github.com/oracle/oci-go-sdk/v65 v65.109.3 // indirect
+	github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20260413171504-7b49f3dca8a2 // indirect
 	github.com/oschwald/geoip2-golang v1.13.0 // indirect
 	github.com/oschwald/maxminddb-golang v1.13.1 // indirect
 	github.com/outcaste-io/ristretto v0.2.3 // indirect

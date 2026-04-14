@@ -1,7 +1,7 @@
-// Tests for this package require the same build tags as a normal Alloy build: godror (Oracle
-// collector) and gore2regex (see Makefile). Use go test flags, not GO_TAGS:
+// Tests for this package should use the same build tags as a normal Alloy build (see Makefile),
+// at least gore2regex. Example:
 //
-//	go test -tags='gore2regex godror' .
+//	go test -tags='gore2regex' .
 package oracledb
 
 import (

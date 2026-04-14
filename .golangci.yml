@@ -1,9 +1,8 @@
 version: "2"
-# Match Makefile defaults (see GO_TAGS): Oracle collector symbols are behind godror; gore2regex is required elsewhere.
+# Match Makefile defaults (see GO_TAGS): gore2regex is required for loki.secretfilter (go-re2).
 run:
   build-tags:
     - gore2regex
-    - godror
 linters:
   enable:
     - depguard    # Allow/denylist specific imports

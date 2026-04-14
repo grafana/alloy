@@ -132,13 +132,6 @@ ifeq ($(filter gore2regex,$(GO_TAGS)),)
 override GO_TAGS := $(strip gore2regex $(GO_TAGS))
 endif
 
-# oracle-db-appdev-monitoring/collector gates connect() behind //go:build goora or godror.
-# Default godror matches historical Agent/static behavior (Oracle Instant Client via ODPI-C).
-# TODO: Use go-ora instead. It is pure-Go and has no external dependencies.
-ifeq ($(filter goora godror,$(GO_TAGS)),)
-override GO_TAGS := $(strip godror $(GO_TAGS))
-endif
-
 # GOFLAGS is split on spaces; each token must be a full flag. Use commas inside -tags=...
 # (same meaning as "go build -tags \"a b\"") so multiple tags are not parsed as extra GOFLAGS.
 empty :=
