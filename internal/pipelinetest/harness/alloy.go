@@ -26,6 +26,9 @@ type Options struct {
 	LogsEntryPoints []string
 }
 
+// NewAlloy creates and starts an in-process Alloy runtime for pipeline tests.
+// It injects the pipelinetest source and sink components into the provided
+// config and wires the source to the configured entry points.
 func NewAlloy(t *testing.T, opts Options) *Alloy {
 	t.Helper()
 
@@ -100,7 +103,7 @@ type Alloy struct {
 
 func (a *Alloy) SendEntries(entries ...loki.Entry) {
 	for _, e := range entries {
-		a.source.LokiFanout.Send(context.Background(), e)
+		a.source.lokiFanout.Send(context.Background(), e)
 	}
 }
 
