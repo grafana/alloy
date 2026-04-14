@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Alloy release tag to mirror (e.g. v1.15.0)'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -33,9 +39,10 @@ jobs:
 
       - name: Create extension/alloyengine tag
         env:
-          EXTENSION_TAG: extension/alloyengine/${{ github.ref_name }}
+          ALLOY_TAG: ${{ inputs.tag || github.ref_name }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          ALLOY_SHA=$(gh api repos/grafana/alloy/git/ref/tags/"${ALLOY_TAG}" --jq '.object.sha')
           gh api repos/grafana/alloy/git/refs \
-            -f ref="refs/tags/${EXTENSION_TAG}" \
-            -f sha="${GITHUB_SHA}"
+            -f ref="refs/tags/extension/alloyengine/${ALLOY_TAG}" \
+            -f sha="${ALLOY_SHA}"
