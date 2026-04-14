@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
@@ -103,8 +104,15 @@ func (a *Alloy) SendEntries(entries ...loki.Entry) {
 	}
 }
 
-func (a *Alloy) AssertEntries(entries ...loki.Entry) {
-	a.sink.AssertEntries(a.t, entries...)
+func (a *Alloy) AssertLoki(assertions ...LokiAssertion) {
+	a.t.Helper()
+
+	require.EventuallyWithT(a.t, func(c *assert.CollectT) {
+		s := a.sink.snapshot()
+		for _, assertion := range assertions {
+			require.NoError(c, assertion(s))
+		}
+	}, time.Second, 50*time.Millisecond)
 }
 
 func mustComponent[T any](t *testing.T, a *Alloy, id string) T {

@@ -5,11 +5,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
-	"slices"
 	"sync"
-	"testing"
-	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
@@ -18,7 +14,6 @@ import (
 	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/pkg/push"
 	promql_parser "github.com/prometheus/prometheus/promql/parser"
-	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -109,37 +104,18 @@ func (s *Sink) Update(args component.Arguments) error {
 	return nil
 }
 
-func (s *Sink) AssertEntries(t *testing.T, want ...loki.Entry) {
-	t.Helper()
-
-	require.Eventually(t, func() bool {
-		return containsAllEntries(s.entries(), want)
-	}, time.Second, 50*time.Millisecond)
+type snapshot struct {
+	loki []loki.Entry
 }
 
-func (s *Sink) entries() []loki.Entry {
+func (s *Sink) snapshot() snapshot {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	out := make([]loki.Entry, len(s.lokiEntries))
-	copy(out, s.lokiEntries)
-	return out
-}
+	entries := make([]loki.Entry, len(s.lokiEntries))
+	copy(entries, s.lokiEntries)
 
-func containsAllEntries(got, want []loki.Entry) bool {
-	for _, w := range want {
-		if slices.IndexFunc(got, func(e loki.Entry) bool {
-			return equalEntry(e, w)
-		}) < 0 {
-			return false
-		}
+	return snapshot{
+		loki: entries,
 	}
-	return true
-}
-
-func equalEntry(got, want loki.Entry) bool {
-	return reflect.DeepEqual(got.Labels, want.Labels) &&
-		got.Timestamp.Equal(want.Timestamp) &&
-		got.Line == want.Line &&
-		reflect.DeepEqual(got.StructuredMetadata, want.StructuredMetadata)
 }

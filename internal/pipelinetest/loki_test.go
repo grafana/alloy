@@ -12,11 +12,11 @@ import (
 
 func TestLokiPipeline(t *testing.T) {
 	type testCase struct {
-		name            string
-		config          string
-		entryPoints     []string
-		inputEntries    []loki.Entry
-		expectedEntries []loki.Entry
+		name         string
+		config       string
+		entryPoints  []string
+		inputEntries []loki.Entry
+		assertions   []harness.LokiAssertion
 	}
 
 	tests := []testCase{
@@ -51,11 +51,11 @@ func TestLokiPipeline(t *testing.T) {
 					Line:      "test",
 				}),
 			},
-			expectedEntries: []loki.Entry{
-				loki.NewEntry(model.LabelSet{"replaced": "bar"}, push.Entry{
+			assertions: []harness.LokiAssertion{
+				harness.LokiEntryMatch(loki.NewEntry(model.LabelSet{"replaced": "bar"}, push.Entry{
 					Timestamp: time.Date(2026, time.April, 14, 12, 53, 51, 470999516, time.Local),
 					Line:      "test",
-				}),
+				})),
 			},
 		},
 	}
@@ -67,7 +67,7 @@ func TestLokiPipeline(t *testing.T) {
 				LogsEntryPoints: tt.entryPoints,
 			})
 			alloy.SendEntries(tt.inputEntries...)
-			alloy.AssertEntries(tt.expectedEntries...)
+			alloy.AssertLoki(tt.assertions...)
 		})
 	}
 }
