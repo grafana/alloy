@@ -120,12 +120,14 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 				default:
 				}
 			}
-			if d := time.Until(deadline); d > 0 {
-				timer.Reset(d)
-			} else {
-				timer.Reset(0)
-			}
+			timer.Reset(max(0, time.Until(deadline)))
 			nearestDeadline = deadline
+		}
+
+		// isEarlierDeadline reports whether candidate should replace current as
+		// the nearest deadline (i.e. it is earlier, or there is no current deadline).
+		isEarlierDeadline := func(candidate, current time.Time) bool {
+			return current.IsZero() || candidate.Before(current)
 		}
 
 		// rescanDeadline rescans all streams to find the new nearest deadline
@@ -135,7 +137,7 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 		rescanDeadline := func() {
 			nearestDeadline = time.Time{}
 			for _, state := range m.streams {
-				if dl := state.lastSeen.Add(m.cfg.MaxWaitTime); nearestDeadline.IsZero() || dl.Before(nearestDeadline) {
+				if dl := state.lastSeen.Add(m.cfg.MaxWaitTime); isEarlierDeadline(dl, nearestDeadline) {
 					nearestDeadline = dl
 				}
 			}
@@ -164,14 +166,14 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 				// once the entry is sent on out, which would race with a
 				// post-emit FastFingerprint() call.
 				key := e.Labels.FastFingerprint()
-				for _, r := range m.processEntry(e) {
+				for _, r := range m.processEntry(key, e) {
 					out <- r
 				}
 				// Arm the timer for any stream that now has the earliest deadline,
 				// including streams where currentLines==0 (just hit max_lines) so
 				// the timer fires to remove them if they subsequently go idle.
 				if m.streams[key] != nil {
-					if dl := m.streams[key].lastSeen.Add(m.cfg.MaxWaitTime); nearestDeadline.IsZero() || dl.Before(nearestDeadline) {
+					if dl := m.streams[key].lastSeen.Add(m.cfg.MaxWaitTime); isEarlierDeadline(dl, nearestDeadline) {
 						armTimer(dl)
 					}
 				}
@@ -203,8 +205,7 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 // ready to emit. Before the first start line is seen for a stream, non-start
 // lines are passed through unchanged. Once a stream is started, all lines are
 // accumulated
-func (m *multilineStage) processEntry(e Entry) []Entry {
-	key := e.Labels.FastFingerprint()
+func (m *multilineStage) processEntry(key model.Fingerprint, e Entry) []Entry {
 	if m.streams == nil {
 		m.streams = make(map[model.Fingerprint]*multilineState)
 	}
