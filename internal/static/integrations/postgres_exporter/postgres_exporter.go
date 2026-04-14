@@ -2,6 +2,7 @@
 package postgres_exporter
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -177,9 +178,19 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 		postgres_exporter.WithMetricPrefix("pg"),
 	)
 
+	run := func(ctx context.Context) error {
+		<-ctx.Done()
+		e.CloseServers()
+		return nil
+	}
+
 	if cfg.DisableDefaultMetrics {
 		// Don't include the collector metrics if the default metrics are disabled.
-		return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e)), nil
+		return integrations.NewCollectorIntegration(
+			cfg.Name(),
+			integrations.WithCollectors(e),
+			integrations.WithRunner(run),
+		), nil
 	}
 
 	// Build per-instance collector options.
@@ -211,5 +222,9 @@ func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
 		return nil, fmt.Errorf("failed to create postgres_exporter collector: %w", err)
 	}
 
-	return integrations.NewCollectorIntegration(cfg.Name(), integrations.WithCollectors(e, c)), nil
+	return integrations.NewCollectorIntegration(
+		cfg.Name(),
+		integrations.WithCollectors(e, c),
+		integrations.WithRunner(run),
+	), nil
 }

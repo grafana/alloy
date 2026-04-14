@@ -3,13 +3,17 @@
 package ebpf
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -102,4 +106,25 @@ collect_interval = 3s"
 			require.Equal(t, tt.expected(), arg)
 		})
 	}
+}
+
+func TestReconstructionAfterError(t *testing.T) {
+	// The goal here is to produce an error when trying to create the symbol cache directory.
+	// To keep things simple, we create a file and attempt to use it as a directory.
+	f, err := os.CreateTemp(t.TempDir(), "")
+	defer os.RemoveAll(f.Name())
+	require.NoError(t, err)
+	invalidCachePath := filepath.Join(f.Name(), "symb.cache")
+
+	logger := util.TestLogger(t)
+	reg := prometheus.NewRegistry()
+
+	args := NewDefaultArguments()
+	args.SymbCachePath = invalidCachePath
+	_, err = New(logger, reg, "test-ebpf", args)
+	require.Error(t, err)
+
+	args = NewDefaultArguments()
+	_, err = New(logger, reg, "test-ebpf", args)
+	require.NoError(t, err)
 }

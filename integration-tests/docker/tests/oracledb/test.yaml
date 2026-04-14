@@ -1,0 +1,8 @@
+alloy_container:
+  dockerfile: Dockerfile.alloy
+
+additional_containers:
+  - name: oracledb
+    image: gvenzl/oracle-free:23-slim
+    environment:
+      ORACLE_PASSWORD: testpassword

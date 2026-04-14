@@ -351,8 +351,9 @@ func newTestServer(t *testing.T, recv loki.LogsBatchReceiver, cfg ServerConfig, 
 
 func testServerConfig(timeout time.Duration, logsConfig *LogsConfig) ServerConfig {
 	return ServerConfig{
-		Namespace:  "test",
-		LogsConfig: logsConfig,
+		Namespace:      "test",
+		EntriesWritten: prometheus.NewCounter(prometheus.CounterOpts{}),
+		LogsConfig:     logsConfig,
 		NetConfig: &fnet.ServerConfig{
 			HTTP: &fnet.HTTPConfig{
 				ListenAddress: "127.0.0.1",

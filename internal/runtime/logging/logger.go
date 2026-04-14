@@ -61,6 +61,11 @@ func NewNop() *Logger {
 	return l
 }
 
+// NewSlogNop returns a slog logger backed by a handler that never logs.
+func NewSlogNop() *slog.Logger {
+	return slog.New(nopSlogHandler{})
+}
+
 // NewDeferred creates a new logger with the default log level and format.
 // The logger is not updated during initialization.
 func NewDeferred(w io.Writer) (*Logger, error) {
@@ -93,6 +98,20 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 // Handler returns a [slog.Handler]. The returned Handler remains valid if l is
 // updated.
 func (l *Logger) Handler() slog.Handler { return l.deferredSlog }
+
+// Slog returns a [slog.Logger]. The returned logger remains valid if l is
+// updated.
+func (l *Logger) Slog() *slog.Logger { return slog.New(l.deferredSlog) }
+
+type nopSlogHandler struct{}
+
+func (nopSlogHandler) Enabled(context.Context, slog.Level) bool { return false }
+
+func (nopSlogHandler) Handle(context.Context, slog.Record) error { return nil }
+
+func (nopSlogHandler) WithAttrs([]slog.Attr) slog.Handler { return nopSlogHandler{} }
+
+func (nopSlogHandler) WithGroup(string) slog.Handler { return nopSlogHandler{} }
 
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {
