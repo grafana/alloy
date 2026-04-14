@@ -80,7 +80,8 @@ func (d *drainRoute) Logs(r *http.Request, cfg *source.LogsConfig) ([]loki.Entry
 			lb.Set(reservedLabelTenantID, tenantID)
 		}
 
-		processed, _ := relabel.Process(lb.Labels(), cfg.RelabelRules...)
+		relabel.ProcessBuilder(lb, cfg.RelabelRules...)
+		processed := lb.Labels()
 
 		filtered := cfg.FixedLabels.Clone()
 		processed.Range(func(lbl labels.Label) {

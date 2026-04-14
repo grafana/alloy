@@ -86,7 +86,7 @@ func (h *lokiRoute) Logs(r *http.Request, cfg *source.LogsConfig) ([]loki.Entry,
 		tenantID = getTenantID(r)
 	)
 	for _, stream := range req.Streams {
-		ls, err := promql_parser.ParseMetric(stream.Labels)
+		ls, err := promql_parser.NewParser(promql_parser.Options{}).ParseMetric(stream.Labels)
 		if err != nil {
 			lastErr = err
 			continue
@@ -100,7 +100,8 @@ func (h *lokiRoute) Logs(r *http.Request, cfg *source.LogsConfig) ([]loki.Entry,
 		}
 
 		// Apply relabeling
-		processed, keep := relabel.Process(lb.Labels(), cfg.RelabelRules...)
+		keep := relabel.ProcessBuilder(lb, cfg.RelabelRules...)
+		processed := lb.Labels()
 		if !keep || processed.Len() == 0 {
 			continue
 		}

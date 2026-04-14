@@ -45,7 +45,7 @@ prometheus.remote_write "metrics_test3" {
 
 prometheus.remote_write "metrics_test4_sigv4_defaults" {
 	endpoint {
-		name = "test4_sigv4_defaults-601bd8"
+		name = "test4_sigv4_defaults-7f4a4f"
 		url  = "http://localhost:9012/api/prom/push"
 
 		queue_config { }
@@ -58,7 +58,7 @@ prometheus.remote_write "metrics_test4_sigv4_defaults" {
 
 prometheus.remote_write "metrics_test5_sigv4_explicit" {
 	endpoint {
-		name = "test5_sigv4_explicit-422454"
+		name = "test5_sigv4_explicit-0e2644"
 		url  = "http://localhost:9012/api/prom/push"
 
 		queue_config { }

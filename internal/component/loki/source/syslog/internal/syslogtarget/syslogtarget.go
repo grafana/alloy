@@ -183,7 +183,8 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 	}
 
 	originalLabels := lb.Labels()
-	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
+	relabel.ProcessBuilder(lb, t.relabelConfig...)
+	processed := lb.Labels()
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
@@ -260,7 +261,8 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc31
 	}
 
 	originalLabels := lb.Labels()
-	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
+	relabel.ProcessBuilder(lb, t.relabelConfig...)
+	processed := lb.Labels()
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
@@ -305,7 +307,8 @@ func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg *syslog.Ba
 	}
 
 	originalLabels := lb.Labels()
-	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
+	relabel.ProcessBuilder(lb, t.relabelConfig...)
+	processed := lb.Labels()
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {

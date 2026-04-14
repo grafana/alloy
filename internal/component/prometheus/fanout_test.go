@@ -189,6 +189,10 @@ func (n noopStore) Close() error {
 	return nil
 }
 
+func (n noopStore) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not implemented")
+}
+
 // recordingAppender records the ref passed to each Append call.
 type recordingAppender struct {
 	nextRef    storage.SeriesRef

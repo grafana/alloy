@@ -251,7 +251,7 @@ func addMatchersToQuery(rule *promv1.PrometheusRule, query string, matchers []Ma
 
 // Lifted from: https://github.com/prometheus/prometheus/blob/79a6238e195ecc1c20937036c1e3b4e3bdaddc49/cmd/promtool/main.go#L1242
 func labelsSetPromQL(query, labelMatchType, name, value string) (string, error) {
-	expr, err := parser.ParseExpr(query)
+	expr, err := parser.NewParser(parser.Options{}).ParseExpr(query)
 	if err != nil {
 		return query, err
 	}

@@ -224,7 +224,7 @@ func convertCRDRuleGroupToRuleGroup(crd promv1.PrometheusRuleSpec) ([]rulefmt.Ru
 
 	var errs error
 	// TODO: Expose validation scheme setting https://github.com/grafana/alloy/issues/4122
-	groups, _ := rulefmt.Parse(buf, false, model.LegacyValidation)
+	groups, _ := rulefmt.Parse(buf, false, model.LegacyValidation, parser.NewParser(parser.Options{}))
 	for _, group := range groups.Groups {
 		for _, rule := range group.Rules {
 			if _, err := syntax.ParseExpr(rule.Expr); err != nil {

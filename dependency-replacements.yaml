@@ -59,7 +59,15 @@ replaces:
 
   - comment: Replace memberlist with Grafana fork which includes unmerged upstream fixes
     dependency: github.com/hashicorp/memberlist
-    replacement: github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
+    replacement: github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
+
+  - comment: Temporary pin to personal fork until upstream PR merges; fixes removed parser.ParseExpr/ParseMetricSelector API (Prometheus v0.311+)
+    dependency: github.com/prometheus-community/prom-label-proxy
+    replacement: github.com/kgeckhart/prom-label-proxy v0.12.2-0.20260414165134-176fc4881167
+
+  - comment: Temporary pin to personal fork until upstream PR merges; fixes removed parser.ParseExpr/rulefmt.Parse API in namespacelabeler and rules (Prometheus v0.311+)
+    dependency: github.com/prometheus-operator/prometheus-operator
+    replacement: github.com/kgeckhart/prometheus-operator v0.86.2-0.20260414175915-c764d55e812e
 
   - comment: Use forked syslog implementation by leodido for continued support
     dependency: github.com/influxdata/go-syslog/v3
@@ -124,13 +132,6 @@ replaces:
       This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
     dependency: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver
     replacement: github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
-
-  - comment: >
-      Fix sent_batch_duration_seconds measuring before the request was sent.
-      Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-c7bc56cf6c8f
-      Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
-    dependency: github.com/prometheus/prometheus
-    replacement: github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57
 
   - comment: >
       Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936).

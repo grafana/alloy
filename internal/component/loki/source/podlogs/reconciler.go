@@ -331,7 +331,9 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 				Container:     container,
 				InitContainer: initContainer,
 			}, podTargetLabels)
-			processedLabels, _ := relabel.Process(targetLabels.Copy(), relabelRules...)
+			lb := promlabels.NewBuilder(targetLabels)
+			relabel.ProcessBuilder(lb, relabelRules...)
+			processedLabels := lb.Labels()
 
 			defaultJob := fmt.Sprintf("%s/%s:%s", podLogs.Namespace, podLogs.Name, container.Name)
 

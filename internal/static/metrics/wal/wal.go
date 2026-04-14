@@ -592,6 +592,11 @@ func (w *Storage) Appender(_ context.Context) storage.Appender {
 	return w.appenderPool.Get().(storage.Appender)
 }
 
+// AppenderV2 implements storage.Storage. The WAL does not support AppenderV2.
+func (w *Storage) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not implemented for WAL storage")
+}
+
 // StartTime always returns 0, nil. It is implemented for compatibility with
 // Prometheus, but is unused in the agent.
 func (*Storage) StartTime() (int64, error) {
@@ -653,7 +658,7 @@ func (w *Storage) Truncate(mint int64) error {
 	w.metrics.checkpointCreationTotal.Inc()
 
 	// TODO(x1unix): pass EnableSTStorage when Prometheus will be upgraded
-	if _, err = wlog.Checkpoint(slogLogger, w.wal, first, last, keep, mint); err != nil {
+	if _, err = wlog.Checkpoint(slogLogger, w.wal, first, last, keep, mint, false); err != nil {
 		w.metrics.checkpointCreationFail.Inc()
 		var cerr *wlog.CorruptionErr
 		if errors.As(err, &cerr) {

@@ -191,7 +191,7 @@ func (c *crdManager) Run(ctx context.Context) error {
 		PassMetadataInContext:   c.args.Scrape.HonorMetadata,
 		EnableTypeAndUnitLabels: c.args.Scrape.EnableTypeAndUnitLabels,
 	}
-	c.scrapeManager, err = scrape.NewManager(scrapeOpts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, unregisterer)
+	c.scrapeManager, err = scrape.NewManager(scrapeOpts, slog.New(logging.NewSlogGoKitHandler(c.logger)), nil, alloyAppendable, nil, unregisterer)
 	if err != nil {
 		return fmt.Errorf("creating scrape manager: %w", err)
 	}

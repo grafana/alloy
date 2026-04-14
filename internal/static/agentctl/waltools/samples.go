@@ -34,7 +34,7 @@ func FindSamples(walDir string, selectorStr string) ([]*SampleStats, error) {
 	}
 	defer w.Close()
 
-	selector, err := parser.ParseMetricSelector(selectorStr)
+	selector, err := parser.NewParser(parser.Options{}).ParseMetricSelector(selectorStr)
 	if err != nil {
 		return nil, err
 	}

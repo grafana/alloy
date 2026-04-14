@@ -178,7 +178,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (h *Handler) postProcessLabels(lbs labels.Labels) model.LabelSet {
 	// apply relabel rules if any
 	if len(h.relabelRules) > 0 {
-		lbs, _ = relabel.Process(lbs, h.relabelRules...)
+		lb := labels.NewBuilder(lbs)
+		relabel.ProcessBuilder(lb, h.relabelRules...)
+		lbs = lb.Labels()
 	}
 
 	entryLabels := make(model.LabelSet)
