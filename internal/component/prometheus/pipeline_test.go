@@ -434,6 +434,10 @@ func (t testStorage) Close() error {
 	return nil
 }
 
+func (t testStorage) AppenderV2(_ context.Context) storage.AppenderV2 {
+	panic("AppenderV2 not implemented")
+}
+
 func newRelabelComponent(t testing.TB, logger *slog.Logger, forwardTo []storage.Appendable, ls labelstore.LabelStore) storage.Appendable {
 	cfg := `forward_to = []
 			rule {
