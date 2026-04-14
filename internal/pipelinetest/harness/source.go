@@ -62,6 +62,6 @@ func (s *Source) Update(args component.Arguments) error {
 
 func (s *Source) SendEntries(entries ...loki.Entry) {
 	for _, e := range entries {
-		s.lokiFanout.Send(context.Background(), e)
+		_ = s.lokiFanout.Send(context.Background(), e)
 	}
 }
