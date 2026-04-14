@@ -59,7 +59,36 @@ replaces:
 
   - comment: Replace memberlist with Grafana fork which includes unmerged upstream fixes
     dependency: github.com/hashicorp/memberlist
-    replacement: github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
+    replacement: github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
+
+  - comment: >
+      Pin Prometheus to the latest main-branch snapshot (v3.12-bound). Released v0.311.x has
+      the old discovery API and is incompatible with otel-contrib v0.151+ prom-touching
+      packages; MVS would select it otherwise via prom-operator's requirement. Tracking the
+      latest main accumulates bugfixes while v3.12.0 is still pending — swap to v3.12.0-rc.0
+      or GA once tagged. Removal: when otel-contrib pins a released Prometheus tag.
+    dependency: github.com/prometheus/prometheus
+    replacement: github.com/prometheus/prometheus v0.311.4-0.20260512134559-54d4f527a0a3
+
+  - comment: >
+      Personal fork of prom-label-proxy v0.13.0 that no-ops WithPromqlDurationExpressionParsing.
+      Prometheus v3.12 main (commit 1463a5bb5a6f, "Promote duration expressions as stable")
+      removed parser.Options.ExperimentalDurationExpr; the upstream v0.13.0 source still
+      references the field and fails to compile against any post-Apr-24 prom main commit.
+      Removal: when upstream prom-label-proxy ships a release built against prom v3.12.
+    dependency: github.com/prometheus-community/prom-label-proxy
+    replacement: github.com/kgeckhart/prom-label-proxy v0.12.2-0.20260512163335-8ff1e5db70a4
+
+  - comment: >
+      Personal fork of prometheus-operator v0.91.0 with a one-line patch adding nil
+      *slog.Logger 5th arg to rulefmt.Parse in pkg/operator/rules.go to match the new
+      Prometheus main API (commit a6ffcaa352cf, April 9 2026). Upstream prom-operator
+      main is still on prom v0.311.3 released, so this fork is needed only because
+      we're riding a prom main-branch snapshot.
+      Fork branch: github.com/kgeckhart/prometheus-operator @ kgeckhart/v0.91.0-rulefmt-slog
+      Removal: when upstream prom-operator ships a release that bumps prom to v3.12+.
+    dependency: github.com/prometheus-operator/prometheus-operator
+    replacement: github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253
 
   - comment: Use forked syslog implementation by leodido for continued support
     dependency: github.com/influxdata/go-syslog/v3
@@ -119,18 +148,6 @@ replaces:
     dependency: sigs.k8s.io/controller-runtime
     replacement: sigs.k8s.io/controller-runtime v0.20.4
 
-  - comment: >
-      Fork to grafana repo to address issue with freebsd build tags.
-      This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
-    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver
-    replacement: github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
-
-  - comment: >
-      Fix sent_batch_duration_seconds measuring before the request was sent.
-      Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-c7bc56cf6c8f
-      Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
-    dependency: github.com/prometheus/prometheus
-    replacement: github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57
 
   - comment: >
       Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936).
