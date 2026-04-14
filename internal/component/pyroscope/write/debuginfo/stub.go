@@ -17,7 +17,7 @@ func (c *Client) newUploader(j UploadJob) (*uploader, error) {
 type uploader struct {
 }
 
-func (u uploader) upload(ep Endpoint, j UploadJob) {
+func (u uploader) upload(c DebugInfoClient, j UploadJob) {
 	// no-op
 }
 

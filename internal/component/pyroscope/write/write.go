@@ -229,12 +229,12 @@ type fanOutClient struct {
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) DebugInfoEndpoints() []debuginfo.Endpoint {
-	var eps []debuginfo.Endpoint
+func (f *fanOutClient) DebugInfoClients() []debuginfo.DebugInfoClient {
+	var clients []debuginfo.DebugInfoClient
 	for _, client := range f.endpoints {
-		eps = append(eps, client.debugInfo.DebugInfoEndpoints()...)
+		clients = append(clients, client.debugInfo.DebugInfoClients()...)
 	}
-	return eps
+	return clients
 }
 
 func (f *fanOutClient) Upload(j debuginfo.UploadJob) {
@@ -278,7 +278,12 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
 
 		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent))
-		debugInfo := debuginfo.NewClient(logger, debugInfoConnect, httpClient, endpoint.URL, metrics.debugInfoUploadBytes, endpointDataPath)
+		dic := &debugInfoClient{
+			DebuginfoServiceClient: debugInfoConnect,
+			httpClient:             httpClient,
+			baseURL:                endpoint.URL,
+		}
+		debugInfo := debuginfo.NewClient(logger, dic, metrics.debugInfoUploadBytes, endpointDataPath)
 
 		endpoints = append(endpoints, &endpointClient{
 			options:      endpoint,
@@ -745,6 +750,30 @@ func validateLabels(lbls labels.Labels) error {
 	})
 
 	return err
+}
+
+type debugInfoClient struct {
+	debuginfov1alpha1connect.DebuginfoServiceClient
+	httpClient *http.Client
+	baseURL    string
+}
+
+func (c *debugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
+	uploadURL := strings.TrimRight(c.baseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
+	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
+	if err != nil {
+		return err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("upload: HTTP %d", resp.StatusCode)
+	}
+	return nil
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {

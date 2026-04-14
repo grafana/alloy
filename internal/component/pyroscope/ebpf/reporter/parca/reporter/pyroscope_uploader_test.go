@@ -5,11 +5,13 @@ package reporter
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -79,10 +81,34 @@ func counterValue(c prometheus.Counter) float64 {
 }
 
 type uploadResult struct {
-	buildID  string
-	fileName string
-	fileType debuginfov1alpha1.FileMetadata_Type
-	data     []byte
+	buildID string
+	data    []byte
+}
+
+// testDebugInfoClient implements DebugInfoClient by embedding a connect client
+// and doing the HTTP POST upload via an httpClient + baseURL.
+type testDebugInfoClient struct {
+	debuginfov1alpha1connect.DebuginfoServiceClient
+	httpClient *http.Client
+	baseURL    string
+}
+
+func (c *testDebugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
+	uploadURL := strings.TrimRight(c.baseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
+	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
+	if err != nil {
+		return err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("upload: HTTP %d", resp.StatusCode)
+	}
+	return nil
 }
 
 type mockDebuginfoHandler struct {
@@ -98,17 +124,17 @@ func (m *mockDebuginfoHandler) UploadFinished(ctx context.Context, req *connect.
 	return m.uploadFinishedFunc(ctx, req)
 }
 
-func startMockServer(t *testing.T, handler *mockDebuginfoHandler, uploadHandler http.Handler) Endpoint {
+func startMockServer(t *testing.T, handler *mockDebuginfoHandler, uploadHandler http.Handler) DebugInfoClient {
 	t.Helper()
 	router := mux.NewRouter()
 	debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(router, handler)
 	router.Handle("/debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}", uploadHandler).Methods("POST")
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
-	return Endpoint{
-		ConnectClient: debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL),
-		HTTPClient:    server.Client(),
-		BaseURL:       server.URL,
+	return &testDebugInfoClient{
+		DebuginfoServiceClient: debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL),
+		httpClient:             server.Client(),
+		baseURL:                server.URL,
 	}
 }
 
@@ -140,11 +166,11 @@ func TestAttemptUpload_Success(t *testing.T) {
 	fileData := []byte("hello debuginfo world")
 	resultCh := make(chan uploadResult, 1)
 	handler, uploadHTTP := acceptUploadHandler(t, resultCh)
-	ep := startMockServer(t, handler, uploadHTTP)
+	client := startMockServer(t, handler, uploadHTTP)
 	u, counter := newTestUploader(t)
 	fileID := libpf.NewFileID(1, 2)
 
-	err := u.attemptUpload(context.Background(), ep, fileID, "test.so", "abc123", newMockReadAtCloser(fileData))
+	err := u.attemptUpload(context.Background(), client, fileID, "test.so", "abc123", newMockReadAtCloser(fileData))
 	require.NoError(t, err)
 
 	select {
@@ -169,11 +195,11 @@ func TestAttemptUpload_ServerDeclinesUpload(t *testing.T) {
 	uploadHTTP := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("upload should not be called when server declines")
 	})
-	ep := startMockServer(t, handler, uploadHTTP)
+	client := startMockServer(t, handler, uploadHTTP)
 	u, counter := newTestUploader(t)
 	fileID := libpf.NewFileID(3, 4)
 
-	err := u.attemptUpload(context.Background(), ep, fileID, "test.so", "def456", newMockReadAtCloser([]byte("data")))
+	err := u.attemptUpload(context.Background(), client, fileID, "test.so", "def456", newMockReadAtCloser([]byte("data")))
 	require.NoError(t, err)
 	require.Equal(t, float64(0), counterValue(counter))
 
@@ -193,11 +219,11 @@ func TestAttemptUpload_UploadInProgress(t *testing.T) {
 	uploadHTTP := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("upload should not be called")
 	})
-	ep := startMockServer(t, handler, uploadHTTP)
+	client := startMockServer(t, handler, uploadHTTP)
 	u, _ := newTestUploader(t)
 	fileID := libpf.NewFileID(5, 6)
 
-	err := u.attemptUpload(context.Background(), ep, fileID, "test.so", "ghi789", newMockReadAtCloser([]byte("data")))
+	err := u.attemptUpload(context.Background(), client, fileID, "test.so", "ghi789", newMockReadAtCloser([]byte("data")))
 	require.NoError(t, err)
 
 	_, cached := u.retry.Get(fileID)
@@ -218,11 +244,11 @@ func TestAttemptUpload_EmptyBuildID(t *testing.T) {
 	uploadHTTP := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Fatal("upload should not be called")
 	})
-	ep := startMockServer(t, handler, uploadHTTP)
+	client := startMockServer(t, handler, uploadHTTP)
 	u, _ := newTestUploader(t)
 	fileID := libpf.NewFileID(7, 8)
 
-	err := u.attemptUpload(context.Background(), ep, fileID, "test.so", "", newMockReadAtCloser([]byte("data")))
+	err := u.attemptUpload(context.Background(), client, fileID, "test.so", "", newMockReadAtCloser([]byte("data")))
 	require.NoError(t, err)
 	require.Equal(t, "", receivedFile.GetGnuBuildId())
 	require.Equal(t, fileID.StringNoQuotes(), receivedFile.GetOtelFileId())
@@ -237,11 +263,11 @@ func TestAttemptUpload_LargeFile(t *testing.T) {
 
 	resultCh := make(chan uploadResult, 1)
 	handler, uploadHTTP := acceptUploadHandler(t, resultCh)
-	ep := startMockServer(t, handler, uploadHTTP)
+	client := startMockServer(t, handler, uploadHTTP)
 	u, counter := newTestUploader(t)
 	fileID := libpf.NewFileID(9, 10)
 
-	err := u.attemptUpload(context.Background(), ep, fileID, "big.so", "build1", newMockReadAtCloser(fileData))
+	err := u.attemptUpload(context.Background(), client, fileID, "big.so", "build1", newMockReadAtCloser(fileData))
 	require.NoError(t, err)
 
 	select {
@@ -271,7 +297,7 @@ func TestUpload_Dedup(t *testing.T) {
 		io.Copy(io.Discard, r.Body)
 		w.WriteHeader(http.StatusOK)
 	})
-	ep := startMockServer(t, handler, uploadHTTP)
+	client := startMockServer(t, handler, uploadHTTP)
 	u, _ := newTestUploader(t)
 	fileID := libpf.NewFileID(11, 12)
 
@@ -285,8 +311,8 @@ func TestUpload_Dedup(t *testing.T) {
 		_ = u.Run(ctx)
 	}()
 
-	u.Upload(ctx, ep, fileID, "test.so", "build1", newMockReadAtCloser([]byte("data")))
-	u.Upload(ctx, ep, fileID, "test.so", "build1", newMockReadAtCloser([]byte("data")))
+	u.Upload(ctx, client, fileID, "test.so", "build1", newMockReadAtCloser([]byte("data")))
+	u.Upload(ctx, client, fileID, "test.so", "build1", newMockReadAtCloser([]byte("data")))
 
 	time.Sleep(500 * time.Millisecond)
 	cancel()
@@ -299,7 +325,7 @@ func TestUpload_WorkerProcessesQueue(t *testing.T) {
 	fileData := []byte("worker-test-data")
 	resultCh := make(chan uploadResult, 1)
 	handler, uploadHTTP := acceptUploadHandler(t, resultCh)
-	ep := startMockServer(t, handler, uploadHTTP)
+	client := startMockServer(t, handler, uploadHTTP)
 	u, counter := newTestUploader(t)
 	fileID := libpf.NewFileID(13, 14)
 
@@ -313,7 +339,7 @@ func TestUpload_WorkerProcessesQueue(t *testing.T) {
 		_ = u.Run(ctx)
 	}()
 
-	u.Upload(ctx, ep, fileID, "worker.so", "build-worker", newMockReadAtCloser(fileData))
+	u.Upload(ctx, client, fileID, "worker.so", "build-worker", newMockReadAtCloser(fileData))
 
 	select {
 	case res := <-resultCh:
@@ -322,8 +348,6 @@ func TestUpload_WorkerProcessesQueue(t *testing.T) {
 		t.Fatal("timed out waiting for upload")
 	}
 
-	// Wait for the full upload cycle (including UploadFinished and counter update)
-	// by polling the retry cache which is set after the counter is incremented.
 	require.Eventually(t, func() bool {
 		_, cached := u.retry.Get(fileID)
 		return cached

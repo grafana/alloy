@@ -3,9 +3,11 @@ package receive_http
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -25,6 +27,30 @@ type downstreamResult struct {
 	data     []byte
 }
 
+type mockDebugInfoClient struct {
+	debuginfov1alpha1connect.DebuginfoServiceClient
+	httpClient *http.Client
+	baseURL    string
+}
+
+func (c *mockDebugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
+	uploadURL := strings.TrimRight(c.baseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
+	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
+	if err != nil {
+		return err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	io.Copy(io.Discard, resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("upload: HTTP %d", resp.StatusCode)
+	}
+	return nil
+}
+
 type mockDebuginfoHandler struct {
 	shouldInitiateFunc func(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error)
 	uploadFinishedFunc func(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (*connect.Response[debuginfov1alpha1.UploadFinishedResponse], error)
@@ -38,7 +64,7 @@ func (m *mockDebuginfoHandler) UploadFinished(ctx context.Context, req *connect.
 	return m.uploadFinishedFunc(ctx, req)
 }
 
-func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downstreamResult) debuginfo.Endpoint {
+func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downstreamResult) debuginfo.DebugInfoClient {
 	t.Helper()
 	handler := &mockDebuginfoHandler{
 		shouldInitiateFunc: func(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error) {
@@ -64,15 +90,17 @@ func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downst
 	router.Handle("/debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}", uploadHTTP).Methods("POST")
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
-	return debuginfo.Endpoint{
-		ConnectClient: debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL),
-		HTTPClient:    server.Client(),
-		BaseURL:       server.URL,
+
+	connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
+	return &mockDebugInfoClient{
+		DebuginfoServiceClient: connectClient,
+		httpClient:             server.Client(),
+		baseURL:                server.URL,
 	}
 }
 
 type debuginfoAppendable struct {
-	endpoints []debuginfo.Endpoint
+	clients []debuginfo.DebugInfoClient
 }
 
 func (d *debuginfoAppendable) Appender() pyroscope.Appender { return d }
@@ -83,8 +111,8 @@ func (d *debuginfoAppendable) AppendIngest(_ context.Context, _ *pyroscope.Incom
 	return nil
 }
 func (d *debuginfoAppendable) Upload(_ debuginfo.UploadJob) {}
-func (d *debuginfoAppendable) DebugInfoEndpoints() []debuginfo.Endpoint {
-	return d.endpoints
+func (d *debuginfoAppendable) DebugInfoClients() []debuginfo.DebugInfoClient {
+	return d.clients
 }
 
 func startProxyServer(t *testing.T, appendables []pyroscope.Appendable) (debuginfov1alpha1connect.DebuginfoServiceClient, *httptest.Server) {
@@ -138,9 +166,9 @@ func sendUploadViaProxy(t *testing.T, client debuginfov1alpha1connect.DebuginfoS
 
 func TestDebugInfoProxy_AcceptsUpload(t *testing.T) {
 	resultCh := make(chan downstreamResult, 2)
-	ep := startMockDownstream(t, true, resultCh)
+	dsClient := startMockDownstream(t, true, resultCh)
 
-	appendable := &debuginfoAppendable{endpoints: []debuginfo.Endpoint{ep}}
+	appendable := &debuginfoAppendable{clients: []debuginfo.DebugInfoClient{dsClient}}
 	client, srv := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("hello proxy debuginfo upload test data")
@@ -158,9 +186,9 @@ func TestDebugInfoProxy_AcceptsUpload(t *testing.T) {
 
 func TestDebugInfoProxy_DeclinesUpload(t *testing.T) {
 	resultCh := make(chan downstreamResult, 1)
-	ep := startMockDownstream(t, false, resultCh)
+	dsClient := startMockDownstream(t, false, resultCh)
 
-	appendable := &debuginfoAppendable{endpoints: []debuginfo.Endpoint{ep}}
+	appendable := &debuginfoAppendable{clients: []debuginfo.DebugInfoClient{dsClient}}
 	client, srv := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("should-not-be-sent")
@@ -178,7 +206,7 @@ func TestDebugInfoProxy_DeclinesUpload(t *testing.T) {
 }
 
 func TestDebugInfoProxy_NoEndpoints(t *testing.T) {
-	appendable := &debuginfoAppendable{endpoints: nil}
+	appendable := &debuginfoAppendable{clients: nil}
 	client, _ := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	_, err := client.ShouldInitiateUpload(context.Background(), connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{

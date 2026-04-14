@@ -546,7 +546,7 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
-func (a *testAppender) DebugInfoEndpoints() []debuginfo.Endpoint {
+func (a *testAppender) DebugInfoClients() []debuginfo.DebugInfoClient {
 	return nil
 }
 

@@ -60,14 +60,14 @@ type Fanout struct {
 	writeLatency prometheus.Histogram
 }
 
-func (f *Fanout) DebugInfoEndpoints() []debuginfo.Endpoint {
+func (f *Fanout) DebugInfoClients() []debuginfo.DebugInfoClient {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
-	var endpoints []debuginfo.Endpoint
+	var clients []debuginfo.DebugInfoClient
 	for _, c := range f.children {
-		endpoints = append(endpoints, c.DebugInfoEndpoints()...)
+		clients = append(clients, c.DebugInfoClients()...)
 	}
-	return endpoints
+	return clients
 }
 
 func (f *Fanout) Upload(j debuginfo.UploadJob) {

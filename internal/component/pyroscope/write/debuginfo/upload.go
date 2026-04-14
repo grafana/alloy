@@ -40,9 +40,9 @@ type uploader struct {
 	u *reporter.PyroscopeSymbolUploader
 }
 
-func (u *uploader) upload(ep Endpoint, j UploadJob) {
+func (u *uploader) upload(c DebugInfoClient, j UploadJob) {
 	u.u.Upload(context.Background(),
-		ep,
+		c,
 		j.FrameMappingFileData.FileID,
 		j.FrameMappingFileData.FileName.String(),
 		j.FrameMappingFileData.GnuBuildID,

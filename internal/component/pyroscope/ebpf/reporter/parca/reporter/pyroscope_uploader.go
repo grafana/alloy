@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,10 +30,10 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
-type Endpoint struct {
-	ConnectClient debuginfov1alpha1connect.DebuginfoServiceClient
-	HTTPClient    *http.Client
-	BaseURL       string
+// DebugInfoClient extends the generated connect client with a plain HTTP upload method.
+type DebugInfoClient interface {
+	debuginfov1alpha1connect.DebuginfoServiceClient
+	Upload(ctx context.Context, buildID string, body io.Reader) error
 }
 
 const (
@@ -46,7 +45,7 @@ type uploadRequest struct {
 	fileName string
 	buildID  string
 	open     func() (process.ReadAtCloser, error)
-	endpoint Endpoint
+	client   DebugInfoClient
 }
 
 type PyroscopeSymbolUploader struct {
@@ -186,7 +185,7 @@ func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 				case <-ctx.Done():
 					return nil
 				case req := <-u.queue:
-					if err := u.attemptUpload(ctx, req.endpoint, req.fileID, req.fileName, req.buildID, req.open); err != nil {
+					if err := u.attemptUpload(ctx, req.client, req.fileID, req.fileName, req.buildID, req.open); err != nil {
 						level.Warn(u.logger).Log("msg", "failed to upload", "file_name", req.fileName, "build_id", req.buildID, "err", err)
 					}
 				}
@@ -199,7 +198,7 @@ func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 
 // Upload enqueues a file for upload if it's not already in progress, or if it
 // is marked not to be retried.
-func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, endpoint Endpoint,
+func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client DebugInfoClient,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) {
 
@@ -222,7 +221,7 @@ func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, endpoint Endpoint,
 	select {
 	case <-ctx.Done():
 		u.inProgressTracker.Remove(fileID)
-	case u.queue <- uploadRequest{fileID: fileID, fileName: fileName, buildID: buildID, open: open, endpoint: endpoint}:
+	case u.queue <- uploadRequest{fileID: fileID, fileName: fileName, buildID: buildID, open: open, client: client}:
 		// Nothing to do, we enqueued the request successfully.
 	default:
 		// The queue is full, we can't enqueue the request.
@@ -231,7 +230,7 @@ func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, endpoint Endpoint,
 	}
 }
 
-func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, endpoint Endpoint,
+func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client DebugInfoClient,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) error {
 
@@ -243,7 +242,7 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, endpoint En
 	}
 
 	// Step 1: ShouldInitiateUpload (unary RPC).
-	resp, err := endpoint.ConnectClient.ShouldInitiateUpload(ctx, connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{
+	resp, err := client.ShouldInitiateUpload(ctx, connect.NewRequest(&debuginfov1alpha1.ShouldInitiateUploadRequest{
 		File: &debuginfov1alpha1.FileMetadata{
 			GnuBuildId: buildID,
 			OtelFileId: fileID.StringNoQuotes(),
@@ -348,23 +347,12 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, endpoint En
 	}
 
 	// Step 3: HTTP POST upload.
-	uploadURL := strings.TrimRight(endpoint.BaseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
-	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, r)
-	if err != nil {
-		return fmt.Errorf("create upload request: %w", err)
-	}
-	httpResp, err := endpoint.HTTPClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("upload POST: %w", err)
-	}
-	io.Copy(io.Discard, httpResp.Body)
-	httpResp.Body.Close()
-	if httpResp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upload POST: HTTP %d", httpResp.StatusCode)
+	if err := client.Upload(ctx, buildID, r); err != nil {
+		return fmt.Errorf("upload: %w", err)
 	}
 
 	// Step 4: UploadFinished (unary RPC).
-	if _, err := endpoint.ConnectClient.UploadFinished(ctx, connect.NewRequest(&debuginfov1alpha1.UploadFinishedRequest{
+	if _, err := client.UploadFinished(ctx, connect.NewRequest(&debuginfov1alpha1.UploadFinishedRequest{
 		GnuBuildId: buildID,
 	})); err != nil {
 		return fmt.Errorf("UploadFinished: %w", err)

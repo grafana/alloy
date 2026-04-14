@@ -462,7 +462,7 @@ func (t *TestAppender) Upload(j debuginfo.UploadJob) {
 
 }
 
-func (t *TestAppender) DebugInfoEndpoints() []debuginfo.Endpoint {
+func (t *TestAppender) DebugInfoClients() []debuginfo.DebugInfoClient {
 	return nil
 }
 

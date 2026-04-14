@@ -2,22 +2,23 @@ package debuginfo
 
 import (
 	"context"
-	"net/http"
+	"io"
 	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
 )
 
-type Endpoint = reporter.Endpoint
+type DebugInfoClient interface {
+	debuginfov1alpha1connect.DebuginfoServiceClient
+	Upload(ctx context.Context, buildID string, body io.Reader) error
+}
 
 type Appender interface {
 	Upload(j UploadJob)
-	DebugInfoEndpoints() []Endpoint
+	DebugInfoClients() []DebugInfoClient
 }
 
 type Arguments struct {
@@ -29,46 +30,37 @@ type Arguments struct {
 	WorkerNum                    int    `alloy:"worker_num,attr,optional"`
 }
 
-func NewClient(logger log.Logger, connectClient debuginfov1alpha1connect.DebuginfoServiceClient,
-	httpClient *http.Client, baseURL string,
+func NewClient(logger log.Logger, client DebugInfoClient,
 	metric prometheus.Counter, dataPath string) *Client {
 
 	return &Client{
-		connectClient: connectClient,
-		httpClient:    httpClient,
-		baseURL:       baseURL,
-		metric:        metric,
-		dataPath:      dataPath,
-		logger:        logger,
-		uploaderChan:  make(chan *uploader, 1),
+		client:       client,
+		metric:       metric,
+		dataPath:     dataPath,
+		logger:       logger,
+		uploaderChan: make(chan *uploader, 1),
 	}
 }
 
 type Client struct {
-	logger        log.Logger
-	connectClient debuginfov1alpha1connect.DebuginfoServiceClient
-	httpClient    *http.Client
-	baseURL       string
-	uploaderOnce  sync.Once
-	uploader      *uploader
-	uploaderChan  chan *uploader
-	metric        prometheus.Counter
-	dataPath      string
+	logger       log.Logger
+	client       DebugInfoClient
+	uploaderOnce sync.Once
+	uploader     *uploader
+	uploaderChan chan *uploader
+	metric       prometheus.Counter
+	dataPath     string
 }
 
-func (c *Client) DebugInfoEndpoints() []Endpoint {
-	if c.connectClient != nil {
-		return []Endpoint{{
-			ConnectClient: c.connectClient,
-			HTTPClient:    c.httpClient,
-			BaseURL:       c.baseURL,
-		}}
+func (c *Client) DebugInfoClients() []DebugInfoClient {
+	if c.client != nil {
+		return []DebugInfoClient{c.client}
 	}
 	return nil
 }
 
 func (c *Client) Upload(j UploadJob) {
-	if c.connectClient == nil {
+	if c.client == nil {
 		return
 	}
 	c.uploaderOnce.Do(func() {
@@ -85,11 +77,7 @@ func (c *Client) Upload(j UploadJob) {
 		return
 	}
 
-	c.uploader.upload(Endpoint{
-		ConnectClient: c.connectClient,
-		HTTPClient:    c.httpClient,
-		BaseURL:       c.baseURL,
-	}, j)
+	c.uploader.upload(c.client, j)
 }
 
 func (c *Client) Run(ctx context.Context) error {
