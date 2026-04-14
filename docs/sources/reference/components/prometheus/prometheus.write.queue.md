@@ -51,6 +51,8 @@ You can use the following argument with `prometheus.write.queue`:
 
 You can use the following blocks with `prometheus.write.queue`:
 
+{{< docs/alloy-config >}}
+
 | Block                                     | Description                                                | Required |
 | ----------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`endpoint`][endpoint]                    | Location to send metrics to.                               | no       |
@@ -59,14 +61,13 @@ You can use the following blocks with `prometheus.write.queue`:
 | `endpoint` > [`parallelism`][parallelism] | Configure parallelism for the endpoint.                    | no       |
 | [`persistence`][persistence]              | Configuration for persistence                              | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
-
 [endpoint]: #endpoint
 [basic_auth]: #basic_auth
 [persistence]: #persistence
 [tls_config]: #tls_config
 [parallelism]: #parallelism
+
+{{< /docs/alloy-config >}}
 
 ### `endpoint`
 

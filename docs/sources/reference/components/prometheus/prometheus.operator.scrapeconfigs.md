@@ -90,6 +90,8 @@ You can use the following arguments with `prometheus.operator.scrapeconfigs`:
 
 You can use the following blocks with `prometheus.operator.scrapeconfigs`:
 
+{{< docs/alloy-config >}}
+
 | Block                                               | Description                                                                                 | Required |
 | --------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | [`client`][client]                                  | Configures Kubernetes client used to find `scrapeconfigs`.                                  | no       |
@@ -104,9 +106,6 @@ You can use the following blocks with `prometheus.operator.scrapeconfigs`:
 | [`selector`][selector]                              | Label selector for which `scrapeconfigs` to discover.                                       | no       |
 | `selector` > [`match_expression`][match_expression] | Label selector expression for which `scrapeconfigs` to discover.                            | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
-
 [client]: #client
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -117,6 +116,8 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [rule]: #rule
 [scrape]: #scrape
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 
