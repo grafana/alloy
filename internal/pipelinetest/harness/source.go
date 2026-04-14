@@ -35,14 +35,14 @@ type Source struct {
 	opts component.Options
 
 	entries    []loki.Entry
-	LokiFanout *loki.Fanout
+	lokiFanout *loki.Fanout
 }
 
 func NewSource(opts component.Options, args SourceArguments) (*Source, error) {
 	s := &Source{
 		opts: opts,
 
-		LokiFanout: loki.NewFanout(args.ForwardTo.Logs),
+		lokiFanout: loki.NewFanout(args.ForwardTo.Logs),
 	}
 
 	s.opts.OnStateChange(SourceExports{})

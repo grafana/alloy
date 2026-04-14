@@ -16,7 +16,7 @@ func TestLokiPipeline(t *testing.T) {
 		config       string
 		entryPoints  []string
 		inputEntries []loki.Entry
-		assertions   []harness.LokiAssertion
+		assertions   []harness.Assertion
 	}
 
 	tests := []testCase{
@@ -51,7 +51,7 @@ func TestLokiPipeline(t *testing.T) {
 					Line:      "test",
 				}),
 			},
-			assertions: []harness.LokiAssertion{
+			assertions: []harness.Assertion{
 				harness.LokiEntryCount(1),
 				harness.LokiEntryMatch(loki.NewEntry(model.LabelSet{"replaced": "bar"}, push.Entry{
 					Timestamp: time.Date(2026, time.April, 14, 12, 53, 51, 470999516, time.Local),
@@ -68,7 +68,7 @@ func TestLokiPipeline(t *testing.T) {
 				LogsEntryPoints: tt.entryPoints,
 			})
 			alloy.SendEntries(tt.inputEntries...)
-			alloy.AssertLoki(tt.assertions...)
+			alloy.Assert(tt.assertions...)
 		})
 	}
 }

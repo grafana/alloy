@@ -7,9 +7,11 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
-type LokiAssertion func(s snapshot) error
+type Assertion func(s snapshot) error
 
-func LokiEntryMatch(want loki.Entry) LokiAssertion {
+// LokiEntryMatch returns an Assertion that passes when the snapshot contains
+// at least one Loki entry exactly matching want.
+func LokiEntryMatch(want loki.Entry) Assertion {
 	return func(s snapshot) error {
 		for _, got := range s.loki {
 			if equalEntry(got, want) {
@@ -20,7 +22,9 @@ func LokiEntryMatch(want loki.Entry) LokiAssertion {
 	}
 }
 
-func LokiEntryCount(want int) LokiAssertion {
+// LokiEntryCount returns an Assertion that passes when the snapshot contains
+// exactly want Loki entries.
+func LokiEntryCount(want int) Assertion {
 	return func(s snapshot) error {
 		if want != len(s.loki) {
 			return fmt.Errorf("unexpected entry count: want=%d got=%d", want, len(s.loki))

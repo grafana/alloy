@@ -104,7 +104,9 @@ func (a *Alloy) SendEntries(entries ...loki.Entry) {
 	}
 }
 
-func (a *Alloy) AssertLoki(assertions ...LokiAssertion) {
+// Assert evaluates the provided assertions against the current sink snapshot
+// until they all pass or the assertion timeout is reached.
+func (a *Alloy) Assert(assertions ...Assertion) {
 	a.t.Helper()
 
 	require.EventuallyWithT(a.t, func(c *assert.CollectT) {
