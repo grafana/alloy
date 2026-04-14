@@ -23,7 +23,7 @@ func TestIsLuhnValid(t *testing.T) {
 	for _, c := range cases {
 		got := isLuhn(c.input)
 		if got != c.want {
-			t.Errorf("isLuhnValid(%q) == %t, want %t", c.input, got, c.want)
+			t.Errorf("isLuhn(%d) == %t, want %t", c.input, got, c.want)
 		}
 	}
 }
