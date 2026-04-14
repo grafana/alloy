@@ -63,4 +63,3 @@ func (c *Component) UploadHTTPHandler() http.Handler {
 		w.WriteHeader(http.StatusOK)
 	})
 }
-

@@ -74,5 +74,4 @@ func TestTransport(t *testing.T) {
 		_, _ = io.Copy(io.Discard, resp.Body)
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
-
 }

@@ -26,7 +26,6 @@ type downstreamResult struct {
 	data     []byte
 }
 
-
 type mockDebuginfoHandler struct {
 	shouldInitiateFunc func(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error)
 	uploadFinishedFunc func(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (*connect.Response[debuginfov1alpha1.UploadFinishedResponse], error)
