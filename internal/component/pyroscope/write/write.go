@@ -768,8 +768,8 @@ func (c *DebugInfoClient) Upload(ctx context.Context, buildID string, body io.Re
 	if err != nil {
 		return err
 	}
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("upload: HTTP %d", resp.StatusCode)
 	}
