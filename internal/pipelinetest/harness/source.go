@@ -34,7 +34,6 @@ type SourceExports struct{}
 type Source struct {
 	opts component.Options
 
-	entries    []loki.Entry
 	lokiFanout *loki.Fanout
 }
 
@@ -59,4 +58,10 @@ func (s *Source) Run(ctx context.Context) error {
 
 func (s *Source) Update(args component.Arguments) error {
 	return nil
+}
+
+func (s *Source) SendEntries(entries ...loki.Entry) {
+	for _, e := range entries {
+		s.lokiFanout.Send(context.Background(), e)
+	}
 }

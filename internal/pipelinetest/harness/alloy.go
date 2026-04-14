@@ -3,7 +3,6 @@ package harness
 import (
 	"context"
 	"io"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -12,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	alloyruntime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -21,30 +19,13 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-type Options struct {
-	Config          string
-	LogsEntryPoints []string
-}
+const injected = `pipelinetest.sink "out" {}`
 
 // NewAlloy creates and starts an in-process Alloy runtime for pipeline tests.
 // It injects the pipelinetest source and sink components into the provided
 // config and wires the source to the configured entry points.
-func NewAlloy(t *testing.T, opts Options) *Alloy {
+func NewAlloy(t *testing.T, cfg string) *Alloy {
 	t.Helper()
-
-	injectedComponents := func(opts Options) string {
-		return `
-			pipelinetest.source "in" {
-				forward_to {
-					logs = [` + strings.Join(opts.LogsEntryPoints, ", ") + `]
-				}
-			}
-
-			pipelinetest.sink "out" {}
-		`
-	}
-
-	require.NotEmpty(t, opts.LogsEntryPoints, "LogsEntryPoints must not be empty")
 
 	logger, err := logging.New(io.Discard, logging.DefaultOptions)
 	require.NoError(t, err)
@@ -57,8 +38,7 @@ func NewAlloy(t *testing.T, opts Options) *Alloy {
 	})
 	require.NoError(t, err)
 
-	ctx, cancel := t.Context(), func() {}
-	ctx, cancel = context.WithCancel(ctx)
+	ctx, cancel := context.WithCancel(t.Context())
 
 	a := &Alloy{
 		t:      t,
@@ -70,7 +50,7 @@ func NewAlloy(t *testing.T, opts Options) *Alloy {
 		ctrl.Run(ctx)
 	})
 
-	source, err := alloyruntime.ParseSource(t.Name(), []byte(injectedComponents(opts)+"\n"+opts.Config))
+	source, err := alloyruntime.ParseSource(t.Name(), []byte(injected+"\n"+cfg))
 	require.NoError(t, err)
 
 	err = ctrl.LoadSource(source, nil, "")
@@ -80,8 +60,7 @@ func NewAlloy(t *testing.T, opts Options) *Alloy {
 		return ctrl.LoadComplete()
 	}, 2*time.Second, 50*time.Millisecond)
 
-	a.sink = mustComponent[*Sink](t, a, "pipelinetest.sink.out")
-	a.source = mustComponent[*Source](t, a, "pipelinetest.source.in")
+	a.sink = MustComponent[*Sink](t, a, "pipelinetest.sink.out")
 
 	t.Cleanup(func() {
 		a.cancel()
@@ -97,14 +76,7 @@ type Alloy struct {
 	cancel func()
 	wg     sync.WaitGroup
 
-	source *Source
-	sink   *Sink
-}
-
-func (a *Alloy) SendEntries(entries ...loki.Entry) {
-	for _, e := range entries {
-		a.source.lokiFanout.Send(context.Background(), e)
-	}
+	sink *Sink
 }
 
 // Assert evaluates the provided assertions against the current snapshot
@@ -120,7 +92,7 @@ func (a *Alloy) Assert(assertions ...Assertion) {
 	}, time.Second, 50*time.Millisecond)
 }
 
-func mustComponent[T any](t *testing.T, a *Alloy, id string) T {
+func MustComponent[T any](t *testing.T, a *Alloy, id string) T {
 	t.Helper()
 
 	info, err := a.ctrl.GetComponent(component.ParseID(id), component.InfoOptions{})

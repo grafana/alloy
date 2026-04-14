@@ -14,7 +14,6 @@ func TestLokiPipeline(t *testing.T) {
 	type testCase struct {
 		name         string
 		config       string
-		entryPoints  []string
 		inputEntries []loki.Entry
 		assertions   []harness.Assertion
 	}
@@ -23,6 +22,12 @@ func TestLokiPipeline(t *testing.T) {
 		{
 			name: "rename foo label",
 			config: `
+				pipelinetest.source "in" {
+					forward_to {
+						logs = [loki.relabel.default.receiver]
+					}
+				}
+
 				loki.relabel "default" {
 					forward_to = [loki.write.default.receiver]
 
@@ -44,7 +49,6 @@ func TestLokiPipeline(t *testing.T) {
 					}
 				}
 			`,
-			entryPoints: []string{"loki.relabel.default.receiver"},
 			inputEntries: []loki.Entry{
 				loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{
 					Timestamp: time.Date(2026, time.April, 14, 12, 53, 51, 470999516, time.Local),
@@ -63,11 +67,9 @@ func TestLokiPipeline(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			alloy := harness.NewAlloy(t, harness.Options{
-				Config:          tt.config,
-				LogsEntryPoints: tt.entryPoints,
-			})
-			alloy.SendEntries(tt.inputEntries...)
+			alloy := harness.NewAlloy(t, tt.config)
+			sink := harness.MustComponent[*harness.Source](t, alloy, "pipelinetest.source.in")
+			sink.SendEntries(tt.inputEntries...)
 			alloy.Assert(tt.assertions...)
 		})
 	}
