@@ -278,10 +278,10 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
 
 		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent))
-		dic := &debugInfoClient{
+		dic := &Client{
 			DebuginfoServiceClient: debugInfoConnect,
-			httpClient:             httpClient,
-			baseURL:                endpoint.URL,
+			HTTPClient:             httpClient,
+			BaseURL:                endpoint.URL,
 		}
 		debugInfo := debuginfo.NewClient(logger, dic, metrics.debugInfoUploadBytes, endpointDataPath)
 
@@ -752,19 +752,19 @@ func validateLabels(lbls labels.Labels) error {
 	return err
 }
 
-type debugInfoClient struct {
+type Client struct {
 	debuginfov1alpha1connect.DebuginfoServiceClient
-	httpClient *http.Client
-	baseURL    string
+	HTTPClient *http.Client
+	BaseURL    string
 }
 
-func (c *debugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
-	uploadURL := strings.TrimRight(c.baseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
+func (c *Client) Upload(ctx context.Context, buildID string, body io.Reader) error {
+	uploadURL := strings.TrimRight(c.BaseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
 	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
 	if err != nil {
 		return err
 	}
-	resp, err := c.httpClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return err
 	}

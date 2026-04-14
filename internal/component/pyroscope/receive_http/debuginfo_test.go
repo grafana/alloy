@@ -3,11 +3,9 @@ package receive_http
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -19,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 )
 
@@ -27,29 +26,6 @@ type downstreamResult struct {
 	data     []byte
 }
 
-type mockDebugInfoClient struct {
-	debuginfov1alpha1connect.DebuginfoServiceClient
-	httpClient *http.Client
-	baseURL    string
-}
-
-func (c *mockDebugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
-	uploadURL := strings.TrimRight(c.baseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
-	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
-	if err != nil {
-		return err
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upload: HTTP %d", resp.StatusCode)
-	}
-	return nil
-}
 
 type mockDebuginfoHandler struct {
 	shouldInitiateFunc func(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error)
@@ -92,10 +68,10 @@ func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downst
 	t.Cleanup(server.Close)
 
 	connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
-	return &mockDebugInfoClient{
+	return &write.Client{
 		DebuginfoServiceClient: connectClient,
-		httpClient:             server.Client(),
-		baseURL:                server.URL,
+		HTTPClient:             server.Client(),
+		BaseURL:                server.URL,
 	}
 }
 
