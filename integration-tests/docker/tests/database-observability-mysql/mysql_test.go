@@ -47,5 +47,5 @@ func TestDatabaseObservabilityMySQLLogs(t *testing.T) {
 		for _, op := range expectedOps {
 			assert.True(c, ops[op], "expected %s logs", op)
 		}
-	}, common.TestTimeoutEnv(t), common.DefaultRetryInterval)
+	}, common.TestTimeout(t), common.DefaultRetryInterval)
 }

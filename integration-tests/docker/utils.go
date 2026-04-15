@@ -256,7 +256,7 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 
 // Configure the test command with appropriate environment variables if needed
 func setupTestCommand(testDir string, testTimeout time.Duration) *exec.Cmd {
-	testCmd := exec.Command("go", "test", "-tags", "alloyintegrationtests")
+	testCmd := exec.Command("go", "test", "-tags", "alloyintegrationtests", "-timeout", testTimeout.String())
 	testCmd.Dir = testDir
 
 	testCmd.Env = append(testCmd.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
@@ -499,7 +499,7 @@ func runComposeTest(ctx context.Context, testDir string, stateful bool, testTime
 	defer cancel()
 
 	// Setup and run test command with context for timeout enforcement
-	testCmd := exec.CommandContext(testCtx, "go", "test", "-tags", "alloyintegrationtests")
+	testCmd := exec.CommandContext(testCtx, "go", "test", "-tags", "alloyintegrationtests", "-timeout", testTimeout.String())
 	testCmd.Dir = testDir
 	testCmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
 	if stateful {
