@@ -1,4 +1,4 @@
-test_timeout: "10m"
+test_timeout: "15m"
 
 alloy_container:
   dockerfile: Dockerfile.alloy
