@@ -169,25 +169,6 @@ func TestScannerCustomOpts(t *testing.T) {
 			},
 		},
 
-		"truncating splitFunc": {
-			log: "90 <190>1 2019-07-20T17:50:10.879238Z shuttle token shuttle - - whole message is rather long\n75 <190>1 2019-07-20T17:50:10.879238Z shuttle token shuttle - - whole message\n",
-			opts: []ScannerOption{
-				WithSplit(TruncatingSyslogSplitFunc(80)),
-			},
-			wantMsgs: []Message{
-				{
-					Version:  1,
-					Priority: 190,
-					Message:  "whole message is ra",
-				},
-				{
-					Version:  1,
-					Priority: 190,
-					Message:  "whole message\n",
-				},
-			},
-		},
-
 		"custom splitFunc": {
 			log: "66!<190>1 2019-07-21T22:13:34.598992Z shuttle t.http shuttle - - 168\n",
 			opts: []ScannerOption{

@@ -1,11 +1,9 @@
 package encoding
 
 import (
-	"bufio"
 	"bytes"
-	"strconv"
-
 	"fmt"
+	"strconv"
 )
 
 // SyslogSplitFunc splits the data based on the defined length prefix.
@@ -44,16 +42,4 @@ func SyslogSplitFunc(data []byte, atEOF bool) (advance int, token []byte, err er
 	}
 
 	return dataBoundary, data[sp+1 : dataBoundary], nil
-}
-
-// TruncatingSyslogSplitFunc enforces a maximum line length after parsing.
-func TruncatingSyslogSplitFunc(maxLength int) bufio.SplitFunc {
-	return func(data []byte, atEOF bool) (advance int, token []byte, err error) {
-		advance, token, err = SyslogSplitFunc(data, atEOF)
-		if len(token) > maxLength {
-			token = token[0:maxLength]
-		}
-
-		return
-	}
 }

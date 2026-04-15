@@ -18,6 +18,9 @@ const (
 	// OptimalFrameLength is the initial buffer size for scanning
 	OptimalFrameLength = 1024
 
+	// FlexibleSyslogTimeFormat accepts both 'Z' and TZ notation for event time.
+	FlexibleSyslogTimeFormat = "2006-01-02T15:04:05.999999Z07:00"
+
 	defaultRfcCompliance = true
 )
 
