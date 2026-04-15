@@ -69,13 +69,20 @@ You can use the following blocks with `prometheus.receive_http`:
 
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
+| [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
+| `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
+[grpc]: #grpc
 [http]: #http
 [tls]: #tls
 
 {{< /docs/alloy-config >}}
+
+### `grpc`
+
+{{< docs/shared lookup="reference/components/loki-server-grpc.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `http`
 
@@ -83,7 +90,7 @@ You can use the following blocks with `prometheus.receive_http`:
 
 ### `tls`
 
-The `tls` block configures TLS for the HTTP server.
+The `tls` block configures TLS for the HTTP and gRPC servers.
 
 {{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
