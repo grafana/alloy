@@ -13,44 +13,44 @@ loki.relabel "gelf" {
 }
 
 loki.source.gelf "gelf" {
-  listen_address = "0.0.0.0:12201"
-  forward_to     = [loki.process.test.receiver]
+	listen_address = "0.0.0.0:12201"
+	forward_to     = [loki.process.test.receiver]
 
-  relabel_rules = loki.relabel.gelf.rules
+	relabel_rules = loki.relabel.gelf.rules
 }
 
 loki.process "test" {
-  stage.static_labels {
-    values = {
-      test_name = "lokigelf",
-    }
-  }
+	stage.static_labels {
+		values = {
+			test_name = "lokigelf",
+		}
+	}
 
-  stage.structured_metadata {
+	stage.structured_metadata {
 		values = {
 			gelf_version = "",
 		}
-  }
+	}
 
-  forward_to = [loki.relabel.test.receiver]
+	forward_to = [loki.relabel.test.receiver]
 }
 
 loki.relabel "test" {
-  forward_to = [loki.write.test.receiver]
+	forward_to = [loki.write.test.receiver]
 
-  rule {
-    source_labels = ["host"]
-    target_label  = "service_name"
-  }
+	rule {
+		source_labels = ["host"]
+		target_label  = "service_name"
+	}
 
-  rule {
-    action = "labeldrop"
-    regex  = "host"
-  }
+	rule {
+		action = "labeldrop"
+		regex  = "host"
+	}
 }
 
 loki.write "test" {
-  endpoint {
-    url = "http://loki:3100/loki/api/v1/push"
-  }
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
 }
