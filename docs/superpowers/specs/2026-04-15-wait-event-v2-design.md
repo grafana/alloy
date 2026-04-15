@@ -128,14 +128,14 @@ waitEventSecondsTotal = prometheus.NewCounterVec(
         Name: "database_observability_wait_event_seconds_total",
         Help: "Total wait time in seconds per query, aggregated by server, query digest, and database.",
     },
-    []string{"server_id", "queryid", "dbname"},
+    []string{"server_id", "digest", "schema"},
 )
 ```
 
 **Labels:**
 - `server_id` — from the component's target label
-- `queryid` — MySQL `digest` value
-- `dbname` — MySQL `schema` value
+- `digest` — MySQL `digest` value
+- `schema` — MySQL `schema` value
 
 **Registration:** at MySQL component startup, registered into the existing `c.registry`
 (`prometheus.NewRegistry()` already present in `mysql/component.go`).
@@ -150,7 +150,7 @@ in `mysql/component.go`. The component creates, registers, and passes the counte
 ```go
 if c.waitEventCounter != nil {
     waitTimeSeconds := waitTime / 1000.0 // waitTime is in ms (from picosecondsToMilliseconds)
-    c.waitEventCounter.WithLabelValues(c.serverID, row.Digest.String, row.Schema.String).Add(waitTimeSeconds)
+    c.waitEventCounter.WithLabelValues(c.serverID, row.Digest.String, row.Schema.String).Add(waitTimeSeconds) // labels: server_id, digest, schema
 }
 ```
 
