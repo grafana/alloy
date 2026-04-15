@@ -1,0 +1,44 @@
+loki.source.api "api" {
+  http {
+    listen_address = "0.0.0.0"
+    listen_port    = 1515
+  }
+
+  forward_to = [loki.process.test.receiver]
+}
+
+loki.process "test" {
+  stage.static_labels {
+    values = {
+      test_name = "lokiapi",
+    }
+  }
+
+  stage.structured_metadata {
+	values = {
+		content_type = "",
+	}
+  }
+
+  forward_to = [loki.relabel.test.receiver]
+}
+
+loki.relabel "test" {
+  forward_to = [loki.write.test.receiver]
+
+  rule {
+    source_labels = ["app"]
+    target_label  = "service_name"
+  }
+
+  rule {
+    action = "labeldrop"
+    regex  = "app"
+  }
+}
+
+loki.write "test" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
