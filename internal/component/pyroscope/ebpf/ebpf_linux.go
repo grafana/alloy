@@ -96,7 +96,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
 	var nfs *irsymcache.Resolver
-	if args.SymbCacheEnabled {
+	if args.DebugInfoArguments.OnTargetSymbolizationEnabled {
 		nfs, err = irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
 			Options: []lidia.Option{
 				lidia.WithFiles(),
@@ -373,12 +373,12 @@ func NewDefaultArguments() Arguments {
 		PyroscopeDynamicProfilingPolicy: true,
 		SymbCachePath:                   "/tmp/symb-cache",
 		SymbCacheSizeEntries:            2048,
-		SymbCacheEnabled:                true,
 		DebugInfoArguments: debuginfo.Arguments{
-			UploadEnabled: false,
-			CacheSize:     1024,
-			QueueSize:     64,
-			WorkerNum:     4,
+			UploadEnabled:                false,
+			OnTargetSymbolizationEnabled: true,
+			CacheSize:                    1024,
+			QueueSize:                    64,
+			WorkerNum:                    4,
 		},
 	}
 }
