@@ -74,22 +74,50 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 		requests = append(requests, req)
 	}
 
-	containers := make([]testcontainers.Container, 0, len(cfg.AdditionalContainers))
-	for _, r := range requests {
-		container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-			ContainerRequest: r,
-			Started:          true,
-			Logger:           log.Default(),
+	// Start all additional containers in parallel.
+	// That way containers which are slow to start won't stop others from starting up.
+	containers := make([]testcontainers.Container, len(requests))
+	gctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var startErr error
+	for i := range requests {
+		i := i
+		r := requests[i]
+		wg.Go(func() {
+			c, err := testcontainers.GenericContainer(gctx, testcontainers.GenericContainerRequest{
+				ContainerRequest: r,
+				Started:          true,
+				Logger:           log.Default(),
+			})
+			if err != nil {
+				mu.Lock()
+				if startErr == nil {
+					startErr = fmt.Errorf("failed to start additional container %q: %w", r.Name, err)
+					cancel()
+				}
+				mu.Unlock()
+				return
+			}
+			containers[i] = c
 		})
-		if err != nil {
-			_ = terminateAdditionalContainers(ctx, containers)
-			return nil, fmt.Errorf("failed to start additional container %q: %w", r.Name, err)
+	}
+	wg.Wait()
+	if startErr != nil {
+		var partial []testcontainers.Container
+		for _, c := range containers {
+			if c != nil {
+				partial = append(partial, c)
+			}
 		}
-
-		containers = append(containers, container)
+		_ = terminateAdditionalContainers(ctx, partial)
+		return nil, startErr
 	}
 
-	return containers, nil
+	out := make([]testcontainers.Container, 0, len(containers))
+	out = append(out, containers...)
+	return out, nil
 }
 
 // buildDockerImage runs docker build for image using build (context and Dockerfile paths).
