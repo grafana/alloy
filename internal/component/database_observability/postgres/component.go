@@ -179,7 +179,7 @@ func (a *Arguments) SetToDefault() {
 }
 
 func (a *Arguments) Validate() error {
-	_, err := pq.ParseURL(string(a.DataSourceName))
+	_, err := pq.ParseURL(string(a.DataSourceName)) //nolint:staticcheck // pq.ParseURL is deprecated but needed for URL validation
 	if err != nil {
 		return err
 	}

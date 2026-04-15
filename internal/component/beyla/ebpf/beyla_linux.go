@@ -499,7 +499,7 @@ func (args Metrics) Validate() error {
 		"application_service_graph": {}, "application_process": {},
 		"network": {}, "network_inter_zone": {},
 		"stats": {},
-		"*": {}, "all": {},
+		"*":     {}, "all": {},
 	}
 	for _, feature := range args.Features {
 		if _, ok := validFeatures[feature]; !ok {

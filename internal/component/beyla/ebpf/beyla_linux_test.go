@@ -737,12 +737,12 @@ func TestConvert_Attributes(t *testing.T) {
 
 	expectedConfig := beyla.Attributes{
 		Kubernetes: transform.KubernetesDecorator{
-			Enable:                      kubeflags.EnableFlag(args.Kubernetes.Enable),
-			InformersSyncTimeout:        15 * time.Second,
-			InformersResyncPeriod:       30 * time.Minute,
-			ReconnectInitialInterval:    beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval,
-			ResourceLabels:              beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
-			MetaCacheAddress:            "localhost:9090",
+			Enable:                   kubeflags.EnableFlag(args.Kubernetes.Enable),
+			InformersSyncTimeout:     15 * time.Second,
+			InformersResyncPeriod:    30 * time.Minute,
+			ReconnectInitialInterval: beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval,
+			ResourceLabels:           beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
+			MetaCacheAddress:         "localhost:9090",
 		},
 		HostID: beyla.HostIDConfig{},
 		Select: attributes.Selection{
