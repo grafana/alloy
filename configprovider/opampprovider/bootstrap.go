@@ -29,7 +29,11 @@ func opampExtensionPaths(root map[string]any, basePath string) (remoteDir string
 		return "", fmt.Errorf("base %s: %w", basePath, err)
 	}
 	if !filepath.IsAbs(remoteDir) {
-		return "", fmt.Errorf("base %s: extensions.opamp.remote_configuration_directory must be an absolute path, got %q", basePath, remoteDir)
+		remoteDir = filepath.Join(filepath.Dir(basePath), remoteDir)
 	}
-	return remoteDir, nil
+	abs, err := filepath.Abs(remoteDir)
+	if err != nil {
+		return "", fmt.Errorf("base %s: resolve extensions.opamp.remote_configuration_directory %q: %w", basePath, remoteDir, err)
+	}
+	return filepath.Clean(abs), nil
 }
