@@ -132,6 +132,35 @@ var (
 	}
 )
 
+func (o *httpClientOptions) toUpstreamOpts() []commonconfig.HTTPClientOption {
+	var res []commonconfig.HTTPClientOption
+	if o.dialContextFunc != nil {
+		res = append(res, commonconfig.WithDialContextFunc(o.dialContextFunc))
+	}
+	if o.newTLSConfigFunc != nil {
+		res = append(res, commonconfig.WithNewTLSConfigFunc(o.newTLSConfigFunc))
+	}
+	if !o.keepAlivesEnabled {
+		res = append(res, commonconfig.WithKeepAlivesDisabled())
+	}
+	if !o.http2Enabled {
+		res = append(res, commonconfig.WithHTTP2Disabled())
+	}
+	if o.idleConnTimeout != defaultHTTPClientOptions.idleConnTimeout {
+		res = append(res, commonconfig.WithIdleConnTimeout(o.idleConnTimeout))
+	}
+	if o.userAgent != "" {
+		res = append(res, commonconfig.WithUserAgent(o.userAgent))
+	}
+	if o.host != "" {
+		res = append(res, commonconfig.WithHost(o.host))
+	}
+	if o.secretManager != nil {
+		res = append(res, commonconfig.WithSecretManager(o.secretManager))
+	}
+	return res
+}
+
 // NewClient returns a http.Client using the specified http.RoundTripper.
 func newClient(rt http.RoundTripper) *http.Client {
 	return &http.Client{Transport: rt}
@@ -267,10 +296,7 @@ func newRoundTripperFromConfigWithContext(ctx context.Context, cfg HTTPClientCon
 					return nil, fmt.Errorf("unable to use client secret: %w", err)
 				}
 			}
-			rt, err = newOAuth2RoundTripper(oauthCredential, cfg.OAuth2, rt, &opts)
-			if err != nil {
-				return nil, fmt.Errorf("unable to create OAuth2RoundTripper: %w", err)
-			}
+			rt = commonconfig.NewOAuth2RoundTripper(oauthCredential, cfg.OAuth2, rt, opts.toUpstreamOpts()...)
 		}
 
 		if cfg.HTTPHeaders != nil {
