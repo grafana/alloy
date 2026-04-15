@@ -3,12 +3,11 @@ package encoding
 import (
 	"bufio"
 	"bytes"
+	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
-
-	"errors"
-	"fmt"
 )
 
 func TestScanner(t *testing.T) {
@@ -201,7 +200,6 @@ func TestScannerCustomOpts(t *testing.T) {
 					if want, got := test.wantMsgs[i].Message, m.Message; want != "" && want != got {
 						t.Fatalf("wanted msg: %q, got %q", want, got)
 					}
-
 				}
 				i++
 			}
