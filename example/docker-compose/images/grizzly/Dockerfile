@@ -1,3 +1,3 @@
-FROM golang:1.25.9-alpine@sha256:7a00384194cf2cb68924bbb918d675f1517357433c8541bac0ab2f929b9d5447
+FROM golang:1.26.2-alpine@sha256:c2a1f7b2095d046ae14b286b18413a05bb82c9bca9b25fe7ff5efef0f0826166
 
 RUN go install github.com/grafana/grizzly/cmd/grr@v0.7.1

@@ -1,4 +1,4 @@
-FROM golang:1.25.9@sha256:5ab234a9519e05043f4a97a505a59f21dc40eee172d6b17d411863d6bba599bb as build
+FROM golang:1.26.2@sha256:5f3787b7f902c07c7ec4f3aa91a301a3eda8133aa32661a3b3a3a86ab3a68a36 as build
 WORKDIR /app/
 COPY go.mod go.sum ./
 COPY syntax/go.mod syntax/go.sum ./syntax/
