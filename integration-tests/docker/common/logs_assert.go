@@ -58,6 +58,38 @@ func AssertLogsPresent(t *testing.T, totalCount int, expected ...ExpectedLogResu
 	}
 }
 
+// AssertLabelsNotIndexed checks that the given label names are not present in Loki stream indexes for this test.
+// This should be call after all logs have been ingested into loki.
+func AssertLabelsNotIndexed(t *testing.T, labels ...string) {
+	t.Helper()
+	AssertStatefulTestEnv(t)
+
+	var resp LogSeriesResponse
+	_, err := FetchDataFromURL(LogSeriesQuery(SanitizeTestName(t)), &resp)
+	require.NoError(t, err)
+	require.NotEmpty(t, resp.Data, "no Loki series found for test; call AssertLogsPresent before AssertLabelsNotIndexed")
+
+	for _, series := range resp.Data {
+		for _, label := range labels {
+			if _, ok := series[label]; ok {
+				require.Failf(t, "indexed label present", "label %q was unexpectedly indexed in series %v", label, series)
+			}
+		}
+	}
+}
+
+// LogSeriesQuery returns a Loki series query scoped to the given test_name label.
+func LogSeriesQuery(testName string) string {
+	queryFilter := fmt.Sprintf("{test_name=\"%s\"}", testName)
+	query := fmt.Sprintf("%sseries?match[]=%s", lokiURL, url.QueryEscape(queryFilter))
+
+	if startingAt := AlloyStartTimeUnixNano(); startingAt > 0 {
+		query += fmt.Sprintf("&start=%d", startingAt)
+	}
+
+	return query
+}
+
 // WaitForInitalLogs will try to wait until any logs can be retrieved from loki for testName.
 // It will return an error if no logs are found after test timeout.
 func WaitForInitalLogs(testName string) error {
