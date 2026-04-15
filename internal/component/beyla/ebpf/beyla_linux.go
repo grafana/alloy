@@ -79,6 +79,7 @@ const (
 
 var validInstrumentations = map[string]struct{}{
 	"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
+	"genai": {}, "memcached": {},
 }
 
 func (args Routes) Convert() *transform.RoutesConfig {
@@ -466,12 +467,17 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 	if args.ExtraSpanResourceLabels != nil {
 		p.ExtraSpanResourceLabels = args.ExtraSpanResourceLabels
 	}
+	if args.ExemplarFilter != "" {
+		p.ExemplarFilter = args.ExemplarFilter
+	}
 	return p
 }
 
 func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
+		case "*", "all":
+			return true
 		case "application", "application_host", "application_span", "application_service_graph",
 			"application_process", "application_span_otel", "application_span_sizes":
 			return true
@@ -493,10 +499,18 @@ func (args Metrics) Validate() error {
 		"application_service_graph": {}, "application_process": {},
 		"network": {}, "network_inter_zone": {},
 		"stats": {},
+		"*": {}, "all": {},
 	}
 	for _, feature := range args.Features {
 		if _, ok := validFeatures[feature]; !ok {
 			return fmt.Errorf("metrics.features: invalid value %q", feature)
+		}
+	}
+
+	validExemplarFilters := map[string]struct{}{"always_on": {}, "always_off": {}, "trace_based": {}}
+	if args.ExemplarFilter != "" {
+		if _, ok := validExemplarFilters[args.ExemplarFilter]; !ok {
+			return fmt.Errorf("metrics.exemplar_filter: invalid value %q", args.ExemplarFilter)
 		}
 	}
 	return nil
@@ -578,7 +592,8 @@ func (args EBPF) Convert() (*obiCfg.EBPFTracer, error) {
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
 	ebpf.BpfDebug = args.BpfDebug
 	ebpf.ProtocolDebug = args.ProtocolDebug
-	ebpf.PayloadExtraction.HTTP.OpenAI.Enabled = args.PayloadExtraction.HTTP.OpenAI.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = args.PayloadExtraction.HTTP.OpenAI.Enabled
+	ebpf.MapsConfig.GlobalScaleFactor = args.MapsConfig.GlobalScaleFactor
 	return &ebpf, nil
 }
 
@@ -683,6 +698,10 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		i.HostPathVolumeDir = args.HostPathVolumeDir
 	}
 
+	if args.ImageVolumePath != "" {
+		i.ImageVolumePath = args.ImageVolumePath
+	}
+
 	if args.SDKPkgVersion != "" {
 		i.SDKPkgVersion = args.SDKPkgVersion
 	}
@@ -738,6 +757,15 @@ func (args Injector) Validate() error {
 		}
 		if endpoint.Scheme == "" || endpoint.Host == "" {
 			return fmt.Errorf("injector.otel_endpoint: URL %q must have a scheme and a host", args.OTELEndpoint)
+		}
+	}
+
+	if args.ImageVolumePath != "" {
+		if args.HostMountPath != "" {
+			return fmt.Errorf("injector.image_volume_path and injector.host_mount_path are mutually exclusive")
+		}
+		if args.SDKPkgVersion != "" {
+			return fmt.Errorf("injector.image_volume_path and injector.sdk_package_version are mutually exclusive")
 		}
 	}
 

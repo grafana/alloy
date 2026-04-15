@@ -125,6 +125,7 @@ type Metrics struct {
 	ExtraResourceLabels             []string `alloy:"extra_resource_labels,attr,optional"`
 	ExtraSpanResourceLabels         []string `alloy:"extra_span_resource_labels,attr,optional"`
 	NativeHistograms                bool     `alloy:"native_histograms,attr,optional"`
+	ExemplarFilter                  string   `alloy:"exemplar_filter,attr,optional"`
 }
 
 type Traces struct {
@@ -150,6 +151,10 @@ type Network struct {
 	CIDRs              []string      `alloy:"cidrs,attr,optional"`
 }
 
+type EBPFMapsConfig struct {
+	GlobalScaleFactor int `alloy:"global_scale_factor,attr,optional"`
+}
+
 type EBPF struct {
 	WakeupLen           int               `alloy:"wakeup_len,attr,optional"`
 	TrackRequestHeaders bool              `alloy:"track_request_headers,attr,optional"`
@@ -160,6 +165,7 @@ type EBPF struct {
 	BpfDebug            bool              `alloy:"bpf_debug,attr,optional"`
 	ProtocolDebug       bool              `alloy:"protocol_debug_print,attr,optional"`
 	PayloadExtraction   PayloadExtraction `alloy:"payload_extraction,block,optional"`
+	MapsConfig          EBPFMapsConfig    `alloy:"maps_config,block,optional"`
 }
 
 type PayloadExtraction struct {
@@ -187,6 +193,7 @@ type Injector struct {
 	HostPathVolumeDir string              `alloy:"host_path_volume,attr,optional"`
 	SDKPkgVersion     string              `alloy:"sdk_package_version,attr,optional"`
 	HostMountPath     string              `alloy:"host_mount_path,attr,optional"`
+	ImageVolumePath   string              `alloy:"image_volume_path,attr,optional"`
 	ManageSDKVersions *bool               `alloy:"manage_sdk_versions,attr,optional"`
 	DefaultSampler    SamplerConfig       `alloy:"sampler,block,optional"`
 	Propagators       []string            `alloy:"propagators,attr,optional"`
