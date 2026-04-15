@@ -1,3 +1,7 @@
+// Tests for this package should use the same build tags as a normal Alloy build (see Makefile),
+// at least gore2regex. Example:
+//
+//	go test -tags='gore2regex' .
 package oracledb
 
 import (
@@ -32,6 +36,43 @@ func TestAlloyUnmarshal(t *testing.T) {
 		DefaultMetrics:   "default_metrics.toml",
 	}
 
+	require.Equal(t, expected, args)
+}
+
+func TestAlloyUnmarshalDatabaseBlocks(t *testing.T) {
+	alloyConfig := `
+	database {
+		name               = "db1"
+		connection_string  = "host:1521/svc"
+		username           = "u"
+		password           = "p"
+	}
+	database {
+		name               = "db2"
+		connection_string  = "oracle://u2:p2@host2:1521/svc2"
+	}`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(alloyConfig), &args)
+	require.NoError(t, err)
+
+	expected := Arguments{
+		MaxIdleConns: DefaultArguments.MaxIdleConns,
+		MaxOpenConns: DefaultArguments.MaxOpenConns,
+		QueryTimeout: DefaultArguments.QueryTimeout,
+		Databases: DatabaseTargets{
+			{
+				Name:             "db1",
+				ConnectionString: alloytypes.Secret("host:1521/svc"),
+				Username:         "u",
+				Password:         alloytypes.Secret("p"),
+			},
+			{
+				Name:             "db2",
+				ConnectionString: alloytypes.Secret("oracle://u2:p2@host2:1521/svc2"),
+			},
+		},
+	}
 	require.Equal(t, expected, args)
 }
 
@@ -154,6 +195,62 @@ func TestArguments(t *testing.T) {
 				Username:         "user",
 				Password:         config_util.Secret("password"),
 			},
+		},
+		{
+			name: "valid multi-database config",
+			args: Arguments{
+				Databases: DatabaseTargets{
+					{
+						Name:             "primary",
+						ConnectionString: alloytypes.Secret("oracle://u:p@host:1521/svc"),
+						Labels:           map[string]string{"env": "prod"},
+					},
+					{
+						Name:             "standby",
+						ConnectionString: alloytypes.Secret("host:1521/svc2"),
+						Username:         "u2",
+						Password:         alloytypes.Secret("p2"),
+					},
+				},
+				MaxIdleConns:   1,
+				MaxOpenConns:   2,
+				QueryTimeout:   3,
+				CustomMetrics:  []string{"custom_metrics.toml"},
+				DefaultMetrics: "default_metrics.toml",
+			},
+			want: &oracledb_exporter.Config{
+				Databases: []oracledb_exporter.DatabaseInstance{
+					{
+						Name:             "primary",
+						ConnectionString: config_util.Secret("host:1521/svc"),
+						Username:         "u",
+						Password:         config_util.Secret("p"),
+						Labels:           map[string]string{"env": "prod"},
+					},
+					{
+						Name:             "standby",
+						ConnectionString: config_util.Secret("host:1521/svc2"),
+						Username:         "u2",
+						Password:         config_util.Secret("p2"),
+					},
+				},
+				MaxIdleConns:   1,
+				MaxOpenConns:   2,
+				QueryTimeout:   3,
+				CustomMetrics:  []string{"custom_metrics.toml"},
+				DefaultMetrics: "default_metrics.toml",
+			},
+		},
+		{
+			name: "connection_string with database blocks",
+			args: Arguments{
+				ConnectionString: alloytypes.Secret("localhost:1521/x"),
+				Databases: DatabaseTargets{
+					{Name: "a", ConnectionString: alloytypes.Secret("localhost:1521/y")},
+				},
+			},
+			wantErr: true,
+			err:     errBothConfigModes,
 		},
 	}
 
