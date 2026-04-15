@@ -1,12 +1,12 @@
+# Uptime gauge: context "startup_time" + metric key "hours_up" → oracledb_startup_time_hours_up
 [[metric]]
 context = "startup_time"
-metricsdesc = {hours_up = "DBSTtartuptime"}
-labels = ["db_name", "startup_time"]
+metricsdesc = { hours_up = "Approximate instance uptime in hours (sysdate - startup_time)." }
+labels = ["db_name"]
+querytimeout = "30s"
 request = '''
 SELECT
-        instance_name as db_name,
-       startup_Time as startup_time,
-        (sysdate - startup_time)*12 as hours_up
-FROM
-        V$instance
+	instance_name AS db_name,
+	(SYSDATE - startup_time) * 24 AS hours_up
+FROM v$instance
 '''
