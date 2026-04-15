@@ -555,7 +555,6 @@ var mlBenchTime = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 // stack-trace pattern: 1 firstline ("Date:") followed by 9 continuation lines,
 // cycling continuously. Each input line amortises one-tenth of the flush cost.
 func BenchmarkMultilineStage(b *testing.B) {
-
 	for _, debugEnabled := range []bool{false, true} {
 		name := "debug=false"
 		if debugEnabled {
