@@ -6,3 +6,6 @@ additional_containers:
     image: gvenzl/oracle-free:23-slim
     environment:
       ORACLE_PASSWORD: testpassword
+    startup_healthcheck:
+      test: ["CMD", "/opt/oracle/healthcheck.sh"]
+      interval: 2s
