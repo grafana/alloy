@@ -209,5 +209,9 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 	if oeExporter == nil {
 		return nil, errors.New("failed to create oracledb exporter")
 	}
+	// The upstream binary runs InitializeDatabases on startup to warm up the pool
+	// and flip StartupReady; without it, Collect only logs "Database connection in progress"
+	// and never scrapes Oracle metrics (see oracle-db-appdev-monitoring collector.Database).
+	go oeExporter.InitializeDatabases()
 	return integrations.NewCollectorIntegration(c.Name(), integrations.WithCollectors(oeExporter)), nil
 }
