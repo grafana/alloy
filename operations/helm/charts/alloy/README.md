@@ -135,6 +135,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | crds.create | bool | `true` | Whether to install CRDs for monitoring. |
 | extraObjects | list | `[]` | Extra k8s manifests to deploy |
 | fullnameOverride | string | `nil` | Overrides the chart's computed fullname. Used to change the full prefix of resource names. |
+| global.image.pullPolicy | string | `""` | Global image pull policy to apply to all containers. Overrides `image.pullPolicy` and `configReloader.image.pullPolicy`. |
 | global.image.pullSecrets | list | `[]` | Optional set of global image pull secrets. |
 | global.image.registry | string | `""` | Global image registry to use if it needs to be overridden for some specific use cases (e.g local registries, custom images, ...) |
 | global.podSecurityContext | object | `{}` | Security context to apply to the Grafana Alloy pod. |
