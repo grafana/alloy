@@ -366,13 +366,13 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-openapi/analysis v0.24.2 // indirect
+	github.com/go-openapi/analysis v0.24.3 // indirect
 	github.com/go-openapi/errors v0.22.7 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/jsonreference v0.21.5 // indirect
-	github.com/go-openapi/loads v0.23.2 // indirect
-	github.com/go-openapi/runtime v0.29.2 // indirect
-	github.com/go-openapi/spec v0.22.3 // indirect
+	github.com/go-openapi/loads v0.23.3 // indirect
+	github.com/go-openapi/runtime v0.29.3 // indirect
+	github.com/go-openapi/spec v0.22.4 // indirect
 	github.com/go-openapi/strfmt v0.26.1 // indirect
 	github.com/go-openapi/swag v0.25.5 // indirect
 	github.com/go-openapi/swag/cmdutils v0.25.5 // indirect
@@ -386,7 +386,7 @@ require (
 	github.com/go-openapi/swag/stringutils v0.25.5 // indirect
 	github.com/go-openapi/swag/typeutils v0.25.5 // indirect
 	github.com/go-openapi/swag/yamlutils v0.25.5 // indirect
-	github.com/go-openapi/validate v0.25.1 // indirect
+	github.com/go-openapi/validate v0.25.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.1 // indirect
@@ -479,6 +479,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-metrics v0.5.4 // indirect
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
+	github.com/hashicorp/go-msgpack/v2 v2.1.5 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.8 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
@@ -1069,7 +1070,13 @@ replace github.com/gocql/gocql => github.com/grafana/gocql v0.0.0-20200605141915
 replace github.com/grafana/regexp => github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc
 
 // Replace memberlist with Grafana fork which includes unmerged upstream fixes
-replace github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
+replace github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
+
+// Temporary pin to personal fork until upstream PR merges; fixes removed parser.ParseExpr/ParseMetricSelector API (Prometheus v0.311+)
+replace github.com/prometheus-community/prom-label-proxy => github.com/kgeckhart/prom-label-proxy v0.12.2-0.20260414165134-176fc4881167
+
+// Temporary pin to personal fork until upstream PR merges; fixes removed parser.ParseExpr/rulefmt.Parse API in namespacelabeler and rules (Prometheus v0.311+)
+replace github.com/prometheus-operator/prometheus-operator => github.com/kgeckhart/prometheus-operator v0.86.2-0.20260414175915-c764d55e812e
 
 // Use forked syslog implementation by leodido for continued support
 replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.3.0
@@ -1109,9 +1116,6 @@ replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
 
 // Replace controller-runtime with pinned version
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
-
-// Fork to grafana repo to address issue with freebsd build tags. This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
-replace github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver => github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
 
 // Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936). Fork branch: https://github.com/DataDog/vault/tree/master. Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
 replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
