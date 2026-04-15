@@ -87,4 +87,3 @@ type LogSeriesResponse struct {
 func (m *LogSeriesResponse) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, m)
 }
-

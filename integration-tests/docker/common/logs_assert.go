@@ -162,4 +162,3 @@ func streamContainsLabels(stream, labels map[string]string) bool {
 	}
 	return true
 }
-
