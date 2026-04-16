@@ -49,6 +49,7 @@ type Arguments struct {
 	StartAt                 string                   `alloy:"start_at,attr,optional"`
 	FingerprintSize         units.Base2Bytes         `alloy:"fingerprint_size,attr,optional"`
 	MaxLogSize              units.Base2Bytes         `alloy:"max_log_size,attr,optional"`
+	MaxLogSizeBehavior      string                   `alloy:"max_log_size_behavior,attr,optional"`
 	Encoding                string                   `alloy:"encoding,attr,optional"`
 	FlushPeriod             time.Duration            `alloy:"force_flush_period,attr,optional"`
 	DeleteAfterRead         bool                     `alloy:"delete_after_read,attr,optional"`
@@ -89,6 +90,7 @@ type Resolver struct {
 	IncludeFilePathResolved   bool `alloy:"include_file_path_resolved,attr,optional"`
 	IncludeFileOwnerName      bool `alloy:"include_file_owner_name,attr,optional"`
 	IncludeFileOwnerGroupName bool `alloy:"include_file_owner_group_name,attr,optional"`
+	IncludeFilePermissions    bool `alloy:"include_file_permissions,attr,optional"`
 }
 
 type MatchCriteria struct {
@@ -165,6 +167,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	cfg.InputConfig.StartAt = args.StartAt
 	cfg.InputConfig.FingerprintSize = helper.ByteSize(args.FingerprintSize)
 	cfg.InputConfig.MaxLogSize = helper.ByteSize(args.MaxLogSize)
+	if args.MaxLogSizeBehavior != "" {
+		cfg.InputConfig.MaxLogSizeBehavior = args.MaxLogSizeBehavior
+	}
 	cfg.InputConfig.Encoding = args.Encoding
 	cfg.InputConfig.FlushPeriod = args.FlushPeriod
 	cfg.InputConfig.DeleteAfterRead = args.DeleteAfterRead
