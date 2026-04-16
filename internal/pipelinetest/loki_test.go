@@ -52,7 +52,7 @@ func TestLokiPipeline(t *testing.T) {
 				}
 			`,
 			produce: func(t *testing.T, a *harness.Alloy) {
-				sink := harness.MustComponent[*harness.Source](t, a, "pipelinetest.source.in")
+				sink := harness.MustComponent[*harness.Source](a, "pipelinetest.source.in")
 				sink.SendEntries(
 					loki.NewEntry(model.LabelSet{"foo": "bar"}, push.Entry{
 						Timestamp: time.Date(2026, time.April, 14, 12, 53, 51, 470999516, time.Local),
@@ -125,9 +125,14 @@ func TestLokiPipeline(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			alloy := harness.NewAlloy(t, tt.config)
+			alloy, err := harness.NewAlloy(harness.Config{
+				DataPath: t.TempDir(),
+				Source:   tt.config,
+			})
+			require.NoError(t, err)
+			defer alloy.Stop()
 			tt.produce(t, alloy)
-			alloy.Assert(tt.assertions...)
+			require.NoError(t, alloy.Assert(tt.assertions...))
 		})
 	}
 }

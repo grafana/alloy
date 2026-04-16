@@ -2,13 +2,11 @@ package harness
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"sync"
-	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -21,27 +19,33 @@ import (
 
 const injected = `pipelinetest.sink "out" {}`
 
+type Config struct {
+	DataPath string
+	Source   string
+}
+
 // NewAlloy creates and starts an in-process Alloy runtime for pipeline tests.
 // It adds the pipelinetest sink component to cfg so tests can assert on
 // the resulting output while the rest of the pipeline is defined by cfg.
-func NewAlloy(t *testing.T, cfg string) *Alloy {
-	t.Helper()
-
+func NewAlloy(cfg Config) (*Alloy, error) {
 	logger, err := logging.New(io.Discard, logging.DefaultOptions)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
 	ctrl, err := alloyruntime.New(alloyruntime.Options{
 		Logger:       logger,
-		DataPath:     t.TempDir(),
+		DataPath:     cfg.DataPath,
 		MinStability: featuregate.StabilityExperimental,
 		Services:     defaultServices(logger),
 	})
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 
 	a := &Alloy{
-		t:      t,
 		ctrl:   ctrl,
 		cancel: cancel,
 	}
@@ -50,28 +54,34 @@ func NewAlloy(t *testing.T, cfg string) *Alloy {
 		ctrl.Run(ctx)
 	})
 
-	source, err := alloyruntime.ParseSource(t.Name(), []byte(injected+"\n"+cfg))
-	require.NoError(t, err)
+	source, err := alloyruntime.ParseSource("", []byte(injected+"\n"+cfg.Source))
+	if err != nil {
+		a.Stop()
+		return nil, err
+	}
 
 	err = ctrl.LoadSource(source, nil, "")
-	require.NoError(t, err)
+	if err != nil {
+		a.Stop()
+		return nil, err
+	}
 
-	require.Eventually(t, func() bool {
-		return ctrl.LoadComplete()
-	}, 2*time.Second, 50*time.Millisecond)
+	if err := eventually(func() error {
+		if ctrl.LoadComplete() {
+			return nil
+		}
+		return fmt.Errorf("runtime has not finished loading")
+	}, 2*time.Second, 50*time.Millisecond); err != nil {
+		a.Stop()
+		return nil, fmt.Errorf("timed out waiting for runtime to finish loading: %w", err)
+	}
 
-	a.sink = MustComponent[*Sink](t, a, "pipelinetest.sink.out")
+	a.sink = MustComponent[*Sink](a, "pipelinetest.sink.out")
 
-	t.Cleanup(func() {
-		a.cancel()
-		a.wg.Wait()
-	})
-
-	return a
+	return a, nil
 }
 
 type Alloy struct {
-	t      *testing.T
 	ctrl   *alloyruntime.Runtime
 	cancel func()
 	wg     sync.WaitGroup
@@ -79,26 +89,58 @@ type Alloy struct {
 	sink *Sink
 }
 
+func (a *Alloy) Stop() {
+	a.cancel()
+	a.wg.Wait()
+}
+
 // Assert evaluates the provided assertions against the current snapshot
 // until they all pass or the assertion timeout is reached.
-func (a *Alloy) Assert(assertions ...Assertion) {
-	a.t.Helper()
-
-	require.EventuallyWithT(a.t, func(c *assert.CollectT) {
+func (a *Alloy) Assert(assertions ...Assertion) error {
+	return eventually(func() error {
 		s := a.sink.snapshot()
+
+		errs := make([]error, 0, len(assertions))
 		for _, assertion := range assertions {
-			require.NoError(c, assertion(s))
+			if err := assertion(s); err != nil {
+				errs = append(errs, err)
+			}
 		}
+
+		if len(errs) == 0 {
+			return nil
+		}
+
+		return fmt.Errorf("assertions failed: %w", errors.Join(errs...))
 	}, time.Second, 50*time.Millisecond)
 }
 
-func MustComponent[T any](t *testing.T, a *Alloy, id string) T {
-	t.Helper()
-
+func MustComponent[T any](a *Alloy, id string) T {
 	info, err := a.ctrl.GetComponent(component.ParseID(id), component.InfoOptions{})
-	require.NoError(t, err)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get component %q: %v", id, err))
+	}
 
 	typed, ok := info.Component.(T)
-	require.Truef(t, ok, "component %q has type %T, want %T", id, info.Component, *new(T))
+	if !ok {
+		panic(fmt.Sprintf("component %q has type %T, want %T", id, info.Component, *new(T)))
+	}
 	return typed
+}
+
+func eventually(fn func() error, timeout, interval time.Duration) error {
+	deadline := time.Now().Add(timeout)
+
+	var lastErr error
+	for {
+		lastErr = fn()
+		if lastErr == nil {
+			return nil
+		}
+
+		if time.Now().After(deadline) {
+			return fmt.Errorf("timed out after %s: %w", timeout, lastErr)
+		}
+		time.Sleep(interval)
+	}
 }
