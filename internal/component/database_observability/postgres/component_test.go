@@ -26,6 +26,43 @@ import (
 	"github.com/grafana/loki/pkg/push"
 )
 
+func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error)) *Component {
+	t.Helper()
+	opts := cmp.Options{
+		ID:            "test",
+		Logger:        kitlog.NewNopLogger(),
+		OnStateChange: func(e cmp.Exports) {},
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
+		},
+	}
+	args := Arguments{
+		DataSourceName:    alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+		ForwardTo:         []loki.LogsReceiver{},
+		Targets:           []discovery.Target{},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+	c := &Component{
+		opts:         opts,
+		args:         args,
+		fanout:       loki.NewFanout(args.ForwardTo),
+		handler:      loki.NewLogsReceiver(),
+		registry:     prometheus.NewRegistry(),
+		healthErr:    atomic.NewString(""),
+		openSQL:      openSQL,
+		logsReceiver: loki.NewLogsReceiver(),
+	}
+	c.instanceKey = "test-instance"
+	c.baseTarget = discovery.NewTargetFromMap(map[string]string{
+		"instance": c.instanceKey,
+		"job":      "database_observability",
+	})
+	return c
+}
+
 func Test_enableOrDisableCollectors(t *testing.T) {
 	t.Run("nothing specified (default behavior)", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
@@ -643,6 +680,62 @@ func Test_connectAndStartCollectors(t *testing.T) {
 	})
 }
 
+type fakeClosableCollector struct {
+	prometheus.Collector
+	closeCalls int
+}
+
+func newFakeClosableCollector(name string) *fakeClosableCollector {
+	gauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: name,
+		Help: name,
+	})
+	return &fakeClosableCollector{Collector: gauge}
+}
+
+func (c *fakeClosableCollector) CloseServers() {
+	c.closeCalls++
+}
+
+func TestComponent_cleanupExporterCollectors(t *testing.T) {
+	t.Run("closes closable exporters and unregisters them", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		collector := newFakeClosableCollector("test_cleanup_exporter_collectors_closable")
+		require.NoError(t, registry.Register(collector))
+
+		c := &Component{
+			registry:           registry,
+			exporterCollectors: []prometheus.Collector{collector},
+		}
+
+		c.cleanupExporterCollectors()
+
+		assert.Equal(t, 1, collector.closeCalls)
+		assert.Nil(t, c.exporterCollectors)
+		assert.False(t, registry.Unregister(collector))
+	})
+
+	t.Run("unregisters non-closable collectors without panicking", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		collector := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "test_cleanup_exporter_collectors_plain",
+			Help: "test",
+		})
+		collector.Set(1)
+		require.NoError(t, registry.Register(collector))
+
+		c := &Component{
+			registry:           registry,
+			exporterCollectors: []prometheus.Collector{collector},
+		}
+
+		c.cleanupExporterCollectors()
+
+		assert.Nil(t, c.exporterCollectors)
+		assert.False(t, registry.Unregister(collector))
+	})
+}
+
 func TestPostgres_Reconnection(t *testing.T) {
 	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
@@ -671,25 +764,6 @@ func TestPostgres_Reconnection(t *testing.T) {
 	})
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
-		opts := cmp.Options{
-			ID:            "test",
-			Logger:        kitlog.NewNopLogger(),
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
-			},
-		}
-
-		args := Arguments{
-			DataSourceName:    alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
-			ForwardTo:         []loki.LogsReceiver{},
-			Targets:           []discovery.Target{},
-			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
-			HealthCheckArguments: HealthCheckArguments{
-				CollectInterval: 1 * time.Hour,
-			},
-		}
-
 		// First mock: will fail
 		db1, mock1, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 		require.NoError(t, err)
@@ -697,21 +771,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 
 		mock1.ExpectPing().WillReturnError(assert.AnError)
 
-		c := &Component{
-			opts:         opts,
-			args:         args,
-			fanout:       loki.NewFanout(args.ForwardTo),
-			handler:      loki.NewLogsReceiver(),
-			registry:     prometheus.NewRegistry(),
-			healthErr:    atomic.NewString(""),
-			openSQL:      func(_ string, _ string) (*sql.DB, error) { return db1, nil },
-			logsReceiver: loki.NewLogsReceiver(),
-		}
-		c.instanceKey = "test-instance"
-		c.baseTarget = discovery.NewTargetFromMap(map[string]string{
-			"instance": c.instanceKey,
-			"job":      "database_observability",
-		})
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db1, nil })
 
 		// First attempt: connection fails
 		err = c.tryReconnect(context.Background())
@@ -722,12 +782,10 @@ func TestPostgres_Reconnection(t *testing.T) {
 		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 		require.NoError(t, err)
 		defer db2.Close()
-
 		mock2.ExpectPing()
 		mock2.ExpectQuery(`SELECT.*system_identifier.*inet_server_addr.*inet_server_port.*version`).
 			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
 				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
-
 		c.openSQL = func(_ string, _ string) (*sql.DB, error) { return db2, nil }
 
 		// Second attempt: connection succeeds and clears error
@@ -737,44 +795,20 @@ func TestPostgres_Reconnection(t *testing.T) {
 	})
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
-		opts := cmp.Options{
-			ID:            "test",
-			Logger:        kitlog.NewNopLogger(),
-			OnStateChange: func(e cmp.Exports) {},
-			GetServiceData: func(name string) (any, error) {
-				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
-			},
-		}
-
-		args := Arguments{
-			DataSourceName:    alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
-			ForwardTo:         []loki.LogsReceiver{},
-			Targets:           []discovery.Target{},
-			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
-			HealthCheckArguments: HealthCheckArguments{
-				CollectInterval: 1 * time.Hour,
-			},
-		}
-
-		c, err := New(opts, args)
-		require.NoError(t, err)
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return nil, assert.AnError })
+		oldCollector := newFakeClosableCollector("test_run_cleanup_old_exporter")
+		require.NoError(t, c.registry.Register(oldCollector))
+		c.exporterCollectors = []prometheus.Collector{oldCollector}
 
 		ctx, cancel := context.WithCancel(context.Background())
-
-		runErr := make(chan error, 1)
-		go func() {
-			runErr <- c.Run(ctx)
-		}()
-
-		time.Sleep(100 * time.Millisecond)
 		cancel()
 
-		select {
-		case err := <-runErr:
-			assert.NoError(t, err)
-		case <-time.After(5 * time.Second):
-			t.Fatal("Run did not exit after context cancellation")
-		}
+		err := c.Run(ctx)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, oldCollector.closeCalls)
+		assert.Nil(t, c.exporterCollectors)
+		assert.False(t, c.registry.Unregister(oldCollector))
 	})
 }
 

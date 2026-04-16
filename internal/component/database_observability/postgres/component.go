@@ -291,6 +291,8 @@ func (c *Component) Run(ctx context.Context) error {
 			for _, collector := range c.collectors {
 				collector.Stop()
 			}
+			c.cleanupExporterCollectors()
+
 			if c.dbConnection != nil {
 				c.dbConnection.Close()
 			}
@@ -367,11 +369,24 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 	return nil
 }
 
+// cleanupExporterCollectors releases resources held by embedded exporter collectors.
+// Callers must hold c.mut.
+func (c *Component) cleanupExporterCollectors() {
+	for _, col := range c.exporterCollectors {
+		if closable, ok := col.(interface{ CloseServers() }); ok {
+			closable.CloseServers()
+		}
+		c.registry.Unregister(col)
+	}
+	c.exporterCollectors = nil
+}
+
 func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	if c.dbConnection != nil {
 		c.dbConnection.Close()
 		c.dbConnection = nil
 	}
+	c.cleanupExporterCollectors()
 
 	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
@@ -414,11 +429,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		}
 		cp = cloudProvider
 	}
-
-	for _, col := range c.exporterCollectors {
-		c.registry.Unregister(col)
-	}
-	c.exporterCollectors = nil
 
 	if len(c.args.Targets) == 0 {
 		if c.args.PrometheusExporter == nil {
