@@ -10,6 +10,11 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add the ability to set global.image.pullPolicy to update both Alloy and Config Reloader. (@petewall)
+
+
 1.7.0 (2026-04-01)
 ----------
 
