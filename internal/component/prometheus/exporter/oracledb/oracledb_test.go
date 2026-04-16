@@ -1,7 +1,3 @@
-// Tests for this package should use the same build tags as a normal Alloy build (see Makefile),
-// at least gore2regex. Example:
-//
-//	go test -tags='gore2regex' .
 package oracledb
 
 import (
