@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add `service.trafficDistribution` option to configure traffic distribution for the Service. (@Tolsto)
+
 1.7.0 (2026-04-01)
 ----------
 

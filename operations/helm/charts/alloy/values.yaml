@@ -484,6 +484,8 @@ service:
   clusterIP: ''
   # -- Value for internal traffic policy. 'Cluster' or 'Local'
   internalTrafficPolicy: Cluster
+  # -- Value for traffic distribution. Only takes effect on Kubernetes >=1.31
+  trafficDistribution: ''
   annotations: {}
     # cloud.google.com/load-balancer-type: Internal
 
