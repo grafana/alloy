@@ -32,15 +32,16 @@ func init() {
 }
 
 type S3DownloaderConfig struct {
-	Region              string `alloy:"region,attr,optional"`
-	S3Bucket            string `alloy:"s3_bucket,attr"`
-	S3Prefix            string `alloy:"s3_prefix,attr"`
-	S3PartitionFormat   string `alloy:"s3_partition_format,attr,optional"`
-	S3PartitionTimezone string `alloy:"s3_partition_timezone,attr,optional"`
-	FilePrefix          string `alloy:"file_prefix,attr,optional"`
-	Endpoint            string `alloy:"endpoint,attr,optional"`
-	EndpointPartitionID string `alloy:"endpoint_partition_id,attr,optional"`
-	S3ForcePathStyle    bool   `alloy:"s3_force_path_style,attr,optional"`
+	Region                  string `alloy:"region,attr,optional"`
+	S3Bucket                string `alloy:"s3_bucket,attr"`
+	S3Prefix                string `alloy:"s3_prefix,attr"`
+	S3PartitionFormat       string `alloy:"s3_partition_format,attr,optional"`
+	S3PartitionTimezone     string `alloy:"s3_partition_timezone,attr,optional"`
+	FilePrefix              string `alloy:"file_prefix,attr,optional"`
+	Endpoint                string `alloy:"endpoint,attr,optional"`
+	EndpointPartitionID     string `alloy:"endpoint_partition_id,attr,optional"`
+	S3ForcePathStyle        bool   `alloy:"s3_force_path_style,attr,optional"`
+	TagObjectAfterIngestion bool   `alloy:"tag_object_after_ingestion,attr,optional"`
 }
 
 type SQSConfig struct {
@@ -68,15 +69,16 @@ func ArgumentsFromConfig(cfg *awss3receiver.Config) Arguments {
 		StartTime: cfg.StartTime,
 		EndTime:   cfg.EndTime,
 		S3Downloader: S3DownloaderConfig{
-			Region:              cfg.S3Downloader.Region,
-			S3Bucket:            cfg.S3Downloader.S3Bucket,
-			S3Prefix:            cfg.S3Downloader.S3Prefix,
-			S3PartitionFormat:   cfg.S3Downloader.S3PartitionFormat,
-			S3PartitionTimezone: cfg.S3Downloader.S3PartitionTimezone,
-			FilePrefix:          cfg.S3Downloader.FilePrefix,
-			Endpoint:            cfg.S3Downloader.Endpoint,
-			EndpointPartitionID: cfg.S3Downloader.EndpointPartitionID,
-			S3ForcePathStyle:    cfg.S3Downloader.S3ForcePathStyle,
+			Region:                  cfg.S3Downloader.Region,
+			S3Bucket:                cfg.S3Downloader.S3Bucket,
+			S3Prefix:                cfg.S3Downloader.S3Prefix,
+			S3PartitionFormat:       cfg.S3Downloader.S3PartitionFormat,
+			S3PartitionTimezone:     cfg.S3Downloader.S3PartitionTimezone,
+			FilePrefix:              cfg.S3Downloader.FilePrefix,
+			Endpoint:                cfg.S3Downloader.Endpoint,
+			EndpointPartitionID:     cfg.S3Downloader.EndpointPartitionID,
+			S3ForcePathStyle:        cfg.S3Downloader.S3ForcePathStyle,
+			TagObjectAfterIngestion: cfg.S3Downloader.TagObjectAfterIngestion,
 		},
 	}
 
@@ -105,15 +107,16 @@ func (args Arguments) receiverConfig() *awss3receiver.Config {
 		StartTime: args.StartTime,
 		EndTime:   args.EndTime,
 		S3Downloader: awss3receiver.S3DownloaderConfig{
-			Region:              args.S3Downloader.Region,
-			S3Bucket:            args.S3Downloader.S3Bucket,
-			S3Prefix:            args.S3Downloader.S3Prefix,
-			S3PartitionFormat:   args.S3Downloader.S3PartitionFormat,
-			S3PartitionTimezone: args.S3Downloader.S3PartitionTimezone,
-			FilePrefix:          args.S3Downloader.FilePrefix,
-			Endpoint:            args.S3Downloader.Endpoint,
-			EndpointPartitionID: args.S3Downloader.EndpointPartitionID,
-			S3ForcePathStyle:    args.S3Downloader.S3ForcePathStyle,
+			Region:                  args.S3Downloader.Region,
+			S3Bucket:                args.S3Downloader.S3Bucket,
+			S3Prefix:                args.S3Downloader.S3Prefix,
+			S3PartitionFormat:       args.S3Downloader.S3PartitionFormat,
+			S3PartitionTimezone:     args.S3Downloader.S3PartitionTimezone,
+			FilePrefix:              args.S3Downloader.FilePrefix,
+			Endpoint:                args.S3Downloader.Endpoint,
+			EndpointPartitionID:     args.S3Downloader.EndpointPartitionID,
+			S3ForcePathStyle:        args.S3Downloader.S3ForcePathStyle,
+			TagObjectAfterIngestion: args.S3Downloader.TagObjectAfterIngestion,
 		},
 	}
 

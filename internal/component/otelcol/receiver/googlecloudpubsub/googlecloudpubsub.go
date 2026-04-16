@@ -30,22 +30,31 @@ func init() {
 }
 
 type Arguments struct {
-	ProjectID           string        `alloy:"project,attr,optional"`
-	UserAgent           string        `alloy:"user_agent,attr,optional"`
-	Endpoint            string        `alloy:"endpoint,attr,optional"`
-	Insecure            bool          `alloy:"insecure,attr,optional"`
-	Subscription        string        `alloy:"subscription,attr"`
-	Encoding            string        `alloy:"encoding,attr,optional"`
-	Compression         string        `alloy:"compression,attr,optional"`
-	IgnoreEncodingError bool          `alloy:"ignore_encoding_error,attr,optional"`
-	ClientID            string        `alloy:"client_id,attr,optional"`
-	Timeout             time.Duration `alloy:"timeout,attr,optional"`
+	ProjectID           string          `alloy:"project,attr,optional"`
+	UserAgent           string          `alloy:"user_agent,attr,optional"`
+	Endpoint            string          `alloy:"endpoint,attr,optional"`
+	Insecure            bool            `alloy:"insecure,attr,optional"`
+	Subscription        string          `alloy:"subscription,attr"`
+	Encoding            string          `alloy:"encoding,attr,optional"`
+	Compression         string          `alloy:"compression,attr,optional"`
+	IgnoreEncodingError bool            `alloy:"ignore_encoding_error,attr,optional"`
+	ClientID            string          `alloy:"client_id,attr,optional"`
+	Timeout             time.Duration   `alloy:"timeout,attr,optional"`
+	FlowControl         FlowControlConfig `alloy:"flow_control,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+}
+
+// FlowControlConfig replicates googlecloudpubsubreceiver.FlowControlConfig.
+type FlowControlConfig struct {
+	TriggerAckBatchDuration time.Duration `alloy:"trigger_ack_batch_duration,attr,optional"`
+	StreamAckDeadline       time.Duration `alloy:"stream_ack_deadline,attr,optional"`
+	MaxOutstandingMessages  int64         `alloy:"max_outstanding_messages,attr,optional"`
+	MaxOutstandingBytes     int64         `alloy:"max_outstanding_bytes,attr,optional"`
 }
 
 var (
@@ -95,6 +104,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		ClientID:            args.ClientID,
 		TimeoutSettings: exporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
+		},
+		FlowControlConfig: googlecloudpubsubreceiver.FlowControlConfig{
+			TriggerAckBatchDuration: args.FlowControl.TriggerAckBatchDuration,
+			StreamAckDeadline:       args.FlowControl.StreamAckDeadline,
+			MaxOutstandingMessages:  args.FlowControl.MaxOutstandingMessages,
+			MaxOutstandingBytes:     args.FlowControl.MaxOutstandingBytes,
 		},
 	}
 
