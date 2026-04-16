@@ -336,7 +336,8 @@ func TestPackStage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := util.TestAlloyLogger(t)
-			m := newPackStage(logger, *tt.config, prometheus.DefaultRegisterer)
+			m, err := newPackStage(logger, *tt.config, prometheus.DefaultRegisterer)
+			require.NoError(t, err)
 			// Normal pipeline operation will put all the labels into the extracted map
 			// replicate that here.
 			for labelName, labelValue := range tt.inputEntry.Labels {

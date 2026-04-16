@@ -87,9 +87,14 @@ func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheu
 		dropReason = config.DropReason
 	}
 
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register drop count metric: %w", err)
+	}
+
 	return &matcherStage{
 		dropReason: dropReason,
-		dropCount:  getDropCountMetric(registerer),
+		dropCount:  dropCount,
 		matchers:   selector.Matchers(),
 		pipeline:   pl,
 		action:     config.Action,
@@ -97,23 +102,20 @@ func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheu
 	}, nil
 }
 
-func getDropCountMetric(registerer prometheus.Registerer) *prometheus.CounterVec {
+func getDropCountMetric(registerer prometheus.Registerer) (*prometheus.CounterVec, error) {
 	dropCount := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_process_dropped_lines_total",
 		Help: "A count of all log lines dropped as a result of a pipeline stage",
 	}, []string{"reason"})
 	err := registerer.Register(dropCount)
 	if err != nil {
-		// TODO: This code should neither panic nor use AlreadyRegisteredError.
-		//       Register it without these, and return error if it fails.
 		if existing, ok := err.(prometheus.AlreadyRegisteredError); ok {
 			dropCount = existing.ExistingCollector.(*prometheus.CounterVec)
 		} else {
-			// Same behavior as MustRegister if the error is not for AlreadyRegistered
-			panic(err)
+			return nil, err
 		}
 	}
-	return dropCount
+	return dropCount, nil
 }
 
 // matcherStage applies Label matchers to determine if the include stages should be run

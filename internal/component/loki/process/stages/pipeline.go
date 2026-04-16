@@ -65,10 +65,15 @@ func NewPipeline(logger log.Logger, stages []StageConfig, registerer prometheus.
 		}
 		st = append(st, newStage)
 	}
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register drop count metric: %w", err)
+	}
+
 	return &Pipeline{
 		logger:    log.With(logger, "component", "pipeline"),
 		stages:    st,
-		dropCount: getDropCountMetric(registerer),
+		dropCount: dropCount,
 	}, nil
 }
 
