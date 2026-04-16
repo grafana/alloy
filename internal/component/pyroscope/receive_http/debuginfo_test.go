@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
@@ -71,6 +72,7 @@ func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downst
 		DebuginfoServiceClient: connectClient,
 		HTTPClient:             server.Client(),
 		BaseURL:                server.URL,
+		UploadTimeout:          2 * time.Minute,
 	}
 }
 
@@ -93,7 +95,9 @@ func (d *debuginfoAppendable) DebugInfoClients() []debuginfo.Client {
 func startProxyServer(t *testing.T, appendables []pyroscope.Appendable) (debuginfov1alpha1connect.DebuginfoServiceClient, *httptest.Server) {
 	t.Helper()
 	comp := &Component{
-		appendables: appendables,
+		appendables:            appendables,
+		logger:                 log.NewNopLogger(),
+		debugInfoUploadTimeout: 2 * time.Minute,
 	}
 	router := mux.NewRouter()
 	debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(router, comp)

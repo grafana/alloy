@@ -85,6 +85,7 @@ type uploadResult struct {
 	data    []byte
 }
 
+// TODO remove this, do not mERGE
 // testDebugInfoClient implements DebugInfoClient by embedding a connect client
 // and doing the HTTP POST upload via an httpClient + baseURL.
 type testDebugInfoClient struct {

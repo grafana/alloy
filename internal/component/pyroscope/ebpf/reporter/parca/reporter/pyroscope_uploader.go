@@ -256,8 +256,8 @@ func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client Debu
 
 	l := log.With(u.logger,
 		"file_name", fileName,
-		"file_id", fileID,
-		"build_id", buildID,
+		"otel_file_id", fileID,
+		"gnu_build_id", buildID,
 	)
 
 	level.Debug(l).Log("msg", "ShouldInitiateUpload result",

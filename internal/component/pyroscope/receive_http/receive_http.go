@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -46,24 +47,28 @@ func init() {
 type Arguments struct {
 	Server    *fnet.ServerConfig     `alloy:",squash"`
 	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
+
+	DebugInfoUploadTimeout time.Duration `alloy:"debug_info_upload_timeout,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
-		Server: fnet.DefaultServerConfig(),
+		Server:                 fnet.DefaultServerConfig(),
+		DebugInfoUploadTimeout: 2 * time.Minute,
 	}
 	a.Server.HTTP.ConnLimit = 64 / 4 * 1024
 }
 
 type Component struct {
-	server             *fnet.TargetServer
-	serverConfig       *fnet.HTTPConfig
-	uncheckedCollector *util.UncheckedCollector
-	appendables        []pyroscope.Appendable
-	mut                sync.Mutex
-	logger             log.Logger
-	tracer             trace.Tracer
+	server                 *fnet.TargetServer
+	serverConfig           *fnet.HTTPConfig
+	uncheckedCollector     *util.UncheckedCollector
+	appendables            []pyroscope.Appendable
+	debugInfoUploadTimeout time.Duration
+	mut                    sync.Mutex
+	logger                 log.Logger
+	tracer                 trace.Tracer
 }
 
 func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, args Arguments) (*Component, error) {
@@ -110,6 +115,7 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 	defer c.mut.Unlock()
 
 	c.appendables = newArgs.ForwardTo
+	c.debugInfoUploadTimeout = newArgs.DebugInfoUploadTimeout
 
 	serverNeedsRestarting := !reflect.DeepEqual(c.serverConfig, newArgs.Server.HTTP)
 	if !serverNeedsRestarting {

@@ -37,9 +37,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-const SchemeHTTPS = "https"
-const SchemeHTTP = "http"
-
 var (
 	DefaultArguments = func() Arguments {
 		return Arguments{
@@ -72,23 +69,25 @@ func (rc *Arguments) SetToDefault() {
 // EndpointOptions describes an individual location for where profiles
 // should be delivered to using the Pyroscope push API.
 type EndpointOptions struct {
-	Name              string                   `alloy:"name,attr,optional"`
-	URL               string                   `alloy:"url,attr"`
-	RemoteTimeout     time.Duration            `alloy:"remote_timeout,attr,optional"`
-	Headers           map[string]string        `alloy:"headers,attr,optional"`
-	HTTPClientConfig  *config.HTTPClientConfig `alloy:",squash"`
-	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
-	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
-	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	Name                   string                   `alloy:"name,attr,optional"`
+	URL                    string                   `alloy:"url,attr"`
+	RemoteTimeout          time.Duration            `alloy:"remote_timeout,attr,optional"`
+	DebugInfoUploadTimeout time.Duration            `alloy:"debug_info_upload_timeout,attr,optional"`
+	Headers                map[string]string        `alloy:"headers,attr,optional"`
+	HTTPClientConfig       *config.HTTPClientConfig `alloy:",squash"`
+	MinBackoff             time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff             time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries      int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
 	defaultEndpointOptions := EndpointOptions{
-		RemoteTimeout:     10 * time.Second,
-		MinBackoff:        500 * time.Millisecond,
-		MaxBackoff:        5 * time.Minute,
-		MaxBackoffRetries: 10,
-		HTTPClientConfig:  config.CloneDefaultHTTPClientConfig(),
+		RemoteTimeout:             10 * time.Second,
+		DebugInfoUploadTimeout:    2 * time.Minute,
+		MinBackoff:                500 * time.Millisecond,
+		MaxBackoff:                5 * time.Minute,
+		MaxBackoffRetries:         10,
+		HTTPClientConfig:          config.CloneDefaultHTTPClientConfig(),
 	}
 
 	return defaultEndpointOptions
@@ -282,6 +281,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 			DebuginfoServiceClient: debugInfoConnect,
 			HTTPClient:             httpClient,
 			BaseURL:                endpoint.URL,
+			UploadTimeout:          endpoint.DebugInfoUploadTimeout,
 		}
 		debugInfo := debuginfo.NewUploader(logger, dic, metrics.debugInfoUploadBytes, endpointDataPath)
 
@@ -754,11 +754,15 @@ func validateLabels(lbls labels.Labels) error {
 
 type DebugInfoClient struct {
 	debuginfov1alpha1connect.DebuginfoServiceClient
-	HTTPClient *http.Client
-	BaseURL    string
+	HTTPClient    *http.Client
+	BaseURL       string
+	UploadTimeout time.Duration
 }
 
 func (c *DebugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
+	ctx, cancel := context.WithTimeout(ctx, c.UploadTimeout)
+	defer cancel()
+	t1 := time.Now()
 	uploadURL := strings.TrimRight(c.BaseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
 	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
 	if err != nil {
@@ -771,7 +775,7 @@ func (c *DebugInfoClient) Upload(ctx context.Context, buildID string, body io.Re
 	_, _ = io.Copy(io.Discard, resp.Body)
 	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upload: HTTP %d", resp.StatusCode)
+		return fmt.Errorf("upload: HTTP %d (duration %s)", resp.StatusCode, time.Since(t1))
 	}
 	return nil
 }
