@@ -1638,6 +1638,7 @@ func TestOAuth2WithFile(t *testing.T) {
 
 	secretFile, err := os.CreateTemp(t.TempDir(), "oauth2_secret")
 	require.NoError(t, err)
+	defer func() { require.NoError(t, secretFile.Close()) }()
 
 	yamlConfig := fmt.Sprintf(`
 client_id: 1
