@@ -2,7 +2,6 @@ package harness
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -100,7 +99,7 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 	return eventually(func() error {
 		s := a.sink.snapshot()
 
-		errs := make([]error, 0, len(assertions))
+		errs := make(AssertionErrors, 0, len(assertions))
 		for _, assertion := range assertions {
 			if err := assertion(s); err != nil {
 				errs = append(errs, err)
@@ -111,7 +110,7 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 			return nil
 		}
 
-		return fmt.Errorf("assertions failed: %w", errors.Join(errs...))
+		return errs
 	}, time.Second, 50*time.Millisecond)
 }
 
@@ -139,7 +138,7 @@ func eventually(fn func() error, timeout, interval time.Duration) error {
 		}
 
 		if time.Now().After(deadline) {
-			return fmt.Errorf("timed out after %s: %w", timeout, lastErr)
+			return lastErr
 		}
 		time.Sleep(interval)
 	}

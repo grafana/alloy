@@ -3,6 +3,7 @@ package harness
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -11,6 +12,30 @@ import (
 )
 
 type Assertion func(s snapshot) error
+
+type AssertionError struct {
+	Kind    string
+	Message string
+}
+
+func (e AssertionError) Error() string {
+	if e.Kind == "" {
+		return e.Message
+	}
+	return e.Kind + ": " + e.Message
+}
+
+type AssertionErrors []error
+
+func (e AssertionErrors) Error() string {
+	var builder strings.Builder
+	for _, err := range e {
+		builder.WriteString("- ")
+		builder.WriteString(err.Error())
+		builder.WriteByte('\n')
+	}
+	return strings.TrimSuffix(builder.String(), "\n")
+}
 
 // LokiEntryMatch returns an Assertion that passes when the snapshot contains
 // at least one Loki entry exactly matching want.
@@ -28,7 +53,10 @@ func LokiEntryMatch(want loki.Entry) Assertion {
 func LokiEntryCount(want int) Assertion {
 	return func(s snapshot) error {
 		if want != len(s.loki) {
-			return fmt.Errorf("unexpected entry count: want=%d got=%d", want, len(s.loki))
+			return AssertionError{
+				Kind:    "loki.entry_count",
+				Message: fmt.Sprintf("want %d, got %d", want, len(s.loki)),
+			}
 		}
 		return nil
 	}
@@ -50,7 +78,10 @@ func LokiHasEntry(matchers ...EntryMatcher) Assertion {
 				return nil
 			}
 		}
-		return fmt.Errorf("matching entry not found: got=%#v", s.loki)
+		return AssertionError{
+			Kind:    "loki.has_entry",
+			Message: "no matching entry found",
+		}
 	}
 }
 

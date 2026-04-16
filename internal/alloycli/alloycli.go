@@ -25,6 +25,7 @@ func Command() *cobra.Command {
 		convertCommand(),
 		fmtCommand(),
 		RunCommand(),
+		testCommand(),
 		toolsCommand(),
 		validateCommand(),
 	)
