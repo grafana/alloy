@@ -40,12 +40,12 @@ func Test_defaultExclusions(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{
-		"rdsadmin",
-		"cloudsqladmin",
-		"azure_sys",
-		"azure_maintenance",
 		"alloydbadmin",
 		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
 	}, args.ExcludeSchemas)
 }
 
