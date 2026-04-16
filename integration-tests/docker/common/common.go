@@ -18,12 +18,12 @@ type Unmarshaler interface {
 const (
 	DefaultRetryInterval = 100 * time.Millisecond
 
-	// Timeout to use if no -timeout is provided to go test.
-	defaultTimeout = 10 * time.Minute
+	// Default timeout for polling/assertions if no -timeout is provided to go test.
+	defaultTimeout = 120 * time.Second
 
 	// Timeout padding to subtract from the time left until the go test -timeout deadline.
 	// This makes sure that polling/assertions fail before the process watchdog kills the test.
-	timeoutPadding = 30 * time.Second
+	timeoutPadding = 15 * time.Second
 )
 
 func FetchDataFromURL(url string, target Unmarshaler) (string, error) {
@@ -131,6 +131,10 @@ func isStatefulFromEnv() (bool, error) {
 	}
 
 	return isStateful, nil
+}
+
+func DefaultProcessTimeout() time.Duration {
+	return defaultTimeout + timeoutPadding
 }
 
 // TestTimeout returns how long polling helpers should keep retrying. When the

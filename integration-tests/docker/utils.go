@@ -259,7 +259,6 @@ func setupTestCommand(testDir string, testTimeout time.Duration) *exec.Cmd {
 	testCmd := exec.Command("go", "test", "-tags", "alloyintegrationtests", "-timeout", testTimeout.String())
 	testCmd.Dir = testDir
 
-	testCmd.Env = append(testCmd.Environ(), fmt.Sprintf("%s=%s", common.TestTimeout, testTimeout.String()))
 	return testCmd
 }
 
