@@ -92,6 +92,8 @@ type Arguments struct {
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	IncludeInstrumentationScope []string `alloy:"include_instrumentation_scope,attr,optional"`
+
+	EnableMetricsSamplingMethod bool `alloy:"enable_metrics_sampling_method,attr,optional"`
 }
 
 var (
@@ -213,6 +215,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Exemplars:                    *args.Exemplars.Convert(),
 		Events:                       args.Events.Convert(),
 		IncludeInstrumentationScope:  args.IncludeInstrumentationScope,
+		EnableMetricsSamplingMethod:  args.EnableMetricsSamplingMethod,
 	}, nil
 }
 

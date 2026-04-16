@@ -62,6 +62,9 @@ func (args Arguments) ConvertClient() (otelcomponent.Config, error) {
 		if h.Value != nil {
 			upstreamHeader.Value = &h.Value.Value
 		}
+		if h.ValueFile != nil {
+			upstreamHeader.ValueFile = h.ValueFile
+		}
 		if h.FromContext != nil {
 			upstreamHeader.FromContext = h.FromContext
 		}
@@ -163,6 +166,7 @@ func (a *Action) UnmarshalText(text []byte) error {
 type Header struct {
 	Key           string                     `alloy:"key,attr"`
 	Value         *alloytypes.OptionalSecret `alloy:"value,attr,optional"`
+	ValueFile     *string                    `alloy:"value_file,attr,optional"`
 	FromContext   *string                    `alloy:"from_context,attr,optional"`
 	FromAttribute *string                    `alloy:"from_attribute,attr,optional"`
 	Action        Action                     `alloy:"action,attr,optional"`
@@ -190,6 +194,9 @@ func (h *Header) Validate() error {
 	if h.Value != nil {
 		sources++
 	}
+	if h.ValueFile != nil {
+		sources++
+	}
 	if h.FromContext != nil {
 		sources++
 	}
@@ -201,9 +208,9 @@ func (h *Header) Validate() error {
 	case h.Key == "":
 		return fmt.Errorf("key must be set to a non-empty string")
 	case sources == 0:
-		return fmt.Errorf("one of value, from_context, or from_attribute must be provided")
+		return fmt.Errorf("one of value, value_file, from_context, or from_attribute must be provided")
 	case sources > 1:
-		return fmt.Errorf("only one of value, from_context, or from_attribute may be provided")
+		return fmt.Errorf("only one of value, value_file, from_context, or from_attribute may be provided")
 	}
 
 	return nil

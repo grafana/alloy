@@ -93,6 +93,7 @@ type AssumeRole struct {
 	ARN         string `alloy:"arn,attr,optional"`
 	SessionName string `alloy:"session_name,attr,optional"`
 	STSRegion   string `alloy:"sts_region,attr,optional"`
+	ExternalID  string `alloy:"external_id,attr,optional"`
 }
 
 // Convert converts args into the upstream type.
@@ -105,5 +106,6 @@ func (args *AssumeRole) Convert() *sigv4authextension.AssumeRole {
 		ARN:         args.ARN,
 		SessionName: args.SessionName,
 		STSRegion:   args.STSRegion,
+		ExternalID:  args.ExternalID,
 	}
 }
