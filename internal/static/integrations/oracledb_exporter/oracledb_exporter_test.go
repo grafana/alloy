@@ -41,3 +41,22 @@ func TestConfig_InstanceKey(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "localhost:1521", id)
 }
+
+func TestConfig_InstanceKey_multipleUsesDefaultKey(t *testing.T) {
+	c := Config{
+		Databases: []DatabaseInstance{
+			{Name: "a", ConnectionString: "localhost:1521/a"},
+			{Name: "b", ConnectionString: "localhost:1521/b"},
+		},
+	}
+	id, err := c.InstanceKey("component-id")
+	require.NoError(t, err)
+	require.Equal(t, "component-id", id)
+}
+
+func TestNormalizeConnectionString_oracleURL(t *testing.T) {
+	u, user, pass := NormalizeConnectionString("oracle://u:p@host:1521/svc", "", "")
+	require.Equal(t, "host:1521/svc", u)
+	require.Equal(t, "u", user)
+	require.Equal(t, "p", pass)
+}
