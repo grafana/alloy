@@ -376,9 +376,9 @@ func NewDefaultArguments() Arguments {
 		DebugInfoArguments: debuginfo.Arguments{
 			UploadEnabled:                false,
 			OnTargetSymbolizationEnabled: true,
-			CacheSize:                    1024,
-			QueueSize:                    64,
-			WorkerNum:                    4,
+			CacheSize:                    262144,
+			QueueSize:                    256,
+			WorkerNum:                    16,
 		},
 	}
 }
