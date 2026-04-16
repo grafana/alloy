@@ -328,6 +328,8 @@ jobs:
             ## Git and PR workflow
 
             - Create a branch named `agent/bump-beyla-${{ inputs.beyla_release_tag }}`
+            - **Do not stage or commit files under `.github/agent-output/`.**
+              Before committing, run `git reset HEAD .github/agent-output` (if staged) and add `.github/agent-output/` to `.git/info/exclude`.
             - Commit with message `chore(beyla): Bump to ${{ inputs.beyla_release_tag }}`
             - Push the branch to `origin`
             - Open a **draft PR** against `${{ inputs.source_ref }}`
@@ -337,6 +339,21 @@ jobs:
             - the Beyla version bump
             - the OBI replacement bump
             - any newly mapped Beyla fields
+
+            ## Dependency review notice
+
+            After committing, check `git diff ${{ inputs.source_ref }}...HEAD -- go.mod collector/go.mod` for changes to `prometheus` or `opentelemetry` modules **other than** `github.com/grafana/opentelemetry-ebpf-instrumentation` (OBI).
+
+            If any such modules were added, removed, or had their version changed, add the following section to the **top** of the PR body:
+
+            ```
+            > [!CAUTION]
+            > **Maintainer review required** — this bump updates prometheus and/or opentelemetry
+            > dependencies beyond OBI. These transitive changes may affect other components or
+            > the release cycle. Please review the full `go.mod` diff carefully.
+            ```
+
+            List the affected modules and their version changes in that section.
 
             Do not force-push. Do not open a non-draft PR.
 
