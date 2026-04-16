@@ -28,6 +28,27 @@ import (
 	"github.com/grafana/loki/pkg/push"
 )
 
+func Test_defaultExclusions(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"rdsadmin",
+		"cloudsqladmin",
+		"azure_sys",
+		"azure_maintenance",
+		"alloydbadmin",
+		"alloydbmetadata",
+	}, args.ExcludeSchemas)
+}
+
 func Test_disableQueryRedaction(t *testing.T) {
 	t.Run("enable sql text when provided", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `

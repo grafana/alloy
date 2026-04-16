@@ -163,7 +163,7 @@ func (a *PrometheusExporterArguments) Validate() error {
 }
 
 var DefaultArguments = Arguments{
-	ExcludeSchemas:                []string{},
+	ExcludeSchemas:                database_observability.DefaultExcludedSchemas(),
 	AllowUpdatePerfSchemaSettings: false,
 
 	QueryDetailsArguments: QueryDetailsArguments{

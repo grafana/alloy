@@ -63,6 +63,34 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	return c
 }
 
+func Test_defaultExclusions(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"rdsadmin",
+		"cloudsqladmin",
+		"azure_sys",
+		"azure_maintenance",
+		"alloydbadmin",
+		"alloydbmetadata",
+	}, args.ExcludeDatabases)
+
+	assert.Equal(t, []string{
+		"db-o11y",
+		"rdsadmin",
+		"cloudsqladmin",
+		"azuresu",
+	}, args.ExcludeUsers)
+}
+
 func Test_enableOrDisableCollectors(t *testing.T) {
 	t.Run("nothing specified (default behavior)", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `

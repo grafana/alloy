@@ -121,8 +121,8 @@ type SchemaDetailsArguments struct {
 }
 
 var DefaultArguments = Arguments{
-	ExcludeDatabases: []string{},
-	ExcludeUsers:     []string{},
+	ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
+	ExcludeUsers:     database_observability.DefaultExcludedUsers(),
 	QuerySampleArguments: QuerySampleArguments{
 		CollectInterval:       15 * time.Second,
 		DisableQueryRedaction: false,
