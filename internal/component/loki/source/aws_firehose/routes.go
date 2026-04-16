@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"crypto/subtle"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -118,7 +119,6 @@ func (r *firehoseRoute) Logs(req *http.Request, cfg *source.LogsConfig) ([]loki.
 		case originCloudwatchLogs:
 			recordEntries, err := r.handleCloudwatchLogsRecord(decodedRecord, commonLabels.Labels(), ts, created, cfg)
 			if err != nil {
-				r.metrics.IncRecordError(getReason(err))
 				continue
 			}
 			entries = append(entries, recordEntries...)
@@ -172,10 +172,8 @@ func postProcessLabels(lbs labels.Labels, cfg *source.LogsConfig) model.LabelSet
 func (r *firehoseRoute) handleCloudwatchLogsRecord(data []byte, commonLabels labels.Labels, timestamp, created time.Time, cfg *source.LogsConfig) ([]loki.Entry, error) {
 	var cwRecord cwLogsRecord
 	if err := json.Unmarshal(data, &cwRecord); err != nil {
-		return nil, errWithReason{
-			err:    err,
-			reason: "cw-json-decode",
-		}
+		r.metrics.IncRecordError("cw-json-decode")
+		return nil, err
 	}
 
 	cwLogsLabels := labels.NewBuilder(commonLabels)
@@ -272,19 +270,11 @@ func (r *firehoseRoute) tryToGetStaticLabelsFromRequest(req *http.Request, tenan
 	return staticLabels
 }
 
-type errWithReason struct {
-	err    error
-	reason string
-}
-
-func (e errWithReason) Error() string {
-	return fmt.Sprintf("%s: %s", e.reason, e.err.Error())
-}
-
 func getReason(err error) string {
-	er, ok := err.(errWithReason)
-	if ok {
-		return er.reason
+	if errors.Is(err, errBase64Decode) {
+		return "base64-decode"
+	} else if errors.Is(err, errGZIPDeflate) {
+		return "gzip-deflate"
 	}
 	return "unknown"
 }

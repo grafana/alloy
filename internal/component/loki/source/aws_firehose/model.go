@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -54,16 +55,18 @@ const (
 	originCloudwatchLogs recordOrigin = "cloudwatch-logs"
 )
 
+var (
+	errGZIPDeflate  = errors.New("failed to deflate record")
+	errBase64Decode = errors.New("failed to base64 decode record")
+)
+
 // decodeRecord base64-decodes Firehose record data and classifies the payload
 // by format: plain decoded bytes are treated as Direct PUT records, while
 // gzip-compressed decoded bytes are treated as CloudWatch Logs envelopes.
 func decodeRecord(rec string) ([]byte, recordOrigin, error) {
 	decodedRec, err := base64.StdEncoding.DecodeString(rec)
 	if err != nil {
-		return nil, originUnknown, errWithReason{
-			err:    err,
-			reason: "base64-decode",
-		}
+		return nil, originUnknown, fmt.Errorf("%w: %w", errBase64Decode, err)
 	}
 
 	if !isGzipPayload(decodedRec) {
@@ -78,10 +81,7 @@ func decodeRecord(rec string) ([]byte, recordOrigin, error) {
 
 	var b bytes.Buffer
 	if _, err := io.Copy(&b, reader); err != nil {
-		return nil, originCloudwatchLogs, errWithReason{
-			err:    err,
-			reason: "gzip-deflate",
-		}
+		return nil, originCloudwatchLogs, fmt.Errorf("%w: %w", errGZIPDeflate, err)
 	}
 
 	return b.Bytes(), originCloudwatchLogs, nil
