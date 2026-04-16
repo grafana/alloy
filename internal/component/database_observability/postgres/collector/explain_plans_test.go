@@ -3071,7 +3071,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			jsonData := jsonFile.Data
 
 			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
-			mock.ExpectExec("PREPARE explain_plan_123456 AS "+dupParamQuery).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS " + dupParamQuery).WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null,null,null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
