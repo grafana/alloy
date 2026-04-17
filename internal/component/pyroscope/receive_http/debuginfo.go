@@ -28,21 +28,12 @@ func (c *Component) getDebugInfoClients() []*debuginfoclient.Client {
 func (c *Component) firstClient() (*debuginfoclient.Client, error) {
 	clients := c.getDebugInfoClients()
 	if len(clients) == 0 {
-		err := fmt.Errorf("no downstream endpoints available")
-		_ = level.Error(c.logger).Log("pyroscope_proxy", "debuginfo", "error", err)
-		return nil, err
+		return nil, fmt.Errorf("no downstream endpoints available")
 	}
 	return clients[0], nil
 }
 
 func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (res *connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], err error) {
-	defer func() {
-		c.metrics.debugInfoDownstreamCalls.WithLabelValues("ShouldInitiateUpload", callResult(err)).Inc()
-	}()
-	client, err := c.firstClient()
-	if err != nil {
-		return nil, connect.NewError(connect.CodeUnavailable, err)
-	}
 	l := log.With(c.logger,
 		"pyroscope_proxy", "debuginfo",
 		"method", "ShouldInitiateUpload DS",
@@ -51,36 +42,42 @@ func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Reque
 		"go_build_id", req.Msg.File.GoBuildId,
 		"otel_file_id", req.Msg.File.OtelFileId,
 	)
-	res, err = client.ShouldInitiateUpload(ctx, connect.NewRequest(req.Msg.CloneVT()))
-	if err != nil {
-		_ = level.Error(l).Log("err", err)
-	} else {
-		_ = level.Debug(l).Log("result", res.Msg.ShouldInitiateUpload, "reason", res.Msg.Reason)
-	}
-
-	return res, err
-}
-
-func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (res *connect.Response[debuginfov1alpha1.UploadFinishedResponse], err error) {
 	defer func() {
-		c.metrics.debugInfoDownstreamCalls.WithLabelValues("UploadFinished", callResult(err)).Inc()
+		c.metrics.debugInfoDownstreamCalls.WithLabelValues("ShouldInitiateUpload", callResult(err)).Inc()
+		if err != nil {
+			_ = level.Error(l).Log("err", err)
+		} else {
+			_ = level.Debug(l).Log("result", res.Msg.ShouldInitiateUpload, "reason", res.Msg.Reason)
+		}
 	}()
+
 	client, err := c.firstClient()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
+	return client.ShouldInitiateUpload(ctx, connect.NewRequest(req.Msg.CloneVT()))
+}
+
+func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (res *connect.Response[debuginfov1alpha1.UploadFinishedResponse], err error) {
 	l := log.With(c.logger,
 		"pyroscope_proxy", "debuginfo",
 		"method", "UploadFinished DS",
 		"gnu_build_id", req.Msg.GnuBuildId,
 	)
-	res, err = client.UploadFinished(ctx, connect.NewRequest(req.Msg.CloneVT()))
+	defer func() {
+		c.metrics.debugInfoDownstreamCalls.WithLabelValues("UploadFinished", callResult(err)).Inc()
+		if err != nil {
+			_ = level.Error(l).Log("err", err)
+		} else {
+			_ = level.Debug(l).Log("result", "ok")
+		}
+	}()
+
+	client, err := c.firstClient()
 	if err != nil {
-		_ = level.Error(l).Log("err", err)
-	} else {
-		_ = level.Debug(l).Log("result", "ok")
+		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
-	return res, err
+	return client.UploadFinished(ctx, connect.NewRequest(req.Msg.CloneVT()))
 }
 
 func callResult(err error) string {
@@ -92,9 +89,21 @@ func callResult(err error) string {
 
 func (c *Component) UploadHTTPHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gnuBuildID := mux.Vars(r)["gnu_build_id"]
+		l := log.With(c.logger,
+			"pyroscope_proxy", "debuginfo",
+			"method", "Upload DS",
+			"gnu_build_id", gnuBuildID,
+		)
+
 		var err error
 		defer func() {
 			c.metrics.debugInfoDownstreamCalls.WithLabelValues("Upload", callResult(err)).Inc()
+			if err != nil {
+				_ = level.Error(l).Log("err", err)
+			} else {
+				_ = level.Debug(l).Log("result", "ok")
+			}
 		}()
 
 		client, err := c.firstClient()
@@ -117,20 +126,11 @@ func (c *Component) UploadHTTPHandler() http.Handler {
 		ctx, cancel := context.WithTimeout(r.Context(), uploadTimeout)
 		defer cancel()
 
-		gnuBuildID := mux.Vars(r)["gnu_build_id"]
-		l := log.With(c.logger,
-			"pyroscope_proxy", "debuginfo",
-			"method", "Upload DS",
-			"gnu_build_id", gnuBuildID,
-		)
-
 		err = client.Upload(ctx, gnuBuildID, r.Body)
 		if err != nil {
-			_ = level.Error(l).Log("err", err)
 			http.Error(w, fmt.Sprintf("downstream upload: %v", err), http.StatusBadGateway)
 			return
 		}
-		_ = level.Debug(l).Log("result", "ok")
 
 		w.WriteHeader(http.StatusOK)
 	})
