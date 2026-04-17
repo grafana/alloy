@@ -97,7 +97,7 @@ func (m *mockDebuginfoHandler) UploadFinished(ctx context.Context, req *connect.
 	return m.uploadFinishedFunc(ctx, req)
 }
 
-func startMockServer(t *testing.T, handler *mockDebuginfoHandler, uploadHandler http.Handler) DebugInfoClient {
+func startMockServer(t *testing.T, handler *mockDebuginfoHandler, uploadHandler http.Handler) *debuginfoclient.Client {
 	t.Helper()
 	router := mux.NewRouter()
 	debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(router, handler)

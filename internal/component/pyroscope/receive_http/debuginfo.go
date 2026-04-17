@@ -11,23 +11,23 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 )
 
 //todo do not mix  logging and metrics boilerplate with the actual logic
 
-func (c *Component) getDebugInfoClients() []debuginfo.Client {
+func (c *Component) getDebugInfoClients() []*debuginfoclient.Client {
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	var clients []debuginfo.Client
+	var clients []*debuginfoclient.Client
 	for _, appendable := range c.appendables {
 		clients = append(clients, appendable.DebugInfoClients()...)
 	}
 	return clients
 }
 
-func (c *Component) firstClient() (debuginfo.Client, error) {
+func (c *Component) firstClient() (*debuginfoclient.Client, error) {
 	clients := c.getDebugInfoClients()
 	if len(clients) == 0 {
 		err := fmt.Errorf("no downstream endpoints available")

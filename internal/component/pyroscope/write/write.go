@@ -229,8 +229,8 @@ type fanOutClient struct {
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) DebugInfoClients() []debuginfo.Client {
-	var clients []debuginfo.Client
+func (f *fanOutClient) DebugInfoClients() []*debuginfoclient.Client {
+	var clients []*debuginfoclient.Client
 	for _, client := range f.endpoints {
 		clients = append(clients, client.debugInfo.DebugInfoClients()...)
 	}

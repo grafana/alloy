@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/prometheus/model/labels"
 )
@@ -205,6 +206,6 @@ func (e *enrichAppendable) Upload(j debuginfo.UploadJob) {
 	e.component.fanout.Upload(j)
 }
 
-func (e *enrichAppendable) DebugInfoClients() []debuginfo.Client {
+func (e *enrichAppendable) DebugInfoClients() []*debuginfoclient.Client {
 	return e.component.fanout.DebugInfoClients()
 }

@@ -6,6 +6,7 @@ import (
 	"context"
 
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/process"
 )
@@ -40,7 +41,7 @@ type uploader struct {
 	u *reporter.PyroscopeSymbolUploader
 }
 
-func (u *uploader) upload(c Client, j UploadJob) {
+func (u *uploader) upload(c *debuginfoclient.Client, j UploadJob) {
 	u.u.Upload(context.Background(),
 		c,
 		j.FrameMappingFileData.FileID,

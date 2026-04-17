@@ -40,7 +40,7 @@ func (m *mockDebuginfoHandler) UploadFinished(ctx context.Context, req *connect.
 	return m.uploadFinishedFunc(ctx, req)
 }
 
-func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downstreamResult) debuginfo.Client {
+func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downstreamResult) *debuginfoclient.Client {
 	t.Helper()
 	handler := &mockDebuginfoHandler{
 		shouldInitiateFunc: func(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error) {
@@ -77,7 +77,7 @@ func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downst
 }
 
 type debuginfoAppendable struct {
-	clients []debuginfo.Client
+	clients []*debuginfoclient.Client
 }
 
 func (d *debuginfoAppendable) Appender() pyroscope.Appender { return d }
@@ -88,7 +88,7 @@ func (d *debuginfoAppendable) AppendIngest(_ context.Context, _ *pyroscope.Incom
 	return nil
 }
 func (d *debuginfoAppendable) Upload(_ debuginfo.UploadJob) {}
-func (d *debuginfoAppendable) DebugInfoClients() []debuginfo.Client {
+func (d *debuginfoAppendable) DebugInfoClients() []*debuginfoclient.Client {
 	return d.clients
 }
 
@@ -147,7 +147,7 @@ func TestDebugInfoProxy_AcceptsUpload(t *testing.T) {
 	resultCh := make(chan downstreamResult, 2)
 	dsClient := startMockDownstream(t, true, resultCh)
 
-	appendable := &debuginfoAppendable{clients: []debuginfo.Client{dsClient}}
+	appendable := &debuginfoAppendable{clients: []*debuginfoclient.Client{dsClient}}
 	client, srv := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("hello proxy debuginfo upload test data")
@@ -167,7 +167,7 @@ func TestDebugInfoProxy_DeclinesUpload(t *testing.T) {
 	resultCh := make(chan downstreamResult, 1)
 	dsClient := startMockDownstream(t, false, resultCh)
 
-	appendable := &debuginfoAppendable{clients: []debuginfo.Client{dsClient}}
+	appendable := &debuginfoAppendable{clients: []*debuginfoclient.Client{dsClient}}
 	client, srv := startProxyServer(t, []pyroscope.Appendable{appendable})
 
 	fileData := []byte("should-not-be-sent")

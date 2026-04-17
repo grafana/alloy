@@ -4,6 +4,8 @@ package debuginfo
 
 import (
 	"context"
+
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 )
 
 type UploadJob struct {
@@ -17,7 +19,7 @@ func (c *Uploader) newUploader(j UploadJob) (*uploader, error) {
 type uploader struct {
 }
 
-func (u uploader) upload(c Client, j UploadJob) {
+func (u uploader) upload(c *debuginfoclient.Client, j UploadJob) {
 	// no-op
 }
 

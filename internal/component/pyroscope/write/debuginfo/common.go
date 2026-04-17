@@ -2,23 +2,17 @@ package debuginfo
 
 import (
 	"context"
-	"io"
 	"sync"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type Client interface {
-	debuginfov1alpha1connect.DebuginfoServiceClient
-	Upload(ctx context.Context, buildID string, body io.Reader) error
-}
-
 type Appender interface {
 	Upload(j UploadJob)
-	DebugInfoClients() []Client
+	DebugInfoClients() []*debuginfoclient.Client
 }
 
 type Arguments struct {
@@ -30,7 +24,7 @@ type Arguments struct {
 	WorkerNum                    int    `alloy:"worker_num,attr,optional"`
 }
 
-func NewUploader(logger log.Logger, client Client,
+func NewUploader(logger log.Logger, client *debuginfoclient.Client,
 	metric prometheus.Counter, dataPath string) *Uploader {
 
 	return &Uploader{
@@ -44,7 +38,7 @@ func NewUploader(logger log.Logger, client Client,
 
 type Uploader struct {
 	logger       log.Logger
-	client       Client
+	client       *debuginfoclient.Client
 	uploaderOnce sync.Once
 	uploader     *uploader
 	uploaderChan chan *uploader
@@ -52,9 +46,9 @@ type Uploader struct {
 	dataPath     string
 }
 
-func (c *Uploader) DebugInfoClients() []Client {
+func (c *Uploader) DebugInfoClients() []*debuginfoclient.Client {
 	if c.client != nil {
-		return []Client{c.client}
+		return []*debuginfoclient.Client{c.client}
 	}
 	return nil
 }

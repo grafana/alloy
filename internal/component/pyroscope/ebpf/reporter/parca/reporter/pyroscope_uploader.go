@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/parca/reporter/elfwriter"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 
 	"connectrpc.com/connect"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -30,12 +30,6 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
-// DebugInfoClient extends the generated connect client with a plain HTTP upload method.
-type DebugInfoClient interface {
-	debuginfov1alpha1connect.DebuginfoServiceClient
-	Upload(ctx context.Context, buildID string, body io.Reader) error
-}
-
 const (
 	ReasonUploadInProgress = "A previous upload is still in-progress and not stale yet (only stale uploads can be retried)."
 )
@@ -45,7 +39,7 @@ type uploadRequest struct {
 	fileName string
 	buildID  string
 	open     func() (process.ReadAtCloser, error)
-	client   DebugInfoClient
+	client   *debuginfoclient.Client
 }
 
 type PyroscopeSymbolUploader struct {
@@ -198,7 +192,7 @@ func (u *PyroscopeSymbolUploader) Run(ctx context.Context) error {
 
 // Upload enqueues a file for upload if it's not already in progress, or if it
 // is marked not to be retried.
-func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client DebugInfoClient,
+func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client *debuginfoclient.Client,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) {
 
@@ -230,7 +224,7 @@ func (u *PyroscopeSymbolUploader) Upload(ctx context.Context, client DebugInfoCl
 	}
 }
 
-func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client DebugInfoClient,
+func (u *PyroscopeSymbolUploader) attemptUpload(ctx context.Context, client *debuginfoclient.Client,
 	fileID libpf.FileID, fileName string, buildID string,
 	open func() (process.ReadAtCloser, error)) error {
 

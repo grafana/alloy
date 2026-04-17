@@ -14,6 +14,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/mock"
@@ -42,7 +43,7 @@ func (m *mockAppendable) Upload(j debuginfo.UploadJob) {
 
 }
 
-func (m *mockAppendable) DebugInfoClients() []debuginfo.Client {
+func (m *mockAppendable) DebugInfoClients() []*debuginfoclient.Client {
 	return nil
 }
 

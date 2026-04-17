@@ -18,6 +18,7 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -308,6 +309,6 @@ func (c *Component) Upload(j debuginfo.UploadJob) {
 	c.fanout.Upload(j)
 }
 
-func (c *Component) DebugInfoClients() []debuginfo.Client {
+func (c *Component) DebugInfoClients() []*debuginfoclient.Client {
 	return c.fanout.DebugInfoClients()
 }
