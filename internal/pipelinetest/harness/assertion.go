@@ -69,7 +69,7 @@ func LokiHasEntry(matchers ...EntryMatcher) Assertion {
 		for _, entry := range s.loki {
 			matched := true
 			for _, matcher := range matchers {
-				if !matcher(entry) {
+				if !matcher.match(entry) {
 					matched = false
 					break
 				}
@@ -78,43 +78,72 @@ func LokiHasEntry(matchers ...EntryMatcher) Assertion {
 				return nil
 			}
 		}
+
+		conditions := make([]string, 0, len(matchers))
+		for _, matcher := range matchers {
+			if matcher.text == "" {
+				continue
+			}
+			conditions = append(conditions, matcher.text)
+		}
+
+		message := "no matching entry found"
+		if len(conditions) > 0 {
+			message += " for " + strings.Join(conditions, ", ")
+		}
+
 		return AssertionError{
 			Kind:    "loki.has_entry",
-			Message: "no matching entry found",
+			Message: message,
 		}
 	}
 }
 
-type EntryMatcher func(entry loki.Entry) bool
+type EntryMatcher struct {
+	match func(entry loki.Entry) bool
+	text  string
+}
 
 // LokiEntryLine returns an EntryMatcher that matches the Loki entry line
 // exactly.
 func LokiEntryLine(line string) EntryMatcher {
-	return func(entry loki.Entry) bool {
-		return entry.Line == line
+	return EntryMatcher{
+		match: func(entry loki.Entry) bool {
+			return entry.Line == line
+		},
+		text: fmt.Sprintf("line=%q", line),
 	}
 }
 
 // LokiEntryLabels returns an EntryMatcher that matches the Loki entry labels
 // exactly.
 func LokiEntryLabels(labels model.LabelSet) EntryMatcher {
-	return func(entry loki.Entry) bool {
-		return reflect.DeepEqual(entry.Labels, labels)
+	return EntryMatcher{
+		match: func(entry loki.Entry) bool {
+			return reflect.DeepEqual(entry.Labels, labels)
+		},
+		text: "labels=" + labels.String(),
 	}
 }
 
 // LokiEntryStructuredMetadata returns an EntryMatcher that matches the Loki
 // entry structured metadata exactly.
 func LokiEntryStructuredMetadata(metadata push.LabelsAdapter) EntryMatcher {
-	return func(entry loki.Entry) bool {
-		return reflect.DeepEqual(entry.StructuredMetadata, metadata)
+	return EntryMatcher{
+		match: func(entry loki.Entry) bool {
+			return reflect.DeepEqual(entry.StructuredMetadata, metadata)
+		},
+		text: fmt.Sprintf("structured_metadata=%v", metadata),
 	}
 }
 
 // LokiEntryTimestamp returns an EntryMatcher that matches the Loki entry
 // timestamp exactly.
 func LokiEntryTimestamp(ts time.Time) EntryMatcher {
-	return func(entry loki.Entry) bool {
-		return entry.Timestamp.Equal(ts)
+	return EntryMatcher{
+		match: func(entry loki.Entry) bool {
+			return entry.Timestamp.Equal(ts)
+		},
+		text: "timestamp=" + ts.Format(time.RFC3339Nano),
 	}
 }
