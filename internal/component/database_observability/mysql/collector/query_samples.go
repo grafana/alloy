@@ -475,7 +475,11 @@ func tryExtractTraceParent(sqlText string) string {
 	if idx < 0 {
 		return ""
 	}
+
 	tp := sqlText[idx+len("traceparent="):]
+	if len(tp) < 1 {
+		return ""
+	}
 
 	quote := tp[0]
 	if quote == '\'' || quote == '"' {
