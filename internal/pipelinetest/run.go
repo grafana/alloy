@@ -11,7 +11,7 @@ func RunTest(schema TestSchema) error {
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(dataPath)
+	defer func() { _ = os.RemoveAll(dataPath) }()
 
 	alloy, err := harness.NewAlloy(harness.Config{
 		SinkID:   "pipelinetest.sink.out",

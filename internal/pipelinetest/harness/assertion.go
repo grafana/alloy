@@ -164,7 +164,7 @@ func renderSnapshot(s snapshot) string {
 	}
 
 	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("loki entries (%d):\n", len(s.loki)))
+	_, _ = fmt.Fprintf(&builder, "loki entries (%d):\n", len(s.loki))
 	for _, entry := range s.loki {
 		builder.WriteString("- ")
 		builder.WriteString(renderLokiEntry(entry))
