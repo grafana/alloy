@@ -240,18 +240,6 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 	return nil
 }
 
-func (fr *alloyRun) checkExperimentalFlags() error {
-	if fr.minStability.Permits(featuregate.StabilityExperimental) {
-		return nil
-	}
-
-	if fr.enableDirectFanout {
-		return fmt.Errorf("the '--feature.prometheus.direct-fanout.enabled' can be used only at experimental stability level")
-	}
-
-	return nil
-}
-
 func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
