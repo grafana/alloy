@@ -33,6 +33,19 @@ func (c *Component) firstClient() (*debuginfoclient.Client, error) {
 	return clients[0], nil
 }
 
+func (c *Component) recordDownstream(l log.Logger, method string, err error) {
+	result := "success"
+	if err != nil {
+		result = "failure"
+	}
+	c.metrics.debugInfoDownstreamCalls.WithLabelValues(method, result).Inc()
+	if err != nil {
+		_ = level.Error(l).Log("err", err)
+	} else {
+		_ = level.Debug(l).Log("result", "ok")
+	}
+}
+
 func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (res *connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], err error) {
 	l := log.With(c.logger,
 		"pyroscope_proxy", "debuginfo",
@@ -42,14 +55,7 @@ func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Reque
 		"go_build_id", req.Msg.File.GoBuildId,
 		"otel_file_id", req.Msg.File.OtelFileId,
 	)
-	defer func() {
-		c.metrics.debugInfoDownstreamCalls.WithLabelValues("ShouldInitiateUpload", callResult(err)).Inc()
-		if err != nil {
-			_ = level.Error(l).Log("err", err)
-		} else {
-			_ = level.Debug(l).Log("result", res.Msg.ShouldInitiateUpload, "reason", res.Msg.Reason)
-		}
-	}()
+	defer func() { c.recordDownstream(l, "ShouldInitiateUpload", err) }()
 
 	client, err := c.firstClient()
 	if err != nil {
@@ -64,27 +70,13 @@ func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[deb
 		"method", "UploadFinished DS",
 		"gnu_build_id", req.Msg.GnuBuildId,
 	)
-	defer func() {
-		c.metrics.debugInfoDownstreamCalls.WithLabelValues("UploadFinished", callResult(err)).Inc()
-		if err != nil {
-			_ = level.Error(l).Log("err", err)
-		} else {
-			_ = level.Debug(l).Log("result", "ok")
-		}
-	}()
+	defer func() { c.recordDownstream(l, "UploadFinished", err) }()
 
 	client, err := c.firstClient()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
 	}
 	return client.UploadFinished(ctx, connect.NewRequest(req.Msg.CloneVT()))
-}
-
-func callResult(err error) string {
-	if err != nil {
-		return "failure"
-	}
-	return "success"
 }
 
 func (c *Component) UploadHTTPHandler() http.Handler {
@@ -97,14 +89,7 @@ func (c *Component) UploadHTTPHandler() http.Handler {
 		)
 
 		var err error
-		defer func() {
-			c.metrics.debugInfoDownstreamCalls.WithLabelValues("Upload", callResult(err)).Inc()
-			if err != nil {
-				_ = level.Error(l).Log("err", err)
-			} else {
-				_ = level.Debug(l).Log("result", "ok")
-			}
-		}()
+		defer func() { c.recordDownstream(l, "Upload", err) }()
 
 		client, err := c.firstClient()
 		if err != nil {
