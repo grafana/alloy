@@ -21,6 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
@@ -277,7 +278,7 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
 
 		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent))
-		dic := &DebugInfoClient{
+		dic := &debuginfoclient.Client{
 			DebuginfoServiceClient: debugInfoConnect,
 			HTTPClient:             httpClient,
 			BaseURL:                endpoint.URL,
@@ -750,34 +751,6 @@ func validateLabels(lbls labels.Labels) error {
 	})
 
 	return err
-}
-
-type DebugInfoClient struct {
-	debuginfov1alpha1connect.DebuginfoServiceClient
-	HTTPClient    *http.Client
-	BaseURL       string
-	UploadTimeout time.Duration
-}
-
-func (c *DebugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
-	ctx, cancel := context.WithTimeout(ctx, c.UploadTimeout)
-	defer cancel()
-	t1 := time.Now()
-	uploadURL := strings.TrimRight(c.BaseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + url.PathEscape(buildID)
-	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
-	if err != nil {
-		return err
-	}
-	resp, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return err
-	}
-	_, _ = io.Copy(io.Discard, resp.Body)
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upload: HTTP %d (duration %s)", resp.StatusCode, time.Since(t1))
-	}
-	return nil
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {

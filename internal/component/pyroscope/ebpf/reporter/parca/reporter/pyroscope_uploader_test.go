@@ -5,13 +5,11 @@ package reporter
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -19,6 +17,7 @@ import (
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/prometheus/client_golang/prometheus"
@@ -85,33 +84,6 @@ type uploadResult struct {
 	data    []byte
 }
 
-// TODO remove this, do not mERGE
-// testDebugInfoClient implements DebugInfoClient by embedding a connect client
-// and doing the HTTP POST upload via an httpClient + baseURL.
-type testDebugInfoClient struct {
-	debuginfov1alpha1connect.DebuginfoServiceClient
-	httpClient *http.Client
-	baseURL    string
-}
-
-func (c *testDebugInfoClient) Upload(ctx context.Context, buildID string, body io.Reader) error {
-	uploadURL := strings.TrimRight(c.baseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
-	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
-	if err != nil {
-		return err
-	}
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	io.Copy(io.Discard, resp.Body)
-	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("upload: HTTP %d", resp.StatusCode)
-	}
-	return nil
-}
-
 type mockDebuginfoHandler struct {
 	shouldInitiateFunc func(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error)
 	uploadFinishedFunc func(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (*connect.Response[debuginfov1alpha1.UploadFinishedResponse], error)
@@ -132,10 +104,11 @@ func startMockServer(t *testing.T, handler *mockDebuginfoHandler, uploadHandler 
 	router.Handle("/debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}", uploadHandler).Methods("POST")
 	server := httptest.NewServer(router)
 	t.Cleanup(server.Close)
-	return &testDebugInfoClient{
+	return &debuginfoclient.Client{
 		DebuginfoServiceClient: debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL),
-		httpClient:             server.Client(),
-		baseURL:                server.URL,
+		HTTPClient:             server.Client(),
+		BaseURL:                server.URL,
+		UploadTimeout:          time.Minute,
 	}
 }
 

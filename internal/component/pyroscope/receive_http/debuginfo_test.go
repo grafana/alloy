@@ -18,8 +18,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 )
 
 type downstreamResult struct {
@@ -68,7 +68,7 @@ func startMockDownstream(t *testing.T, shouldUpload bool, resultCh chan<- downst
 	t.Cleanup(server.Close)
 
 	connectClient := debuginfov1alpha1connect.NewDebuginfoServiceClient(server.Client(), server.URL)
-	return &write.DebugInfoClient{
+	return &debuginfoclient.Client{
 		DebuginfoServiceClient: connectClient,
 		HTTPClient:             server.Client(),
 		BaseURL:                server.URL,
