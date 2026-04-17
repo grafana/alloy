@@ -63,6 +63,34 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	return c
 }
 
+func Test_defaultExclusions(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}, args.ExcludeDatabases)
+
+	assert.Equal(t, []string{
+		"azuresu",
+		"cloudsqladmin",
+		"db-o11y",
+		"rdsadmin",
+	}, args.ExcludeUsers)
+}
+
 func Test_enableOrDisableCollectors(t *testing.T) {
 	t.Run("nothing specified (default behavior)", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
@@ -325,7 +353,7 @@ func TestCollectionIntervals(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
-		assert.Equal(t, DefaultArguments.QuerySampleArguments.CollectInterval, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should default to 15 seconds")
+		assert.Equal(t, defaultArguments().QuerySampleArguments.CollectInterval, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should default to 15 seconds")
 	})
 
 	t.Run("custom intervals", func(t *testing.T) {
@@ -422,9 +450,9 @@ func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *te
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheEnabled, args.SchemaDetailsArguments.CacheEnabled)
-		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheSize, args.SchemaDetailsArguments.CacheSize)
-		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheTTL, args.SchemaDetailsArguments.CacheTTL)
+		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheEnabled, args.SchemaDetailsArguments.CacheEnabled)
+		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheSize, args.SchemaDetailsArguments.CacheSize)
+		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheTTL, args.SchemaDetailsArguments.CacheTTL)
 	})
 
 	t.Run("custom cache configuration", func(t *testing.T) {
