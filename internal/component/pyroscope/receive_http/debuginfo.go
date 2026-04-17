@@ -35,7 +35,10 @@ func (c *Component) firstClient() (*debuginfoclient.Client, error) {
 	return clients[0], nil
 }
 
-func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (*connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], error) {
+func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (res *connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], err error) {
+	defer func() {
+		c.metrics.debugInfoDownstreamCalls.WithLabelValues("ShouldInitiateUpload", callResult(err)).Inc()
+	}()
 	client, err := c.firstClient()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
@@ -48,7 +51,7 @@ func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Reque
 		"go_build_id", req.Msg.File.GoBuildId,
 		"otel_file_id", req.Msg.File.OtelFileId,
 	)
-	res, err := client.ShouldInitiateUpload(ctx, connect.NewRequest(req.Msg.CloneVT()))
+	res, err = client.ShouldInitiateUpload(ctx, connect.NewRequest(req.Msg.CloneVT()))
 	if err != nil {
 		_ = level.Error(l).Log("err", err)
 	} else {
@@ -58,7 +61,10 @@ func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Reque
 	return res, err
 }
 
-func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (*connect.Response[debuginfov1alpha1.UploadFinishedResponse], error) {
+func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (res *connect.Response[debuginfov1alpha1.UploadFinishedResponse], err error) {
+	defer func() {
+		c.metrics.debugInfoDownstreamCalls.WithLabelValues("UploadFinished", callResult(err)).Inc()
+	}()
 	client, err := c.firstClient()
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnavailable, err)
@@ -68,7 +74,7 @@ func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[deb
 		"method", "UploadFinished DS",
 		"gnu_build_id", req.Msg.GnuBuildId,
 	)
-	res, err := client.UploadFinished(ctx, connect.NewRequest(req.Msg.CloneVT()))
+	res, err = client.UploadFinished(ctx, connect.NewRequest(req.Msg.CloneVT()))
 	if err != nil {
 		_ = level.Error(l).Log("err", err)
 	} else {
@@ -77,8 +83,20 @@ func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[deb
 	return res, err
 }
 
+func callResult(err error) string {
+	if err != nil {
+		return "failure"
+	}
+	return "success"
+}
+
 func (c *Component) UploadHTTPHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var err error
+		defer func() {
+			c.metrics.debugInfoDownstreamCalls.WithLabelValues("Upload", callResult(err)).Inc()
+		}()
+
 		client, err := c.firstClient()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusServiceUnavailable)
@@ -106,7 +124,8 @@ func (c *Component) UploadHTTPHandler() http.Handler {
 			"gnu_build_id", gnuBuildID,
 		)
 
-		if err := client.Upload(ctx, gnuBuildID, r.Body); err != nil {
+		err = client.Upload(ctx, gnuBuildID, r.Body)
+		if err != nil {
 			_ = level.Error(l).Log("err", err)
 			http.Error(w, fmt.Sprintf("downstream upload: %v", err), http.StatusBadGateway)
 			return

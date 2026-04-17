@@ -69,6 +69,7 @@ type Component struct {
 	mut                    sync.Mutex
 	logger                 log.Logger
 	tracer                 trace.Tracer
+	metrics                *metrics
 }
 
 func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, args Arguments) (*Component, error) {
@@ -80,6 +81,7 @@ func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, args
 		tracer:             tracer,
 		uncheckedCollector: uncheckedCollector,
 		appendables:        args.ForwardTo,
+		metrics:            newMetrics(reg),
 	}
 
 	if err := c.Update(args); err != nil {

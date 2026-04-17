@@ -98,6 +98,7 @@ func startProxyServer(t *testing.T, appendables []pyroscope.Appendable) (debugin
 		appendables:            appendables,
 		logger:                 log.NewNopLogger(),
 		debugInfoUploadTimeout: 2 * time.Minute,
+		metrics:                newMetrics(nil),
 	}
 	router := mux.NewRouter()
 	debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(router, comp)
