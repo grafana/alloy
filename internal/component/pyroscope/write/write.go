@@ -82,12 +82,12 @@ type EndpointOptions struct {
 
 func GetDefaultEndpointOptions() EndpointOptions {
 	defaultEndpointOptions := EndpointOptions{
-		RemoteTimeout:             10 * time.Second,
-		DebugInfoUploadTimeout:    2 * time.Minute,
-		MinBackoff:                500 * time.Millisecond,
-		MaxBackoff:                5 * time.Minute,
-		MaxBackoffRetries:         10,
-		HTTPClientConfig:          config.CloneDefaultHTTPClientConfig(),
+		RemoteTimeout:          10 * time.Second,
+		DebugInfoUploadTimeout: 2 * time.Minute,
+		MinBackoff:             500 * time.Millisecond,
+		MaxBackoff:             5 * time.Minute,
+		MaxBackoffRetries:      10,
+		HTTPClientConfig:       config.CloneDefaultHTTPClientConfig(),
 	}
 
 	return defaultEndpointOptions
@@ -763,7 +763,7 @@ func (c *DebugInfoClient) Upload(ctx context.Context, buildID string, body io.Re
 	ctx, cancel := context.WithTimeout(ctx, c.UploadTimeout)
 	defer cancel()
 	t1 := time.Now()
-	uploadURL := strings.TrimRight(c.BaseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + buildID
+	uploadURL := strings.TrimRight(c.BaseURL, "/") + "/debuginfo.v1alpha1.DebuginfoService/Upload/" + url.PathEscape(buildID)
 	req, err := http.NewRequestWithContext(ctx, "POST", uploadURL, body)
 	if err != nil {
 		return err
