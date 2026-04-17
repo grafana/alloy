@@ -120,31 +120,33 @@ type SchemaDetailsArguments struct {
 	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
-var DefaultArguments = Arguments{
-	ExcludeDatabases: []string{},
-	ExcludeUsers:     []string{},
-	QuerySampleArguments: QuerySampleArguments{
-		CollectInterval:       15 * time.Second,
-		DisableQueryRedaction: false,
-		ExcludeCurrentUser:    true,
-	},
-	QueryDetailsArguments: QueryDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		StatementsLimit: 100,
-	},
-	SchemaDetailsArguments: SchemaDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		CacheEnabled:    true,
-		CacheSize:       256,
-		CacheTTL:        10 * time.Minute,
-	},
-	ExplainPlansArguments: ExplainPlansArguments{
-		CollectInterval: 1 * time.Minute,
-		PerCollectRatio: 1.0,
-	},
-	HealthCheckArguments: HealthCheckArguments{
-		CollectInterval: 1 * time.Hour,
-	},
+func defaultArguments() Arguments {
+	return Arguments{
+		ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
+		ExcludeUsers:     database_observability.DefaultExcludedUsers(),
+		QuerySampleArguments: QuerySampleArguments{
+			CollectInterval:       15 * time.Second,
+			DisableQueryRedaction: false,
+			ExcludeCurrentUser:    true,
+		},
+		QueryDetailsArguments: QueryDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			StatementsLimit: 100,
+		},
+		SchemaDetailsArguments: SchemaDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+		},
+		ExplainPlansArguments: ExplainPlansArguments{
+			CollectInterval: 1 * time.Minute,
+			PerCollectRatio: 1.0,
+		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
 }
 
 type ExplainPlansArguments struct {
@@ -175,7 +177,7 @@ func (a *PrometheusExporterArguments) Validate() error {
 }
 
 func (a *Arguments) SetToDefault() {
-	*a = DefaultArguments
+	*a = defaultArguments()
 }
 
 func (a *Arguments) Validate() error {
