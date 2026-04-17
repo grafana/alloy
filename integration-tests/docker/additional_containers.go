@@ -83,7 +83,6 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 	var mu sync.Mutex
 	var startErr error
 	for i := range requests {
-		i := i
 		r := requests[i]
 		wg.Go(func() {
 			c, err := testcontainers.GenericContainer(gctx, testcontainers.GenericContainerRequest{
@@ -115,9 +114,7 @@ func startAdditionalContainers(ctx context.Context, absTestDir, networkName stri
 		return nil, startErr
 	}
 
-	out := make([]testcontainers.Container, 0, len(containers))
-	out = append(out, containers...)
-	return out, nil
+	return containers, nil
 }
 
 // buildDockerImage runs docker build for image using build (context and Dockerfile paths).
