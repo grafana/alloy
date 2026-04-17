@@ -174,7 +174,8 @@ depending on the nature of the reload error.
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
 	cmd.Flags().BoolVar(&r.enableGraphQL, "feature.graphql.enabled", r.enableGraphQL, "Enable the GraphQL API")
-	cmd.Flags().BoolVar(&r.enableGraphQLPlayground, "feature.graphql-playground.enabled", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
+	cmd.Flags().BoolVar(&r.enableGraphQLPlayground, "feature.graphql-playground.enabled", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
+	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
 	addDeprecatedFlags(cmd)
 	return cmd
