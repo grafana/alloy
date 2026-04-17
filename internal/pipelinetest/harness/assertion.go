@@ -3,6 +3,7 @@ package harness
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,15 +26,24 @@ func (e AssertionError) Error() string {
 	return e.Kind + ": " + e.Message
 }
 
-type AssertionErrors []error
+type AssertionErrors struct {
+	Errors   []error
+	Snapshot snapshot
+}
 
 func (e AssertionErrors) Error() string {
 	var builder strings.Builder
-	for _, err := range e {
+	builder.WriteString("pipeline test failed\n\n")
+
+	for _, err := range e.Errors {
 		builder.WriteString("- ")
 		builder.WriteString(err.Error())
 		builder.WriteByte('\n')
 	}
+
+	builder.WriteString("\nlatest snapshot:\n")
+	builder.WriteString(renderSnapshot(e.Snapshot))
+
 	return strings.TrimSuffix(builder.String(), "\n")
 }
 
@@ -111,7 +121,7 @@ func LokiEntryLine(line string) EntryMatcher {
 		match: func(entry loki.Entry) bool {
 			return entry.Line == line
 		},
-		text: fmt.Sprintf("line=%q", line),
+		text: renderLine(line),
 	}
 }
 
@@ -122,7 +132,7 @@ func LokiEntryLabels(labels model.LabelSet) EntryMatcher {
 		match: func(entry loki.Entry) bool {
 			return reflect.DeepEqual(entry.Labels, labels)
 		},
-		text: "labels=" + labels.String(),
+		text: renderLabelSet(labels),
 	}
 }
 
@@ -133,7 +143,7 @@ func LokiEntryStructuredMetadata(metadata push.LabelsAdapter) EntryMatcher {
 		match: func(entry loki.Entry) bool {
 			return reflect.DeepEqual(entry.StructuredMetadata, metadata)
 		},
-		text: fmt.Sprintf("structured_metadata=%v", metadata),
+		text: renderStructuredMetadata(metadata),
 	}
 }
 
@@ -144,6 +154,72 @@ func LokiEntryTimestamp(ts time.Time) EntryMatcher {
 		match: func(entry loki.Entry) bool {
 			return entry.Timestamp.Equal(ts)
 		},
-		text: "timestamp=" + ts.Format(time.RFC3339Nano),
+		text: renderTimestamp(ts),
 	}
+}
+
+func renderSnapshot(s snapshot) string {
+	if len(s.loki) == 0 {
+		return "loki entries (0)"
+	}
+
+	var builder strings.Builder
+	builder.WriteString(fmt.Sprintf("loki entries (%d):\n", len(s.loki)))
+	for _, entry := range s.loki {
+		builder.WriteString("- ")
+		builder.WriteString(renderLokiEntry(entry))
+		builder.WriteByte('\n')
+	}
+
+	return strings.TrimSuffix(builder.String(), "\n")
+}
+
+func renderLokiEntry(entry loki.Entry) string {
+	parts := []string{
+		renderLabelSet(entry.Labels),
+		renderLine(entry.Line),
+		renderTimestamp(entry.Timestamp),
+		renderStructuredMetadata(entry.StructuredMetadata),
+	}
+	return strings.Join(parts, " ")
+}
+
+func renderLine(line string) string {
+	return fmt.Sprintf("line=%q", line)
+}
+
+func renderTimestamp(timestamp time.Time) string {
+	return "timestamp=" + timestamp.Format(time.RFC3339Nano)
+}
+
+func renderLabelSet(labels model.LabelSet) string {
+	if len(labels) == 0 {
+		return "labels = {}"
+	}
+
+	keys := make([]string, 0, len(labels))
+	for name := range labels {
+		keys = append(keys, string(name))
+	}
+	slices.Sort(keys)
+
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf(`%s=%q`, key, labels[model.LabelName(key)]))
+	}
+
+	return "labels = {" + strings.Join(parts, ", ") + "}"
+}
+
+func renderStructuredMetadata(labels push.LabelsAdapter) string {
+	if len(labels) == 0 {
+		return "structured_metadata = {}"
+	}
+
+	parts := make([]string, 0, len(labels))
+	for _, label := range labels {
+		parts = append(parts, fmt.Sprintf(`%s=%q`, label.Name, label.Value))
+	}
+
+	return "structured_metadata = {" + strings.Join(parts, ", ") + "}"
 }
