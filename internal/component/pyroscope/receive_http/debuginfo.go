@@ -15,8 +15,6 @@ import (
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 )
 
-//todo do not mix  logging and metrics boilerplate with the actual logic
-
 func (c *Component) getDebugInfoClients() []*debuginfoclient.Client {
 	c.mut.Lock()
 	defer c.mut.Unlock()
