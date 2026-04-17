@@ -20,11 +20,13 @@ type TestSchema struct {
 	Assert AssertionSchema `yaml:"assert"`
 }
 
+// InputSchema groups pipeline test inputs by signal type.
 type InputSchema struct {
 	Loki []LokiInputSchema `yaml:"loki"`
 }
 
-// LokiInputSchema describes one Loki input and the entries produced through it.
+// LokiInputSchema describes one Loki input, including the receiver targets to
+// forward entries to and the entries to emit for the test.
 type LokiInputSchema struct {
 	Components []string          `yaml:"components"`
 	Entries    []LokiEntrySchema `yaml:"entries,omitempty"`
@@ -86,10 +88,13 @@ func RunTest(schema TestSchema) error {
 	return alloy.Assert(assertions...)
 }
 
+// produceInputs sends all configured test inputs into the running pipeline.
 func produceInputs(alloy *harness.Alloy, inputs InputSchema) error {
 	return produceLokiInputs(alloy, inputs.Loki)
 }
 
+// produceLokiInputs sends configured Loki entries through generated hidden
+// pipelinetest.source components.
 func produceLokiInputs(alloy *harness.Alloy, inputs []LokiInputSchema) error {
 	for i, input := range inputs {
 		if len(input.Entries) == 0 {
@@ -113,6 +118,8 @@ func produceLokiInputs(alloy *harness.Alloy, inputs []LokiInputSchema) error {
 	return nil
 }
 
+// injectedSource prepends generated hidden pipelinetest.source components which
+// forward input entries to the configured receiver targets.
 func injectedSource(schema TestSchema) string {
 	file := builder.NewFile()
 
@@ -210,10 +217,12 @@ func buildLokiEntry(entry LokiEntrySchema) (loki.Entry, error) {
 	), nil
 }
 
+// buildAssertions builds runtime assertions from the declarative schema.
 func buildAssertions(assertions AssertionSchema) ([]harness.Assertion, error) {
 	return buildLokiAssertions(assertions.Loki)
 }
 
+// buildLokiAssertions builds Loki assertions from the declarative schema.
 func buildLokiAssertions(assertions []LokiAssertionSchema) ([]harness.Assertion, error) {
 	out := make([]harness.Assertion, 0, len(assertions))
 	for _, assertion := range assertions {

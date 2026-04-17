@@ -94,7 +94,8 @@ func (a *Alloy) Stop() {
 }
 
 // Assert evaluates the provided assertions against the current snapshot
-// until they all pass or the assertion timeout is reached.
+// until they all pass or the assertion timeout is reached. On failure it
+// returns the latest snapshot alongside the assertion failures.
 func (a *Alloy) Assert(assertions ...Assertion) error {
 	return eventually(func() error {
 		s := a.sink.snapshot()
