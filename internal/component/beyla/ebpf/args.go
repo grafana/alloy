@@ -124,7 +124,6 @@ type Metrics struct {
 	Network                         Network  `alloy:"network,block,optional"`
 	ExtraResourceLabels             []string `alloy:"extra_resource_labels,attr,optional"`
 	ExtraSpanResourceLabels         []string `alloy:"extra_span_resource_labels,attr,optional"`
-	NativeHistograms                bool     `alloy:"native_histograms,attr,optional"`
 }
 
 type Traces struct {
