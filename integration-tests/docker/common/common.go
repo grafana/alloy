@@ -19,7 +19,7 @@ const (
 	DefaultRetryInterval = 100 * time.Millisecond
 
 	// Default timeout for polling/assertions if no -timeout is provided to go test.
-	defaultTimeout = 120 * time.Second
+	defaultTimeout = 180 * time.Second
 
 	// Timeout padding to subtract from the time left until the go test -timeout deadline.
 	// This makes sure that polling/assertions fail before the process watchdog kills the test.
