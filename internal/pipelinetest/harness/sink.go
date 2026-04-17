@@ -36,8 +36,8 @@ func init() {
 type SinkArguments struct{}
 
 type SinkExports struct {
-	LokiPushUrl string            `alloy:"loki_push_url,attr"`
-	LokiReciver loki.LogsReceiver `alloy:"lokireceiver,attr"`
+	LokiPushUrl  string            `alloy:"loki_push_url,attr"`
+	LokiReceiver loki.LogsReceiver `alloy:"lokireceiver,attr"`
 }
 
 type Sink struct {
@@ -88,8 +88,8 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	s.server = httptest.NewServer(router)
 
 	s.opts.OnStateChange(SinkExports{
-		LokiPushUrl: s.server.URL + lokiPushPath,
-		LokiReciver: s.lokirecv,
+		LokiPushUrl:  s.server.URL + lokiPushPath,
+		LokiReceiver: s.lokirecv,
 	})
 
 	return s, nil

@@ -26,7 +26,7 @@ config: |
 
   loki.write "default" {
     endpoint {
-      url        = pipelinetest.sink.out.loki_push_url
+      url        = pipelinetest.loki.url
       batch_wait = "10ms"
     }
   }

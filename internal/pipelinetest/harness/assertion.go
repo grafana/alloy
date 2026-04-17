@@ -216,8 +216,13 @@ func renderStructuredMetadata(labels push.LabelsAdapter) string {
 		return "structured_metadata = {}"
 	}
 
-	parts := make([]string, 0, len(labels))
-	for _, label := range labels {
+	sorted := slices.Clone(labels)
+	slices.SortFunc(sorted, func(a, b push.LabelAdapter) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+
+	parts := make([]string, 0, len(sorted))
+	for _, label := range sorted {
 		parts = append(parts, fmt.Sprintf(`%s=%q`, label.Name, label.Value))
 	}
 

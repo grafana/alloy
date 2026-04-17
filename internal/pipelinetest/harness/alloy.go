@@ -16,16 +16,14 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-const injected = `pipelinetest.sink "out" {}`
-
 type Config struct {
-	DataPath string
+	SinkID   string
 	Source   string
+	DataPath string
 }
 
-// NewAlloy creates and starts an in-process Alloy runtime for pipeline tests.
-// It adds the pipelinetest sink component to cfg so tests can assert on
-// the resulting output while the rest of the pipeline is defined by cfg.
+// NewAlloy creates and starts an in-process Alloy runtime for pipeline tests
+// from the provided source.
 func NewAlloy(cfg Config) (*Alloy, error) {
 	logger, err := logging.New(io.Discard, logging.DefaultOptions)
 	if err != nil {
@@ -53,7 +51,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 		ctrl.Run(ctx)
 	})
 
-	source, err := alloyruntime.ParseSource("", []byte(injected+"\n"+cfg.Source))
+	source, err := alloyruntime.ParseSource("", []byte(cfg.Source))
 	if err != nil {
 		a.Stop()
 		return nil, err
@@ -75,8 +73,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 		return nil, fmt.Errorf("timed out waiting for runtime to finish loading: %w", err)
 	}
 
-	a.sink = MustComponent[*Sink](a, "pipelinetest.sink.out")
-
+	a.sink = MustComponent[*Sink](a, cfg.SinkID)
 	return a, nil
 }
 
