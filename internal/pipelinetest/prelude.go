@@ -8,6 +8,9 @@ import (
 	builder "github.com/grafana/alloy/syntax/token/builder"
 )
 
+// withPrelude builds the final Alloy source for a pipeline test by prepending
+// the test sink, injecting any generated input sources, and rewriting
+// pipelinetest symbolic output references.
 func withPrelude(schema TestSchema) string {
 	sink := buildSink()
 	sources := buildSources(schema.Inputs)
