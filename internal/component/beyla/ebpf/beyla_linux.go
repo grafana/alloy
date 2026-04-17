@@ -78,7 +78,7 @@ const (
 )
 
 var validInstrumentations = map[string]struct{}{
-	"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
+	"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {}, "memcached": {}, "genai": {},
 }
 
 func (args Routes) Convert() *transform.RoutesConfig {
@@ -164,6 +164,9 @@ func (args Attributes) Convert() beyla.Attributes {
 	attrs.Kubernetes.ClusterName = args.Kubernetes.ClusterName
 	if args.Kubernetes.MetaCacheAddress != "" {
 		attrs.Kubernetes.MetaCacheAddress = args.Kubernetes.MetaCacheAddress
+	}
+	if args.Kubernetes.ReconnectInitialInterval != 0 {
+		attrs.Kubernetes.ReconnectInitialInterval = args.Kubernetes.ReconnectInitialInterval
 	}
 	// InstanceID
 	if args.InstanceID.HostnameDNSResolution {
@@ -578,7 +581,8 @@ func (args EBPF) Convert() (*obiCfg.EBPFTracer, error) {
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
 	ebpf.BpfDebug = args.BpfDebug
 	ebpf.ProtocolDebug = args.ProtocolDebug
-	ebpf.PayloadExtraction.HTTP.OpenAI.Enabled = args.PayloadExtraction.HTTP.OpenAI.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = args.PayloadExtraction.HTTP.OpenAI.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.Anthropic.Enabled = args.PayloadExtraction.HTTP.Anthropic.Enabled
 	return &ebpf, nil
 }
 

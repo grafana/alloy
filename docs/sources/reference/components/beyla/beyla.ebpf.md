@@ -87,6 +87,7 @@ You can use the following blocks with `beyla.ebpf`:
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | `ebpf` > [`payload_extraction`][payload extraction]                    | Configures HTTP payload extraction for protocol-aware parsing.                                     | no       |
 | `ebpf` > `payload_extraction` > `http` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                       | no       |
+| `ebpf` > `payload_extraction` > `http` > [`anthropic`][anthropic payload extraction] | Configures Anthropic payload extraction.                                               | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
@@ -116,6 +117,7 @@ You can use the following blocks with `beyla.ebpf`:
 [ebpf]: #ebpf
 [payload extraction]: #payload_extraction
 [openai payload extraction]: #openai
+[anthropic payload extraction]: #anthropic
 [filters]: #filters
 [application filters]: #application
 [metrics]: #metrics
@@ -158,13 +160,14 @@ This `kubernetes` block configures the decorating of the metrics and traces with
 
 | Name                       | Type           | Description                                            | Default | Required |
 |----------------------------|----------------|--------------------------------------------------------|---------|----------|
-| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`    | no       |
-| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`    | no       |
-| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `autodetect` | no       |
-| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"` | no       |
-| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"` | no       |
-| `meta_cache_address`       | `string`       | Address of the Kubernetes metadata cache service.      | `""`    | no       |
-| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
+| `cluster_name`                | `string`       | The name of the Kubernetes cluster.                                              | `""`    | no       |
+| `disable_informers`           | `list(string)` | List of Kubernetes informers to disable.                                         | `[]`    | no       |
+| `enable`                      | `string`       | Enable the Kubernetes metadata decoration.                                       | `autodetect` | no  |
+| `informers_resync_period`     | `duration`     | Period for Kubernetes informers resynchronization.                               | `"30m"` | no       |
+| `informers_sync_timeout`      | `duration`     | Timeout for Kubernetes informers synchronization.                                | `"30s"` | no       |
+| `meta_cache_address`          | `string`       | Address of the Kubernetes metadata cache service.                                | `""`    | no       |
+| `meta_restrict_local_node`    | `bool`         | Restrict Kubernetes metadata collection to local node.                           | `false` | no       |
+| `reconnect_initial_interval`  | `duration`     | Initial interval for reconnecting to the Kubernetes API after a connection loss. | `"0s"`  | no       |
 
 If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kubernetes API.
 
@@ -370,10 +373,12 @@ Without an output configuration, traces are collected but not exported.
 The supported values for `instrumentations` are:
 
 * `*`: Enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `genai`: Enables the collection of GenAI (LLM) traces.
 * `grpc`: Enables the collection of gRPC traces.
 * `gpu`: Enables the collection of GPU performance traces.
 * `http`: Enables the collection of HTTP/HTTPS/HTTP2 traces.
 * `kafka`: Enables the collection of Kafka client/server traces.
+* `memcached`: Enables the collection of Memcached client/server traces.
 * `mongo`: Enables the collection of MongoDB database traces.
 * `redis`: Enables the collection of Redis client/server database traces.
 * `sql`: Enables the collection of SQL database client call traces.
@@ -507,6 +512,14 @@ The `payload_extraction` block configures protocol-aware HTTP payload parsing.
 
 When enabled, Beyla parses supported OpenAI HTTP payloads and can enrich traces with GenAI-related attributes.
 
+###### `anthropic`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable Anthropic payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported Anthropic HTTP payloads and can enrich traces with GenAI-related attributes.
+
 [cilium]: https://grafana.com/docs/beyla/latest/cilium-compatibility/
 
 ### `filters`
@@ -591,10 +604,12 @@ The `metrics` block configures which metrics Beyla collects.
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
 * `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `genai` enables the collection of GenAI (LLM) application metrics.
 * `grpc` enables the collection of gRPC application metrics.
 * `gpu` enables the collection of GPU performance metrics.
 * `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
 * `kafka` enables the collection of Kafka client/server message queue metrics.
+* `memcached` enables the collection of Memcached client/server metrics.
 * `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.

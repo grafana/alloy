@@ -230,7 +230,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
 	require.False(t, cfg.EBPF.BpfDebug)
 	require.False(t, cfg.EBPF.ProtocolDebug)
-	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.OpenAI.Enabled)
+	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
 	require.Len(t, cfg.Filters.Application, 1)
 	require.Len(t, cfg.Filters.Network, 1)
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
@@ -758,6 +758,7 @@ func TestConvert_Attributes(t *testing.T) {
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
 	expectedConfig.MetadataRetry = beyla.DefaultConfig().Attributes.MetadataRetry
+	expectedConfig.Kubernetes.ReconnectInitialInterval = beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval
 
 	config := args.Convert()
 
@@ -941,7 +942,7 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.ContextPropagation = obiCfg.ContextPropagationTCP
 	expectedConfig.BpfDebug = true
 	expectedConfig.ProtocolDebug = true
-	expectedConfig.PayloadExtraction.HTTP.OpenAI.Enabled = true
+	expectedConfig.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = true
 
 	config, err := args.Convert()
 	require.NoError(t, err)
@@ -1272,7 +1273,7 @@ func TestMetrics_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Metrics{
-				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo", "memcached", "genai"},
 			},
 		},
 		{
@@ -1618,7 +1619,7 @@ func TestTraces_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Traces{
-				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo", "memcached", "genai"},
 			},
 		},
 		{
@@ -1840,4 +1841,40 @@ func TestSurveyEnabled(t *testing.T) {
 	require.True(t, cfg.Discovery.SurveyEnabled())
 	require.Equal(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
 	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
+}
+
+func TestAnthropicPayloadExtraction(t *testing.T) {
+	in := `
+		ebpf {
+			payload_extraction {
+				http {
+					anthropic {
+						enabled = true
+					}
+				}
+			}
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.Anthropic.Enabled)
+	require.False(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
+}
+
+func TestKubernetesReconnectInitialInterval(t *testing.T) {
+	in := `
+		attributes {
+			kubernetes {
+				enable = "true"
+				reconnect_initial_interval = "5s"
+			}
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, 5*time.Second, cfg.Attributes.Kubernetes.ReconnectInitialInterval)
 }

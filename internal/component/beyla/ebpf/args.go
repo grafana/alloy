@@ -48,13 +48,14 @@ type Attributes struct {
 }
 
 type KubernetesDecorator struct {
-	Enable                string        `alloy:"enable,attr"`
-	ClusterName           string        `alloy:"cluster_name,attr,optional"`
-	InformersSyncTimeout  time.Duration `alloy:"informers_sync_timeout,attr,optional"`
-	InformersResyncPeriod time.Duration `alloy:"informers_resync_period,attr,optional"`
-	DisableInformers      []string      `alloy:"disable_informers,attr,optional"`
-	MetaRestrictLocalNode bool          `alloy:"meta_restrict_local_node,attr,optional"`
-	MetaCacheAddress      string        `alloy:"meta_cache_address,attr,optional"`
+	Enable                    string        `alloy:"enable,attr"`
+	ClusterName               string        `alloy:"cluster_name,attr,optional"`
+	InformersSyncTimeout      time.Duration `alloy:"informers_sync_timeout,attr,optional"`
+	InformersResyncPeriod     time.Duration `alloy:"informers_resync_period,attr,optional"`
+	DisableInformers          []string      `alloy:"disable_informers,attr,optional"`
+	MetaRestrictLocalNode     bool          `alloy:"meta_restrict_local_node,attr,optional"`
+	MetaCacheAddress          string        `alloy:"meta_cache_address,attr,optional"`
+	ReconnectInitialInterval  time.Duration `alloy:"reconnect_initial_interval,attr,optional"`
 }
 
 type InstanceIDConfig struct {
@@ -167,10 +168,15 @@ type PayloadExtraction struct {
 }
 
 type HTTPPayloadExtraction struct {
-	OpenAI OpenAIPayloadExtraction `alloy:"openai,block,optional"`
+	OpenAI    OpenAIPayloadExtraction    `alloy:"openai,block,optional"`
+	Anthropic AnthropicPayloadExtraction `alloy:"anthropic,block,optional"`
 }
 
 type OpenAIPayloadExtraction struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+}
+
+type AnthropicPayloadExtraction struct {
 	Enabled bool `alloy:"enabled,attr,optional"`
 }
 

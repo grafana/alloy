@@ -130,7 +130,7 @@ replaces:
   # Use Grafana fork of smimesign
   - github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
   # Replace OpenTelemetry OBI with Grafana fork
-  - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.16.2
+  - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.18.1
   # Replace OpenTelemetry eBPF profiler with Grafana fork
   - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31a19190b9
   # Update openshift/client-go to version compatible with structured-merge-diff v6
