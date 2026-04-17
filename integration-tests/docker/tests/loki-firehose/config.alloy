@@ -1,0 +1,49 @@
+loki.relabel "firehose" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__aws_firehose_source_arn"]
+		target_label  = "source_arn"
+	}
+}
+
+loki.source.awsfirehose "firehose" {
+	http {
+		listen_address = "0.0.0.0"
+		listen_port    = 1517
+	}
+
+	forward_to = [loki.process.test.receiver]
+
+	relabel_rules = loki.relabel.firehose.rules
+}
+
+loki.process "test" {
+	stage.static_labels {
+		values = {
+			test_name = "lokifirehose",
+		}
+	}
+
+	forward_to = [loki.relabel.test.receiver]
+}
+
+loki.relabel "test" {
+	forward_to = [loki.write.test.receiver]
+
+	rule {
+		source_labels = ["source_arn"]
+		target_label  = "service_name"
+	}
+
+	rule {
+		action = "labeldrop"
+		regex  = "source_arn"
+	}
+}
+
+loki.write "test" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}
