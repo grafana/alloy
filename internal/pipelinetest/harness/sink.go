@@ -36,22 +36,26 @@ func init() {
 type SinkArguments struct{}
 
 type SinkExports struct {
-	LokiPushUrl string `alloy:"loki_push_url,attr"`
+	LokiPushUrl string            `alloy:"loki_push_url,attr"`
+	LokiReciver loki.LogsReceiver `alloy:"lokireceiver,attr"`
 }
 
 type Sink struct {
 	opts component.Options
 	args SinkArguments
 
-	server      *httptest.Server
+	server   *httptest.Server
+	lokirecv loki.LogsReceiver
+
 	mux         sync.Mutex
 	lokiEntries []loki.Entry
 }
 
 func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	s := &Sink{
-		opts: opts,
-		args: args,
+		opts:     opts,
+		args:     args,
+		lokirecv: loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
 	}
 
 	router := mux.NewRouter()
@@ -85,6 +89,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 
 	s.opts.OnStateChange(SinkExports{
 		LokiPushUrl: s.server.URL + lokiPushPath,
+		LokiReciver: s.lokirecv,
 	})
 
 	return s, nil
@@ -95,8 +100,16 @@ var _ component.Component = (*Sink)(nil)
 func (s *Sink) Run(ctx context.Context) error {
 	defer s.server.Close()
 
-	<-ctx.Done()
-	return nil
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case e := <-s.lokirecv.Chan():
+			s.mux.Lock()
+			s.lokiEntries = append(s.lokiEntries, e)
+			s.mux.Unlock()
+		}
+	}
 }
 
 func (s *Sink) Update(args component.Arguments) error {
