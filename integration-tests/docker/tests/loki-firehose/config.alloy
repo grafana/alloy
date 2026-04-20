@@ -5,6 +5,16 @@ loki.relabel "firehose" {
 		source_labels = ["__aws_firehose_source_arn"]
 		target_label  = "source_arn"
 	}
+
+	rule {
+		source_labels = ["__aws_cw_log_group"]
+		target_label  = "log_group"
+	}
+
+	rule {
+		source_labels = ["__aws_cw_msg_type"]
+		target_label  = "msg_type"
+	}
 }
 
 loki.source.awsfirehose "firehose" {
@@ -25,6 +35,13 @@ loki.process "test" {
 		}
 	}
 
+	stage.structured_metadata {
+		values = {
+			log_group = "",
+			msg_type  = "",
+		}
+	}
+
 	forward_to = [loki.relabel.test.receiver]
 }
 
@@ -38,7 +55,7 @@ loki.relabel "test" {
 
 	rule {
 		action = "labeldrop"
-		regex  = "source_arn"
+		regex  = "source_arn|log_group|msg_type"
 	}
 }
 
