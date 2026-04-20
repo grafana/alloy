@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
@@ -151,11 +152,35 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observe
 	}
 }
 
+const maxPooledLabelNamesCapacity = 15
+
+var (
+	labelNamesPool = sync.Pool{
+		New: func() any {
+			s := make([]model.LabelName, 0, maxPooledLabelNamesCapacity)
+			return &s
+		},
+	}
+)
+
 // labelsMapToString encodes an entry's label set as a string, ignoring internal labels
 func labelsMapToString(ls model.LabelSet) string {
 	var b strings.Builder
 	totalSize := 2
-	lstrs := make([]model.LabelName, 0, len(ls))
+
+	pooled := labelNamesPool.Get().(*[]model.LabelName)
+	lstrs := *pooled
+
+	defer func() {
+		// Only return slices that stayed within the pooled capacity, this avoids
+		// retaining large one-off backing arrays.
+		if cap(lstrs) <= maxPooledLabelNamesCapacity {
+			// append may have updated the slice header so write it back before
+			// returning the slice to the pool.
+			*pooled = lstrs[:0]
+			labelNamesPool.Put(pooled)
+		}
+	}()
 
 	for l, v := range ls {
 		// skip internal labels
@@ -168,9 +193,10 @@ func labelsMapToString(ls model.LabelSet) string {
 		totalSize += len(l) + 2 + len(v) + 3
 	}
 
+	slices.Sort(lstrs)
+
 	b.Grow(totalSize)
 	b.WriteByte('{')
-	slices.Sort(lstrs)
 	for i, l := range lstrs {
 		if i > 0 {
 			b.WriteString(", ")
