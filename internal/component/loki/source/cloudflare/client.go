@@ -32,9 +32,12 @@ func (w *wrappedClient) LogpullReceived(ctx context.Context, start, end time.Tim
 
 var getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
 	var opts []cloudflare.Option
+
+	// Allow override API URL for Loki firehose integration tests.
 	if apiURL := os.Getenv("ALLOY_CLOUDFLARE_API_URL"); apiURL != "" {
 		opts = append(opts, cloudflare.BaseURL(apiURL))
 	}
+
 	c, err := cloudflare.NewWithAPIToken(apiKey, opts...)
 	if err != nil {
 		return nil, err
