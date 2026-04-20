@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
@@ -154,22 +155,20 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observe
 
 const maxPooledLabelNamesCapacity = 15
 
-var (
-	labelNamesPool = sync.Pool{
-		New: func() any {
-			s := make([]model.LabelName, 0, maxPooledLabelNamesCapacity)
-			return &s
-		},
-	}
-)
+var labelNamesPool = sync.Pool{
+	New: func() any {
+		s := make([]model.LabelName, 0, maxPooledLabelNamesCapacity)
+		return &s
+	},
+}
 
 // labelsMapToString encodes an entry's label set as a string, ignoring internal labels
 func labelsMapToString(ls model.LabelSet) string {
-	var b strings.Builder
-	totalSize := 2
-
-	pooled := labelNamesPool.Get().(*[]model.LabelName)
-	lstrs := *pooled
+	var (
+		totalSize = 2
+		pooled    = labelNamesPool.Get().(*[]model.LabelName)
+		lstrs     = *pooled
+	)
 
 	defer func() {
 		// Only return slices that stayed within the pooled capacity, this avoids
@@ -195,18 +194,23 @@ func labelsMapToString(ls model.LabelSet) string {
 
 	slices.Sort(lstrs)
 
-	b.Grow(totalSize)
-	b.WriteByte('{')
+	// Build into a local byte slice so strconv.AppendQuote can write directly
+	// into the final buffer. With strings.Builder we would need strconv.Quote,
+	// which creates an intermediate quoted string for each label value.
+	buf := make([]byte, 0, totalSize)
+	buf = append(buf, '{')
 	for i, l := range lstrs {
 		if i > 0 {
-			b.WriteString(", ")
+			buf = append(buf, ',', ' ')
 		}
 
-		b.WriteString(string(l))
-		b.WriteString(`=`)
-		b.WriteString(strconv.Quote(string(ls[l])))
+		buf = append(buf, string(l)...)
+		buf = append(buf, '=')
+		buf = strconv.AppendQuote(buf, string(ls[l]))
 	}
-	b.WriteByte('}')
+	buf = append(buf, '}')
 
-	return b.String()
+	// Safe: buf is local to this call and is never mutated again after converting
+	// it to a string so the returned strings backing bytes remain immutable.
+	return unsafe.String(unsafe.SliceData(buf), len(buf))
 }
