@@ -213,7 +213,8 @@ func labelsMapToString(ls model.LabelSet) string {
 	}
 	buf = append(buf, '}')
 
-	// Safe: buf is local to this call and is never mutated again after converting
+	// #nosec G103 nosemgrep: use-of-unsafe-block
+	// Safety: buf is local to this call and is never mutated again after converting
 	// it to a string so the returned strings backing bytes remain immutable.
 	return unsafe.String(unsafe.SliceData(buf), len(buf))
 }
