@@ -14,7 +14,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source"
-	herokuEncoding "github.com/grafana/alloy/internal/component/loki/source/heroku/encoding"
+	herokuEncoding "github.com/grafana/alloy/internal/third_party/heroku/x/logplex/encoding"
 )
 
 const (

@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	herokuencoding "github.com/grafana/alloy/internal/component/loki/source/heroku/encoding"
+	herokuencoding "github.com/grafana/alloy/internal/third_party/heroku/x/logplex/encoding"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
 )
