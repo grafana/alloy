@@ -19,7 +19,7 @@ You can find the complete list of available metrics in the [Azure Monitor docume
 Metrics for this integration are exposed with the template `azure_{type}_{metric}_{aggregation}_{unit}` by default. As an example,
 the Egress metric for BlobService would be exported as `azure_microsoft_storage_storageaccounts_blobservices_egress_total_bytes`.
 
-The exporter offers the following two options for gathering metrics.
+The exporter offers the following three options for gathering metrics.
 
 1. (Default) Use an [Azure Resource Graph](https://azure.microsoft.com/en-us/get-started/azure-portal/resource-graph/#overview) query to identify resources for gathering metrics.
    1. This query makes one API call per resource identified.
@@ -29,6 +29,11 @@ The exporter offers the following two options for gathering metrics.
    1. This approach doesn't work with all resource types, and Azure doesn't document which resource types do or don't work.
    1. A resource type that's not supported produces errors that look like `Resource type: microsoft.containerservice/managedclusters not enabled for Cross Resource metrics`.
    1. If you encounter one of these errors you must use the default Azure Resource Graph based option to gather metrics.
+1. Use the [Azure Monitor Batch API](https://learn.microsoft.com/en-us/rest/api/monitor/metrics-batch/batch) by setting `use_batch_api` to `true`.
+   1. This batches up to 50 resources per API call using the Azure Monitor data plane (`https://<region>.metrics.monitor.azure.com`).
+   1. The data plane has **separate rate limits** from the ARM management plane, which significantly reduces 429 (Too Many Requests) throttling when monitoring many resources.
+   1. Resources are discovered using Azure Resource Graph (like option 1), then grouped by subscription and region for batch retrieval.
+   1. Cannot be used together with `regions`. Use `resource_graph_query_filter` to target specific regions instead.
 
 ## Authentication
 
@@ -40,6 +45,7 @@ The account used by {{< param "PRODUCT_NAME" >}} needs:
 * When using an Azure Resource Graph query, [read access to the resources that will be queried by Resource Graph](https://learn.microsoft.com/en-us/azure/governance/resource-graph/overview#permissions-in-azure-resource-graph).
 <!-- vale Grafana.GoogleSpacing = NO -->
 * Permissions to call the [Microsoft.Insights Metrics API](https://learn.microsoft.com/en-us/rest/api/monitor/metrics/list) which should be the `Microsoft.Insights/Metrics/Read` permission.
+* When using `use_batch_api`, the identity also needs access to the Azure Monitor data plane (`https://<region>.metrics.monitor.azure.com`). This uses a different OAuth2 scope than the ARM management plane. In most environments this works with the same identity, but restrictive configurations may require additional permissions.
 <!-- vale Grafana.GoogleSpacing = YES -->
 
 ## Usage
@@ -82,6 +88,7 @@ You can use the following arguments with `prometheus.exporter.azure`:
 | `resource_graph_query_filter` | `string`       | The [Kusto query][] filter to apply when searching for resources. Can't be used if `regions` is set.                                                     |                                                                               | no       |
 | `timespan`                    | `string`       | [ISO8601 Duration][] over which the metrics are being queried.                                                                                           | `"PT5M"` (5 minutes)                                                          | no       |
 | `interval`                    | `string`       | [ISO8601 Duration][] used when to generate individual datapoints in Azure Monitor. Must be smaller than `timespan`.                                      | `"PT1M"` (1 minute)                                                           | no       |
+| `use_batch_api`               | `bool`         | Use the Azure Monitor Batch API to fetch metrics for up to 50 resources per request. Can't be used with `regions`.                                       | `false`                                                                       | no       |
 | `validate_dimensions`         | `bool`         | Enable dimension validation in the azure SDK.                                                                                                            | `false`                                                                       | no       |
 
 The list of available `resource_type` values and their corresponding `metrics` can be found in [Azure Monitor essentials][].
@@ -191,6 +198,43 @@ Replace the following:
 * _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus remote_write-compatible server to send metrics to.
 * _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
 * _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+### Batch API example
+
+The following example uses the Batch API to collect metrics from Azure Key Vault resources across multiple subscriptions
+with reduced API call overhead. This is recommended when monitoring many resources to avoid ARM rate limiting.
+
+```alloy
+prometheus.exporter.azure "keyvault" {
+    subscriptions               = ["<SUB_ID_1>", "<SUB_ID_2>"]
+    resource_type               = "Microsoft.KeyVault/vaults"
+    resource_graph_query_filter = "where location == 'eastus'"
+    metrics                     = ["Availability", "SaturationShoebox", "ServiceApiHit", "ServiceApiLatency", "ServiceApiResult"]
+    use_batch_api               = true
+}
+
+prometheus.scrape "keyvault" {
+    targets    = prometheus.exporter.azure.keyvault.targets
+    forward_to = [prometheus.remote_write.demo.receiver]
+}
+```
+
+{{< admonition type="note" >}}
+Some Azure resource types require a larger `interval` than the default `PT1M`.
+For example, Azure Database for PostgreSQL Flexible Servers only supports time grains of `PT30M` or larger.
+If you receive errors about unsupported time grains, increase the `interval` and `timespan` accordingly:
+
+```alloy
+prometheus.exporter.azure "postgresql" {
+    subscriptions = ["<SUB_ID>"]
+    resource_type = "Microsoft.DBforPostgreSQL/flexibleServers"
+    metrics       = ["cpu_percent", "memory_percent", "active_connections"]
+    interval      = "PT1H"
+    timespan      = "PT1H"
+    use_batch_api = true
+}
+```
+{{< /admonition >}}
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
