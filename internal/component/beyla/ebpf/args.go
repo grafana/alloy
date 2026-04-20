@@ -48,13 +48,14 @@ type Attributes struct {
 }
 
 type KubernetesDecorator struct {
-	Enable                string        `alloy:"enable,attr"`
-	ClusterName           string        `alloy:"cluster_name,attr,optional"`
-	InformersSyncTimeout  time.Duration `alloy:"informers_sync_timeout,attr,optional"`
-	InformersResyncPeriod time.Duration `alloy:"informers_resync_period,attr,optional"`
-	DisableInformers      []string      `alloy:"disable_informers,attr,optional"`
-	MetaRestrictLocalNode bool          `alloy:"meta_restrict_local_node,attr,optional"`
-	MetaCacheAddress      string        `alloy:"meta_cache_address,attr,optional"`
+	Enable                   string        `alloy:"enable,attr"`
+	ClusterName              string        `alloy:"cluster_name,attr,optional"`
+	InformersSyncTimeout     time.Duration `alloy:"informers_sync_timeout,attr,optional"`
+	InformersResyncPeriod    time.Duration `alloy:"informers_resync_period,attr,optional"`
+	DisableInformers         []string      `alloy:"disable_informers,attr,optional"`
+	MetaRestrictLocalNode    bool          `alloy:"meta_restrict_local_node,attr,optional"`
+	MetaCacheAddress         string        `alloy:"meta_cache_address,attr,optional"`
+	ReconnectInitialInterval time.Duration `alloy:"reconnect_initial_interval,attr,optional"`
 }
 
 type InstanceIDConfig struct {
@@ -125,6 +126,7 @@ type Metrics struct {
 	ExtraResourceLabels             []string `alloy:"extra_resource_labels,attr,optional"`
 	ExtraSpanResourceLabels         []string `alloy:"extra_span_resource_labels,attr,optional"`
 	NativeHistograms                bool     `alloy:"native_histograms,attr,optional"`
+	ExemplarFilter                  string   `alloy:"exemplar_filter,attr,optional"`
 }
 
 type Traces struct {
@@ -150,6 +152,10 @@ type Network struct {
 	CIDRs              []string      `alloy:"cidrs,attr,optional"`
 }
 
+type EBPFMapsConfig struct {
+	GlobalScaleFactor int `alloy:"global_scale_factor,attr,optional"`
+}
+
 type EBPF struct {
 	WakeupLen           int               `alloy:"wakeup_len,attr,optional"`
 	TrackRequestHeaders bool              `alloy:"track_request_headers,attr,optional"`
@@ -160,6 +166,7 @@ type EBPF struct {
 	BpfDebug            bool              `alloy:"bpf_debug,attr,optional"`
 	ProtocolDebug       bool              `alloy:"protocol_debug_print,attr,optional"`
 	PayloadExtraction   PayloadExtraction `alloy:"payload_extraction,block,optional"`
+	MapsConfig          EBPFMapsConfig    `alloy:"maps_config,block,optional"`
 }
 
 type PayloadExtraction struct {
@@ -167,10 +174,15 @@ type PayloadExtraction struct {
 }
 
 type HTTPPayloadExtraction struct {
-	OpenAI OpenAIPayloadExtraction `alloy:"openai,block,optional"`
+	OpenAI    OpenAIPayloadExtraction    `alloy:"openai,block,optional"`
+	Anthropic AnthropicPayloadExtraction `alloy:"anthropic,block,optional"`
 }
 
 type OpenAIPayloadExtraction struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+}
+
+type AnthropicPayloadExtraction struct {
 	Enabled bool `alloy:"enabled,attr,optional"`
 }
 
@@ -187,6 +199,7 @@ type Injector struct {
 	HostPathVolumeDir string              `alloy:"host_path_volume,attr,optional"`
 	SDKPkgVersion     string              `alloy:"sdk_package_version,attr,optional"`
 	HostMountPath     string              `alloy:"host_mount_path,attr,optional"`
+	ImageVolumePath   string              `alloy:"image_volume_path,attr,optional"`
 	ManageSDKVersions *bool               `alloy:"manage_sdk_versions,attr,optional"`
 	DefaultSampler    SamplerConfig       `alloy:"sampler,block,optional"`
 	Propagators       []string            `alloy:"propagators,attr,optional"`
