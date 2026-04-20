@@ -917,8 +917,8 @@ github.com/go-git/go-billy/v5 v5.8.0 h1:I8hjc3LbBlXTtVuFNJuwYuMiHvQJDq1AT6u4DwDz
 github.com/go-git/go-billy/v5 v5.8.0/go.mod h1:RpvI/rw4Vr5QA+Z60c6d6LXH0rYJo0uD5SqfmrrheCY=
 github.com/go-git/go-git-fixtures/v4 v4.3.2-0.20231010084843-55a94097c399 h1:eMje31YglSBqCdIqdhKBW8lokaMrL3uTkpGYlE2OOT4=
 github.com/go-git/go-git-fixtures/v4 v4.3.2-0.20231010084843-55a94097c399/go.mod h1:1OCfN199q1Jm3HZlxleg+Dw/mwps2Wbk9frAWm+4FII=
-github.com/go-git/go-git/v5 v5.17.1 h1:WnljyxIzSj9BRRUlnmAU35ohDsjRK0EKmL0evDqi5Jk=
-github.com/go-git/go-git/v5 v5.17.1/go.mod h1:pW/VmeqkanRFqR6AljLcs7EA7FbZaN5MQqO7oZADXpo=
+github.com/go-git/go-git/v5 v5.18.0 h1:O831KI+0PR51hM2kep6T8k+w0/LIAD490gvqMCvL5hM=
+github.com/go-git/go-git/v5 v5.18.0/go.mod h1:pW/VmeqkanRFqR6AljLcs7EA7FbZaN5MQqO7oZADXpo=
 github.com/go-gl/glfw v0.0.0-20190409004039-e6da0acd62b1/go.mod h1:vR7hzQXu2zJy9AVAgeJqvqgH9Q5CA+iKCZ2gyEVpxRU=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20191125211704-12ad95a8df72/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
 github.com/go-gl/glfw/v3.3/glfw v0.0.0-20200222043503-6f7a984d4dc4/go.mod h1:tQ2UAYgL5IevRw8kRxooKSPJfGvJ9fJQFa0TUsXzTg8=
@@ -1260,8 +1260,6 @@ github.com/grafana/pyroscope-go/godeltaprof v0.1.9 h1:c1Us8i6eSmkW+Ez05d3co8kasn
 github.com/grafana/pyroscope-go/godeltaprof v0.1.9/go.mod h1:2+l7K7twW49Ct4wFluZD3tZ6e0SjanjcUUBPVD/UuGU=
 github.com/grafana/pyroscope/api v1.3.2-0.20260414051146-5eb4b919ec16 h1:PqpXElxEvwVFt90etaKf9tERsNUf0Wdg+uofx8zuHq4=
 github.com/grafana/pyroscope/api v1.3.2-0.20260414051146-5eb4b919ec16/go.mod h1:JXy9oodWgLUVkUUlSk9+2Y0D4DWWwTQJo8NLXT36zg4=
-github.com/grafana/pyroscope/api v1.3.2 h1:+F5JNUlM4ifoweKmRXW9cA6JsCeHzDVFV2Om3smqCxI=
-github.com/grafana/pyroscope/api v1.3.2/go.mod h1:IQdc2koLAWVLlWcvBV4bm6uSFW2LiklKa8xyevsZ28I=
 github.com/grafana/pyroscope/ebpf v0.4.11 h1:QpXj3xIWveFy1Zx7M9YzCq7z+d70LQ2pF/qEzD/tXWo=
 github.com/grafana/pyroscope/ebpf v0.4.11/go.mod h1:LhmNuYZpxlmjsLK36j1nD+eJ/CNebBRDPCzRJPVHZbI=
 github.com/grafana/pyroscope/lidia v0.0.2 h1:DsZiUjWfB+6w9wKGosEQQTFuDvkay7kUECw3Os7Xno0=
