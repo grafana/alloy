@@ -35,22 +35,13 @@ jobs:
         os: [windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Wait for Docker to be ready
+    - name: Ensure Docker is running (Docker issue workaround)
+      id: docker-workaround
       run: |
-        $retries = 0
-        $maxRetries = 30
-        while ($retries -lt $maxRetries) {
-          docker info 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            Write-Host "Docker is ready."
-            exit 0
-          }
-          $retries++
-          Write-Host "Waiting for Docker to be ready... (attempt $retries/$maxRetries)"
-          Start-Sleep -Seconds 2
+        $dockerState = Get-Service -Name "docker"
+        if ($dockerState.Status -ne "Running") {
+          Start-Service -Name "docker"
         }
-        Write-Host "Docker did not become ready after $maxRetries attempts."
-        exit 1
 
       # This step needs to run before "Checkout code".
       # That's because it generates a new file.
