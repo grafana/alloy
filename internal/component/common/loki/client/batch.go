@@ -153,6 +153,7 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observe
 	}
 }
 
+// 15 matches Loki's default maximum for indexed labels.
 const maxPooledLabelNamesCapacity = 15
 
 var labelNamesPool = sync.Pool{
