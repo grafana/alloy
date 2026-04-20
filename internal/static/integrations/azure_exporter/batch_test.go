@@ -211,16 +211,25 @@ func TestParseISO8601Duration(t *testing.T) {
 		{"PT90S", 90 * time.Second},
 		{"PT1H30M45S", time.Hour + 30*time.Minute + 45*time.Second},
 		{"P2D", 48 * time.Hour},
-		// Zero/invalid inputs fall back to 5 minutes
-		{"", 5 * time.Minute},
-		{"garbage", 5 * time.Minute},
-		{"PT0S", 5 * time.Minute}, // zero duration falls back
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
 			result := parseISO8601Duration(tt.input)
 			require.Equal(t, tt.expected, result, "parseISO8601Duration(%q)", tt.input)
+		})
+	}
+}
+
+func TestParseISO8601Duration_PanicsOnInvalid(t *testing.T) {
+	// Invalid or zero-duration inputs should panic — Config.Validate() is responsible
+	// for catching these before they reach this function.
+	invalidInputs := []string{"", "garbage", "PT0S"}
+	for _, input := range invalidInputs {
+		t.Run(input, func(t *testing.T) {
+			require.Panics(t, func() {
+				parseISO8601Duration(input)
+			}, "parseISO8601Duration(%q) should panic", input)
 		})
 	}
 }

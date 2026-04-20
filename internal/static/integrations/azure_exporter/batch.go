@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	neturl "net/url"
+	"net/url"
 	"strings"
 	"time"
 
@@ -23,10 +23,10 @@ import (
 )
 
 const (
-	batchAPIVersion       = "2024-02-01"
-	maxBatchSize          = 50  // Maximum resources per metrics:getBatch request.
-	maxMetricsPerRequest  = 20  // Azure Monitor limit on metric names per request.
-	resourceGraphTop      = int32(1000)
+	batchAPIVersion      = "2024-02-01"
+	maxBatchSize         = 50 // Maximum resources per metrics:getBatch request.
+	maxMetricsPerRequest = 20 // Azure Monitor limit on metric names per request.
+	resourceGraphTop     = int32(1000)
 )
 
 // batchMetricsEndpoint returns the base URL for the Azure Monitor Batch API for a given region and cloud.
@@ -153,6 +153,9 @@ func discoverResourcesWithLocation(
 		return nil, fmt.Errorf("resource graph query: %w", err)
 	}
 
+	// Resource Graph returns results as untyped JSON ([]interface{} of map[string]interface{}).
+	// We paginate through all results using SkipToken, extracting the fields we projected
+	// in the Kusto query: id, location, and tags.
 	var resources []discoveredResource
 	for {
 		resultList, ok := result.Data.([]interface{})
@@ -165,6 +168,8 @@ func discoverResourcesWithLocation(
 			if !ok {
 				continue
 			}
+
+			// Both id and location are required — skip malformed rows.
 			id, _ := row["id"].(string)
 			location, _ := row["location"].(string)
 			if id == "" || location == "" {
@@ -179,6 +184,7 @@ func discoverResourcesWithLocation(
 			})
 		}
 
+		// Resource Graph paginates via SkipToken. If present, fetch the next page.
 		if result.SkipToken != nil {
 			queryRequest.Options.SkipToken = result.SkipToken
 			result, err = client.Resources(ctx, queryRequest, nil)
@@ -349,7 +355,7 @@ func (e Exporter) callBatchAPI(
 		endpoint, subscriptionID)
 
 	// Build query parameters using url.Values for proper encoding.
-	params := neturl.Values{}
+	params := url.Values{}
 	params.Set("api-version", batchAPIVersion)
 	params.Set("metricnames", strings.Join(metricNames, ","))
 	if settings.Interval != nil && *settings.Interval != "" {
@@ -559,6 +565,8 @@ func addMetric(
 }
 
 // replaceTemplatePlaceholders replaces {field} placeholders in a template string.
+// Labels consumed by the template are deleted from the labels map (matching upstream behavior)
+// so they appear in the metric name rather than as separate Prometheus labels.
 func replaceTemplatePlaceholders(template string, labels prometheus.Labels, resourceType string) string {
 	result := template
 	// Simple replacement - find all {field} patterns
@@ -608,38 +616,51 @@ func computeTimeWindow(timespan string, interval *string) time.Duration {
 // parseISO8601Duration parses a simple ISO 8601 duration string (e.g., "PT5M", "PT1H", "P1D")
 // into a Go time.Duration. Supports days (D), hours (H), minutes (M), and seconds (S).
 // Does not support year (Y), month (M before T), or week (W) designators.
+//
+// Panics if the input produces a zero or negative duration, since Config.Validate() should
+// have already rejected invalid values before we get here.
 func parseISO8601Duration(s string) time.Duration {
+	original := s
+	// ISO 8601 durations have the form P[nD][T[nH][nM][nS]].
+	// The 'P' prefix marks the start; 'T' separates the date part (days) from the time part.
+	// We track whether we've seen 'T' to distinguish 'M' (months, unsupported) from 'M' (minutes).
 	s = strings.TrimPrefix(s, "P")
 	var d time.Duration
-	inTime := false
-	numBuf := ""
+	inTimePart := false // true after we see 'T'
+	numBuf := ""        // accumulates digit characters for the current number
+
 	for _, c := range s {
 		switch {
 		case c == 'T':
-			inTime = true
+			// Switch from date part to time part.
+			inTimePart = true
+
 		case c >= '0' && c <= '9' || c == '.':
+			// Accumulate digits (and decimal point) for the numeric value.
 			numBuf += string(c)
+
 		default:
+			// A unit designator (D, H, M, S) — parse the accumulated number and apply it.
 			val := 0.0
 			if numBuf != "" {
 				fmt.Sscanf(numBuf, "%f", &val)
 				numBuf = ""
 			}
 			switch {
-			case c == 'D' && !inTime:
+			case c == 'D' && !inTimePart:
 				d += time.Duration(val * float64(24*time.Hour))
-			case c == 'H' && inTime:
+			case c == 'H' && inTimePart:
 				d += time.Duration(val * float64(time.Hour))
-			case c == 'M' && inTime:
+			case c == 'M' && inTimePart:
 				d += time.Duration(val * float64(time.Minute))
-			case c == 'S' && inTime:
+			case c == 'S' && inTimePart:
 				d += time.Duration(val * float64(time.Second))
 			}
 		}
 	}
-	// Default to 5 minutes if parsing produces zero
-	if d == 0 {
-		d = 5 * time.Minute
+
+	if d <= 0 {
+		panic(fmt.Sprintf("parseISO8601Duration(%q): produced zero/negative duration; Config.Validate() should have caught this", original))
 	}
 	return d
 }
