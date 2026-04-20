@@ -81,4 +81,3 @@ func sendTestLogsForDevice(t *testing.T, hostname string) {
 	defer resp.Body.Close()
 	require.Equal(t, http.StatusNoContent, resp.StatusCode)
 }
-
