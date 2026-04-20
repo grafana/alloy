@@ -177,6 +177,8 @@ func labelsMapToString(ls model.LabelSet) string {
 		if cap(lstrs) <= maxPooledLabelNamesCapacity {
 			// append may have updated the slice header so write it back before
 			// returning the slice to the pool.
+			// This is not necessary with the current cap check, but we keep it so
+			// the pooled slice state stays correct if that ever changes.
 			*pooled = lstrs[:0]
 			labelNamesPool.Put(pooled)
 		}
