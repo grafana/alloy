@@ -143,58 +143,25 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 		return errors.New(ErrMalformedJSON)
 	}
 
-	for n, e := range j.expressions {
-		r, err := e.Search(data)
+	for name, expr := range j.expressions {
+		rawResult, err := expr.Search(data)
 		if err != nil {
 			if Debug {
 				level.Debug(j.logger).Log("msg", "failed to search JMES expression", "err", err)
 			}
 			continue
 		}
-
-		switch r.(type) {
-		case float64:
-			// All numbers in JSON are unmarshaled to float64.
-			extracted[n] = r
-		case string:
-			extracted[n] = r
-		case bool:
-			extracted[n] = r
-		case nil:
-			extracted[n] = nil
-		default:
-			// If the value wasn't a string or a number, marshal it back to json
-			jm, err := json.Marshal(r)
-			if err != nil {
-				if Debug {
-					level.Debug(j.logger).Log("msg", "failed to marshal complex type back to string", "err", err)
-				}
-				continue
-			}
-			extracted[n] = string(jm)
+		value, err := j.simplifyType(rawResult)
+		if err == nil {
+			extracted[name] = value
 		}
 	}
 	if j.regex.String() != "" {
-		for key, value := range data {
+		for key, rawValue := range data {
 			if j.regex.MatchString(key) {
-				switch value.(type) {
-				case float64:
+				value, err := j.simplifyType(rawValue)
+				if err == nil {
 					extracted[key] = value
-				case string:
-					extracted[key] = value
-				case bool:
-					extracted[key] = value
-				case nil:
-					extracted[key] = nil
-				default:
-					jm, err := json.Marshal(value)
-					if err != nil {
-						if Debug {
-							level.Debug(j.logger).Log("msg", "failed to marshal complex type back to string", "err", err)
-						}
-						continue
-					}
-					extracted[key] = string(jm)
 				}
 			}
 		}
@@ -203,6 +170,31 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 		level.Debug(j.logger).Log("msg", "extracted data debug in json stage", "extracted_data", fmt.Sprintf("%v", extracted))
 	}
 	return nil
+}
+
+// extractWithType returns the value if it's a simple type (string, number, bool),
+// otherwise, it returns it as a JSON string
+func (j *jsonStage) simplifyType(value any) (any, error) {
+	switch value.(type) {
+	case float64:
+		return value, nil
+	case string:
+		return value, nil
+	case bool:
+		return value, nil
+	case nil:
+		return nil, nil
+	default:
+		// If the value wasn't a string or a number, marshal it back to json
+		jm, err := json.Marshal(value)
+		if err != nil {
+			if Debug {
+				level.Debug(j.logger).Log("msg", "failed to marshal complex type back to string", "err", err)
+				return nil, err
+			}
+		}
+		return string(jm), nil
+	}
 }
 
 // Cleanup implements Stage.
