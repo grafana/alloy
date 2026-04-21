@@ -36,6 +36,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
+| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits `wait_event_v2` entries with `wait_event_type` pre-classified as `IO Wait`, `Lock Wait`, `Network Wait`, or `Other Wait` in the log body, instead of the baseline `wait_event` entries. | `false` | no |
 
 The following collectors are configurable:
 

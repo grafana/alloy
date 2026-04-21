@@ -4,11 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -21,6 +23,7 @@ const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
 	OP_WAIT_EVENT         = "wait_event"
+	OP_WAIT_EVENT_V2      = "wait_event_v2"
 
 	cpuTimeField              = `, statements.CPU_TIME`
 	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
@@ -93,6 +96,8 @@ type QuerySamplesArguments struct {
 	SetupConsumersCheckInterval time.Duration
 	SampleMinDuration           time.Duration
 	WaitEventMinDuration        time.Duration
+	EnablePreClassifiedWaitEvents bool
+	WaitEventCounter              *prometheus.CounterVec
 
 	Logger log.Logger
 }
@@ -108,6 +113,8 @@ type QuerySamples struct {
 	setupConsumersCheckInterval time.Duration
 	sampleMinDuration           time.Duration
 	waitEventMinDuration        time.Duration
+	enablePreClassifiedWaitEvents bool
+	waitEventCounter              *prometheus.CounterVec
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -131,6 +138,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
 		sampleMinDuration:           args.SampleMinDuration,
 		waitEventMinDuration:        args.WaitEventMinDuration,
+		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
+		waitEventCounter:              args.WaitEventCounter,
 		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                     &atomic.Bool{},
 	}
@@ -408,28 +417,44 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 		if row.WaitEventID.Valid && row.WaitTime.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
-			waitLogMessage := fmt.Sprintf(
-				`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-				row.Schema.String,
-				row.User.String,
-				row.Host.String,
-				row.ThreadID.String,
-				row.Digest.String,
-				row.StatementEventID.String,
-				row.WaitEventID.String,
-				row.WaitEndEventID.String,
-				row.WaitEventName.String,
-				row.WaitObjectName.String,
-				row.WaitObjectType.String,
-				waitTime,
-			)
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT,
-				waitLogMessage,
-				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
-			)
+			if c.enablePreClassifiedWaitEvents {
+				waitV2LogMessage := fmt.Sprintf(
+					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_event_type="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+					row.Schema.String, row.User.String, row.Host.String,
+					row.ThreadID.String, row.Digest.String,
+					row.StatementEventID.String, row.WaitEventID.String, row.WaitEndEventID.String,
+					row.WaitEventName.String, classifyMySQLWaitEventType(row.WaitEventName.String),
+					row.WaitObjectName.String, row.WaitObjectType.String, waitTime,
+				)
+				if c.disableQueryRedaction && row.SQLText.Valid {
+					waitV2LogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+				}
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+					logging.LevelInfo, OP_WAIT_EVENT_V2, waitV2LogMessage,
+					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+				)
+			} else {
+				waitLogMessage := fmt.Sprintf(
+					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+					row.Schema.String, row.User.String, row.Host.String,
+					row.ThreadID.String, row.Digest.String,
+					row.StatementEventID.String, row.WaitEventID.String, row.WaitEndEventID.String,
+					row.WaitEventName.String, row.WaitObjectName.String, row.WaitObjectType.String, waitTime,
+				)
+				if c.disableQueryRedaction && row.SQLText.Valid {
+					waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+				}
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+					logging.LevelInfo, OP_WAIT_EVENT, waitLogMessage,
+					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+				)
+			}
+
+			if c.waitEventCounter != nil {
+				waitTimeSeconds := waitTime / 1000.0 // waitTime is in ms
+				c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(waitTimeSeconds)
+			}
 		}
 	}
 
@@ -471,4 +496,21 @@ func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, flo
 	limit := uptimeSinceOverflow(uptime)
 
 	return timerClause, limit
+}
+
+func classifyMySQLWaitEventType(waitEventName string) string {
+	rest, ok := strings.CutPrefix(waitEventName, "wait/")
+	if !ok {
+		return waitEventName
+	}
+	category, _, _ := strings.Cut(rest, "/")
+	switch category {
+	case "io":
+		return "IO Wait"
+	case "lock":
+		return "Lock Wait"
+	case "synch":
+		return "Synch Wait"
+	}
+	return waitEventName
 }
