@@ -1,10 +1,10 @@
 package controller
 
 import (
-	"github.com/go-kit/log"
+	"log/slog"
+
 	"github.com/grafana/alloy/internal/dag"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	astutil "github.com/grafana/alloy/internal/util/ast"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
@@ -13,7 +13,7 @@ import (
 
 // ComponentReferences returns the list of references a component is making to
 // other components.
-func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scope, minStability featuregate.Stability) ([]astutil.Reference, diag.Diagnostics) {
+func ComponentReferences(cn dag.Node, g *dag.Graph, l *slog.Logger, scope *vm.Scope, minStability featuregate.Stability) ([]astutil.Reference, diag.Diagnostics) {
 	var (
 		traversals []astutil.Traversal
 
@@ -51,11 +51,11 @@ func ComponentReferences(cn dag.Node, g *dag.Graph, l log.Logger, scope *vm.Scop
 
 		if componentRefMatch {
 			if scope.IsStdlibIdentifiers(t[0].Name) {
-				level.Warn(l).Log("msg", "a component is shadowing an existing stdlib name", "component", ref.Target.NodeID(), "stdlib name", t[0].Name)
+				l.Warn("a component is shadowing an existing stdlib name", "component", ref.Target.NodeID(), "stdlib_name", t[0].Name)
 			}
 			refs = append(refs, ref)
 		} else if scope.IsStdlibDeprecated(t[0].Name) {
-			level.Warn(l).Log("msg", "this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives", "function", t[0].Name)
+			l.Warn("this stdlib function is deprecated; please refer to the documentation for updated usage and alternatives", "function", t[0].Name)
 		} else if funcName := t.String(); scope.IsStdlibExperimental(funcName) {
 			if err := featuregate.CheckAllowed(featuregate.StabilityExperimental, minStability, funcName); err != nil {
 				diags = append(diags, diag.Diagnostic{

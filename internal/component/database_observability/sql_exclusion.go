@@ -1,6 +1,37 @@
 package database_observability
 
-import "strings"
+import (
+	"slices"
+	"strings"
+)
+
+var defaultExcludedSchemas = []string{
+	"alloydbadmin",
+	"alloydbmetadata",
+	"azure_maintenance",
+	"azure_sys",
+	"cloudsqladmin",
+	"rdsadmin",
+}
+
+var defaultExcludedUsers = []string{
+	"azuresu",
+	"cloudsqladmin",
+	"db-o11y", // default recommended user
+	"rdsadmin",
+}
+
+func DefaultExcludedDatabases() []string {
+	return slices.Clone(defaultExcludedSchemas)
+}
+
+func DefaultExcludedSchemas() []string {
+	return slices.Clone(defaultExcludedSchemas)
+}
+
+func DefaultExcludedUsers() []string {
+	return slices.Clone(defaultExcludedUsers)
+}
 
 // BuildExclusionClause builds a SQL IN clause from a list of items.
 func BuildExclusionClause(items []string) string {

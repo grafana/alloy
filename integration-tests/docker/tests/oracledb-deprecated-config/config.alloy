@@ -1,0 +1,26 @@
+prometheus.exporter.oracledb "oracledb_metrics" {
+  connection_string = "oracle://system:testpassword@oracledb:1521/FREEPDB1"
+  custom_metrics    = ["/etc/alloy/custom-metrics.toml"]
+}
+
+prometheus.scrape "oracledb_metrics" {
+  targets         = prometheus.exporter.oracledb.oracledb_metrics.targets
+  forward_to      = [prometheus.remote_write.oracledb_metrics.receiver]
+  scrape_interval = "31s"
+  scrape_timeout  = "30s"
+}
+
+prometheus.remote_write "oracledb_metrics" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+    metadata_config {
+      send_interval = "1s"
+    }
+    queue_config {
+      max_samples_per_send = 100
+    }
+  }
+  external_labels = {
+    test_name = "oracledb_metrics",
+  }
+} 

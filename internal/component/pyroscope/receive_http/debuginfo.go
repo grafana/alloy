@@ -2,182 +2,121 @@ package receive_http
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
-	"strings"
-	"sync"
+	"net/http"
+	"time"
 
 	"connectrpc.com/connect"
-	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
+	"github.com/go-kit/log"
+	"github.com/gorilla/mux"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
-	"google.golang.org/protobuf/proto"
 )
 
-func (c *Component) getDebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (c *Component) getDebugInfoClients() []*debuginfoclient.Client {
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
+	var clients []*debuginfoclient.Client
 	for _, appendable := range c.appendables {
 		clients = append(clients, appendable.DebugInfoClients()...)
 	}
 	return clients
 }
 
-type debuginfoDownstream struct {
-	stream *connect.BidiStreamForClient[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]
-	failed bool
-	errs   error
-	errMut sync.Mutex
-}
-
-func (d *debuginfoDownstream) fail(err error) {
-	d.failed = true
-	_ = d.stream.CloseRequest()
-	_ = d.stream.CloseResponse()
-	pyroutil.ErrorsJoinConcurrent(&d.errs, err, &d.errMut)
-}
-
-func debuginfoInitReason(i int, accepted bool, reason string) string {
-	if reason != "" {
-		return reason
-	}
-	if accepted {
-		return fmt.Sprintf("downstream %d accepted", i)
-	}
-	return fmt.Sprintf("downstream %d declined", i)
-}
-
-func (c *Component) Upload(ctx context.Context, stream *connect.BidiStream[debuginfov1alpha1.UploadRequest, debuginfov1alpha1.UploadResponse]) error {
+func (c *Component) firstClient() (*debuginfoclient.Client, error) {
 	clients := c.getDebugInfoClients()
 	if len(clients) == 0 {
-		return connect.NewError(connect.CodeUnavailable, fmt.Errorf("no downstream endpoints available"))
+		return nil, fmt.Errorf("no downstream endpoints available")
 	}
+	return clients[0], nil
+}
 
-	initReq, err := stream.Receive()
+func (c *Component) recordDownstream(l log.Logger, method string, err error) {
+	result := "success"
 	if err != nil {
-		return err
+		result = "failure"
 	}
-	if initReq.GetInit() == nil {
-		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("expected init request, got %T", initReq.GetData()))
+	c.metrics.debugInfoDownstreamCalls.WithLabelValues(method, result).Inc()
+	if err != nil {
+		_ = level.Error(l).Log("err", err)
+	} else {
+		_ = level.Debug(l).Log("result", "ok")
 	}
+}
 
-	allDownstreams := make([]debuginfoDownstream, len(clients))
-	var accepted []*debuginfoDownstream
-	var reasons []string
+func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (res *connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], err error) {
+	l := log.With(c.logger,
+		"pyroscope_proxy", "debuginfo",
+		"method", "ShouldInitiateUpload DS",
+		"name", req.Msg.File.Name,
+		"gnu_build_id", req.Msg.File.GnuBuildId,
+		"go_build_id", req.Msg.File.GoBuildId,
+		"otel_file_id", req.Msg.File.OtelFileId,
+	)
+	defer func() { c.recordDownstream(l, "ShouldInitiateUpload", err) }()
 
-	for i, client := range clients {
-		ds := &allDownstreams[i]
-		ds.stream = client.Upload(ctx)
+	client, err := c.firstClient()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	return client.ShouldInitiateUpload(ctx, connect.NewRequest(req.Msg.CloneVT()))
+}
 
-		clonedReq := proto.Clone(initReq).(*debuginfov1alpha1.UploadRequest)
-		if err := ds.stream.Send(clonedReq); err != nil {
-			ds.fail(fmt.Errorf("downstream %d init send: %w", i, err))
-			continue
-		}
+func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (res *connect.Response[debuginfov1alpha1.UploadFinishedResponse], err error) {
+	l := log.With(c.logger,
+		"pyroscope_proxy", "debuginfo",
+		"method", "UploadFinished DS",
+		"gnu_build_id", req.Msg.GnuBuildId,
+	)
+	defer func() { c.recordDownstream(l, "UploadFinished", err) }()
 
-		resp, err := ds.stream.Receive()
+	client, err := c.firstClient()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	return client.UploadFinished(ctx, connect.NewRequest(req.Msg.CloneVT()))
+}
+
+func (c *Component) UploadHTTPHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gnuBuildID := mux.Vars(r)["gnu_build_id"]
+		l := log.With(c.logger,
+			"pyroscope_proxy", "debuginfo",
+			"method", "Upload DS",
+			"gnu_build_id", gnuBuildID,
+		)
+
+		var err error
+		defer func() { c.recordDownstream(l, "Upload", err) }()
+
+		client, err := c.firstClient()
 		if err != nil {
-			ds.fail(fmt.Errorf("downstream %d init receive: %w", i, err))
-			continue
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
 		}
 
-		initResp := resp.GetInit()
-		if initResp == nil {
-			ds.fail(fmt.Errorf("downstream %d: expected init response, got %T", i, resp.GetData()))
-			continue
-		}
-		if initResp.ShouldInitiateUpload {
-			accepted = append(accepted, ds)
-		}
-		reasons = append(reasons, debuginfoInitReason(i, initResp.ShouldInitiateUpload, initResp.Reason))
-	}
+		c.mut.Lock()
+		uploadTimeout := c.debugInfoUploadTimeout
+		c.mut.Unlock()
 
-	anyAccepted := len(accepted) > 0
+		// Extend server read/write deadlines so the upload is not
+		// killed by the default HTTP server timeouts (typically 30s).
+		rc := http.NewResponseController(w)
+		deadline := time.Now().Add(uploadTimeout)
+		_ = rc.SetReadDeadline(deadline)
+		_ = rc.SetWriteDeadline(deadline)
 
-	closeAll := func() {
-		for i := range allDownstreams {
-			_ = allDownstreams[i].stream.CloseRequest()
-			_ = allDownstreams[i].stream.CloseResponse()
-		}
-	}
-	defer closeAll()
+		ctx, cancel := context.WithTimeout(r.Context(), uploadTimeout)
+		defer cancel()
 
-	// If no downstream accepted, check whether any failed with transport errors.
-	// Returning a decline in that case would cause the caller to permanently cache
-	// the file ID as "done", preventing retries after a transient outage.
-	if !anyAccepted {
-		var initErrs error
-		for i := range allDownstreams {
-			initErrs = errors.Join(initErrs, allDownstreams[i].errs)
-		}
-		if initErrs != nil {
-			return connect.NewError(connect.CodeInternal, initErrs)
-		}
-	}
-
-	if err := stream.Send(&debuginfov1alpha1.UploadResponse{
-		Data: &debuginfov1alpha1.UploadResponse_Init{
-			Init: &debuginfov1alpha1.ShouldInitiateUploadResponse{
-				ShouldInitiateUpload: anyAccepted,
-				Reason:               strings.Join(reasons, "; "),
-			},
-		},
-	}); err != nil {
-		return err
-	}
-
-	if !anyAccepted {
-		return nil
-	}
-
-	aliveCount := len(accepted)
-
-	for aliveCount > 0 {
-		req, err := stream.Receive()
+		err = client.Upload(ctx, gnuBuildID, r.Body)
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return err
+			http.Error(w, fmt.Sprintf("downstream upload: %v", err), http.StatusBadGateway)
+			return
 		}
 
-		for _, ds := range accepted {
-			if ds.failed {
-				continue
-			}
-			cloned := proto.Clone(req).(*debuginfov1alpha1.UploadRequest)
-			if err := ds.stream.Send(cloned); err != nil {
-				ds.fail(fmt.Errorf("downstream chunk send: %w", err))
-				aliveCount--
-			}
-		}
-	}
-
-	for _, ds := range accepted {
-		if ds.failed {
-			continue
-		}
-		_ = ds.stream.CloseRequest()
-		for {
-			_, err := ds.stream.Receive()
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					ds.fail(fmt.Errorf("downstream drain: %w", err))
-				}
-				break
-			}
-		}
-		_ = ds.stream.CloseResponse()
-	}
-
-	var errs error
-	for i := range allDownstreams {
-		errs = errors.Join(errs, allDownstreams[i].errs)
-	}
-	if errs != nil {
-		return connect.NewError(connect.CodeInternal, errs)
-	}
-	return nil
+		w.WriteHeader(http.StatusOK)
+	})
 }

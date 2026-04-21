@@ -1,0 +1,11 @@
+# Test rendering of the chart with the global image pull policy explicitly set.
+global:
+  image:
+    pullPolicy: Always
+
+image:
+  pullPolicy: IfNotPresent
+
+configReloader:
+  image:
+    pullPolicy: IfNotPresent

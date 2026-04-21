@@ -56,6 +56,7 @@ func (a *Arguments) labelSet() model.LabelSet {
 
 type Component struct {
 	opts               component.Options
+	metrics            *metrics
 	handler            loki.LogsBatchReceiver
 	uncheckedCollector *util.UncheckedCollector
 
@@ -68,6 +69,7 @@ type Component struct {
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               opts,
+		metrics:            newMetrics(opts.Registerer),
 		handler:            loki.NewLogsBatchReceiver(),
 		uncheckedCollector: util.NewUncheckedCollector(nil),
 
@@ -134,8 +136,9 @@ func (c *Component) Update(args component.Arguments) error {
 
 		var err error
 		c.server, err = source.NewServer(c.opts.Logger, reg, c.handler, source.ServerConfig{
-			Namespace: "loki_source_api",
-			NetConfig: newArgs.Server,
+			Namespace:      "loki_source_api",
+			EntriesWritten: c.metrics.entriesWritten,
+			NetConfig:      newArgs.Server,
 			LogsConfig: &source.LogsConfig{
 				FixedLabels:          newArgs.labelSet(),
 				RelabelRules:         relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules),

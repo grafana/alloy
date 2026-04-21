@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/trace/noop"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 func TestTransport(t *testing.T) {
@@ -69,40 +67,6 @@ func TestTransport(t *testing.T) {
 		cfg.TLSConfig.InsecureSkipVerify = true
 		c := newTestComponent(srv.URL, cfg)
 		client := c.receiver.endpoints[0].ingestClient
-
-		resp, err := client.Get(srv.URL)
-		require.NoError(t, err)
-		defer resp.Body.Close()
-		_, _ = io.Copy(io.Discard, resp.Body)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-	})
-
-	t.Run("http2_tls", func(t *testing.T) {
-		srv := httptest.NewUnstartedServer(protoHandler("HTTP/2.0"))
-		srv.EnableHTTP2 = true
-		srv.StartTLS()
-		defer srv.Close()
-
-		cfg := alloyconfig.CloneDefaultHTTPClientConfig()
-		cfg.EnableHTTP2 = true
-		cfg.TLSConfig.InsecureSkipVerify = true
-		c := newTestComponent(srv.URL, cfg)
-		client := c.receiver.endpoints[0].http2Client()
-
-		resp, err := client.Get(srv.URL)
-		require.NoError(t, err)
-		defer resp.Body.Close()
-		_, _ = io.Copy(io.Discard, resp.Body)
-		require.Equal(t, http.StatusOK, resp.StatusCode)
-	})
-
-	t.Run("h2c", func(t *testing.T) {
-		srv := httptest.NewUnstartedServer(h2c.NewHandler(protoHandler("HTTP/2.0"), &http2.Server{}))
-		srv.Start()
-		defer srv.Close()
-
-		c := newTestComponent(srv.URL, alloyconfig.CloneDefaultHTTPClientConfig())
-		client := c.receiver.endpoints[0].http2Client()
 
 		resp, err := client.Get(srv.URL)
 		require.NoError(t, err)

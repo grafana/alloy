@@ -34,7 +34,7 @@ You can use the following arguments with `database_observability.mysql`:
 | `targets`                                  | `list(map(string))`  | List of external targets to scrape.                                         |         | no       |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
-| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               |         | no       |
+| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
@@ -60,6 +60,7 @@ You can use the following blocks with `database_observability.mysql`:
 | [`cloud_provider`][cloud_provider]               | Provide Cloud Provider information.               | no       |
 | `cloud_provider` > [`aws`][aws]                  | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]              | Provide Azure database host information.          | no       |
+| `cloud_provider` > [`gcp`][gcp]                  | Provide GCP database host information.            | no       |
 | [`setup_consumers`][setup_consumers]             | Configure the `setup_consumers` collector.        | no       |
 | [`setup_actors`][setup_actors]                   | Configure the `setup_actors` collector.           | no       |
 | [`query_details`][query_details]                 | Configure the queries collector.                  | no       |
@@ -73,6 +74,7 @@ You can use the following blocks with `database_observability.mysql`:
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
+[gcp]: #gcp
 [setup_consumers]: #setup_consumers
 [query_details]: #query_details
 [schema_details]: #schema_details
@@ -88,7 +90,7 @@ You can use the following blocks with `database_observability.mysql`:
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`][aws] blocks.
+It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
@@ -110,6 +112,14 @@ The `azure` block supplies the identifying information for the database being mo
 | `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
 | `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
 | `server_name`     | `string` | The database server name.                            |         | no       |
+
+### `gcp`
+
+The `gcp` block supplies the identifying information for the GCP Cloud SQL database being monitored.
+
+| Name              | Type     | Description                                                                                                                 | Default | Required |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
 ### `setup_consumers`
 
@@ -145,7 +155,7 @@ The `azure` block supplies the identifying information for the database being mo
 
 | Name               | Type       | Description                                                                            | Default | Required |
 | ------------------ | ---------- | -------------------------------------------------------------------------------------- | ------- | -------- |
-| `collect_interval` | `duration` | How frequently to collect information from database.                                   | `"1m"`  | no       |
+| `collect_interval` | `duration` | How frequently to collect information from database.                                   | `"30s"`  | no       |
 | `threshold`        | `duration` | Threshold for locks to be considered slow. Locks that exceed this duration are logged. | `"1s"`  | no       |
 
 ### `query_samples`

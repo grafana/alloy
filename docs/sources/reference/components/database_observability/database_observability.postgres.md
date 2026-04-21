@@ -34,8 +34,8 @@ You can use the following arguments with `database_observability.postgres`:
 | `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
-| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 |         | no       |
+| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
 
@@ -68,9 +68,10 @@ You can use the following blocks with `database_observability.postgres`:
 
 | Block                              | Description                                       | Required |
 |------------------------------------|---------------------------------------------------|----------|
-| [`cloud_provider`][cloud_provider] | Provide Cloud Provider information.               | no       |
-| `cloud_provider` > [`aws`][aws]    | Provide AWS database host information.            | no       |
+| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
 | `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
+| `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
 | [`query_details`][query_details]   | Configure the queries collector.                  | no       |
 | [`query_samples`][query_samples]   | Configure the query samples collector.            | no       |
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
@@ -81,6 +82,7 @@ You can use the following blocks with `database_observability.postgres`:
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
+[gcp]: #gcp
 [query_details]: #query_details
 [query_samples]: #query_samples
 [schema_details]: #schema_details
@@ -93,7 +95,7 @@ You can use the following blocks with `database_observability.postgres`:
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`][aws] blocks.
+It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
@@ -115,6 +117,14 @@ The `azure` block supplies the identifying information for the database being mo
 | `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
 | `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
 | `server_name`     | `string` | The database server name.                            |         | no       |
+
+### `gcp`
+
+The `gcp` block supplies the identifying information for the GCP Cloud SQL database being monitored.
+
+| Name              | Type     | Description                                                                                                                 | Default | Required |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
 ### `query_details`
 
@@ -167,7 +177,7 @@ The `logs` collector processes PostgreSQL logs received through the `logs_receiv
 The `logs_receiver` entry point must be fed by `loki` log source components, for example:
 
 - `loki.source.file`: to read and process PostgreSQL log files from a self-hosted database instance
-- `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for and AWS RDS instance
+- `otelcol.receiver.awscloudwatch` and `otelcol.exporter.loki`: to read and process CloudWatch Logs for an AWS RDS instance
 
 {{< admonition type="note" >}}
 Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.

@@ -92,12 +92,11 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	}
 	dynamicProfilingPolicy := args.PyroscopeDynamicProfilingPolicy
 	discovery := alloydiscovery.NewTargetProducer(args.targetsOptions(dynamicProfilingPolicy))
-	ms := newMetrics(reg)
 
 	appendable := pyroscope.NewFanout(args.ForwardTo, id, reg)
 
 	var nfs *irsymcache.Resolver
-	if args.SymbCacheEnabled {
+	if args.DebugInfoArguments.OnTargetSymbolizationEnabled {
 		nfs, err = irsymcache.NewFSCache(logger, irsymcache.TableTableFactory{
 			Options: []lidia.Option{
 				lidia.WithFiles(),
@@ -117,6 +116,8 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 	} else {
 		cfg.Policy = dynamicprofiling.AlwaysOnPolicy{}
 	}
+
+	ms := newMetrics(reg)
 
 	res := &Component{
 		cfg:                    cfg,
@@ -372,12 +373,12 @@ func NewDefaultArguments() Arguments {
 		PyroscopeDynamicProfilingPolicy: true,
 		SymbCachePath:                   "/tmp/symb-cache",
 		SymbCacheSizeEntries:            2048,
-		SymbCacheEnabled:                true,
 		DebugInfoArguments: debuginfo.Arguments{
-			UploadEnabled: false,
-			CacheSize:     1024,
-			QueueSize:     64,
-			WorkerNum:     4,
+			UploadEnabled:                false,
+			OnTargetSymbolizationEnabled: true,
+			CacheSize:                    262144,
+			QueueSize:                    256,
+			WorkerNum:                    16,
 		},
 	}
 }
