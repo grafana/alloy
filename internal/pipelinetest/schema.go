@@ -1,6 +1,7 @@
 package pipelinetest
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -44,9 +45,9 @@ type AssertionSchema struct {
 
 // LokiAssertionSchema describes one declarative Loki assertion in a test file.
 type LokiAssertionSchema struct {
-	Type  string           `yaml:"type"`
-	Count int              `yaml:"count,omitempty"`
-	Match *LokiMatchSchema `yaml:"match,omitempty"`
+	Type  string          `yaml:"type"`
+	Count int             `yaml:"count,omitempty"`
+	Match LokiMatchSchema `yaml:"match,omitempty"`
 }
 
 // LokiMatchSchema describes a partial Loki entry match for declarative assertions.
@@ -130,10 +131,7 @@ func buildLokiAssertions(assertions []LokiAssertionSchema) ([]harness.Assertion,
 		case "entry_count":
 			out = append(out, harness.LokiEntryCount(assertion.Count))
 		case "has_entry":
-			if assertion.Match == nil {
-				return nil, fmt.Errorf("assertion %q requires match", assertion.Type)
-			}
-			built, err := buildLokiHasEntry(*assertion.Match)
+			built, err := buildLokiHasEntry(assertion.Match)
 			if err != nil {
 				return nil, err
 			}
@@ -151,18 +149,26 @@ func buildLokiHasEntry(match LokiMatchSchema) (harness.Assertion, error) {
 	if len(match.Labels) > 0 {
 		matchers = append(matchers, harness.LokiEntryLabels(toLabelSet(match.Labels)))
 	}
+
 	if match.Line != "" {
 		matchers = append(matchers, harness.LokiEntryLine(match.Line))
 	}
+
 	if match.Timestamp != "" {
+		// FIXME(kalleep): We need to be able to configure layout.
 		parsed, err := time.Parse(time.RFC3339Nano, match.Timestamp)
 		if err != nil {
 			return nil, fmt.Errorf("parse match timestamp %q: %w", match.Timestamp, err)
 		}
 		matchers = append(matchers, harness.LokiEntryTimestamp(parsed))
 	}
+
 	if len(match.StructuredMetadata) > 0 {
 		matchers = append(matchers, harness.LokiEntryStructuredMetadata(toLabelsAdapter(match.StructuredMetadata)))
+	}
+
+	if len(matchers) == 0 {
+		return nil, errors.New("has_entry requires at least one match field1")
 	}
 
 	return harness.LokiHasEntry(matchers...), nil
