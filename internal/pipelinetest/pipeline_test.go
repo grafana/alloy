@@ -3,7 +3,6 @@ package pipelinetest
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -15,15 +14,12 @@ func TestPipelines(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if filepath.Ext(entry.Name()) != ".yaml" {
+		if !entry.IsDir() {
 			continue
 		}
 
-		name := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
-		path := filepath.Join("tests", entry.Name())
+		name := entry.Name()
+		path := filepath.Join("tests", name, "test.yaml")
 
 		t.Run(name, func(t *testing.T) {
 			bb, err := os.ReadFile(path)
@@ -31,7 +27,7 @@ func TestPipelines(t *testing.T) {
 
 			var schema TestSchema
 			require.NoError(t, yaml.Unmarshal(bb, &schema))
-			require.NoError(t, RunTest(schema))
+			require.NoError(t, RunTest(schema, TestConfig{DataPath: t.TempDir()}))
 		})
 	}
 }

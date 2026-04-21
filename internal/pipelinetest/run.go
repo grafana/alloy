@@ -1,21 +1,17 @@
 package pipelinetest
 
 import (
-	"os"
-
 	"github.com/grafana/alloy/internal/pipelinetest/harness"
 )
 
-func RunTest(schema TestSchema) error {
-	dataPath, err := os.MkdirTemp("", "alloy-pipelinetest-*")
-	if err != nil {
-		return err
-	}
-	defer func() { _ = os.RemoveAll(dataPath) }()
+type TestConfig struct {
+	DataPath string
+}
 
+func RunTest(schema TestSchema, cfg TestConfig) error {
 	alloy, err := harness.NewAlloy(harness.Config{
 		SinkID:   "pipelinetest.sink.out",
-		DataPath: dataPath,
+		DataPath: cfg.DataPath,
 		Source:   withPrelude(schema),
 	})
 	if err != nil {

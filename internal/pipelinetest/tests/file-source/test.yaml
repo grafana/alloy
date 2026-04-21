@@ -1,6 +1,6 @@
 config: |
   loki.source.file "file" {
-    targets = [{__path__ = "./tests/file_source.log"}]
+    targets = [{__path__ = "./tests/file-source/*.log"}]
 
     file_match {
       enabled     = true
