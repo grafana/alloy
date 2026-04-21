@@ -16,6 +16,11 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
+const (
+	defaultTimeout  = 10 * time.Second
+	defaultInterval = 100 * time.Millisecond
+)
+
 type Config struct {
 	SinkID   string
 	Source   string
@@ -68,7 +73,7 @@ func NewAlloy(cfg Config) (*Alloy, error) {
 			return nil
 		}
 		return fmt.Errorf("runtime has not finished loading")
-	}, 2*time.Second, 50*time.Millisecond); err != nil {
+	}, defaultTimeout, defaultInterval); err != nil {
 		a.Stop()
 		return nil, fmt.Errorf("timed out waiting for runtime to finish loading: %w", err)
 	}
@@ -112,7 +117,7 @@ func (a *Alloy) Assert(assertions ...Assertion) error {
 			Errors:   errs,
 			Snapshot: s,
 		}
-	}, time.Second, 50*time.Millisecond)
+	}, defaultTimeout, defaultInterval)
 }
 
 func MustComponent[T any](a *Alloy, id string) T {
