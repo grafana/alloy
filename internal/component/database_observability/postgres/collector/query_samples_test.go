@@ -1167,6 +1167,161 @@ func TestQuerySamples_ExcludeDatabases(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
+func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	now := time.Now()
+	xactStartTime := now.Add(-2 * time.Minute)
+	backendStartTime := now.Add(-1 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+	}
+
+	t.Run("flag OFF emits only OP_WAIT_EVENT", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			CollectInterval:               time.Millisecond,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			ExcludeCurrentUser:            true,
+			EnablePreClassifiedWaitEvents: false,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, sampleCollector)
+
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 500, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				xactStartTime, "waiting", now.Add(-5*time.Second), sql.NullString{String: "IO", Valid: true},
+				sql.NullString{String: "DataFileRead", Valid: true}, pq.Int64Array{}, now, sql.NullInt64{Int64: 5001, Valid: true},
+			))
+		// Second scrape: empty to trigger finalization
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns))
+
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 2)
+		// First entry is query_sample, second is wait_event
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		// The wait_event entry must contain the raw wait_event_type, not a classified value
+		require.Contains(t, entries[1].Line, `wait_event_type="IO"`)
+		require.NotContains(t, entries[1].Line, `wait_event_type="IO Wait"`)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("flag ON emits only OP_WAIT_EVENT_V2 with classified wait_event_type", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			CollectInterval:               time.Millisecond,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			ExcludeCurrentUser:            true,
+			EnablePreClassifiedWaitEvents: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, sampleCollector)
+
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 501, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				xactStartTime, "waiting", now.Add(-5*time.Second), sql.NullString{String: "IO", Valid: true},
+				sql.NullString{String: "DataFileRead", Valid: true}, pq.Int64Array{}, now, sql.NullInt64{Int64: 5002, Valid: true},
+			))
+		// Second scrape: empty to trigger finalization
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns))
+
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 2)
+		// First entry is query_sample, second is wait_event_v2
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, entries[1].Labels)
+		// The wait_event_v2 entry must contain the classified wait_event_type
+		require.Contains(t, entries[1].Line, `wait_event_type="IO Wait"`)
+		// Must not contain a raw "IO" as wait_event_type value
+		require.NotContains(t, entries[1].Line, `wait_event_type="IO"`)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+}
+
+func TestClassifyPostgresWaitEventType(t *testing.T) {
+	testCases := []struct {
+		rawType  string
+		expected string
+	}{
+		{"IO", "IO Wait"},
+		{"Lock", "Lock Wait"},
+		{"LWLock", "Lock Wait"},
+		{"Activity", "Lock Wait"},
+		{"Client", "Network Wait"},
+		{"unknown_type", "Other Wait"},
+		{"", "Other Wait"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.rawType, func(t *testing.T) {
+			result := classifyPostgresWaitEventType(tc.rawType)
+			require.Equal(t, tc.expected, result)
+		})
+	}
+}
+
 func TestQuerySamples_ExcludeUsers(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 

@@ -73,6 +73,9 @@ type Arguments struct {
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
 
+	// Temporary feature flag for pre-classified wait event emission. Will be removed before Alloy 1.14.0.
+	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
+
 	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments         `alloy:"query_samples,block,optional"`
 	QueryDetailsArguments  QueryDetailsArguments        `alloy:"query_details,block,optional"`
@@ -608,14 +611,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QuerySamplesCollector] {
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                    c.dbConnection,
-			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
-			ExcludeDatabases:      c.args.ExcludeDatabases,
-			ExcludeUsers:          c.args.ExcludeUsers,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
+			DB:                            c.dbConnection,
+			CollectInterval:               c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:              c.args.ExcludeDatabases,
+			ExcludeUsers:                  c.args.ExcludeUsers,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
+			ExcludeCurrentUser:            c.args.QuerySampleArguments.ExcludeCurrentUser,
+			EnablePreClassifiedWaitEvents: c.args.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
