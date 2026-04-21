@@ -137,11 +137,11 @@ func LokiEntryLabels(labels model.LabelSet) EntryMatcher {
 }
 
 // LokiEntryStructuredMetadata returns an EntryMatcher that matches the Loki
-// entry structured metadata exactly.
+// entry structured metadata.
 func LokiEntryStructuredMetadata(metadata push.LabelsAdapter) EntryMatcher {
 	return EntryMatcher{
 		match: func(entry loki.Entry) bool {
-			return reflect.DeepEqual(entry.StructuredMetadata, metadata)
+			return structuredMetadataEqual(entry.StructuredMetadata, metadata)
 		},
 		text: renderStructuredMetadata(metadata),
 	}
@@ -185,11 +185,11 @@ func renderLokiEntry(entry loki.Entry) string {
 }
 
 func renderLine(line string) string {
-	return fmt.Sprintf("line=%q", line)
+	return fmt.Sprintf("line = %q", line)
 }
 
 func renderTimestamp(timestamp time.Time) string {
-	return "timestamp=" + timestamp.Format(time.RFC3339Nano)
+	return "timestamp = " + timestamp.Format(time.RFC3339Nano)
 }
 
 func renderLabelSet(labels model.LabelSet) string {
@@ -216,15 +216,31 @@ func renderStructuredMetadata(labels push.LabelsAdapter) string {
 		return "structured_metadata = {}"
 	}
 
-	sorted := slices.Clone(labels)
-	slices.SortFunc(sorted, func(a, b push.LabelAdapter) int {
-		return strings.Compare(a.Name, b.Name)
-	})
-
-	parts := make([]string, 0, len(sorted))
-	for _, label := range sorted {
+	parts := make([]string, 0, len(labels))
+	for _, label := range sortStructuredMetadata(labels) {
 		parts = append(parts, fmt.Sprintf(`%s=%q`, label.Name, label.Value))
 	}
 
 	return "structured_metadata = {" + strings.Join(parts, ", ") + "}"
+}
+
+func structuredMetadataEqual(got, want push.LabelsAdapter) bool {
+	if len(got) != len(want) {
+		return false
+	}
+
+	return slices.EqualFunc(sortStructuredMetadata(got), sortStructuredMetadata(want), func(a, b push.LabelAdapter) bool {
+		return a.Name == b.Name && a.Value == b.Value
+	})
+}
+
+func sortStructuredMetadata(labels push.LabelsAdapter) push.LabelsAdapter {
+	cloned := slices.Clone(labels)
+	slices.SortFunc(cloned, func(a, b push.LabelAdapter) int {
+		if cmp := strings.Compare(a.Name, b.Name); cmp != 0 {
+			return cmp
+		}
+		return strings.Compare(a.Value, b.Value)
+	})
+	return cloned
 }
