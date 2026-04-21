@@ -11,8 +11,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
-	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -2861,11 +2861,11 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                           db,
-			EngineVersion:                latestCompatibleVersion,
-			CollectInterval:              time.Second,
-			EntryHandler:                 lokiClient,
-			Logger:                       log.NewLogfmtLogger(os.Stderr),
+			DB:                            db,
+			EngineVersion:                 latestCompatibleVersion,
+			CollectInterval:               time.Second,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(os.Stderr),
 			EnablePreClassifiedWaitEvents: false,
 		})
 		require.NoError(t, err)
@@ -2925,11 +2925,11 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                           db,
-			EngineVersion:                latestCompatibleVersion,
-			CollectInterval:              time.Second,
-			EntryHandler:                 lokiClient,
-			Logger:                       log.NewLogfmtLogger(os.Stderr),
+			DB:                            db,
+			EngineVersion:                 latestCompatibleVersion,
+			CollectInterval:               time.Second,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(os.Stderr),
 			EnablePreClassifiedWaitEvents: true,
 		})
 		require.NoError(t, err)
