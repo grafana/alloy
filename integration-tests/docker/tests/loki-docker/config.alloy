@@ -1,0 +1,53 @@
+discovery.docker "test" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "1s"
+}
+
+discovery.relabel "test" {
+	targets = discovery.docker.test.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/producer.*"
+		action        = "keep"
+	}
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+		replacement   = "$1"
+	}
+}
+
+loki.source.docker "test" {
+	host             = "unix:///var/run/docker.sock"
+	targets          = discovery.relabel.test.output
+	forward_to       = [loki.process.test.receiver]
+	refresh_interval = "1s"
+}
+
+loki.process "test" {
+	forward_to = [loki.relabel.test.receiver]
+	
+	stage.static_labels {
+		values = {
+			test_name = "lokidocker",
+		}
+	}
+}
+
+loki.relabel "test" {
+	forward_to = [loki.write.test.receiver]
+
+	rule {
+		source_labels = ["container"]
+		target_label  = "service_name"
+	}
+}
+
+loki.write "test" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}

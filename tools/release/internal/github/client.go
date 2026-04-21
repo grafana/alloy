@@ -438,52 +438,6 @@ func (c *Client) UpdateReleaseBody(ctx context.Context, releaseID int64, body st
 	return nil
 }
 
-// WaitForCheckRun polls until the named check run has completed successfully on the given ref,
-// or until the context is done (e.g. timeout). Ref can be a branch name or commit SHA.
-func (c *Client) WaitForCheckRun(ctx context.Context, ref, checkName string) error {
-	opts := &github.ListCheckRunsOptions{
-		Filter: github.String("latest"),
-		ListOptions: github.ListOptions{
-			PerPage: 100,
-		},
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("waiting for check %q: %w", checkName, ctx.Err())
-		default:
-		}
-		result, _, err := c.api.Checks.ListCheckRunsForRef(ctx, c.owner, c.repo, ref, opts)
-		if err != nil {
-			return fmt.Errorf("listing check runs for ref %s: %w", ref, err)
-		}
-		var found *github.CheckRun
-		for _, run := range result.CheckRuns {
-			if run.GetName() == checkName {
-				found = run
-				break
-			}
-		}
-		if found == nil {
-			// Check not yet reported; wait and retry
-			fmt.Printf("⏳ Check %q not yet reported; waiting and retrying...\n", checkName)
-			time.Sleep(20 * time.Second)
-			continue
-		}
-		status := found.GetStatus()
-		if status != "completed" {
-			fmt.Printf("⏳ Check %q not yet completed; waiting and retrying...\n", checkName)
-			time.Sleep(20 * time.Second)
-			continue
-		}
-		conclusion := found.GetConclusion()
-		if conclusion != "success" {
-			return fmt.Errorf("check %q completed with conclusion %q (expected success)", checkName, conclusion)
-		}
-		return nil
-	}
-}
-
 // DeleteBranch deletes the branch ref on the remote.
 func (c *Client) DeleteBranch(ctx context.Context, branch string) error {
 	ref := "refs/heads/" + branch

@@ -5,6 +5,7 @@ package irsymcache
 import (
 	"fmt"
 	"path"
+	"sync"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -338,6 +339,40 @@ func TestFileIDFromStringNoQuotes(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestResolveAddressEvictionDeadlock(t *testing.T) {
+	resolver, err := NewFSCache(log.NewNopLogger(), tf, Options{
+		Path:        t.TempDir(),
+		SizeEntries: 2, // tiny cache so every Add evicts
+	})
+	require.NoError(t, err)
+	defer resolver.Close()
+
+	resolver.cache.Add(testFileId(1), cached)
+	resolver.cache.Add(testFileId(2), cached)
+
+	var wg sync.WaitGroup
+
+	// Goroutine 1: adds entries, each add evicts and locks Resolver.mutex.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := uint64(0); i < 5000; i++ {
+			resolver.cache.Add(testFileId(i+100), cached)
+		}
+	}()
+
+	// Goroutine 2: calls ResolveAddress which takes Resolver.mutex then cache.Get.
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := uint64(0); i < 5000; i++ {
+			_, _ = resolver.ResolveAddress(testFileId(i+100), 0)
+		}
+	}()
+
+	wg.Wait() // hangs here if deadlocked
 }
 
 func testFileId(i uint64) libpf.FileID {

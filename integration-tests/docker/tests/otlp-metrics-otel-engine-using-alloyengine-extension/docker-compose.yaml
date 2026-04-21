@@ -5,8 +5,6 @@ services:
     volumes:
       - ./config.yaml:/etc/alloy/config.yaml:ro
       - ./alloy-config.alloy:/etc/alloy/alloy-config.alloy:ro
-    ports:
-      - "13143:13133"
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/13133"]
       interval: 2s

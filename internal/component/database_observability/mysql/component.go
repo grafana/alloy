@@ -62,7 +62,7 @@ var (
 type Arguments struct {
 	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets                       []discovery.Target  `alloy:"targets,attr"`
+	Targets                       []discovery.Target  `alloy:"targets,attr,optional"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
@@ -83,6 +83,7 @@ type Arguments struct {
 type CloudProvider struct {
 	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
 	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
+	GCP   *GCPCloudProviderInfo   `alloy:"gcp,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
@@ -93,6 +94,10 @@ type AzureCloudProviderInfo struct {
 	SubscriptionID string `alloy:"subscription_id,attr"`
 	ResourceGroup  string `alloy:"resource_group,attr"`
 	ServerName     string `alloy:"server_name,attr,optional"`
+}
+
+type GCPCloudProviderInfo struct {
+	ConnectionName string `alloy:"connection_name,attr"`
 }
 
 type QueryDetailsArguments struct {
@@ -157,57 +162,59 @@ func (a *PrometheusExporterArguments) Validate() error {
 	return args.Validate()
 }
 
-var DefaultArguments = Arguments{
-	ExcludeSchemas:                []string{},
-	AllowUpdatePerfSchemaSettings: false,
+func defaultArguments() Arguments {
+	return Arguments{
+		ExcludeSchemas:                database_observability.DefaultExcludedSchemas(),
+		AllowUpdatePerfSchemaSettings: false,
 
-	QueryDetailsArguments: QueryDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		StatementsLimit: 250,
-	},
+		QueryDetailsArguments: QueryDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			StatementsLimit: 250,
+		},
 
-	SchemaDetailsArguments: SchemaDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		CacheEnabled:    true,
-		CacheSize:       256,
-		CacheTTL:        10 * time.Minute,
-	},
+		SchemaDetailsArguments: SchemaDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+		},
 
-	SetupConsumersArguments: SetupConsumersArguments{
-		CollectInterval: 1 * time.Hour,
-	},
+		SetupConsumersArguments: SetupConsumersArguments{
+			CollectInterval: 1 * time.Hour,
+		},
 
-	SetupActorsArguments: SetupActorsArguments{
-		CollectInterval:       1 * time.Hour,
-		AutoUpdateSetupActors: false,
-	},
+		SetupActorsArguments: SetupActorsArguments{
+			CollectInterval:       1 * time.Hour,
+			AutoUpdateSetupActors: false,
+		},
 
-	ExplainPlansArguments: ExplainPlansArguments{
-		CollectInterval: 1 * time.Minute,
-		PerCollectRatio: 1.0,
-		InitialLookback: 24 * time.Hour,
-	},
+		ExplainPlansArguments: ExplainPlansArguments{
+			CollectInterval: 1 * time.Minute,
+			PerCollectRatio: 1.0,
+			InitialLookback: 24 * time.Hour,
+		},
 
-	LocksArguments: LocksArguments{
-		CollectInterval: 30 * time.Second,
-		Threshold:       1 * time.Second,
-	},
+		LocksArguments: LocksArguments{
+			CollectInterval: 30 * time.Second,
+			Threshold:       1 * time.Second,
+		},
 
-	QuerySamplesArguments: QuerySamplesArguments{
-		CollectInterval:             10 * time.Second,
-		DisableQueryRedaction:       false,
-		AutoEnableSetupConsumers:    false,
-		SetupConsumersCheckInterval: 1 * time.Hour,
-		SampleMinDuration:           0 * time.Millisecond,
-		WaitEventMinDuration:        1 * time.Microsecond,
-	},
-	HealthCheckArguments: HealthCheckArguments{
-		CollectInterval: 1 * time.Hour,
-	},
+		QuerySamplesArguments: QuerySamplesArguments{
+			CollectInterval:             10 * time.Second,
+			DisableQueryRedaction:       false,
+			AutoEnableSetupConsumers:    false,
+			SetupConsumersCheckInterval: 1 * time.Hour,
+			SampleMinDuration:           0 * time.Millisecond,
+			WaitEventMinDuration:        1 * time.Microsecond,
+		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
 }
 
 func (a *Arguments) SetToDefault() {
-	*a = DefaultArguments
+	*a = defaultArguments()
 }
 
 func (a *Arguments) Validate() error {
@@ -217,6 +224,21 @@ func (a *Arguments) Validate() error {
 	}
 	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
 		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
+	}
+	if a.CloudProvider != nil {
+		count := 0
+		if a.CloudProvider.AWS != nil {
+			count++
+		}
+		if a.CloudProvider.Azure != nil {
+			count++
+		}
+		if a.CloudProvider.GCP != nil {
+			count++
+		}
+		if count > 1 {
+			return fmt.Errorf("cloud_provider: at most one of aws, azure, or gcp must be specified")
+		}
 	}
 	return nil
 }
@@ -460,7 +482,11 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		c.exporterCollector = nil
 	}
 
-	if c.args.PrometheusExporter != nil {
+	if len(c.args.Targets) == 0 {
+		if c.args.PrometheusExporter == nil {
+			d := PrometheusExporterArguments(exporter_mysql.DefaultArguments)
+			c.args.PrometheusExporter = &d
+		}
 		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)

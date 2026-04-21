@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/loki/source/heroku/internal/herokutarget"
+	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -97,25 +97,25 @@ func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
 			restartRequired: false,
 		},
 		{
-			name: "change in labels requires server restart",
+			name: "change in labels does not require server restart",
 			mutateNewArgs: func(_ *testing.T, args *Arguments) {
 				args.Labels = map[string]string{"some": "label"}
 			},
-			restartRequired: true,
+			restartRequired: false,
 		},
 		{
-			name: "change in relabel rules requires server restart",
+			name: "change in relabel rules does not require server restart",
 			mutateNewArgs: func(_ *testing.T, args *Arguments) {
 				args.RelabelRules = alloy_relabel.Rules{}
 			},
-			restartRequired: true,
+			restartRequired: false,
 		},
 		{
-			name: "change in use incoming timestamp requires server restart",
+			name: "change in use incoming timestamp does not require server restart",
 			mutateNewArgs: func(_ *testing.T, args *Arguments) {
 				args.UseIncomingTimestamp = !args.UseIncomingTimestamp
 			},
-			restartRequired: true,
+			restartRequired: false,
 		},
 	}
 	for _, tc := range tests {
@@ -253,7 +253,7 @@ func waitForServerToBeReady(t *testing.T, comp *Component) {
 	require.Eventuallyf(t, func() bool {
 		resp, err := http.Get(fmt.Sprintf(
 			"http://%v/wrong/url",
-			comp.server.HTTPListenAddress(),
+			comp.server.HTTPAddr(),
 		))
 		return err == nil && resp.StatusCode == 404
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
@@ -275,6 +275,6 @@ func newRegexp() alloy_relabel.Regexp {
 	return alloy_relabel.Regexp{Regexp: re}
 }
 
-func getEndpoint(target *herokutarget.HerokuServer) string {
-	return fmt.Sprintf("http://%s%s", target.HTTPListenAddress(), target.DrainEndpoint())
+func getEndpoint(target *source.Server) string {
+	return fmt.Sprintf("http://%s%s", target.HTTPAddr(), pathDrain)
 }

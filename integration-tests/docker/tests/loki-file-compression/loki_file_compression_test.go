@@ -11,6 +11,7 @@ import (
 func TestReadCompressedFiles(t *testing.T) {
 	common.AssertLogsPresent(
 		t,
+		900,
 		common.ExpectedLogResult{
 			Labels: map[string]string{
 				"compression": "gz",

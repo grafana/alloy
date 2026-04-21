@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
@@ -14,10 +15,8 @@ import (
 const javaAppURL = "http://localhost:18080/"
 const javaServiceName = "petclinic"
 
-func generateJavaTraffic(t *testing.T) {
+func waitForJavaApp(t *testing.T, client *http.Client) {
 	t.Helper()
-
-	client := &http.Client{Timeout: 5 * common.DefaultRetryInterval}
 
 	require.Eventually(t, func() bool {
 		resp, err := client.Get(javaAppURL)
@@ -27,21 +26,30 @@ func generateJavaTraffic(t *testing.T) {
 		defer resp.Body.Close()
 		return resp.StatusCode >= 200 && resp.StatusCode < 400
 	}, common.DefaultTimeout, common.DefaultRetryInterval)
+}
 
-	for range 20 {
+func triggerJavaRequest(client *http.Client) func(c *assert.CollectT) {
+	return func(c *assert.CollectT) {
 		resp, err := client.Get(javaAppURL)
-		require.NoError(t, err)
-		resp.Body.Close()
+		if !assert.NoError(c, err) {
+			return
+		}
+		if resp != nil {
+			defer resp.Body.Close()
+			assert.GreaterOrEqual(c, resp.StatusCode, http.StatusOK)
+			assert.Less(c, resp.StatusCode, http.StatusBadRequest)
+		}
 	}
 }
 
 func TestBeylaJavaSDKTraces(t *testing.T) {
-	generateJavaTraffic(t)
+	client := &http.Client{Timeout: 5 * common.DefaultRetryInterval}
+	waitForJavaApp(t, client)
 
 	tags := map[string]string{
 		"service.name":           javaServiceName,
 		"telemetry.sdk.name":     "opentelemetry",
 		"telemetry.sdk.language": "java",
 	}
-	common.TracesTest(t, tags, "beyla-java")
+	common.TracesTestWithProbe(t, tags, "beyla-java", triggerJavaRequest(client))
 }

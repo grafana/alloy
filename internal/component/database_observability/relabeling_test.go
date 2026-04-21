@@ -72,4 +72,31 @@ func Test_GetRelabelingRules(t *testing.T) {
 		require.Equal(t, "provider_account", rr[3].TargetLabel)
 		require.Equal(t, relabel.Replace, rr[3].Action)
 	})
+
+	t.Run("return relabeling rules with GCP config", func(t *testing.T) {
+		rr := GetRelabelingRules("some-server-id", &CloudProvider{
+			GCP: &GCPCloudProviderInfo{
+				ProjectID:  "some-project-id",
+				Region:     "some-region",
+				InstanceID: "some-instance-id",
+			},
+		})
+
+		require.Equal(t, 4, len(rr))
+		require.Equal(t, "some-server-id", rr[0].Replacement)
+		require.Equal(t, "server_id", rr[0].TargetLabel)
+		require.Equal(t, relabel.Replace, rr[0].Action)
+
+		require.Equal(t, "gcp", rr[1].Replacement)
+		require.Equal(t, "provider_name", rr[1].TargetLabel)
+		require.Equal(t, relabel.Replace, rr[1].Action)
+
+		require.Equal(t, "some-region", rr[2].Replacement)
+		require.Equal(t, "provider_region", rr[2].TargetLabel)
+		require.Equal(t, relabel.Replace, rr[2].Action)
+
+		require.Equal(t, "some-project-id", rr[3].Replacement)
+		require.Equal(t, "provider_account", rr[3].TargetLabel)
+		require.Equal(t, relabel.Replace, rr[3].Action)
+	})
 }

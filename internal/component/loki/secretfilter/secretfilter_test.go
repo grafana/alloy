@@ -477,43 +477,20 @@ func TestMetrics(t *testing.T) {
 					"secretsRedactedTotal metric value is incorrect")
 			}
 
-			// Check secretsRedactedByRule - combine all metrics in a single string
+			// Check secretsRedactedByCategory
 			if len(tc.expectedRedactedByRule) > 0 {
+				jobValue := string(labels[model.LabelName("job")])
 				var metricStrings strings.Builder
-				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_rule_total Number of secrets redacted, partitioned by rule name.\n")
-				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_redacted_by_rule_total counter\n")
-
-				// Add each rule metric
-				for ruleName, expectedCount := range tc.expectedRedactedByRule {
-					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_rule_total{rule="%s"} %d`,
-						ruleName, expectedCount)
+				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_category_total Number of secrets redacted, partitioned by rule name and origin label value.\n")
+				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_redacted_by_category_total counter\n")
+				for ruleName, count := range tc.expectedRedactedByRule {
+					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_category_total{origin="%s",rule="%s"} %d`,
+						jobValue, ruleName, count)
 					metricStrings.WriteString(metric + "\n")
 				}
-
-				// Compare all the metrics at once
 				require.NoError(t,
 					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
-						"loki_secretfilter_secrets_redacted_by_rule_total"))
-			}
-
-			// Check secretsRedactedByOrigin when redactions occurred
-			if tc.expectedRedactedTotal > 0 {
-				// Build expected origin label metric
-				var metricStrings strings.Builder
-				metricStrings.WriteString("# HELP loki_secretfilter_secrets_redacted_by_origin Number of secrets redacted, partitioned by origin label value.\n")
-				metricStrings.WriteString("# TYPE loki_secretfilter_secrets_redacted_by_origin counter\n")
-
-				// Add origin label metric
-				if jobValue, exists := labels[model.LabelName("job")]; exists {
-					metric := fmt.Sprintf(`loki_secretfilter_secrets_redacted_by_origin{origin="%s"} %d`,
-						jobValue, tc.expectedRedactedTotal)
-					metricStrings.WriteString(metric + "\n")
-				}
-
-				// Compare the metrics
-				require.NoError(t,
-					testutil.GatherAndCompare(registry, strings.NewReader(metricStrings.String()),
-						"loki_secretfilter_secrets_redacted_by_origin"))
+						"loki_secretfilter_secrets_redacted_by_category_total"))
 			}
 
 			// Check processingDuration metric
@@ -545,6 +522,44 @@ func TestMetrics(t *testing.T) {
 	}
 }
 
+// TestMetrics_NoOriginLabel verifies that when origin_label is not set,
+// secrets_redacted_by_category_total still increments with origin="".
+func TestMetrics_NoOriginLabel(t *testing.T) {
+	registry := prometheus.NewRegistry()
+
+	args := Arguments{
+		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		OriginLabel: "",
+	}
+	opts := component.Options{
+		Logger:         util.TestLogger(t),
+		OnStateChange:  func(e component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     registry,
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{"job": "test-job"},
+		Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      testhelper.TestLogs["grafana_api_key"].Log,
+		},
+	}
+	c.processEntry(context.Background(), entry)
+
+	// secrets_redacted_by_category_total must increment with origin=""
+	expected := strings.NewReader(
+		"# HELP loki_secretfilter_secrets_redacted_by_category_total Number of secrets redacted, partitioned by rule name and origin label value.\n" +
+			"# TYPE loki_secretfilter_secrets_redacted_by_category_total counter\n" +
+			`loki_secretfilter_secrets_redacted_by_category_total{origin="",rule="grafana-api-key"} 1` + "\n",
+	)
+	require.NoError(t,
+		testutil.GatherAndCompare(registry, expected, "loki_secretfilter_secrets_redacted_by_category_total"))
+}
+
 // Test to verify that the component registers its metrics with the registry
 func TestMetricsRegistration(t *testing.T) {
 	registry := prometheus.NewRegistry()
@@ -568,8 +583,7 @@ func TestMetricsRegistration(t *testing.T) {
 
 	// Increment all metrics to ensure they will be gathered
 	c.metrics.secretsRedactedTotal.Inc()
-	c.metrics.secretsRedactedByRule.WithLabelValues("test_rule").Inc()
-	c.metrics.secretsRedactedByOrigin.WithLabelValues("test_value").Inc()
+	c.metrics.secretsRedactedByCategory.WithLabelValues("test_rule", "test_value").Inc()
 	c.metrics.processingDuration.Observe(0.123)
 
 	// Check that the metrics are registered
@@ -578,10 +592,9 @@ func TestMetricsRegistration(t *testing.T) {
 
 	// Create a map of expected metrics
 	expectedMetrics := map[string]bool{
-		"loki_secretfilter_secrets_redacted_total":         false,
-		"loki_secretfilter_secrets_redacted_by_rule_total": false,
-		"loki_secretfilter_secrets_redacted_by_origin":     false,
-		"loki_secretfilter_processing_duration_seconds":    false,
+		"loki_secretfilter_secrets_redacted_total":             false,
+		"loki_secretfilter_secrets_redacted_by_category_total": false,
+		"loki_secretfilter_processing_duration_seconds":        false,
 	}
 
 	// Check each metric family
@@ -657,27 +670,6 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	// We should have 3 redacted secrets (2 grafana-api-key and 1 gcp-api-key)
 	require.Equal(t, float64(3), testutil.ToFloat64(c.metrics.secretsRedactedTotal),
 		"secretsRedactedTotal should count all secrets across multiple entries")
-
-	// Check secretsRedactedByRule for each rule type
-	require.NoError(t,
-		testutil.GatherAndCompare(registry, strings.NewReader(`
-			# HELP loki_secretfilter_secrets_redacted_by_rule_total Number of secrets redacted, partitioned by rule name.
-			# TYPE loki_secretfilter_secrets_redacted_by_rule_total counter
-			loki_secretfilter_secrets_redacted_by_rule_total{rule="grafana-api-key"} 2
-			loki_secretfilter_secrets_redacted_by_rule_total{rule="gcp-api-key"} 1
-		`),
-			"loki_secretfilter_secrets_redacted_by_rule_total"))
-
-	// Check secretsRedactedByOrigin values
-	require.NoError(t,
-		testutil.GatherAndCompare(registry, strings.NewReader(`
-			# HELP loki_secretfilter_secrets_redacted_by_origin Number of secrets redacted, partitioned by origin label value.
-			# TYPE loki_secretfilter_secrets_redacted_by_origin counter
-			loki_secretfilter_secrets_redacted_by_origin{origin="test1"} 1
-			loki_secretfilter_secrets_redacted_by_origin{origin="test2"} 1
-			loki_secretfilter_secrets_redacted_by_origin{origin="test4"} 1
-		`),
-			"loki_secretfilter_secrets_redacted_by_origin"))
 }
 
 // TestArgumentsUpdate validates that the secretfilter component works correctly

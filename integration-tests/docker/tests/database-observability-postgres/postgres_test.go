@@ -26,7 +26,6 @@ func TestDatabaseObservabilityPostgresLogs(t *testing.T) {
 		"health_status",
 		"query_association",
 		"query_parsed_table_name",
-		"schema_detection",
 		"table_detection",
 		"create_statement",
 	}

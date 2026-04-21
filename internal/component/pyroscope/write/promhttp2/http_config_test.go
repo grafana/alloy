@@ -698,7 +698,8 @@ func TestMissingBearerAuthFile(t *testing.T) {
 	_, err = client.Get(testServer.URL)
 	require.Errorf(t, err, "No error is returned here")
 
-	require.ErrorContainsf(t, err, "unable to read authorization credentials: unable to read file missing/bearer.token: open missing/bearer.token: no such file or directory", "wrong error message being returned")
+	require.ErrorContainsf(t, err, "unable to read authorization credentials: unable to read file missing/bearer.token", "wrong error message being returned")
+	require.ErrorIs(t, err, os.ErrNotExist, "expected missing bearer token file error")
 }
 
 func TestBearerAuthRoundTripper(t *testing.T) {
@@ -1636,6 +1637,7 @@ func TestOAuth2WithFile(t *testing.T) {
 
 	secretFile, err := os.CreateTemp(t.TempDir(), "oauth2_secret")
 	require.NoError(t, err)
+	defer func() { require.NoError(t, secretFile.Close()) }()
 
 	yamlConfig := fmt.Sprintf(`
 client_id: 1
