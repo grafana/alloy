@@ -22,6 +22,7 @@ func TestPipelines(t *testing.T) {
 		path := filepath.Join("tests", name, "test.yaml")
 
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			bb, err := os.ReadFile(path)
 			require.NoError(t, err)
 
