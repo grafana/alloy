@@ -550,6 +550,13 @@ func (args Network) Convert() obi.NetworkConfig {
 	networks.ExcludeProtocols = args.ExcludeProtocols
 	networks.Sampling = args.Sampling
 	networks.CIDRs = args.CIDRs
+
+	networks.GeoIP.IPInfo.Path = args.GeoIP.IPInfo.Path
+	networks.GeoIP.MaxMindInfo.ASNPath = args.GeoIP.MaxMindInfo.ASNPath
+	networks.GeoIP.MaxMindInfo.CountryPath = args.GeoIP.MaxMindInfo.CountryPath
+	networks.GeoIP.CacheLen = 512
+	networks.GeoIP.CacheTTL = time.Hour
+
 	return networks
 }
 

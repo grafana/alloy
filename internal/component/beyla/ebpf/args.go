@@ -150,6 +150,22 @@ type Network struct {
 	Direction          string        `alloy:"direction,attr,optional"`
 	Sampling           int           `alloy:"sampling,attr,optional"`
 	CIDRs              []string      `alloy:"cidrs,attr,optional"`
+	GeoIP              GeoIP         `alloy:"geoip,block,optional"`
+}
+
+type GeoIP struct {
+	IPInfo      IPInfoConfig  `alloy:"ipinfo,block,optional"`
+	MaxMindInfo MaxMindConfig `alloy:"maxmind,block,optional"`
+	CacheLen    int           `alloy:"cache_len,attr,optional"`
+	CacheTTL    time.Duration `alloy:"cache_ttl,attr,optional"`
+}
+
+type IPInfoConfig struct {
+	Path string `alloy:"path,attr"`
+}
+type MaxMindConfig struct {
+	CountryPath string `alloy:"country_path,attr"`
+	ASNPath     string `alloy:"asn_path,attr"`
 }
 
 type EBPFMapsConfig struct {
