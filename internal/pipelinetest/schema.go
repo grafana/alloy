@@ -3,19 +3,51 @@ package pipelinetest
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/pipelinetest/harness"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
+	"gopkg.in/yaml.v3"
 )
 
 // TestSchema describes a declarative pipeline test loaded from a text file.
 type TestSchema struct {
-	Config string          `yaml:"config"`
+	Config ConfigSchema    `yaml:"config"`
 	Inputs InputSchema     `yaml:"inputs"`
 	Assert AssertionSchema `yaml:"assert"`
+}
+
+type ConfigSchema string
+
+func (c *ConfigSchema) UnmarshalYAML(value *yaml.Node) error {
+	switch value.Kind {
+	case yaml.ScalarNode:
+		*c = ConfigSchema(value.Value)
+		return nil
+	case yaml.MappingNode:
+		var cfg struct {
+			Path string `yaml:"path"`
+		}
+		if err := value.Decode(&cfg); err != nil {
+			return err
+		}
+		if cfg.Path == "" {
+			return errors.New("config mapping requires path")
+		}
+		fmt.Println(cfg.Path)
+		bb, err := os.ReadFile(cfg.Path)
+		if err != nil {
+			return fmt.Errorf("read config path %q: %w", cfg.Path, err)
+		}
+
+		*c = ConfigSchema(bb)
+		return nil
+	default:
+		return fmt.Errorf("config must be inline or from a path")
+	}
 }
 
 // InputSchema groups pipeline test inputs by signal type.

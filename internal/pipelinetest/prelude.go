@@ -15,7 +15,7 @@ func withPrelude(schema TestSchema) string {
 	sink := buildSink()
 	sources := buildSources(schema.Inputs)
 
-	return sink + "\n\n" + sources + "\n\n" + rewritePipelineTestRefs(schema.Config)
+	return sink + "\n\n" + sources + "\n\n" + rewritePipelineTestRefs(string(schema.Config))
 }
 
 func rewritePipelineTestRefs(source string) string {

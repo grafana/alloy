@@ -1,0 +1,23 @@
+config:
+  path: ./tests/config-path/config.alloy
+
+inputs:
+  loki:
+    - components:
+        - loki.relabel.default.receiver
+      entries:
+        - labels:
+            foo: bar
+          line: test
+          timestamp: "2026-04-14T12:53:51.470999516+02:00"
+
+assert:
+  loki:
+    - type: entry_count
+      count: 1
+    - type: has_entry
+      match:
+        labels:
+          replaced: bar
+        line: test
+        timestamp: "2026-04-14T12:53:51.470999516+02:00"

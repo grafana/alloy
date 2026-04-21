@@ -1,0 +1,20 @@
+loki.relabel "default" {
+  forward_to = [loki.write.default.receiver]
+
+  rule {
+    source_labels = ["foo"]
+    target_label  = "replaced"
+  }
+
+  rule {
+    action = "labeldrop"
+    regex  = "^foo$"
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url        = pipelinetest.loki.url
+    batch_wait = "10ms"
+  }
+}
