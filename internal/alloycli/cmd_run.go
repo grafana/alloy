@@ -190,7 +190,6 @@ type alloyRun struct {
 	enablePprof                  bool
 	disableReporting             bool
 	clusterEnabled               bool
-	enableDirectFanout           bool
 	clusterNodeName              string
 	clusterAdvAddr               string
 	clusterJoinAddr              string
@@ -212,8 +211,9 @@ type alloyRun struct {
 	disableSupportBundle         bool
 	windowsPriority              string
 	// Feature flags
-	taskShutdownDeadline    time.Duration
 	enableCommunityComps    bool
+	taskShutdownDeadline    time.Duration
+	enableDirectFanout      bool
 	enableGraphQL           bool
 	enableGraphQLPlayground bool
 }
