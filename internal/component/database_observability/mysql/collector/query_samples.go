@@ -427,9 +427,6 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					row.WaitEventName.String, classifyMySQLWaitEventType(row.WaitEventName.String),
 					row.WaitObjectName.String, row.WaitObjectType.String, waitTime,
 				)
-				if c.disableQueryRedaction && row.SQLText.Valid {
-					waitV2LogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
-				}
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo, OP_WAIT_EVENT_V2, waitV2LogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
@@ -442,9 +439,6 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					row.StatementEventID.String, row.WaitEventID.String, row.WaitEndEventID.String,
 					row.WaitEventName.String, row.WaitObjectName.String, row.WaitObjectType.String, waitTime,
 				)
-				if c.disableQueryRedaction && row.SQLText.Valid {
-					waitLogMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
-				}
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 					logging.LevelInfo, OP_WAIT_EVENT, waitLogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
