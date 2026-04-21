@@ -86,16 +86,16 @@ const updateSetupConsumers = `
 		WHERE name in ('events_statements_cpu', 'events_waits_current', 'events_waits_history')`
 
 type QuerySamplesArguments struct {
-	DB                          *sql.DB
-	EngineVersion               semver.Version
-	CollectInterval             time.Duration
-	ExcludeSchemas              []string
-	EntryHandler                loki.EntryHandler
-	DisableQueryRedaction       bool
-	AutoEnableSetupConsumers    bool
-	SetupConsumersCheckInterval time.Duration
-	SampleMinDuration           time.Duration
-	WaitEventMinDuration        time.Duration
+	DB                            *sql.DB
+	EngineVersion                 semver.Version
+	CollectInterval               time.Duration
+	ExcludeSchemas                []string
+	EntryHandler                  loki.EntryHandler
+	DisableQueryRedaction         bool
+	AutoEnableSetupConsumers      bool
+	SetupConsumersCheckInterval   time.Duration
+	SampleMinDuration             time.Duration
+	WaitEventMinDuration          time.Duration
 	EnablePreClassifiedWaitEvents bool
 	WaitEventCounter              *prometheus.CounterVec
 
@@ -103,16 +103,16 @@ type QuerySamplesArguments struct {
 }
 
 type QuerySamples struct {
-	dbConnection                *sql.DB
-	engineVersion               semver.Version
-	collectInterval             time.Duration
-	excludeSchemas              []string
-	entryHandler                loki.EntryHandler
-	disableQueryRedaction       bool
-	autoEnableSetupConsumers    bool
-	setupConsumersCheckInterval time.Duration
-	sampleMinDuration           time.Duration
-	waitEventMinDuration        time.Duration
+	dbConnection                  *sql.DB
+	engineVersion                 semver.Version
+	collectInterval               time.Duration
+	excludeSchemas                []string
+	entryHandler                  loki.EntryHandler
+	disableQueryRedaction         bool
+	autoEnableSetupConsumers      bool
+	setupConsumersCheckInterval   time.Duration
+	sampleMinDuration             time.Duration
+	waitEventMinDuration          time.Duration
 	enablePreClassifiedWaitEvents bool
 	waitEventCounter              *prometheus.CounterVec
 
@@ -128,20 +128,20 @@ type QuerySamples struct {
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	c := &QuerySamples{
-		dbConnection:                args.DB,
-		engineVersion:               args.EngineVersion,
-		collectInterval:             args.CollectInterval,
-		excludeSchemas:              args.ExcludeSchemas,
-		entryHandler:                args.EntryHandler,
-		disableQueryRedaction:       args.DisableQueryRedaction,
-		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
-		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
-		sampleMinDuration:           args.SampleMinDuration,
-		waitEventMinDuration:        args.WaitEventMinDuration,
+		dbConnection:                  args.DB,
+		engineVersion:                 args.EngineVersion,
+		collectInterval:               args.CollectInterval,
+		excludeSchemas:                args.ExcludeSchemas,
+		entryHandler:                  args.EntryHandler,
+		disableQueryRedaction:         args.DisableQueryRedaction,
+		autoEnableSetupConsumers:      args.AutoEnableSetupConsumers,
+		setupConsumersCheckInterval:   args.SetupConsumersCheckInterval,
+		sampleMinDuration:             args.SampleMinDuration,
+		waitEventMinDuration:          args.WaitEventMinDuration,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
 		waitEventCounter:              args.WaitEventCounter,
-		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:                     &atomic.Bool{},
+		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:                       &atomic.Bool{},
 	}
 
 	return c, nil

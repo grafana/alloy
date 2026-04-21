@@ -292,6 +292,14 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
 		openSQL:   openFn,
+		waitEventCounter: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "database_observability_wait_event_seconds_total",
+			Help: "Total wait time in seconds per query, aggregated by server, query digest, and database.",
+		}, []string{"server_id", "digest", "schema"}),
+	}
+
+	if err := c.registry.Register(c.waitEventCounter); err != nil {
+		return nil, fmt.Errorf("failed to register wait event counter: %w", err)
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -617,33 +625,23 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			level.Warn(c.opts.Logger).Log("msg", "wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
 		}
 
-		if c.waitEventCounter != nil {
-			c.registry.Unregister(c.waitEventCounter)
-		}
-		c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "database_observability_wait_event_seconds_total",
-			Help: "Total wait time in seconds per query, aggregated by server, query digest, and database.",
-		}, []string{"server_id", "digest", "schema"})
-		if err := c.registry.Register(c.waitEventCounter); err != nil {
-			level.Warn(c.opts.Logger).Log("msg", "failed to register wait event counter", "err", err)
-		}
 		curriedCounter, err := c.waitEventCounter.CurryWith(prometheus.Labels{"server_id": serverID})
 		if err != nil {
-			level.Warn(c.opts.Logger).Log("msg", "failed to curry wait event counter", "err", err)
+			return fmt.Errorf("failed to curry wait event counter with server_id=%q: %w", serverID, err)
 		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                          c.dbConnection,
-			EngineVersion:               parsedEngineVersion,
-			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
-			ExcludeSchemas:              c.args.ExcludeSchemas,
-			EntryHandler:                entryHandler,
-			Logger:                      c.opts.Logger,
-			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
-			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
-			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
-			SampleMinDuration:           c.args.QuerySamplesArguments.SampleMinDuration,
-			WaitEventMinDuration:        c.args.QuerySamplesArguments.WaitEventMinDuration,
+			DB:                            c.dbConnection,
+			EngineVersion:                 parsedEngineVersion,
+			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
+			ExcludeSchemas:                c.args.ExcludeSchemas,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySamplesArguments.DisableQueryRedaction,
+			AutoEnableSetupConsumers:      c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
+			SetupConsumersCheckInterval:   c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			SampleMinDuration:             c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:          c.args.QuerySamplesArguments.WaitEventMinDuration,
 			EnablePreClassifiedWaitEvents: c.args.EnablePreClassifiedWaitEvents,
 			WaitEventCounter:              curriedCounter,
 		})
