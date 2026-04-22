@@ -155,9 +155,7 @@ func LokiEntryStructuredMetadata(metadata push.LabelsAdapter, partial bool) Entr
 		match = func(entry loki.Entry) bool {
 			return structuredMetadataContains(entry.StructuredMetadata, metadata)
 		}
-
 	} else {
-
 		match = func(entry loki.Entry) bool {
 			return structuredMetadataEqual(entry.StructuredMetadata, metadata)
 		}
