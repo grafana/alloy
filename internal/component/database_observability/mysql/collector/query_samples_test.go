@@ -2870,8 +2870,9 @@ func Test_TryExtractTraceParent(t *testing.T) {
 			expected: "",
 		},
 		{
-			name: "SQLCommenter format with URL-encoded values and multiple fields",
-			input: `SELECT * FROM FOO /*action='%2Fparam*d',controller='index,'framework='spring',` +
+			name: "SQLCommenter exhibit",
+			// Note that traceparent and value (W3C trace context) cannot have meta characters nor URL to decode, so they are effectively inert to tryExtractTraceParent
+			input: `SELECT * FROM FOO /*action='%2Fparam*\'d',controller='index,'framework='spring',` +
 				"\n" + `traceparent='00-5bd66ef5095369c7b0d1f8f4bd33716a-c532cb4098ac3dd2-01',` +
 				"\n" + `tracestate='congo%3Dt61rcWkgMzE%2Crojo%3D00f067aa0ba902b7'*/`,
 			expected: "00-5bd66ef5095369c7b0d1f8f4bd33716a-c532cb4098ac3dd2-01",

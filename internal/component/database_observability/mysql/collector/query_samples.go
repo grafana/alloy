@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -468,7 +467,6 @@ func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, flo
 // tryExtractTraceParent attempts to extract a W3C traceparent value added at the end of SQL text as a trailing
 // block comment, e.g. "/*traceparent='00-<traceid>-<spanid>-<flags>'*/".
 // It returns the traceparent string when matched, otherwise an empty string.
-// Parsed according to https://google.github.io/sqlcommenter/spec/#parsing
 func tryExtractTraceParent(sqlText string) string {
 	if strings.HasSuffix(sqlText, "...") {
 		return ""
@@ -491,39 +489,26 @@ func tryExtractTraceParent(sqlText string) string {
 		return ""
 	}
 
-	unescaper := strings.NewReplacer(`\'`, `'`, `\\`, `\`)
 	// Split the comment by comma into key value pairs
 	pairs := strings.Split(body, ",")
 	for _, pair := range pairs {
 		pair = strings.TrimSpace(pair)
-		rawKey, rawVal, ok := strings.Cut(pair, "=")
+		key, val, ok := strings.Cut(pair, "=")
 		if !ok {
 			continue
-		}
-
-		// Unescape meta characters then URL decode the key
-		key := unescaper.Replace(rawKey)
-		if decoded, err := url.QueryUnescape(key); err == nil {
-			key = decoded
 		}
 
 		if !strings.EqualFold(strings.TrimSpace(key), "traceparent") {
 			continue
 		}
 
-		// sql_unescape: trim ' (or ") at beginning and end of 'value'
-		val := rawVal
+		// SQL unescape: trim ' or " at beginning and end of value
 		if strings.HasPrefix(val, "'") || strings.HasPrefix(val, `"`) {
 			quote := string(val[0])
 			val = strings.TrimPrefix(val, quote)
 			val = strings.TrimSuffix(val, quote)
 		}
 
-		// Unescape meta characters in value, then URL decode the value
-		val = unescaper.Replace(val)
-		if decoded, err := url.QueryUnescape(val); err == nil {
-			val = decoded
-		}
 		return strings.TrimSpace(val)
 	}
 
