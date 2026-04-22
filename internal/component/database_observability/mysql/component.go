@@ -67,8 +67,6 @@ type Arguments struct {
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
-	// Temporary feature flag for pre-classified wait event emission. Will be removed before Alloy 1.14.0.
-	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
 
 	CloudProvider           *CloudProvider               `alloy:"cloud_provider,block,optional"`
 	SetupConsumersArguments SetupConsumersArguments      `alloy:"setup_consumers,block,optional"`
@@ -141,6 +139,8 @@ type QuerySamplesArguments struct {
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
 	SampleMinDuration           time.Duration `alloy:"sample_min_duration,attr,optional"`
 	WaitEventMinDuration        time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	// Temporary feature flag for pre-classified wait event emission. Will be removed before Alloy 1.14.0.
+	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -642,7 +642,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			SetupConsumersCheckInterval:   c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
 			SampleMinDuration:             c.args.QuerySamplesArguments.SampleMinDuration,
 			WaitEventMinDuration:          c.args.QuerySamplesArguments.WaitEventMinDuration,
-			EnablePreClassifiedWaitEvents: c.args.EnablePreClassifiedWaitEvents,
+			EnablePreClassifiedWaitEvents: c.args.QuerySamplesArguments.EnablePreClassifiedWaitEvents,
 			WaitEventCounter:              curriedCounter,
 		})
 		if err != nil {

@@ -36,7 +36,6 @@ You can use the following arguments with `database_observability.mysql`:
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
 | `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
-| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits `wait_event_v2` entries with `wait_event_type` pre-classified as `IO Wait`, `Lock Wait`, `Network Wait`, or `Other Wait` in the log body, instead of the baseline `wait_event` entries. | `false` | no |
 
 The following collectors are configurable:
 
@@ -169,6 +168,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 | `sample_min_duration`            | `duration` | Minimum duration for query samples to be collected. Set to "0s" to disable filtering and collect all samples regardless of their duration.| `"0s"`  | no       |
 | `wait_event_min_duration`        | `duration` | Minimum duration for a wait event to be collected. Set to "0s" to disable filtering and collect all wait events regardless of their duration.  | `"1us"` | no       |
+| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits `wait_event_v2` entries with `wait_event_type` pre-classified as `IO Wait`, `Lock Wait`, `Network Wait`, or `Other Wait` in the log body, instead of the baseline `wait_event` entries. | `false` | no       |
 
 ### `setup_actors`
 
