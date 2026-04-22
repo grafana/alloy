@@ -9,6 +9,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -93,6 +94,7 @@ type QuerySamplesArguments struct {
 	SetupConsumersCheckInterval time.Duration
 	SampleMinDuration           time.Duration
 	WaitEventMinDuration        time.Duration
+	WaitEventCounter            *prometheus.CounterVec
 
 	Logger log.Logger
 }
@@ -108,6 +110,7 @@ type QuerySamples struct {
 	setupConsumersCheckInterval time.Duration
 	sampleMinDuration           time.Duration
 	waitEventMinDuration        time.Duration
+	waitEventCounter            *prometheus.CounterVec
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -131,6 +134,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
 		sampleMinDuration:           args.SampleMinDuration,
 		waitEventMinDuration:        args.WaitEventMinDuration,
+		waitEventCounter:            args.WaitEventCounter,
 		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                     &atomic.Bool{},
 	}
@@ -430,6 +434,11 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				waitLogMessage,
 				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 			)
+
+			if c.waitEventCounter != nil {
+				waitTimeSeconds := waitTime / 1000.0 // waitTime is in ms
+				c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(waitTimeSeconds)
+			}
 		}
 	}
 

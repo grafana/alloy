@@ -11,6 +11,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -2848,4 +2850,87 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 
 	c.fetchQuerySamples(t.Context())
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQuerySamples_WaitEventCounter(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	// Create a 3-label counter and curry with server_id
+	fullCounter := prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "database_observability_wait_event_seconds_total_test",
+		Help: "Test counter",
+	}, []string{"server_id", "digest", "schema"})
+
+	curriedCounter, err := fullCounter.CurryWith(prometheus.Labels{"server_id": "test-server"})
+	require.NoError(t, err)
+
+	collector, err := NewQuerySamples(QuerySamplesArguments{
+		DB:               db,
+		EngineVersion:    latestCompatibleVersion,
+		CollectInterval:  time.Second,
+		EntryHandler:     lokiClient,
+		Logger:           log.NewLogfmtLogger(os.Stderr),
+		WaitEventCounter: curriedCounter,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, collector)
+
+	mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+	mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		1e12, 1e12,
+	).RowsWillBeClosed().WillReturnRows(
+		sqlmock.NewRows([]string{
+			"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
+			"statements.END_EVENT_ID", "statements.DIGEST", "statements.TIMER_END",
+			"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
+			"statements.ROWS_AFFECTED", "statements.ERRORS",
+			"waits.event_id", "waits.end_event_id", "waits.event_name",
+			"waits.object_name", "waits.object_type", "waits.timer_wait",
+			"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
+			"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
+		}).AddRow(
+			// 100000000 ps = 0.1 ms = 0.0001 s
+			"some_schema", "890", "123", "234", "some_digest",
+			"70000000", "20000000", "5", "5", "0", "0",
+			"124", "124", "wait/io/file/innodb/innodb_data_file",
+			"wait_object_name", "wait_object_type", "100000000",
+			"some_user", "some_host",
+			"10000000", "456", "457",
+		),
+	)
+
+	err = collector.Start(t.Context())
+	require.NoError(t, err)
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	collector.Stop()
+	lokiClient.Stop()
+
+	require.Eventually(t, func() bool {
+		return collector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	// Verify the counter was incremented with the correct labels and value
+	// 100000000 ps -> 0.1 ms -> 0.0001 s
+	counter, err := fullCounter.GetMetricWith(prometheus.Labels{
+		"server_id": "test-server",
+		"digest":    "some_digest",
+		"schema":    "some_schema",
+	})
+	require.NoError(t, err)
+
+	// Use dto to read the counter value
+	var metric dto.Metric
+	require.NoError(t, counter.Write(&metric))
+	assert.InDelta(t, 0.0001, metric.Counter.GetValue(), 1e-9)
 }

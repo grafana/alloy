@@ -274,6 +274,7 @@ type Component struct {
 	healthErr         *atomic.String
 	openSQL           func(driverName, dataSourceName string) (*sql.DB, error)
 	exporterCollector prometheus.Collector
+	waitEventCounter  *prometheus.CounterVec
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -614,6 +615,21 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			level.Warn(c.opts.Logger).Log("msg", "wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
 		}
 
+		if c.waitEventCounter != nil {
+			c.registry.Unregister(c.waitEventCounter)
+		}
+		c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "database_observability_wait_event_seconds_total",
+			Help: "Total wait time in seconds per query, aggregated by server, query digest, and database.",
+		}, []string{"server_id", "digest", "schema"})
+		if err := c.registry.Register(c.waitEventCounter); err != nil {
+			level.Warn(c.opts.Logger).Log("msg", "failed to register wait event counter", "err", err)
+		}
+		curriedCounter, err := c.waitEventCounter.CurryWith(prometheus.Labels{"server_id": serverID})
+		if err != nil {
+			level.Warn(c.opts.Logger).Log("msg", "failed to curry wait event counter", "err", err)
+		}
+
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                          c.dbConnection,
 			EngineVersion:               parsedEngineVersion,
@@ -626,6 +642,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
 			SampleMinDuration:           c.args.QuerySamplesArguments.SampleMinDuration,
 			WaitEventMinDuration:        c.args.QuerySamplesArguments.WaitEventMinDuration,
+			WaitEventCounter:            curriedCounter,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
