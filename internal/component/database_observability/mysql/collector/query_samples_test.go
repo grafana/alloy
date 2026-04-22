@@ -3085,10 +3085,10 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 	customClause := buildExcludedSchemasClause([]string{"excluded_schema"})
 	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", customClause, "", endOfTimeline)).
 		WithArgs(1e12, 1e12).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
-		"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID", "statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT",
-		"statements.TIMER_END", "statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT", "statements.ROWS_AFFECTED",
-		"statements.ERRORS", "waits.event_id", "waits.end_event_id", "waits.event_name", "waits.object_name",
-		"waits.object_type", "waits.timer_wait", "threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST", "statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
+		"current_schema", "thread_id", "event_id", "end_event_id", "digest",
+		"timer_end", "timer_wait", "rows_examined", "rows_sent", "rows_affected",
+		"errors", "object_schema", "object_name", "object_type", "index_name",
+		"lock_time", "digest_text", "threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST", "cpu_time", "max_controlled_memory", "max_total_memory",
 	}))
 
 	c.fetchQuerySamples(t.Context())
