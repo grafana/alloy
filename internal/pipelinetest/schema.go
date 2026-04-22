@@ -6,11 +6,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/prometheus/common/model"
+	"gopkg.in/yaml.v3"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/pipelinetest/harness"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/prometheus/common/model"
-	"gopkg.in/yaml.v3"
 )
 
 // TestSchema describes a declarative pipeline test loaded from a text file.
@@ -37,7 +38,7 @@ func (c *ConfigSchema) UnmarshalYAML(value *yaml.Node) error {
 		if cfg.Path == "" {
 			return errors.New("config mapping requires path")
 		}
-		fmt.Println(cfg.Path)
+
 		bb, err := os.ReadFile(cfg.Path)
 		if err != nil {
 			return fmt.Errorf("read config path %q: %w", cfg.Path, err)
