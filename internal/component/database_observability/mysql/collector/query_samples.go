@@ -492,19 +492,26 @@ func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, flo
 	return timerClause, limit
 }
 
+// classifyMySQLWaitEventType maps a raw MySQL performance_schema wait event name
+// to a standardized category, aligned with the wait taxonomy used elsewhere:
+//
+//	IO Wait      = wait/io/(file|table).+
+//	Network Wait = wait/io/socket.+
+//	Lock Wait    = wait/(io/lock|synch|lock).+
 func classifyMySQLWaitEventType(waitEventName string) string {
 	rest, ok := strings.CutPrefix(waitEventName, "wait/")
 	if !ok {
-		return waitEventName
+		return "Other Wait"
 	}
-	category, _, _ := strings.Cut(rest, "/")
-	switch category {
-	case "io":
+	switch {
+	case strings.HasPrefix(rest, "io/file/"), strings.HasPrefix(rest, "io/table/"):
 		return "IO Wait"
-	case "lock":
+	case strings.HasPrefix(rest, "io/socket/"):
+		return "Network Wait"
+	case strings.HasPrefix(rest, "io/lock/"),
+		strings.HasPrefix(rest, "synch/"),
+		strings.HasPrefix(rest, "lock/"):
 		return "Lock Wait"
-	case "synch":
-		return "Synch Wait"
 	}
-	return waitEventName
+	return "Other Wait"
 }

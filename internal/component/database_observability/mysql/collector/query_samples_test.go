@@ -2991,13 +2991,15 @@ func TestClassifyMySQLWaitEventType(t *testing.T) {
 	}{
 		{"wait/io/file/innodb/innodb_data_file", "IO Wait"},
 		{"wait/io/table/sql/handler", "IO Wait"},
+		{"wait/io/socket/sql/client_connection", "Network Wait"},
+		{"wait/io/lock/table/handler", "Lock Wait"},
 		{"wait/lock/table/sql/handler", "Lock Wait"},
 		{"wait/lock/metadata/sql/mdl", "Lock Wait"},
-		{"wait/synch/mutex/sql/LOCK_open", "Synch Wait"},
-		{"wait/synch/rwlock/sql/LOCK_system_variables", "Synch Wait"},
-		{"wait/unknown/something", "wait/unknown/something"},
-		{"not_a_wait_event", "not_a_wait_event"},
-		{"", ""},
+		{"wait/synch/mutex/sql/LOCK_open", "Lock Wait"},
+		{"wait/synch/rwlock/sql/LOCK_system_variables", "Lock Wait"},
+		{"wait/unknown/something", "Other Wait"},
+		{"not_a_wait_event", "Other Wait"},
+		{"", "Other Wait"},
 	}
 
 	for _, tc := range tests {
