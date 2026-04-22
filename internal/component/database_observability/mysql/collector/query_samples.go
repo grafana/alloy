@@ -398,7 +398,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		if row.WaitEventID.Valid && row.WaitTime.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
 			waitLogMessage := fmt.Sprintf(
-				`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms" traceparent="%s"`,
+				`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
 				row.Schema.String,
 				row.User.String,
 				row.Host.String,
@@ -411,7 +411,6 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				row.WaitObjectName.String,
 				row.WaitObjectType.String,
 				waitTime,
-				traceParent,
 			)
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
