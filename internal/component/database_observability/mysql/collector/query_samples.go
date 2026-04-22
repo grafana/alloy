@@ -73,7 +73,7 @@ LEFT JOIN
 	ON statements.THREAD_ID = threads.THREAD_ID
 WHERE
 	statements.DIGEST IS NOT NULL
-    AND statements.SQL_TEXT IS NOT NULL
+	AND statements.SQL_TEXT IS NOT NULL
 	AND statements.CURRENT_SCHEMA NOT IN %s
 	%s %s`
 
