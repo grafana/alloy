@@ -489,7 +489,7 @@ func tryExtractTraceParent(sqlText string) string {
 		return ""
 	}
 
-	unescaper := strings.NewReplacer(`\'`, `'`, `\"`, `"`, `\\`, `\`, "\\`", "`")
+	unescaper := strings.NewReplacer(`\'`, `'`, `\\`, `\`)
 	// Split the comment by comma
 	for _, pair := range strings.Split(body, ",") {
 		pair = strings.TrimSpace(pair)
