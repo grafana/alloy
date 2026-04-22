@@ -71,19 +71,23 @@ type LokiEntrySchema struct {
 	StructuredMetadata map[string]string `yaml:"structured_metadata,omitempty"`
 }
 
-// AssertionSchema describes one declarative assertion in a test file.
+// AssertionSchema groups declarative assertions by signal type.
 type AssertionSchema struct {
 	Loki []LokiAssertionSchema `yaml:"loki"`
 }
 
-// LokiAssertionSchema describes one declarative Loki assertion in a test file.
+// LokiAssertionSchema describes one declarative Loki entry assertion. When
+// Count is omitted, at least one matching entry must exist. When Count is set,
+// exactly Count matching entries must exist. Mode controls how map-like fields
+// such as labels and structured metadata are matched.
 type LokiAssertionSchema struct {
 	Type  string          `yaml:"type"`
-	Count int             `yaml:"count,omitempty"`
+	Count *int            `yaml:"count,omitempty"`
+	Mode  string          `yaml:"mode,omitempty"`
 	Match LokiMatchSchema `yaml:"match,omitempty"`
 }
 
-// LokiMatchSchema describes a partial Loki entry match for declarative assertions.
+// LokiMatchSchema describes Loki entry fields used by declarative assertions.
 type LokiMatchSchema struct {
 	Labels             map[string]string `yaml:"labels,omitempty"`
 	Line               string            `yaml:"line,omitempty"`
@@ -161,10 +165,8 @@ func buildLokiAssertions(assertions []LokiAssertionSchema) ([]harness.Assertion,
 	out := make([]harness.Assertion, 0, len(assertions))
 	for _, assertion := range assertions {
 		switch assertion.Type {
-		case "entry_count":
-			out = append(out, harness.LokiEntryCount(assertion.Count))
-		case "has_entry":
-			built, err := buildLokiHasEntry(assertion.Match)
+		case "entry":
+			built, err := buildLokiEntryAssertion(assertion)
 			if err != nil {
 				return nil, err
 			}
@@ -176,11 +178,24 @@ func buildLokiAssertions(assertions []LokiAssertionSchema) ([]harness.Assertion,
 	return out, nil
 }
 
-func buildLokiHasEntry(match LokiMatchSchema) (harness.Assertion, error) {
+func buildLokiEntryAssertion(assertion LokiAssertionSchema) (harness.Assertion, error) {
+	matchers, err := buildLokiMatchers(assertion.Match, assertion.Mode)
+	if err != nil {
+		return nil, err
+	}
+
+	if assertion.Count == nil && len(matchers) == 0 {
+		return nil, errors.New("entry requires count or at least one match field")
+	}
+
+	return harness.LokiEntries(assertion.Count, matchers...), nil
+}
+
+func buildLokiMatchers(match LokiMatchSchema, mode string) ([]harness.EntryMatcher, error) {
 	matchers := make([]harness.EntryMatcher, 0, 4)
 
 	if len(match.Labels) > 0 {
-		matchers = append(matchers, harness.LokiEntryLabels(toLabelSet(match.Labels)))
+		matchers = append(matchers, harness.LokiEntryLabels(toLabelSet(match.Labels), mode == "partial"))
 	}
 
 	if match.Line != "" {
@@ -197,14 +212,10 @@ func buildLokiHasEntry(match LokiMatchSchema) (harness.Assertion, error) {
 	}
 
 	if len(match.StructuredMetadata) > 0 {
-		matchers = append(matchers, harness.LokiEntryStructuredMetadata(toLabelsAdapter(match.StructuredMetadata)))
+		matchers = append(matchers, harness.LokiEntryStructuredMetadata(toLabelsAdapter(match.StructuredMetadata), mode == "partial"))
 	}
 
-	if len(matchers) == 0 {
-		return nil, errors.New("has_entry requires at least one match field1")
-	}
-
-	return harness.LokiHasEntry(matchers...), nil
+	return matchers, nil
 }
 
 func toLabelSet(labels map[string]string) model.LabelSet {

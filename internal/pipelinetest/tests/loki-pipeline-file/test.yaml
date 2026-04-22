@@ -40,5 +40,17 @@ config: |
 
 assert:
   loki:
-    - type: entry_count
-      count: 200
+    - type: entry
+      count: 100
+      mode: partial
+      match:
+        labels:
+          namespace: ns1
+          service_name: api
+    - type: entry
+      count: 100
+      mode: partial
+      match:
+        labels:
+          namespace: ns2
+          service_name: worker
