@@ -14,7 +14,6 @@ import (
 // Config Errors
 const (
 	ErrExpressionsRequired  = "JMES expression is required"
-	ErrCouldNotCompileJMES  = "could not compile JMES expression"
 	ErrEmptyJSONStageConfig = "empty json stage configuration"
 	ErrEmptyJSONStageSource = "empty source"
 	ErrMalformedJSON        = "malformed json"
@@ -52,7 +51,7 @@ func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, error) {
 		}
 		expressions[n], err = jmespath.Compile(jmes)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", ErrCouldNotCompileJMES, err)
+			return nil, fmt.Errorf("%w: %w", errCouldNotCompileJMES, err)
 		}
 	}
 	return expressions, nil

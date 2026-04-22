@@ -1,7 +1,6 @@
 package stages
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"testing"
@@ -10,6 +9,8 @@ import (
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 var (
@@ -17,95 +18,121 @@ var (
 	geoipTestSource string = "dummy"
 )
 
-func Test_ValidateConfigs(t *testing.T) {
-	source := "ip"
-	tests := []struct {
-		config    GeoIPConfig
-		wantError error
-	}{
+func TestUnmarshalGeoIPConfig(t *testing.T) {
+	type testCase struct {
+		name   string
+		config string
+		err    error
+	}
+
+	tests := []testCase{
 		{
-			GeoIPConfig{
-				DB:     "test",
-				Source: &source,
-				DBType: "city",
-			},
-			nil,
+			name: "valid city config",
+			config: `
+			stage.geoip {
+				db = "test"
+				source = "ip"
+				db_type = "city"
+			}
+			`,
+			err: nil,
 		},
 		{
-			GeoIPConfig{
-				DB:     "test",
-				Source: &source,
-				DBType: "country",
-			},
-			nil,
+			name: "valid country config",
+			config: `
+			stage.geoip {
+				db = "test"
+				source = "ip"
+				db_type = "country"
+			}
+			`,
+			err: nil,
 		},
 		{
-			GeoIPConfig{
-				DB:     "test",
-				Source: &source,
-				CustomLookups: map[string]string{
-					"field": "lookup",
-				},
-			},
-			nil,
+			name: "valid custom lookups config",
+			config: `
+			stage.geoip {
+				db = "test"
+				source = "ip"
+				custom_lookups = { field = "lookup" }
+			}
+			`,
+			err: nil,
 		},
 		{
-			GeoIPConfig{
-				DB:     "test",
-				Source: &source,
-			},
-			ErrEmptyDBTypeAndValuesGeoIPStageConfig,
+			name: "missing db_type and custom lookups",
+			config: `
+			stage.geoip {
+				db = "test"
+				source = "ip"
+			}
+			`,
+			err: errEmptyDBTypeAndValuesGeoIPStageConfig,
 		},
 		{
-			GeoIPConfig{
-				Source: &source,
-				DBType: "city",
-			},
-			ErrEmptyDBPathGeoIPStageConfig,
+			name: "missing db path",
+			config: `
+			stage.geoip {
+				db = ""
+				source = "ip"
+				db_type = "city"
+			}
+			`,
+			err: errEmptyDBPathGeoIPStageConfig,
 		},
 		{
-			GeoIPConfig{
-				DB:     "test",
-				DBType: "city",
-			},
-			ErrEmptySourceGeoIPStageConfig,
+			name: "empty source",
+			config: `
+			stage.geoip {
+				db = "test"
+				source = ""
+				db_type = "city"
+			}
+			`,
+			err: errEmptySourceGeoIPStageConfig,
 		},
 		{
-			GeoIPConfig{
-				DB:     "test",
-				DBType: "fake",
-				Source: &source,
-			},
-			ErrEmptyDBTypeGeoIPStageConfig,
+			name: "invalid db type",
+			config: `
+			stage.geoip {
+				db = "test"
+				source = "ip"
+				db_type = "fake"
+			}
+			`,
+			err: errDBTypeGeoIPStageConfig,
 		},
 		{
-			GeoIPConfig{
-				DB:     "test",
-				Source: &source,
-				CustomLookups: map[string]string{
-					"field": ".-badlookup",
-				},
-			},
-			errors.New(ErrCouldNotCompileJMES),
+			name: "invalid custom lookup",
+			config: `
+			stage.geoip {
+				db = "test"
+				source = "ip"
+				custom_lookups = { field = ".-badlookup" }
+			}
+			`,
+			err: errCouldNotCompileJMES,
 		},
 	}
+
 	for _, tt := range tests {
-		_, err := validateGeoIPConfig(tt.config)
-		if err != nil {
-			require.Equal(t, tt.wantError.Error(), err.Error())
-		}
-		if tt.wantError == nil {
-			require.Nil(t, err)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			var config Configs
+			err := syntax.Unmarshal([]byte(tt.config), &config)
+			if tt.err != nil {
+				require.ErrorIs(t, err, err)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Len(t, config.Stages, 1)
+			require.NotNil(t, config.Stages[0].GeoIPConfig)
+		})
 	}
 }
 
-/*
-	NOTE:
-	database schema: https://github.com/maxmind/MaxMind-DB/tree/main/source-data
-	Script used to build the minimal binaries: https://github.com/vimt/MaxMind-DB-Writer-python
-*/
-
+// NOTE: database schema: https://github.com/maxmind/MaxMind-DB/tree/main/source-data
+// Script used to build the minimal binaries: https://github.com/vimt/MaxMind-DB-Writer-python
 func Test_MaxmindAsn(t *testing.T) {
 	mmdb, err := maxminddb.Open("testdata/geoip_maxmind_asn.mmdb")
 	if err != nil {
@@ -125,15 +152,11 @@ func Test_MaxmindAsn(t *testing.T) {
 		Source: &geoipTestSource,
 		DBType: "asn",
 	}
-	valuesExpressions, err := validateGeoIPConfig(config)
-	if err != nil {
-		t.Errorf("Error validating test-config: %v", err)
-	}
+
 	testStage := &geoIPStage{
-		mmdb:              mmdb,
-		logger:            log.NewNopLogger(),
-		valuesExpressions: valuesExpressions,
-		cfgs:              config,
+		mmdb:   mmdb,
+		logger: log.NewNopLogger(),
+		cfgs:   config,
 	}
 
 	extracted := map[string]any{}
@@ -169,15 +192,11 @@ func Test_MaxmindCity(t *testing.T) {
 		Source: &geoipTestSource,
 		DBType: "city",
 	}
-	valuesExpressions, err := validateGeoIPConfig(config)
-	if err != nil {
-		t.Errorf("Error validating test-config: %v", err)
-	}
+
 	testStage := &geoIPStage{
-		mmdb:              mmdb,
-		logger:            log.NewNopLogger(),
-		valuesExpressions: valuesExpressions,
-		cfgs:              config,
+		mmdb:   mmdb,
+		logger: log.NewNopLogger(),
+		cfgs:   config,
 	}
 
 	extracted := map[string]any{}
@@ -223,15 +242,11 @@ func Test_MaxmindCountry(t *testing.T) {
 		Source: &geoipTestSource,
 		DBType: "country",
 	}
-	valuesExpressions, err := validateGeoIPConfig(config)
-	if err != nil {
-		t.Errorf("Error validating test-config: %v", err)
-	}
+
 	testStage := &geoIPStage{
-		mmdb:              mmdb,
-		logger:            log.NewNopLogger(),
-		valuesExpressions: valuesExpressions,
-		cfgs:              config,
+		mmdb:   mmdb,
+		logger: log.NewNopLogger(),
+		cfgs:   config,
 	}
 
 	extracted := map[string]any{}

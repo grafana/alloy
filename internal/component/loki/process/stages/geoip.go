@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"net"
@@ -10,16 +11,16 @@ import (
 	"github.com/jmespath-community/go-jmespath"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
-	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/syntax"
 )
 
 var (
-	ErrEmptyDBPathGeoIPStageConfig          = errors.New("db path cannot be empty")
-	ErrEmptySourceGeoIPStageConfig          = errors.New("source cannot be empty")
-	ErrEmptyDBTypeGeoIPStageConfig          = errors.New("db type should be either city or asn")
-	ErrEmptyDBTypeAndValuesGeoIPStageConfig = errors.New("db type or values need to be set")
+	errDBTypeGeoIPStageConfig               = errors.New("db type should be either city, asn or country")
+	errEmptyDBPathGeoIPStageConfig          = errors.New("db path cannot be empty")
+	errEmptySourceGeoIPStageConfig          = errors.New("source cannot be empty")
+	errEmptyDBTypeAndValuesGeoIPStageConfig = errors.New("db type or values need to be set")
 )
 
 type GeoIPFields int
@@ -54,56 +55,64 @@ var fields = map[GeoIPFields]string{
 	ASNORG:          "geoip_autonomous_system_organization",
 }
 
+var _ syntax.Validator = (*GeoIPConfig)(nil)
+
 // GeoIPConfig represents GeoIP stage config
 type GeoIPConfig struct {
-	DB            string            `alloy:"db,attr"`
-	Source        *string           `alloy:"source,attr"`
-	DBType        string            `alloy:"db_type,attr,optional"`
-	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"`
+	DB            string              `alloy:"db,attr"`
+	Source        *string             `alloy:"source,attr"`
+	DBType        GeoIPDBType         `alloy:"db_type,attr,optional"`
+	CustomLookups map[string]JMESPath `alloy:"custom_lookups,attr,optional"`
 }
 
-func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {
-	if c.DB == "" {
-		return nil, ErrEmptyDBPathGeoIPStageConfig
-	}
-	if c.Source != nil && *c.Source == "" {
-		return nil, ErrEmptySourceGeoIPStageConfig
+// Validate implements syntax.Validator.
+func (g *GeoIPConfig) Validate() error {
+	if g.DB == "" {
+		return errEmptyDBPathGeoIPStageConfig
 	}
 
-	if c.DBType == "" && c.CustomLookups == nil {
-		return nil, ErrEmptyDBTypeAndValuesGeoIPStageConfig
+	if g.Source != nil && *g.Source == "" {
+		return errEmptySourceGeoIPStageConfig
 	}
 
-	switch c.DBType {
-	case "", "asn", "city", "country":
+	if g.DBType == "" && g.CustomLookups == nil {
+		return errEmptyDBTypeAndValuesGeoIPStageConfig
+	}
+
+	return nil
+}
+
+var (
+	_ encoding.TextMarshaler   = GeoIPDBType("")
+	_ encoding.TextUnmarshaler = (*GeoIPDBType)(nil)
+)
+
+type GeoIPDBType string
+
+const (
+	geoIPDBTypeASN     GeoIPDBType = "asn"
+	geoIPDBTypeCity    GeoIPDBType = "city"
+	geoIPDBTypeCountry GeoIPDBType = "country"
+)
+
+func (t *GeoIPDBType) UnmarshalText(text []byte) error {
+	typ := GeoIPDBType(text)
+	switch typ {
+	// NOTE: we allow empty type here to not break existing config
+	case "", geoIPDBTypeASN, geoIPDBTypeCity, geoIPDBTypeCountry:
+		*t = typ
+		return nil
 	default:
-		return nil, ErrEmptyDBTypeGeoIPStageConfig
+		return errDBTypeGeoIPStageConfig
 	}
+}
 
-	if c.CustomLookups == nil {
-		return nil, nil
-	}
-
-	expressions := map[string]jmespath.JMESPath{}
-	for key, expr := range c.CustomLookups {
-		var err error
-		jmes := expr
-
-		// If there is no expression, use the name as the expression.
-		if expr == "" {
-			jmes = key
-		}
-
-		expressions[key], err = jmespath.Compile(jmes)
-		if err != nil {
-			return nil, errors.New(ErrCouldNotCompileJMES)
-		}
-	}
-	return expressions, nil
+func (t GeoIPDBType) MarshalText() (text []byte, err error) {
+	return []byte(t), nil
 }
 
 func newGeoIPStage(logger log.Logger, config GeoIPConfig) (Stage, error) {
-	valuesExpressions, err := validateGeoIPConfig(config)
+	expressions, err := compileJMESPathMap(config.CustomLookups)
 	if err != nil {
 		return nil, err
 	}
@@ -114,101 +123,81 @@ func newGeoIPStage(logger log.Logger, config GeoIPConfig) (Stage, error) {
 	}
 
 	return &geoIPStage{
-		mmdb:              mmdb,
-		logger:            logger,
-		cfgs:              config,
-		valuesExpressions: valuesExpressions,
+		mmdb:        mmdb,
+		logger:      logger,
+		cfgs:        config,
+		expressions: expressions,
 	}, nil
 }
 
 type geoIPStage struct {
-	logger            log.Logger
-	mmdb              *maxminddb.Reader
-	cfgs              GeoIPConfig
-	valuesExpressions map[string]jmespath.JMESPath
+	logger      log.Logger
+	mmdb        *maxminddb.Reader
+	cfgs        GeoIPConfig
+	expressions map[string]jmespath.JMESPath
 }
 
-// Run implements Stage
+// Run implements Stage.
 func (g *geoIPStage) Run(in chan Entry) chan Entry {
-	out := make(chan Entry)
-	go func() {
-		defer close(out)
-		defer g.close()
-		for e := range in {
-			g.process(e.Labels, e.Extracted)
-			out <- e
-		}
-	}()
-	return out
-}
-
-// Cleanup implements Stage.
-func (*geoIPStage) Cleanup() {
-	// no-op
-}
-
-func (g *geoIPStage) process(_ model.LabelSet, extracted map[string]any) {
-	var ip net.IP
-	if g.cfgs.Source != nil {
-		if _, ok := extracted[*g.cfgs.Source]; !ok {
-			if Debug {
-				level.Debug(g.logger).Log("msg", "source does not exist in the set of extracted values", "source", *g.cfgs.Source)
+	return RunWith(in, func(e Entry) Entry {
+		var ip net.IP
+		if g.cfgs.Source != nil {
+			if _, ok := e.Extracted[*g.cfgs.Source]; !ok {
+				if Debug {
+					level.Debug(g.logger).Log("msg", "source does not exist in the set of extracted values", "source", *g.cfgs.Source)
+				}
+				return e
 			}
-			return
-		}
 
-		value, err := getString(extracted[*g.cfgs.Source])
-		if err != nil {
-			if Debug {
-				level.Debug(g.logger).Log("msg", "failed to convert source value to string", "source", *g.cfgs.Source, "err", err, "type", reflect.TypeOf(extracted[*g.cfgs.Source]))
-			}
-			return
-		}
-		ip = net.ParseIP(value)
-		if ip == nil {
-			level.Error(g.logger).Log("msg", "source is not an ip", "source", value)
-			return
-		}
-	}
-	if g.cfgs.DBType != "" {
-		switch g.cfgs.DBType {
-		case "city":
-			var record geoip2.City
-			err := g.mmdb.Lookup(ip, &record)
+			value, err := getString(e.Extracted[*g.cfgs.Source])
 			if err != nil {
-				level.Error(g.logger).Log("msg", "unable to get City record for the ip", "err", err, "ip", ip)
-				return
+				if Debug {
+					level.Debug(g.logger).Log("msg", "failed to convert source value to string", "source", *g.cfgs.Source, "err", err, "type", reflect.TypeOf(e.Extracted[*g.cfgs.Source]))
+				}
+				return e
 			}
-			g.populateExtractedWithCityData(extracted, &record)
-		case "asn":
-			var record geoip2.ASN
-			err := g.mmdb.Lookup(ip, &record)
-			if err != nil {
-				level.Error(g.logger).Log("msg", "unable to get ASN record for the ip", "err", err, "ip", ip)
-				return
+			ip = net.ParseIP(value)
+			if ip == nil {
+				level.Error(g.logger).Log("msg", "source is not an ip", "source", value)
+				return e
 			}
-			g.populateExtractedWithASNData(extracted, &record)
-		case "country":
-			var record geoip2.Country
-			err := g.mmdb.Lookup(ip, &record)
-			if err != nil {
-				level.Error(g.logger).Log("msg", "unable to get Country record for the ip", "err", err, "ip", ip)
-				return
-			}
-			g.populateExtractedWithCountryData(extracted, &record)
-		default:
-			level.Error(g.logger).Log("msg", "unknown database type")
 		}
-	}
-	if g.valuesExpressions != nil {
-		g.populateExtractedWithCustomFields(ip, extracted)
-	}
-}
+		if g.cfgs.DBType != "" {
+			switch g.cfgs.DBType {
+			case "city":
+				var record geoip2.City
+				err := g.mmdb.Lookup(ip, &record)
+				if err != nil {
+					level.Error(g.logger).Log("msg", "unable to get City record for the ip", "err", err, "ip", ip)
+					return e
+				}
+				g.populateExtractedWithCityData(e.Extracted, &record)
+			case "asn":
+				var record geoip2.ASN
+				err := g.mmdb.Lookup(ip, &record)
+				if err != nil {
+					level.Error(g.logger).Log("msg", "unable to get ASN record for the ip", "err", err, "ip", ip)
+					return e
+				}
+				g.populateExtractedWithASNData(e.Extracted, &record)
+			case "country":
+				var record geoip2.Country
+				err := g.mmdb.Lookup(ip, &record)
+				if err != nil {
+					level.Error(g.logger).Log("msg", "unable to get Country record for the ip", "err", err, "ip", ip)
+					return e
+				}
+				g.populateExtractedWithCountryData(e.Extracted, &record)
+			default:
+				level.Error(g.logger).Log("msg", "unknown database type")
+			}
+		}
+		if g.expressions != nil {
+			g.populateExtractedWithCustomFields(e.Extracted, ip)
+		}
 
-func (g *geoIPStage) close() {
-	if err := g.mmdb.Close(); err != nil {
-		level.Error(g.logger).Log("msg", "error while closing mmdb", "err", err)
-	}
+		return Entry{}
+	})
 }
 
 func (g *geoIPStage) populateExtractedWithCityData(extracted map[string]any, record *geoip2.City) {
@@ -319,14 +308,14 @@ func (g *geoIPStage) populateExtractedWithCountryData(extracted map[string]any, 
 	}
 }
 
-func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[string]any) {
+func (g *geoIPStage) populateExtractedWithCustomFields(extracted map[string]any, ip net.IP) {
 	var record any
 	if err := g.mmdb.Lookup(ip, &record); err != nil {
 		level.Error(g.logger).Log("msg", "unable to lookup record for the ip", "err", err, "ip", ip)
 		return
 	}
 
-	for key, expr := range g.valuesExpressions {
+	for key, expr := range g.expressions {
 		r, err := expr.Search(record)
 		if err != nil {
 			level.Error(g.logger).Log("msg", "failed to search JMES expression", "err", err)
@@ -339,5 +328,11 @@ func (g *geoIPStage) populateExtractedWithCustomFields(ip net.IP, extracted map[
 			continue
 		}
 		extracted[key] = r
+	}
+}
+
+func (g *geoIPStage) Cleanup() {
+	if g.mmdb != nil {
+		g.mmdb.Close()
 	}
 }
