@@ -18,7 +18,7 @@ import (
 
 const (
 	defaultTimeout  = 10 * time.Second
-	defaultInterval = 100 * time.Millisecond
+	defaultInterval = 50 * time.Millisecond
 )
 
 type Config struct {

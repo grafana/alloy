@@ -1,6 +1,7 @@
 package pipelinetest
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,8 +22,13 @@ func TestPipelines(t *testing.T) {
 		name := entry.Name()
 		path := filepath.Join("tests", name, "test.yaml")
 
+		_, err := os.Stat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		require.NoError(t, err)
+
 		t.Run(name, func(t *testing.T) {
-			t.Parallel()
 			bb, err := os.ReadFile(path)
 			require.NoError(t, err)
 
