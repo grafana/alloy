@@ -365,7 +365,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		traceParent := tryExtractTraceParent(row.SQLText.String)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms" traceparent="%s"`,
+			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 			row.Schema.String, row.User.String, row.Host.String, row.ThreadID.String,
 			row.StatementEventID.String, row.StatementEndEventID.String,
 			row.Digest.String,
@@ -378,8 +378,10 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			cpuTime,
 			elapsedTime,
 			elapsedTime,
-			traceParent,
 		)
+		if traceParent != "" {
+			logMessage += fmt.Sprintf(` traceparent="%s"`, traceParent)
+		}
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
