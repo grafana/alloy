@@ -151,16 +151,16 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 			}
 			continue
 		}
-		value, err := j.simplifyType(rawResult)
-		if err == nil {
+		value, ok := j.simplifyType(rawResult)
+		if ok {
 			extracted[name] = value
 		}
 	}
 	if j.regex.String() != "" {
 		for key, rawValue := range data {
 			if j.regex.MatchString(key) {
-				value, err := j.simplifyType(rawValue)
-				if err == nil {
+				value, ok := j.simplifyType(rawValue)
+				if ok {
 					extracted[key] = value
 				}
 			}
@@ -172,28 +172,28 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	return nil
 }
 
-// extractWithType returns the value if it's a simple type (string, number, bool),
-// otherwise, it returns it as a JSON string
-func (j *jsonStage) simplifyType(value any) (any, error) {
+// simplifyType returns the value if it's a simple type (string, number, bool),
+// otherwise, it returns it as a JSON string. If unsuccessful, the second return value is false.
+func (j *jsonStage) simplifyType(value any) (any, bool) {
 	switch value.(type) {
 	case float64:
-		return value, nil
+		return value, true
 	case string:
-		return value, nil
+		return value, true
 	case bool:
-		return value, nil
+		return value, true
 	case nil:
-		return nil, nil
+		return nil, true
 	default:
 		// If the value wasn't a string or a number, marshal it back to json
 		jm, err := json.Marshal(value)
 		if err != nil {
 			if Debug {
 				level.Debug(j.logger).Log("msg", "failed to marshal complex type back to string", "err", err)
-				return nil, err
+				return nil, false
 			}
 		}
-		return string(jm), nil
+		return string(jm), true
 	}
 }
 

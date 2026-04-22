@@ -110,16 +110,17 @@ func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]any, t
 	regexExtractedEntriesCount := 0
 	for decoder.ScanRecord() {
 		for decoder.ScanKeyval() {
+			key := string(decoder.Key())
 			// handle "mapping"
-			mapKey, ok := j.inverseMapping[string(decoder.Key())]
+			mapKey, ok := j.inverseMapping[key]
 			if ok {
 				extracted[mapKey] = string(decoder.Value())
 				mappingExtractedEntriesCount++
 			}
 			// handle "regex"
 			if j.regex.String() != "" {
-				if j.regex.MatchString(string(decoder.Key())) {
-					extracted[string(decoder.Key())] = string(decoder.Value())
+				if j.regex.MatchString(key) {
+					extracted[key] = string(decoder.Value())
 					regexExtractedEntriesCount++
 				}
 			}
