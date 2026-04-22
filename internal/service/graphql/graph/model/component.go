@@ -1,9 +1,6 @@
 package model
 
-import (
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/syntax/encoding/alloyjson"
-)
+import "github.com/grafana/alloy/internal/component"
 
 type Component struct {
 	ID        string `json:"id"`
@@ -12,17 +9,9 @@ type Component struct {
 	Arguments string `json:"arguments"`
 	Exports   string `json:"exports"`
 	DebugInfo string `json:"debugInfo"`
-}
 
-func marshalBodyToString(v any) string {
-	if v == nil {
-		return "{}"
-	}
-	b, err := alloyjson.MarshalBody(v)
-	if err != nil {
-		return "{}"
-	}
-	return string(b)
+	// Internal component info used by field resolvers
+	ComponentInfo *component.Info `json:"-"`
 }
 
 func NewComponent(comp *component.Info) Component {
@@ -33,8 +22,6 @@ func NewComponent(comp *component.Info) Component {
 			Message:     comp.Health.Message,
 			LastUpdated: comp.Health.UpdateTime,
 		},
-		Arguments: marshalBodyToString(comp.Arguments),
-		Exports:   marshalBodyToString(comp.Exports),
-		DebugInfo: marshalBodyToString(comp.DebugInfo),
+		ComponentInfo: comp,
 	}
 }

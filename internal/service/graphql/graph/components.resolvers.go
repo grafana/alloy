@@ -12,6 +12,21 @@ import (
 	"github.com/grafana/alloy/internal/service/graphql/utils"
 )
 
+// Arguments is the resolver for the arguments field.
+func (r *componentResolver) Arguments(ctx context.Context, obj *model.Component) (string, error) {
+	return utils.MarshalBodyToString(obj.ComponentInfo.Arguments), nil
+}
+
+// Exports is the resolver for the exports field.
+func (r *componentResolver) Exports(ctx context.Context, obj *model.Component) (string, error) {
+	return utils.MarshalBodyToString(obj.ComponentInfo.Exports), nil
+}
+
+// DebugInfo is the resolver for the debugInfo field.
+func (r *componentResolver) DebugInfo(ctx context.Context, obj *model.Component) (string, error) {
+	return utils.MarshalBodyToString(obj.ComponentInfo.DebugInfo), nil
+}
+
 // Components is the resolver for the components field.
 func (r *queryResolver) Components(ctx context.Context) ([]model.Component, error) {
 	allComponents, err := utils.GetAllComponents(r.Host)
@@ -33,7 +48,11 @@ func (r *queryResolver) Component(ctx context.Context, id string) (*model.Compon
 	if err != nil {
 		return nil, err
 	}
-
 	result := model.NewComponent(comp)
 	return &result, nil
 }
+
+// Component returns ComponentResolver implementation.
+func (r *Resolver) Component() ComponentResolver { return &componentResolver{r} }
+
+type componentResolver struct{ *Resolver }

@@ -157,3 +157,14 @@ models:
     model:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
+
+  Alloy:
+    fields:
+      isReady: {resolver: true}
+
+
+  Component:
+    fields:
+      arguments: {resolver: true}
+      exports: {resolver: true}
+      debugInfo: {resolver: true}

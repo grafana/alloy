@@ -10,18 +10,36 @@ import (
 
 	"github.com/grafana/alloy/internal/build"
 	"github.com/grafana/alloy/internal/service/graphql/graph/model"
+	"github.com/grafana/alloy/internal/service/http"
 )
+
+// IsReady is the resolver for the isReady field.
+func (r *alloyResolver) IsReady(ctx context.Context, obj *model.Alloy) (bool, error) {
+	rawService, ok := r.Host.GetService(http.ServiceName)
+	if !ok {
+		return false, nil
+	}
+
+	httpService, ok := rawService.(*http.Service)
+	if !ok {
+		return false, nil
+	}
+
+	return httpService.IsReady(), nil
+}
 
 // Alloy is the resolver for the alloy field.
 func (r *queryResolver) Alloy(ctx context.Context) (model.Alloy, error) {
-	return model.NewAlloy(
-		model.Alloy{
-			Branch:    build.Branch,
-			BuildDate: build.BuildDate,
-			BuildUser: build.BuildUser,
-			Revision:  build.Revision,
-			Version:   build.Version,
-		},
-		r.Host,
-	), nil
+	return model.Alloy{
+		Branch:    build.Branch,
+		BuildDate: build.BuildDate,
+		BuildUser: build.BuildUser,
+		Revision:  build.Revision,
+		Version:   build.Version,
+	}, nil
 }
+
+// Alloy returns AlloyResolver implementation.
+func (r *Resolver) Alloy() AlloyResolver { return &alloyResolver{r} }
+
+type alloyResolver struct{ *Resolver }
