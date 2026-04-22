@@ -2847,7 +2847,7 @@ func Test_TryExtractTraceParent(t *testing.T) {
 		{
 			name:     "traceparent without closing quote",
 			input:    "SELECT * FROM users /*traceparent='00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+			expected: "",
 		},
 		{
 			name:     "empty traceparent value",
@@ -2868,6 +2868,13 @@ func Test_TryExtractTraceParent(t *testing.T) {
 			name:     "empty string",
 			input:    "",
 			expected: "",
+		},
+		{
+			name: "SQLCommenter format with URL-encoded values and multiple fields",
+			input: `SELECT * FROM FOO /*action='%2Fparam*d',controller='index,'framework='spring',` +
+				"\n" + `traceparent='00-5bd66ef5095369c7b0d1f8f4bd33716a-c532cb4098ac3dd2-01',` +
+				"\n" + `tracestate='congo%3Dt61rcWkgMzE%2Crojo%3D00f067aa0ba902b7'*/`,
+			expected: "00-5bd66ef5095369c7b0d1f8f4bd33716a-c532cb4098ac3dd2-01",
 		},
 	}
 

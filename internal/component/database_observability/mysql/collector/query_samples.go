@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -465,34 +466,63 @@ func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, flo
 // tryExtractTraceParent attempts to extract a W3C traceparent value added at the end of SQL text as a trailing
 // block comment, e.g. "/*traceparent='00-<traceid>-<spanid>-<flags>'*/".
 // It returns the traceparent string when matched, otherwise an empty string.
+// Parsed according to https://google.github.io/sqlcommenter/spec/#parsing
 func tryExtractTraceParent(sqlText string) string {
 	if strings.HasSuffix(sqlText, "...") {
 		return ""
 	}
 
-	idx := strings.LastIndex(strings.ToLower(sqlText), "traceparent=")
-	if idx < 0 {
+	// Find the last comment: strip out /* and */
+	start := strings.LastIndex(sqlText, "/*")
+	if start < 0 {
+		return ""
+	}
+	body := sqlText[start+2:]
+	end := strings.Index(body, "*/")
+	if end < 0 {
 		return ""
 	}
 
-	tp := sqlText[idx+len("traceparent="):]
-	if len(tp) < 1 {
+	body = body[:end]
+	body = strings.TrimSpace(body)
+	if body == "" {
 		return ""
 	}
 
-	quote := tp[0]
-	if quote == '\'' || quote == '"' {
-		tp = tp[1:]
-		end := strings.IndexByte(tp, quote)
-		if end < 0 {
-			end = len(tp)
+	unescaper := strings.NewReplacer(`\'`, `'`, `\"`, `"`, `\\`, `\`, "\\`", "`")
+	// Split the comment by comma
+	for _, pair := range strings.Split(body, ",") {
+		pair = strings.TrimSpace(pair)
+		rawKey, rawVal, ok := strings.Cut(pair, "=")
+		if !ok {
+			continue
 		}
-		return strings.TrimSpace(tp[:end])
+
+		// Unescape meta characters then URL decode the key
+		key := unescaper.Replace(rawKey)
+		if decoded, err := url.QueryUnescape(key); err == nil {
+			key = decoded
+		}
+
+		if !strings.EqualFold(strings.TrimSpace(key), "traceparent") {
+			continue
+		}
+
+		// sql_unescape: trim ' (or ") at beginning and end of 'value'
+		val := rawVal
+		if strings.HasPrefix(val, "'") || strings.HasPrefix(val, `"`) {
+			quote := string(val[0])
+			val = strings.TrimPrefix(val, quote)
+			val = strings.TrimSuffix(val, quote)
+		}
+
+		// Unescape meta characters in value, then URL decode the value
+		val = unescaper.Replace(val)
+		if decoded, err := url.QueryUnescape(val); err == nil {
+			val = decoded
+		}
+		return strings.TrimSpace(val)
 	}
 
-	if end := strings.Index(tp, "*/"); end > 0 {
-		tp = tp[:end]
-	}
-
-	return tp
+	return ""
 }
