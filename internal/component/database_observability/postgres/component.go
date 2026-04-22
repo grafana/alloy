@@ -106,6 +106,8 @@ type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
 	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
+	// Temporary feature flag for pre-classified wait event emission. Will be removed before Alloy 1.14.0.
+	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type QueryDetailsArguments struct {
@@ -608,14 +610,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QuerySamplesCollector] {
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                    c.dbConnection,
-			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
-			ExcludeDatabases:      c.args.ExcludeDatabases,
-			ExcludeUsers:          c.args.ExcludeUsers,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
+			DB:                            c.dbConnection,
+			CollectInterval:               c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:              c.args.ExcludeDatabases,
+			ExcludeUsers:                  c.args.ExcludeUsers,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
+			ExcludeCurrentUser:            c.args.QuerySampleArguments.ExcludeCurrentUser,
+			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)

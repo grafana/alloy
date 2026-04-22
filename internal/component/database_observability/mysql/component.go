@@ -139,6 +139,8 @@ type QuerySamplesArguments struct {
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
 	SampleMinDuration           time.Duration `alloy:"sample_min_duration,attr,optional"`
 	WaitEventMinDuration        time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	// Temporary feature flag for pre-classified wait event emission. Will be removed before Alloy 1.14.0.
+	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -615,17 +617,18 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                          c.dbConnection,
-			EngineVersion:               parsedEngineVersion,
-			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
-			ExcludeSchemas:              c.args.ExcludeSchemas,
-			EntryHandler:                entryHandler,
-			Logger:                      c.opts.Logger,
-			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
-			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
-			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
-			SampleMinDuration:           c.args.QuerySamplesArguments.SampleMinDuration,
-			WaitEventMinDuration:        c.args.QuerySamplesArguments.WaitEventMinDuration,
+			DB:                            c.dbConnection,
+			EngineVersion:                 parsedEngineVersion,
+			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
+			ExcludeSchemas:                c.args.ExcludeSchemas,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySamplesArguments.DisableQueryRedaction,
+			AutoEnableSetupConsumers:      c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
+			SetupConsumersCheckInterval:   c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			SampleMinDuration:             c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:          c.args.QuerySamplesArguments.WaitEventMinDuration,
+			EnablePreClassifiedWaitEvents: c.args.QuerySamplesArguments.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
