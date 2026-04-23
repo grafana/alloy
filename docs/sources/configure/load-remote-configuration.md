@@ -58,12 +58,11 @@ Use `import.http` to load configuration modules from an HTTP server.
 This is the recommended approach when you have configuration modules hosted on a web server.
 
 {{< param "PRODUCT_NAME" >}} periodically makes HTTP requests to the configured URL and treats the response body as {{< param "PRODUCT_NAME" >}} module content.
-The response doesn't need a special API.
-A standard HTTP server that returns {{< param "PRODUCT_NAME" >}} text is enough.
+The response doesn't need a special API, a standard HTTP server that returns {{< param "PRODUCT_NAME" >}} text is enough.
 
 {{< param "PRODUCT_NAME" >}} loads remote content with `import.http` and treats it as a module, not as a complete top-level configuration file.
 Modules define reusable components in `declare` blocks.
-After you import a module, you must instantiate its declared components in the local configuration so they run.
+After you import a module, add the components you need in your local configuration, or they won't run.
 
 {{< admonition type="note" >}}
 You can't point {{< param "PRODUCT_NAME" >}} directly at a remote URL on startup.
