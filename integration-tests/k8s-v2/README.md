@@ -9,6 +9,38 @@ Requirement-driven Kubernetes integration tests with a shared KinD lifecycle.
 - Single-test and multi-test execution from one runner
 - Eventual assertions against Mimir and Loki APIs
 
+## Architecture
+
+The harness runs as three cooperating processes. Understanding the split
+makes it easier to reason about flags, context propagation, and where new
+code belongs.
+
+1. **Runner** (`runner/main.go`). A small Cobra CLI used locally and in CI.
+   Its only job is to discover selected tests, resolve them to paths and
+   names, and invoke `go test` on the harness package with the right build
+   tags and internal `-k8s.v2.*` flags. It never talks to Kubernetes.
+
+2. **Harness** (`./...`, built as `go test` with both build tags set). A
+   single `TestMain` that:
+   - plans selected tests and dependency union,
+   - creates (or reuses) a KinD cluster,
+   - installs shared dependencies (Loki/Mimir) in fixed namespaces,
+   - runs each selected test as a parallel subtest of `TestIntegrationV2`,
+     each subtest installing Alloy via Helm into a per-test namespace and
+     applying test-specific workload manifests.
+
+3. **Per-test assertion binary** (`tests/<name>/assert_test.go`). Each test
+   ships its assertions in its own package, which the harness invokes as
+   another `go test` subprocess (see `runGoTestPackage`). That gives every
+   test its own flag namespace and repro command, and isolates imports so
+   backends can evolve independently.
+
+Shared dependency metadata (namespace, service, readiness path, manifest
+file) lives once in `internal/backendspec` and is consumed by both the
+installer in `internal/deps` and the port-forward helper in
+`internal/assert`. Adding a new backend means one new `backendspec.Spec`
+plus one embedded manifest under `internal/deps/manifests/`.
+
 ## Test layout
 
 Each test directory contains:

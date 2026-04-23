@@ -4,46 +4,31 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/backendspec"
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/kube"
 )
 
-type Backend struct {
-	Name          string
-	Namespace     string
-	Service       string
-	Port          int
-	ReadinessPath string
-}
-
+// Re-export the shared backend specs so assertion tests have a single
+// import for backend metadata.
 var (
-	LokiBackend = Backend{
-		Name:          "loki",
-		Namespace:     "loki",
-		Service:       "loki",
-		Port:          3100,
-		ReadinessPath: "/ready",
-	}
-	MimirBackend = Backend{
-		Name:          "mimir",
-		Namespace:     "mimir",
-		Service:       "mimir",
-		Port:          9009,
-		ReadinessPath: "/ready",
-	}
+	LokiBackend  = backendspec.Loki
+	MimirBackend = backendspec.Mimir
 )
 
-func StartBackendPortForward(ctx context.Context, kubeconfig string, backend Backend) (string, func(), error) {
+// StartBackendPortForward starts a kubectl port-forward to spec and returns
+// a base URL to use for HTTP queries plus a cancel function.
+func StartBackendPortForward(ctx context.Context, kubeconfig string, spec backendspec.Spec) (string, func(), error) {
 	handle, err := kube.StartPortForwardAndWait(ctx, kube.PortForwardConfig{
 		Kubeconfig:    kubeconfig,
-		Namespace:     backend.Namespace,
-		Service:       backend.Service,
-		TargetPort:    backend.Port,
-		ReadinessPath: backend.ReadinessPath,
+		Namespace:     spec.Namespace,
+		Service:       spec.Service,
+		TargetPort:    spec.Port,
+		ReadinessPath: spec.ReadinessPath,
 		PollInterval:  DefaultInterval,
 		ReadyTimeout:  DefaultTimeout,
 	})
 	if err != nil {
-		return "", nil, fmt.Errorf("start %s port-forward: %w", backend.Name, err)
+		return "", nil, fmt.Errorf("start %s port-forward: %w", spec.Name, err)
 	}
 	return handle.BaseURL, func() {
 		_ = handle.Close()

@@ -61,33 +61,54 @@ func (h *harness) runSubtest(t *testing.T, tc planner.TestCase) {
 	}
 	defer removeTempFile(valuesRendered)
 
+	// Each per-test operation (kubectl, helm) is cancelled by the test's
+	// context (go test -timeout) so a hung apply/install doesn't block the
+	// whole suite. Individual operations add their own tighter deadlines
+	// using the readiness timeout flag.
+	testCtx := t.Context()
+
 	nsStart := time.Now()
-	if err := ensureNamespace(context.Background(), h.kubeconfig, runtime.namespace); err != nil {
+	nsCtx, nsCancel := context.WithTimeout(testCtx, *readinessTimeout)
+	err = ensureNamespace(nsCtx, h.kubeconfig, runtime.namespace)
+	nsCancel()
+	if err != nil {
 		t.Fatalf("ensure namespace for %s failed: %v", tc.Name, err)
 	}
 	h.log.Info("ensure test namespace finished", "test", tc.Name, "namespace", runtime.namespace, "duration", formatStepDuration(time.Since(nsStart)))
 
 	applyStart := time.Now()
-	if err := applyWorkloadManifest(context.Background(), h.kubeconfig, workloadRendered); err != nil {
+	applyCtx, applyCancel := context.WithTimeout(testCtx, *readinessTimeout)
+	err = applyWorkloadManifest(applyCtx, h.kubeconfig, workloadRendered)
+	applyCancel()
+	if err != nil {
 		t.Fatalf("apply workload for %s failed: %v", tc.Name, err)
 	}
 	h.log.Info("apply workload finished", "test", tc.Name, "duration", formatStepDuration(time.Since(applyStart)))
 	defer func() {
 		cleanupStart := time.Now()
-		if err := deleteWorkloadManifest(context.Background(), h.kubeconfig, workloadRendered); err != nil {
+		// Use a detached context for cleanup: the test context may already
+		// be cancelled by the time deferred cleanup runs.
+		delCtx, cancel := context.WithTimeout(context.Background(), *readinessTimeout)
+		defer cancel()
+		if err := deleteWorkloadManifest(delCtx, h.kubeconfig, workloadRendered); err != nil {
 			h.log.Warn("cleanup workload failed", "test", tc.Name, "error", err)
 		}
 		h.log.Info("cleanup workload finished", "test", tc.Name, "duration", formatStepDuration(time.Since(cleanupStart)))
 	}()
 
 	helmStart := time.Now()
-	if err := installAlloyFromChart(context.Background(), h.kubeconfig, tc.Name, valuesRendered, runtime.release, runtime.namespace); err != nil {
+	helmCtx, helmCancel := context.WithTimeout(testCtx, *readinessTimeout)
+	err = installAlloyFromChart(helmCtx, h.kubeconfig, tc.Name, valuesRendered, runtime.release, runtime.namespace)
+	helmCancel()
+	if err != nil {
 		t.Fatalf("install Alloy for %s failed: %v", tc.Name, err)
 	}
 	h.log.Info("alloy install finished", "test", tc.Name, "duration", formatStepDuration(time.Since(helmStart)))
 	defer func() {
 		uninstallStart := time.Now()
-		if err := uninstallAlloyFromChart(context.Background(), h.kubeconfig, tc.Name, runtime.release, runtime.namespace); err != nil {
+		uninstallCtx, cancel := context.WithTimeout(context.Background(), *readinessTimeout)
+		defer cancel()
+		if err := uninstallAlloyFromChart(uninstallCtx, h.kubeconfig, tc.Name, runtime.release, runtime.namespace); err != nil {
 			h.log.Warn("alloy uninstall failed", "test", tc.Name, "error", err)
 		}
 		h.log.Info("alloy uninstall finished", "test", tc.Name, "duration", formatStepDuration(time.Since(uninstallStart)))

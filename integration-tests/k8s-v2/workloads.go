@@ -8,10 +8,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/imageutil"
+	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/template"
 )
 
 const localAlloyChartPath = "operations/helm/charts/alloy"
@@ -43,6 +43,22 @@ func deleteWorkloadManifest(ctx context.Context, kubeconfigPath, manifestPath st
 	return nil
 }
 
+// runGoTestPackage invokes `go test` on a child package (tests/<name>)
+// from inside the harness's own `go test` process. This "go test inside go
+// test" design is deliberate:
+//
+//   - Each test's assertions live in their own Go package under tests/<name>
+//     so they can declare their own imports, flags, and helpers without
+//     polluting the harness package.
+//   - Running them as independent `go test` binaries keeps per-test
+//     arguments (kubeconfig, test-id) strictly scoped and avoids cross-test
+//     flag collisions while the harness runs subtests in parallel.
+//   - It also yields a clean repro command: a failing subtest prints the
+//     exact `go test ./tests/<name>` invocation the user can paste to rerun.
+//
+// The trade-off is an extra compile step per test; compile caches make this
+// negligible in practice and the isolation benefit is worth it for an
+// integration harness that drives real Kubernetes.
 func runGoTestPackage(dir, kubeconfigPath, testID string) error {
 	cmd := exec.Command(
 		"go",
@@ -133,33 +149,7 @@ func uninstallAlloyFromChart(ctx context.Context, kubeconfigPath, testName, rele
 }
 
 func renderTemplatedFile(path string, vars map[string]string) (string, error) {
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		return "", fmt.Errorf("read file %q: %w", path, err)
-	}
-
-	content := string(raw)
-	keys := make([]string, 0, len(vars))
-	for key := range vars {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		content = strings.ReplaceAll(content, "${"+key+"}", vars[key])
-	}
-
-	tmp, err := os.CreateTemp("", "k8s-v2-rendered-*.yaml")
-	if err != nil {
-		return "", fmt.Errorf("create rendered temp file: %w", err)
-	}
-	if _, err := tmp.WriteString(content); err != nil {
-		_ = tmp.Close()
-		return "", fmt.Errorf("write rendered temp file: %w", err)
-	}
-	if err := tmp.Close(); err != nil {
-		return "", fmt.Errorf("close rendered temp file: %w", err)
-	}
-	return tmp.Name(), nil
+	return template.RenderFile(path, vars)
 }
 
 func removeTempFile(path string) {

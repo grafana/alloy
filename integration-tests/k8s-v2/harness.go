@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/deps"
+	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/harnessflags"
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/logging"
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/planner"
 	"sigs.k8s.io/e2e-framework/support/kind"
@@ -29,11 +30,12 @@ type harness struct {
 	selectedTests []planner.TestCase
 	requiredDeps  []string
 
-	clusterName   string
-	kubeconfig    string
-	reusedCluster bool
-	hasCluster    bool
-	installedDeps bool
+	clusterName      string
+	kubeconfig       string
+	kubeconfigIsTemp bool
+	reusedCluster    bool
+	hasCluster       bool
+	installedDeps    bool
 
 	registry deps.Registry
 	provider kindProvider
@@ -74,14 +76,15 @@ func (h *harness) run(m *testing.M) int {
 	defer cancel()
 
 	h.reusedCluster = *reuseClusterFlag != ""
-	clusterName, err := randomClusterName()
-	if err != nil {
-		h.log.Error("failed to generate cluster name", "error", err)
-		return 1
-	}
-	h.clusterName = clusterName
 	if h.reusedCluster {
 		h.clusterName = *reuseClusterFlag
+	} else {
+		name, err := randomClusterName()
+		if err != nil {
+			h.log.Error("failed to generate cluster name", "error", err)
+			return 1
+		}
+		h.clusterName = name
 	}
 	provider := kind.NewProvider().WithName(h.clusterName).SetDefaults()
 	h.provider = provider
@@ -119,6 +122,17 @@ func (h *harness) run(m *testing.M) int {
 			} else if h.hasCluster {
 				h.log.Info("keeping kind cluster for debugging", "name", h.clusterName, "kubeconfig", h.kubeconfig)
 			}
+
+			// Remove kubeconfig temp file written for reused clusters. The
+			// e2e-framework provider owns its own kubeconfig lifecycle for
+			// created clusters; only the reuse path creates a temp file we
+			// have to clean up ourselves. Skip when --keep-cluster is set so
+			// users can still interact with the reused cluster after the run.
+			if h.kubeconfigIsTemp && h.kubeconfig != "" && !*keepClusterFlag {
+				if err := os.Remove(h.kubeconfig); err != nil && !os.IsNotExist(err) {
+					h.log.Warn("remove temp kubeconfig failed", "path", h.kubeconfig, "error", err)
+				}
+			}
 		})
 		return exitCode
 	}
@@ -152,19 +166,15 @@ func (h *harness) run(m *testing.M) int {
 }
 
 func (h *harness) validateFlags() error {
-	if *keepDepsFlag && !*keepClusterFlag {
-		return fmt.Errorf("k8s.v2.keep-deps requires k8s.v2.keep-cluster=true")
-	}
-	if *reuseDepsFlag && *reuseClusterFlag == "" {
-		return fmt.Errorf("k8s.v2.reuse-deps requires k8s.v2.reuse-cluster")
-	}
-	if *alloyPullPolicy != "" && *alloyImageFlag == "" {
-		return fmt.Errorf("k8s.v2.alloy-image-pull-policy requires k8s.v2.alloy-image")
-	}
-	if *parallelFlag < 1 {
-		return fmt.Errorf("k8s.v2.parallel must be >= 1")
-	}
-	return nil
+	return harnessflags.Validate(harnessflags.Values{
+		KeepDeps:        *keepDepsFlag,
+		KeepCluster:     *keepClusterFlag,
+		ReuseDeps:       *reuseDepsFlag,
+		ReuseCluster:    *reuseClusterFlag,
+		AlloyImage:      *alloyImageFlag,
+		AlloyPullPolicy: *alloyPullPolicy,
+		Parallel:        *parallelFlag,
+	})
 }
 
 func (h *harness) plan() error {
@@ -207,6 +217,7 @@ func (h *harness) prepareCluster(ctx context.Context) error {
 			return fmt.Errorf("get kubeconfig for reused cluster %s failed: %w", h.clusterName, err)
 		}
 		h.kubeconfig = kcfg
+		h.kubeconfigIsTemp = true
 		h.hasCluster = true
 		h.log.Info("reuse kind cluster finished", "duration", formatStepDuration(time.Since(start)))
 	} else {

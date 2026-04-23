@@ -17,8 +17,6 @@ const (
 	defaultPollInterval   = 2 * time.Second
 	defaultReadyTimeout   = 2 * time.Minute
 	defaultUninstallGrace = 30 * time.Second
-	LokiNamespace         = "loki"
-	MimirNamespace        = "mimir"
 )
 
 // Env carries the configuration each installer needs at call time. It is

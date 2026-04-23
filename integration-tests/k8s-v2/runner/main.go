@@ -162,12 +162,10 @@ func resolveSelection(opts options, all []planner.TestCase) ([]selectedTest, err
 	}
 
 	knownByName := make(map[string]planner.TestCase, len(all))
-	knownByLowerName := make(map[string]planner.TestCase, len(all))
 	names := make([]string, 0, len(all))
 	absDirToName := make(map[string]string, len(all))
 	for _, tc := range all {
 		knownByName[tc.Name] = tc
-		knownByLowerName[strings.ToLower(tc.Name)] = tc
 		names = append(names, tc.Name)
 		absDir, err := filepath.Abs(tc.Dir)
 		if err == nil {
@@ -196,7 +194,7 @@ func resolveSelection(opts options, all []planner.TestCase) ([]selectedTest, err
 		if token == "" {
 			continue
 		}
-		selected, err := resolveSingleTest(token, knownByName, knownByLowerName, absDirToName)
+		selected, err := resolveSingleTest(token, knownByName, absDirToName)
 		if err != nil {
 			return nil, fmt.Errorf("%v (valid test names: %s)", err, strings.Join(names, ", "))
 		}
@@ -217,18 +215,10 @@ func resolveSelection(opts options, all []planner.TestCase) ([]selectedTest, err
 func resolveSingleTest(
 	raw string,
 	knownByName map[string]planner.TestCase,
-	knownByLowerName map[string]planner.TestCase,
 	absDirToName map[string]string,
 ) (selectedTest, error) {
 
 	if tc, ok := knownByName[raw]; ok {
-		absPath, err := filepath.Abs(tc.Dir)
-		if err != nil {
-			return selectedTest{}, fmt.Errorf("resolve absolute path for %q: %w", tc.Name, err)
-		}
-		return selectedTest{Name: tc.Name, AbsPath: filepath.Clean(absPath)}, nil
-	}
-	if tc, ok := knownByLowerName[strings.ToLower(raw)]; ok {
 		absPath, err := filepath.Abs(tc.Dir)
 		if err != nil {
 			return selectedTest{}, fmt.Errorf("resolve absolute path for %q: %w", tc.Name, err)
