@@ -19,8 +19,8 @@ var (
 
 // SamplingConfig contains the configuration for a samplingStage
 type SamplingConfig struct {
-	DropReason   string  `alloy:"drop_counter_reason,attr,optional"`
-	SamplingRate float64 `alloy:"rate,attr"`
+	DropReason   string  `alloy:"drop_counter_reason,attr,optional" json:"dropReason,omitempty"`
+	SamplingRate float64 `alloy:"rate,attr"                         json:"rate"`
 }
 
 func (s *SamplingConfig) SetToDefault() {
@@ -70,4 +70,13 @@ func (m *samplingStage) Run(in chan Entry) chan Entry {
 // Cleanup implements Stage.
 func (*samplingStage) Cleanup() {
 	// no-op
+}
+
+// ProcessEntry implements SyncStage.
+func (m *samplingStage) ProcessEntry(e Entry) []Entry {
+	if m.sampler.ShouldSample() {
+		return []Entry{e}
+	}
+	m.dropCount.WithLabelValues(m.cfg.DropReason).Inc()
+	return nil
 }

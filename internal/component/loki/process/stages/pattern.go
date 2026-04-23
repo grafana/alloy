@@ -23,9 +23,9 @@ var (
 // extract values from log lines into the shared values map.
 // See https://grafana.com/docs/loki/latest/query/log_queries/#pattern
 type PatternConfig struct {
-	Pattern          string  `alloy:"pattern,attr"`
-	Source           *string `alloy:"source,attr,optional"`
-	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
+	Pattern          string  `alloy:"pattern,attr"                   json:"pattern"`
+	Source           *string `alloy:"source,attr,optional"           json:"source,omitempty"`
+	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional" json:"labelsFromGroups,omitempty"`
 }
 
 // validatePatternConfig validates the config and return a regex

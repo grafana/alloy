@@ -35,3 +35,9 @@ func (m *decolorizeStage) Run(in chan Entry) chan Entry {
 func (*decolorizeStage) Cleanup() {
 	// no-op
 }
+
+// ProcessEntry implements SyncStage.
+func (m *decolorizeStage) ProcessEntry(e Entry) []Entry {
+	e.Entry.Line = string(ansiRegex.ReplaceAll([]byte(e.Line), []byte{}))
+	return []Entry{e}
+}

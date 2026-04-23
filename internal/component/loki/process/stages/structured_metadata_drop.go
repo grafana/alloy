@@ -13,7 +13,7 @@ var ErrEmptyStructuredMetadataDropStageConfig = errors.New("structured_metadata_
 
 // StructuredMetadataDropConfig contains the slice of structured metadata to be dropped.
 type StructuredMetadataDropConfig struct {
-	Values []string `alloy:"values,attr"`
+	Values []string `alloy:"values,attr" json:"values"`
 }
 
 func newStructuredMetadataDropStage(logger log.Logger, config StructuredMetadataDropConfig) (Stage, error) {
@@ -47,4 +47,14 @@ func (s *structuredMetadataDropStage) Run(in chan Entry) chan Entry {
 		}
 		return e
 	})
+}
+
+// ProcessEntry implements SyncStage.
+func (s *structuredMetadataDropStage) ProcessEntry(e Entry) []Entry {
+	for _, value := range s.config.Values {
+		e.StructuredMetadata = slices.DeleteFunc(e.StructuredMetadata, func(l push.LabelAdapter) bool {
+			return l.Name == value
+		})
+	}
+	return []Entry{e}
 }

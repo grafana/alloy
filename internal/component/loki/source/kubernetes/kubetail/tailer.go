@@ -46,9 +46,12 @@ func (tt *tailerTask) Equals(other runner.Task) bool {
 	}
 
 	// Slow path: check individual fields which are part of the task.
+	// Handler is compared by pointer: a different pipeline means a different
+	// handler instance, so the tailer must be restarted to pick up the new one.
 	return tt.Options == otherTask.Options &&
 		tt.Target.UID() == otherTask.Target.UID() &&
-		labels.Equal(tt.Target.Labels(), otherTask.Target.Labels())
+		labels.Equal(tt.Target.Labels(), otherTask.Target.Labels()) &&
+		tt.Target.Handler() == otherTask.Target.Handler()
 }
 
 // A tailer tails the logs of a Kubernetes container. It is created by a
@@ -108,8 +111,16 @@ func (t *tailer) Run(ctx context.Context) {
 	})
 	defer handler.Stop()
 
+	// When using the per-target pipeline handler, entries bypass the mutator
+	// handler (which normally calls bo.Reset on every received line). Provide an
+	// explicit reset callback so backoff works correctly on the pipeline path.
+	onEntrySent := func() {}
+	if t.target.Handler() != nil {
+		onEntrySent = bo.Reset
+	}
+
 	for bo.Ongoing() {
-		err := t.tail(ctx, handler)
+		err := t.tail(ctx, handler, onEntrySent)
 		if err == nil {
 			// Check if we should stop tailing this container
 			// Fetch pod info once and use different logic for job pods vs regular pods
@@ -148,7 +159,7 @@ func (t *tailer) Run(ctx context.Context) {
 	}
 }
 
-func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
+func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler, onEntrySent func()) error {
 	// Set a maximum lifetime of the tail to ensure that connections are
 	// reestablished. This avoids an issue where the Kubernetes API server stops
 	// responding with new logs while the connection is kept open.
@@ -263,13 +274,18 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 
 	level.Info(t.log).Log("msg", "opened log stream", "start time", lastReadTime)
 
-	return t.processLogStream(ctx, stream, handler, lastReadTime, positionsEnt, calc)
+	return t.processLogStream(ctx, stream, handler, lastReadTime, positionsEnt, calc, onEntrySent)
 }
 
 // processLogStream reads log lines from a reader and processes them.
 // It returns when the context is done, the stream ends, or an error occurs.
-func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, lastReadTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator) error {
+func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, handler loki.EntryHandler, lastReadTime time.Time, positionsEnt positions.Entry, calc *rollingAverageCalculator, onEntrySent func()) error {
+	// Use per-target handler if set (routes entries through a PodLogs pipeline),
+	// otherwise fall back to the global handler from Options.
 	ch := handler.Chan()
+	if h := t.target.Handler(); h != nil {
+		ch = h.Chan()
+	}
 	reader := bufio.NewReader(stream)
 	for {
 		line, err := reader.ReadString('\n')
@@ -297,6 +313,7 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			case <-ctx.Done():
 				return nil
 			case ch <- entry:
+				onEntrySent()
 				// Save position after it's been sent over the channel.
 				t.opts.Positions.Put(positionsEnt.Path, positionsEnt.Labels, entryTimestamp.UnixMicro())
 				t.target.Report(entryTimestamp, nil)

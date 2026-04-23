@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	promlabels "github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -21,8 +23,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
+	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
@@ -59,12 +64,31 @@ const (
 	kubePodControllerName    = "__meta_kubernetes_pod_controller_name"
 )
 
+// managedPipeline holds the runtime state of a per-PodLogs processing pipeline.
+type managedPipeline struct {
+	// entryHandler is the input end of the pipeline. Tailers send entries here.
+	// Call Stop() to tear down the pipeline's goroutines.
+	entryHandler loki.EntryHandler
+	// stageConfig is kept for change-detection via reflect.DeepEqual.
+	stageConfig []stages.PodLogsStageConfig
+}
+
 // The reconciler reconciles the state of PodLogs on Kubernetes with targets to
 // collect logs from.
 type reconciler struct {
 	log     log.Logger
 	tailer  *kubetail.Manager
 	cluster cluster.Cluster
+
+	// Pipeline management: per-PodLogs processing pipelines.
+	// mainOutChan is where pipeline output is written (= component.handler.Chan()).
+	registerer   prometheus.Registerer
+	minStability featuregate.Stability
+	mainOutChan  chan loki.Entry
+
+	pipelinesMut    sync.Mutex
+	pipelines       map[string]*managedPipeline // key: "namespace/name"
+	replacedPipelines []loki.EntryHandler       // old handlers replaced this reconcile cycle; stopped after SyncTargets
 
 	reconcileMut             sync.RWMutex
 	podLogsSelector          labels.Selector
@@ -81,11 +105,23 @@ type reconciler struct {
 
 // newReconciler creates a new reconciler which synchronizes targets with the
 // provided tailer whenever Reconcile is called.
-func newReconciler(l log.Logger, tailer *kubetail.Manager, cluster cluster.Cluster) *reconciler {
+//
+// registerer, minStability, and mainOutChan are used to manage per-PodLogs
+// processing pipelines. mainOutChan should be the component's main handler
+// channel (component.handler.Chan()); pipeline output is written there so that
+// the existing loki.Consume loop forwards entries to the fanout unchanged.
+func newReconciler(l log.Logger, tailer *kubetail.Manager, cluster cluster.Cluster,
+	registerer prometheus.Registerer, minStability featuregate.Stability, mainOutChan chan loki.Entry,
+) *reconciler {
 	return &reconciler{
 		log:     l,
 		tailer:  tailer,
 		cluster: cluster,
+
+		registerer:   registerer,
+		minStability: minStability,
+		mainOutChan:  mainOutChan,
+		pipelines:    make(map[string]*managedPipeline),
 
 		podLogsSelector:          labels.Everything(),
 		podLogsNamespaceSelector: labels.Everything(),
@@ -165,6 +201,8 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 		return fmt.Errorf("could not list PodLogs: %w", err)
 	}
 
+	activePipelineKeys := make(map[string]struct{})
+
 	for _, podLogs := range podLogsList.Items {
 		key := client.ObjectKeyFromObject(podLogs)
 
@@ -180,6 +218,17 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 
 		targets, discoveredPodLogs := r.reconcilePodLogs(ctx, cli, podLogs)
 
+		// Populate activePipelineKeys only when a pipeline was successfully created
+		// (ensurePipeline may fail or reconcilePodLogs may return early). Checking
+		// r.pipelines after the call is safe: ensurePipeline holds pipelinesMut while
+		// inserting, so by the time reconcilePodLogs returns the map is up to date.
+		pipelineKey := podLogs.Namespace + "/" + podLogs.Name
+		r.pipelinesMut.Lock()
+		if _, ok := r.pipelines[pipelineKey]; ok {
+			activePipelineKeys[pipelineKey] = struct{}{}
+		}
+		r.pipelinesMut.Unlock()
+
 		newTasks = append(newTasks, targets...)
 		newDebugInfo = append(newDebugInfo, discoveredPodLogs)
 	}
@@ -189,9 +238,18 @@ func (r *reconciler) Reconcile(ctx context.Context, cli client.Client) error {
 		newTasks = distributeTargets(r.cluster, newTasks)
 	}
 
+	// SyncTargets stops removed tailer workers and waits for them to exit
+	// before returning. Pipelines must only be stopped after this point so
+	// that no tailer goroutine is left trying to write to a dead pipeline
+	// channel.
 	if err := r.tailer.SyncTargets(ctx, newTasks); err != nil {
 		level.Error(r.log).Log("msg", "failed to apply new tailers to run", "err", err)
 	}
+
+	// Now it is safe to tear down pipelines: all tailers that referenced them
+	// have exited.
+	r.cleanupStalePipelines(activePipelineKeys)
+	r.stopReplacedPipelines()
 
 	r.debugMut.Lock()
 	r.debugInfo = newDebugInfo
@@ -265,6 +323,21 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 		discoveredPodLogs.ReconcileError = fmt.Sprintf("invalid relabelings: %s", err)
 		level.Error(r.log).Log("msg", "failed to reconcile PodLogs", "operation", "convert relabelings", "key", key, "err", err)
 		return targets, discoveredPodLogs
+	}
+
+	// Determine the per-target entry handler. When PipelineStages are configured,
+	// entries are routed through a dedicated processing pipeline for this PodLogs.
+	// Otherwise nil means the global handler (Options.Handler) is used.
+	var targetHandler loki.EntryHandler
+	if len(podLogs.Spec.PipelineStages) > 0 {
+		pipelineKey := podLogs.Namespace + "/" + podLogs.Name
+		handler, err := r.ensurePipeline(pipelineKey, podLogs.Spec.PipelineStages)
+		if err != nil {
+			discoveredPodLogs.ReconcileError = fmt.Sprintf("invalid pipeline stages: %s", err)
+			level.Error(r.log).Log("msg", "failed to reconcile PodLogs", "operation", "build pipeline", "key", key, "err", err)
+			return targets, discoveredPodLogs
+		}
+		targetHandler = handler
 	}
 
 	sel, err := metav1.LabelSelectorAsSelector(&podLogs.Spec.Selector)
@@ -351,7 +424,7 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 				return
 			}
 
-			target := kubetail.NewTarget(targetLabels.Copy(), finalLabels, preserveMetaLabels)
+			target := kubetail.NewTarget(targetLabels.Copy(), finalLabels, preserveMetaLabels, targetHandler)
 			if processedLabels.Len() != 0 {
 				targets = append(targets, target)
 			}
@@ -373,6 +446,106 @@ func (r *reconciler) reconcilePodLogs(ctx context.Context, cli client.Client, po
 	}
 
 	return targets, discoveredPodLogs
+}
+
+// ensurePipeline returns the entry handler for a PodLogs pipeline, creating or
+// replacing it if the stage config has changed. The returned handler's Chan()
+// is the pipeline input; entries written there are processed and forwarded to
+// r.mainOutChan.
+func (r *reconciler) ensurePipeline(key string, stageConfigs []stages.PodLogsStageConfig) (loki.EntryHandler, error) {
+	r.pipelinesMut.Lock()
+	defer r.pipelinesMut.Unlock()
+
+	if existing, ok := r.pipelines[key]; ok && reflect.DeepEqual(existing.stageConfig, stageConfigs) {
+		// Stage config unchanged — reuse existing pipeline.
+		return existing.entryHandler, nil
+	}
+
+	// Stages changed (or this is first time): queue the old pipeline for
+	// deferred stop. It must not be stopped here because tailer goroutines
+	// targeting the old pipeline may still be running; they are stopped
+	// by SyncTargets (which waits for worker exit) before we drain
+	// replacedPipelines in Reconcile.
+	if existing, ok := r.pipelines[key]; ok {
+		r.replacedPipelines = append(r.replacedPipelines, existing.entryHandler)
+		delete(r.pipelines, key)
+	}
+
+	// Build a namespaced registerer so per-PodLogs metrics don't conflict.
+	ns, name, _ := strings.Cut(key, "/")
+	pipelineRegisterer := prometheus.WrapRegistererWith(prometheus.Labels{
+		"podlogs_namespace": ns,
+		"podlogs_name":      name,
+	}, r.registerer)
+
+	converted, err := stages.ConvertPodLogsStages(stageConfigs)
+	if err != nil {
+		return nil, err
+	}
+	pipeline, err := stages.NewPipeline(r.log, converted, pipelineRegisterer, r.minStability)
+	if err != nil {
+		return nil, err
+	}
+
+	// Use StartSync (1 goroutine) when all stages implement SyncStage.
+	// Fall back to Start (N+3 goroutines) only for pipelines containing
+	// stages that don't yet support synchronous processing (e.g. match).
+	pipelineIn := loki.NewLogsReceiver()
+	var entryHandler loki.EntryHandler
+	if pipeline.CanProcessSync() {
+		entryHandler = pipeline.StartSync(pipelineIn.Chan(), r.mainOutChan)
+	} else {
+		entryHandler = pipeline.Start(pipelineIn.Chan(), r.mainOutChan)
+	}
+
+	r.pipelines[key] = &managedPipeline{
+		entryHandler: entryHandler,
+		stageConfig:  stageConfigs,
+	}
+
+	level.Debug(r.log).Log("msg", "started processing pipeline for PodLogs", "key", key, "stages", len(stageConfigs))
+	return entryHandler, nil
+}
+
+// cleanupStalePipelines stops pipelines for PodLogs keys that are no longer
+// in the active set. Must be called after reconciliation is complete.
+func (r *reconciler) cleanupStalePipelines(activeKeys map[string]struct{}) {
+	r.pipelinesMut.Lock()
+	defer r.pipelinesMut.Unlock()
+
+	for key, p := range r.pipelines {
+		if _, active := activeKeys[key]; !active {
+			p.entryHandler.Stop()
+			delete(r.pipelines, key)
+			level.Debug(r.log).Log("msg", "stopped processing pipeline for PodLogs", "key", key)
+		}
+	}
+}
+
+// stopReplacedPipelines stops pipelines that were replaced during this reconcile
+// cycle (stage config changed). Must be called after SyncTargets so that all
+// tailer goroutines referencing the old handlers have already exited.
+func (r *reconciler) stopReplacedPipelines() {
+	r.pipelinesMut.Lock()
+	replaced := r.replacedPipelines
+	r.replacedPipelines = nil
+	r.pipelinesMut.Unlock()
+
+	for _, h := range replaced {
+		h.Stop()
+	}
+}
+
+// CleanupAllPipelines stops all running pipelines. Called on component shutdown.
+func (r *reconciler) CleanupAllPipelines() {
+	r.pipelinesMut.Lock()
+	defer r.pipelinesMut.Unlock()
+
+	for key, p := range r.pipelines {
+		p.entryHandler.Stop()
+		delete(r.pipelines, key)
+		level.Debug(r.log).Log("msg", "stopped processing pipeline for PodLogs on shutdown", "key", key)
+	}
 }
 
 // DebugInfo returns the current debug information for the reconciler.

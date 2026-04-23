@@ -11,10 +11,10 @@ import (
 
 // LuhnFilterConfig configures a processing stage that filters out Luhn-valid numbers.
 type LuhnFilterConfig struct {
-	Replacement string  `alloy:"replacement,attr,optional"`
-	Source      *string `alloy:"source,attr,optional"`
-	MinLength   int     `alloy:"min_length,attr,optional"`
-	Delimiters  string  `alloy:"delimiters,attr,optional"`
+	Replacement string  `alloy:"replacement,attr,optional"  json:"replacement,omitempty"`
+	Source      *string `alloy:"source,attr,optional"       json:"source,omitempty"`
+	MinLength   int     `alloy:"min_length,attr,optional"   json:"minLength,omitempty"`
+	Delimiters  string  `alloy:"delimiters,attr,optional"   json:"delimiters,omitempty"`
 }
 
 // validateLuhnFilterConfig validates the LuhnFilterConfig.

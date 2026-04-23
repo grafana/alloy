@@ -12,7 +12,7 @@ var ErrEmptyLabelDropStageConfig = errors.New("labeldrop stage config cannot be 
 
 // LabelDropConfig contains the slice of labels to be dropped.
 type LabelDropConfig struct {
-	Values []string `alloy:"values,attr"`
+	Values []string `alloy:"values,attr" json:"values"`
 }
 
 func newLabelDropStage(config LabelDropConfig) (Stage, error) {

@@ -23,8 +23,8 @@ const (
 
 // LabelsConfig is a set of labels to be extracted
 type LabelsConfig struct {
-	Values     map[string]*string `alloy:"values,attr"`
-	SourceType SourceType         `alloy:"source_type,attr,optional"`
+	Values     map[string]*string `alloy:"values,attr"                json:"values"`
+	SourceType SourceType         `alloy:"source_type,attr,optional"  json:"sourceType,omitempty"`
 }
 
 // validateLabelsConfig validates the Label stage configuration
@@ -150,4 +150,15 @@ func (l *labelStage) addLabelsFromStructuredMetadata(labels model.LabelSet, meta
 // Cleanup implements Stage.
 func (*labelStage) Cleanup() {
 	// no-op
+}
+
+// ProcessEntry implements SyncStage.
+func (l *labelStage) ProcessEntry(e Entry) []Entry {
+	switch l.cfg.SourceType {
+	case SourceTypeExtractedMap:
+		l.addLabelFromExtractedMap(e.Labels, e.Extracted)
+	case SourceTypeStructuredMetadata:
+		l.addLabelsFromStructuredMetadata(e.Labels, e.StructuredMetadata)
+	}
+	return []Entry{e}
 }

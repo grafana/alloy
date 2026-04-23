@@ -151,6 +151,423 @@ spec:
                       type: string
                   type: object
                 type: array
+              pipelineStages:
+                description: PipelineStages defines optional log processing stages
+                  applied to each log line before forwarding. Stages are applied in
+                  order. Note that multiline, windowsevent, and eventlogmessage stages
+                  are not supported.
+                items:
+                  description: PodLogsStageConfig defines a single log processing
+                    stage. Exactly one field should be set.
+                  properties:
+                    cri:
+                      description: CRI is a pre-processing stage for CRI-formatted
+                        log lines.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    decolorize:
+                      description: Decolorize strips ANSI color codes from log lines.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    docker:
+                      description: Docker is a pre-processing stage for Docker-formatted
+                        log lines.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    drop:
+                      description: Drop configures dropping log lines that match a
+                        condition.
+                      properties:
+                        dropReason:
+                          description: Custom reason to report for dropped lines in
+                            metrics.
+                          type: string
+                        expression:
+                          description: RE2 regular expression; lines matching it are
+                            dropped.
+                          type: string
+                        longerThan:
+                          description: Drop lines longer than this size (e.g. "8KiB").
+                          type: string
+                        separator:
+                          description: Separator used when joining multiple source
+                            values.
+                          type: string
+                        source:
+                          description: Name of the extracted value to match against.
+                            Defaults to the log line.
+                          type: string
+                        value:
+                          description: Exact string the source value must equal to
+                            trigger a drop.
+                          type: string
+                      type: object
+                    geoip:
+                      description: GeoIP adds geo-location labels derived from an
+                        IP address.
+                      properties:
+                        customLookups:
+                          additionalProperties:
+                            type: string
+                          description: Custom lookup fields to add from the database.
+                          type: object
+                        db:
+                          description: Path to the MaxMind GeoIP database file.
+                          type: string
+                        dbType:
+                          description: 'Database type: city, asn, or country.'
+                          type: string
+                        source:
+                          description: Label or extracted key holding the IP address.
+                          type: string
+                      type: object
+                    json:
+                      description: JSON extracts fields from a JSON log line.
+                      properties:
+                        dropMalformed:
+                          description: Drop lines that cannot be parsed as JSON.
+                          type: boolean
+                        expressions:
+                          additionalProperties:
+                            type: string
+                          description: Map of extracted key to optional JMESPath expression.
+                          type: object
+                        source:
+                          description: If set, parse this extracted value instead of
+                            the log line.
+                          type: string
+                      type: object
+                    label_drop:
+                      description: LabelDrop removes labels from the label set.
+                      properties:
+                        values:
+                          description: List of label names to remove.
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    label_keep:
+                      description: LabelKeep retains only the listed labels.
+                      properties:
+                        values:
+                          description: List of label names to keep.
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    labels:
+                      description: Labels promotes extracted values to log labels.
+                      properties:
+                        sourceType:
+                          description: 'Source of values: extracted (default) or structured_metadata.'
+                          type: string
+                        values:
+                          additionalProperties:
+                            type: string
+                          description: Map of label name to optional extracted key.
+                          type: object
+                      type: object
+                    limit:
+                      description: Limit rate-limits or drops log lines.
+                      properties:
+                        burst:
+                          description: Maximum burst size in lines.
+                          format: int64
+                          type: integer
+                        byLabelName:
+                          description: Apply per-value limits keyed by this label.
+                          type: string
+                        drop:
+                          description: Drop lines that exceed the rate limit instead
+                            of blocking.
+                          type: boolean
+                        maxDistinctLabels:
+                          description: Maximum number of distinct label values to
+                            track for byLabelName.
+                          type: integer
+                        rate:
+                          description: Steady-state rate limit in lines per second.
+                          format: int64
+                          type: integer
+                      required:
+                      - burst
+                      - rate
+                      type: object
+                    logfmt:
+                      description: Logfmt parses a logfmt-formatted log line.
+                      properties:
+                        mapping:
+                          additionalProperties:
+                            type: string
+                          description: Map of extracted key to logfmt field name.
+                          type: object
+                        source:
+                          description: Parse this extracted value instead of the log
+                            line.
+                          type: string
+                      type: object
+                    luhn:
+                      description: Luhn redacts Luhn-valid numbers (e.g. credit card
+                        numbers) from log lines.
+                      properties:
+                        delimiters:
+                          description: Characters that may appear between digits.
+                          type: string
+                        minLength:
+                          description: Minimum digit length to consider.
+                          type: integer
+                        replacement:
+                          description: Replacement string for redacted numbers.
+                          type: string
+                        source:
+                          description: Extracted key to redact instead of the log
+                            line.
+                          type: string
+                      type: object
+                    match:
+                      description: Match applies nested stages only to lines matching
+                        a LogQL stream selector.
+                      properties:
+                        action:
+                          description: 'Action when the selector matches: keep (default)
+                            or drop.'
+                          type: string
+                        dropReason:
+                          description: Custom drop reason for metrics when action is
+                            drop.
+                          type: string
+                        pipelineName:
+                          description: Optional name for the nested pipeline, used
+                            in metrics.
+                          type: string
+                        selector:
+                          description: LogQL stream selector expression.
+                          type: string
+                        stages:
+                          description: Nested pipeline stages applied to matching
+                            lines.
+                          items:
+                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
+                          type: array
+                      required:
+                      - selector
+                      type: object
+                    metrics:
+                      description: Metrics generates Prometheus metrics from log lines.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    output:
+                      description: Output sets the log line to an extracted value.
+                      properties:
+                        source:
+                          description: Extracted key whose value becomes the new log
+                            line.
+                          type: string
+                      required:
+                      - source
+                      type: object
+                    pack:
+                      description: Pack converts labels into a packed log line format.
+                      properties:
+                        ingestTimestamp:
+                          description: Use the ingestion timestamp instead of the
+                            log timestamp.
+                          type: boolean
+                        labels:
+                          description: Labels to pack into the log line.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - labels
+                      type: object
+                    pattern:
+                      description: Pattern extracts values using a Loki pattern expression.
+                      properties:
+                        labelsFromGroups:
+                          description: Promote captured groups directly to labels.
+                          type: boolean
+                        pattern:
+                          description: Loki pattern expression.
+                          type: string
+                        source:
+                          description: Extracted key to match instead of the log line.
+                          type: string
+                      required:
+                      - pattern
+                      type: object
+                    regex:
+                      description: Regex extracts values using a RE2 named-group expression.
+                      properties:
+                        expression:
+                          description: RE2 expression with named capture groups.
+                          type: string
+                        labelsFromGroups:
+                          description: Promote capture groups directly to labels.
+                          type: boolean
+                        source:
+                          description: Extracted key to match instead of the log line.
+                          type: string
+                      required:
+                      - expression
+                      type: object
+                    replace:
+                      description: Replace performs a regex find-and-replace on the
+                        log line or an extracted value.
+                      properties:
+                        expression:
+                          description: RE2 expression to match.
+                          type: string
+                        replace:
+                          description: Replacement string (supports capture group references).
+                          type: string
+                        source:
+                          description: Extracted key to operate on instead of the
+                            log line.
+                          type: string
+                      required:
+                      - expression
+                      type: object
+                    sampling:
+                      description: Sampling randomly drops a fraction of log lines.
+                      properties:
+                        dropReason:
+                          description: Custom reason for dropped lines in metrics.
+                          type: string
+                        rate:
+                          description: Fraction of lines to keep (0.0–1.0).
+                          type: number
+                      required:
+                      - rate
+                      type: object
+                    static_labels:
+                      description: StaticLabels adds a fixed set of labels to every
+                        log entry.
+                      properties:
+                        values:
+                          additionalProperties:
+                            type: string
+                          description: Map of label name to static value.
+                          type: object
+                      type: object
+                    structured_metadata:
+                      description: StructuredMetadata promotes extracted values to
+                        Loki structured metadata.
+                      properties:
+                        regex:
+                          additionalProperties:
+                            type: string
+                          description: Map of metadata key to regex to extract from
+                            log line.
+                          type: object
+                        values:
+                          additionalProperties:
+                            type: string
+                          description: Map of metadata key to optional extracted key.
+                          type: object
+                      type: object
+                    structured_metadata_drop:
+                      description: StructuredMetadataDrop removes structured metadata
+                        keys.
+                      properties:
+                        values:
+                          description: List of structured metadata keys to remove.
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    template:
+                      description: Template uses Go templates to create or modify extracted
+                        values.
+                      properties:
+                        source:
+                          description: Extracted key to set.
+                          type: string
+                        template:
+                          description: Go template string; can reference other extracted
+                            values with {{.Value}}.
+                          type: string
+                      required:
+                      - source
+                      - template
+                      type: object
+                    tenant:
+                      description: Tenant overrides the tenant ID for log entries.
+                      properties:
+                        label:
+                          description: Label whose value is used as the tenant ID.
+                          type: string
+                        source:
+                          description: Extracted key whose value is used as the tenant
+                            ID.
+                          type: string
+                        value:
+                          description: Static tenant ID value.
+                          type: string
+                      type: object
+                    timestamp:
+                      description: Timestamp parses a timestamp from an extracted
+                        value and sets it as the log entry timestamp.
+                      properties:
+                        actionOnFailure:
+                          description: 'Action when parsing fails: skip (default)
+                            or fudge.'
+                          type: string
+                        fallbackFormats:
+                          description: Additional formats to try if the primary format
+                            fails.
+                          items:
+                            type: string
+                          type: array
+                        format:
+                          description: Timestamp format (Go reference time, Unix,
+                            UnixMs, UnixUs, UnixNs, or RFC3339).
+                          type: string
+                        location:
+                          description: IANA timezone name for formats without timezone
+                            info.
+                          type: string
+                        source:
+                          description: Extracted key containing the timestamp string.
+                          type: string
+                      required:
+                      - format
+                      - source
+                      type: object
+                    truncate:
+                      description: Truncate shortens log lines or extracted values.
+                      properties:
+                        rules:
+                          description: Truncation rules to apply.
+                          items:
+                            description: TruncateRuleConfig defines a single truncation
+                              rule.
+                            properties:
+                              limit:
+                                description: Maximum length in bytes; 0 means no limit.
+                                type: integer
+                              sourceType:
+                                description: 'Source type: line or label.'
+                                type: string
+                              sources:
+                                description: Label names to truncate (when sourceType
+                                  is label).
+                                items:
+                                  type: string
+                                type: array
+                              suffix:
+                                description: String appended to truncated values.
+                                type: string
+                            required:
+                            - limit
+                            type: object
+                          type: array
+                      required:
+                      - rules
+                      type: object
+                  type: object
+                type: array
               selector:
                 description: Selector to select Pod objects. Required.
                 properties:

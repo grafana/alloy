@@ -22,9 +22,9 @@ func init() {
 
 // ReplaceConfig contains a regexStage configuration
 type ReplaceConfig struct {
-	Expression string `alloy:"expression,attr"`
-	Source     string `alloy:"source,attr,optional"`
-	Replace    string `alloy:"replace,attr,optional"`
+	Expression string `alloy:"expression,attr"          json:"expression"`
+	Source     string `alloy:"source,attr,optional"     json:"source,omitempty"`
+	Replace    string `alloy:"replace,attr,optional"    json:"replace,omitempty"`
 }
 
 func getExpressionRegex(c ReplaceConfig) (*regexp.Regexp, error) {

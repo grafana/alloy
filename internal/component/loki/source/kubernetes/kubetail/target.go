@@ -10,6 +10,8 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"k8s.io/apimachinery/pkg/types"
+
+	"github.com/grafana/alloy/internal/component/common/loki"
 )
 
 // Internal labels which indicate what container to tail logs from.
@@ -51,13 +53,20 @@ type Target struct {
 	uid            string // UID from pod
 	hash           uint64 // Hash of public labels and id
 
+	// handler is an optional per-target entry handler. When set, the tailer
+	// sends log entries to this handler instead of the global Options.Handler.
+	// This is used to route entries through a per-PodLogs processing pipeline.
+	handler loki.EntryHandler
+
 	mut       sync.RWMutex
 	lastError error
 	lastEntry time.Time
 }
 
-// NewTarget creates a new Target which can be passed to a tailer.
-func NewTarget(origLabels labels.Labels, lset labels.Labels, preserveMetaLabels bool) *Target {
+// NewTarget creates a new Target which can be passed to a tailer. handler is
+// optional: when non-nil the tailer will send log entries to it instead of the
+// global Options.Handler, allowing per-target processing pipelines.
+func NewTarget(origLabels labels.Labels, lset labels.Labels, preserveMetaLabels bool, handler loki.EntryHandler) *Target {
 	// Precompute some values based on labels so we don't have to continually
 	// search them.
 	var (
@@ -90,8 +99,13 @@ func NewTarget(origLabels labels.Labels, lset labels.Labels, preserveMetaLabels 
 		id:             id,
 		uid:            uid,
 		hash:           hash,
+		handler:        handler,
 	}
 }
+
+// Handler returns the optional per-target entry handler. When non-nil, the
+// tailer uses this handler instead of the global Options.Handler.
+func (t *Target) Handler() loki.EntryHandler { return t.handler }
 
 func publicLabels(lset labels.Labels, preserveMetaLabels bool) labels.Labels {
 	lb := labels.NewBuilder(lset)

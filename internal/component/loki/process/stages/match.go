@@ -27,11 +27,11 @@ var (
 
 // MatchConfig contains the configuration for a matcherStage
 type MatchConfig struct {
-	Selector     string        `alloy:"selector,attr"`
-	Stages       []StageConfig `alloy:"stage,enum,optional"`
-	Action       string        `alloy:"action,attr,optional"`
-	PipelineName string        `alloy:"pipeline_name,attr,optional"`
-	DropReason   string        `alloy:"drop_counter_reason,attr,optional"`
+	Selector     string        `alloy:"selector,attr"                     json:"selector"`
+	Stages       []StageConfig `alloy:"stage,enum,optional"               json:"stages,omitempty"`
+	Action       string        `alloy:"action,attr,optional"              json:"action,omitempty"`
+	PipelineName string        `alloy:"pipeline_name,attr,optional"       json:"pipelineName,omitempty"`
+	DropReason   string        `alloy:"drop_counter_reason,attr,optional" json:"dropReason,omitempty"`
 }
 
 // validateMatcherConfig validates the MatcherConfig for the matcherStage
@@ -192,4 +192,36 @@ func (m *matcherStage) Cleanup() {
 	if m.pipeline != nil {
 		m.pipeline.Cleanup()
 	}
+}
+
+// canProcessSync implements syncChecker. It reports whether this stage can
+// participate in a synchronous pipeline: drop actions never need a nested
+// pipeline, and keep actions require their nested pipeline to be sync-capable.
+func (m *matcherStage) canProcessSync() bool {
+	if m.action == MatchActionDrop {
+		return true
+	}
+	return m.pipeline != nil && m.pipeline.CanProcessSync()
+}
+
+// ProcessEntry implements SyncStage.
+func (m *matcherStage) ProcessEntry(e Entry) []Entry {
+	switch m.action {
+	case MatchActionDrop:
+		if _, ok := m.processLogQL(e); ok {
+			m.dropCount.WithLabelValues(m.dropReason).Inc()
+			return nil
+		}
+		return []Entry{e}
+	case MatchActionKeep:
+		e, ok := m.processLogQL(e)
+		if !ok {
+			// Entry does not match the selector: pass through unchanged.
+			return []Entry{e}
+		}
+		// Entry matches: run it through the nested pipeline.
+		// CanProcessSync guarantees all nested stages implement SyncStage.
+		return m.pipeline.processEntryFull(e)
+	}
+	panic("matcherStage: unexpected action " + m.action)
 }

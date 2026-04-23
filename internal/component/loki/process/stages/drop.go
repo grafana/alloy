@@ -31,13 +31,13 @@ var (
 
 // DropConfig contains the configuration for a dropStage
 type DropConfig struct {
-	DropReason string           `alloy:"drop_counter_reason,attr,optional"`
-	Source     string           `alloy:"source,attr,optional"`
-	Value      string           `alloy:"value,attr,optional"`
-	Separator  string           `alloy:"separator,attr,optional"`
-	Expression string           `alloy:"expression,attr,optional"`
-	OlderThan  time.Duration    `alloy:"older_than,attr,optional"`
-	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"`
+	DropReason string           `alloy:"drop_counter_reason,attr,optional" json:"dropReason,omitempty"`
+	Source     string           `alloy:"source,attr,optional"              json:"source,omitempty"`
+	Value      string           `alloy:"value,attr,optional"               json:"value,omitempty"`
+	Separator  string           `alloy:"separator,attr,optional"           json:"separator,omitempty"`
+	Expression string           `alloy:"expression,attr,optional"          json:"expression,omitempty"`
+	OlderThan  time.Duration    `alloy:"older_than,attr,optional"          json:"olderThan,omitempty"`
+	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"         json:"longerThan,omitempty"` // TextMarshaler: serializes as "5MiB"
 }
 
 // validateDropConfig validates the DropConfig for the dropStage
@@ -224,4 +224,13 @@ func splitSource(s string) []string {
 // Cleanup implements Stage.
 func (*dropStage) Cleanup() {
 	// no-op
+}
+
+// ProcessEntry implements SyncStage.
+func (m *dropStage) ProcessEntry(e Entry) []Entry {
+	if m.shouldDrop(e) {
+		m.dropCount.WithLabelValues(m.cfg.DropReason).Inc()
+		return nil
+	}
+	return []Entry{e}
 }

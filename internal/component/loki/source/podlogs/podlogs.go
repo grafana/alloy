@@ -124,9 +124,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	handler := loki.NewLogsReceiver()
+
 	var (
 		tailer     = kubetail.NewManager(o.Logger, nil)
-		reconciler = newReconciler(o.Logger, tailer, data.(cluster.Cluster))
+		reconciler = newReconciler(o.Logger, tailer, data.(cluster.Cluster),
+			o.Registerer, o.MinStability, handler.Chan())
 		controller = newController(o.Logger, reconciler)
 	)
 
@@ -139,7 +142,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		controller: controller,
 
 		positions: positionsFile,
-		handler:   loki.NewLogsReceiver(),
+		handler:   handler,
 		fanout:    loki.NewFanout(args.ForwardTo),
 	}
 	if err := c.Update(args); err != nil {
@@ -152,6 +155,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		defer c.positions.Stop()
+		defer c.reconciler.CleanupAllPipelines()
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()

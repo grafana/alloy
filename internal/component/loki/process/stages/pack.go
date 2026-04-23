@@ -105,8 +105,8 @@ func (w Packed) MarshalJSON() ([]byte, error) {
 
 // PackConfig contains the configuration for a packStage
 type PackConfig struct {
-	Labels          []string `alloy:"labels,attr"`
-	IngestTimestamp bool     `alloy:"ingest_timestamp,attr,optional"`
+	Labels          []string `alloy:"labels,attr"                    json:"labels"`
+	IngestTimestamp bool     `alloy:"ingest_timestamp,attr,optional" json:"ingestTimestamp,omitempty"`
 }
 
 // DefaultPackConfig sets the defaults.
@@ -200,4 +200,9 @@ func (m *packStage) pack(e Entry) Entry {
 // Cleanup implements Stage.
 func (*packStage) Cleanup() {
 	// no-op
+}
+
+// ProcessEntry implements SyncStage.
+func (m *packStage) ProcessEntry(e Entry) []Entry {
+	return []Entry{m.pack(e)}
 }
