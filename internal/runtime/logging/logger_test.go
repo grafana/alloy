@@ -186,22 +186,18 @@ func Test_lokiWriter_nil(t *testing.T) {
 	})
 }
 
-// TestUpdateDeadlock proves the deadlock between Logger.Update and concurrent
-// Handle calls on a child deferred handler. Update holds bufferMut.Lock and
-// then tries to acquire child.mut.Lock (via buildHandlers), while a concurrent
-// Handle call holds child.mut.RLock and blocks on bufferMut.Lock (via addRecord).
-func TestUpdateDeadlock(t *testing.T) {
+// TestUpdateConcurrentHandle verifies that Logger.Update completes successfully
+// when child handlers are being used concurrently, as happens when components
+// start logging during graph evaluation before the logging config block is processed.
+func TestUpdateConcurrentHandle(t *testing.T) {
 	l, err := logging.NewDeferred(io.Discard)
 	require.NoError(t, err)
 
-	// Create a child handler — this is what components do via slog.Logger.With().
 	child := l.Handler().WithAttrs([]slog.Attr{slog.String("component", "test")})
 
 	stop := make(chan struct{})
 	defer close(stop)
 
-	// Continuously call Handle on the child. Each call holds child.mut.RLock
-	// and then tries to acquire bufferMut.Lock via addRecord (because handle is nil).
 	go func() {
 		rec := slog.NewRecord(time.Now(), slog.LevelInfo, "concurrent log", 0)
 		for {
@@ -214,9 +210,6 @@ func TestUpdateDeadlock(t *testing.T) {
 		}
 	}()
 
-	// Update must complete within 5 seconds. With the bug it deadlocks: Update
-	// holds bufferMut.Lock and waits for child.mut.Lock (buildHandlers), while
-	// the goroutine above holds child.mut.RLock and waits for bufferMut.Lock.
 	done := make(chan error, 1)
 	go func() {
 		done <- l.Update(logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
@@ -226,7 +219,7 @@ func TestUpdateDeadlock(t *testing.T) {
 	case err := <-done:
 		require.NoError(t, err)
 	case <-time.After(5 * time.Second):
-		t.Fatal("deadlock: Logger.Update did not complete — concurrent Handle held child RLock while Update held bufferMut")
+		t.Fatal("Logger.Update did not complete while child handlers were being used concurrently")
 	}
 }
 
