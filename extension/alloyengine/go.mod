@@ -972,7 +972,7 @@ require (
 	go.opentelemetry.io/contrib/propagators/jaeger v1.35.0 // indirect
 	go.opentelemetry.io/contrib/samplers/jaegerremote v0.30.0 // indirect
 	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000 // indirect
-	go.opentelemetry.io/obi v0.7.0 // indirect
+	go.opentelemetry.io/obi v0.8.0 // indirect
 	go.opentelemetry.io/otel v1.43.0 // indirect
 	go.opentelemetry.io/otel/exporters/jaeger v1.17.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc v0.16.0 // indirect
