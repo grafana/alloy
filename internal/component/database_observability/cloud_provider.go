@@ -15,6 +15,7 @@ var (
 type CloudProvider struct {
 	AWS   *AWSCloudProviderInfo
 	Azure *AzureCloudProviderInfo
+	GCP   *GCPCloudProviderInfo
 }
 
 type AWSCloudProviderInfo struct {
@@ -25,4 +26,10 @@ type AzureCloudProviderInfo struct {
 	SubscriptionID string
 	ResourceGroup  string
 	ServerName     string
+}
+
+type GCPCloudProviderInfo struct {
+	ProjectID  string
+	Region     string
+	InstanceID string
 }

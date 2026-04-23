@@ -44,6 +44,8 @@ The `otelcol.exporter.faro` component doesn't support any arguments. You can con
 
 You can use the following blocks with `otelcol.exporter.faro`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                 | Description                                                                    | Required |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                          | yes      |
@@ -56,9 +58,6 @@ You can use the following blocks with `otelcol.exporter.faro`:
 | [`sending_queue`][sending_queue]                      | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                    | Configures batching requests based on a timeout and a minimum number of items. | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `tls` refers to a `tls` block defined inside a `client` block.
-
 [client]: #client
 [tls]: #tls
 [tpm]: #tpm
@@ -68,6 +67,8 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 [batch]: #batch
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 

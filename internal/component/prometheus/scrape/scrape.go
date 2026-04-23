@@ -478,9 +478,14 @@ func (c *Component) Update(args component.Arguments) error {
 	if !c.firstUpdateDone {
 		c.firstUpdateDone = true
 	} else {
-		if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
-			level.Warn(c.opts.Logger).Log("msg", "scrape_native_histograms cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.ScrapeNativeHistograms, "requested", newArgs.ScrapeNativeHistograms)
-			newArgs.ScrapeNativeHistograms = c.args.ScrapeNativeHistograms
+		// TODO: When these change we could stop and re-create scrape manager.
+		if c.args.HonorMetadata != newArgs.HonorMetadata {
+			level.Warn(c.opts.Logger).Log("msg", "honor_metadata cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.HonorMetadata, "requested", newArgs.HonorMetadata)
+			newArgs.HonorMetadata = c.args.HonorMetadata
+		}
+		if c.args.EnableTypeAndUnitLabels != newArgs.EnableTypeAndUnitLabels {
+			level.Warn(c.opts.Logger).Log("msg", "enable_type_and_unit_labels cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.EnableTypeAndUnitLabels, "requested", newArgs.EnableTypeAndUnitLabels)
+			newArgs.EnableTypeAndUnitLabels = c.args.EnableTypeAndUnitLabels
 		}
 	}
 

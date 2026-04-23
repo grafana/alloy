@@ -698,7 +698,8 @@ func TestMissingBearerAuthFile(t *testing.T) {
 	_, err = client.Get(testServer.URL)
 	require.Errorf(t, err, "No error is returned here")
 
-	require.ErrorContainsf(t, err, "unable to read authorization credentials: unable to read file missing/bearer.token: open missing/bearer.token: no such file or directory", "wrong error message being returned")
+	require.ErrorContainsf(t, err, "unable to read authorization credentials: unable to read file missing/bearer.token", "wrong error message being returned")
+	require.ErrorIs(t, err, os.ErrNotExist, "expected missing bearer token file error")
 }
 
 func TestBearerAuthRoundTripper(t *testing.T) {
@@ -1527,7 +1528,8 @@ endpoint_params:
 	require.Truef(t, reflect.DeepEqual(unmarshalledConfig, expectedConfig), "Got unmarshalled config %v, expected %v", unmarshalledConfig, expectedConfig)
 
 	secret := commonconfig.NewInlineSecret(string(expectedConfig.ClientSecret))
-	rt := newOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	rt, err := newOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	require.NoError(t, err)
 
 	client := http.Client{
 		Transport: rt,
@@ -1636,6 +1638,7 @@ func TestOAuth2WithFile(t *testing.T) {
 
 	secretFile, err := os.CreateTemp(t.TempDir(), "oauth2_secret")
 	require.NoError(t, err)
+	defer func() { require.NoError(t, secretFile.Close()) }()
 
 	yamlConfig := fmt.Sprintf(`
 client_id: 1
@@ -1661,7 +1664,8 @@ endpoint_params:
 	require.Truef(t, reflect.DeepEqual(unmarshalledConfig, expectedConfig), "Got unmarshalled config %v, expected %v", unmarshalledConfig, expectedConfig)
 
 	secret := commonconfig.NewFileSecret(expectedConfig.ClientSecretFile)
-	rt := newOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	rt, err := newOAuth2RoundTripper(secret, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	require.NoError(t, err)
 
 	client := http.Client{
 		Transport: rt,
@@ -1777,7 +1781,8 @@ endpoint_params:
 	require.Truef(t, reflect.DeepEqual(unmarshalledConfig, expectedConfig), "Got unmarshalled config %v, expected %v", unmarshalledConfig, expectedConfig)
 
 	clientCertificateKey := commonconfig.NewFileSecret(expectedConfig.ClientCertificateKeyFile)
-	rt := newOAuth2RoundTripper(clientCertificateKey, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	rt, err := newOAuth2RoundTripper(clientCertificateKey, &expectedConfig, http.DefaultTransport, &defaultHTTPClientOptions)
+	require.NoError(t, err)
 
 	client := http.Client{
 		Transport: rt,

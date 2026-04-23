@@ -2,98 +2,121 @@ package receive_http
 
 import (
 	"context"
-	"errors"
-	"io"
+	"fmt"
+	"net/http"
+	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
-	debuginfopb "buf.build/gen/go/parca-dev/parca/protocolbuffers/go/parca/debuginfo/v1alpha1"
+	"connectrpc.com/connect"
+	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
+
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
+	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
 )
 
-var errNoDebugInfoClient = status.Error(codes.Unavailable, "no debug info client available")
-
-//nolint:unused
-func (c *Component) mountDebugInfo(router *mux.Router) {
-	c.grpcServer = NewGrpcServer(c.server.Config())
-	debuginfogrpc.RegisterDebuginfoServiceServer(c.grpcServer, c)
-	const (
-		DebuginfoService_Upload_FullMethodName               = "/parca.debuginfo.v1alpha1.DebuginfoService/Upload"
-		DebuginfoService_ShouldInitiateUpload_FullMethodName = "/parca.debuginfo.v1alpha1.DebuginfoService/ShouldInitiateUpload"
-		DebuginfoService_InitiateUpload_FullMethodName       = "/parca.debuginfo.v1alpha1.DebuginfoService/InitiateUpload"
-		DebuginfoService_MarkUploadFinished_FullMethodName   = "/parca.debuginfo.v1alpha1.DebuginfoService/MarkUploadFinished"
-	)
-	router.PathPrefix(DebuginfoService_Upload_FullMethodName).Handler(c.grpcServer)
-	router.PathPrefix(DebuginfoService_ShouldInitiateUpload_FullMethodName).Handler(c.grpcServer)
-	router.PathPrefix(DebuginfoService_InitiateUpload_FullMethodName).Handler(c.grpcServer)
-	router.PathPrefix(DebuginfoService_MarkUploadFinished_FullMethodName).Handler(c.grpcServer)
-}
-
-func (c *Component) getDebugInfoClient() debuginfogrpc.DebuginfoServiceClient {
+func (c *Component) getDebugInfoClients() []*debuginfoclient.Client {
 	c.mut.Lock()
 	defer c.mut.Unlock()
+	var clients []*debuginfoclient.Client
 	for _, appendable := range c.appendables {
-		if client := appendable.Client(); client != nil {
-			return client
-		}
+		clients = append(clients, appendable.DebugInfoClients()...)
 	}
-	return nil
+	return clients
 }
 
-func (c *Component) Upload(stream grpc.ClientStreamingServer[debuginfopb.UploadRequest, debuginfopb.UploadResponse]) error {
-	client := c.getDebugInfoClient()
-	if client == nil {
-		return errNoDebugInfoClient
+func (c *Component) firstClient() (*debuginfoclient.Client, error) {
+	clients := c.getDebugInfoClients()
+	if len(clients) == 0 {
+		return nil, fmt.Errorf("no downstream endpoints available")
 	}
+	return clients[0], nil
+}
 
-	upstreamContext, upstreamCancel := context.WithCancel(stream.Context())
-	defer upstreamCancel()
-	upstreamStream, err := client.Upload(upstreamContext)
+func (c *Component) recordDownstream(l log.Logger, method string, err error) {
+	result := "success"
 	if err != nil {
-		return err
+		result = "failure"
 	}
+	c.metrics.debugInfoDownstreamCalls.WithLabelValues(method, result).Inc()
+	if err != nil {
+		_ = level.Error(l).Log("err", err)
+	} else {
+		_ = level.Debug(l).Log("result", "ok")
+	}
+}
 
-	for {
-		req, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			resp, err := upstreamStream.CloseAndRecv()
-			if err != nil {
-				return err
-			}
-			return stream.SendAndClose(resp)
-		}
+func (c *Component) ShouldInitiateUpload(ctx context.Context, req *connect.Request[debuginfov1alpha1.ShouldInitiateUploadRequest]) (res *connect.Response[debuginfov1alpha1.ShouldInitiateUploadResponse], err error) {
+	l := log.With(c.logger,
+		"pyroscope_proxy", "debuginfo",
+		"method", "ShouldInitiateUpload DS",
+		"name", req.Msg.File.Name,
+		"gnu_build_id", req.Msg.File.GnuBuildId,
+		"go_build_id", req.Msg.File.GoBuildId,
+		"otel_file_id", req.Msg.File.OtelFileId,
+	)
+	defer func() { c.recordDownstream(l, "ShouldInitiateUpload", err) }()
+
+	client, err := c.firstClient()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	return client.ShouldInitiateUpload(ctx, connect.NewRequest(req.Msg.CloneVT()))
+}
+
+func (c *Component) UploadFinished(ctx context.Context, req *connect.Request[debuginfov1alpha1.UploadFinishedRequest]) (res *connect.Response[debuginfov1alpha1.UploadFinishedResponse], err error) {
+	l := log.With(c.logger,
+		"pyroscope_proxy", "debuginfo",
+		"method", "UploadFinished DS",
+		"gnu_build_id", req.Msg.GnuBuildId,
+	)
+	defer func() { c.recordDownstream(l, "UploadFinished", err) }()
+
+	client, err := c.firstClient()
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnavailable, err)
+	}
+	return client.UploadFinished(ctx, connect.NewRequest(req.Msg.CloneVT()))
+}
+
+func (c *Component) UploadHTTPHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gnuBuildID := mux.Vars(r)["gnu_build_id"]
+		l := log.With(c.logger,
+			"pyroscope_proxy", "debuginfo",
+			"method", "Upload DS",
+			"gnu_build_id", gnuBuildID,
+		)
+
+		var err error
+		defer func() { c.recordDownstream(l, "Upload", err) }()
+
+		client, err := c.firstClient()
 		if err != nil {
-			return err
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+			return
 		}
 
-		if err := upstreamStream.Send(req); err != nil {
-			return err
+		c.mut.Lock()
+		uploadTimeout := c.debugInfoUploadTimeout
+		c.mut.Unlock()
+
+		// Extend server read/write deadlines so the upload is not
+		// killed by the default HTTP server timeouts (typically 30s).
+		rc := http.NewResponseController(w)
+		deadline := time.Now().Add(uploadTimeout)
+		_ = rc.SetReadDeadline(deadline)
+		_ = rc.SetWriteDeadline(deadline)
+
+		ctx, cancel := context.WithTimeout(r.Context(), uploadTimeout)
+		defer cancel()
+
+		err = client.Upload(ctx, gnuBuildID, r.Body)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("downstream upload: %v", err), http.StatusBadGateway)
+			return
 		}
-	}
-}
 
-func (c *Component) ShouldInitiateUpload(ctx context.Context, request *debuginfopb.ShouldInitiateUploadRequest) (*debuginfopb.ShouldInitiateUploadResponse, error) {
-	client := c.getDebugInfoClient()
-	if client == nil {
-		return nil, errNoDebugInfoClient
-	}
-	return client.ShouldInitiateUpload(ctx, request)
-}
-
-func (c *Component) InitiateUpload(ctx context.Context, request *debuginfopb.InitiateUploadRequest) (*debuginfopb.InitiateUploadResponse, error) {
-	client := c.getDebugInfoClient()
-	if client == nil {
-		return nil, errNoDebugInfoClient
-	}
-	return client.InitiateUpload(ctx, request)
-}
-
-func (c *Component) MarkUploadFinished(ctx context.Context, request *debuginfopb.MarkUploadFinishedRequest) (*debuginfopb.MarkUploadFinishedResponse, error) {
-	client := c.getDebugInfoClient()
-	if client == nil {
-		return nil, errNoDebugInfoClient
-	}
-	return client.MarkUploadFinished(ctx, request)
+		w.WriteHeader(http.StatusOK)
+	})
 }

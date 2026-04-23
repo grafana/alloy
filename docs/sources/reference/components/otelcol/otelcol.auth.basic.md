@@ -51,6 +51,8 @@ You can use the following arguments with `otelcol.auth.basic`:
 
 You can use the following block with `otelcol.auth.basic`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`client_auth`][client_auth]     | Configures client authentication credentials for exporters.                | no       |
@@ -60,6 +62,8 @@ You can use the following block with `otelcol.auth.basic`:
 [client_auth]: #client_auth
 [debug_metrics]: #debug_metrics
 [htpasswd]: #htpasswd
+
+{{< /docs/alloy-config >}}
 
 ### `client_auth`
 

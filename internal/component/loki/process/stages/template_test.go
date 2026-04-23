@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 )
 
 var testTemplateYaml = `
@@ -89,277 +90,334 @@ func TestPipelineWithMissingKey_Template(t *testing.T) {
 	}
 }
 
-func TestTemplateValidation(t *testing.T) {
-	cfg := TemplateConfig{
-		Source: "",
+func TestUnmarshalTemplateConfig(t *testing.T) {
+	type testCase struct {
+		name      string
+		cfg       string
+		expectErr bool
 	}
-	_, err := validateTemplateConfig(cfg)
-	require.Equal(t, err, ErrTemplateSourceRequired)
+
+	tests := []testCase{
+		{
+			name: "valid",
+			cfg: `
+				source = "test"
+				template = "{{.Value}}"
+			`,
+		},
+		{
+			name: "missing source",
+			cfg: `
+				template = "{{.Value}}"
+			`,
+			expectErr: true,
+		},
+		{
+			name: "invalid template",
+			cfg: `
+				source = "test"
+				template = "{{{.Value}}}"
+			`,
+			expectErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var cfg TemplateConfig
+			err := syntax.Unmarshal([]byte(tt.cfg), &cfg)
+			if tt.expectErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
 }
 
 func TestTemplateStage_Process(t *testing.T) {
-	tests := map[string]struct {
+	type testCase struct {
+		name              string
 		config            TemplateConfig
 		extracted         map[string]any
 		expectedExtracted map[string]any
-	}{
-		"simple template": {
-			TemplateConfig{
+	}
+
+	tests := []testCase{
+		{
+			name: "simple template",
+			config: TemplateConfig{
 				Source:   "some",
-				Template: "{{ .Value }} appended",
+				Template: mustTemplate("{{ .Value }} appended"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"some": "value",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"some": "value appended",
 			},
 		},
-		"add missing": {
-			TemplateConfig{
+		{
+			name: "add missing",
+			config: TemplateConfig{
 				Source:   "missing",
-				Template: "newval",
+				Template: mustTemplate("newval"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"notmissing": "value",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"notmissing": "value",
 				"missing":    "newval",
 			},
 		},
-		"template with multiple keys": {
-			TemplateConfig{
+		{
+			name: "template with multiple keys",
+			config: TemplateConfig{
 				Source:   "message",
-				Template: "{{.Value}} in module {{.module}}",
+				Template: mustTemplate("{{.Value}} in module {{.module}}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"message": "warn for app loki",
 				"module":  "test",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"module":  "test",
 				"message": "warn for app loki in module test",
 			},
 		},
-		"template with multiple keys with missing source": {
-			TemplateConfig{
+		{
+			name: "template with multiple keys with missing source",
+			config: TemplateConfig{
 				Source:   "missing",
-				Template: "{{ .level }} for app {{ .app | ToUpper }}",
+				Template: mustTemplate("{{ .level }} for app {{ .app | ToUpper }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"level": "warn",
 				"app":   "loki",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"missing": "warn for app LOKI",
 			},
 		},
-		"template with multiple keys with missing key": {
-			TemplateConfig{
+		{
+			name: "template with multiple keys with missing key",
+			config: TemplateConfig{
 				Source:   "message",
-				Template: "{{.Value}} in module {{.module}}",
+				Template: mustTemplate("{{.Value}} in module {{.module}}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"message": "warn for app loki",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"level":   "warn",
 				"app":     "loki",
 				"message": "warn for app loki in module <no value>",
 			},
 		},
-		"template with multiple keys with nil value in extracted key": {
-			TemplateConfig{
+		{
+			name: "template with multiple keys with nil value in extracted key",
+			config: TemplateConfig{
 				Source:   "level",
-				Template: "{{ Replace .Value \"Warning\" \"warn\" 1 }}",
+				Template: mustTemplate("{{ Replace .Value \"Warning\" \"warn\" 1 }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"level":   "Warning",
 				"testval": nil,
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"level":   "warn",
 				"testval": nil,
 			},
 		},
-		"ToLower": {
-			TemplateConfig{
+		{
+			name: "ToLower",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "{{ .Value | ToLower }}",
+				Template: mustTemplate("{{ .Value | ToLower }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "Value",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "value",
 			},
 		},
-		"sprig": {
-			TemplateConfig{
+		{
+			name: "sprig",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "{{ add 7 3 }}",
+				Template: mustTemplate("{{ add 7 3 }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "Value",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "10",
 			},
 		},
-		"ToLowerParams": {
-			TemplateConfig{
+		{
+			name: "ToLowerParams",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "{{ ToLower .Value }}",
+				Template: mustTemplate("{{ ToLower .Value }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "Value",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "value",
 			},
 		},
-		"ToLowerEmptyValue": {
-			TemplateConfig{
+		{
+			name: "ToLowerEmptyValue",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "{{ .Value | ToLower }}",
+				Template: mustTemplate("{{ .Value | ToLower }}"),
 			},
-			map[string]any{},
-			map[string]any{},
+			extracted:         map[string]any{},
+			expectedExtracted: map[string]any{},
 		},
-		"ReplaceAllToLower": {
-			TemplateConfig{
+		{
+			name: "ReplaceAllToLower",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "{{ Replace .Value \" \" \"_\" -1 | ToLower }}",
+				Template: mustTemplate("{{ Replace .Value \" \" \"_\" -1 | ToLower }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "some_silly_value_with_lots_of_spaces",
 			},
 		},
-		"regexReplaceAll": {
-			TemplateConfig{
+		{
+			name: "regexReplaceAll",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: `{{ regexReplaceAll "(Silly)" .Value "${1}foo"  }}`,
+				Template: mustTemplate(`{{ regexReplaceAll "(Silly)" .Value "${1}foo"  }}`),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "Some Sillyfoo Value With Lots Of Spaces",
 			},
 		},
-		"regexReplaceAllerr": {
-			TemplateConfig{
+		{
+			name: "regexReplaceAllerr",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: `{{ regexReplaceAll "\\K" .Value "${1}foo"  }}`,
+				Template: mustTemplate(`{{ regexReplaceAll "\\K" .Value "${1}foo"  }}`),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
 		},
-		"regexReplaceAllLiteral": {
-			TemplateConfig{
+		{
+			name: "regexReplaceAllLiteral",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: `{{ regexReplaceAll "( |Of)" .Value "_"  }}`,
+				Template: mustTemplate(`{{ regexReplaceAll "( |Of)" .Value "_"  }}`),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "Some_Silly_Value_With_Lots___Spaces",
 			},
 		},
-		"regexReplaceAllLiteralerr": {
-			TemplateConfig{
+		{
+			name: "regexReplaceAllLiteralerr",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: `{{ regexReplaceAll "\\K" .Value "err"  }}`,
+				Template: mustTemplate(`{{ regexReplaceAll "\\K" .Value "err"  }}`),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "Some Silly Value With Lots Of Spaces",
 			},
 		},
-		"Trim": {
-			TemplateConfig{
+		{
+			name: "Trim",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "{{ Trim .Value \"!\" }}",
+				Template: mustTemplate("{{ Trim .Value \"!\" }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "!!!!!WOOOOO!!!!!",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "WOOOOO",
 			},
 		},
-		"Remove label empty value": {
-			TemplateConfig{
+		{
+			name: "Remove label empty value",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "",
+				Template: mustTemplate(""),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "WOOOOO",
 			},
-			map[string]any{},
+			expectedExtracted: map[string]any{},
 		},
-		"Don't add label with empty value": {
-			TemplateConfig{
+		{
+			name: "Don't add label with empty value",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "",
+				Template: mustTemplate(""),
 			},
-			map[string]any{},
-			map[string]any{},
+			extracted:         map[string]any{},
+			expectedExtracted: map[string]any{},
 		},
-		"Sha2Hash": {
-			TemplateConfig{
+		{
+			name: "Sha2Hash",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "{{ Sha2Hash .Value \"salt\" }}",
+				Template: mustTemplate("{{ Sha2Hash .Value \"salt\" }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "this is PII data",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "5526fd6f8ad457279cf8ff06453c6cb61bf479fa826e3b099caa6c846f9376f2",
 			},
 		},
-		"Hash": {
-			TemplateConfig{
+		{
+			name: "Hash",
+			config: TemplateConfig{
 				Source:   "testval",
-				Template: "{{ Hash .Value \"salt\" }}",
+				Template: mustTemplate("{{ Hash .Value \"salt\" }}"),
 			},
-			map[string]any{
+			extracted: map[string]any{
 				"testval": "this is PII data",
 			},
-			map[string]any{
+			expectedExtracted: map[string]any{
 				"testval": "0807ea24e992127128b38e4930f7155013786a4999c73a25910318a793847658",
 			},
 		},
 	}
-	for name, test := range tests {
-		t.Run(name, func(t *testing.T) {
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			st, err := newTemplateStage(log.NewNopLogger(), test.config)
-			if err != nil {
-				t.Fatal(err)
-			}
-
-			out := processEntries(st, newEntry(test.expectedExtracted, nil, "not important for this test", time.Time{}))[0]
-			assert.Equal(t, test.expectedExtracted, out.Extracted)
+			st, err := newTemplateStage(log.NewNopLogger(), tt.config)
+			require.NoError(t, err)
+			out := processEntries(st, newEntry(tt.extracted, nil, "not important for this test", time.Time{}))[0]
+			assert.Equal(t, tt.expectedExtracted, out.Extracted)
 		})
 	}
 }
@@ -377,7 +435,7 @@ func BenchmarkTemplateStage(b *testing.B) {
 
 	st, err := newTemplateStage(log.NewNopLogger(), TemplateConfig{
 		Source:   "1",
-		Template: "{{ .Value }}",
+		Template: mustTemplate("{{ .Value }}"),
 	})
 	require.NoError(b, err)
 	entry = newEntry(gen(10), nil, "", time.Now())
@@ -388,4 +446,13 @@ func BenchmarkTemplateStage(b *testing.B) {
 	for b.Loop() {
 		entry = processEntries(st, entry)[0]
 	}
+}
+
+func mustTemplate(text string) Template {
+	t := Template(text)
+	err := t.UnmarshalText([]byte(text))
+	if err != nil {
+		panic(err)
+	}
+	return t
 }

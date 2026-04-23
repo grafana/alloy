@@ -5,21 +5,21 @@ package debuginfo
 import (
 	"context"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 )
 
 type UploadJob struct {
 	//no-op
 }
 
-func (c *Client) newUploader(j UploadJob) (*uploader, error) {
+func (c *Uploader) newUploader(j UploadJob) (*uploader, error) {
 	return &uploader{}, nil
 }
 
 type uploader struct {
 }
 
-func (u uploader) upload(c debuginfogrpc.DebuginfoServiceClient, j UploadJob) {
+func (u uploader) upload(c *debuginfoclient.Client, j UploadJob) {
 	// no-op
 }
 

@@ -141,7 +141,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -158,12 +158,10 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
 	t.Run("detect table schema, index with expression", func(t *testing.T) {
 		t.Parallel()
@@ -288,7 +286,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -305,12 +303,10 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"}],"indexes":[{"name":"idx_category","type":"BTREE","columns":["category"],"expressions":["category = 0"],"unique":true,"nullable":false}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
 	t.Run("detect table schema, index with multiple columns", func(t *testing.T) {
 		t.Parallel()
@@ -455,7 +451,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -472,12 +468,10 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"},{"name":"name","type":"varchar(255)","default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false},{"name":"idx_name","type":"BTREE","columns":["name"],"expressions":["name = 'test'"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
 	t.Run("detect table schema, index with expression", func(t *testing.T) {
 		t.Parallel()
@@ -602,7 +596,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -619,12 +613,10 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"}],"indexes":[{"name":"idx_category","type":"BTREE","columns":["category"],"expressions":["category = 0"],"unique":true,"nullable":false}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
 	t.Run("detect table schema, index with multiple columns", func(t *testing.T) {
 		t.Parallel()
@@ -769,7 +761,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -786,12 +778,10 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"},{"name":"name","type":"varchar(255)","default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false},{"name":"idx_name","type":"BTREE","columns":["name"],"expressions":["name = 'test'"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
 	t.Run("detect table schema, cache enabled (write)", func(t *testing.T) {
 		t.Parallel()
@@ -915,7 +905,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -934,12 +924,10 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
 	t.Run("detect table schema, cache enabled (write and read)", func(t *testing.T) {
 		t.Parallel()
@@ -1077,7 +1065,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 6
+			return len(lokiClient.Received()) == 4
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -1096,18 +1084,14 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[3].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[3].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[4].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[4].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[5].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[5].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[2].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[3].Line)
 	})
 	t.Run("detect view schema", func(t *testing.T) {
 		t.Parallel()
@@ -1221,7 +1205,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -1238,12 +1222,10 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
 	t.Run("schemas result set iteration error", func(t *testing.T) {
 		t.Parallel()
@@ -1277,7 +1259,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
+			return mock.ExpectationsWereMet() == nil
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -1287,12 +1269,7 @@ func TestSchemaDetails(t *testing.T) {
 			return collector.Stopped()
 		}, 5*time.Second, 100*time.Millisecond)
 
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
-		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
+		require.Empty(t, lokiClient.Received())
 	})
 	t.Run("tables result set iteration error", func(t *testing.T) {
 		t.Parallel()
@@ -1343,7 +1320,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
+			return len(lokiClient.Received()) == 1
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -1357,10 +1334,8 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
 	})
 	t.Run("connection error recovery", func(t *testing.T) {
 		t.Parallel()
@@ -1467,7 +1442,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -1481,12 +1456,10 @@ func TestSchemaDetails(t *testing.T) {
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false}]}`))
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" schema="some_schema"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
 }
 

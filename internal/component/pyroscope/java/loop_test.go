@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/mock"
@@ -43,7 +43,7 @@ func (m *mockAppendable) Upload(j debuginfo.UploadJob) {
 
 }
 
-func (m *mockAppendable) Client() debuginfogrpc.DebuginfoServiceClient {
+func (m *mockAppendable) DebugInfoClients() []*debuginfoclient.Client {
 	return nil
 }
 
@@ -70,6 +70,21 @@ func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyros
 		SampleRate: 1000,
 		CPU:        true,
 		Event:      "cpu",
+	}
+	target := discovery.NewTargetFromMap(map[string]string{"foo": "bar"})
+	return newProfilingLoop(os.Getpid(), target, logger, profiler, output, cfg)
+}
+
+func newTestCustomArgumentsLoop(_ *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {
+	reg := prometheus.NewRegistry()
+	output := pyroscope.NewFanout([]pyroscope.Appendable{appendable}, "test-appendable", reg)
+	logger := log.NewNopLogger()
+	cfg := ProfilingConfig{
+		Interval:        10 * time.Millisecond,
+		SampleRate:      1000,
+		CPU:             true,
+		Event:           "cpu",
+		CustomArguments: []string{"-e", "wall", "--jstackdepth", "1024"},
 	}
 	target := discovery.NewTargetFromMap(map[string]string{"foo": "bar"})
 	return newProfilingLoop(os.Getpid(), target, logger, profiler, output, cfg)
@@ -119,6 +134,52 @@ func TestProfilingLoop_StartStop(t *testing.T) {
 	require.NoError(t, p.Close())
 
 	// expect the profiler to clean up the jfr file
+	_, err := os.Stat(p.jfrFile)
+	require.True(t, os.IsNotExist(err))
+
+	profiler.AssertExpectations(t)
+	appendable.AssertExpectations(t)
+}
+
+func TestProfilingLoop_CustomArguments(t *testing.T) {
+	profiler := &mockProfiler{}
+	appendable := &mockAppendable{}
+	pid := os.Getpid()
+	jfrPath := fmt.Sprintf("/tmp/asprof-%d-%d.jfr", pid, pid)
+
+	pCh := make(chan *profilingLoop)
+
+	profiler.On("CopyLib", pid).Return(nil).Once()
+
+	// expect custom_arguments to replace the standard profiling flags,
+	// while -f, -o, start, --timeout and PID are still added by Alloy
+	profiler.On("Execute", []string{
+		"-f",
+		jfrPath,
+		"-o", "jfr",
+		"-e", "wall",
+		"--jstackdepth", "1024",
+		"start",
+		"--timeout", "0",
+		strconv.Itoa(pid),
+	}).Run(func(args mock.Arguments) {
+		p := <-pCh
+		f, err := os.Create(p.jfrFile)
+		require.NoError(t, err)
+		defer f.Close()
+	}).Return("", "", nil).Once()
+
+	profiler.On("Execute", []string{
+		"stop",
+		"-o", "jfr",
+		strconv.Itoa(pid),
+	}).Return("", "", nil).Once()
+
+	p := newTestCustomArgumentsLoop(t, profiler, appendable)
+	pCh <- p
+
+	require.NoError(t, p.Close())
+
 	_, err := os.Stat(p.jfrFile)
 	require.True(t, os.IsNotExist(err))
 

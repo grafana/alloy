@@ -12,6 +12,8 @@ might encounter and how to handle them.
 3. Patch releases are cut from the corresponding release branch.
 4. Creating an RC against `main` puts the repo into `Code Freeze` until the release-please PR is
    merged.
+   - PRs with conventional commit types that don't affect the binary (e.g. `docs`, `test`, `ci`,
+     `style`, `proposal`) are auto-exempted from the freeze.
    - PRs labeled `freeze-exempt` are allowed through the code freeze guard.
 
 ### Prerequisites
@@ -32,7 +34,8 @@ out the section below on modifying a PR's changelog entry after it's been merged
 ### 2. When ready, cut an RC by running the `Create Release Candidate` workflow
 
 > **NOTE:** This will cause the repo to enter a **Code Freeze** 🥶 until the release-please PR is
-> merged. PRs labeled `freeze-exempt` are allowed through the code freeze guard.
+> merged. PRs that don't affect the binary (`docs`, `test`, `ci`, `style`, `proposal`) are
+> auto-exempted. Other PRs can be labeled `freeze-exempt` to bypass the guard.
 
 1. Run the workflow using either the GitHub CLI or github.com.
    - **From the GitHub CLI**
@@ -68,8 +71,9 @@ If you find issues during validation, merge only critical fixes into `main`. Onc
 cut a new RC and repeat step 3.
 
 > **NOTE:** Once an RC has been created, `main` is effectively frozen until the final release. Only
-> critical fixes approved by the release manager should be merged. PRs labeled `freeze-exempt` are
-> allowed through the code freeze guard.
+> critical fixes approved by the release manager should be merged. PRs that don't affect the binary
+> (e.g. `docs`, `test`, `ci`, `style`) are auto-exempt; other PRs can be labeled `freeze-exempt` to
+> bypass the guard.
 
 ### 5. When ready, cut the release
 

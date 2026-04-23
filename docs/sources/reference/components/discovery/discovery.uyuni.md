@@ -52,11 +52,15 @@ You can use the following arguments with `discovery.uyuni`:
 
 You can use the following block with `discovery.uyuni`:
 
+{{< docs/alloy-config >}}
+
 | Block                      | Description                                      | Required |
 | -------------------------- | ------------------------------------------------ | -------- |
 | [`tls_config`][tls_config] | TLS configuration for requests to the Uyuni API. | no       |
 
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `tls_config`
 
