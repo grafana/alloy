@@ -9,14 +9,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/buildtag"
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/planner"
 	"github.com/spf13/cobra"
 )
 
 const (
-	testsRoot         = "integration-tests/k8s-v2/tests"
+	// testsRootFromRepo is the tests directory relative to the repository
+	// root. The runner is expected to be invoked from the repo root (via
+	// `go run ./integration-tests/k8s-v2/runner`). The harness itself uses
+	// a different constant (`testsRootPath = "tests"`) because `go test`
+	// runs with the k8s-v2 package directory as cwd.
+	testsRootFromRepo = "integration-tests/k8s-v2/tests"
 	packageDir        = "./integration-tests/k8s-v2"
-	integrationGoTags = "alloyintegrationtests k8sv2integrationtests"
+	integrationGoTags = buildtag.Tags
 )
 
 type options struct {
@@ -42,13 +48,10 @@ type selectedTest struct {
 }
 
 func main() {
-	opts := options{
-		verbose:          true,
-		timeout:          30 * time.Minute,
-		setupTimeout:     20 * time.Minute,
-		readinessTimeout: 2 * time.Minute,
-		parallel:         4,
-	}
+	// Defaults live in the Flags() calls below so there is a single source
+	// of truth per flag. options{} starts at its zero value; pflag sets
+	// every field via its default argument before RunE fires.
+	var opts options
 
 	rootCmd := &cobra.Command{
 		Use:   "runner [-- <extra go test args>]",
@@ -86,7 +89,7 @@ func main() {
 		Use:   "list",
 		Short: "List discovered test names",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			allTests, err := planner.DiscoverTests(testsRoot)
+			allTests, err := planner.DiscoverTests(testsRootFromRepo)
 			if err != nil {
 				return fmt.Errorf("discover k8s-v2 tests: %w", err)
 			}
@@ -114,7 +117,7 @@ func run(opts options, passthrough []string) error {
 		return fmt.Errorf("--parallel must be >= 1")
 	}
 
-	allTests, err := planner.DiscoverTests(testsRoot)
+	allTests, err := planner.DiscoverTests(testsRootFromRepo)
 	if err != nil {
 		return fmt.Errorf("discover k8s-v2 tests: %w", err)
 	}
@@ -200,6 +203,7 @@ func resolveSelection(opts options, all []planner.TestCase) ([]selectedTest, err
 		}
 
 		if _, ok := seen[selected.Name]; ok {
+			fmt.Fprintf(os.Stderr, "runner: skipping duplicate --test entry for %q\n", selected.Name)
 			continue
 		}
 		seen[selected.Name] = struct{}{}

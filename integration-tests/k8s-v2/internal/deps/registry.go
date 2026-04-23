@@ -2,6 +2,7 @@ package deps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -110,21 +111,33 @@ func (r Registry) Install(ctx context.Context, kubeconfig string, requirements [
 	return fmt.Errorf("dependency installs failed: %s", formatFailureSummary(failures))
 }
 
+// Uninstall removes every dependency in requirements. A single failure
+// does not abort the run: remaining dependencies are still uninstalled so
+// cleanup does not leak resources on the cluster. All accumulated errors
+// are returned joined together.
+//
+// Requirements are walked in reverse order for symmetry with a future
+// dependency-ordered install path; today installs run concurrently so the
+// reverse is cosmetic.
 func (r Registry) Uninstall(ctx context.Context, kubeconfig string, requirements []string) error {
 	env := r.env
 	env.Kubeconfig = kubeconfig
 
 	reversed := slices.Clone(requirements)
 	slices.Reverse(reversed)
+
+	var errs []error
 	for _, dep := range reversed {
 		env.Logger.Info("uninstalling dependency", "dependency", dep)
 		installer := r.installers[dep]
 		if err := installer.Uninstall(ctx, env); err != nil {
-			return fmt.Errorf("uninstall %q: %w", dep, err)
+			env.Logger.Warn("dependency uninstall failed", "dependency", dep, "error", err)
+			errs = append(errs, fmt.Errorf("uninstall %q: %w", dep, err))
+			continue
 		}
 		env.Logger.Info("dependency removed", "dependency", dep)
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func formatFailureSummary(failures map[string]error) string {

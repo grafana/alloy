@@ -50,6 +50,38 @@ func TestRender_EmptyVars(t *testing.T) {
 	}
 }
 
+// A var's value must be used literally even if it happens to contain
+// another placeholder expression. This guards against a footgun where, for
+// example, ${A} = "xx-${B}-yy" would recursively expand ${B}.
+func TestRender_NoRecursiveExpansion(t *testing.T) {
+	got := Render("x: ${A}\n", map[string]string{
+		"A": "xx-${B}-yy",
+		"B": "inner",
+	})
+	if !strings.Contains(got, "xx-${B}-yy") {
+		t.Fatalf("expected literal value, got %q", got)
+	}
+	if strings.Contains(got, "inner") {
+		t.Fatalf("B must not have been recursively expanded, got %q", got)
+	}
+}
+
+// Bare $VAR should not be substituted because YAML/Helm values files
+// frequently contain shell-like strings that are not intended as template
+// references.
+func TestRender_BareDollarNotSubstituted(t *testing.T) {
+	got := Render("cmd: echo $HOME\nx: ${TEST_ID}\n", map[string]string{
+		"HOME":    "replaced",
+		"TEST_ID": "abc",
+	})
+	if !strings.Contains(got, "echo $HOME") {
+		t.Fatalf("bare $HOME must not be expanded, got %q", got)
+	}
+	if !strings.Contains(got, "x: abc") {
+		t.Fatalf("brace form must still expand, got %q", got)
+	}
+}
+
 func TestRenderFile_MissingFile(t *testing.T) {
 	if _, err := RenderFile("/nonexistent/does-not-exist.yaml", nil); err == nil {
 		t.Fatal("expected error for missing input file")

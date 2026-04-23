@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/buildtag"
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/planner"
 )
 
@@ -115,7 +116,8 @@ func (h *harness) runSubtest(t *testing.T, tc planner.TestCase) {
 	}()
 
 	reproCmd := fmt.Sprintf(
-		"go test -tags \"alloyintegrationtests k8sv2integrationtests\" ./integration-tests/k8s-v2 -run TestIntegrationV2/%s -args -k8s.v2.tests=%s -k8s.v2.test-id=%s",
+		"go test -tags %q ./integration-tests/k8s-v2 -run TestIntegrationV2/%s -args -k8s.v2.tests=%s -k8s.v2.test-id=%s",
+		buildtag.Tags,
 		tc.Name,
 		tc.Name,
 		runtime.testID,

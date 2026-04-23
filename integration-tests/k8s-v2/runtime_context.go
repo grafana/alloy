@@ -12,7 +12,10 @@ import (
 const (
 	maxNamespaceLength = 53
 	maxReleaseLength   = 53
-	suffixHexLen       = 8
+	// suffixRandomBytes is the number of random bytes encoded as hex to
+	// suffix test_id / namespace / release. 4 bytes -> 8 hex characters,
+	// which gives ~16 collision-free test IDs per test name in practice.
+	suffixRandomBytes = 4
 )
 
 var nonAlnumHyphen = regexp.MustCompile(`[^a-z0-9-]+`)
@@ -24,7 +27,7 @@ type testRuntime struct {
 }
 
 func newTestRuntime(testName string) (testRuntime, error) {
-	suffix, err := randomHex(suffixHexLen / 2)
+	suffix, err := randomHex(suffixRandomBytes)
 	if err != nil {
 		return testRuntime{}, err
 	}

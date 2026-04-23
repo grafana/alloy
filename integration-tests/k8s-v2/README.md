@@ -156,6 +156,10 @@ make ALLOY_IMAGE=alloy-ci:dev alloy-image
 go run ./integration-tests/k8s-v2/runner --all --alloy-image alloy-ci:dev --alloy-image-pull-policy IfNotPresent
 ```
 
+`--alloy-image` must be a `repository:tag` reference. Digest pins
+(`repo@sha256:...`) are rejected because Helm `--set-string image.tag` is
+not compatible with digest-based references.
+
 For interactive cluster tooling, use `--keep-cluster` and copy the printed `KUBECONFIG` export command from runner output.
 
 Use the Go wrapper directly:

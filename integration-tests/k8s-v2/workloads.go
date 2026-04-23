@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/buildtag"
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/imageutil"
 	"github.com/grafana/alloy/integration-tests/k8s-v2/internal/template"
 )
@@ -66,7 +67,7 @@ func runGoTestPackage(dir, kubeconfigPath, testID string) error {
 		"-count=1",
 		"-v",
 		"-tags",
-		"alloyintegrationtests k8sv2integrationtests",
+		buildtag.Tags,
 		".",
 		"-args",
 		"-k8s.v2.kubeconfig="+kubeconfigPath,

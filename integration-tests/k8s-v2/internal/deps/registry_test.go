@@ -96,6 +96,25 @@ func TestRegistryInstallPartialFailureRollsBack(t *testing.T) {
 	}
 }
 
+func TestRegistryUninstallContinuesOnError(t *testing.T) {
+	recorder := &callRecorder{}
+	r := NewRegistry(Env{},
+		fakeInstaller{name: "a", recorder: recorder},
+		fakeInstaller{name: "b", uninstallErr: errors.New("boom"), recorder: recorder},
+		fakeInstaller{name: "c", recorder: recorder},
+	)
+	err := r.Uninstall(context.Background(), "kubeconfig", []string{"a", "b", "c"})
+	if err == nil {
+		t.Fatal("expected joined uninstall error")
+	}
+	calls := recorder.snapshot()
+	for _, want := range []string{"uninstall:a", "uninstall:b", "uninstall:c"} {
+		if !slices.Contains(calls, want) {
+			t.Fatalf("expected %s to have been attempted even after failure; calls=%v", want, calls)
+		}
+	}
+}
+
 func TestRegistryNamespaceLookup(t *testing.T) {
 	r := NewRegistry(Env{},
 		fakeInstaller{name: "a", namespace: "ns-a", recorder: &callRecorder{}},

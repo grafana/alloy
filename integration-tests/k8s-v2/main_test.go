@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+// testsRootPath is the tests directory relative to the k8s-v2 package. The
+// harness TestMain runs with this package's directory as cwd (that's how
+// `go test` works) so the path is short. The runner uses a different
+// constant (`testsRootFromRepo`) because it runs from the repository root.
 const testsRootPath = "tests"
 
 var (
