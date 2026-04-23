@@ -21,11 +21,6 @@ import (
 	"sigs.k8s.io/e2e-framework/support/kind"
 )
 
-const (
-	lokiNamespace  = "loki"
-	mimirNamespace = "mimir"
-)
-
 var activeHarness *harness
 
 type harness struct {
@@ -52,9 +47,14 @@ type kindProvider interface {
 
 func newHarness() *harness {
 	logging.Configure(*debugFlag)
+	logger := logging.Logger()
 	return &harness{
-		log:      logging.Logger(),
-		registry: deps.NewDefaultRegistry(),
+		log: logger,
+		registry: deps.NewDefaultRegistry(deps.Env{
+			Logger:           logger.With("component", "deps"),
+			ReadinessTimeout: *readinessTimeout,
+			Debug:            *debugFlag,
+		}),
 	}
 }
 
@@ -69,12 +69,6 @@ func (h *harness) run(m *testing.M) int {
 		h.log.Error("planning failed", "error", err)
 		return 1
 	}
-
-	deps.Configure(deps.Config{
-		ReadinessTimeout: *readinessTimeout,
-		Debug:            *debugFlag,
-		Logger:           logging.Logger(),
-	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), *setupTimeoutFlag)
 	defer cancel()
@@ -141,9 +135,6 @@ func (h *harness) run(m *testing.M) int {
 	if err := h.prepareCluster(ctx); err != nil {
 		return cleanup(1, err.Error())
 	}
-	if err := h.prepareNamespaces(ctx); err != nil {
-		return cleanup(1, err.Error())
-	}
 	if err := h.installDependencies(ctx); err != nil {
 		return cleanup(1, err.Error())
 	}
@@ -162,10 +153,10 @@ func (h *harness) run(m *testing.M) int {
 
 func (h *harness) validateFlags() error {
 	if *keepDepsFlag && !*keepClusterFlag {
-		return fmt.Errorf("k8s-v2.keep-deps requires k8s.v2.keep-cluster=true")
+		return fmt.Errorf("k8s.v2.keep-deps requires k8s.v2.keep-cluster=true")
 	}
 	if *reuseDepsFlag && *reuseClusterFlag == "" {
-		return fmt.Errorf("k8s-v2.reuse-deps requires k8s.v2.reuse-cluster")
+		return fmt.Errorf("k8s.v2.reuse-deps requires k8s.v2.reuse-cluster")
 	}
 	if *alloyPullPolicy != "" && *alloyImageFlag == "" {
 		return fmt.Errorf("k8s.v2.alloy-image-pull-policy requires k8s.v2.alloy-image")
@@ -190,13 +181,7 @@ func (h *harness) plan() error {
 
 	if *reuseDepsFlag {
 		h.log.Info("skipping dependency validation because reuse-deps is enabled")
-		h.log.Info("selected tests", "tests", strings.Join(testNames(h.selectedTests), ", "))
-		h.log.Info("required dependencies", "dependencies", strings.Join(h.requiredDeps, ", "))
-		h.log.Info("timeouts", "setup_timeout", *setupTimeoutFlag, "readiness_timeout", *readinessTimeout)
-		return nil
-	}
-
-	if err := h.registry.Validate(h.requiredDeps); err != nil {
+	} else if err := h.registry.Validate(h.requiredDeps); err != nil {
 		return fmt.Errorf("k8s-v2 plan failed: %w", err)
 	}
 
@@ -257,18 +242,6 @@ func (h *harness) prepareCluster(ctx context.Context) error {
 			return fmt.Errorf("load Alloy image %q into kind cluster %s failed: %w", *alloyImageFlag, h.clusterName, err)
 		}
 		h.log.Info("loaded Alloy image into Kind", "image", *alloyImageFlag, "cluster", h.clusterName)
-	}
-	return nil
-}
-
-func (h *harness) prepareNamespaces(ctx context.Context) error {
-	for _, ns := range []string{lokiNamespace, mimirNamespace} {
-		start := time.Now()
-		h.log.Info("ensuring namespace", "namespace", ns)
-		if err := ensureNamespace(ctx, h.kubeconfig, ns); err != nil {
-			return fmt.Errorf("create namespace %s failed: %w", ns, err)
-		}
-		h.log.Info("ensure namespace finished", "namespace", ns, "duration", formatStepDuration(time.Since(start)))
 	}
 	return nil
 }

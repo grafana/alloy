@@ -28,15 +28,17 @@ func (r *callRecorder) snapshot() []string {
 
 type fakeInstaller struct {
 	name         string
+	namespace    string
 	installErr   error
 	uninstallErr error
 	installDelay time.Duration
 	recorder     *callRecorder
 }
 
-func (f fakeInstaller) Name() string { return f.name }
+func (f fakeInstaller) Name() string      { return f.name }
+func (f fakeInstaller) Namespace() string { return f.namespace }
 
-func (f fakeInstaller) Install(_ context.Context, _ string) error {
+func (f fakeInstaller) Install(_ context.Context, _ Env) error {
 	if f.installDelay > 0 {
 		time.Sleep(f.installDelay)
 	}
@@ -44,13 +46,13 @@ func (f fakeInstaller) Install(_ context.Context, _ string) error {
 	return f.installErr
 }
 
-func (f fakeInstaller) Uninstall(_ context.Context, _ string) error {
+func (f fakeInstaller) Uninstall(_ context.Context, _ Env) error {
 	f.recorder.add("uninstall:" + f.name)
 	return f.uninstallErr
 }
 
 func TestRegistryValidateUnknown(t *testing.T) {
-	r := NewRegistry(fakeInstaller{name: "loki", recorder: &callRecorder{}})
+	r := NewRegistry(Env{}, fakeInstaller{name: "loki", recorder: &callRecorder{}})
 	err := r.Validate([]string{"loki", "mimir"})
 	if err == nil {
 		t.Fatal("expected unknown dependency error")
@@ -59,7 +61,7 @@ func TestRegistryValidateUnknown(t *testing.T) {
 
 func TestRegistryInstallOrder(t *testing.T) {
 	recorder := &callRecorder{}
-	r := NewRegistry(
+	r := NewRegistry(Env{},
 		fakeInstaller{name: "a", recorder: recorder},
 		fakeInstaller{name: "b", recorder: recorder},
 	)
@@ -77,7 +79,7 @@ func TestRegistryInstallOrder(t *testing.T) {
 
 func TestRegistryInstallPartialFailureRollsBack(t *testing.T) {
 	recorder := &callRecorder{}
-	r := NewRegistry(
+	r := NewRegistry(Env{},
 		fakeInstaller{name: "a", installDelay: 10 * time.Millisecond, recorder: recorder},
 		fakeInstaller{name: "b", installErr: errors.New("boom"), recorder: recorder},
 	)
@@ -91,5 +93,17 @@ func TestRegistryInstallPartialFailureRollsBack(t *testing.T) {
 	}
 	if !slices.Contains(calls, "uninstall:a") {
 		t.Fatalf("expected rollback uninstall:a call, got %v", calls)
+	}
+}
+
+func TestRegistryNamespaceLookup(t *testing.T) {
+	r := NewRegistry(Env{},
+		fakeInstaller{name: "a", namespace: "ns-a", recorder: &callRecorder{}},
+	)
+	if got := r.Namespace("a"); got != "ns-a" {
+		t.Fatalf("namespace for a: want ns-a, got %q", got)
+	}
+	if got := r.Namespace("missing"); got != "" {
+		t.Fatalf("missing namespace: want empty, got %q", got)
 	}
 }

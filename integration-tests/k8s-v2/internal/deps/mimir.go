@@ -15,35 +15,31 @@ func (m mimirInstaller) Name() string {
 	return "mimir"
 }
 
-func (m mimirInstaller) Install(ctx context.Context, kubeconfig string) error {
+func (m mimirInstaller) Namespace() string {
+	return MimirNamespace
+}
+
+func (m mimirInstaller) Install(ctx context.Context, env Env) error {
 	manifest, err := readManifest("mimir.yaml")
 	if err != nil {
 		return err
 	}
-	if err := applyManifest(ctx, kubeconfig, manifest); err != nil {
+	if err := applyManifest(ctx, env, manifest); err != nil {
 		return err
 	}
-	if err := waitForDeployment(ctx, kubeconfig, mimirNamespace, "mimir"); err != nil {
+	if err := waitForDeployment(ctx, env, MimirNamespace, "mimir"); err != nil {
 		return err
 	}
-	if err := checkServiceReadyEndpoint(
-		ctx,
-		kubeconfig,
-		mimirNamespace,
-		"mimir",
-		39009,
-		9009,
-		"http://127.0.0.1:39009/ready",
-	); err != nil {
+	if err := checkServiceReadyEndpoint(ctx, env, MimirNamespace, "mimir", 9009, "/ready"); err != nil {
 		return fmt.Errorf("dependency=%s: %w", m.Name(), err)
 	}
 	return nil
 }
 
-func (m mimirInstaller) Uninstall(ctx context.Context, kubeconfig string) error {
+func (m mimirInstaller) Uninstall(ctx context.Context, env Env) error {
 	manifest, err := readManifest("mimir.yaml")
 	if err != nil {
 		return err
 	}
-	return deleteManifest(ctx, kubeconfig, manifest)
+	return deleteManifest(ctx, env, manifest)
 }

@@ -1,9 +1,4 @@
 apiVersion: v1
-kind: Namespace
-metadata:
-  name: ${TEST_NAMESPACE}
----
-apiVersion: v1
 kind: ConfigMap
 metadata:
   name: logs-source

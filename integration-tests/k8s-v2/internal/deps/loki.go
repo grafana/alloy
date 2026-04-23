@@ -15,35 +15,31 @@ func (l lokiInstaller) Name() string {
 	return "loki"
 }
 
-func (l lokiInstaller) Install(ctx context.Context, kubeconfig string) error {
+func (l lokiInstaller) Namespace() string {
+	return LokiNamespace
+}
+
+func (l lokiInstaller) Install(ctx context.Context, env Env) error {
 	manifest, err := readManifest("loki.yaml")
 	if err != nil {
 		return err
 	}
-	if err := applyManifest(ctx, kubeconfig, manifest); err != nil {
+	if err := applyManifest(ctx, env, manifest); err != nil {
 		return err
 	}
-	if err := waitForDeployment(ctx, kubeconfig, lokiNamespace, "loki"); err != nil {
+	if err := waitForDeployment(ctx, env, LokiNamespace, "loki"); err != nil {
 		return err
 	}
-	if err := checkServiceReadyEndpoint(
-		ctx,
-		kubeconfig,
-		lokiNamespace,
-		"loki",
-		33100,
-		3100,
-		"http://127.0.0.1:33100/ready",
-	); err != nil {
+	if err := checkServiceReadyEndpoint(ctx, env, LokiNamespace, "loki", 3100, "/ready"); err != nil {
 		return fmt.Errorf("dependency=%s: %w", l.Name(), err)
 	}
 	return nil
 }
 
-func (l lokiInstaller) Uninstall(ctx context.Context, kubeconfig string) error {
+func (l lokiInstaller) Uninstall(ctx context.Context, env Env) error {
 	manifest, err := readManifest("loki.yaml")
 	if err != nil {
 		return err
 	}
-	return deleteManifest(ctx, kubeconfig, manifest)
+	return deleteManifest(ctx, env, manifest)
 }

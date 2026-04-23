@@ -9,26 +9,46 @@ import (
 	"sync"
 )
 
+// Installer installs/uninstalls a single dependency. Namespace returns the
+// kubernetes namespace the installer places its resources into; callers that
+// need to pre-create or inspect that namespace can obtain it without knowing
+// the installer's internals.
 type Installer interface {
 	Name() string
-	Install(ctx context.Context, kubeconfig string) error
-	Uninstall(ctx context.Context, kubeconfig string) error
+	Namespace() string
+	Install(ctx context.Context, env Env) error
+	Uninstall(ctx context.Context, env Env) error
 }
 
+// Registry owns the configured Env and the set of known installers. It has
+// no package-level state so Registry instances can safely be created per run.
 type Registry struct {
+	env        Env
 	installers map[string]Installer
 }
 
-func NewRegistry(installerList ...Installer) Registry {
+func NewRegistry(env Env, installerList ...Installer) Registry {
 	installers := make(map[string]Installer, len(installerList))
 	for _, installer := range installerList {
 		installers[installer.Name()] = installer
 	}
-	return Registry{installers: installers}
+	return Registry{
+		env:        env.withDefaults(),
+		installers: installers,
+	}
 }
 
-func NewDefaultRegistry() Registry {
-	return NewRegistry(NewMimirInstaller(), NewLokiInstaller())
+func NewDefaultRegistry(env Env) Registry {
+	return NewRegistry(env, NewMimirInstaller(), NewLokiInstaller())
+}
+
+// Namespace returns the namespace for the named dependency or empty string
+// when the dependency is unknown.
+func (r Registry) Namespace(name string) string {
+	if inst, ok := r.installers[name]; ok {
+		return inst.Namespace()
+	}
+	return ""
 }
 
 func (r Registry) Validate(requirements []string) error {
@@ -46,6 +66,9 @@ func (r Registry) Validate(requirements []string) error {
 }
 
 func (r Registry) Install(ctx context.Context, kubeconfig string, requirements []string) error {
+	env := r.env
+	env.Kubeconfig = kubeconfig
+
 	installed := make([]string, 0, len(requirements))
 	failures := make(map[string]error)
 	var mu sync.Mutex
@@ -57,15 +80,15 @@ func (r Registry) Install(ctx context.Context, kubeconfig string, requirements [
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			cfg.Logger.Info("installing dependency", "dependency", dep)
-			if err := installer.Install(ctx, kubeconfig); err != nil {
-				cfg.Logger.Warn("dependency install failed", "dependency", dep, "error", err)
+			env.Logger.Info("installing dependency", "dependency", dep)
+			if err := installer.Install(ctx, env); err != nil {
+				env.Logger.Warn("dependency install failed", "dependency", dep, "error", err)
 				mu.Lock()
 				failures[dep] = err
 				mu.Unlock()
 				return
 			}
-			cfg.Logger.Info("dependency ready", "dependency", dep)
+			env.Logger.Info("dependency ready", "dependency", dep)
 			mu.Lock()
 			installed = append(installed, dep)
 			mu.Unlock()
@@ -79,7 +102,7 @@ func (r Registry) Install(ctx context.Context, kubeconfig string, requirements [
 
 	sort.Strings(installed)
 	if len(installed) > 0 {
-		cfg.Logger.Info("rolling back partially installed dependencies", "installed", installed)
+		env.Logger.Info("rolling back partially installed dependencies", "installed", installed)
 		if uninstallErr := r.Uninstall(ctx, kubeconfig, installed); uninstallErr != nil {
 			return fmt.Errorf("dependency installs failed (%s) and rollback failed: %w", formatFailureSummary(failures), uninstallErr)
 		}
@@ -88,15 +111,18 @@ func (r Registry) Install(ctx context.Context, kubeconfig string, requirements [
 }
 
 func (r Registry) Uninstall(ctx context.Context, kubeconfig string, requirements []string) error {
+	env := r.env
+	env.Kubeconfig = kubeconfig
+
 	reversed := slices.Clone(requirements)
 	slices.Reverse(reversed)
 	for _, dep := range reversed {
-		cfg.Logger.Info("uninstalling dependency", "dependency", dep)
+		env.Logger.Info("uninstalling dependency", "dependency", dep)
 		installer := r.installers[dep]
-		if err := installer.Uninstall(ctx, kubeconfig); err != nil {
+		if err := installer.Uninstall(ctx, env); err != nil {
 			return fmt.Errorf("uninstall %q: %w", dep, err)
 		}
-		cfg.Logger.Info("dependency removed", "dependency", dep)
+		env.Logger.Info("dependency removed", "dependency", dep)
 	}
 	return nil
 }
