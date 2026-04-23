@@ -52,7 +52,11 @@ spec:
   dnsPolicy: {{ .Values.controller.dnsPolicy }}
   {{- with .Values.controller.affinity }}
   affinity:
+    {{- if kindIs "map" . }}
     {{- toYaml . | nindent 4 }}
+    {{- else }}
+    {{- tpl . $ | nindent 4 }}
+    {{- end }}
   {{- end }}
   {{- if .Values.controller.terminationGracePeriodSeconds }}
   terminationGracePeriodSeconds: {{ .Values.controller.terminationGracePeriodSeconds | int }}
@@ -67,7 +71,11 @@ spec:
   {{- end }}
   {{- with .Values.controller.topologySpreadConstraints }}
   topologySpreadConstraints:
+    {{- if kindIs "slice" . }}
     {{- toYaml . | nindent 4 }}
+    {{- else }}
+    {{- tpl . $ | nindent 4 }}
+    {{- end }}
   {{- end }}
   volumes:
     - name: config
