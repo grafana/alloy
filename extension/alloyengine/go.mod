@@ -7,7 +7,7 @@ replace github.com/grafana/alloy => ../..
 replace github.com/grafana/alloy/syntax => ../../syntax
 
 require (
-	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
+	github.com/grafana/alloy v1.15.0 // x-release-please-version
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.53.0
