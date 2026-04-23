@@ -281,7 +281,12 @@ func checkReady(ctx context.Context, env Env, spec Spec) error {
 	if err != nil {
 		return fmt.Errorf("service readiness check for %s: %w", spec.Service, err)
 	}
-	return handle.Close()
+	// Close cancels the port-forward process; kubectl exits with "signal:
+	// killed" which is expected here (readiness was already confirmed).
+	if err := handle.Close(); err != nil {
+		env.Logger.Debug("port-forward close warning", "service", spec.Service, "error", err)
+	}
+	return nil
 }
 
 func specNames(specs []Spec) []string {

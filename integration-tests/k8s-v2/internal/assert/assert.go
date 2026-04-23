@@ -52,11 +52,7 @@ func StartBackendPortForward(ctx context.Context, kubeconfig string, spec deps.S
 // eventually polls query at baseURL+path, calling check on every non-5xx
 // response body. It returns nil as soon as check returns true, or an error
 // on DefaultTimeout. matchDesc is used in the timeout error for context.
-func eventually(
-	ctx context.Context,
-	baseURL, path, query, matchDesc string,
-	check func(body []byte) bool,
-) error {
+func eventually(ctx context.Context, baseURL, path, query, matchDesc string, check func(body []byte) bool) error {
 	deadlineCtx, cancel := context.WithTimeout(ctx, DefaultTimeout)
 	defer cancel()
 
