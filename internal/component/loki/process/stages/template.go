@@ -67,8 +67,8 @@ var _ syntax.Validator = (*TemplateConfig)(nil)
 
 // TemplateConfig configures template value extraction.
 type TemplateConfig struct {
-	Source   string   `alloy:"source,attr"`
-	Template Template `alloy:"template,attr"`
+	Source   string   `alloy:"source,attr"    json:"source"`
+	Template Template `alloy:"template,attr"  json:"template"`
 }
 
 func (t *TemplateConfig) Validate() error {

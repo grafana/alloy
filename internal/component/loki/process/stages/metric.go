@@ -22,14 +22,14 @@ const (
 
 // MetricConfig is a single metrics configuration.
 type MetricConfig struct {
-	Counter   *metric.CounterConfig   `alloy:"counter,block,optional"`
-	Gauge     *metric.GaugeConfig     `alloy:"gauge,block,optional"`
-	Histogram *metric.HistogramConfig `alloy:"histogram,block,optional"`
+	Counter   *metric.CounterConfig   `alloy:"counter,block,optional"   json:"counter,omitempty"`
+	Gauge     *metric.GaugeConfig     `alloy:"gauge,block,optional"     json:"gauge,omitempty"`
+	Histogram *metric.HistogramConfig `alloy:"histogram,block,optional" json:"histogram,omitempty"`
 }
 
 // MetricsConfig is a set of configured metrics.
 type MetricsConfig struct {
-	Metrics []MetricConfig `alloy:"metric,enum,optional"`
+	Metrics []MetricConfig `alloy:"metric,enum,optional" json:"metrics,omitempty"`
 }
 
 type cfgCollector struct {
