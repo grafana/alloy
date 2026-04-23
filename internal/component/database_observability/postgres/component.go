@@ -103,10 +103,10 @@ type GCPCloudProviderInfo struct {
 }
 
 type QuerySampleArguments struct {
-	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
-	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
-	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
+	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
+	ExcludeCurrentUser            bool          `alloy:"exclude_current_user,attr,optional"`
+	EnablePreClassifiedWaitEvents bool          `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type QueryDetailsArguments struct {

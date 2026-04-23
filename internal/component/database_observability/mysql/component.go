@@ -133,13 +133,13 @@ type LocksArguments struct {
 }
 
 type QuerySamplesArguments struct {
-	CollectInterval             time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
-	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
-	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
-	SampleMinDuration           time.Duration `alloy:"sample_min_duration,attr,optional"`
-	WaitEventMinDuration        time.Duration `alloy:"wait_event_min_duration,attr,optional"`
-	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
+	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
+	AutoEnableSetupConsumers      bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
+	SetupConsumersCheckInterval   time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
+	SampleMinDuration             time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration          time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	EnablePreClassifiedWaitEvents bool          `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type HealthCheckArguments struct {
