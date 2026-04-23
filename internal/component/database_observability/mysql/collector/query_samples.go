@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +22,7 @@ const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
 	OP_WAIT_EVENT         = "wait_event"
+	OP_WAIT_EVENT_V2      = "wait_event_v2"
 
 	cpuTimeField              = `, statements.CPU_TIME`
 	maxControlledMemoryField  = `, statements.MAX_CONTROLLED_MEMORY`
@@ -83,31 +85,33 @@ const updateSetupConsumers = `
 		WHERE name in ('events_statements_cpu', 'events_waits_current', 'events_waits_history')`
 
 type QuerySamplesArguments struct {
-	DB                          *sql.DB
-	EngineVersion               semver.Version
-	CollectInterval             time.Duration
-	ExcludeSchemas              []string
-	EntryHandler                loki.EntryHandler
-	DisableQueryRedaction       bool
-	AutoEnableSetupConsumers    bool
-	SetupConsumersCheckInterval time.Duration
-	SampleMinDuration           time.Duration
-	WaitEventMinDuration        time.Duration
+	DB                            *sql.DB
+	EngineVersion                 semver.Version
+	CollectInterval               time.Duration
+	ExcludeSchemas                []string
+	EntryHandler                  loki.EntryHandler
+	DisableQueryRedaction         bool
+	AutoEnableSetupConsumers      bool
+	SetupConsumersCheckInterval   time.Duration
+	SampleMinDuration             time.Duration
+	WaitEventMinDuration          time.Duration
+	EnablePreClassifiedWaitEvents bool
 
 	Logger log.Logger
 }
 
 type QuerySamples struct {
-	dbConnection                *sql.DB
-	engineVersion               semver.Version
-	collectInterval             time.Duration
-	excludeSchemas              []string
-	entryHandler                loki.EntryHandler
-	disableQueryRedaction       bool
-	autoEnableSetupConsumers    bool
-	setupConsumersCheckInterval time.Duration
-	sampleMinDuration           time.Duration
-	waitEventMinDuration        time.Duration
+	dbConnection                  *sql.DB
+	engineVersion                 semver.Version
+	collectInterval               time.Duration
+	excludeSchemas                []string
+	entryHandler                  loki.EntryHandler
+	disableQueryRedaction         bool
+	autoEnableSetupConsumers      bool
+	setupConsumersCheckInterval   time.Duration
+	sampleMinDuration             time.Duration
+	waitEventMinDuration          time.Duration
+	enablePreClassifiedWaitEvents bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -121,18 +125,19 @@ type QuerySamples struct {
 
 func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	c := &QuerySamples{
-		dbConnection:                args.DB,
-		engineVersion:               args.EngineVersion,
-		collectInterval:             args.CollectInterval,
-		excludeSchemas:              args.ExcludeSchemas,
-		entryHandler:                args.EntryHandler,
-		disableQueryRedaction:       args.DisableQueryRedaction,
-		autoEnableSetupConsumers:    args.AutoEnableSetupConsumers,
-		setupConsumersCheckInterval: args.SetupConsumersCheckInterval,
-		sampleMinDuration:           args.SampleMinDuration,
-		waitEventMinDuration:        args.WaitEventMinDuration,
-		logger:                      log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:                     &atomic.Bool{},
+		dbConnection:                  args.DB,
+		engineVersion:                 args.EngineVersion,
+		collectInterval:               args.CollectInterval,
+		excludeSchemas:                args.ExcludeSchemas,
+		entryHandler:                  args.EntryHandler,
+		disableQueryRedaction:         args.DisableQueryRedaction,
+		autoEnableSetupConsumers:      args.AutoEnableSetupConsumers,
+		setupConsumersCheckInterval:   args.SetupConsumersCheckInterval,
+		sampleMinDuration:             args.SampleMinDuration,
+		waitEventMinDuration:          args.WaitEventMinDuration,
+		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
+		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:                       &atomic.Bool{},
 	}
 
 	return c, nil
@@ -408,28 +413,53 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 		if row.WaitEventID.Valid && row.WaitTime.Valid {
 			waitTime := picosecondsToMilliseconds(row.WaitTime.Float64)
-			waitLogMessage := fmt.Sprintf(
-				`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-				row.Schema.String,
-				row.User.String,
-				row.Host.String,
-				row.ThreadID.String,
-				row.Digest.String,
-				row.StatementEventID.String,
-				row.WaitEventID.String,
-				row.WaitEndEventID.String,
-				row.WaitEventName.String,
-				row.WaitObjectName.String,
-				row.WaitObjectType.String,
-				waitTime,
-			)
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT,
-				waitLogMessage,
-				int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
-			)
+			if c.enablePreClassifiedWaitEvents {
+				waitV2LogMessage := fmt.Sprintf(
+					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_event_type="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+					row.Schema.String,
+					row.User.String,
+					row.Host.String,
+					row.ThreadID.String,
+					row.Digest.String,
+					row.StatementEventID.String,
+					row.WaitEventID.String,
+					row.WaitEndEventID.String,
+					row.WaitEventName.String,
+					classifyMySQLWaitEventType(row.WaitEventName.String),
+					row.WaitObjectName.String,
+					row.WaitObjectType.String,
+					waitTime,
+				)
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+					logging.LevelInfo,
+					OP_WAIT_EVENT_V2,
+					waitV2LogMessage,
+					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+				)
+			} else {
+				waitLogMessage := fmt.Sprintf(
+					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
+					row.Schema.String,
+					row.User.String,
+					row.Host.String,
+					row.ThreadID.String,
+					row.Digest.String,
+					row.StatementEventID.String,
+					row.WaitEventID.String,
+					row.WaitEndEventID.String,
+					row.WaitEventName.String,
+					row.WaitObjectName.String,
+					row.WaitObjectType.String,
+					waitTime,
+				)
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+					logging.LevelInfo,
+					OP_WAIT_EVENT,
+					waitLogMessage,
+					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
+				)
+			}
 		}
 	}
 
@@ -471,4 +501,28 @@ func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, flo
 	limit := uptimeSinceOverflow(uptime)
 
 	return timerClause, limit
+}
+
+// classifyMySQLWaitEventType maps a raw MySQL performance_schema wait event name
+// to a standardized category, aligned with the wait taxonomy used elsewhere:
+//
+//	IO Wait      = wait/io/(file|table).+
+//	Network Wait = wait/io/socket.+
+//	Lock Wait    = wait/(io/lock|synch|lock).+
+func classifyMySQLWaitEventType(waitEventName string) string {
+	rest, ok := strings.CutPrefix(waitEventName, "wait/")
+	if !ok {
+		return "Other Wait"
+	}
+	switch {
+	case strings.HasPrefix(rest, "io/file/"), strings.HasPrefix(rest, "io/table/"):
+		return "IO Wait"
+	case strings.HasPrefix(rest, "io/socket/"):
+		return "Network Wait"
+	case strings.HasPrefix(rest, "io/lock/"),
+		strings.HasPrefix(rest, "synch/"),
+		strings.HasPrefix(rest, "lock/"):
+		return "Lock Wait"
+	}
+	return "Other Wait"
 }
