@@ -139,7 +139,6 @@ type QuerySamplesArguments struct {
 	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
 	SampleMinDuration           time.Duration `alloy:"sample_min_duration,attr,optional"`
 	WaitEventMinDuration        time.Duration `alloy:"wait_event_min_duration,attr,optional"`
-	// Temporary feature flag for pre-classified wait event emission. Will be removed before Alloy 1.14.0.
 	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 

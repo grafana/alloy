@@ -106,7 +106,6 @@ type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
 	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
-	// Temporary feature flag for pre-classified wait event emission. Will be removed before Alloy 1.14.0.
 	EnablePreClassifiedWaitEvents bool `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 

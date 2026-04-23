@@ -417,26 +417,46 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			if c.enablePreClassifiedWaitEvents {
 				waitV2LogMessage := fmt.Sprintf(
 					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_event_type="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-					row.Schema.String, row.User.String, row.Host.String,
-					row.ThreadID.String, row.Digest.String,
-					row.StatementEventID.String, row.WaitEventID.String, row.WaitEndEventID.String,
-					row.WaitEventName.String, classifyMySQLWaitEventType(row.WaitEventName.String),
-					row.WaitObjectName.String, row.WaitObjectType.String, waitTime,
+					row.Schema.String,
+					row.User.String,
+					row.Host.String,
+					row.ThreadID.String,
+					row.Digest.String,
+					row.StatementEventID.String,
+					row.WaitEventID.String,
+					row.WaitEndEventID.String,
+					row.WaitEventName.String,
+					classifyMySQLWaitEventType(row.WaitEventName.String),
+					row.WaitObjectName.String,
+					row.WaitObjectType.String,
+					waitTime,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-					logging.LevelInfo, OP_WAIT_EVENT_V2, waitV2LogMessage,
+					logging.LevelInfo,
+					OP_WAIT_EVENT_V2,
+					waitV2LogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
 			} else {
 				waitLogMessage := fmt.Sprintf(
 					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
-					row.Schema.String, row.User.String, row.Host.String,
-					row.ThreadID.String, row.Digest.String,
-					row.StatementEventID.String, row.WaitEventID.String, row.WaitEndEventID.String,
-					row.WaitEventName.String, row.WaitObjectName.String, row.WaitObjectType.String, waitTime,
+					row.Schema.String,
+					row.User.String,
+					row.Host.String,
+					row.ThreadID.String,
+					row.Digest.String,
+					row.StatementEventID.String,
+					row.WaitEventID.String,
+					row.WaitEndEventID.String,
+					row.WaitEventName.String,
+					row.WaitObjectName.String,
+					row.WaitObjectType.String,
+					waitTime,
 				)
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-					logging.LevelInfo, OP_WAIT_EVENT, waitLogMessage,
+					logging.LevelInfo,
+					OP_WAIT_EVENT,
+					waitLogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
 			}
