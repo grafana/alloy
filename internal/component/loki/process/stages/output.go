@@ -19,7 +19,7 @@ var (
 // OutputConfig initializes a configuration stage which sets the log line to a
 // value from the extracted map.
 type OutputConfig struct {
-	Source string `alloy:"source,attr"`
+	Source string `alloy:"source,attr" json:"source"`
 }
 
 // newOutputStage creates a new outputStage

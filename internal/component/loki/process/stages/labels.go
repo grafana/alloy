@@ -23,8 +23,8 @@ const (
 
 // LabelsConfig is a set of labels to be extracted
 type LabelsConfig struct {
-	Values     map[string]*string `alloy:"values,attr"`
-	SourceType SourceType         `alloy:"source_type,attr,optional"`
+	Values     map[string]*string `alloy:"values,attr"                json:"values"`
+	SourceType SourceType         `alloy:"source_type,attr,optional"  json:"sourceType,omitempty"`
 }
 
 // validateLabelsConfig validates the Label stage configuration

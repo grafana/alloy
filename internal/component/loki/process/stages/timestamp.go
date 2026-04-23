@@ -45,11 +45,11 @@ var TimestampActionOnFailureOptions = []string{TimestampActionOnFailureSkip, Tim
 
 // TimestampConfig configures a processing stage for timestamp extraction.
 type TimestampConfig struct {
-	Source          string   `alloy:"source,attr"`
-	Format          string   `alloy:"format,attr"`
-	FallbackFormats []string `alloy:"fallback_formats,attr,optional"`
-	Location        *string  `alloy:"location,attr,optional"`
-	ActionOnFailure string   `alloy:"action_on_failure,attr,optional"`
+	Source          string   `alloy:"source,attr"                       json:"source"`
+	Format          string   `alloy:"format,attr"                       json:"format"`
+	FallbackFormats []string `alloy:"fallback_formats,attr,optional"    json:"fallbackFormats,omitempty"`
+	Location        *string  `alloy:"location,attr,optional"            json:"location,omitempty"`
+	ActionOnFailure string   `alloy:"action_on_failure,attr,optional"   json:"actionOnFailure,omitempty"`
 }
 
 type parser func(string) (time.Time, error)

@@ -14,8 +14,8 @@ import (
 )
 
 type StructuredMetadataConfig struct {
-	Values map[string]*string `alloy:"values,attr,optional"`
-	Regex  string             `alloy:"regex,attr,optional"`
+	Values map[string]*string `alloy:"values,attr,optional" json:"values,omitempty"`
+	Regex  string             `alloy:"regex,attr,optional"  json:"regex,omitempty"`
 }
 
 // validateStructuredMetadataConfig validates the structured metadata stage config.

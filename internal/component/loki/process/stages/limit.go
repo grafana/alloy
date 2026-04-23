@@ -24,11 +24,11 @@ const MinReasonableMaxDistinctLabels = 10000 // 80bytes per rate.Limiter ~ 1MiB 
 
 // LimitConfig sets up a Limit stage.
 type LimitConfig struct {
-	Rate              float64 `alloy:"rate,attr"`
-	Burst             int     `alloy:"burst,attr"`
-	Drop              bool    `alloy:"drop,attr,optional"`
-	ByLabelName       string  `alloy:"by_label_name,attr,optional"`
-	MaxDistinctLabels int     `alloy:"max_distinct_labels,attr,optional"`
+	Rate              float64 `alloy:"rate,attr"                        json:"rate"`
+	Burst             int     `alloy:"burst,attr"                       json:"burst"`
+	Drop              bool    `alloy:"drop,attr,optional"               json:"drop,omitempty"`
+	ByLabelName       string  `alloy:"by_label_name,attr,optional"      json:"byLabelName,omitempty"`
+	MaxDistinctLabels int     `alloy:"max_distinct_labels,attr,optional" json:"maxDistinctLabels,omitempty"`
 }
 
 func newLimitStage(logger log.Logger, cfg LimitConfig, registerer prometheus.Registerer) (Stage, error) {

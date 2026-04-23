@@ -16,36 +16,115 @@ import (
 // We define these as pointers types so we can use reflection to check that
 // exactly one is set.
 type StageConfig struct {
-	CRIConfig                    *CRIConfig                    `alloy:"cri,block,optional"`
-	DecolorizeConfig             *DecolorizeConfig             `alloy:"decolorize,block,optional"`
-	DockerConfig                 *DockerConfig                 `alloy:"docker,block,optional"`
-	DropConfig                   *DropConfig                   `alloy:"drop,block,optional"`
-	EventLogMessageConfig        *EventLogMessageConfig        `alloy:"eventlogmessage,block,optional"`
-	GeoIPConfig                  *GeoIPConfig                  `alloy:"geoip,block,optional"`
-	JSONConfig                   *JSONConfig                   `alloy:"json,block,optional"`
-	LabelAllowConfig             *LabelAllowConfig             `alloy:"label_keep,block,optional"`
-	LabelDropConfig              *LabelDropConfig              `alloy:"label_drop,block,optional"`
-	LabelsConfig                 *LabelsConfig                 `alloy:"labels,block,optional"`
-	LimitConfig                  *LimitConfig                  `alloy:"limit,block,optional"`
-	LogfmtConfig                 *LogfmtConfig                 `alloy:"logfmt,block,optional"`
-	LuhnFilterConfig             *LuhnFilterConfig             `alloy:"luhn,block,optional"`
-	MatchConfig                  *MatchConfig                  `alloy:"match,block,optional"`
-	MetricsConfig                *MetricsConfig                `alloy:"metrics,block,optional"`
-	MultilineConfig              *MultilineConfig              `alloy:"multiline,block,optional"`
-	OutputConfig                 *OutputConfig                 `alloy:"output,block,optional"`
-	PackConfig                   *PackConfig                   `alloy:"pack,block,optional"`
-	PatternConfig                *PatternConfig                `alloy:"pattern,block,optional"`
-	RegexConfig                  *RegexConfig                  `alloy:"regex,block,optional"`
-	ReplaceConfig                *ReplaceConfig                `alloy:"replace,block,optional"`
-	StaticLabelsConfig           *StaticLabelsConfig           `alloy:"static_labels,block,optional"`
-	StructuredMetadata           *StructuredMetadataConfig     `alloy:"structured_metadata,block,optional"`
-	StructuredMetadataDropConfig *StructuredMetadataDropConfig `alloy:"structured_metadata_drop,block,optional"`
-	SamplingConfig               *SamplingConfig               `alloy:"sampling,block,optional"`
-	TemplateConfig               *TemplateConfig               `alloy:"template,block,optional"`
-	TenantConfig                 *TenantConfig                 `alloy:"tenant,block,optional"`
-	TruncateConfig               *TruncateConfig               `alloy:"truncate,block,optional"`
-	TimestampConfig              *TimestampConfig              `alloy:"timestamp,block,optional"`
-	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"`
+	CRIConfig                    *CRIConfig                    `alloy:"cri,block,optional"                    json:"cri,omitempty"`
+	DecolorizeConfig             *DecolorizeConfig             `alloy:"decolorize,block,optional"             json:"decolorize,omitempty"`
+	DockerConfig                 *DockerConfig                 `alloy:"docker,block,optional"                 json:"docker,omitempty"`
+	DropConfig                   *DropConfig                   `alloy:"drop,block,optional"                   json:"drop,omitempty"`
+	EventLogMessageConfig        *EventLogMessageConfig        `alloy:"eventlogmessage,block,optional"        json:"eventlogmessage,omitempty"`
+	GeoIPConfig                  *GeoIPConfig                  `alloy:"geoip,block,optional"                  json:"geoip,omitempty"`
+	JSONConfig                   *JSONConfig                   `alloy:"json,block,optional"                   json:"json,omitempty"`
+	LabelAllowConfig             *LabelAllowConfig             `alloy:"label_keep,block,optional"             json:"label_keep,omitempty"`
+	LabelDropConfig              *LabelDropConfig              `alloy:"label_drop,block,optional"             json:"label_drop,omitempty"`
+	LabelsConfig                 *LabelsConfig                 `alloy:"labels,block,optional"                 json:"labels,omitempty"`
+	LimitConfig                  *LimitConfig                  `alloy:"limit,block,optional"                  json:"limit,omitempty"`
+	LogfmtConfig                 *LogfmtConfig                 `alloy:"logfmt,block,optional"                 json:"logfmt,omitempty"`
+	LuhnFilterConfig             *LuhnFilterConfig             `alloy:"luhn,block,optional"                   json:"luhn,omitempty"`
+	MatchConfig                  *MatchConfig                  `alloy:"match,block,optional"                  json:"match,omitempty"`
+	MetricsConfig                *MetricsConfig                `alloy:"metrics,block,optional"                json:"metrics,omitempty"`
+	MultilineConfig              *MultilineConfig              `alloy:"multiline,block,optional"              json:"multiline,omitempty"`
+	OutputConfig                 *OutputConfig                 `alloy:"output,block,optional"                 json:"output,omitempty"`
+	PackConfig                   *PackConfig                   `alloy:"pack,block,optional"                   json:"pack,omitempty"`
+	PatternConfig                *PatternConfig                `alloy:"pattern,block,optional"                json:"pattern,omitempty"`
+	RegexConfig                  *RegexConfig                  `alloy:"regex,block,optional"                  json:"regex,omitempty"`
+	ReplaceConfig                *ReplaceConfig                `alloy:"replace,block,optional"                json:"replace,omitempty"`
+	StaticLabelsConfig           *StaticLabelsConfig           `alloy:"static_labels,block,optional"          json:"static_labels,omitempty"`
+	StructuredMetadata           *StructuredMetadataConfig     `alloy:"structured_metadata,block,optional"    json:"structured_metadata,omitempty"`
+	StructuredMetadataDropConfig *StructuredMetadataDropConfig `alloy:"structured_metadata_drop,block,optional" json:"structured_metadata_drop,omitempty"`
+	SamplingConfig               *SamplingConfig               `alloy:"sampling,block,optional"               json:"sampling,omitempty"`
+	TemplateConfig               *TemplateConfig               `alloy:"template,block,optional"               json:"template,omitempty"`
+	TenantConfig                 *TenantConfig                 `alloy:"tenant,block,optional"                 json:"tenant,omitempty"`
+	TruncateConfig               *TruncateConfig               `alloy:"truncate,block,optional"               json:"truncate,omitempty"`
+	TimestampConfig              *TimestampConfig              `alloy:"timestamp,block,optional"              json:"timestamp,omitempty"`
+	WindowsEventConfig           *WindowsEventConfig           `alloy:"windowsevent,block,optional"           json:"windowsevent,omitempty"`
+}
+
+// PodLogsStageConfig defines a single processing stage for use in the PodLogs CRD.
+// It mirrors StageConfig but excludes stages that are incompatible with a shared
+// per-PodLogs pipeline:
+//   - multiline: log lines from different pods interleave in the shared pipeline,
+//     causing incorrect multi-line merging across pod boundaries.
+//   - windowsevent / eventlogmessage: not applicable to Linux pod logs.
+type PodLogsStageConfig struct {
+	CRIConfig                    *CRIConfig                    `json:"cri,omitempty"`
+	DecolorizeConfig             *DecolorizeConfig             `json:"decolorize,omitempty"`
+	DockerConfig                 *DockerConfig                 `json:"docker,omitempty"`
+	DropConfig                   *DropConfig                   `json:"drop,omitempty"`
+	GeoIPConfig                  *GeoIPConfig                  `json:"geoip,omitempty"`
+	JSONConfig                   *JSONConfig                   `json:"json,omitempty"`
+	LabelAllowConfig             *LabelAllowConfig             `json:"label_keep,omitempty"`
+	LabelDropConfig              *LabelDropConfig              `json:"label_drop,omitempty"`
+	LabelsConfig                 *LabelsConfig                 `json:"labels,omitempty"`
+	LimitConfig                  *LimitConfig                  `json:"limit,omitempty"`
+	LogfmtConfig                 *LogfmtConfig                 `json:"logfmt,omitempty"`
+	LuhnFilterConfig             *LuhnFilterConfig             `json:"luhn,omitempty"`
+	MatchConfig                  *MatchConfig                  `json:"match,omitempty"`
+	MetricsConfig                *MetricsConfig                `json:"metrics,omitempty"`
+	OutputConfig                 *OutputConfig                 `json:"output,omitempty"`
+	PackConfig                   *PackConfig                   `json:"pack,omitempty"`
+	PatternConfig                *PatternConfig                `json:"pattern,omitempty"`
+	RegexConfig                  *RegexConfig                  `json:"regex,omitempty"`
+	ReplaceConfig                *ReplaceConfig                `json:"replace,omitempty"`
+	SamplingConfig               *SamplingConfig               `json:"sampling,omitempty"`
+	StaticLabelsConfig           *StaticLabelsConfig           `json:"static_labels,omitempty"`
+	StructuredMetadata           *StructuredMetadataConfig     `json:"structured_metadata,omitempty"`
+	StructuredMetadataDropConfig *StructuredMetadataDropConfig `json:"structured_metadata_drop,omitempty"`
+	TemplateConfig               *TemplateConfig               `json:"template,omitempty"`
+	TenantConfig                 *TenantConfig                 `json:"tenant,omitempty"`
+	TimestampConfig              *TimestampConfig              `json:"timestamp,omitempty"`
+	TruncateConfig               *TruncateConfig               `json:"truncate,omitempty"`
+}
+
+// ToStageConfig converts a PodLogsStageConfig to the full StageConfig for use with NewPipeline.
+func (c PodLogsStageConfig) ToStageConfig() StageConfig {
+	return StageConfig{
+		CRIConfig:                    c.CRIConfig,
+		DecolorizeConfig:             c.DecolorizeConfig,
+		DockerConfig:                 c.DockerConfig,
+		DropConfig:                   c.DropConfig,
+		GeoIPConfig:                  c.GeoIPConfig,
+		JSONConfig:                   c.JSONConfig,
+		LabelAllowConfig:             c.LabelAllowConfig,
+		LabelDropConfig:              c.LabelDropConfig,
+		LabelsConfig:                 c.LabelsConfig,
+		LimitConfig:                  c.LimitConfig,
+		LogfmtConfig:                 c.LogfmtConfig,
+		LuhnFilterConfig:             c.LuhnFilterConfig,
+		MatchConfig:                  c.MatchConfig,
+		MetricsConfig:                c.MetricsConfig,
+		OutputConfig:                 c.OutputConfig,
+		PackConfig:                   c.PackConfig,
+		PatternConfig:                c.PatternConfig,
+		RegexConfig:                  c.RegexConfig,
+		ReplaceConfig:                c.ReplaceConfig,
+		SamplingConfig:               c.SamplingConfig,
+		StaticLabelsConfig:           c.StaticLabelsConfig,
+		StructuredMetadata:           c.StructuredMetadata,
+		StructuredMetadataDropConfig: c.StructuredMetadataDropConfig,
+		TemplateConfig:               c.TemplateConfig,
+		TenantConfig:                 c.TenantConfig,
+		TimestampConfig:              c.TimestampConfig,
+		TruncateConfig:               c.TruncateConfig,
+	}
+}
+
+// ConvertPodLogsStages converts a slice of PodLogsStageConfig to []StageConfig
+// for use with NewPipeline.
+func ConvertPodLogsStages(in []PodLogsStageConfig) []StageConfig {
+	out := make([]StageConfig, len(in))
+	for i, s := range in {
+		out[i] = s.ToStageConfig()
+	}
+	return out
 }
 
 // Pipeline pass down a log entry to each stage for mutation and/or label extraction.

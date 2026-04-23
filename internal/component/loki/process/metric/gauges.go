@@ -29,15 +29,15 @@ var DefaultGaugeConfig = GaugeConfig{
 // GaugeConfig defines a gauge metric whose value can go up or down.
 type GaugeConfig struct {
 	// Shared fields
-	Name        string        `alloy:"name,attr"`
-	Description string        `alloy:"description,attr,optional"`
-	Source      string        `alloy:"source,attr,optional"`
-	Prefix      string        `alloy:"prefix,attr,optional"`
-	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional"`
-	Value       string        `alloy:"value,attr,optional"`
+	Name        string        `alloy:"name,attr"                       json:"name"`
+	Description string        `alloy:"description,attr,optional"       json:"description,omitempty"`
+	Source      string        `alloy:"source,attr,optional"            json:"source,omitempty"`
+	Prefix      string        `alloy:"prefix,attr,optional"            json:"prefix,omitempty"`
+	MaxIdle     time.Duration `alloy:"max_idle_duration,attr,optional" json:"-"` // not supported in CRD: time.Duration is nanosecond int64 in JSON
+	Value       string        `alloy:"value,attr,optional"             json:"value,omitempty"`
 
 	// Gauge-specific fields
-	Action string `alloy:"action,attr"`
+	Action string `alloy:"action,attr" json:"action"`
 }
 
 // SetToDefault implements syntax.Defaulter.

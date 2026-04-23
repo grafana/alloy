@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/util/strutil"
@@ -15,9 +16,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	lokicommon "github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
+	"github.com/grafana/alloy/internal/featuregate"
 )
+
+// newTestReconciler creates a reconciler suitable for unit tests.
+// tailer and cluster are nil (not exercised by most tests).
+func newTestReconciler() *reconciler {
+	ch := make(chan lokicommon.Entry, 100)
+	return newReconciler(log.NewNopLogger(), nil, nil,
+		prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable, ch)
+}
 
 func TestBuildPodLogsTargetLabels(t *testing.T) {
 	tests := []struct {
@@ -177,7 +188,7 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 
 	// Create a reconciler. The tailer and cluster are not used by reconcilePodLogs,
 	// so we can pass nil.
-	r := newReconciler(log.NewNopLogger(), nil, nil)
+	r := newTestReconciler()
 
 	// Call reconcilePodLogs.
 	targets, _ := r.reconcilePodLogs(t.Context(), cl, podLogs)
@@ -391,7 +402,7 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 			}).Build()
 
 			// Create a reconciler and configure node filtering
-			r := newReconciler(log.NewNopLogger(), nil, nil)
+			r := newTestReconciler()
 			r.UpdateNodeFilter(tt.nodeFilterEnabled, tt.nodeFilterName)
 
 			// Call reconcilePodLogs.
@@ -434,7 +445,7 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 }
 
 func TestNodeFilterConfiguration(t *testing.T) {
-	r := newReconciler(log.NewNopLogger(), nil, nil)
+	r := newTestReconciler()
 
 	// Test initial state
 	if r.getNodeFilterName() != "" {
@@ -469,7 +480,7 @@ func TestNodeFilterConfiguration(t *testing.T) {
 
 func TestPreserveDiscoveredLabels_MetaLabelPreservation(t *testing.T) {
 	// Create a reconciler with preserve discovered labels enabled
-	r := newReconciler(log.NewNopLogger(), nil, nil)
+	r := newTestReconciler()
 	r.UpdatePreserveMetaLabels(true)
 
 	// Verify the preserveMetaLabels field is set correctly

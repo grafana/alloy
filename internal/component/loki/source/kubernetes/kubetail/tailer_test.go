@@ -170,7 +170,7 @@ func Test_processLogStream(t *testing.T) {
 			lset, err := PrepareLabelsWithMetaPreservation(lset, "test", tc.preserveMetaLabels)
 			require.NoError(t, err)
 
-			target := NewTarget(lset, lset, tc.preserveMetaLabels)
+			target := NewTarget(lset, lset, tc.preserveMetaLabels, nil)
 			opts := &Options{
 				Positions: &mockPositions{},
 			}
@@ -199,7 +199,7 @@ func Test_processLogStream(t *testing.T) {
 
 			// Process the log stream in a goroutine
 			go func() {
-				_ = tailer.processLogStream(ctx, stream, handler, tc.lastReadTime, positionsEnt, calc)
+				_ = tailer.processLogStream(ctx, stream, handler, tc.lastReadTime, positionsEnt, calc, func() {})
 			}()
 
 			// Collect all entries
