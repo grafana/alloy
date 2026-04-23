@@ -6,185 +6,104 @@ Requirement-driven Kubernetes integration tests with a shared KinD lifecycle.
 
 - Test discovery from `tests/*/requirements.yaml`
 - Per-run dependency union planning (`mimir`, `loki`)
-- Single-test and multi-test execution from one runner
+- Single-test and multi-test execution from a single Make target
 - Eventual assertions against Mimir and Loki APIs
 
 ## Architecture
 
-The harness runs as three cooperating processes. Understanding the split
-makes it easier to reason about flags, context propagation, and where new
-code belongs.
+Three cooperating processes:
 
-1. **Runner** (`runner/main.go`). A small Cobra CLI used locally and in CI.
-   Its only job is to discover selected tests, resolve them to paths and
-   names, and invoke `go test` on the harness package with the right build
-   tags and internal `-k8s.v2.*` flags. It never talks to Kubernetes.
-
-2. **Harness** (`./...`, built as `go test` with both build tags set). A
-   single `TestMain` that:
-   - plans selected tests and dependency union,
-   - creates (or reuses) a KinD cluster,
-   - installs shared dependencies (Loki/Mimir) in fixed namespaces,
-   - runs each selected test as a parallel subtest of `TestIntegrationV2`,
-     each subtest installing Alloy via Helm into a per-test namespace and
-     applying test-specific workload manifests.
-
-3. **Per-test assertion binary** (`tests/<name>/assert_test.go`). Each test
-   ships its assertions in its own package, which the harness invokes as
-   another `go test` subprocess (see `runGoTestPackage`). That gives every
-   test its own flag namespace and repro command, and isolates imports so
-   backends can evolve independently.
+1. **Harness** (`go test` on the `k8s-v2` package). Plans selected tests and
+   dependencies, creates (or reuses) a KinD cluster, installs only the
+   dependencies the selection requires, then runs each selected test as a
+   parallel `TestIntegrationV2/<name>` subtest.
+2. **Per-test assertion binary** (`tests/<name>/assert_test.go`). Each test
+   ships its assertions in its own Go package; the harness invokes them as
+   another `go test` subprocess so flags stay scoped and a failing test
+   prints an exact repro command.
+3. **`make integration-test-k8s-v2`**. Thin Makefile target that invokes
+   `go test` with the right build tags and translates env vars (`TEST`,
+   `KEEP`, `REUSE`, ...) into harness flags.
 
 Shared dependency metadata (namespace, service, readiness path, manifest
-file) lives once in `internal/backendspec` and is consumed by both the
-installer in `internal/deps` and the port-forward helper in
-`internal/assert`. Adding a new backend means one new `backendspec.Spec`
-plus one embedded manifest under `internal/deps/manifests/`.
+file) lives once in `internal/deps` as `deps.Spec`, and is consumed by both
+the installer and the port-forward helper in `internal/assert`. Adding a
+new backend is one `Spec` value plus one embedded manifest.
 
 ## Test layout
 
 Each test directory contains:
 
-- `requirements.yaml` for dependency declarations
-- `helm-alloy-values.yaml` as test-specific Alloy Helm values
-- `workload.yaml` for test workload manifests
-- `assert_test.go` for backend assertions
+- `requirements.yaml` — declares which backend(s) the test needs (`loki`,
+  `mimir`, ...). Only declared backends are installed for runs that select
+  the test.
+- `helm-alloy-values.yaml` — Alloy Helm values; installed per-test into its
+  own namespace.
+- `workload.yaml` — test-specific resources (generators, services, ...).
+- `assert_test.go` — Go assertions against the live backend.
 
-Shared dependency manifests are stored in:
-
-- `internal/deps/manifests/mimir.yaml`
-- `internal/deps/manifests/loki.yaml`
-
-They are loaded by the dependency installers via `go:embed`.
+Assets support `${TEST_ID}` and `${TEST_NAMESPACE}` placeholders for
+per-test isolation. `${TEST_NAMESPACE}` is used as both kubernetes namespace
+and Helm release name.
 
 ## Commands
 
-Run all k8s-v2 tests:
+Run everything:
 
 ```sh
 make integration-test-k8s-v2
-# equivalent:
-go run ./integration-tests/k8s-v2/runner --all
 ```
 
-The runner automatically sets required Go build tags:
-
-- `alloyintegrationtests`
-- `k8sv2integrationtests`
-
-So manual runs stay ergonomic; you do not need to type tags yourself when using the runner.
-
-Run selected tests manually (exact folder names):
+Run a subset (comma-separated):
 
 ```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir --test logs-loki
+make integration-test-k8s-v2 TEST=logs-loki
+make integration-test-k8s-v2 TEST=logs-loki,metrics-mimir
 ```
 
-`--all` and `--test` are mutually exclusive. Use one or the other.
-
-Keep the KinD cluster for debugging:
+Keep the cluster and installed dependencies for debugging (implies both):
 
 ```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster
+make integration-test-k8s-v2 TEST=logs-loki KEEP=1
 ```
 
-Keep cluster and dependencies untouched:
+Iterate against the same cluster. After `KEEP=1`, the harness prints the
+cluster name; pass it back:
 
 ```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir --keep-cluster --keep-deps
+make integration-test-k8s-v2 TEST=logs-loki REUSE=alloy-it-abc12345 REUSE_DEPS=1
 ```
 
-Reuse an existing Kind cluster:
-
-```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-it-dev
-```
-
-Reuse an existing Kind cluster and skip dependency install/uninstall:
-
-```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir --reuse-cluster alloy-it-dev --reuse-deps
-```
-
-Pass extra `go test` flags:
-
-```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir -- --count=1
-```
-
-If you run `go test` directly (without the runner), include both tags or the k8s-v2 tests are intentionally excluded:
-
-```sh
-go test -tags "alloyintegrationtests k8sv2integrationtests" ./integration-tests/k8s-v2
-```
-
-Pass test folder paths (relative to your current directory):
-
-```sh
-go run ./integration-tests/k8s-v2/runner --test integration-tests/k8s-v2/tests/logs-loki
-```
-
-Each `--test` path is validated:
-
-- the folder must exist,
-- it must map to a discovered k8s-v2 test folder.
-
-Each selected test must include `helm-alloy-values.yaml`; the harness installs Alloy from the local chart at `operations/helm/charts/alloy` in namespace `alloy`.
-
-Tune setup/readiness timeouts:
-
-```sh
-go run ./integration-tests/k8s-v2/runner --all --setup-timeout 30m --readiness-timeout 5m
-```
-
-Control concurrent test execution (default is 4):
-
-```sh
-go run ./integration-tests/k8s-v2/runner --all --parallel 4
-```
-
-Enable debug logging (dependency apply/wait/readiness traces):
-
-```sh
-go run ./integration-tests/k8s-v2/runner --test metrics-mimir --debug
-```
-
-Run tests against a locally built Alloy image (loaded into Kind and forced in Helm):
+Run against a locally built Alloy image (digest pins are rejected; use
+`repo:tag`):
 
 ```sh
 make ALLOY_IMAGE=alloy-ci:dev alloy-image
-go run ./integration-tests/k8s-v2/runner --all --alloy-image alloy-ci:dev --alloy-image-pull-policy IfNotPresent
+make integration-test-k8s-v2 \
+  ALLOY_IMAGE=alloy-ci:dev \
+  ALLOY_IMAGE_PULL_POLICY=IfNotPresent
 ```
 
-`--alloy-image` must be a `repository:tag` reference. Digest pins
-(`repo@sha256:...`) are rejected because Helm `--set-string image.tag` is
-not compatible with digest-based references.
-
-For interactive cluster tooling, use `--keep-cluster` and copy the printed `KUBECONFIG` export command from runner output.
-
-Use the Go wrapper directly:
+Pass extra tokens straight to `go test -args`:
 
 ```sh
-go run ./integration-tests/k8s-v2/runner --help
-go run ./integration-tests/k8s-v2/runner list
-go run ./integration-tests/k8s-v2/runner --all
-go run ./integration-tests/k8s-v2/runner --test logs-loki -- --count=1
+make integration-test-k8s-v2 K8S_V2_ARGS="-k8s.v2.parallel=1 -k8s.v2.debug=true"
+```
+
+### Running without the Makefile
+
+```sh
+go test -v -tags "alloyintegrationtests k8sv2integrationtests" \
+  -timeout 30m ./integration-tests/k8s-v2 \
+  -args -k8s.v2.tests=logs-loki
 ```
 
 ## Notes
 
-- The runner creates a KinD cluster through e2e-framework and installs only selected dependencies.
-- On child test failure, output includes a deterministic repro command.
-- The wrapper auto-discovers tests from `tests/*/requirements.yaml` so new tests do not require wrapper code changes.
-- Run `go run ./integration-tests/k8s-v2/runner --help` for full Cobra help and flags.
-- The runner always prints resolved test absolute paths and the exact `go test` command before execution.
-- The harness prints high-level lifecycle steps (cluster setup, dependency readiness, test execution, and cleanup).
-- High-level lifecycle step logs include durations to help identify slow areas.
-- `--reuse-cluster` reuses an existing cluster by name. Reused clusters are left untouched by cleanup.
-- `--reuse-deps` skips dependency install/uninstall when reusing a cluster; no dependency validation is performed.
-- Selected tests run in parallel by default (`--parallel`, default `4`) with isolated per-test namespace/release names.
-- `--alloy-image` loads a local image into Kind and overrides Helm `image.repository`/`image.tag` so assertions run against the PR artifact instead of a released image.
-- k8s-v2 tests are tag-gated so generic `go test ./...` jobs do not run them.
-- Dependencies are shared in fixed namespaces: Loki=`loki`, Mimir=`mimir`.
-- Runtime isolation uses a per-test `test_id` label and a per-test namespace/release derived from the test name.
-- Test assets support `${TEST_ID}` and `${TEST_NAMESPACE}` placeholders. `${TEST_NAMESPACE}` is used for both namespace and Helm release.
+- k8s-v2 tests are tag-gated; generic `go test ./...` does not run them.
+- Dependencies share a fixed namespace each (Loki=`loki`, Mimir=`mimir`) and
+  run once per invocation. Tests share them via the assert helpers.
+- Runtime isolation uses a per-test `test_id` label and per-test
+  namespace/release derived from the test name with a random suffix.
+- Selected tests run in parallel by default (`-k8s.v2.parallel`, default 4).
+- Child test failures print a deterministic `go test ...` repro command.

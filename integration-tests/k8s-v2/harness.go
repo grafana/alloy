@@ -28,7 +28,7 @@ type harness struct {
 	log *slog.Logger
 
 	selectedTests []planner.TestCase
-	requiredDeps  []string
+	requiredSpecs []deps.Spec
 
 	clusterName      string
 	kubeconfig       string
@@ -37,7 +37,7 @@ type harness struct {
 	hasCluster       bool
 	installedDeps    bool
 
-	registry deps.Registry
+	depsEnv  deps.Env
 	provider kindProvider
 }
 
@@ -52,11 +52,10 @@ func newHarness() *harness {
 	logger := logging.Logger()
 	return &harness{
 		log: logger,
-		registry: deps.NewDefaultRegistry(deps.Env{
+		depsEnv: deps.Env{
 			Logger:           logger.With("component", "deps"),
 			ReadinessTimeout: *readinessTimeout,
-			Debug:            *debugFlag,
-		}),
+		},
 	}
 }
 
@@ -66,7 +65,6 @@ func (h *harness) run(m *testing.M) int {
 		h.log.Error("invalid flags", "error", err)
 		return 1
 	}
-
 	if err := h.plan(); err != nil {
 		h.log.Error("planning failed", "error", err)
 		return 1
@@ -86,53 +84,12 @@ func (h *harness) run(m *testing.M) int {
 		}
 		h.clusterName = name
 	}
-	provider := kind.NewProvider().WithName(h.clusterName).SetDefaults()
-	h.provider = provider
+	h.provider = kind.NewProvider().WithName(h.clusterName).SetDefaults()
 
 	var cleanupOnce sync.Once
 	cleanup := func(exitCode int, reason string) int {
 		cleanupOnce.Do(func() {
-			if reason != "" {
-				h.log.Error("cleanup reason", "message", reason)
-			}
-			if h.installedDeps && !*keepDepsFlag && !*reuseDepsFlag {
-				start := time.Now()
-				h.log.Info("uninstalling dependencies")
-				if err := h.registry.Uninstall(context.Background(), h.kubeconfig, h.requiredDeps); err != nil {
-					h.log.Warn("dependency uninstall failed", "error", err)
-					if exitCode == 0 {
-						exitCode = 1
-					}
-				}
-				h.log.Info("uninstall dependencies finished", "duration", formatStepDuration(time.Since(start)))
-			} else if h.installedDeps {
-				h.log.Info("keeping installed dependencies untouched")
-			}
-
-			if h.hasCluster && !*keepClusterFlag && !h.reusedCluster {
-				start := time.Now()
-				h.log.Info("destroying kind cluster", "name", h.clusterName)
-				if err := h.provider.Destroy(context.Background()); err != nil {
-					h.log.Warn("kind cluster destroy failed", "error", err)
-					if exitCode == 0 {
-						exitCode = 1
-					}
-				}
-				h.log.Info("kind cluster destroy finished", "duration", formatStepDuration(time.Since(start)))
-			} else if h.hasCluster {
-				h.log.Info("keeping kind cluster for debugging", "name", h.clusterName, "kubeconfig", h.kubeconfig)
-			}
-
-			// Remove kubeconfig temp file written for reused clusters. The
-			// e2e-framework provider owns its own kubeconfig lifecycle for
-			// created clusters; only the reuse path creates a temp file we
-			// have to clean up ourselves. Skip when --keep-cluster is set so
-			// users can still interact with the reused cluster after the run.
-			if h.kubeconfigIsTemp && h.kubeconfig != "" && !*keepClusterFlag {
-				if err := os.Remove(h.kubeconfig); err != nil && !os.IsNotExist(err) {
-					h.log.Warn("remove temp kubeconfig failed", "path", h.kubeconfig, "error", err)
-				}
-			}
+			exitCode = h.doCleanup(exitCode, reason)
 		})
 		return exitCode
 	}
@@ -142,13 +99,13 @@ func (h *harness) run(m *testing.M) int {
 	defer signal.Stop(sigCh)
 	go func() {
 		sig := <-sigCh
-		code := cleanup(130, fmt.Sprintf("k8s-v2 received %s, starting cleanup", sig.String()))
-		os.Exit(code)
+		os.Exit(cleanup(130, fmt.Sprintf("k8s-v2 received %s, starting cleanup", sig.String())))
 	}()
 
 	if err := h.prepareCluster(ctx); err != nil {
 		return cleanup(1, err.Error())
 	}
+	h.depsEnv.Kubeconfig = h.kubeconfig
 	if err := h.installDependencies(ctx); err != nil {
 		return cleanup(1, err.Error())
 	}
@@ -163,6 +120,45 @@ func (h *harness) run(m *testing.M) int {
 	code = cleanup(code, "")
 	h.log.Info("harness finished", "exit_code", code)
 	return code
+}
+
+func (h *harness) doCleanup(exitCode int, reason string) int {
+	if reason != "" {
+		h.log.Error("cleanup reason", "message", reason)
+	}
+	if h.installedDeps && !*keepDepsFlag && !*reuseDepsFlag {
+		h.log.Info("uninstalling dependencies")
+		if err := deps.Uninstall(context.Background(), h.depsEnv, h.requiredSpecs); err != nil {
+			h.log.Warn("dependency uninstall failed", "error", err)
+			if exitCode == 0 {
+				exitCode = 1
+			}
+		}
+	} else if h.installedDeps {
+		h.log.Info("keeping installed dependencies untouched")
+	}
+
+	if h.hasCluster && !*keepClusterFlag && !h.reusedCluster {
+		h.log.Info("destroying kind cluster", "name", h.clusterName)
+		if err := h.provider.Destroy(context.Background()); err != nil {
+			h.log.Warn("kind cluster destroy failed", "error", err)
+			if exitCode == 0 {
+				exitCode = 1
+			}
+		}
+	} else if h.hasCluster {
+		h.log.Info("keeping kind cluster for debugging", "name", h.clusterName, "kubeconfig", h.kubeconfig)
+	}
+
+	// Only the reuse path writes a temp kubeconfig we own; the e2e-framework
+	// provider manages its own for clusters it created. Keep the file when
+	// --keep-cluster is set so the user can still reach the cluster.
+	if h.kubeconfigIsTemp && h.kubeconfig != "" && !*keepClusterFlag {
+		if err := os.Remove(h.kubeconfig); err != nil && !os.IsNotExist(err) {
+			h.log.Warn("remove temp kubeconfig failed", "path", h.kubeconfig, "error", err)
+		}
+	}
+	return exitCode
 }
 
 func (h *harness) validateFlags() error {
@@ -182,28 +178,28 @@ func (h *harness) plan() error {
 	if err != nil {
 		return fmt.Errorf("k8s-v2 discover failed: %w", err)
 	}
-
 	h.selectedTests, err = planner.SelectTests(allTests, *selectedTestsFlag)
 	if err != nil {
 		return fmt.Errorf("k8s-v2 selection failed: %w", err)
 	}
-	h.requiredDeps = planner.RequirementsSet(h.selectedTests)
 
-	if *reuseDepsFlag {
-		h.log.Info("skipping dependency validation because reuse-deps is enabled")
-	} else if err := h.registry.Validate(h.requiredDeps); err != nil {
-		return fmt.Errorf("k8s-v2 plan failed: %w", err)
+	depNames := planner.RequirementsSet(h.selectedTests)
+	if !*reuseDepsFlag {
+		specs, err := deps.Resolve(depNames)
+		if err != nil {
+			return fmt.Errorf("k8s-v2 plan failed: %w", err)
+		}
+		h.requiredSpecs = specs
 	}
 
 	h.log.Info("selected tests", "tests", strings.Join(testNames(h.selectedTests), ", "))
-	h.log.Info("required dependencies", "dependencies", strings.Join(h.requiredDeps, ", "))
+	h.log.Info("required dependencies", "dependencies", strings.Join(depNames, ", "))
 	h.log.Info("timeouts", "setup_timeout", *setupTimeoutFlag, "readiness_timeout", *readinessTimeout)
 	return nil
 }
 
 func (h *harness) prepareCluster(ctx context.Context) error {
 	if h.reusedCluster {
-		start := time.Now()
 		h.log.Info("reusing kind cluster", "name", h.clusterName)
 		exists, err := kindClusterExists(ctx, h.clusterName)
 		if err != nil {
@@ -219,35 +215,23 @@ func (h *harness) prepareCluster(ctx context.Context) error {
 		h.kubeconfig = kcfg
 		h.kubeconfigIsTemp = true
 		h.hasCluster = true
-		h.log.Info("reuse kind cluster finished", "duration", formatStepDuration(time.Since(start)))
 	} else {
-		start := time.Now()
 		h.log.Info("creating kind cluster", "name", h.clusterName)
-		createdKubeconfig, err := h.provider.Create(ctx)
+		kcfg, err := h.provider.Create(ctx)
 		if err != nil {
 			return fmt.Errorf("create kind cluster failed: %w", err)
 		}
 		h.hasCluster = true
-		h.kubeconfig = createdKubeconfig
+		h.kubeconfig = kcfg
 		if h.kubeconfig == "" {
 			h.kubeconfig = h.provider.GetKubeconfig()
 		}
-		h.log.Info("create kind cluster finished", "duration", formatStepDuration(time.Since(start)))
 	}
-
 	if h.kubeconfig == "" {
 		return fmt.Errorf("empty kubeconfig from e2e-framework kind provider")
 	}
+	h.log.Info("cluster ready", "kubeconfig", h.kubeconfig)
 
-	h.log.Info("cluster kubeconfig", "path", h.kubeconfig)
-	if h.reusedCluster {
-		h.log.Info("reused cluster will be left untouched by cleanup")
-	} else if !*keepClusterFlag {
-		h.log.Info("cluster will be cleaned up after tests")
-	}
-	if *keepDepsFlag {
-		h.log.Info("dependencies will be kept after tests")
-	}
 	if *alloyImageFlag != "" {
 		if err := loadImageIntoKind(ctx, h.clusterName, *alloyImageFlag); err != nil {
 			return fmt.Errorf("load Alloy image %q into kind cluster %s failed: %w", *alloyImageFlag, h.clusterName, err)
@@ -264,8 +248,8 @@ func (h *harness) installDependencies(ctx context.Context) error {
 	}
 	start := time.Now()
 	h.log.Info("installing dependencies")
-	if err := h.registry.Install(ctx, h.kubeconfig, h.requiredDeps); err != nil {
-		return fmt.Errorf("install dependencies %v failed: %w", h.requiredDeps, err)
+	if err := deps.Install(ctx, h.depsEnv, h.requiredSpecs); err != nil {
+		return fmt.Errorf("install dependencies failed: %w", err)
 	}
 	h.installedDeps = true
 	h.log.Info("install dependencies finished", "duration", formatStepDuration(time.Since(start)))

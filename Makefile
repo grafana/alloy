@@ -207,9 +207,27 @@ integration-test-k8s: alloy-image
 	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
 	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="gore2regex alloyintegrationtests" -timeout 30m ./...
 
+# k8s-v2 integration tests. Variables (all optional):
+#   TEST=logs-loki[,metrics-mimir]     run a subset instead of all
+#   KEEP=1                             leave the kind cluster and deps running
+#   REUSE=<cluster-name>               reuse an existing kind cluster; pair with REUSE_DEPS=1 to skip dep install
+#   REUSE_DEPS=1                       skip dep install/uninstall (requires REUSE)
+#   ALLOY_IMAGE=<repo:tag>             load a local image into kind and force it in Helm
+#   ALLOY_IMAGE_PULL_POLICY=<policy>   Helm image.pullPolicy override (requires ALLOY_IMAGE)
+#   K8S_V2_ARGS="..."                  extra go test -args tokens appended verbatim
 .PHONY: integration-test-k8s-v2
 integration-test-k8s-v2:
-	$(GO_ENV) go run ./integration-tests/k8s-v2/runner --all
+	@set -e; \
+	ARGS="-k8s.v2.tests=$${TEST:-all}"; \
+	[ "$$KEEP" = "1" ] && ARGS="$$ARGS -k8s.v2.keep-cluster=true -k8s.v2.keep-deps=true" || true; \
+	[ -n "$$REUSE" ] && ARGS="$$ARGS -k8s.v2.reuse-cluster=$$REUSE" || true; \
+	[ "$$REUSE_DEPS" = "1" ] && ARGS="$$ARGS -k8s.v2.reuse-deps=true" || true; \
+	[ -n "$$ALLOY_IMAGE" ] && ARGS="$$ARGS -k8s.v2.alloy-image=$$ALLOY_IMAGE" || true; \
+	[ -n "$$ALLOY_IMAGE_PULL_POLICY" ] && ARGS="$$ARGS -k8s.v2.alloy-image-pull-policy=$$ALLOY_IMAGE_PULL_POLICY" || true; \
+	$(GO_ENV) go test -v -count=1 -timeout 30m \
+		-tags "alloyintegrationtests k8sv2integrationtests" \
+		./integration-tests/k8s-v2 \
+		-args $$ARGS $$K8S_V2_ARGS
 
 # Windows service integration test. Runs only on Windows with Administrator privileges.
 # Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.

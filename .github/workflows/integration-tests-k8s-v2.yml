@@ -24,8 +24,7 @@ jobs:
     - name: Build Alloy image from PR commit
       run: make ALLOY_IMAGE=alloy-ci:${{ github.sha }} alloy-image
     - name: Run k8s-v2 integration tests
-      run: |
-        go run ./integration-tests/k8s-v2/runner \
-          --all \
-          --alloy-image alloy-ci:${{ github.sha }} \
-          --alloy-image-pull-policy IfNotPresent
+      env:
+        ALLOY_IMAGE: alloy-ci:${{ github.sha }}
+        ALLOY_IMAGE_PULL_POLICY: IfNotPresent
+      run: make integration-test-k8s-v2
