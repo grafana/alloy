@@ -1,0 +1,67 @@
+name: Tag extension/alloyengine on Alloy release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Alloy release tag to mirror (e.g. v1.15.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  tag-alloyengine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get GitHub app secrets 🔐
+        id: get-secrets
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        with:
+          export_env: false
+          repo_secrets: |
+            ALLOYBOT_APP_ID=alloybot:app_id
+            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
+
+      - name: Generate token 🔐
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+        id: app-token
+        with:
+          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
+          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
+          owner: grafana
+          repositories: alloy
+
+      - name: Create extension/alloyengine tag
+        env:
+          ALLOY_TAG: ${{ inputs.tag || github.ref_name }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          ALLOY_REF=$(gh api repos/grafana/alloy/git/ref/tags/"${ALLOY_TAG}")
+          ALLOY_SHA=$(echo "$ALLOY_REF" | jq -r '.object.sha')
+          ALLOY_TYPE=$(echo "$ALLOY_REF" | jq -r '.object.type')
+
+          # Dereference annotated/signed tags to get the underlying commit SHA
+          if [ "$ALLOY_TYPE" = "tag" ]; then
+            ALLOY_SHA=$(gh api repos/grafana/alloy/git/tags/"${ALLOY_SHA}" --jq '.object.sha')
+          fi
+
+          TAG_NAME="extension/alloyengine/${ALLOY_TAG}"
+
+          # Create annotated tag object (mirrors CreateTag in tools/release)
+          TAG_OBJECT_SHA=$(gh api repos/grafana/alloy/git/tags \
+            -f tag="${TAG_NAME}" \
+            -f message="extension/alloyengine ${ALLOY_TAG}" \
+            -f object="${ALLOY_SHA}" \
+            -f type="commit" \
+            --jq '.sha')
+
+          # Create the ref pointing to the tag object
+          gh api repos/grafana/alloy/git/refs \
+            -f ref="refs/tags/${TAG_NAME}" \
+            -f sha="${TAG_OBJECT_SHA}"
