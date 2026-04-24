@@ -206,6 +206,14 @@ func (ctrl *eventController) handleEvent(ctx context.Context, event *corev1.Even
 		return nil
 	}
 
+	// Some events legitimately lack a populated InvolvedObject (e.g. certain
+	// cluster-scoped or admission events). Skip these silently rather than
+	// treating them as errors, which would spam the logs.
+	if event.InvolvedObject.Name == "" {
+		level.Debug(ctrl.opts.Log).Log("msg", "skipping event with no involved object", "uid", event.UID, "reason", event.Reason)
+		return nil
+	}
+
 	lset, msg, err := ctrl.parseEvent(event)
 	if err != nil {
 		return err
