@@ -115,16 +115,13 @@ func (nopSlogHandler) WithGroup(string) slog.Handler { return nopSlogHandler{} }
 
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {
-	l.bufferMut.Lock()
-
 	switch o.Format {
 	case FormatLogfmt, FormatJSON:
-		l.hasLogFormat = true
 	default:
-		l.bufferMut.Unlock()
 		return fmt.Errorf("unrecognized log format %q", o.Format)
 	}
 
+	l.bufferMut.Lock()
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
 
@@ -132,7 +129,6 @@ func (l *Logger) Update(o Options) error {
 	if len(o.WriteTo) > 0 {
 		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
 	}
-
 	l.bufferMut.Unlock()
 
 	// Build deferred handlers outside bufferMut to avoid a deadlock: concurrent
@@ -143,11 +139,14 @@ func (l *Logger) Update(o Options) error {
 		l.deferredSlog.buildHandlers(nil)
 	}
 
-	// Re-acquire to drain and clear the buffer now that handlers are built.
+	// Flip hasLogFormat and drain/replay while holding bufferMut so new Log()
+	// calls block on RLock until replay finishes — preserving the original
+	// guarantee that buffered logs are emitted before newly-arriving ones.
 	l.bufferMut.Lock()
+	defer l.bufferMut.Unlock()
+	l.hasLogFormat = true
 	buffer := l.buffer
 	l.buffer = nil
-	l.bufferMut.Unlock()
 
 	for _, bufferedLogChunk := range buffer {
 		if len(bufferedLogChunk.kvps) > 0 {
@@ -155,7 +154,7 @@ func (l *Logger) Update(o Options) error {
 			// because the components with the receivers are not running yet
 			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
 		} else {
-			// We now can check to see if our buffered log is at the right level.
+			// We can now check whether our buffered log is at the right level.
 			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
 				// These will always be valid due to the build handlers call above.
 				_ = bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)

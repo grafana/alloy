@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -206,6 +207,7 @@ func TestUpdateConcurrentHandle(t *testing.T) {
 				return
 			default:
 				_ = child.Handle(context.Background(), rec)
+				runtime.Gosched()
 			}
 		}
 	}()
@@ -238,7 +240,27 @@ func TestUpdateNoLostBufferedMessages(t *testing.T) {
 		require.NoError(t, child.Handle(context.Background(), rec))
 	}
 
+	// Hammer Handle from a separate goroutine so that calls are in-flight while
+	// Update releases bufferMut to run buildHandlers.
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		rec := slog.NewRecord(time.Now(), slog.LevelInfo, "concurrent", 0)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				_ = child.Handle(context.Background(), rec)
+				runtime.Gosched()
+			}
+		}
+	}()
+
 	require.NoError(t, l.Update(logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt}))
+	close(stop)
+	<-done
 
 	for i := range 10 {
 		require.Contains(t, buf.String(), fmt.Sprintf("buffered-%d", i), "buffered message %d was lost", i)
