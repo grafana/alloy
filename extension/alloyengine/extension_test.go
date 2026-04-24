@@ -14,6 +14,31 @@ import (
 	"go.uber.org/zap"
 )
 
+func shutdownExtensionWithTestTimeout(e *alloyEngineExtension) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return e.Shutdown(ctx)
+}
+
+func requireRunExited(t *testing.T, e *alloyEngineExtension, wait, tick time.Duration) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		select {
+		case <-e.runExited:
+			return true
+		default:
+			return false
+		}
+	}, wait, tick, "run command did not exit in time")
+}
+
+func requireShutdownAndTerminated(t *testing.T, e *alloyEngineExtension) {
+	t.Helper()
+	require.NoError(t, shutdownExtensionWithTestTimeout(e))
+	requireRunExited(t, e, time.Second, 25*time.Millisecond)
+	require.Equal(t, stateTerminated, e.getState())
+}
+
 // defaultTestConfig returns a default test configuration.
 func defaultTestConfig() *Config {
 	return &Config{
@@ -29,6 +54,7 @@ func newTestExtension(t *testing.T, factory func() *cobra.Command, config *Confi
 	t.Helper()
 	e := newAlloyEngineExtension(config, component.TelemetrySettings{Logger: zap.NewNop()})
 	e.runCommandFactory = factory
+	t.Cleanup(func() { _ = shutdownExtensionWithTestTimeout(e) })
 	return e
 }
 
@@ -118,18 +144,7 @@ func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
 	require.NoError(t, e.Ready())
 	require.NoError(t, e.NotReady())
 
-	require.NoError(t, e.Shutdown(t.Context()))
-
-	// Verify the run goroutine has exited and state is terminated.
-	require.Eventually(t, func() bool {
-		select {
-		case <-e.runExited:
-			return true
-		default:
-			return false
-		}
-	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
-	require.Equal(t, stateTerminated, e.getState())
+	requireShutdownAndTerminated(t, e)
 }
 
 func TestLifecycle_StartTwiceFails(t *testing.T) {
@@ -137,7 +152,7 @@ func TestLifecycle_StartTwiceFails(t *testing.T) {
 	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 	err := e.Start(t.Context(), componenttest.NewNopHost())
 	require.Error(t, err)
-	require.NoError(t, e.Shutdown(t.Context())) //
+	requireShutdownAndTerminated(t, e)
 }
 
 func TestLifecycle_SecondInstanceFailsWhileFirstRunning(t *testing.T) {
@@ -150,11 +165,6 @@ func TestLifecycle_SecondInstanceFailsWhileFirstRunning(t *testing.T) {
 	err := ext2.Start(t.Context(), componenttest.NewNopHost())
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "only one alloyengine extension can be active per process")
-
-	// Cleanup: shutdown first extension so slot is released
-	shutdownCtx, cancel := context.WithTimeout(t.Context(), 2*time.Second)
-	t.Cleanup(cancel)
-	require.NoError(t, ext1.Shutdown(shutdownCtx))
 }
 
 func TestLifecycle_NotReadyWhenNotStarted(t *testing.T) {
@@ -173,18 +183,7 @@ func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 	// We should still be in stateStarting since the ready callback was never invoked.
 	require.Equal(t, stateStarting, e.getState())
 
-	require.NoError(t, e.Shutdown(t.Context()))
-
-	// Verify the run goroutine has exited and state is terminated.
-	require.Eventually(t, func() bool {
-		select {
-		case <-e.runExited:
-			return true
-		default:
-			return false
-		}
-	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
-	require.Equal(t, stateTerminated, e.getState())
+	requireShutdownAndTerminated(t, e)
 }
 
 func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
@@ -194,18 +193,7 @@ func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
 
-	require.NoError(t, e.Shutdown(t.Context()))
-
-	// The internal goroutine should have transitioned to terminated even on error during shutdown.
-	require.Eventually(t, func() bool {
-		select {
-		case <-e.runExited:
-			return true
-		default:
-			return false
-		}
-	}, 1*time.Second, 25*time.Millisecond, "run command did not exit in time")
-	require.Equal(t, stateTerminated, e.getState())
+	requireShutdownAndTerminated(t, e)
 }
 
 func TestLifecycle_RunSucceedsAfterRetries(t *testing.T) {
@@ -216,15 +204,7 @@ func TestLifecycle_RunSucceedsAfterRetries(t *testing.T) {
 
 	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 
-	// Wait for the command to eventually exit
-	require.Eventually(t, func() bool {
-		select {
-		case <-e.runExited:
-			return true
-		default:
-			return false
-		}
-	}, 10*time.Second, 100*time.Millisecond, "extension did not exit in time")
+	requireRunExited(t, e, 10*time.Second, 100*time.Millisecond)
 
 	// Verify it succeeded after 3 attempts (2 failures + 1 success)
 	require.Equal(t, 3, state.attempts)
