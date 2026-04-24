@@ -9,8 +9,9 @@ import (
 	"testing"
 	"time"
 
-	herokuencoding "github.com/heroku/x/logplex/encoding"
 	"github.com/stretchr/testify/require"
+
+	herokuencoding "github.com/grafana/alloy/internal/third_party/heroku/x/logplex/encoding"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
 )
