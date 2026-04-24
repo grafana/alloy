@@ -33,6 +33,7 @@ func TestHealthCheck(t *testing.T) {
 		collector, err := NewHealthCheck(HealthCheckArguments{
 			DB:              db,
 			CollectInterval: 100 * time.Millisecond,
+			ExcludeSchemas:  nil,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -122,7 +123,7 @@ func TestHealthCheck(t *testing.T) {
 				name:             "no rows in events statements digest",
 				failingCheckName: "PerformanceSchemaHasRows",
 				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest`).
+					mock.ExpectQuery(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`).
 						WillReturnRows(
 							sqlmock.NewRows([]string{"COUNT(*)"}).
 								AddRow(0),
@@ -149,6 +150,7 @@ func TestHealthCheck(t *testing.T) {
 				collector, err := NewHealthCheck(HealthCheckArguments{
 					DB:              db,
 					CollectInterval: 100 * time.Millisecond,
+					ExcludeSchemas:  nil,
 					EntryHandler:    lokiClient,
 					Logger:          log.NewLogfmtLogger(os.Stderr),
 				})
@@ -214,7 +216,7 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 		{
 			name: "PerformanceSchemaHasRows",
 			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest`).
+				mock.ExpectQuery(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"COUNT(*)"}).
 							AddRow(100),
