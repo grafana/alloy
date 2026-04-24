@@ -10,6 +10,7 @@ on:
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
       - '.github/workflows/release-publish-alloy-artifacts.yml'
+      - '.github/workflows/publish-alloy-windows.yml'
   pull_request:
     paths:
       - 'Dockerfile.windows'
@@ -18,7 +19,7 @@ on:
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
       - '.github/workflows/release-publish-alloy-artifacts.yml'
-
+      - '.github/workflows/publish-alloy-windows.yml'
 permissions:
   contents: read
 

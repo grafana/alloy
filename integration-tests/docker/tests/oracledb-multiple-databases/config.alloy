@@ -1,0 +1,42 @@
+// NOTE: Do not add a second prometheus.exporter.oracledb component to this file.
+// The upstream oracledb-exporter library uses global variables internally, so having
+// more than one instance of the exporter in the same Alloy process can cause subtle
+// bugs such as metric collisions and non-deterministic label values.
+
+prometheus.exporter.oracledb "oracledb_multi" {
+	custom_metrics = ["/etc/alloy/custom-metrics.toml"]
+
+	database {
+		name              = "oracledb_1"
+		connection_string = "oracle://system:testpassword@oracledb1:1521/FREEPDB1"
+	}
+
+	database {
+		name              = "oracledb_2"
+		connection_string = "oracle://system:testpassword@oracledb2:1521/FREEPDB1"
+	}
+}
+
+prometheus.scrape "oracledb_multi" {
+	targets         = prometheus.exporter.oracledb.oracledb_multi.targets
+	forward_to      = [prometheus.remote_write.oracledb_multi_metrics.receiver]
+	scrape_interval = "60s"
+	scrape_timeout  = "55s"
+}
+
+prometheus.remote_write "oracledb_multi_metrics" {
+	endpoint {
+		url = "http://mimir:9009/api/v1/push"
+
+		metadata_config {
+			send_interval = "1s"
+		}
+
+		queue_config {
+			max_samples_per_send = 100
+		}
+	}
+	external_labels = {
+		test_name = "oracledb_multi_metrics",
+	}
+}

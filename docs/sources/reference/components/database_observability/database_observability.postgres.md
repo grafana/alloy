@@ -34,8 +34,8 @@ You can use the following arguments with `database_observability.postgres`:
 | `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
 | `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
 | `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             |         | no       |
-| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 |         | no       |
+| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
 
@@ -140,6 +140,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 | `exclude_current_user`    | `bool`     | Do not collect query samples for current database user.       | `true`  | no       |
+| `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
 
 ### `schema_details`
 

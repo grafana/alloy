@@ -46,74 +46,68 @@ type httpClientOptions struct {
 	secretManager     commonconfig.SecretManager
 }
 
-// HTTPClientOption defines an option that can be applied to the HTTP client.
-type HTTPClientOption interface {
-	applyToHTTPClientOptions(options *httpClientOptions)
+// HTTPClientOption applies a setting to both the local httpClientOptions and
+// carries the equivalent upstream commonconfig.HTTPClientOption so it can be
+// forwarded to upstream calls (e.g. NewOAuth2RoundTripper) without conversion.
+type HTTPClientOption struct {
+	applyLocal func(*httpClientOptions)
+	upstream   commonconfig.HTTPClientOption
 }
 
-type httpClientOptionFunc func(options *httpClientOptions)
-
-func (f httpClientOptionFunc) applyToHTTPClientOptions(options *httpClientOptions) {
-	f(options)
-}
-
-// WithDialContextFunc allows you to override the func gets used for the dialing.
-// The default is `net.Dialer.DialContext`.
 func WithDialContextFunc(fn commonconfig.DialContextFunc) HTTPClientOption {
-	return httpClientOptionFunc(func(opts *httpClientOptions) {
-		opts.dialContextFunc = fn
-	})
+	return HTTPClientOption{
+		applyLocal: func(opts *httpClientOptions) { opts.dialContextFunc = fn },
+		upstream:   commonconfig.WithDialContextFunc(fn),
+	}
 }
 
-// WithNewTLSConfigFunc allows you to override the func that creates the TLS config
-// from the prometheus http config.
-// The default is `NewTLSConfigWithContext`.
 func WithNewTLSConfigFunc(newTLSConfigFunc commonconfig.NewTLSConfigFunc) HTTPClientOption {
-	return httpClientOptionFunc(func(opts *httpClientOptions) {
-		opts.newTLSConfigFunc = newTLSConfigFunc
-	})
+	return HTTPClientOption{
+		applyLocal: func(opts *httpClientOptions) { opts.newTLSConfigFunc = newTLSConfigFunc },
+		upstream:   commonconfig.WithNewTLSConfigFunc(newTLSConfigFunc),
+	}
 }
 
-// WithKeepAlivesDisabled allows to disable HTTP keepalive.
 func WithKeepAlivesDisabled() HTTPClientOption {
-	return httpClientOptionFunc(func(opts *httpClientOptions) {
-		opts.keepAlivesEnabled = false
-	})
+	return HTTPClientOption{
+		applyLocal: func(opts *httpClientOptions) { opts.keepAlivesEnabled = false },
+		upstream:   commonconfig.WithKeepAlivesDisabled(),
+	}
 }
 
-// WithHTTP2Disabled allows to disable HTTP2.
 func WithHTTP2Disabled() HTTPClientOption {
-	return httpClientOptionFunc(func(opts *httpClientOptions) {
-		opts.http2Enabled = false
-	})
+	return HTTPClientOption{
+		applyLocal: func(opts *httpClientOptions) { opts.http2Enabled = false },
+		upstream:   commonconfig.WithHTTP2Disabled(),
+	}
 }
 
-// WithIdleConnTimeout allows setting the idle connection timeout.
 func WithIdleConnTimeout(timeout time.Duration) HTTPClientOption {
-	return httpClientOptionFunc(func(opts *httpClientOptions) {
-		opts.idleConnTimeout = timeout
-	})
+	return HTTPClientOption{
+		applyLocal: func(opts *httpClientOptions) { opts.idleConnTimeout = timeout },
+		upstream:   commonconfig.WithIdleConnTimeout(timeout),
+	}
 }
 
-// WithUserAgent allows setting the user agent.
 func WithUserAgent(ua string) HTTPClientOption {
-	return httpClientOptionFunc(func(opts *httpClientOptions) {
-		opts.userAgent = ua
-	})
+	return HTTPClientOption{
+		applyLocal: func(opts *httpClientOptions) { opts.userAgent = ua },
+		upstream:   commonconfig.WithUserAgent(ua),
+	}
 }
 
-// WithHost allows setting the host header.
 func WithHost(host string) HTTPClientOption {
-	return httpClientOptionFunc(func(opts *httpClientOptions) {
-		opts.host = host
-	})
+	return HTTPClientOption{
+		applyLocal: func(opts *httpClientOptions) { opts.host = host },
+		upstream:   commonconfig.WithHost(host),
+	}
 }
 
-// WithSecretManager allows setting the secret manager.
 func WithSecretManager(sm commonconfig.SecretManager) HTTPClientOption {
-	return httpClientOptionFunc(func(opts *httpClientOptions) {
-		opts.secretManager = sm
-	})
+	return HTTPClientOption{
+		applyLocal: func(opts *httpClientOptions) { opts.secretManager = sm },
+		upstream:   commonconfig.WithSecretManager(sm),
+	}
 }
 
 const (
@@ -167,8 +161,12 @@ func NewRoundTripperFromConfig(cfg commonconfig.HTTPClientConfig, name string, o
 // The name is used as go-conntrack metric label.
 func newRoundTripperFromConfigWithContext(ctx context.Context, cfg HTTPClientConfigMirror, name string, optFuncs ...HTTPClientOption) (http.RoundTripper, error) {
 	opts := defaultHTTPClientOptions
+	upstreamOpts := make([]commonconfig.HTTPClientOption, 0, len(optFuncs))
 	for _, opt := range optFuncs {
-		opt.applyToHTTPClientOptions(&opts)
+		opt.applyLocal(&opts)
+		if opt.upstream != nil {
+			upstreamOpts = append(upstreamOpts, opt.upstream)
+		}
 	}
 
 	var dialContext func(ctx context.Context, network, addr string) (net.Conn, error)
@@ -267,10 +265,7 @@ func newRoundTripperFromConfigWithContext(ctx context.Context, cfg HTTPClientCon
 					return nil, fmt.Errorf("unable to use client secret: %w", err)
 				}
 			}
-			rt, err = newOAuth2RoundTripper(oauthCredential, cfg.OAuth2, rt, &opts)
-			if err != nil {
-				return nil, fmt.Errorf("unable to create OAuth2RoundTripper: %w", err)
-			}
+			rt = commonconfig.NewOAuth2RoundTripper(oauthCredential, cfg.OAuth2, rt, upstreamOpts...)
 		}
 
 		if cfg.HTTPHeaders != nil {

@@ -35,6 +35,10 @@
         {
           "type": "generic",
           "path": "collector/VERSION"
+        },
+        {
+          "type": "generic",
+          "path": "extension/alloyengine/go.mod"
         }
       ]
     }

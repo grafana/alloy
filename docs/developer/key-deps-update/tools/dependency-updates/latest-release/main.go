@@ -65,6 +65,8 @@ type goListModuleJSON struct {
 	Versions []string  `json:"Versions"`
 }
 
+const NA = "N/A"
+
 func parseGoVersionsOutput(output string) []string {
 	parts := strings.Fields(strings.TrimSpace(output))
 	if len(parts) <= 1 {
@@ -157,7 +159,7 @@ func parseGitHubReleasesOutput(output string) []Release {
 			title := strings.TrimSpace(parts[0])
 			releaseType := strings.TrimSpace(parts[1])
 			tag := strings.TrimSpace(parts[2])
-			published := "N/A"
+			published := NA
 			if len(parts) >= 4 {
 				published = strings.TrimSpace(parts[3])
 			}
@@ -197,7 +199,7 @@ func parseGitTagsOutput(output string) []Release {
 		parts := strings.Split(line, "\t")
 		if len(parts) >= 1 {
 			tag := strings.TrimSpace(parts[0])
-			published := "N/A"
+			published := NA
 			if len(parts) >= 2 {
 				published = strings.TrimSpace(parts[1])
 			}
@@ -253,7 +255,7 @@ func normalizeVersion(version string) string {
 
 func latestGoModuleVersion(goVersions []VersionInfo) string {
 	if len(goVersions) == 0 {
-		return "N/A"
+		return NA
 	}
 
 	for _, vInfo := range goVersions {
@@ -401,7 +403,7 @@ func main() {
 				latestVersion = releases[0].Tag
 			}
 		} else {
-			latestVersion = "N/A"
+			latestVersion = NA
 		}
 
 	case GitTag:
@@ -417,7 +419,7 @@ func main() {
 		if len(releases) > 0 {
 			latestVersion = releases[0].Tag
 		} else {
-			latestVersion = "N/A"
+			latestVersion = NA
 		}
 	}
 
