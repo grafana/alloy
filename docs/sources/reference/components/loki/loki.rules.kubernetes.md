@@ -65,6 +65,9 @@ You can use the following arguments with `loki.rules.kubernetes`:
 * [`oauth2`][oauth2] block
 
  [arguments]: #arguments
+ [authorization]: #authorization
+ [basic_auth]: #basic_auth
+ [oauth2]: #oauth2
 
 If no `tenant_id` is provided, the component assumes that the Loki instance at `address` is running in single-tenant mode and no `X-Scope-OrgID` header is sent.
 
@@ -146,6 +149,8 @@ The following arguments are supported:
 
 When the `match_labels` argument is empty, all resources are matched.
 
+You can also use the `match_expression` block to define more complex label expressions.
+
 ### `match_expression`
 
 The `match_expression` block describes a Kubernetes label match expression for rule or namespace discovery.
@@ -160,9 +165,9 @@ The following arguments are supported:
 
 The `operator` argument should be one of the following strings:
 
-* `"in"`
-* `"notin"`
-* `"exists"`
+* `"In"`
+* `"NotIn"`
+* `"Exists"`
 
 ### `oauth2`
 
