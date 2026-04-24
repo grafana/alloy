@@ -3117,12 +3117,12 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, 1e12,
 		).RowsWillBeClosed().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
-				"statements.END_EVENT_ID", "statements.DIGEST", "statements.TIMER_END",
+				"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
 				"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
 				"statements.ROWS_AFFECTED", "statements.ERRORS",
 				"waits.event_id", "waits.end_event_id", "waits.event_name",
@@ -3130,7 +3130,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 				"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
 			}).AddRow(
-				"some_schema", "890", "123", "234", "some_digest",
+				"some_schema", "890", "123", "234", "some_digest", "some_sql_text",
 				"70000000", "20000000", "5", "5", "0", "0",
 				"124", "124", "wait/io/file/innodb/innodb_data_file",
 				"wait_object_name", "wait_object_type", "100000000",
@@ -3181,12 +3181,12 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, 1e12,
 		).RowsWillBeClosed().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
-				"statements.END_EVENT_ID", "statements.DIGEST", "statements.TIMER_END",
+				"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
 				"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
 				"statements.ROWS_AFFECTED", "statements.ERRORS",
 				"waits.event_id", "waits.end_event_id", "waits.event_name",
@@ -3194,7 +3194,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 				"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
 			}).AddRow(
-				"some_schema", "890", "123", "234", "some_digest",
+				"some_schema", "890", "123", "234", "some_digest", "some_sql_text",
 				"70000000", "20000000", "5", "5", "0", "0",
 				"124", "124", "wait/io/file/innodb/innodb_data_file",
 				"wait_object_name", "wait_object_type", "100000000",
