@@ -122,6 +122,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 	t, err := sql_exporter.NewTarget(
 		"mssqlintegration",
 		c.ConnectionName,
+		"",
 		string(c.ConnectionString),
 		[]*config.CollectorConfig{
 			&collectorConfig,
