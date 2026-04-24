@@ -231,6 +231,7 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 		ExposedPorts: exposedPorts,
 		WaitingFor:   wait.ForListeningPort(natPort),
 		Cmd:          cmd,
+		Env:          cfg.Container.Environment,
 		HostConfigModifier: func(hc *container.HostConfig) {
 			hc.PortBindings = portBindings
 			hc.Mounts = append(hc.Mounts, mounts...)
