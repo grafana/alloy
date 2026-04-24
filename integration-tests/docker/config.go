@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 // TestConfig is used by tests to describe special setup requirements.
 type TestConfig struct {
 	Container            ContainerConfig             `yaml:"alloy_container"`
@@ -28,6 +30,8 @@ type ContainerConfig struct {
 	SecurityOpt []string `yaml:"security_opts"`
 	// PIDMode is the PID namespace to use for the container.
 	PIDMode string `yaml:"pid_mode"`
+	// Environment is passed to the container as KEY=value entries.
+	Environment map[string]string `yaml:"environment"`
 }
 
 // AdditionalContainerConfig is used to configure additional containers used for the test.
@@ -42,6 +46,14 @@ type AdditionalContainerConfig struct {
 	Command []string `yaml:"command"`
 	// Environment is passed to the container as KEY=value entries (Docker -e).
 	Environment map[string]string `yaml:"environment"`
+	// If a startup healthcheck is set, the test will wait until the container reports healthy.
+	StartupHealthcheck *AdditionalContainerHealthcheck `yaml:"startup_healthcheck,omitempty"`
+}
+
+// AdditionalContainerHealthcheck maps to Docker's healthcheck on the container config.
+type AdditionalContainerHealthcheck struct {
+	Test     []string      `yaml:"test"`
+	Interval time.Duration `yaml:"interval,omitempty"`
 }
 
 // AdditionalContainerBuildConfig is used to build an additional container image.

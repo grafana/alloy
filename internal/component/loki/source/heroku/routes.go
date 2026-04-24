@@ -8,13 +8,13 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
-	herokuEncoding "github.com/heroku/x/logplex/encoding"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source"
+	herokuEncoding "github.com/grafana/alloy/internal/third_party/heroku/x/logplex/encoding"
 )
 
 const (

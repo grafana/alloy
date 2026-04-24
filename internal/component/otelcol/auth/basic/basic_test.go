@@ -167,12 +167,12 @@ func TestClientAuthWithCredentialFiles(t *testing.T) {
 	passwordFile := createTempCredentialFile(t, "password", clientAuthPassword)
 
 	testCfg := fmt.Sprintf(`
-		username = "%s"
-		password = "%s"
+		username = %q
+		password = %q
 
 		client_auth {
-			username_file = "%s"
-			password_file = "%s"
+			username_file = %q
+			password_file = %q
 		}
 	`, actualUsername, actualPasswordSHA512, usernameFile, passwordFile)
 

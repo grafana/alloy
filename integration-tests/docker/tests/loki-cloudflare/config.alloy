@@ -1,0 +1,37 @@
+loki.source.cloudflare "test" {
+	api_token = "test-token"
+	zone_id   = "test-zone-id"
+	workers   = 1
+	pull_range = "1m"
+
+	labels = {
+		"job" = "cloudflare",
+	}
+
+	forward_to = [loki.relabel.test.receiver]
+}
+
+loki.relabel "test" {
+	forward_to = [loki.process.test.receiver]
+
+	rule {
+		source_labels = ["job"]
+		target_label  = "service_name"
+	}
+}
+
+loki.process "test" {
+	stage.static_labels {
+		values = {
+			test_name = "lokicloudflare",
+		}
+	}
+
+	forward_to = [loki.write.test.receiver]
+}
+
+loki.write "test" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}
