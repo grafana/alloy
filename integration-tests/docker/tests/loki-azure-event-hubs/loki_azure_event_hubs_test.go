@@ -8,13 +8,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
 )
@@ -28,28 +28,18 @@ const (
 )
 
 func TestLokiAzureEventHubs(t *testing.T) {
-	producer, err := newProducer()
+	producer, err := newProducer(t.Context())
 	require.NoError(t, err)
 	defer func() { require.NoError(t, producer.Close()) }()
 
-	var (
-		wg   sync.WaitGroup
-		errs = make([]error, len(topics))
-	)
-
-	for i, tp := range topics {
-		wg.Go(func() { errs[i] = sendMessages(producer, tp, messagesPerTopic) })
+	var g errgroup.Group
+	for _, tp := range topics {
+		g.Go(func() error { return sendMessages(producer, tp, messagesPerTopic) })
 	}
+	require.NoError(t, g.Wait())
 
-	wg.Wait()
-	for _, err := range errs {
-		require.NoError(t, err)
-	}
-
-	var (
-		total      = messagesPerTopic * len(topics)
-		assertions = make([]common.ExpectedLogResult, 0, len(topics))
-	)
+	total := messagesPerTopic * len(topics)
+	assertions := make([]common.ExpectedLogResult, 0, len(topics))
 
 	for _, tp := range topics {
 		assertions = append(assertions, common.ExpectedLogResult{
@@ -67,7 +57,7 @@ func TestLokiAzureEventHubs(t *testing.T) {
 	)
 }
 
-func newProducer() (sarama.SyncProducer, error) {
+func newProducer(ctx context.Context) (sarama.SyncProducer, error) {
 	caBytes, err := os.ReadFile(caPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CA cert at %q: %w", caPath, err)
@@ -87,7 +77,7 @@ func newProducer() (sarama.SyncProducer, error) {
 	cfg.Net.TLS.Enable = true
 	cfg.Net.TLS.Config = &tls.Config{RootCAs: pool}
 
-	bk := backoff.New(context.Background(), backoff.Config{
+	bk := backoff.New(ctx, backoff.Config{
 		MinBackoff: 50 * time.Millisecond,
 		MaxBackoff: 5 * time.Second,
 		MaxRetries: 10,
