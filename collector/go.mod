@@ -5,7 +5,7 @@ module github.com/grafana/alloy/otel_engine
 go 1.26.2
 
 require (
-	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
+	github.com/grafana/alloy v1.15.0
 	github.com/grafana/alloy/extension/alloyengine v0.1.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.147.0
@@ -585,7 +585,6 @@ require (
 	github.com/hashicorp/vault/api/auth/userpass v0.9.0 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb // indirect
-	github.com/heroku/x v0.5.2 // indirect
 	github.com/hetznercloud/hcloud-go/v2 v2.36.0 // indirect
 	github.com/hodgesds/perf-utils v0.7.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect

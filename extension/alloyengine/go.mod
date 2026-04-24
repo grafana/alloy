@@ -7,7 +7,7 @@ replace github.com/grafana/alloy => ../..
 replace github.com/grafana/alloy/syntax => ../../syntax
 
 require (
-	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
+	github.com/grafana/alloy v1.15.0 // x-release-please-version
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.53.0
@@ -502,7 +502,6 @@ require (
 	github.com/hashicorp/vault/api/auth/userpass v0.9.0 // indirect
 	github.com/hashicorp/vic v1.5.1-0.20190403131502-bbfe86ec9443 // indirect
 	github.com/hectane/go-acl v0.0.0-20230122075934-ca0b05cb1adb // indirect
-	github.com/heroku/x v0.5.2 // indirect
 	github.com/hetznercloud/hcloud-go/v2 v2.36.0 // indirect
 	github.com/hodgesds/perf-utils v0.7.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
