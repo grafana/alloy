@@ -133,12 +133,13 @@ type LocksArguments struct {
 }
 
 type QuerySamplesArguments struct {
-	CollectInterval             time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
-	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
-	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
-	SampleMinDuration           time.Duration `alloy:"sample_min_duration,attr,optional"`
-	WaitEventMinDuration        time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
+	AutoEnableSetupConsumers      bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
+	SetupConsumersCheckInterval   time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
+	SampleMinDuration             time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration          time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	EnablePreClassifiedWaitEvents bool          `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -631,18 +632,19 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                          c.dbConnection,
-			EngineVersion:               parsedEngineVersion,
-			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
-			ExcludeSchemas:              c.args.ExcludeSchemas,
-			EntryHandler:                entryHandler,
-			Logger:                      c.opts.Logger,
-			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
-			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
-			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
-			SampleMinDuration:           c.args.QuerySamplesArguments.SampleMinDuration,
-			WaitEventMinDuration:        c.args.QuerySamplesArguments.WaitEventMinDuration,
-			WaitEventCounter:            curriedCounter,
+			DB:                            c.dbConnection,
+			EngineVersion:                 parsedEngineVersion,
+			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
+			ExcludeSchemas:                c.args.ExcludeSchemas,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySamplesArguments.DisableQueryRedaction,
+			AutoEnableSetupConsumers:      c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
+			SetupConsumersCheckInterval:   c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			SampleMinDuration:             c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:          c.args.QuerySamplesArguments.WaitEventMinDuration,
+			WaitEventCounter:              curriedCounter,
+			EnablePreClassifiedWaitEvents: c.args.QuerySamplesArguments.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
