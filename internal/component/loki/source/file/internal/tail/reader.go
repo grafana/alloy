@@ -21,7 +21,7 @@ const defaultBufSize = 4096
 
 // newReader creates a new reader that is used to read from file.
 // It is important that the provided file is positioned at the start of the file.
-func newReader(logger log.Logger, f *os.File, offset int64, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
+func newReader(logger log.Logger, f *os.File, offset int64, maxLineSize int, enc encoding.Encoding, compression string, startFromEnd bool) (*reader, error) {
 	rr, err := newReaderAt(f, compression, 0)
 	if err != nil {
 		return nil, err
@@ -62,20 +62,22 @@ func newReader(logger log.Logger, f *os.File, offset int64, enc encoding.Encodin
 	}
 
 	return &reader{
-		pos:     offset,
-		br:      bufio.NewReader(rr),
-		decoder: decoder,
-		nl:      nl,
-		lastNl:  nl[len(nl)-1],
-		cr:      cr,
-		pending: make([]byte, 0, defaultBufSize),
+		br:          bufio.NewReader(rr),
+		pos:         offset,
+		pending:     make([]byte, 0, defaultBufSize),
+		maxLineSize: maxLineSize,
+		decoder:     decoder,
+		nl:          nl,
+		lastNl:      nl[len(nl)-1],
+		cr:          cr,
 	}, nil
 }
 
 type reader struct {
-	pos     int64
-	br      *bufio.Reader
-	pending []byte
+	br          *bufio.Reader
+	pos         int64
+	pending     []byte
+	maxLineSize int
 
 	compression string
 	decoder     *encoding.Decoder
@@ -88,6 +90,10 @@ type reader struct {
 // next reads and returns the next complete line from the file.
 // It will return EOF if there is no more data to read.
 func (r *reader) next() (string, error) {
+	if line, ok := r.consumeLine(); ok {
+		return r.decode(line)
+	}
+
 	for {
 		// Read more data up until the last byte of nl.
 		chunk, err := r.br.ReadSlice(r.lastNl)
@@ -137,21 +143,58 @@ func (r *reader) decode(line []byte) (string, error) {
 // consumeLine checks pending for the delimiter; if found, it splits
 // pending into line and remainder.
 func (r *reader) consumeLine() ([]byte, bool) {
-	// Check if pending contains a full line.
-	i := bytes.Index(r.pending, r.nl)
-	if i < 0 {
+	// If we have no pending data we need to read more.
+	if len(r.pending) == 0 {
 		return nil, false
 	}
 
-	// Extract everything up until newline.
-	line := r.pending[:i]
+	i := bytes.Index(r.pending, r.nl)
 
-	// Reset pending. We never buffer beyond newline so it is safe to reset.
-	r.pending = r.pending[:0]
+	// If we have a full line buffered within maxLineSize plus the optional carriage
+	// return bytes, emit the full line instead of splitting it into a boundary chunk.
+	if i >= 0 && r.fitsMaxLineSize(r.pending[:i], true) {
+		// Extract everything up until newline.
+		line := r.pending[:i]
 
-	// Advance the position on bytes we have consumed as a full line.
-	r.pos += int64(len(line) + len(r.nl))
-	return line, true
+		// Reset pending. We never buffer beyond newline so it is safe to reset.
+		r.pending = r.pending[:0]
+
+		// Advance the position on bytes we have consumed.
+		r.pos += int64(len(line) + len(r.nl))
+		return line, true
+	}
+
+	// If we have buffered over maxLineSize we emit it as a line and advance position.
+	// Do not include trailing CR bytes here, without a confirmed newline they are
+	// still part of the buffered data and may be followed by more content.
+	if !r.fitsMaxLineSize(r.pending, false) {
+		// Here we need to copy the bytes because we reuse pending between calls.
+		partial := make([]byte, r.maxLineSize)
+		copy(partial, r.pending[:r.maxLineSize])
+
+		// Copy remaning bytes to the beginning of the buffer.
+		n := copy(r.pending, r.pending[r.maxLineSize:])
+		r.pending = r.pending[:n]
+
+		// Advance the position on the partial line we have consumed.
+		r.pos += int64(len(partial))
+		return partial, true
+	}
+
+	return nil, false
+}
+
+func (r *reader) fitsMaxLineSize(line []byte, includeCr bool) bool {
+	if r.maxLineSize <= 0 {
+		return true
+	}
+
+	maxLineSize := r.maxLineSize
+	if includeCr && bytes.HasSuffix(line, r.cr) {
+		maxLineSize += len(r.cr)
+	}
+
+	return len(line) <= maxLineSize
 }
 
 // position returns the byte offset for completed lines,

@@ -52,6 +52,70 @@ func TestFile(t *testing.T) {
 		verifyResult(t, file, &Line{Text: "world", Offset: 4116}, nil)
 	})
 
+	t.Run("splits oversized line", func(t *testing.T) {
+		name := createFile(t, "split-max-line-size", "abcdefghij\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:    name,
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 8}, nil)
+		verifyResult(t, file, &Line{Text: "ij", Offset: 11}, nil)
+	})
+
+	t.Run("does not emit empty line when newline lands on split boundary", func(t *testing.T) {
+		name := createFile(t, "split-max-line-size-boundary", "abcdefgh\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:    name,
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 9}, nil)
+	})
+
+	t.Run("does not emit empty line when newline lands on split boundary with cr", func(t *testing.T) {
+		name := createFile(t, "split-max-line-size-boundary", "abcdefgh\r\n")
+		defer removeFile(t, name)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:    name,
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 10}, nil)
+	})
+
+	t.Run("splits oversized compressed final line", func(t *testing.T) {
+		fileName := createCompressedFile(t, "split-max-line-size.gz", "gz", strings.NewReader("abcdefghij"))
+		defer removeFile(t, fileName)
+
+		file, err := NewFile(log.NewNopLogger(), &Config{
+			Filename:    fileName,
+			Compression: "gz",
+			MaxLineSize: 4,
+		})
+		require.NoError(t, err)
+		defer file.Stop()
+
+		verifyResult(t, file, &Line{Text: "abcd", Offset: 4}, nil)
+		verifyResult(t, file, &Line{Text: "efgh", Offset: 8}, nil)
+		verifyResult(t, file, &Line{Text: "ij", Offset: 10}, nil)
+		verifyResult(t, file, nil, io.EOF)
+	})
+
 	t.Run("read", func(t *testing.T) {
 		name := createFile(t, "read", "hello\nworld\ntest\n")
 		defer removeFile(t, name)
