@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.2](https://github.com/grafana/alloy/compare/v1.15.1...v1.15.2) (2026-04-24)
+
+
+### Bug Fixes 🐛
+
+* **documentation:** Fix documentation for loki.rules.kubernetes [backport] ([#6121](https://github.com/grafana/alloy/issues/6121)) ([805430a](https://github.com/grafana/alloy/commit/805430a1406f116e738f70cd743a52b9af8e818e))
+
 ## [1.15.1](https://github.com/grafana/alloy/compare/v1.15.0...v1.15.1) (2026-04-13)
 
 
