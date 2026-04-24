@@ -12,7 +12,7 @@ title: loki.source.api
 
 # `loki.source.api`
 
-`loki.source.api` receives log entries over HTTP and forwards them to other `loki.*` components.
+`loki.source.api` receives log entries over HTTP and gRPC and forwards them to other `loki.*` components.
 
 The HTTP API exposed is compatible with [Loki push API][loki-push-api] and the `logproto` format.
 This means that other [`loki.write`][loki.write] components can be used as a client and send requests to `loki.source.api` which enables using {{< param "PRODUCT_NAME" >}} as a proxy for logs.
@@ -71,13 +71,20 @@ You can use the following blocks with `loki.source.api`:
 
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
+| [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
+| `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
 [http]: #http
+[grpc]: #grpc
 [tls]: #tls
 
 {{< /docs/alloy-config >}}
+
+### `grpc`
+
+{{< docs/shared lookup="reference/components/loki-server-grpc.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `http`
 
@@ -85,7 +92,7 @@ You can use the following blocks with `loki.source.api`:
 
 ### `tls`
 
-The `tls` block configures TLS for the HTTP server.
+The `tls` block configures TLS for the HTTP and gRPC servers.
 
 {{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
