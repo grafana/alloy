@@ -1,10 +1,17 @@
 services:
   cert-init:
-    image: alpine/openssl:latest
+    # Reuse the kafka-eh image — it already bundles openssl, so we avoid pulling
+    # a second base image. Runs as root so it can write to a freshly-bind-mounted
+    # /certs dir; the script chowns outputs back to uid 1000 (kafka appuser,
+    # typical host user) before exiting.
+    image: apache/kafka:latest@sha256:9516fb7634bad307d17c33b589fde9023003b0cb761374f500002b980a3149b9
+    user: "0:0"
     restart: "no"
     entrypoint: ["sh", "/gen-certs.sh"]
     volumes:
       - ./gen-certs.sh:/gen-certs.sh:ro
+      - ./kafka_server_jaas.conf:/input/kafka_server_jaas.conf:ro
+      - ./keystore.creds:/input/keystore.creds:ro
       - ./certs:/certs
 
   kafka-eh:
@@ -59,9 +66,7 @@ services:
       KAFKA_NUM_PARTITIONS: 3
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     volumes:
-      - ./certs:/etc/kafka/secrets
-      - ./kafka_server_jaas.conf:/etc/kafka/secrets/kafka_server_jaas.conf:ro
-      - ./keystore.creds:/etc/kafka/secrets/keystore.creds:ro
+      - ./certs:/etc/kafka/secrets:ro
     healthcheck:
       test:
         - CMD-SHELL
