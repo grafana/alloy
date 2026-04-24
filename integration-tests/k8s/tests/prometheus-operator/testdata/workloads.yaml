@@ -1,0 +1,175 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prom-gen
+  namespace: test-prometheus-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prom-gen
+  template:
+    metadata:
+      labels:
+        app: prom-gen
+    spec:
+      containers:
+        - name: prom-gen
+          image: prom-gen:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9001
+              name: metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prom-gen
+  namespace: test-prometheus-operator
+  labels:
+    app: prom-gen
+spec:
+  selector:
+    app: prom-gen
+  ports:
+    - port: 9001
+      targetPort: 9001
+      name: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: test-prometheus-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app: blackbox-exporter
+    spec:
+      containers:
+        - name: blackbox-exporter
+          image: prom/blackbox-exporter:v0.25.0
+          ports:
+            - containerPort: 9115
+              name: http
+          args:
+            - --config.file=/config/blackbox.yml
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-exporter-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-exporter-config
+  namespace: test-prometheus-operator
+data:
+  blackbox.yml: |
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 5s
+        http:
+          valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+          valid_status_codes: [200]
+          method: GET
+          follow_redirects: true
+          preferred_ip_protocol: "ip4"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter
+  namespace: test-prometheus-operator
+  labels:
+    app: blackbox-exporter
+spec:
+  selector:
+    app: blackbox-exporter
+  ports:
+    - port: 9115
+      targetPort: 9115
+      name: http
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prom-gen-service-monitor
+  namespace: test-prometheus-operator
+  labels:
+    alloy: "yes"
+spec:
+  selector:
+    matchLabels:
+      app: prom-gen
+  namespaceSelector:
+    matchNames:
+      - test-prometheus-operator
+  endpoints:
+    - port: metrics
+      interval: 5s
+      scrapeTimeout: 3s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: prom-gen-pod-monitor
+  namespace: test-prometheus-operator
+  labels:
+    alloy: "yes"
+spec:
+  selector:
+    matchLabels:
+      app: prom-gen
+  namespaceSelector:
+    matchNames:
+      - test-prometheus-operator
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 5s
+      scrapeTimeout: 3s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: http-probe
+  namespace: test-prometheus-operator
+  labels:
+    alloy: "yes"
+spec:
+  interval: 5s
+  scrapeTimeout: 3s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.test-prometheus-operator.svc:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://prom-gen.test-prometheus-operator.svc:9001/metrics
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: prom-gen-scrape-config
+  namespace: test-prometheus-operator
+  labels:
+    alloy: "yes"
+spec:
+  staticConfigs:
+    - targets:
+        - "prom-gen.test-prometheus-operator.svc:9001"
+      labels:
+        job: "prom-gen-static"
+  metricsPath: /metrics
+  scrapeInterval: 5s
+  scrapeTimeout: 3s

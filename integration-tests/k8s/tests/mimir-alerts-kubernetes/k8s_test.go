@@ -1,40 +1,28 @@
 //go:build alloyintegrationtests
 
-package main
+package mimiralertskubernetes
 
 import (
 	"testing"
 
-	"github.com/grafana/alloy/integration-tests/k8s/util"
+	"github.com/grafana/alloy/integration-tests/k8s/harness"
+	"github.com/stretchr/testify/require"
 )
 
-const mimirPort = "12346"
-
 func TestMimirAlerts(t *testing.T) {
-	testDataDir := "./testdata/"
-
-	cleanupFunc := util.BootstrapTest(testDataDir, "mimir-alerts-kubernetes")
-	defer cleanupFunc()
-
-	terminatePortFwd := util.ExecuteBackgroundCommand(
-		"kubectl", []string{"port-forward", "service/mimir-nginx", mimirPort + ":80", "--namespace=mimir-test"},
-		"Port forward Mimir")
-	defer terminatePortFwd()
-
-	kt := util.NewKubernetesTester(t)
-	kt.WaitForPodRunning(t, "testing", "app=grafana-alloy")
-	kt.WaitForPodRunning(t, "mimir-test", "app.kubernetes.io/component=alertmanager")
+	harness.SkipShard(t)
+	kt := harness.Current(t)
+	kt.WaitForPodRunning(t, kt.Namespace, "app.kubernetes.io/name=alloy")
+	kt.WaitForPodRunning(t, kt.Namespace, "app.kubernetes.io/component=alertmanager")
 
 	t.Run("Initial Config", func(t *testing.T) {
-		kt.CheckMimirConfig(t, testDataDir, mimirPort, "expected_1.yml")
+		kt.CheckMimirConfig(t, "./testdata/expected_1.yml")
 	})
 
 	t.Run("Deleted Config", func(t *testing.T) {
-		util.ExecuteCommand(
-			"kubectl", []string{"delete", "alertmanagerconfig", "alertmgr-config2", "-n", "testing"},
-			"Delete an Alertmanagerconfig CRD")
+		require.NoError(t, harness.DeleteAlertmanagerConfig(kt.Namespace, "alertmgr-config2"))
 
 		// Mimir's config should now omit the deleted Alertmanagerconfig CRD.
-		kt.CheckMimirConfig(t, testDataDir, mimirPort, "expected_2.yml")
+		kt.CheckMimirConfig(t, "./testdata/expected_2.yml")
 	})
 }

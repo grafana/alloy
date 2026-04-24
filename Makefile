@@ -202,9 +202,8 @@ integration-test-docker:
 	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m
 
 .PHONY: integration-test-k8s
-integration-test-k8s: alloy-image
-	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
-	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="gore2regex alloyintegrationtests" -timeout 30m ./...
+integration-test-k8s:
+	./integration-tests/k8s/run.sh $(RUN_ARGS)
 
 # Windows service integration test. Runs only on Windows with Administrator privileges.
 # Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.

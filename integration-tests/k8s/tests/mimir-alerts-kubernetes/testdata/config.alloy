@@ -1,0 +1,24 @@
+remote.kubernetes.configmap "default" {
+  namespace = "test-mimir-alerts-kubernetes"
+  name      = "alertmgr-global"
+}
+
+mimir.alerts.kubernetes "default" {
+  address       = "http://mimir-nginx:80"
+  sync_interval = "5s"
+  global_config = remote.kubernetes.configmap.default.data["glbl"]
+  template_files = {
+    `default_template` = `{{ define "__alertmanager" }}AlertManager{{ end }}
+{{ define "__alertmanagerURL" }}{{ .ExternalURL }}/#/alerts?receiver={{ .Receiver | urlquery }}{{ end }}`,
+  }
+  alertmanagerconfig_namespace_selector {
+    match_labels = {
+      alloy = "yes",
+    }
+  }
+  alertmanagerconfig_selector {
+    match_labels = {
+      alloy = "yes",
+    }
+  }
+}

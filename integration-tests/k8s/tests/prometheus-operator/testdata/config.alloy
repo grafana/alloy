@@ -1,0 +1,119 @@
+logging {
+  level = "debug"
+}
+
+livedebugging {
+  enabled = true
+}
+
+prometheus.operator.servicemonitors "default" {
+  forward_to = [prometheus.relabel.servicemonitors.receiver]
+  namespaces = ["test-prometheus-operator"]
+  selector {
+    match_labels = {
+      alloy = "yes",
+    }
+  }
+}
+
+prometheus.relabel "servicemonitors" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_int_test"
+    replacement  = "servicemonitor"
+  }
+  rule {
+    action        = "replace"
+    source_labels = ["__name__"]
+    regex         = "(.*)"
+    target_label  = "__name__"
+    replacement   = "test_servicemonitors_$1"
+  }
+}
+
+prometheus.operator.podmonitors "default" {
+  forward_to = [prometheus.relabel.podmonitors.receiver]
+  namespaces = ["test-prometheus-operator"]
+  selector {
+    match_labels = {
+      alloy = "yes",
+    }
+  }
+}
+
+prometheus.relabel "podmonitors" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_int_test"
+    replacement  = "podmonitor"
+  }
+  rule {
+    action        = "replace"
+    source_labels = ["__name__"]
+    regex         = "(.*)"
+    target_label  = "__name__"
+    replacement   = "test_podmonitors_$1"
+  }
+}
+
+prometheus.operator.probes "default" {
+  forward_to = [prometheus.relabel.probes.receiver]
+  namespaces = ["test-prometheus-operator"]
+  selector {
+    match_labels = {
+      alloy = "yes",
+    }
+  }
+}
+
+prometheus.relabel "probes" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_int_test"
+    replacement  = "probe"
+  }
+  rule {
+    action        = "replace"
+    source_labels = ["__name__"]
+    regex         = "(.*)"
+    target_label  = "__name__"
+    replacement   = "test_probes_$1"
+  }
+}
+
+prometheus.operator.scrapeconfigs "default" {
+  forward_to = [prometheus.relabel.scrapeconfigs.receiver]
+  namespaces = ["test-prometheus-operator"]
+  selector {
+    match_labels = {
+      alloy = "yes",
+    }
+  }
+}
+
+prometheus.relabel "scrapeconfigs" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_int_test"
+    replacement  = "scrapeconfig"
+  }
+  rule {
+    action        = "replace"
+    source_labels = ["__name__"]
+    regex         = "(.*)"
+    target_label  = "__name__"
+    replacement   = "test_scrapeconfigs_$1"
+  }
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url                    = "http://mimir-nginx:80/api/v1/push"
+    protobuf_message       = "io.prometheus.write.v2.Request"
+    send_native_histograms = true
+  }
+}

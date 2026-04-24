@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmgr-global
+  namespace: test-mimir-alerts-kubernetes
+data:
+  glbl: |
+    global:
+      resolve_timeout: 5m
+      http_config:
+        follow_redirects: true
+        enable_http2: true
+      smtp_hello: localhost
+      smtp_require_tls: true
+    route:
+      receiver: "null"
+    receivers:
+    - name: "null"
+    - name: "alloy-namespace/global-config/myreceiver"
+    templates:
+    - 'default_template'
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config1
+  namespace: test-mimir-alerts-kubernetes
+  labels:
+    alloy: "yes"
+spec:
+  route:
+    receiver: "null"
+    routes:
+    - receiver: myamc
+      continue: true
+  receivers:
+  - name: "null"
+  - name: myamc
+    webhookConfigs:
+    - url: http://test.url
+      httpConfig:
+        followRedirects: true
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config2
+  namespace: test-mimir-alerts-kubernetes
+  labels:
+    alloy: "yes"
+spec:
+  route:
+    receiver: "null"
+    routes:
+    - receiver: "database-pager"
+      groupWait: 10s
+      matchers:
+      - name: service
+        value: webapp
+  receivers:
+  - name: "null"
+  - name: "database-pager"
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config3
+  namespace: test-mimir-alerts-kubernetes
+spec:
+  route:
+    receiver: "null"
+    routes:
+    - receiver: "database-pager"
+      group_wait: 10s
+      matchers:
+      - name: service
+        value: webapp
+  receivers:
+  - name: "null"
+  - name: "database-pager"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: othernamespace
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: alertmgr-config3
+  namespace: othernamespace
+  labels:
+    alloy: "yes"
+spec:
+  route:
+    receiver: "null"
+    routes:
+    - receiver: team-X-mails
+      matchers:
+      - service
+        foo1|foo2|baz"
+  receivers:
+  - name: "null"
+  - name: "team-X-mails"
+    emailConfigs:
+    - to: "team-X+alerts@example.org"
