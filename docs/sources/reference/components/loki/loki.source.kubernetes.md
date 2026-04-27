@@ -67,6 +67,8 @@ Log tailers reconnect with exponential backoff to Kubernetes if the log stream r
 
 You can use the following blocks with `loki.source.kubernetes`:
 
+{{< docs/alloy-config >}}
+
 | Block                                            | Description                                                                                 | Required |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------- | -------- |
 | [`client`][client]                               | Configures Kubernetes client used to tail logs.                                             | no       |
@@ -77,15 +79,14 @@ You can use the following blocks with `loki.source.kubernetes`:
 | `client` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.                                      | no       |
 | [`clustering`][clustering]                       | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
-
 [client]: #client
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [clustering]: #clustering
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 

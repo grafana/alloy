@@ -3,6 +3,7 @@ package database_observability
 import (
 	"context"
 	"database/sql"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,13 +27,12 @@ type ConnectionInfoMonitorConfig struct {
 // After ConnectionChecksThreshold consecutive ping failures it unregisters infoMetric from registry.
 // After ConnectionChecksThreshold consecutive ping successes (when the metric is unregistered) it re-registers
 // infoMetric and sets it to 1 with the given labelValues.
-// The goroutine runs until ctx is done. onStopped is called when the goroutine exits (e.g. when ctx is cancelled).
-// RunConnectionInfoMonitor returns a cancel function that cancels the context passed to the goroutine; the caller
-// should call cancel in Stop() to ensure the goroutine exits.
+// The goroutine runs until the returned stop function is called. onStopped is called when the goroutine exits.
+// The returned stop function cancels the internal context and waits for the goroutine to exit before returning.
 // labelValues must contain exactly 6 values in order: provider_name, provider_region, provider_account,
 // db_instance_identifier, engine, engine_version.
 // If config is non-nil, its CheckInterval and ChecksThreshold override the default constants (used for testing).
-func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometheus.Registry, infoMetric *prometheus.GaugeVec, labelValues []string, onStopped func(), config *ConnectionInfoMonitorConfig) (cancel context.CancelFunc) {
+func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometheus.Registry, infoMetric *prometheus.GaugeVec, labelValues []string, onStopped func(), config *ConnectionInfoMonitorConfig) (stop func()) {
 	interval := ConnectionCheckInterval
 	threshold := ConnectionChecksThreshold
 	if config != nil {
@@ -43,8 +43,9 @@ func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometh
 			threshold = config.ChecksThreshold
 		}
 	}
-	ctx, cancel = context.WithCancel(ctx)
-	go func() {
+	ctx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	wg.Go(func() {
 		defer onStopped()
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
@@ -82,6 +83,9 @@ func RunConnectionInfoMonitor(ctx context.Context, db *sql.DB, registry *prometh
 				// continue loop
 			}
 		}
-	}()
-	return cancel
+	})
+	return func() {
+		cancel()
+		wg.Wait()
+	}
 }

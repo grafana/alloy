@@ -2,7 +2,7 @@ dist:
   module: github.com/grafana/alloy/otel_engine
   name: alloy
   description: Alloy OTel Collector distribution.
-  version: v1.15.0 # x-release-please-version
+  version: v1.16.0 # x-release-please-version
   output_path: .
 
 extensions:
@@ -123,14 +123,14 @@ replaces:
   - github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
   # TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
   - github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
-  # TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
-  - github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
+  # TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
+  - github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16
   # TODO: replace node_exporter with custom fork for multi usage. https://github.com/prometheus/node_exporter/pull/2812
   - github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89
   # Use Grafana fork of smimesign
   - github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
   # Replace OpenTelemetry OBI with Grafana fork
-  - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.12.2-0.20260318145328-e31c5acda289
+  - go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.18.2
   # Replace OpenTelemetry eBPF profiler with Grafana fork
   - go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31a19190b9
   # Update openshift/client-go to version compatible with structured-merge-diff v6

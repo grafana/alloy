@@ -1,7 +1,7 @@
 package wal
 
 // This code is copied from
-// prometheus/prometheus@7c2de14b0bd74303c2ca6f932b71d4585a29ca75, with only
+// prometheus/prometheus@920ee7f99dea5a774a22419f53600ff133abda9a, with only
 // minor changes for metric names.
 
 import (
@@ -27,6 +27,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 	"github.com/prometheus/prometheus/util/compression"
+	"github.com/prometheus/prometheus/util/zeropool"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/runtime/logging"
@@ -43,14 +44,21 @@ var ErrWALClosed = fmt.Errorf("WAL storage closed")
 type storageMetrics struct {
 	r prometheus.Registerer
 
-	numActiveSeries        prometheus.Gauge
-	numDeletedSeries       prometheus.Gauge
-	totalOutOfOrderSamples prometheus.Counter
-	totalCreatedSeries     prometheus.Counter
-	totalRemovedSeries     prometheus.Counter
-	totalAppendedSamples   prometheus.Counter
-	totalAppendedExemplars prometheus.Counter
-	totalAppendedMetadata  prometheus.Counter
+	numActiveSeries         prometheus.Gauge
+	numDeletedSeries        prometheus.Gauge
+	totalOutOfOrderSamples  prometheus.Counter
+	totalCreatedSeries      prometheus.Counter
+	totalRemovedSeries      prometheus.Counter
+	totalAppendedSamples    prometheus.Counter
+	totalAppendedExemplars  prometheus.Counter
+	totalAppendedMetadata   prometheus.Counter
+	walTotalReplayDuration  prometheus.Gauge
+	walTruncateDuration     prometheus.Summary
+	walCorruptionsTotal     prometheus.Counter
+	checkpointDeleteFail    prometheus.Counter
+	checkpointDeleteTotal   prometheus.Counter
+	checkpointCreationFail  prometheus.Counter
+	checkpointCreationTotal prometheus.Counter
 }
 
 func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
@@ -95,6 +103,41 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		Help: "Total number of metadata updates sent through the WAL",
 	})
 
+	m.walTotalReplayDuration = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "prometheus_remote_write_data_replay_duration_seconds",
+		Help: "Time taken to replay the data on disk.",
+	})
+
+	m.walTruncateDuration = prometheus.NewSummary(prometheus.SummaryOpts{
+		Name: "prometheus_remote_write_wal_truncate_duration_seconds",
+		Help: "Duration of WAL truncation.",
+	})
+
+	m.walCorruptionsTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_corruptions_total",
+		Help: "Total number of WAL corruptions.",
+	})
+
+	m.checkpointDeleteFail = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_checkpoint_deletions_failed_total",
+		Help: "Total number of checkpoint deletions that failed.",
+	})
+
+	m.checkpointDeleteTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_checkpoint_deletions_total",
+		Help: "Total number of checkpoint deletions attempted.",
+	})
+
+	m.checkpointCreationFail = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_checkpoint_creations_failed_total",
+		Help: "Total number of checkpoint creations that failed.",
+	})
+
+	m.checkpointCreationTotal = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "prometheus_remote_write_wal_checkpoint_creations_total",
+		Help: "Total number of checkpoint creations attempted.",
+	})
+
 	if r != nil {
 		m.numActiveSeries = util.MustRegisterOrGet(r, m.numActiveSeries).(prometheus.Gauge)
 		m.numDeletedSeries = util.MustRegisterOrGet(r, m.numDeletedSeries).(prometheus.Gauge)
@@ -104,6 +147,13 @@ func newStorageMetrics(r prometheus.Registerer) *storageMetrics {
 		m.totalAppendedSamples = util.MustRegisterOrGet(r, m.totalAppendedSamples).(prometheus.Counter)
 		m.totalAppendedExemplars = util.MustRegisterOrGet(r, m.totalAppendedExemplars).(prometheus.Counter)
 		m.totalAppendedMetadata = util.MustRegisterOrGet(r, m.totalAppendedMetadata).(prometheus.Counter)
+		m.walTotalReplayDuration = util.MustRegisterOrGet(r, m.walTotalReplayDuration).(prometheus.Gauge)
+		m.walTruncateDuration = util.MustRegisterOrGet(r, m.walTruncateDuration).(prometheus.Summary)
+		m.walCorruptionsTotal = util.MustRegisterOrGet(r, m.walCorruptionsTotal).(prometheus.Counter)
+		m.checkpointDeleteFail = util.MustRegisterOrGet(r, m.checkpointDeleteFail).(prometheus.Counter)
+		m.checkpointDeleteTotal = util.MustRegisterOrGet(r, m.checkpointDeleteTotal).(prometheus.Counter)
+		m.checkpointCreationFail = util.MustRegisterOrGet(r, m.checkpointCreationFail).(prometheus.Counter)
+		m.checkpointCreationTotal = util.MustRegisterOrGet(r, m.checkpointCreationTotal).(prometheus.Counter)
 	}
 
 	return &m
@@ -122,6 +172,13 @@ func (m *storageMetrics) Unregister() {
 		m.totalAppendedSamples,
 		m.totalAppendedExemplars,
 		m.totalAppendedMetadata,
+		m.walTotalReplayDuration,
+		m.walTruncateDuration,
+		m.walCorruptionsTotal,
+		m.checkpointDeleteFail,
+		m.checkpointDeleteTotal,
+		m.checkpointCreationFail,
+		m.checkpointCreationTotal,
 	}
 	for _, c := range cs {
 		m.r.Unregister(c)
@@ -147,6 +204,13 @@ type Storage struct {
 
 	appenderPool sync.Pool
 	bufPool      sync.Pool
+
+	// These pools are only used during WAL replay and are reset at the end.
+	// NOTE: Adjust resetWALReplayResources() upon changes to the pools.
+	walReplaySeriesPool          zeropool.Pool[[]record.RefSeries]
+	walReplaySamplesPool         zeropool.Pool[[]record.RefSample]
+	walReplayHistogramsPool      zeropool.Pool[[]record.RefHistogramSample]
+	walReplayFloatHistogramsPool zeropool.Pool[[]record.RefFloatHistogramSample]
 
 	nextRef *atomic.Uint64
 	series  *stripeSeries
@@ -228,6 +292,8 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 func (w *Storage) replayWAL() error {
 	w.walMtx.RLock()
 	defer w.walMtx.RUnlock()
+	defer w.resetWALReplayResources()
+	start := time.Now()
 
 	if w.walClosed {
 		return ErrWALClosed
@@ -284,7 +350,17 @@ func (w *Storage) replayWAL() error {
 		level.Info(w.logger).Log("msg", "WAL segment loaded", "segment", i, "maxSegment", lastSegment)
 	}
 
+	walReplayDuration := time.Since(start)
+	w.metrics.walTotalReplayDuration.Set(walReplayDuration.Seconds())
+
 	return nil
+}
+
+func (w *Storage) resetWALReplayResources() {
+	w.walReplaySeriesPool = zeropool.Pool[[]record.RefSeries]{}
+	w.walReplaySamplesPool = zeropool.Pool[[]record.RefSample]{}
+	w.walReplayHistogramsPool = zeropool.Pool[[]record.RefHistogramSample]{}
+	w.walReplayFloatHistogramsPool = zeropool.Pool[[]record.RefFloatHistogramSample]{}
 }
 
 // loadWAL reads the WAL and populates the in-memory series.
@@ -293,31 +369,12 @@ func (w *Storage) replayWAL() error {
 // but has not been fully removed from the WAL via a wlog.Checkpoint yet.
 func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, currentSegmentOrCheckpoint int) (err error) {
 	var (
-		dec     = record.NewDecoder(nil, slog.New(logging.NewSlogGoKitHandler(w.logger)))
+		syms    = labels.NewSymbolTable() // One table for the whole WAL.
+		dec     = record.NewDecoder(syms, slog.New(logging.NewSlogGoKitHandler(w.logger)))
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
 
-		decoded    = make(chan any, 10)
-		errCh      = make(chan error, 1)
-		seriesPool = sync.Pool{
-			New: func() any {
-				return []record.RefSeries{}
-			},
-		}
-		samplesPool = sync.Pool{
-			New: func() any {
-				return []record.RefSample{}
-			},
-		}
-		histogramsPool = sync.Pool{
-			New: func() any {
-				return []record.RefHistogramSample{}
-			},
-		}
-		floatHistogramsPool = sync.Pool{
-			New: func() any {
-				return []record.RefFloatHistogramSample{}
-			},
-		}
+		decoded = make(chan any, 10)
+		errCh   = make(chan error, 1)
 	)
 
 	go func() {
@@ -329,7 +386,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 			// right now each call will be logged as if the metadata changed.
 			switch dec.Type(rec) {
 			case record.Series:
-				series := seriesPool.Get().([]record.RefSeries)[:0]
+				series := w.walReplaySeriesPool.Get()[:0]
 				series, err = dec.Series(rec, series)
 				if err != nil {
 					errCh <- &wlog.CorruptionErr{
@@ -341,7 +398,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 				decoded <- series
 			case record.Samples:
-				samples := samplesPool.Get().([]record.RefSample)[:0]
+				// TODO(x1unix): add "record.SamplesV2" when Prometheus will be upgraded.
+				samples := w.walReplaySamplesPool.Get()[:0]
 				samples, err = dec.Samples(rec, samples)
 				if err != nil {
 					errCh <- &wlog.CorruptionErr{
@@ -349,10 +407,11 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 						Segment: r.Segment(),
 						Offset:  r.Offset(),
 					}
+					return
 				}
 				decoded <- samples
-			case record.HistogramSamples:
-				histograms := histogramsPool.Get().([]record.RefHistogramSample)[:0]
+			case record.HistogramSamples, record.CustomBucketsHistogramSamples:
+				histograms := w.walReplayHistogramsPool.Get()[:0]
 				histograms, err = dec.HistogramSamples(rec, histograms)
 				if err != nil {
 					errCh <- &wlog.CorruptionErr{
@@ -363,8 +422,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 					return
 				}
 				decoded <- histograms
-			case record.FloatHistogramSamples:
-				floatHistograms := floatHistogramsPool.Get().([]record.RefFloatHistogramSample)[:0]
+			case record.FloatHistogramSamples, record.CustomBucketsFloatHistogramSamples:
+				floatHistograms := w.walReplayFloatHistogramsPool.Get()[:0]
 				floatHistograms, err = dec.FloatHistogramSamples(rec, floatHistograms)
 				if err != nil {
 					errCh <- &wlog.CorruptionErr{
@@ -403,26 +462,39 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 
 				series := &memSeries{ref: s.Ref, lset: s.Labels, lastTs: 0}
-				series, created := w.series.GetOrSet(s.Labels.Hash(), s.Labels, series)
+				series, created := w.series.GetOrSet(s.Labels.Hash(), series)
+
 				if !created {
+					// We don't need to check if entry.Ref exists / if the value is not series.ref because GetOrSet
+					// enforces that the same labels will always get the same Ref. If we did not create a new ref
+					// the only possible ref it should ever be in the WAL is series.ref.
 					duplicateRefToValidRef[s.Ref] = series.ref
-					// Make sure we keep the duplicate SeriesRef checkpoints while it might still exist in the WAL.
-					w.deleted[s.Ref] = currentSegmentOrCheckpoint
+
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[s.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[s.Ref] = currentSegmentOrCheckpoint
+					}
 				} else {
 					w.metrics.numActiveSeries.Inc()
 					w.metrics.totalCreatedSeries.Inc()
 				}
 			}
-
-			//nolint:staticcheck
-			seriesPool.Put(v)
+			for i := range v { // Zero out to avoid retaining label data.
+				v[i].Labels = labels.EmptyLabels()
+			}
+			w.walReplaySeriesPool.Put(v[:0])
 		case []record.RefSample:
 			for _, s := range v {
 				if ref, ok := duplicateRefToValidRef[s.Ref]; ok {
-					// Make sure we keep the duplicate SeriesRef in checkpoints until we get past the current segment.
-					w.deleted[s.Ref] = currentSegmentOrCheckpoint
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[s.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[s.Ref] = currentSegmentOrCheckpoint
+					}
 					s.Ref = ref
 				}
+
 				series := w.series.GetByID(s.Ref)
 				if series == nil {
 					nonExistentSeriesRefs.Inc()
@@ -435,11 +507,15 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 				}
 			}
 
-			//nolint:staticcheck
-			samplesPool.Put(v)
+			w.walReplaySamplesPool.Put(v)
 		case []record.RefHistogramSample:
 			for _, entry := range v {
 				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[entry.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[entry.Ref] = currentSegmentOrCheckpoint
+					}
 					entry.Ref = ref
 				}
 				series := w.series.GetByID(entry.Ref)
@@ -453,12 +529,16 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 					series.lastTs = entry.T
 				}
 			}
-
-			//nolint:staticcheck
-			histogramsPool.Put(v)
+			clear(v) // Zero out to avoid retaining histogram data.
+			w.walReplayHistogramsPool.Put(v[:0])
 		case []record.RefFloatHistogramSample:
 			for _, entry := range v {
 				if ref, ok := duplicateRefToValidRef[entry.Ref]; ok {
+					// We want to track the largest segment where we encountered the duplicate ref, so we can ensure
+					// it remains in the checkpoint until we get past that segment.
+					if w.deleted[entry.Ref] <= currentSegmentOrCheckpoint {
+						w.deleted[entry.Ref] = currentSegmentOrCheckpoint
+					}
 					entry.Ref = ref
 				}
 				series := w.series.GetByID(entry.Ref)
@@ -472,9 +552,8 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 					series.lastTs = entry.T
 				}
 			}
-
-			//nolint:staticcheck
-			floatHistogramsPool.Put(v)
+			clear(v) // Zero out to avoid retaining histogram data.
+			w.walReplayFloatHistogramsPool.Put(v[:0])
 		default:
 			panic(fmt.Errorf("unexpected decoded type: %T", d))
 		}
@@ -571,7 +650,15 @@ func (w *Storage) Truncate(mint int64) error {
 	// Convert go-kit logger to slog logger
 	slogLogger := slog.New(logging.NewSlogGoKitHandler(w.logger))
 
+	w.metrics.checkpointCreationTotal.Inc()
+
+	// TODO(x1unix): pass EnableSTStorage when Prometheus will be upgraded
 	if _, err = wlog.Checkpoint(slogLogger, w.wal, first, last, keep, mint); err != nil {
+		w.metrics.checkpointCreationFail.Inc()
+		var cerr *wlog.CorruptionErr
+		if errors.As(err, &cerr) {
+			w.metrics.walCorruptionsTotal.Inc()
+		}
 		return fmt.Errorf("create checkpoint: %w", err)
 	}
 	if err := w.wal.Truncate(last + 1); err != nil {
@@ -591,12 +678,16 @@ func (w *Storage) Truncate(mint int64) error {
 	}
 	w.metrics.numDeletedSeries.Set(float64(len(w.deleted)))
 
+	w.metrics.checkpointDeleteTotal.Inc()
 	if err := wlog.DeleteCheckpoints(w.wal.Dir(), last); err != nil {
 		// Leftover old checkpoints do not cause problems down the line beyond
 		// occupying disk space.
 		// They will just be ignored since a higher checkpoint exists.
 		level.Error(w.logger).Log("msg", "delete old checkpoints", "err", err)
+		w.metrics.checkpointDeleteFail.Inc()
 	}
+
+	w.metrics.walTruncateDuration.Observe(time.Since(start).Seconds())
 
 	level.Info(w.logger).Log("msg", "WAL checkpoint complete",
 		"first", first, "last", last, "duration", time.Since(start))
@@ -667,27 +758,10 @@ var _ storage.Appender = (*appender)(nil)
 func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v float64) (storage.SeriesRef, error) {
 	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
 	if series == nil {
-		// Ensure no empty or duplicate labels have gotten through. This mirrors the
-		// equivalent validation code in the TSDB's headAppender.
-		l = l.WithoutEmpty()
-		if l.Len() == 0 {
-			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
-		}
-
-		if lbl, dup := l.HasDuplicateLabelNames(); dup {
-			return 0, fmt.Errorf("label name %q is not unique: %w", lbl, tsdb.ErrInvalidSample)
-		}
-
-		var created bool
-		series, created = a.getOrCreate(l)
-		if created {
-			a.pendingSeries = append(a.pendingSeries, record.RefSeries{
-				Ref:    series.ref,
-				Labels: l,
-			})
-
-			a.w.metrics.numActiveSeries.Inc()
-			a.w.metrics.totalCreatedSeries.Inc()
+		var err error
+		series, err = a.getOrCreate(l)
+		if err != nil {
+			return 0, err
 		}
 	}
 
@@ -706,18 +780,38 @@ func (a *appender) Append(ref storage.SeriesRef, l labels.Labels, t int64, v flo
 	return storage.SeriesRef(series.ref), nil
 }
 
-func (a *appender) getOrCreate(l labels.Labels) (series *memSeries, created bool) {
+func (a *appender) getOrCreate(l labels.Labels) (*memSeries, error) {
+	// Ensure no empty or duplicate labels have gotten through. This mirrors the
+	// equivalent validation code in the TSDB's headAppender.
+	l = l.WithoutEmpty()
+	if l.IsEmpty() {
+		return nil, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
+	}
+
+	if lbl, dup := l.HasDuplicateLabelNames(); dup {
+		return nil, fmt.Errorf("label name %q is not unique: %w", lbl, tsdb.ErrInvalidSample)
+	}
+
 	hash := l.Hash()
 
-	series = a.w.series.GetByHash(hash, l)
+	series := a.w.series.GetByHash(hash, l)
 	if series != nil {
-		return series, false
+		return series, nil
 	}
 
 	ref := chunks.HeadSeriesRef(a.w.nextRef.Inc())
 	series = &memSeries{ref: ref, lset: l, lastTs: math.MinInt64}
-	a.w.series.Set(l.Hash(), series)
-	return series, true
+	a.w.series.Set(hash, series)
+
+	a.pendingSeries = append(a.pendingSeries, record.RefSeries{
+		Ref:    series.ref,
+		Labels: l,
+	})
+
+	a.w.metrics.numActiveSeries.Inc()
+	a.w.metrics.totalCreatedSeries.Inc()
+
+	return series, nil
 }
 
 func (a *appender) AppendExemplar(ref storage.SeriesRef, _ labels.Labels, e exemplar.Exemplar) (storage.SeriesRef, error) {
@@ -731,6 +825,7 @@ func (a *appender) AppendExemplar(ref storage.SeriesRef, _ labels.Labels, e exem
 	// Ensure no empty labels have gotten through.
 	e.Labels = e.Labels.WithoutEmpty()
 
+	// NOTE: prometheus moved exemplar validation into appenderBase.validateExemplar() to share logic with AppenderV2.
 	if lbl, dup := e.Labels.HasDuplicateLabelNames(); dup {
 		return 0, fmt.Errorf("label name %q is not unique: %w", lbl, tsdb.ErrInvalidExemplar)
 	}
@@ -791,27 +886,10 @@ func (a *appender) AppendHistogram(ref storage.SeriesRef, l labels.Labels, t int
 
 	series := a.w.series.GetByID(chunks.HeadSeriesRef(ref))
 	if series == nil {
-		// Ensure no empty or duplicate labels have gotten through. This mirrors the
-		// equivalent validation code in the TSDB's headAppender.
-		l = l.WithoutEmpty()
-		if l.Len() == 0 {
-			return 0, fmt.Errorf("empty labelset: %w", tsdb.ErrInvalidSample)
-		}
-
-		if lbl, dup := l.HasDuplicateLabelNames(); dup {
-			return 0, fmt.Errorf("label name %q is not unique: %w", lbl, tsdb.ErrInvalidSample)
-		}
-
-		var created bool
-		series, created = a.getOrCreate(l)
-		if created {
-			a.pendingSeries = append(a.pendingSeries, record.RefSeries{
-				Ref:    series.ref,
-				Labels: l,
-			})
-
-			a.w.metrics.numActiveSeries.Inc()
-			a.w.metrics.totalCreatedSeries.Inc()
+		var err error
+		series, err = a.getOrCreate(l)
+		if err != nil {
+			return 0, err
 		}
 	}
 

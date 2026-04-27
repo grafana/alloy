@@ -44,22 +44,17 @@ You can use the following arguments with `loki.source.gcplog`:
 
 You can use the following blocks with `loki.source.gcplog`:
 
+{{< docs/alloy-config >}}
+
 | Name                           | Description                                                                   | Required |
 | ------------------------------ | ----------------------------------------------------------------------------- | -------- |
 | [`pull`][pull]                 | Configures a target to pull logs from a GCP Pub/Sub subscription.             | no       |
 | `pull` > [`limit`][limit]      | Configures Pub/Sub flow-control limits for in-flight message processing.      | no       |
 | [`push`][push]                 | Configures a server to receive logs as GCP Pub/Sub push requests.             | no       |
 | `push` > [`grpc`][grpc]        | Configures the gRPC server that receives requests when using the `push` mode. | no       |
-| `push` > `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                                           | no       |
+| `push` > `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                                           | no       |
 | `push` > [`http`][http]        | Configures the HTTP server that receives requests when using the `push` mode. | no       |
 | `push` > `http` > [`tls`][tls] | Configures TLS for the HTTP server.                                           | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `push` > `grpc` refers to a `grpc` block defined inside a `push` block.
-
-The `pull` and `push` inner blocks are mutually exclusive.
-A component must contain exactly one of the two in its definition.
-The `http` and `grpc` block are just used when the `push` block is configured.
 
 [grpc]: #grpc
 [http]: #http
@@ -67,6 +62,12 @@ The `http` and `grpc` block are just used when the `push` block is configured.
 [pull]: #pull
 [push]: #push
 [tls]: #tls
+
+{{< /docs/alloy-config >}}
+
+The `pull` and `push` inner blocks are mutually exclusive.
+A component must contain exactly one of the two in its definition.
+The `http` and `grpc` block are just used when the `push` block is configured.
 
 ### `pull`
 

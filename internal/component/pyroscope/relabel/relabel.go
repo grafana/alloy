@@ -17,8 +17,8 @@ import (
 	"reflect"
 	"sync"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -309,6 +309,6 @@ func (c *Component) Upload(j debuginfo.UploadJob) {
 	c.fanout.Upload(j)
 }
 
-func (c *Component) Client() debuginfogrpc.DebuginfoServiceClient {
-	return c.fanout.Client()
+func (c *Component) DebugInfoClients() []*debuginfoclient.Client {
+	return c.fanout.DebugInfoClients()
 }

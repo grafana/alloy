@@ -22,9 +22,8 @@ func TestCloudwatchExporterIntegrationProperSetup(t *testing.T) {
 	givenFipsEnabled := false
 	givenLabelsSnakeCase := true
 	givenDebug := false
-	givenuseAWSSDKVersionV2 := true
 
-	e, err := NewCloudwatchExporter(givenName, givenLogger, givenConfig, givenFipsEnabled, givenLabelsSnakeCase, givenDebug, givenuseAWSSDKVersionV2)
+	e, err := NewCloudwatchExporter(givenName, givenLogger, givenConfig, givenFipsEnabled, givenLabelsSnakeCase, givenDebug)
 	require.NoError(t, err, "failed to construct cloudwatch exporter")
 
 	logbuff.Reset()

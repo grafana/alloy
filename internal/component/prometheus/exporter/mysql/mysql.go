@@ -30,7 +30,8 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 
 // DefaultArguments holds the default settings for the mysqld_exporter integration.
 var DefaultArguments = Arguments{
-	LockWaitTimeout: 2,
+	EnableLockWaitTimeout: true,
+	LockWaitTimeout:       2,
 	InfoSchemaProcessList: InfoSchemaProcessList{
 		ProcessesByUser: true,
 		ProcessesByHost: true,
@@ -70,8 +71,9 @@ type Arguments struct {
 	SetCollectors []string `alloy:"set_collectors,attr,optional"`
 
 	// Collector-wide options
-	LockWaitTimeout int  `alloy:"lock_wait_timeout,attr,optional"`
-	LogSlowFilter   bool `alloy:"log_slow_filter,attr,optional"`
+	EnableLockWaitTimeout bool `alloy:"enable_lock_wait_timeout,attr,optional"`
+	LockWaitTimeout       int  `alloy:"lock_wait_timeout,attr,optional"`
+	LogSlowFilter         bool `alloy:"log_slow_filter,attr,optional"`
 
 	// Collector-specific config options
 	InfoSchemaProcessList      InfoSchemaProcessList      `alloy:"info_schema.processlist,block,optional"`
@@ -98,9 +100,10 @@ type InfoSchemaTables struct {
 
 // PerfSchemaEventsStatements configures the perf_schema.eventsstatements collector
 type PerfSchemaEventsStatements struct {
-	Limit     int `alloy:"limit,attr,optional"`
-	TimeLimit int `alloy:"time_limit,attr,optional"`
-	TextLimit int `alloy:"text_limit,attr,optional"`
+	Limit          int      `alloy:"limit,attr,optional"`
+	TimeLimit      int      `alloy:"time_limit,attr,optional"`
+	TextLimit      int      `alloy:"text_limit,attr,optional"`
+	ExcludeSchemas []string `alloy:"exclude_schemas,attr,optional"`
 }
 
 // PerfSchemaFileInstances configures the perf_schema.file_instances collector
@@ -142,25 +145,27 @@ func (a *Arguments) Validate() error {
 
 func (a *Arguments) Convert() *mysqld_exporter.Config {
 	return &mysqld_exporter.Config{
-		DataSourceName:                       config_util.Secret(a.DataSourceName),
-		EnableCollectors:                     a.EnableCollectors,
-		DisableCollectors:                    a.DisableCollectors,
-		SetCollectors:                        a.SetCollectors,
-		LockWaitTimeout:                      a.LockWaitTimeout,
-		LogSlowFilter:                        a.LogSlowFilter,
-		InfoSchemaProcessListMinTime:         a.InfoSchemaProcessList.MinTime,
-		InfoSchemaProcessListProcessesByUser: a.InfoSchemaProcessList.ProcessesByUser,
-		InfoSchemaProcessListProcessesByHost: a.InfoSchemaProcessList.ProcessesByHost,
-		InfoSchemaTablesDatabases:            a.InfoSchemaTables.Databases,
-		PerfSchemaEventsStatementsLimit:      a.PerfSchemaEventsStatements.Limit,
-		PerfSchemaEventsStatementsTimeLimit:  a.PerfSchemaEventsStatements.TimeLimit,
-		PerfSchemaEventsStatementsTextLimit:  a.PerfSchemaEventsStatements.TextLimit,
-		PerfSchemaFileInstancesFilter:        a.PerfSchemaFileInstances.Filter,
-		PerfSchemaFileInstancesRemovePrefix:  a.PerfSchemaFileInstances.RemovePrefix,
-		PerfSchemaMemoryEventsRemovePrefix:   a.PerfSchemaMemoryEvents.RemovePrefix,
-		HeartbeatDatabase:                    a.Heartbeat.Database,
-		HeartbeatTable:                       a.Heartbeat.Table,
-		HeartbeatUTC:                         a.Heartbeat.UTC,
-		MySQLUserPrivileges:                  a.MySQLUser.Privileges,
+		DataSourceName:                           config_util.Secret(a.DataSourceName),
+		EnableCollectors:                         a.EnableCollectors,
+		DisableCollectors:                        a.DisableCollectors,
+		SetCollectors:                            a.SetCollectors,
+		EnableLockWaitTimeout:                    a.EnableLockWaitTimeout,
+		LockWaitTimeout:                          a.LockWaitTimeout,
+		LogSlowFilter:                            a.LogSlowFilter,
+		InfoSchemaProcessListMinTime:             a.InfoSchemaProcessList.MinTime,
+		InfoSchemaProcessListProcessesByUser:     a.InfoSchemaProcessList.ProcessesByUser,
+		InfoSchemaProcessListProcessesByHost:     a.InfoSchemaProcessList.ProcessesByHost,
+		InfoSchemaTablesDatabases:                a.InfoSchemaTables.Databases,
+		PerfSchemaEventsStatementsLimit:          a.PerfSchemaEventsStatements.Limit,
+		PerfSchemaEventsStatementsTimeLimit:      a.PerfSchemaEventsStatements.TimeLimit,
+		PerfSchemaEventsStatementsTextLimit:      a.PerfSchemaEventsStatements.TextLimit,
+		PerfSchemaEventsStatementsExcludeSchemas: a.PerfSchemaEventsStatements.ExcludeSchemas,
+		PerfSchemaFileInstancesFilter:            a.PerfSchemaFileInstances.Filter,
+		PerfSchemaFileInstancesRemovePrefix:      a.PerfSchemaFileInstances.RemovePrefix,
+		PerfSchemaMemoryEventsRemovePrefix:       a.PerfSchemaMemoryEvents.RemovePrefix,
+		HeartbeatDatabase:                        a.Heartbeat.Database,
+		HeartbeatTable:                           a.Heartbeat.Table,
+		HeartbeatUTC:                             a.Heartbeat.UTC,
+		MySQLUserPrivileges:                      a.MySQLUser.Privileges,
 	}
 }
