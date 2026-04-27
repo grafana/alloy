@@ -14,9 +14,6 @@ var ErrConsumerStopped = errors.New("consumer stopped")
 
 // NewShardingConsumer creates a Consumer which shards streams across a fixed
 // number of shards before forwarding them to the downstream consumer.
-//
-// The returned consumer owns background worker goroutines for its lifetime and
-// must be stopped when no longer needed.
 func NewShardingConsumer(shards int, consumer Consumer) *ShardingConsumer {
 	if shards <= 0 {
 		shards = 1
@@ -36,12 +33,11 @@ func NewShardingConsumer(shards int, consumer Consumer) *ShardingConsumer {
 	return s
 }
 
-// ShardingConsumer shareds each stream to a shard based on the stream's labels.
-//
-// ShardingConsumer is intended to be scoped to the lifetime of a component.
-// Callers must stop all log-producing goroutines before calling Stop. After
-// Stop begins, Consume and ConsumeEntry reject late calls with
-// ErrConsumerStopped.
+// ShardingConsumer serializes work per shard while allowing different shards to
+// make progress independently. It is intended to be scoped to the lifetime of a
+// component, and callers must stop all log-producing goroutines before calling
+// Stop. Once a batch or entry has been accepted by a shard, execution is handed
+// off to the downstream consumer.
 type ShardingConsumer struct {
 	shards []chan shardingRequest
 
@@ -118,11 +114,7 @@ func (s *ShardingConsumer) ConsumeEntry(ctx context.Context, entry Entry) error 
 	return s.joinErrors(ctx, []<-chan error{errCh})
 }
 
-// Stop stops the shard workers and waits for them to exit.
-//
-// Callers must ensure all producers have stopped before calling Stop. Any late
-// calls to Consume or ConsumeEntry after shutdown begins return
-// ErrConsumerStopped.
+// Stop stops the shards and waits for them to exit.
 func (s *ShardingConsumer) Stop() {
 	s.stopOnce.Do(func() {
 		close(s.done)
@@ -151,16 +143,11 @@ type shardingRequest struct {
 }
 
 func (s *ShardingConsumer) joinErrors(ctx context.Context, errChans []<-chan error) error {
-	var errs []error
+	errs := make([]error, 0, len(errChans))
 
 	for _, errCh := range errChans {
-		select {
-		case <-ctx.Done():
-			errs = append(errs, ctx.Err())
-		case err := <-errCh:
-			if err != nil {
-				errs = append(errs, err)
-			}
+		if err := <-errCh; err != nil {
+			errs = append(errs, err)
 		}
 	}
 
