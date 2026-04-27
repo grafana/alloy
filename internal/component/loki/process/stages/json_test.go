@@ -94,7 +94,7 @@ func TestPipeline_JSON(t *testing.T) {
 		"successfully extract regex values from json": {
 			testJSONAlloyRegex,
 			`{"time":"2012-11-01T22:08:41+00:00", "pod_name": "my-pod-123", "pod_label": "my-label"}`,
-			map[string]interface{}{
+			map[string]any{
 				"pod_name":  "my-pod-123",
 				"pod_label": "my-label",
 			},
@@ -102,7 +102,7 @@ func TestPipeline_JSON(t *testing.T) {
 		"successfully extract all values from json via regex": {
 			testJSONAlloyRegexAll,
 			testJSONLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"time":      "2012-11-01T22:08:41+00:00",
 				"app":       "loki",
 				"component": `["parser","type"]`,
@@ -116,7 +116,7 @@ func TestPipeline_JSON(t *testing.T) {
 		"successfully extract values with expressions and regex from json": {
 			testJSONAlloyExpressionsAndRegex,
 			testJSONLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"out":      "this is a log line",
 				"app":      "loki",
 				"duration": float64(125),

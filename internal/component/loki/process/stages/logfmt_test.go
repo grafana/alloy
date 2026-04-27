@@ -76,7 +76,7 @@ func TestLogfmt(t *testing.T) {
 		"successfully extract regex values from logfmt": {
 			testLogfmtAlloyRegex,
 			`time=2012-11-01T22:08:41+00:00 pod_name=my-pod-123 pod_label=my-label`,
-			map[string]interface{}{
+			map[string]any{
 				"pod_name":  "my-pod-123",
 				"pod_label": "my-label",
 			},
@@ -84,7 +84,7 @@ func TestLogfmt(t *testing.T) {
 		"successfully extract all values via regex from logfmt": {
 			testLogfmtAlloyRegexAll,
 			testLogfmtLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"time":     "2012-11-01T22:08:41+00:00",
 				"app":      "loki",
 				"level":    "WARN",
@@ -96,7 +96,7 @@ func TestLogfmt(t *testing.T) {
 		"successfully extract values with expressions and regex from logfmt": {
 			testLogfmtAlloyRegexAndMapping,
 			testLogfmtLogLine,
-			map[string]interface{}{
+			map[string]any{
 				"out":      "this is a log line",
 				"app":      "loki",
 				"duration": "125",
