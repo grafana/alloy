@@ -59,6 +59,10 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 		ctx:       ctx,
 		cancel:    cancel,
 		signature: sig,
+		backoff: backoff.New(ctx, backoff.Config{
+			MinBackoff: cfg.WatcherConfig.MinPollFrequency,
+			MaxBackoff: cfg.WatcherConfig.MaxPollFrequency,
+		}),
 		waitAtEOF: cfg.Compression == "",
 	}, nil
 }
@@ -79,8 +83,9 @@ type File struct {
 	// it was closed during file rotation.
 	bufferedLines []Line
 
-	ctx    context.Context
-	cancel context.CancelFunc
+	ctx     context.Context
+	cancel  context.CancelFunc
+	backoff *backoff.Backoff
 
 	// waitAtEOF controls whether we should wait for file events
 	// when we get EOF
@@ -188,7 +193,7 @@ func (f *File) wait() error {
 		return err
 	}
 
-	event, err := blockUntilEvent(f.ctx, f.file, offset, f.cfg)
+	event, err := blockUntilEvent(f.backoff, f.file, offset, f.cfg)
 	switch event {
 	case eventModified:
 		level.Debug(f.logger).Log("msg", "file modified")
@@ -290,7 +295,7 @@ func (f *File) reopen(truncated bool) error {
 		if err != nil {
 			if os.IsNotExist(err) {
 				level.Debug(f.logger).Log("msg", fmt.Sprintf("waiting for %s to appear...", f.cfg.Filename))
-				if err := blockUntilExists(f.ctx, f.cfg); err != nil {
+				if err := blockUntilExists(f.backoff, f.cfg); err != nil {
 					return fmt.Errorf("failed to detect creation of %s: %w", f.cfg.Filename, err)
 				}
 				continue

@@ -11,12 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
+	"github.com/grafana/dskit/backoff"
 )
 
 func TestBlockUntilExists(t *testing.T) {
-	watcherConfig := WatcherConfig{
-		MinPollFrequency: 5 * time.Millisecond,
-		MaxPollFrequency: 5 * time.Millisecond,
+	backoffConfig := backoff.Config{
+		MinBackoff: 5 * time.Millisecond,
+		MaxBackoff: 5 * time.Millisecond,
 	}
 
 	t.Run("should block until file exists", func(t *testing.T) {
@@ -27,9 +28,8 @@ func TestBlockUntilExists(t *testing.T) {
 			createFileWithPath(t, filename, "")
 		}()
 
-		err := blockUntilExists(context.Background(), &Config{
-			Filename:      filename,
-			WatcherConfig: watcherConfig,
+		err := blockUntilExists(backoff.New(context.Background(), backoffConfig), &Config{
+			Filename: filename,
 		})
 		require.NoError(t, err)
 	})
@@ -41,18 +41,17 @@ func TestBlockUntilExists(t *testing.T) {
 			cancel()
 		}()
 
-		err := blockUntilExists(ctx, &Config{
-			Filename:      filepath.Join(t.TempDir(), "never"),
-			WatcherConfig: watcherConfig,
+		err := blockUntilExists(backoff.New(ctx, backoffConfig), &Config{
+			Filename: filepath.Join(t.TempDir(), "never"),
 		})
 		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 
 func TestBlockUntilEvent(t *testing.T) {
-	watcherConfig := WatcherConfig{
-		MinPollFrequency: 5 * time.Millisecond,
-		MaxPollFrequency: 5 * time.Millisecond,
+	backoffConfig := backoff.Config{
+		MinBackoff: 5 * time.Millisecond,
+		MaxBackoff: 5 * time.Millisecond,
 	}
 
 	t.Run("should return modified event when file is written to", func(t *testing.T) {
@@ -65,9 +64,8 @@ func TestBlockUntilEvent(t *testing.T) {
 			require.NoError(t, err)
 		}()
 
-		event, err := blockUntilEvent(context.Background(), f, 0, &Config{
-			Filename:      f.Name(),
-			WatcherConfig: watcherConfig,
+		event, err := blockUntilEvent(backoff.New(context.Background(), backoffConfig), f, 0, &Config{
+			Filename: f.Name(),
 		})
 		require.NoError(t, err)
 		require.Equal(t, eventModified, event)
@@ -82,9 +80,8 @@ func TestBlockUntilEvent(t *testing.T) {
 			require.NoError(t, os.Chtimes(f.Name(), time.Now(), time.Now()))
 		}()
 
-		event, err := blockUntilEvent(context.Background(), f, 0, &Config{
-			Filename:      f.Name(),
-			WatcherConfig: watcherConfig,
+		event, err := blockUntilEvent(backoff.New(context.Background(), backoffConfig), f, 0, &Config{
+			Filename: f.Name(),
 		})
 		require.NoError(t, err)
 		require.Equal(t, eventModified, event)
@@ -104,9 +101,8 @@ func TestBlockUntilEvent(t *testing.T) {
 			removeFile(t, f.Name())
 		}()
 
-		event, err := blockUntilEvent(context.Background(), f, 0, &Config{
-			Filename:      f.Name(),
-			WatcherConfig: watcherConfig,
+		event, err := blockUntilEvent(backoff.New(context.Background(), backoffConfig), f, 0, &Config{
+			Filename: f.Name(),
 		})
 		require.NoError(t, err)
 		require.Equal(t, eventDeleted, event)
@@ -123,9 +119,8 @@ func TestBlockUntilEvent(t *testing.T) {
 
 		removeFile(t, f.Name())
 
-		event, err := blockUntilEvent(context.Background(), f, 0, &Config{
-			Filename:      f.Name(),
-			WatcherConfig: watcherConfig,
+		event, err := blockUntilEvent(backoff.New(context.Background(), backoffConfig), f, 0, &Config{
+			Filename: f.Name(),
 		})
 		require.NoError(t, err)
 		require.Equal(t, eventDeleted, event)
@@ -143,9 +138,8 @@ func TestBlockUntilEvent(t *testing.T) {
 			require.NoError(t, f.Truncate(0))
 		}()
 
-		event, err := blockUntilEvent(context.Background(), f, offset, &Config{
-			Filename:      f.Name(),
-			WatcherConfig: watcherConfig,
+		event, err := blockUntilEvent(backoff.New(context.Background(), backoffConfig), f, offset, &Config{
+			Filename: f.Name(),
 		})
 		require.NoError(t, err)
 		require.Equal(t, eventTruncated, event)
@@ -161,9 +155,8 @@ func TestBlockUntilEvent(t *testing.T) {
 			cancel()
 		}()
 
-		event, err := blockUntilEvent(ctx, f, 0, &Config{
-			Filename:      f.Name(),
-			WatcherConfig: watcherConfig,
+		event, err := blockUntilEvent(backoff.New(ctx, backoffConfig), f, 0, &Config{
+			Filename: f.Name(),
 		})
 		require.ErrorIs(t, err, context.Canceled)
 		require.Equal(t, eventNone, event)

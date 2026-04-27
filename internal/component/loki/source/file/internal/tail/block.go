@@ -1,7 +1,6 @@
 package tail
 
 import (
-	"context"
 	"os"
 	"runtime"
 
@@ -13,11 +12,8 @@ import (
 // blockUntilExists blocks until the file specified in cfg exists or the context is canceled.
 // It polls the file system at intervals defined by WatcherConfig polling frequencies.
 // Returns an error if the context is canceled or an unrecoverable error occurs.
-func blockUntilExists(ctx context.Context, cfg *Config) error {
-	backoff := backoff.New(ctx, backoff.Config{
-		MinBackoff: cfg.WatcherConfig.MinPollFrequency,
-		MaxBackoff: cfg.WatcherConfig.MaxPollFrequency,
-	})
+func blockUntilExists(backoff *backoff.Backoff, cfg *Config) error {
+	defer backoff.Reset()
 
 	for backoff.Ongoing() {
 		if _, err := os.Stat(cfg.Filename); err == nil {
@@ -45,7 +41,9 @@ const (
 // It polls the file system to detect modifications, truncations, deletions, or renames.
 // The pos parameter is the current file position and is used to detect truncation events.
 // Returns the detected event type and any error encountered. Returns eventNone if the context is canceled.
-func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Config) (event, error) {
+func blockUntilEvent(backoff *backoff.Backoff, f *os.File, prevSize int64, cfg *Config) (event, error) {
+	defer backoff.Reset()
+
 	// NOTE: it is important that we stat the open file here. Later we do os.Stat(cfg.Filename)
 	// and use os.IsSameFile to detect if file was rotated.
 	origFi, err := f.Stat()
@@ -56,11 +54,6 @@ func blockUntilEvent(ctx context.Context, f *os.File, prevSize int64, cfg *Confi
 		}
 		return eventNone, err
 	}
-
-	backoff := backoff.New(ctx, backoff.Config{
-		MinBackoff: cfg.WatcherConfig.MinPollFrequency,
-		MaxBackoff: cfg.WatcherConfig.MaxPollFrequency,
-	})
 
 	prevModTime := origFi.ModTime()
 
