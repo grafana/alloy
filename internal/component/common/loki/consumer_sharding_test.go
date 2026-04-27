@@ -1,8 +1,6 @@
 package loki
 
 import (
-	"context"
-	"sync"
 	"testing"
 
 	"github.com/grafana/loki/pkg/push"
@@ -17,8 +15,8 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		foo := model.LabelSet{"job": "foo"}
 		bar := model.LabelSet{"job": "bar"}
 
-		rc := &recordingConsumer{}
-		sharding := NewShardingConsumer(2, rc)
+		c := NewCollectingConsumer()
+		sharding := NewShardingConsumer(2, c)
 		defer sharding.Stop()
 
 		batch := NewBatchWithCreatedUnixMicro(created)
@@ -28,7 +26,7 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		err := sharding.Consume(t.Context(), batch)
 		require.NoError(t, err)
 
-		batches := rc.Batches()
+		batches := c.Batches()
 		require.Len(t, batches, 2)
 
 		got := make(map[string]Batch, len(batches))
@@ -49,8 +47,8 @@ func TestShardingConsumer_Consume(t *testing.T) {
 
 		foo := model.LabelSet{"job": "foo"}
 
-		rc := &recordingConsumer{}
-		consumer := NewShardingConsumer(2, rc)
+		c := NewCollectingConsumer()
+		consumer := NewShardingConsumer(2, c)
 		defer consumer.Stop()
 
 		batch := NewBatchWithCreatedUnixMicro(created)
@@ -62,7 +60,7 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		err := consumer.Consume(t.Context(), batch)
 		require.NoError(t, err)
 
-		batches := rc.Batches()
+		batches := c.Batches()
 		require.Len(t, batches, 1)
 		require.Equal(t, created, batches[0].created)
 		require.Len(t, batches[0].streams, 1)
@@ -75,8 +73,8 @@ func TestShardingConsumer_Consume(t *testing.T) {
 
 func TestShardingConsumer_ConsumeEntry(t *testing.T) {
 	t.Run("forwards entry to consumer", func(t *testing.T) {
-		rc := &recordingConsumer{}
-		consumer := NewShardingConsumer(2, rc)
+		c := NewCollectingConsumer()
+		consumer := NewShardingConsumer(2, c)
 		defer consumer.Stop()
 
 		entry := Entry{
@@ -88,51 +86,10 @@ func TestShardingConsumer_ConsumeEntry(t *testing.T) {
 		err := consumer.ConsumeEntry(t.Context(), entry)
 		require.NoError(t, err)
 
-		entries := rc.Entries()
+		entries := c.Entries()
 		require.Len(t, entries, 1)
 		require.Equal(t, entry.Labels, entries[0].Labels)
 		require.Equal(t, entry.Created(), entries[0].Created())
 		require.Equal(t, entry.Line, entries[0].Line)
 	})
-}
-
-type recordingConsumer struct {
-	mut     sync.Mutex
-	batches []Batch
-	entries []Entry
-}
-
-type recordedBatch struct {
-	created int64
-	streams []Stream
-}
-
-func (c *recordingConsumer) Consume(_ context.Context, batch Batch) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	c.batches = append(c.batches, batch)
-
-	return nil
-}
-
-func (c *recordingConsumer) ConsumeEntry(_ context.Context, entry Entry) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	c.entries = append(c.entries, entry)
-	return nil
-}
-
-func (c *recordingConsumer) Batches() []Batch {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	return c.batches
-}
-
-func (c *recordingConsumer) Entries() []Entry {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-	return c.entries
 }

@@ -111,7 +111,7 @@ func (b *Batch) IterMut(fn func(entry *Entry) EntryAction) {
 	}
 	b.entryLen = newLen
 
-	// Remove any empty stream.
+	// Remove any empty streams.
 	streamDst := 0
 	for i := range b.streams {
 		if len(b.streams[i].Entries) == 0 {
