@@ -3,8 +3,8 @@
 ## Overview
 
 Every ~6 weeks, a release should include an update to a newer version of the OpenTelemetry Collector
-(when available). The OpenTelemetry release cadence is three times more frequent. Therefore, this
-update should happen 1-2 weeks out from release cutoff.
+(when available). This update should happen 1-2 weeks out from release cutoff. 6 weeks is roughly
+every other minor release.
 
 Alloy depends on various OpenTelemetry (Otel) modules such as these:
 

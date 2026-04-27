@@ -65,6 +65,9 @@ You can use the following arguments with `loki.rules.kubernetes`:
 * [`oauth2`][oauth2] block
 
  [arguments]: #arguments
+ [authorization]: #authorization
+ [basic_auth]: #basic_auth
+ [oauth2]: #oauth2
 
 If no `tenant_id` is provided, the component assumes that the Loki instance at `address` is running in single-tenant mode and no `X-Scope-OrgID` header is sent.
 
@@ -78,6 +81,8 @@ You should set the prefix to a unique value for each deployment.
 ## Blocks
 
 You can use the following blocks with `loki.rules.kubernetes`:
+
+{{< docs/alloy-config >}}
 
 | Block                                                              | Description                                                | Required |
 | ------------------------------------------------------------------ | ---------------------------------------------------------- | -------- |
@@ -93,9 +98,6 @@ You can use the following blocks with `loki.rules.kubernetes`:
 | `oauth2` > [`tls_config`][tls_config]                              | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`tls_config`][tls_config]                                         | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [extra_query_matchers]: #extra_query_matchers
@@ -104,6 +106,8 @@ For example, `oauth2` > `tls_config` refers to a `tls_config` block defined insi
 [matcher]: #matcher
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `authorization`
 
@@ -145,6 +149,8 @@ The following arguments are supported:
 
 When the `match_labels` argument is empty, all resources are matched.
 
+You can also use the `match_expression` block to define more complex label expressions.
+
 ### `match_expression`
 
 The `match_expression` block describes a Kubernetes label match expression for rule or namespace discovery.
@@ -159,9 +165,9 @@ The following arguments are supported:
 
 The `operator` argument should be one of the following strings:
 
-* `"in"`
-* `"notin"`
-* `"exists"`
+* `"In"`
+* `"NotIn"`
+* `"Exists"`
 
 ### `oauth2`
 

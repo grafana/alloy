@@ -21,7 +21,9 @@ The `pyroscope.ebpf` component embeds the [`grafana/opentelemetry-ebpf-profiler`
  [`open-telemetry/opentelemetry-ebpf-profiler`]: https://github.com/open-telemetry/opentelemetry-ebpf-profiler
 
 {{< admonition type="note" >}}
-To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
+To use the `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
+On Kubernetes, the simplest option is to set `securityContext.privileged: true`.
+Users who prefer least-privilege can instead grant the [specific capabilities required](#required-privileges).
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -29,6 +31,22 @@ The profiler requires file system storage at `/tmp/symb-cache` to store symbol c
 {{< /admonition >}}
 
 You can specify multiple `pyroscope.ebpf` components by giving them different labels, however it's not recommended as it can lead to additional memory and CPU usage.
+
+## Required privileges
+
+When running on Kubernetes without `privileged: true`, grant the following Linux capabilities and mount the kernel filesystem paths:
+
+| Capability           | Purpose                                                                                                                                 |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `BPF`                | Load and manage eBPF programs and maps.                                                                                                 |
+| `PERFMON`            | Attach perf events and read performance counters.                                                                                       |
+| `SYS_PTRACE`         | Read `/proc/<pid>/` entries.                                                                                                            |
+| `CHECKPOINT_RESTORE` | Follow magic-links in `/proc/<pid>/map_files/*` for ELF symbol reading (kernel 5.9+; use `SYS_ADMIN` on older kernels).                 |
+| `SYS_RESOURCE`       | Raise `RLIMIT_MEMLOCK` for eBPF map locking.                                                                                            |
+| `DAC_READ_SEARCH`    | Read ELF binaries and `/proc` entries regardless of DAC permission bits.                                                                |
+| `SYSLOG`             | Read the kernel ring buffer for eBPF verifier diagnostics.                                                                              |
+
+Mount `/sys/kernel/tracing` (on older Kernel versions you might need `/sys/kernel/debug` instead) from the host as read-only volumes so the tracer can attach tracepoints.
 
 ## Supported languages
 

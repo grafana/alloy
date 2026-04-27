@@ -93,6 +93,8 @@ The supported values for `error_mode` are:
 
 You can use the following blocks with `otelcol.processor.filter`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -112,6 +114,8 @@ You can use the following blocks with `otelcol.processor.filter`:
 [log_conditions]: #log_conditions
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 

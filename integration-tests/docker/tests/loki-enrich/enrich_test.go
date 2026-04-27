@@ -20,7 +20,7 @@ func TestEnrichWithFileDiscovery(t *testing.T) {
 	sendTestLogsForDevice(t, "router1.example.com")
 
 	// Verify logs were enriched with expected labels
-	common.AssertLogsPresent(t, common.ExpectedLogResult{
+	common.AssertLogsPresent(t, 3, common.ExpectedLogResult{
 		Labels: map[string]string{
 			"environment": "production",
 			"datacenter":  "us-east",
@@ -38,7 +38,7 @@ func TestEnrichWithMissingLabels(t *testing.T) {
 	sendTestLogsForDevice(t, "unknown.example.com")
 
 	// Verify logs passed through without enrichment
-	common.AssertLogsPresent(t, common.ExpectedLogResult{
+	common.AssertLogsPresent(t, 3, common.ExpectedLogResult{
 		Labels: map[string]string{
 			"host": "unknown.example.com",
 		},
@@ -54,11 +54,11 @@ func sendTestLogsForDevice(t *testing.T, hostname string) {
 	}
 
 	now := time.Now()
-	values := make([][2]string, 0, len(networkLogs))
+	values := make([]common.LogEntry, 0, len(networkLogs))
 	for _, msg := range networkLogs {
-		values = append(values, [2]string{
-			fmt.Sprintf("%d", now.UnixNano()),
-			msg,
+		values = append(values, common.LogEntry{
+			Timestamp: fmt.Sprintf("%d", now.UnixNano()),
+			Line:      msg,
 		})
 		now = now.Add(time.Second)
 	}

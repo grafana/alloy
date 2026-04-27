@@ -14,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	debuginfogrpc "buf.build/gen/go/parca-dev/parca/grpc/go/parca/debuginfo/v1alpha1/debuginfov1alpha1grpc"
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -22,8 +21,10 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2"
 	"github.com/grafana/dskit/backoff"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -35,7 +36,6 @@ import (
 	"go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
 )
 
 var (
@@ -70,23 +70,25 @@ func (rc *Arguments) SetToDefault() {
 // EndpointOptions describes an individual location for where profiles
 // should be delivered to using the Pyroscope push API.
 type EndpointOptions struct {
-	Name              string                   `alloy:"name,attr,optional"`
-	URL               string                   `alloy:"url,attr"`
-	RemoteTimeout     time.Duration            `alloy:"remote_timeout,attr,optional"`
-	Headers           map[string]string        `alloy:"headers,attr,optional"`
-	HTTPClientConfig  *config.HTTPClientConfig `alloy:",squash"`
-	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
-	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
-	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	Name                   string                   `alloy:"name,attr,optional"`
+	URL                    string                   `alloy:"url,attr"`
+	RemoteTimeout          time.Duration            `alloy:"remote_timeout,attr,optional"`
+	DebugInfoUploadTimeout time.Duration            `alloy:"debug_info_upload_timeout,attr,optional"`
+	Headers                map[string]string        `alloy:"headers,attr,optional"`
+	HTTPClientConfig       *config.HTTPClientConfig `alloy:",squash"`
+	MinBackoff             time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff             time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries      int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
 	defaultEndpointOptions := EndpointOptions{
-		RemoteTimeout:     10 * time.Second,
-		MinBackoff:        500 * time.Millisecond,
-		MaxBackoff:        5 * time.Minute,
-		MaxBackoffRetries: 10,
-		HTTPClientConfig:  config.CloneDefaultHTTPClientConfig(),
+		RemoteTimeout:          10 * time.Second,
+		DebugInfoUploadTimeout: 2 * time.Minute,
+		MinBackoff:             500 * time.Millisecond,
+		MaxBackoff:             5 * time.Minute,
+		MaxBackoffRetries:      10,
+		HTTPClientConfig:       config.CloneDefaultHTTPClientConfig(),
 	}
 
 	return defaultEndpointOptions
@@ -211,41 +213,41 @@ func (c *Component) Update(newConfig Arguments) error {
 	return nil
 }
 
+type endpointClient struct {
+	options      *EndpointOptions
+	pushClient   pushv1connect.PusherServiceClient
+	debugInfo    *debuginfo.Uploader
+	ingestClient *http.Client
+}
+
 type fanOutClient struct {
-	// The list of push clients to fan out to.
-	pushClients []pushv1connect.PusherServiceClient
-
-	debugInfos []*debuginfo.Client
-
-	ingestClients map[*EndpointOptions]*http.Client
-	config        Arguments
-	metrics       *metrics
-	tracer        trace.Tracer
-	logger        log.Logger
-
+	endpoints  []*endpointClient
+	config     Arguments
+	metrics    *metrics
+	tracer     trace.Tracer
+	logger     log.Logger
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) Client() debuginfogrpc.DebuginfoServiceClient {
-	for _, client := range f.debugInfos {
-		cl := client.Client()
-		if cl != nil {
-			return cl
-		}
+func (f *fanOutClient) DebugInfoClients() []*debuginfoclient.Client {
+	var clients []*debuginfoclient.Client
+	for _, client := range f.endpoints {
+		clients = append(clients, client.debugInfo.DebugInfoClients()...)
 	}
-	return nil
+	return clients
 }
 
 func (f *fanOutClient) Upload(j debuginfo.UploadJob) {
-	for _, u := range f.debugInfos {
-		u.Upload(j)
+	for _, ec := range f.endpoints {
+		ec.debugInfo.Upload(j)
 	}
 }
 
 func (f *fanOutClient) Start(ctx context.Context) {
-	for _, u := range f.debugInfos {
+	for _, ec := range f.endpoints {
+		u := ec.debugInfo
 		f.uploaderWg.Add(1)
-		go func(c *debuginfo.Client) {
+		go func(c *debuginfo.Uploader) {
 			defer f.uploaderWg.Done()
 			if err := c.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 				level.Error(f.logger).Log("msg", "debuginfo uploader error", "err", err)
@@ -260,15 +262,9 @@ func (f *fanOutClient) Wait() {
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
 func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string, dataPath string) (*fanOutClient, error) {
-	pushClients := make([]pushv1connect.PusherServiceClient, 0, len(config.Endpoints))
-	debugInfos := make([]*debuginfo.Client, 0, len(config.Endpoints))
-	ingestClients := make(map[*EndpointOptions]*http.Client)
+	endpoints := make([]*endpointClient, 0, len(config.Endpoints))
 
 	for i, endpoint := range config.Endpoints {
-		u, err := url.Parse(endpoint.URL)
-		if err != nil {
-			return nil, err
-		}
 		if endpoint.Headers == nil {
 			endpoint.Headers = map[string]string{}
 		}
@@ -279,27 +275,31 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		}
 		configureTracing(config, httpClient)
 
-		pushClients = append(
-			pushClients,
-			pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
-		)
-		ingestClients[endpoint] = httpClient
-
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		debugInfo := debuginfo.NewClient(logger, func() (*grpc.ClientConn, error) {
-			return newDebugInfoGRPCClient(u, endpoint)
-		}, metrics.debugInfoUploadBytes, endpointDataPath)
-		debugInfos = append(debugInfos, debugInfo)
+
+		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent))
+		dic := &debuginfoclient.Client{
+			DebuginfoServiceClient: debugInfoConnect,
+			HTTPClient:             httpClient,
+			BaseURL:                endpoint.URL,
+			UploadTimeout:          endpoint.DebugInfoUploadTimeout,
+		}
+		debugInfo := debuginfo.NewUploader(logger, dic, metrics.debugInfoUploadBytes, endpointDataPath)
+
+		endpoints = append(endpoints, &endpointClient{
+			options:      endpoint,
+			pushClient:   pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
+			debugInfo:    debugInfo,
+			ingestClient: httpClient,
+		})
 	}
 
 	return &fanOutClient{
-		logger:        logger,
-		tracer:        tracer,
-		pushClients:   pushClients,
-		debugInfos:    debugInfos,
-		ingestClients: ingestClients,
-		config:        config,
-		metrics:       metrics,
+		logger:    logger,
+		tracer:    tracer,
+		endpoints: endpoints,
+		config:    config,
+		metrics:   metrics,
 	}, nil
 }
 
@@ -342,42 +342,41 @@ func (f *fanOutClient) Push(
 		)
 	}()
 
-	for i, client := range f.pushClients {
+	for _, ec := range f.endpoints {
 		var (
-			client  = client
-			i       = i
+			ec      = ec
 			backoff = backoff.New(ctx, backoff.Config{
-				MinBackoff: f.config.Endpoints[i].MinBackoff,
-				MaxBackoff: f.config.Endpoints[i].MaxBackoff,
-				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
+				MinBackoff: ec.options.MinBackoff,
+				MaxBackoff: ec.options.MaxBackoff,
+				MaxRetries: ec.options.MaxBackoffRetries,
 			})
 			err error
 		)
 		wg.Add(1)
 		go func() {
-			defer f.observeLatency(f.config.Endpoints[i].URL, "push_endpoint")()
+			defer f.observeLatency(ec.options.URL, "push_endpoint")()
 			defer wg.Done()
 			req := connect.NewRequest(req.Msg)
-			for k, v := range f.config.Endpoints[i].Headers {
+			for k, v := range ec.options.Headers {
 				req.Header().Set(k, v)
 			}
 			for {
 				err = func() error {
-					defer f.observeLatency(f.config.Endpoints[i].URL, "push_downstream")()
-					ctx, cancel := context.WithTimeout(ctx, f.config.Endpoints[i].RemoteTimeout)
+					defer f.observeLatency(ec.options.URL, "push_downstream")()
+					ctx, cancel := context.WithTimeout(ctx, ec.options.RemoteTimeout)
 					defer cancel()
 
-					_, err := client.Push(ctx, req)
+					_, err := ec.pushClient.Push(ctx, req)
 					return err
 				}()
 				if err == nil {
-					f.metrics.sentBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
-					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
+					f.metrics.sentBytes.WithLabelValues(ec.options.URL).Add(float64(reqSize))
+					f.metrics.sentProfiles.WithLabelValues(ec.options.URL).Add(float64(profileCount))
 					break
 				}
 				_ = level.Debug(l).Log("msg",
 					"failed to push to endpoint",
-					"endpoint", f.config.Endpoints[i].URL,
+					"endpoint", ec.options.URL,
 					"retries", backoff.NumRetries(),
 					"err", err,
 				)
@@ -388,12 +387,12 @@ func (f *fanOutClient) Push(
 				if !backoff.Ongoing() {
 					break
 				}
-				f.metrics.retries.WithLabelValues(f.config.Endpoints[i].URL).Inc()
+				f.metrics.retries.WithLabelValues(ec.options.URL).Inc()
 			}
 			if err != nil {
-				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
-				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				err = fmt.Errorf("failed to push to endpoint %s (%d retries): %w", f.config.Endpoints[i].URL, backoff.NumRetries(), err)
+				f.metrics.droppedBytes.WithLabelValues(ec.options.URL).Add(float64(reqSize))
+				f.metrics.droppedProfiles.WithLabelValues(ec.options.URL).Add(float64(profileCount))
+				err = fmt.Errorf("failed to push to endpoint %s (%d retries): %w", ec.options.URL, backoff.NumRetries(), err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()
@@ -569,25 +568,24 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 	query.Set("name", ls.Normalized())
 
 	// Send to each endpoint concurrently
-	for endpointIdx, endpoint := range f.config.Endpoints {
+	for _, ec := range f.endpoints {
 		var (
-			endpoint = endpoint
-			i        = endpointIdx
-			backoff  = backoff.New(ctx, backoff.Config{
-				MinBackoff: f.config.Endpoints[i].MinBackoff,
-				MaxBackoff: f.config.Endpoints[i].MaxBackoff,
-				MaxRetries: f.config.Endpoints[i].MaxBackoffRetries,
+			ec      = ec
+			backoff = backoff.New(ctx, backoff.Config{
+				MinBackoff: ec.options.MinBackoff,
+				MaxBackoff: ec.options.MaxBackoff,
+				MaxRetries: ec.options.MaxBackoffRetries,
 			})
 			err error
 		)
 		wg.Add(1)
 		go func() {
-			defer f.observeLatency(endpoint.URL, "ingest_endpoint")()
+			defer f.observeLatency(ec.options.URL, "ingest_endpoint")()
 			defer wg.Done()
 			for {
 				err = func() error {
-					defer f.observeLatency(endpoint.URL, "ingest_downstream")()
-					u, err := url.Parse(endpoint.URL)
+					defer f.observeLatency(ec.options.URL, "ingest_downstream")()
+					u, err := url.Parse(ec.options.URL)
 					if err != nil {
 						return fmt.Errorf("parse URL: %w", err)
 					}
@@ -597,7 +595,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					// attach labels
 					u.RawQuery = query.Encode()
 
-					ctx, cancel := context.WithTimeout(ctx, f.config.Endpoints[i].RemoteTimeout)
+					ctx, cancel := context.WithTimeout(ctx, ec.options.RemoteTimeout)
 					defer cancel()
 
 					req, err := http.NewRequestWithContext(ctx, "POST", u.String(), bytes.NewReader(profile.RawBody))
@@ -606,7 +604,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					}
 
 					// set headers from endpoint
-					for k, v := range endpoint.Headers {
+					for k, v := range ec.options.Headers {
 						req.Header.Set(k, v)
 					}
 
@@ -619,7 +617,7 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 						req.Header.Add(pyroscope.HeaderContentType, profile.ContentType[idx])
 					}
 
-					resp, err := f.ingestClients[endpoint].Do(req)
+					resp, err := ec.ingestClient.Do(req)
 					if err != nil {
 						return fmt.Errorf("do request: %w", err)
 					}
@@ -640,13 +638,13 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					return nil
 				}()
 				if err == nil {
-					f.metrics.sentBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
-					f.metrics.sentProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
+					f.metrics.sentBytes.WithLabelValues(ec.options.URL).Add(float64(reqSize))
+					f.metrics.sentProfiles.WithLabelValues(ec.options.URL).Add(float64(profileCount))
 					break
 				}
 				_ = level.Debug(l).Log(
 					"msg", "failed to ingest to endpoint",
-					"endpoint", f.config.Endpoints[i].URL,
+					"endpoint", ec.options.URL,
 					"retries", backoff.NumRetries(),
 					"err", err)
 				if !shouldRetry(err) {
@@ -656,12 +654,12 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 				if !backoff.Ongoing() {
 					break
 				}
-				f.metrics.retries.WithLabelValues(f.config.Endpoints[i].URL).Inc()
+				f.metrics.retries.WithLabelValues(ec.options.URL).Inc()
 			}
 			if err != nil {
-				f.metrics.droppedBytes.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(reqSize))
-				f.metrics.droppedProfiles.WithLabelValues(f.config.Endpoints[i].URL).Add(float64(profileCount))
-				err = fmt.Errorf("failed to ingest to endpoint %s (%d retries): %w", f.config.Endpoints[i].URL, backoff.NumRetries(), err)
+				f.metrics.droppedBytes.WithLabelValues(ec.options.URL).Add(float64(reqSize))
+				f.metrics.droppedProfiles.WithLabelValues(ec.options.URL).Add(float64(profileCount))
+				err = fmt.Errorf("failed to ingest to endpoint %s (%d retries): %w", ec.options.URL, backoff.NumRetries(), err)
 				util.ErrorsJoinConcurrent(&errs, err, &errorMut)
 			}
 		}()

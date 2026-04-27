@@ -1,0 +1,60 @@
+loki.relabel "heroku" {
+	forward_to = []
+
+	rule {
+		source_labels = ["__heroku_drain_app"]
+		target_label  = "app"
+	}
+
+	rule {
+		source_labels = ["__heroku_drain_host"]
+		target_label  = "host"
+	}
+}
+
+loki.source.heroku "heroku" {
+	http {
+		listen_address = "0.0.0.0"
+		listen_port    = 1516
+	}
+
+	forward_to = [loki.process.test.receiver]
+
+	relabel_rules = loki.relabel.heroku.rules
+}
+
+loki.process "test" {
+	stage.static_labels {
+		values = {
+			test_name = "lokiheroku",
+		}
+	}
+
+	stage.structured_metadata {
+		values = {
+			host = "",
+		}
+	}
+
+	forward_to = [loki.relabel.test.receiver]
+}
+
+loki.relabel "test" {
+	forward_to = [loki.write.test.receiver]
+
+	rule {
+		source_labels = ["app"]
+		target_label  = "service_name"
+	}
+
+	rule {
+		action = "labeldrop"
+		regex  = "app"
+	}
+}
+
+loki.write "test" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}

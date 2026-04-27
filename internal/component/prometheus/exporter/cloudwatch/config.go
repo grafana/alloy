@@ -41,7 +41,9 @@ type Arguments struct {
 	CustomNamespace       []CustomNamespaceJob  `alloy:"custom_namespace,block,optional"`
 	DecoupledScrape       DecoupledScrapeConfig `alloy:"decoupled_scraping,block,optional"`
 	LabelsSnakeCase       bool                  `alloy:"labels_snake_case,attr,optional"`
-	UseAWSSDKVersion2     bool                  `alloy:"aws_sdk_version_v2,attr,optional"`
+
+	// UseAWSSDKVersion2 is deprecated and has no effect.
+	UseAWSSDKVersion2 bool `alloy:"aws_sdk_version_v2,attr,optional"`
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.

@@ -1,6 +1,6 @@
 import { Fragment } from 'react';
 
-import { alloyStringify } from '../alloy-syntax-js/stringify';
+import AsyncStringifiedValue from './AsyncStringifiedValue';
 import styles from './ComponentView.module.css';
 import Table from './Table';
 import { type PartitionedBody } from './types';
@@ -16,14 +16,14 @@ const ComponentBody = ({ partition }: ComponentBodyProps) => {
 
   const renderTableData = () => {
     return partition.attrs.map(({ name, value }) => {
-      const stringifiedValue = alloyStringify(value);
-
       return (
         <tr key={name}>
           <td className={styles.nameColumn}>{name}</td>
           <td>
             <pre className={styles.pre}>
-              <code>{stringifiedValue}</code>
+              <code>
+                <AsyncStringifiedValue value={value} />
+              </code>
             </pre>
           </td>
         </tr>

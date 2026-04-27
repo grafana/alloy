@@ -18,6 +18,9 @@ global:
     # -- Optional set of global image pull secrets.
     pullSecrets: []
 
+    # -- Global image pull policy to apply to all containers. Overrides `image.pullPolicy` and `configReloader.image.pullPolicy`.
+    pullPolicy: ""
+
   # -- Security context to apply to the Grafana Alloy pod.
   podSecurityContext: {}
 
@@ -244,6 +247,8 @@ configReloader:
     tag: v0.81.0
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
+    # -- Config reloader image pull policy.
+    pullPolicy: IfNotPresent
   # -- Override the args passed to the container.
   customArgs: []
   # -- Resource requests and limits to apply to the config reloader container.

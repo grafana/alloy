@@ -58,11 +58,15 @@ You can use the following arguments with `prometheus.exporter.elasticsearch`:
 
 You can use the following block with `prometheus.exporter.elasticsearch`:
 
+{{< docs/alloy-config >}}
+
 | Block                      | Description                                                | Required |
 | -------------------------- | ---------------------------------------------------------- | -------- |
 | [`basic_auth`][basic_auth] | Configure `basic_auth` for authenticating to the endpoint. | no       |
 
 [basic_auth]: #basic_auth
+
+{{< /docs/alloy-config >}}
 
 ### `basic_auth`
 
