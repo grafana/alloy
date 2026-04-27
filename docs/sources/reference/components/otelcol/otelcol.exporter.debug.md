@@ -34,18 +34,19 @@ otelcol.exporter.debug "<LABEL>" { }
 
 You can use the following arguments with `otelcol.exporter.debug`:
 
-| Name                  | Type     | Description                                                       | Default   | Required |
-| --------------------- | -------- | ----------------------------------------------------------------- | --------- | -------- |
-| `sampling_initial`    | `int`    | Number of messages initially logged each second.                  | `2`       | no       |
-| `sampling_thereafter` | `int`    | Sampling rate after the initial messages are logged.              | `1`       | no       |
-| `use_internal_logger` | `bool`   | Whether to use the internal logger or print directly to `stderr`. | `true`    | no       |
-| `verbosity`           | `string` | Verbosity of the generated logs.                                  | `"basic"` | no       |
+| Name                  | Type           | Description                                                       | Default      | Required |
+| --------------------- | -------------- | ----------------------------------------------------------------- | ------------ | -------- |
+| `output_paths`        | `list(string)` | Output destinations used when `use_internal_logger` is `false`.   | `["stdout"]` | no       |
+| `sampling_initial`    | `int`          | Number of messages initially logged each second.                  | `2`          | no       |
+| `sampling_thereafter` | `int`          | Sampling rate after the initial messages are logged.              | `1`          | no       |
+| `use_internal_logger` | `bool`         | Whether to use the internal logger or print directly to `stderr`. | `true`       | no       |
+| `verbosity`           | `string`       | Verbosity of the generated logs.                                  | `"basic"`    | no       |
 
 The `verbosity` argument must be one of:
 
-* `"basic"`: A single-line summary of received data is logged to stderr, with a total count of telemetry records for every batch of received logs, metrics, or traces.
-* `"normal"`: Produces the same output as `"basic"` verbosity.
-* `"detailed"`: All details of every telemetry record are logged to stderr, typically writing multiple lines for every telemetry record.
+- `"basic"`: A single-line summary of received data is logged to stderr, with a total count of telemetry records for every batch of received logs, metrics, or traces.
+- `"normal"`: Produces the same output as `"basic"` verbosity.
+- `"detailed"`: All details of every telemetry record are logged to stderr, typically writing multiple lines for every telemetry record.
 
 The following example shows `"basic"` and `"normal"` output:
 
@@ -101,15 +102,22 @@ Setting `use_internal_logger` to `false` is useful if you would like to see actu
 However, by not using the internal logger you wouldn't see metadata in the log line such as `component_id=otelcol.exporter.debug.default`.
 Multiline logs may also be harder to parse.
 
+The `output_paths` argument can be used only when `use_internal_logger` is `false`.
+Valid values include `stdout`, `stderr`, or file paths.
+
 ## Blocks
 
 You can use the following block with `otelcol.exporter.debug`:
+
+{{< docs/alloy-config >}}
 
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 
@@ -151,6 +159,7 @@ otelcol.receiver.otlp "default" {
 
 otelcol.exporter.debug "default" {}
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

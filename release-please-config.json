@@ -8,7 +8,6 @@
     { "type": "refactor", "section": "Refactoring", "hidden": true },
     { "type": "perf", "section": "Performance", "hidden": true },
     { "type": "test", "section": "Tests", "hidden": true },
-    { "type": "build", "section": "Build", "hidden": true },
     { "type": "ci", "section": "CI", "hidden": true },
     { "type": "chore", "section": "Chores", "hidden": true },
     { "type": "proposal", "section": "Proposals", "hidden": true },
@@ -16,6 +15,7 @@
   ],
   "always-update": true,
   "draft": true,
+  "force-tag-creation": true,
   "draft-pull-request": true,
   "pull-request-title-pattern": "chore${scope}: Release${component} ${version}",
   "packages": {
@@ -35,6 +35,10 @@
         {
           "type": "generic",
           "path": "collector/VERSION"
+        },
+        {
+          "type": "generic",
+          "path": "extension/alloyengine/go.mod"
         }
       ]
     }

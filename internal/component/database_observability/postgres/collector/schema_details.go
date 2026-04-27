@@ -23,7 +23,6 @@ import (
 
 const (
 	SchemaDetailsCollector = "schema_details"
-	OP_SCHEMA_DETECTION    = "schema_detection"
 	OP_TABLE_DETECTION     = "table_detection"
 	OP_CREATE_STATEMENT    = "create_statement"
 )
@@ -342,6 +341,7 @@ type SchemaDetails struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
@@ -385,13 +385,11 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.extractNames(c.ctx); err != nil {
@@ -405,7 +403,7 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -414,9 +412,11 @@ func (c *SchemaDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *SchemaDetails) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
@@ -461,12 +461,6 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 			break
 		}
 		schemas = append(schemas, schema)
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_SCHEMA_DETECTION,
-			fmt.Sprintf(`datname="%s" schema="%s"`, dbName, schema),
-		)
 	}
 
 	if err := schemaRs.Err(); err != nil {

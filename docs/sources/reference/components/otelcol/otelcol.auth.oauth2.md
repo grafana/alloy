@@ -43,28 +43,42 @@ otelcol.auth.oauth2 "<LABEL>" {
 
 You can use the following arguments with `otelcol.auth.oauth2`:
 
-| Name                 | Type                | Description                                                                        | Default | Required |
-| -------------------- | ------------------- | ---------------------------------------------------------------------------------- | ------- | -------- |
-| `token_url`          | `string`            | The server endpoint URL from which to get tokens.                                  |         | yes      |
-| `client_id_file`     | `string`            | The file path to retrieve the client identifier issued to the client.              |         | no       |
-| `client_id`          | `string`            | The client identifier issued to the client.                                        |         | no       |
-| `client_secret_file` | `string`            | The file path to retrieve the secret string associated with the client identifier. |         | no       |
-| `client_secret`      | `secret`            | The secret string associated with the client identifier.                           |         | no       |
-| `endpoint_params`    | `map(list(string))` | Additional parameters that are sent to the token endpoint.                         | `{}`    | no       |
-| `scopes`             | `list(string)`      | Requested permissions associated for the client.                                   | `[]`    | no       |
-| `timeout`            | `duration`          | The timeout on the client connecting to `token_url`.                               | `"0s"`  | no       |
+| Name                          | Type                | Description                                                                                                 | Default                | Required |
+| ----------------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------- | ---------------------- | -------- |
+| `token_url`                   | `string`            | The server endpoint URL from which to get tokens.                                                           | `""`                   | yes      |
+| `audience`                    | `string`            | JWT audience claim for JWT bearer grant. Defaults to `token_url` when empty.                                | `""`                   | no       |
+| `claims`                      | `map(any)`          | Additional JWT claims for JWT bearer grant.                                                                 | `{}`                   | no       |
+| `client_certificate_key`      | `secret`            | JWT bearer private key.                                                                                     | `""`                   | no       |
+| `client_certificate_key_file` | `string`            | Path to a file containing the JWT bearer private key.                                                       | `""`                   | no       |
+| `client_certificate_key_id`   | `string`            | Key ID included in JWT bearer grant requests.                                                               | `""`                   | no       |
+| `client_id`                   | `string`            | The client identifier issued to the client.                                                                 | `""`                   | no       |
+| `client_id_file`              | `string`            | Path to a file containing the client identifier.                                                            | `""`                   | no       |
+| `client_secret`               | `secret`            | The secret string associated with the client identifier.                                                    | `""`                   | no       |
+| `client_secret_file`          | `string`            | Path to a file containing the client secret.                                                                | `""`                   | no       |
+| `endpoint_params`             | `map(list(string))` | Additional parameters that are sent to the token endpoint.                                                  | `{}`                   | no       |
+| `expiry_buffer`               | `duration`          | Time before token expiry when refresh should happen.                                                        | `"0s"`                 | no       |
+| `grant_type`                  | `string`            | OAuth2 grant type. Valid values: `"client_credentials"` or `"urn:ietf:params:oauth:grant-type:jwt-bearer"`. | `"client_credentials"` | no       |
+| `iss`                         | `string`            | JWT issuer claim for JWT bearer grant. Defaults to `client_id` when empty.                                  | `""`                   | no       |
+| `scopes`                      | `list(string)`      | Requested permissions associated for the client.                                                            | `[]`                   | no       |
+| `signature_algorithm`         | `string`            | JWT signing algorithm for JWT bearer grant. Valid values: `RS256`, `RS384`, `RS512`.                        | `"RS256"`              | no       |
+| `timeout`                     | `duration`          | The timeout on the client connecting to `token_url`.                                                        | `"0s"`                 | no       |
 
 The `timeout` argument is used both for requesting initial tokens and for refreshing tokens. `"0s"` implies no timeout.
 
 At least one of the `client_id` and `client_id_file` pair of arguments must be set.
 If both are set, `client_id_file` takes precedence.
 
-Similarly, at least one of the `client_secret` and `client_secret_file` pair of arguments must be set.
-If both are set, `client_secret_file` also takes precedence.
+If `grant_type` is `client_credentials` (default), at least one of `client_secret` or `client_secret_file` must be set.
+If both are set, `client_secret_file` takes precedence.
+
+If `grant_type` is `urn:ietf:params:oauth:grant-type:jwt-bearer`, at least one of `client_certificate_key` or `client_certificate_key_file` must be set.
+If both are set, `client_certificate_key_file` takes precedence.
 
 ## Blocks
 
 You can use the following blocks with `otelcol.auth.oauth2`:
+
+{{< docs/alloy-config >}}
 
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
@@ -75,6 +89,8 @@ You can use the following blocks with `otelcol.auth.oauth2`:
 [tls]: #tls
 [tpm]: #tpm
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 

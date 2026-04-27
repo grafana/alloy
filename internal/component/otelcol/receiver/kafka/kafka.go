@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
@@ -25,8 +27,10 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
+			a := args.(Arguments)
+			a.logDeprecations(opts.Logger)
 			fact := kafkareceiver.NewFactory()
-			return receiver.New(opts, fact, args.(Arguments))
+			return receiver.New(opts, fact, a)
 		},
 	})
 }
@@ -56,7 +60,6 @@ type Arguments struct {
 	TLS              *otelcol.TLSClientArguments          `alloy:"tls,block,optional"`
 
 	MinFetchSize           int32         `alloy:"min_fetch_size,attr,optional"`
-	DefaultFetchSize       int32         `alloy:"default_fetch_size,attr,optional"`
 	MaxFetchSize           int32         `alloy:"max_fetch_size,attr,optional"`
 	MaxPartitionFetchSize  int32         `alloy:"max_partition_fetch_size,attr,optional"`
 	MaxFetchWait           time.Duration `alloy:"max_fetch_wait,attr,optional"`
@@ -64,6 +67,7 @@ type Arguments struct {
 	GroupInstanceID        string        `alloy:"group_instance_id,attr,optional"`
 	RackID                 string        `alloy:"rack_id,attr,optional"`
 	UseLeaderEpoch         bool          `alloy:"use_leader_epoch,attr,optional"`
+	ConnIdleTimeout        time.Duration `alloy:"conn_idle_timeout,attr,optional"`
 
 	ErrorBackOff ErrorBackOffArguments `alloy:"error_backoff,block,optional"`
 
@@ -82,7 +86,6 @@ func (args *Arguments) SetToDefault() {
 		// We use the defaults from the upstream OpenTelemetry Collector component
 		// for compatibility, even though that means using a client and group ID of
 		// "otel-collector".
-
 		Brokers:                []string{"localhost:9092"},
 		ClientID:               "otel-collector",
 		GroupID:                "otel-collector",
@@ -90,13 +93,13 @@ func (args *Arguments) SetToDefault() {
 		SessionTimeout:         10 * time.Second,
 		HeartbeatInterval:      3 * time.Second,
 		MinFetchSize:           1,
-		DefaultFetchSize:       1048576,
-		MaxFetchSize:           0,
+		MaxFetchSize:           1048576,
 		MaxPartitionFetchSize:  1048576,
 		MaxFetchWait:           250 * time.Millisecond,
 		GroupRebalanceStrategy: "range",
 		RackID:                 "",
 		UseLeaderEpoch:         true,
+		ConnIdleTimeout:        9 * time.Minute,
 		Logs: KafkaReceiverTopicEncodingConfig{
 			Topics:   []string{"otlp_logs"},
 			Encoding: "otlp_proto",
@@ -130,9 +133,9 @@ func (args *Arguments) Validate() error {
 	}
 
 	switch args.GroupRebalanceStrategy {
-	case "range", "roundrobin", "sticky":
+	case "range", "roundrobin", "sticky", "cooperative-sticky":
 	default:
-		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', or 'sticky'")
+		return fmt.Errorf("group_rebalance_strategy must be one of 'range', 'roundrobin', 'sticky', or 'cooperative-sticky'")
 	}
 
 	return nil
@@ -143,6 +146,34 @@ type KafkaReceiverTopicEncodingConfig struct {
 	Topics        []string `alloy:"topics,attr,optional"`
 	Encoding      string   `alloy:"encoding,attr,optional"`
 	ExcludeTopics []string `alloy:"exclude_topics,attr,optional"`
+}
+
+func (args Arguments) logDeprecations(logger log.Logger) {
+	for _, signal := range []struct {
+		name string
+		cfg  KafkaReceiverTopicEncodingConfig
+	}{
+		{"logs", args.Logs},
+		{"metrics", args.Metrics},
+		{"traces", args.Traces},
+	} {
+		if signal.cfg.Topic != "" {
+			level.Warn(logger).Log("msg", "the topic attribute is deprecated and will be removed in a future release, use topics instead",
+				"signal", signal.name, "topic", signal.cfg.Topic)
+		}
+	}
+}
+
+func (c KafkaReceiverTopicEncodingConfig) convert() kafkareceiver.TopicEncodingConfig {
+	topics := c.Topics
+	if c.Topic != "" {
+		topics = []string{c.Topic}
+	}
+	return kafkareceiver.TopicEncodingConfig{
+		Topics:        topics,
+		Encoding:      c.Encoding,
+		ExcludeTopics: c.ExcludeTopics,
+	}
 }
 
 type ErrorBackOffArguments struct {
@@ -196,40 +227,27 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.MessageMarking = args.MessageMarking.Convert()
 	result.HeaderExtraction = args.HeaderExtraction.Convert()
 	result.MinFetchSize = args.MinFetchSize
-	result.DefaultFetchSize = args.DefaultFetchSize
 	result.MaxFetchSize = args.MaxFetchSize
 	result.MaxPartitionFetchSize = args.MaxPartitionFetchSize
 	result.MaxFetchWait = args.MaxFetchWait
-	result.GroupRebalanceStrategy = args.GroupRebalanceStrategy
+	result.GroupRebalanceStrategy = configkafka.GroupRebalanceStrategy(args.GroupRebalanceStrategy)
 	result.GroupInstanceID = args.GroupInstanceID
 	result.RackID = args.RackID
 	result.UseLeaderEpoch = args.UseLeaderEpoch
+	result.ConnIdleTimeout = args.ConnIdleTimeout
 	result.ErrorBackOff = *args.ErrorBackOff.Convert()
 
-	result.Logs = kafkareceiver.TopicEncodingConfig{
-		Topic:         args.Logs.Topic,
-		Topics:        args.Logs.Topics,
-		Encoding:      args.Logs.Encoding,
-		ExcludeTopics: args.Logs.ExcludeTopics,
-	}
-
-	result.Metrics = kafkareceiver.TopicEncodingConfig{
-		Topic:         args.Metrics.Topic,
-		Topics:        args.Metrics.Topics,
-		Encoding:      args.Metrics.Encoding,
-		ExcludeTopics: args.Metrics.ExcludeTopics,
-	}
-
-	result.Traces = kafkareceiver.TopicEncodingConfig{
-		Topic:         args.Traces.Topic,
-		Topics:        args.Traces.Topics,
-		Encoding:      args.Traces.Encoding,
-		ExcludeTopics: args.Traces.ExcludeTopics,
-	}
+	result.Logs = args.Logs.convert()
+	result.Metrics = args.Metrics.convert()
+	result.Traces = args.Traces.convert()
 
 	if args.TLS != nil {
 		tlsCfg := args.TLS.Convert()
 		result.TLS = tlsCfg
+	}
+
+	if err := result.Validate(); err != nil {
+		return nil, err
 	}
 
 	return &result, nil

@@ -1,7 +1,7 @@
 name: alloy-integration-tests
 services:
   mimir:
-    image: grafana/mimir:3.0.0
+    image: grafana/mimir:3.0.4@sha256:686138d9f941508c99c931cc9e69bf9f6100dd4d2d623bf57b38d5c25ee645c1
     volumes:
       - ./configs/mimir:/etc/mimir-config
     entrypoint:
@@ -34,24 +34,27 @@ services:
       - integration-tests
 
   kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:latest@sha256:9516fb7634bad307d17c33b589fde9023003b0cb761374f500002b980a3149b9
     container_name: kafka
     ports:
       - "9092:9092"
+      - "29092:29092"
       - "9093:9093"
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://:29092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092,CONTROLLER://kafka:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 10
       KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
       test:
         [
@@ -76,16 +79,10 @@ services:
       - integration-tests
 
   loki:
-    image: grafana/loki:3.5.8
+    image: grafana/loki:3.6.7@sha256:3c8fd3570dd9219951a60d3f919c7f31923d10baee578b77bc26c4a0b32d092d
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3100/ready"]
-      interval: 1s
-      timeout: 5s
-      retries: 60
-      start_period: 30s
     networks:
       - integration-tests
 
@@ -99,7 +96,7 @@ services:
       - integration-tests
 
   redis:
-    image: redis:6.0.9-alpine
+    image: redis:6.2.21-alpine@sha256:46884be93652d02a96a176ccf173d1040bef365c5706aa7b6a1931caec8bfeef
     ports:
       - "6379:6379"
     healthcheck:
@@ -112,7 +109,7 @@ services:
       - integration-tests
 
   redis-init:
-    image: redis:6.0.9-alpine
+    image: redis:6.2.21-alpine@sha256:46884be93652d02a96a176ccf173d1040bef365c5706aa7b6a1931caec8bfeef
     depends_on:
       redis:
         condition: service_healthy
@@ -124,10 +121,47 @@ services:
       - integration-tests
 
   snmp-simulator:
-    image: tandrup/snmpsim:v0.4
+    image: tandrup/snmpsim:v0.4@sha256:a080b493042d91c4cec9282a83403e334660ed1c2c71e7e3afa920c3f1c42d7e
     container_name: snmpsim
     ports:
       - "161:161/udp"
+    networks:
+      - integration-tests
+
+  mysql:
+    image: mysql:8.4@sha256:da906917ca4ace3ba55538b7c2ee97a9bc865ef14a4b6920b021f0249d603f3d
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: testdb
+    volumes:
+      - ./tests/database-observability-mysql/init_mysql.sh:/docker-entrypoint-initdb.d/init_mysql.sh
+    networks:
+      - integration-tests
+
+  postgres:
+    image: postgres:16@sha256:2586e2a95d1c9b31cb2967feb562948f7d364854453d703039b6efa45fe48417
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: rootpassword
+      POSTGRES_DB: testdb
+    command: ["postgres", "-c", "shared_preload_libraries=pg_stat_statements", "-c", "pg_stat_statements.track=all"]
+    networks:
+      - integration-tests
+
+  postgres-init:
+    image: postgres:16@sha256:2586e2a95d1c9b31cb2967feb562948f7d364854453d703039b6efa45fe48417
+    depends_on:
+      - postgres
+    volumes:
+      - ./tests/database-observability-postgres/init_postgres.sh:/init_postgres.sh
+    command: sh /init_postgres.sh
+    restart: "no"
     networks:
       - integration-tests
 

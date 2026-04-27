@@ -132,14 +132,11 @@ func (e *AzureEventHubsTargetMessageParser) tryUnmarshal(message []byte) (*azure
 	return data, nil
 }
 
-func (e *AzureEventHubsTargetMessageParser) entryWithCustomPayload(body []byte, labelSet model.LabelSet, messageTime time.Time) loki.Entry {
-	return loki.Entry{
-		Labels: labelSet,
-		Entry: push.Entry{
-			Timestamp: messageTime,
-			Line:      string(body),
-		},
-	}
+func (e *AzureEventHubsTargetMessageParser) entryWithCustomPayload(body []byte, lset model.LabelSet, messageTime time.Time) loki.Entry {
+	return loki.NewEntry(lset, push.Entry{
+		Timestamp: messageTime,
+		Line:      string(body),
+	})
 }
 
 // processRecords handles the case when message is a valid json with a key `records`. It can be either a custom payload or a resource log.
@@ -158,7 +155,7 @@ func (e *AzureEventHubsTargetMessageParser) processRecords(labelSet model.LabelS
 
 // parseRecord parses a single value from the "records" in the original message.
 // It can also handle a case when the record contains custom data and doesn't match the schema for Azure resource logs.
-func (e *AzureEventHubsTargetMessageParser) parseRecord(record []byte, labelSet model.LabelSet, relabelConfig []*relabel.Config, useIncomingTimestamp bool, messageTime time.Time) (loki.Entry, error) {
+func (e *AzureEventHubsTargetMessageParser) parseRecord(record []byte, lset model.LabelSet, relabelConfig []*relabel.Config, useIncomingTimestamp bool, messageTime time.Time) (loki.Entry, error) {
 	logRecord := &azureMonitorResourceLog{}
 	err := json.Unmarshal(record, logRecord)
 	if err == nil {
@@ -170,19 +167,15 @@ func (e *AzureEventHubsTargetMessageParser) parseRecord(record []byte, labelSet 
 			return loki.Entry{}, err
 		}
 
-		return e.entryWithCustomPayload(record, labelSet, messageTime), nil
+		return e.entryWithCustomPayload(record, lset, messageTime), nil
 	}
 
 	logLabels := e.getLabels(logRecord, relabelConfig)
-	ts := e.getTime(messageTime, useIncomingTimestamp, logRecord)
 
-	return loki.Entry{
-		Labels: labelSet.Merge(logLabels),
-		Entry: push.Entry{
-			Timestamp: ts,
-			Line:      string(record),
-		},
-	}, nil
+	return loki.NewEntry(lset.Merge(logLabels), push.Entry{
+		Timestamp: e.getTime(messageTime, useIncomingTimestamp, logRecord),
+		Line:      string(record),
+	}), nil
 }
 
 func (e *AzureEventHubsTargetMessageParser) getTime(messageTime time.Time, useIncomingTimestamp bool, logRecord *azureMonitorResourceLog) time.Time {

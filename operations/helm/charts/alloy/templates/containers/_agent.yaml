@@ -2,7 +2,7 @@
 {{- $values := (mustMergeOverwrite .Values.alloy (or .Values.agent dict)) -}}
 - name: alloy
   image: {{ .Values.global.image.registry | default .Values.image.registry }}/{{ .Values.image.repository }}{{ include "alloy.imageId" . }}
-  imagePullPolicy: {{ .Values.image.pullPolicy }}
+  imagePullPolicy: {{ .Values.global.image.pullPolicy | default .Values.image.pullPolicy }}
   args:
     - run
     - /etc/alloy/{{ include "alloy.config-map.key" . }}
@@ -29,6 +29,10 @@
     - name: ALLOY_DEPLOY_MODE
       value: "helm"
     - name: HOSTNAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: K8S_NODE_NAME {{- /* Default used by some Alloy components */}}
       valueFrom:
         fieldRef:
           fieldPath: spec.nodeName

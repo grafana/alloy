@@ -1,14 +1,13 @@
 beyla.ebpf "default" {
   discovery {
-    services {
-      exe_path	 = "main" // this is instrumenting the otel-metrics-gen app
+    instrument {
+      open_ports      = "9009"
+      containers_only = true
     }
   }
   debug = true
   metrics {
-    features = [
-      "application", 
-      ]
+    features = ["application"]
   }
   output {
     traces = [otelcol.processor.attributes.beyla.input]

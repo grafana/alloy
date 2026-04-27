@@ -90,8 +90,7 @@ type Component struct {
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 
-	cacheMut sync.RWMutex
-	cache    *lru.Cache[uint64, labels.Labels]
+	cache *lru.Cache[uint64, labels.Labels]
 }
 
 var (
@@ -299,18 +298,11 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 }
 
 func (c *Component) getFromCache(lbls labels.Labels) (labels.Labels, bool) {
-	c.cacheMut.RLock()
-	defer c.cacheMut.RUnlock()
-
 	hash := lbls.Hash()
-	fm, found := c.cache.Get(hash)
-
-	return fm, found
+	return c.cache.Get(hash)
 }
 
 func (c *Component) deleteFromCache(lbls labels.Labels) {
-	c.cacheMut.Lock()
-	defer c.cacheMut.Unlock()
 	c.cacheDeletes.Inc()
 
 	hash := lbls.Hash()
@@ -318,16 +310,11 @@ func (c *Component) deleteFromCache(lbls labels.Labels) {
 }
 
 func (c *Component) clearCache(cacheSize int) {
-	c.cacheMut.Lock()
-	defer c.cacheMut.Unlock()
 	cache, _ := lru.New[uint64, labels.Labels](cacheSize)
 	c.cache = cache
 }
 
 func (c *Component) addToCache(lbls labels.Labels, relabeled labels.Labels, keep bool) {
-	c.cacheMut.Lock()
-	defer c.cacheMut.Unlock()
-
 	hash := lbls.Hash()
 	if !keep {
 		c.cache.Add(hash, labels.EmptyLabels())

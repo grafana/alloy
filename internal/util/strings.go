@@ -2,9 +2,8 @@ package util
 
 import (
 	"regexp"
+	"slices"
 	"strings"
-
-	"k8s.io/utils/strings/slices"
 )
 
 // CamelToSnake is a helper function for converting CamelCase to Snake Case

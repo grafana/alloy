@@ -21,11 +21,33 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/pkg/push"
 )
+
+func Test_defaultExclusions(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}, args.ExcludeSchemas)
+}
 
 func Test_disableQueryRedaction(t *testing.T) {
 	t.Run("enable sql text when provided", func(t *testing.T) {
@@ -146,6 +168,27 @@ func Test_parseCloudProvider(t *testing.T) {
 		assert.Empty(t, args.CloudProvider.Azure.ServerName)
 	})
 
+	t.Run("parse gcp cloud provider block", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+		cloud_provider {
+			gcp {
+				connection_name = "my-gcp-project:us-central1:my-cloud-sql-instance"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.GCP)
+		assert.Equal(t, "my-gcp-project:us-central1:my-cloud-sql-instance", args.CloudProvider.GCP.ConnectionName)
+	})
+
 	t.Run("empty cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
@@ -158,6 +201,27 @@ func Test_parseCloudProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Nil(t, args.CloudProvider)
+	})
+
+	t.Run("multiple cloud providers returns error", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+		cloud_provider {
+			aws {
+				arn = "arn:aws:rds:us-east-1:123456789012:db:mydb"
+			}
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.EqualError(t, err, "cloud_provider: at most one of aws, azure, or gcp must be specified")
 	})
 }
 
@@ -484,7 +548,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 		c := &Component{
 			opts:      opts,
 			args:      args,
-			receivers: args.ForwardTo,
+			fanout:    loki.NewFanout(args.ForwardTo),
 			handler:   loki.NewLogsReceiver(),
 			registry:  prometheus.NewRegistry(),
 			healthErr: atomic.NewString(""),
@@ -555,5 +619,61 @@ func TestMySQL_Reconnection(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Fatal("Run did not exit after context cancellation")
 		}
+	})
+}
+
+func Test_PrometheusExporterBlock(t *testing.T) {
+	t.Run("absent when not specified", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		assert.Nil(t, args.PrometheusExporter)
+	})
+
+	t.Run("present with defaults when empty block", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_mysql.Arguments(*args.PrometheusExporter)
+		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
+	})
+
+	t.Run("present with custom collectors", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			prometheus_exporter {
+			  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_mysql.Arguments(*args.PrometheusExporter)
+		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
+		assert.Equal(t, []string{"perf_schema.eventsstatements", "perf_schema.eventswaits"}, args.PrometheusExporter.EnableCollectors)
+	})
+
+	t.Run("error when both prometheus_exporter and targets are set", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			targets = [{"__address__" = "localhost:9104"}]
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "prometheus_exporter and targets are mutually exclusive")
 	})
 }

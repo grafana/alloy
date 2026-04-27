@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -24,7 +25,7 @@ import (
 
 type Target struct {
 	subscription  win_eventlog.EvtHandle
-	handler       loki.EntryHandler
+	handler       loki.LogsReceiver
 	cfg           *scrapeconfig.WindowsEventsTargetConfig
 	relabelConfig []*relabel.Config
 	logger        log.Logger
@@ -40,7 +41,7 @@ type Target struct {
 // NewTarget create a new windows targets, that will fetch windows event logs and send them to Loki.
 func NewTarget(
 	logger log.Logger,
-	handler loki.EntryHandler,
+	handler loki.LogsReceiver,
 	relabel []*relabel.Config,
 	cfg *scrapeconfig.WindowsEventsTargetConfig,
 	bookmarkSyncPeriod time.Duration,
@@ -157,9 +158,7 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 	res := make([]loki.Entry, 0, len(events))
 	lbs := labels.NewBuilder(labels.EmptyLabels())
 	for _, event := range events {
-		entry := loki.Entry{
-			Labels: make(model.LabelSet),
-		}
+		entry := loki.NewEntry(make(model.LabelSet), push.Entry{})
 
 		entry.Timestamp = time.Now()
 		if t.cfg.UseIncomingTimestamp {
@@ -206,7 +205,6 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 func (t *Target) Stop() error {
 	close(t.done)
 	t.wg.Wait()
-	t.handler.Stop()
 	t.saveBookmarkPosition()
 	return t.err
 }

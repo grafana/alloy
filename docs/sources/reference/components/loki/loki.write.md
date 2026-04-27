@@ -39,6 +39,8 @@ You can use the following arguments with `loki.write`:
 
 You can use the following blocks with `loki.write`:
 
+{{< docs/alloy-config >}}
+
 | Block                                              | Description                                                | Required |
 | -------------------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`endpoint`][endpoint]                             | Location to send logs to.                                  | no       |
@@ -50,9 +52,6 @@ You can use the following blocks with `loki.write`:
 | `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 | [`wal`][wal]                                       | Write-ahead log configuration.                             | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [endpoint]: #endpoint
@@ -60,6 +59,8 @@ For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined in
 [queue_config]: #queue_config
 [tls_config]: #tls_config
 [wal]: #wal
+
+{{< /docs/alloy-config >}}
 
 ### `endpoint`
 
@@ -203,6 +204,7 @@ The following fields are exported and can be referenced by other components:
 * `loki_write_sent_entries_total` (counter): Number of log entries sent to the ingester.
 * `loki_write_request_size_bytes` (histogram): Number of bytes for encoded requests.
 * `loki_write_request_duration_seconds` (histogram): Duration of sent requests.
+* `loki_write_entry_propagation_latency_seconds` (histogram): Time in seconds from entry creation until it's either successfully sent or dropped.
 
 ## Examples
 

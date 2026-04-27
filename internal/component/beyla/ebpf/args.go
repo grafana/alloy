@@ -24,6 +24,8 @@ type Arguments struct {
 	EBPF           EBPF                       `alloy:"ebpf,block,optional"`
 	Filters        Filters                    `alloy:"filters,block,optional"`
 	Output         *otelcol.ConsumerArguments `alloy:"output,block,optional"`
+	Injector       Injector                   `alloy:"injector,block,optional"`
+	Stats          Stats                      `alloy:"stats,block,optional"`
 }
 
 type Exports struct {
@@ -46,13 +48,14 @@ type Attributes struct {
 }
 
 type KubernetesDecorator struct {
-	Enable                string        `alloy:"enable,attr"`
-	ClusterName           string        `alloy:"cluster_name,attr,optional"`
-	InformersSyncTimeout  time.Duration `alloy:"informers_sync_timeout,attr,optional"`
-	InformersResyncPeriod time.Duration `alloy:"informers_resync_period,attr,optional"`
-	DisableInformers      []string      `alloy:"disable_informers,attr,optional"`
-	MetaRestrictLocalNode bool          `alloy:"meta_restrict_local_node,attr,optional"`
-	MetaCacheAddress      string        `alloy:"meta_cache_address,attr,optional"`
+	Enable                   string        `alloy:"enable,attr"`
+	ClusterName              string        `alloy:"cluster_name,attr,optional"`
+	InformersSyncTimeout     time.Duration `alloy:"informers_sync_timeout,attr,optional"`
+	InformersResyncPeriod    time.Duration `alloy:"informers_resync_period,attr,optional"`
+	DisableInformers         []string      `alloy:"disable_informers,attr,optional"`
+	MetaRestrictLocalNode    bool          `alloy:"meta_restrict_local_node,attr,optional"`
+	MetaCacheAddress         string        `alloy:"meta_cache_address,attr,optional"`
+	ReconnectInitialInterval time.Duration `alloy:"reconnect_initial_interval,attr,optional"`
 }
 
 type InstanceIDConfig struct {
@@ -80,6 +83,7 @@ type Service struct {
 	Namespace      string            `alloy:"namespace,attr,optional"`
 	OpenPorts      string            `alloy:"open_ports,attr,optional"`
 	Path           string            `alloy:"exe_path,attr,optional"`
+	CmdArgs        string            `alloy:"cmd_args,attr,optional"`
 	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
 	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
 	ExportModes    []string          `alloy:"exports,attr,optional"`
@@ -101,7 +105,7 @@ type KubernetesService struct {
 type Discovery struct {
 	// Deprecated: Use discovery.instrument instead
 	Services Services `alloy:"services,block,optional"`
-	// Deprecated: Use discovery.exlcude_instrument instead
+	// Deprecated: Use discovery.exclude_instrument instead
 	ExcludeServices Services `alloy:"exclude_services,block,optional"`
 	// Deprecated: Use discovery.default_exclude_instrument instead
 	DefaultExcludeServices   Services `alloy:"default_exclude_services,block,optional"`
@@ -121,6 +125,8 @@ type Metrics struct {
 	Network                         Network  `alloy:"network,block,optional"`
 	ExtraResourceLabels             []string `alloy:"extra_resource_labels,attr,optional"`
 	ExtraSpanResourceLabels         []string `alloy:"extra_span_resource_labels,attr,optional"`
+	NativeHistograms                bool     `alloy:"native_histograms,attr,optional"`
+	ExemplarFilter                  string   `alloy:"exemplar_filter,attr,optional"`
 }
 
 type Traces struct {
@@ -146,20 +152,97 @@ type Network struct {
 	CIDRs              []string      `alloy:"cidrs,attr,optional"`
 }
 
+type EBPFMapsConfig struct {
+	GlobalScaleFactor int `alloy:"global_scale_factor,attr,optional"`
+}
+
 type EBPF struct {
-	WakeupLen           int           `alloy:"wakeup_len,attr,optional"`
-	TrackRequestHeaders bool          `alloy:"track_request_headers,attr,optional"`
-	HTTPRequestTimeout  time.Duration `alloy:"http_request_timeout,attr,optional"`
-	ContextPropagation  string        `alloy:"context_propagation,attr,optional"`
-	HighRequestVolume   bool          `alloy:"high_request_volume,attr,optional"`
-	HeuristicSQLDetect  bool          `alloy:"heuristic_sql_detect,attr,optional"`
-	BpfDebug            bool          `alloy:"bpf_debug,attr,optional"`
-	ProtocolDebug       bool          `alloy:"protocol_debug_print,attr,optional"`
+	WakeupLen           int               `alloy:"wakeup_len,attr,optional"`
+	TrackRequestHeaders bool              `alloy:"track_request_headers,attr,optional"`
+	HTTPRequestTimeout  time.Duration     `alloy:"http_request_timeout,attr,optional"`
+	ContextPropagation  string            `alloy:"context_propagation,attr,optional"`
+	HighRequestVolume   bool              `alloy:"high_request_volume,attr,optional"`
+	HeuristicSQLDetect  bool              `alloy:"heuristic_sql_detect,attr,optional"`
+	BpfDebug            bool              `alloy:"bpf_debug,attr,optional"`
+	ProtocolDebug       bool              `alloy:"protocol_debug_print,attr,optional"`
+	PayloadExtraction   PayloadExtraction `alloy:"payload_extraction,block,optional"`
+	MapsConfig          EBPFMapsConfig    `alloy:"maps_config,block,optional"`
+}
+
+type PayloadExtraction struct {
+	HTTP HTTPPayloadExtraction `alloy:"http,block,optional"`
+}
+
+type HTTPPayloadExtraction struct {
+	OpenAI    OpenAIPayloadExtraction    `alloy:"openai,block,optional"`
+	Anthropic AnthropicPayloadExtraction `alloy:"anthropic,block,optional"`
+}
+
+type OpenAIPayloadExtraction struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
+}
+
+type AnthropicPayloadExtraction struct {
+	Enabled bool `alloy:"enabled,attr,optional"`
 }
 
 type Filters struct {
 	Application AttributeFamilies `alloy:"application,block,optional"`
 	Network     AttributeFamilies `alloy:"network,block,optional"`
+}
+
+type Injector struct {
+	Instrument        Services            `alloy:"instrument,block,optional"`
+	Webhook           InjectorWebhook     `alloy:"webhook,block,optional"`
+	OTELEndpoint      string              `alloy:"otel_endpoint,attr,optional"`
+	NoAutoRestart     *bool               `alloy:"disable_auto_restart,attr,optional"`
+	HostPathVolumeDir string              `alloy:"host_path_volume,attr,optional"`
+	SDKPkgVersion     string              `alloy:"sdk_package_version,attr,optional"`
+	HostMountPath     string              `alloy:"host_mount_path,attr,optional"`
+	ImageVolumePath   string              `alloy:"image_volume_path,attr,optional"`
+	ManageSDKVersions *bool               `alloy:"manage_sdk_versions,attr,optional"`
+	DefaultSampler    SamplerConfig       `alloy:"sampler,block,optional"`
+	Propagators       []string            `alloy:"propagators,attr,optional"`
+	Export            InjectorSDKExport   `alloy:"export,block,optional"`
+	Resources         InjectorSDKResource `alloy:"resources,block,optional"`
+	EnabledSDKs       []string            `alloy:"enabled_sdks,attr,optional"`
+	Debug             *bool               `alloy:"debug,attr,optional"`
+}
+
+type InjectorWebhook struct {
+	Enable   bool           `alloy:"enable,attr,optional"`
+	Port     *int           `alloy:"port,attr,optional"`
+	CertPath string         `alloy:"cert_path,attr,optional"`
+	KeyPath  string         `alloy:"key_path,attr,optional"`
+	Timeout  *time.Duration `alloy:"timeout,attr,optional"`
+}
+
+type InjectorSDKExport struct {
+	Traces  *bool `alloy:"traces,attr,optional"`
+	Metrics *bool `alloy:"metrics,attr,optional"`
+	Logs    *bool `alloy:"logs,attr,optional"`
+}
+
+type InjectorSDKResource struct {
+	// Attributes defines attributes that are added to the resource.
+	// For example environment: dev
+	Attributes map[string]string `alloy:"attributes,attr,optional"`
+	// AddK8sUIDAttributes defines whether K8s UID attr should be collected (e.g. k8s.deployment.uid).
+	AddK8sUIDAttributes *bool `alloy:"add_k8s_attributes,attr,optional"`
+	// UseLabelsForResourceAttributes defines whether to use common labels for resource attributes:
+	// Note: first entry wins:
+	//   - `app.kubernetes.io/instance` becomes `service.name`
+	//   - `app.kubernetes.io/name` becomes `service.name`
+	//   - `app.kubernetes.io/version` becomes `service.version`
+	UseLabelsForResourceAttributes *bool `alloy:"use_labels,attr,optional"`
+}
+
+type Stats struct {
+	AgentIP      string   `alloy:"agent_ip,attr,optional"`
+	AgentIPIface string   `alloy:"agent_ip_iface,attr,optional"`
+	AgentIPType  string   `alloy:"agent_ip_type,attr,optional"`
+	CIDRs        []string `alloy:"cidrs,attr,optional"`
+	Print        bool     `alloy:"print_stats,attr,optional"`
 }
 
 type AttributeFamilies []AttributeFamily

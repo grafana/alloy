@@ -57,7 +57,7 @@ You can use the following arguments with `prometheus.scrape`:
 | `enable_http2`                       | `bool`                  | Whether HTTP2 is supported for requests.                                                                                 | `true`                                                                                           | no       |
 | `enable_protobuf_negotiation`        | `bool`                  | Deprecated: use `scrape_protocols` instead.                                                                              | `false`                                                                                          | no       |
 | `enable_type_and_unit_labels`        | `bool`                  | (Experimental) Whether the metric type and unit should be added as labels to scraped metrics.                            | `false`                                                                                          | no       |
-| `extra_metrics`                      | `bool`                  | Whether extra metrics should be generated for scrape targets. Currently, cannot be updated at runtime.                   | `false`                                                                                          | no       |
+| `extra_metrics`                      | `bool`                  | Whether extra metrics should be generated for scrape targets.                                                            | `false`                                                                                          | no       |
 | `follow_redirects`                   | `bool`                  | Whether redirects returned by the server should be followed.                                                             | `true`                                                                                           | no       |
 | `http_headers`                       | `map(list(secret))`     | Custom HTTP headers to be sent along with each request. The map key is the header name.                                  |                                                                                                  | no       |
 | `honor_labels`                       | `bool`                  | Indicator whether the scraped metrics should remain unmodified.                                                          | `false`                                                                                          | no       |
@@ -165,6 +165,8 @@ Note: `metric_name_escaping_scheme` cannot be set to `"allow-utf-8"` while `metr
 
 You can use the following blocks with `prometheus.scrape`:
 
+{{< docs/alloy-config >}}
+
 | Block                                 | Description                                                                                 | Required |
 | ------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | [`authorization`][authorization]      | Configure generic authorization to targets.                                                 | no       |
@@ -174,14 +176,13 @@ You can use the following blocks with `prometheus.scrape`:
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to targets via OAuth 2.0                              | no       |
 | [`tls_config`][tls_config]            | Configure TLS settings for connecting to targets.                                           | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `oauth2` > `tls_config` refers to a `tls_config` block defined inside an `oauth2` block.
-
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [clustering]: #clustering
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `authorization`
 

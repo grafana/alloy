@@ -45,6 +45,8 @@ You can use the following argument with `loki.process`:
 
 You can use the following blocks with `loki.process`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                              | Description                                                    | Required |
 |--------------------------------------------------------------------|----------------------------------------------------------------|----------|
 | [`stage.cri`][stage.cri]                                           | Configures a pre-defined CRI-format pipeline.                  | no       |
@@ -79,8 +81,6 @@ You can use the following blocks with `loki.process`:
 | [`stage.useragent`][stage.useragent]                               | Configures a `useragent` processing stage.                     | no       |
 | [`stage.windowsevent`][stage.windowsevent]                         | Configures a `windowsevent` processing stage.                  | no       |
 
-You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
-
 [stage.cri]: #stagecri
 [stage.decolorize]: #stagedecolorize
 [stage.docker]: #stagedocker
@@ -112,6 +112,10 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.timestamp]: #stagetimestamp
 [stage.useragent]: #stageuseragent
 [stage.windowsevent]: #stagewindowsevent
+
+{{< /docs/alloy-config >}}
+
+You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
 
 ### `stage.cri`
 
@@ -584,15 +588,16 @@ stage.label_keep {
 
 ### `stage.labels`
 
-The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map and set new labels on incoming log entries.
+The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map or structured metadata and set new labels on incoming log entries.
 
 For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
 
 The following arguments are supported:
 
-| Name     | Type          | Description                             | Default | Required |
-| -------- | ------------- | --------------------------------------- | ------- | -------- |
-| `values` | `map(string)` | Configures a `labels` processing stage. | `{}`    | no       |
+| Name          | Type          | Description                                                                                              | Default       | Required |
+| ------------- | ------------- | -------------------------------------------------------------------------------------------------------- | ------------- | -------- |
+| `values`      | `map(string)` | Configures a `labels` processing stage.                                                                  | `{}`          | no       |
+| `source_type` | `string`      | Where to retrieve the data from.  Allowed values are `"extracted"` (default) or `"structured_metadata"`. | `"extracted"` | no       |
 
 In a labels stage, the map's keys define the label to set and the values are how to look them up.
 If the value is empty, it's inferred to be the same as the key.
@@ -603,6 +608,21 @@ stage.labels {
       env  = "",         // Sets up an 'env' label, based on the 'env' extracted value.
       user = "username", // Sets up a 'user' label, based on the 'username' extracted value.
     }
+}
+```
+
+```alloy
+stage.labels {
+    source_type = "structured_metadata"
+    values      = {
+      env  = "",         // Sets up an 'env' label, based on the 'env' structured metadata value.
+      user = "username", // Sets up a 'user' label, based on the 'username' structured metadata value.
+    }
+}
+
+// Drop the converted structured metadata
+stage.structured_metadata_drop {
+    values = [ "env", "username" ]
 }
 ```
 

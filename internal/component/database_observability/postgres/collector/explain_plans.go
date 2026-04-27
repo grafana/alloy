@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -240,6 +242,7 @@ type ExplainPlans struct {
 	running             *atomic.Bool
 	ctx                 context.Context
 	cancel              context.CancelFunc
+	wg                  sync.WaitGroup
 }
 
 func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
@@ -317,13 +320,11 @@ func (c *ExplainPlans) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.scrapeInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.fetchExplainPlans(c.ctx); err != nil {
@@ -337,7 +338,7 @@ func (c *ExplainPlans) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -347,7 +348,10 @@ func (c *ExplainPlans) Stopped() bool {
 }
 
 func (c *ExplainPlans) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
@@ -562,6 +566,21 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 	return nil
 }
 
+// postgresPreparedStatementParamCount returns N for EXECUTE, where N is the highest
+// placeholder index in the query. The same index may appear multiple times (e.g. two $1)
+// without increasing N.
+func postgresPreparedStatementParamCount(queryText string) int {
+	matches := paramCountRegex.FindAllString(queryText, -1)
+	maxParam := 0
+	for _, m := range matches {
+		n, err := strconv.Atoi(m[1:])
+		if err == nil && n > maxParam {
+			maxParam = n
+		}
+	}
+	return maxParam
+}
+
 func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
 	querySpecificDSN, err := replaceDatabaseNameInDSN(c.dbDSN, qi.datname)
 	if err != nil {
@@ -596,12 +615,10 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	}
 
 	explainQuery := fmt.Sprintf("%s%s", selectExplainPlanPrefix, preparedStatementName)
-	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
+	paramCount := postgresPreparedStatementParamCount(qi.queryText)
 	if paramCount > 0 {
 		nullParams := strings.Repeat("null,", paramCount)
-		if paramCount > 0 {
-			nullParams = nullParams[:len(nullParams)-1]
-		}
+		nullParams = nullParams[:len(nullParams)-1]
 
 		explainQuery = fmt.Sprintf("%s%s(%s)", selectExplainPlanPrefix, preparedStatementName, nullParams)
 	}

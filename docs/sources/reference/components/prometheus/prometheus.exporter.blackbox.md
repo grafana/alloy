@@ -73,11 +73,15 @@ Refer to [`blackbox_exporter`](https://github.com/prometheus/blackbox_exporter/b
 
 You can use the following block with `prometheus.exporter.blackbox`:
 
+{{< docs/alloy-config >}}
+
 | Name               | Description                   | Required |
 | ------------------ | ----------------------------- | -------- |
 | [`target`][target] | Configures a blackbox target. | no       |
 
 [target]: #target
+
+{{< /docs/alloy-config >}}
 
 ### `target`
 

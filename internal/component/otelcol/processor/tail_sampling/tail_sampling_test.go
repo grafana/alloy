@@ -108,10 +108,12 @@ func TestBadOtelConfig(t *testing.T) {
 func TestBigConfig(t *testing.T) {
 	exampleBigConfig := `
     decision_wait               = "10s"
+    decision_wait_after_root_received = "5s"
     num_traces                  = 100
     expected_new_traces_per_sec = 10
     sample_on_first_match = true
     drop_pending_traces_on_shutdown = true
+    maximum_trace_size_bytes = 4096
     policy {
       name = "test-policy-1"
       type = "always_sample"
@@ -214,6 +216,10 @@ func TestBigConfig(t *testing.T) {
       }
     }
     policy {
+      name = "test-policy-trace-flags"
+      type = "trace_flags"
+    }
+    policy {
       name = "test-policy-13"
       type = "ottl_condition"
       ottl_condition {
@@ -248,6 +254,19 @@ func TestBigConfig(t *testing.T) {
           "name != \"test_span_event_name\"",
           "attributes[\"test_event_attr_key_2\"] != \"test_event_attr_val_1\"",
         ]
+      }
+    }
+    policy{
+      name = "not-policy-1"
+      type = "not"
+      not {
+        not_sub_policy {
+          name = "test-not-sub-policy-1"
+          type = "status_code"
+          status_code {
+            status_codes = ["ERROR"]
+          }
+        }
       }
     }
     policy{

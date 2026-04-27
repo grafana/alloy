@@ -315,8 +315,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
-		// NOTE: This is not Update()-able.
-		ExtraMetrics: args.ExtraMetrics,
 		HTTPClientOptions: []config_util.HTTPClientOption{
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
@@ -464,16 +462,30 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	// Always store the latest targets and schedule a reload, even if the rest
+	// of the update fails. This ensures the component scrapes the correct set
+	// of targets when running with a partially-updated config.
+	c.args.Targets = newArgs.Targets
+	defer func() {
+		select {
+		case c.reloadTargets <- struct{}{}:
+		default:
+		}
+	}()
+
 	// Some fields are not updateable at runtime - only allow them when Update()
 	// is called for the first time from New().
 	if !c.firstUpdateDone {
 		c.firstUpdateDone = true
 	} else {
-		if c.args.ScrapeNativeHistograms != newArgs.ScrapeNativeHistograms {
-			return fmt.Errorf("scrape_native_histograms cannot be updated at runtime")
+		// TODO: When these change we could stop and re-create scrape manager.
+		if c.args.HonorMetadata != newArgs.HonorMetadata {
+			level.Warn(c.opts.Logger).Log("msg", "honor_metadata cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.HonorMetadata, "requested", newArgs.HonorMetadata)
+			newArgs.HonorMetadata = c.args.HonorMetadata
 		}
-		if c.args.ExtraMetrics != newArgs.ExtraMetrics {
-			return fmt.Errorf("extra_metrics cannot be updated at runtime")
+		if c.args.EnableTypeAndUnitLabels != newArgs.EnableTypeAndUnitLabels {
+			level.Warn(c.opts.Logger).Log("msg", "enable_type_and_unit_labels cannot be changed at runtime; the component will continue using the original setting until Alloy is restarted", "current", c.args.EnableTypeAndUnitLabels, "requested", newArgs.EnableTypeAndUnitLabels)
+			newArgs.EnableTypeAndUnitLabels = c.args.EnableTypeAndUnitLabels
 		}
 	}
 
@@ -492,11 +504,6 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("error applying scrape configs: %w", err)
 	}
 	level.Debug(c.opts.Logger).Log("msg", "scrape config was updated")
-
-	select {
-	case c.reloadTargets <- struct{}{}:
-	default:
-	}
 
 	return nil
 }
@@ -575,6 +582,7 @@ func getPromScrapeConfigs(jobName string, c Arguments) *config.ScrapeConfig {
 	dec.EnableCompression = c.EnableCompression
 	dec.NativeHistogramBucketLimit = c.NativeHistogramBucketLimit
 	dec.NativeHistogramMinBucketFactor = c.NativeHistogramMinBucketFactor
+	dec.ExtraScrapeMetrics = &c.ExtraMetrics
 
 	return &dec
 }

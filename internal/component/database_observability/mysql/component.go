@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path"
 	"regexp"
@@ -17,6 +18,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
+	mysqld_collector "github.com/prometheus/mysqld_exporter/collector"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
@@ -25,9 +27,12 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
@@ -39,7 +44,7 @@ const selectServerInfo = `SELECT @@server_uuid, @@hostname, VERSION()`
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -57,26 +62,28 @@ var (
 type Arguments struct {
 	DataSourceName                alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo                     []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets                       []discovery.Target  `alloy:"targets,attr"`
+	Targets                       []discovery.Target  `alloy:"targets,attr,optional"`
 	EnableCollectors              []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors             []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas                []string            `alloy:"exclude_schemas,attr,optional"`
 	AllowUpdatePerfSchemaSettings bool                `alloy:"allow_update_performance_schema_settings,attr,optional"`
 
-	CloudProvider           *CloudProvider          `alloy:"cloud_provider,block,optional"`
-	SetupConsumersArguments SetupConsumersArguments `alloy:"setup_consumers,block,optional"`
-	SetupActorsArguments    SetupActorsArguments    `alloy:"setup_actors,block,optional"`
-	QueryDetailsArguments   QueryDetailsArguments   `alloy:"query_details,block,optional"`
-	SchemaDetailsArguments  SchemaDetailsArguments  `alloy:"schema_details,block,optional"`
-	ExplainPlansArguments   ExplainPlansArguments   `alloy:"explain_plans,block,optional"`
-	LocksArguments          LocksArguments          `alloy:"locks,block,optional"`
-	QuerySamplesArguments   QuerySamplesArguments   `alloy:"query_samples,block,optional"`
-	HealthCheckArguments    HealthCheckArguments    `alloy:"health_check,block,optional"`
+	CloudProvider           *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	SetupConsumersArguments SetupConsumersArguments      `alloy:"setup_consumers,block,optional"`
+	SetupActorsArguments    SetupActorsArguments         `alloy:"setup_actors,block,optional"`
+	QueryDetailsArguments   QueryDetailsArguments        `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments  SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments   ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	LocksArguments          LocksArguments               `alloy:"locks,block,optional"`
+	QuerySamplesArguments   QuerySamplesArguments        `alloy:"query_samples,block,optional"`
+	HealthCheckArguments    HealthCheckArguments         `alloy:"health_check,block,optional"`
+	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
 }
 
 type CloudProvider struct {
 	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
 	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
+	GCP   *GCPCloudProviderInfo   `alloy:"gcp,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
@@ -87,6 +94,10 @@ type AzureCloudProviderInfo struct {
 	SubscriptionID string `alloy:"subscription_id,attr"`
 	ResourceGroup  string `alloy:"resource_group,attr"`
 	ServerName     string `alloy:"server_name,attr,optional"`
+}
+
+type GCPCloudProviderInfo struct {
+	ConnectionName string `alloy:"connection_name,attr"`
 }
 
 type QueryDetailsArguments struct {
@@ -122,71 +133,113 @@ type LocksArguments struct {
 }
 
 type QuerySamplesArguments struct {
-	CollectInterval             time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
-	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
-	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
+	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
+	AutoEnableSetupConsumers      bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
+	SetupConsumersCheckInterval   time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
+	SampleMinDuration             time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration          time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	EnablePreClassifiedWaitEvents bool          `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type HealthCheckArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
-var DefaultArguments = Arguments{
-	ExcludeSchemas:                []string{},
-	AllowUpdatePerfSchemaSettings: false,
+// PrometheusExporterArguments configures the embedded mysqld_exporter scrapers.
+// When this block is present, mysqld_exporter metrics are served alongside the
+// component's own metrics at the same /metrics endpoint.
+//
+// It is a distinct type (not an embedded struct) because the Alloy syntax
+// system does not support anonymous/embedded fields.
+type PrometheusExporterArguments exporter_mysql.Arguments
 
-	QueryDetailsArguments: QueryDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		StatementsLimit: 250,
-	},
+func (a *PrometheusExporterArguments) SetToDefault() {
+	*a = PrometheusExporterArguments(exporter_mysql.DefaultArguments)
+}
 
-	SchemaDetailsArguments: SchemaDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		CacheEnabled:    true,
-		CacheSize:       256,
-		CacheTTL:        10 * time.Minute,
-	},
+func (a *PrometheusExporterArguments) Validate() error {
+	args := exporter_mysql.Arguments(*a)
+	return args.Validate()
+}
 
-	SetupConsumersArguments: SetupConsumersArguments{
-		CollectInterval: 1 * time.Hour,
-	},
+func defaultArguments() Arguments {
+	return Arguments{
+		ExcludeSchemas:                database_observability.DefaultExcludedSchemas(),
+		AllowUpdatePerfSchemaSettings: false,
 
-	SetupActorsArguments: SetupActorsArguments{
-		CollectInterval:       1 * time.Hour,
-		AutoUpdateSetupActors: false,
-	},
+		QueryDetailsArguments: QueryDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			StatementsLimit: 250,
+		},
 
-	ExplainPlansArguments: ExplainPlansArguments{
-		CollectInterval: 1 * time.Minute,
-		PerCollectRatio: 1.0,
-		InitialLookback: 24 * time.Hour,
-	},
+		SchemaDetailsArguments: SchemaDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+		},
 
-	LocksArguments: LocksArguments{
-		CollectInterval: 30 * time.Second,
-		Threshold:       1 * time.Second,
-	},
+		SetupConsumersArguments: SetupConsumersArguments{
+			CollectInterval: 1 * time.Hour,
+		},
 
-	QuerySamplesArguments: QuerySamplesArguments{
-		CollectInterval:             10 * time.Second,
-		DisableQueryRedaction:       false,
-		AutoEnableSetupConsumers:    false,
-		SetupConsumersCheckInterval: 1 * time.Hour,
-	},
-	HealthCheckArguments: HealthCheckArguments{
-		CollectInterval: 1 * time.Hour,
-	},
+		SetupActorsArguments: SetupActorsArguments{
+			CollectInterval:       1 * time.Hour,
+			AutoUpdateSetupActors: false,
+		},
+
+		ExplainPlansArguments: ExplainPlansArguments{
+			CollectInterval: 1 * time.Minute,
+			PerCollectRatio: 1.0,
+			InitialLookback: 24 * time.Hour,
+		},
+
+		LocksArguments: LocksArguments{
+			CollectInterval: 30 * time.Second,
+			Threshold:       1 * time.Second,
+		},
+
+		QuerySamplesArguments: QuerySamplesArguments{
+			CollectInterval:             10 * time.Second,
+			DisableQueryRedaction:       false,
+			AutoEnableSetupConsumers:    false,
+			SetupConsumersCheckInterval: 1 * time.Hour,
+			SampleMinDuration:           0 * time.Millisecond,
+			WaitEventMinDuration:        1 * time.Microsecond,
+		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
 }
 
 func (a *Arguments) SetToDefault() {
-	*a = DefaultArguments
+	*a = defaultArguments()
 }
 
 func (a *Arguments) Validate() error {
 	_, err := mysql.ParseDSN(string(a.DataSourceName))
 	if err != nil {
 		return err
+	}
+	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
+		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
+	}
+	if a.CloudProvider != nil {
+		count := 0
+		if a.CloudProvider.AWS != nil {
+			count++
+		}
+		if a.CloudProvider.Azure != nil {
+			count++
+		}
+		if a.CloudProvider.GCP != nil {
+			count++
+		}
+		if count > 1 {
+			return fmt.Errorf("cloud_provider: at most one of aws, azure, or gcp must be specified")
+		}
 	}
 	return nil
 }
@@ -209,18 +262,19 @@ type Collector interface {
 }
 
 type Component struct {
-	opts         component.Options
-	args         Arguments
-	mut          sync.RWMutex
-	receivers    []loki.LogsReceiver
-	handler      loki.LogsReceiver
-	registry     *prometheus.Registry
-	baseTarget   discovery.Target
-	collectors   []Collector
-	instanceKey  string
-	dbConnection *sql.DB
-	healthErr    *atomic.String
-	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+	opts              component.Options
+	args              Arguments
+	handler           loki.LogsReceiver
+	fanout            *loki.Fanout
+	mut               sync.RWMutex
+	registry          *prometheus.Registry
+	baseTarget        discovery.Target
+	collectors        []Collector
+	instanceKey       string
+	dbConnection      *sql.DB
+	healthErr         *atomic.String
+	openSQL           func(driverName, dataSourceName string) (*sql.DB, error)
+	exporterCollector prometheus.Collector
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -231,7 +285,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	c := &Component{
 		opts:      opts,
 		args:      args,
-		receivers: args.ForwardTo,
+		fanout:    loki.NewFanout(args.ForwardTo),
 		handler:   loki.NewLogsReceiver(),
 		registry:  prometheus.NewRegistry(),
 		healthErr: atomic.NewString(""),
@@ -260,22 +314,31 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", name+" component shutting down, stopping collectors")
-		c.mut.RLock()
-		for _, collector := range c.collectors {
-			collector.Stop()
-		}
-		if c.dbConnection != nil {
-			c.dbConnection.Close()
-		}
-		c.mut.RUnlock()
+
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+
+			for _, collector := range c.collectors {
+				collector.Stop()
+			}
+			if c.dbConnection != nil {
+				c.dbConnection.Close()
+			}
+		})
 	}()
 
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
+
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
+
+	wg.Go(func() {
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()
+		defer cancel()
 
 		for {
 			select {
@@ -294,21 +357,10 @@ func (c *Component) Run(ctx context.Context) error {
 				}
 			}
 		}
-	}()
+	})
 
-	for {
-		select {
-		case <-ctx.Done():
-			wg.Wait()
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
-			}
-			c.mut.RUnlock()
-		}
-	}
+	wg.Wait()
+	return nil
 }
 
 func (c *Component) getBaseTarget() (discovery.Target, error) {
@@ -342,6 +394,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = args.(Arguments)
+	c.fanout.UpdateChildren(c.args.ForwardTo)
 
 	if err := c.connectAndStartCollectors(context.Background()); err != nil {
 		c.reportError("failed to connect", err)
@@ -423,6 +476,31 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
 		cp = cloudProvider
+	}
+
+	if c.exporterCollector != nil {
+		c.registry.Unregister(c.exporterCollector)
+		c.exporterCollector = nil
+	}
+
+	if len(c.args.Targets) == 0 {
+		if c.args.PrometheusExporter == nil {
+			d := PrometheusExporterArguments(exporter_mysql.DefaultArguments)
+			c.args.PrometheusExporter = &d
+		}
+		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
+		exporterCfg := exporterArgs.Convert()
+		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
+		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
+		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger,
+			mysqld_collector.EnableLockWaitTimeout(exporterCfg.EnableLockWaitTimeout),
+			mysqld_collector.SetLockWaitTimeout(exporterCfg.LockWaitTimeout),
+			mysqld_collector.SetSlowLogFilter(exporterCfg.LogSlowFilter),
+		)
+		if err := c.registry.Register(exporter); err != nil {
+			return fmt.Errorf("failed to register prometheus_exporter collector: %w", err)
+		}
+		c.exporterCollector = exporter
 	}
 
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
@@ -533,17 +611,23 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		if c.args.QuerySamplesArguments.AutoEnableSetupConsumers && !c.args.AllowUpdatePerfSchemaSettings {
 			level.Warn(c.opts.Logger).Log("msg", "auto_enable_setup_consumers is true but allow_update_performance_schema_settings is false, setup_consumers will not be enabled")
 		}
+		if c.args.QuerySamplesArguments.SampleMinDuration > 0 && c.args.QuerySamplesArguments.WaitEventMinDuration > c.args.QuerySamplesArguments.SampleMinDuration {
+			level.Warn(c.opts.Logger).Log("msg", "wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
+		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                          c.dbConnection,
-			EngineVersion:               parsedEngineVersion,
-			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
-			ExcludeSchemas:              c.args.ExcludeSchemas,
-			EntryHandler:                entryHandler,
-			Logger:                      c.opts.Logger,
-			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
-			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
-			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			DB:                            c.dbConnection,
+			EngineVersion:                 parsedEngineVersion,
+			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
+			ExcludeSchemas:                c.args.ExcludeSchemas,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySamplesArguments.DisableQueryRedaction,
+			AutoEnableSetupConsumers:      c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
+			SetupConsumersCheckInterval:   c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			SampleMinDuration:             c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:          c.args.QuerySamplesArguments.WaitEventMinDuration,
+			EnablePreClassifiedWaitEvents: c.args.QuerySamplesArguments.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
@@ -638,6 +722,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
+		DB:            c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)

@@ -3,12 +3,12 @@ package controller
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/dag"
 )
 
 var (
@@ -25,10 +25,8 @@ type RunnableNode interface {
 
 // Scheduler runs components.
 type Scheduler struct {
-	ctx                  context.Context
-	cancel               context.CancelFunc
 	running              sync.WaitGroup
-	logger               log.Logger
+	logger               *slog.Logger
 	taskShutdownDeadline time.Duration
 
 	tasksMut sync.Mutex
@@ -38,12 +36,9 @@ type Scheduler struct {
 // NewScheduler creates a new Scheduler. Call Synchronize to manage the set of
 // components which are running.
 //
-// Call Close to stop the Scheduler and all running components.
-func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Scheduler {
-	ctx, cancel := context.WithCancel(context.Background())
+// Call Stop to stop the Scheduler and all running components.
+func NewScheduler(logger *slog.Logger, taskShutdownDeadline time.Duration) *Scheduler {
 	return &Scheduler{
-		ctx:                  ctx,
-		cancel:               cancel,
 		logger:               logger,
 		taskShutdownDeadline: taskShutdownDeadline,
 
@@ -52,124 +47,122 @@ func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Schedu
 }
 
 // Synchronize adjusts the set of running components based on the provided
-// RunnableNodes in the following way,
+// graph in the following way,
 //
 // 1. Nodes already managed by the scheduler will be unchanged.
 // 2. Nodes which are no longer present will be told to shutdown.
-// 3. Nodes will be given 1 minute to shutdown before new nodes are created.
-// 4. Wait for any remaining nodes to shutdown
+// 3. Nodes that is not already managed by the scheduler will be started.
 //
 // Nodes are shutdown first to ensure any shared resources, such as ports,
-// are allowed to be freed before new nodes are scheduled. As a means to avoid,
-// long stretches of downtime we give this a 1 minute timeout.
+// are allowed to be freed before new nodes are scheduled.
+//
+// Tasks are stopped from roots to leaves and started from leaves to roots.
 //
 // Existing components will be restarted if they stopped since the previous
 // call to Synchronize.
 //
 // Synchronize is not goroutine safe and should not be called concurrently.
-func (s *Scheduler) Synchronize(rr []RunnableNode) error {
-	select {
-	case <-s.ctx.Done():
-		return fmt.Errorf("scheduler is closed")
-	default:
-	}
+func (s *Scheduler) Synchronize(g *dag.Graph) error {
+	desiredTasks := desiredTasksFromGraph(g)
 
-	newRunnables := make(map[string]RunnableNode, len(rr))
-	for _, r := range rr {
-		newRunnables[r.NodeID()] = r
-	}
-
-	// Stop tasks that are not defined in rr.
+	toStop := make(map[int][]*task)
 	s.tasksMut.Lock()
-	var stopping sync.WaitGroup
 	for id, t := range s.tasks {
-		if _, keep := newRunnables[id]; keep {
+		if dt, keep := desiredTasks[id]; keep {
+			t.groupID = dt.groupID
+			t.rank = dt.rank
 			continue
 		}
-
-		level.Debug(s.logger).Log("msg", "Stopping task", "id", id)
-		stopping.Add(1)
-		go func(t *task) {
-			defer stopping.Done()
-			t.Stop()
-		}(t)
+		toStop[t.groupID] = append(toStop[t.groupID], t)
 	}
 	s.tasksMut.Unlock()
 
-	// Wrapping the waitgroup with a channel will allow us to wait with a timeout
-	doneStopping := make(chan struct{})
-	go func() {
-		stopping.Wait()
-		close(doneStopping)
-	}()
-
-	stoppingTimedOut := false
-	select {
-	case <-doneStopping:
-		// All tasks stopped successfully within timeout.
-	case <-time.After(TaskShutdownWarningTimeout):
-		level.Warn(s.logger).Log("msg", "Some tasks are taking longer than expected to shutdown, proceeding with new tasks")
-		stoppingTimedOut = true
+	var stopping sync.WaitGroup
+	for _, group := range toStop {
+		stopping.Go(func() {
+			for _, t := range stopOrder(group) {
+				t.Stop()
+			}
+		})
 	}
 
-	// Launch new runnables that have appeared.
+	stopping.Wait()
+
 	s.tasksMut.Lock()
-	for id, r := range newRunnables {
+	toStart := make(map[int][]*task)
+
+	// Launch new runnables that have appeared.
+	for id, t := range desiredTasks {
 		if _, exist := s.tasks[id]; exist {
 			continue
 		}
 
-		level.Debug(s.logger).Log("msg", "Starting task", "id", id)
-		var (
-			nodeID      = id
-			newRunnable = r
-		)
-
-		opts := taskOptions{
-			context:  s.ctx,
-			runnable: newRunnable,
+		s.running.Add(1)
+		task := newTask(t.groupID, t.rank, taskOptions{
+			runnable: t.runnable,
 			onDone: func(err error) {
 				defer s.running.Done()
-
 				if err != nil {
-					level.Error(s.logger).Log("msg", "node exited with error", "node", nodeID, "err", err)
+					s.logger.Error("node exited with error", "node", id, "err", err)
 				} else {
-					level.Info(s.logger).Log("msg", "node exited without error", "node", nodeID)
+					s.logger.Info("node exited without error", "node", id)
 				}
 
 				s.tasksMut.Lock()
 				defer s.tasksMut.Unlock()
-				delete(s.tasks, nodeID)
+				delete(s.tasks, id)
 			},
-			logger:               log.With(s.logger, "taskID", nodeID),
+			logger:               s.logger.With("taskID", id),
 			taskShutdownDeadline: s.taskShutdownDeadline,
-		}
+		})
 
-		s.running.Add(1)
-		s.tasks[nodeID] = newTask(opts)
+		s.tasks[id] = task
+		toStart[task.groupID] = append(toStart[task.groupID], task)
 	}
 	s.tasksMut.Unlock()
 
-	// If we timed out, wait for stopping tasks to fully exit before returning.
-	// Tasks shutting down cannot fully complete their shutdown until the taskMut
-	// lock is released.
-	if stoppingTimedOut {
-		<-doneStopping
+	var starting sync.WaitGroup
+
+	for _, group := range toStart {
+		starting.Go(func() {
+			for _, t := range startOrder(group) {
+				t.Start()
+			}
+		})
 	}
 
+	starting.Wait()
 	return nil
 }
 
-// Close stops the Scheduler and returns after all running goroutines have
+// Stop stops the Scheduler and returns after all running goroutines have
 // exited.
-func (s *Scheduler) Close() error {
-	s.cancel()
+func (s *Scheduler) Stop() {
+	s.tasksMut.Lock()
+
+	toStop := make(map[int][]*task)
+	for _, t := range s.tasks {
+		toStop[t.groupID] = append(toStop[t.groupID], t)
+	}
+	s.tasksMut.Unlock()
+
+	for _, group := range toStop {
+		go func() {
+			// NOTE: we cannot hold lock when calling Stop because onDone will mutate running tasks.
+			for _, t := range stopOrder(group) {
+				t.Stop()
+			}
+		}()
+	}
+
 	s.running.Wait()
-	return nil
 }
 
 // task is a scheduled runnable.
 type task struct {
+	groupID int
+	rank    int
+
 	ctx      context.Context
 	cancel   context.CancelFunc
 	exited   chan struct{}
@@ -178,35 +171,43 @@ type task struct {
 }
 
 type taskOptions struct {
-	context              context.Context
 	runnable             RunnableNode
 	onDone               func(error)
-	logger               log.Logger
+	logger               *slog.Logger
 	taskShutdownDeadline time.Duration
 }
 
 // newTask creates and starts a new task.
-func newTask(opts taskOptions) *task {
-	ctx, cancel := context.WithCancel(opts.context)
-
+func newTask(groupID, rank int, opts taskOptions) *task {
 	t := &task{
-		ctx:    ctx,
-		cancel: cancel,
-		exited: make(chan struct{}),
-		opts:   opts,
+		groupID: groupID,
+		rank:    rank,
+		opts:    opts,
 	}
 
+	t.ctx, t.cancel = context.WithCancel(context.Background())
+	t.exited = make(chan struct{})
+
+	return t
+}
+
+func (t *task) Start() {
+	t.opts.logger.Debug("Starting task", "id", t.opts.runnable.NodeID())
+
 	go func() {
-		err := opts.runnable.Run(t.ctx)
+		err := t.opts.runnable.Run(t.ctx)
+		// NOTE: make sure we call cancel here so if the runnable
+		// exit unexpectedly we clean up resources.
+		t.cancel()
 		close(t.exited)
 		t.doneOnce.Do(func() {
 			t.opts.onDone(err)
 		})
 	}()
-	return t
 }
 
 func (t *task) Stop() {
+	t.opts.logger.Debug("Stopping task", "id", t.opts.runnable.NodeID())
 	t.cancel()
 
 	deadlineDuration := t.opts.taskShutdownDeadline
@@ -222,7 +223,7 @@ func (t *task) Stop() {
 		case <-t.exited:
 			return // Task exited normally.
 		case <-time.After(TaskShutdownWarningTimeout):
-			level.Warn(t.opts.logger).Log("msg", "task shutdown is taking longer than expected")
+			t.opts.logger.Warn("task shutdown is taking longer than expected")
 		case <-deadlineCtx.Done():
 			t.doneOnce.Do(func() {
 				t.opts.onDone(fmt.Errorf("task shutdown deadline exceeded"))
@@ -230,4 +231,51 @@ func (t *task) Stop() {
 			return // Task took too long to exit, don't wait.
 		}
 	}
+}
+
+// desiredTask describes a runnable to be scheduled.
+type desiredTask struct {
+	// rank defines order, start tasks in ascending rank order, stop in descending rank order
+	rank int
+	// groupID is ephemeral and can change between Synchronize calls
+	groupID  int
+	runnable RunnableNode
+}
+
+func desiredTasksFromGraph(g *dag.Graph) map[string]desiredTask {
+	var (
+		desiredTasks = make(map[string]desiredTask, g.Len())
+		components   = dag.WeaklyConnectedComponents(g, dag.FilterLeavesFunc)
+	)
+
+	for groupID, leaves := range components {
+		var rank int
+		_ = dag.WalkTopological(g, leaves, func(n dag.Node) error {
+			if runnable, ok := n.(RunnableNode); ok {
+				desiredTasks[runnable.NodeID()] = desiredTask{
+					rank:     rank,
+					groupID:  groupID,
+					runnable: runnable,
+				}
+				rank++
+			}
+			return nil
+		})
+	}
+
+	return desiredTasks
+}
+
+func startOrder(tasks []*task) []*task {
+	slices.SortFunc(tasks, func(a, b *task) int {
+		return a.rank - b.rank
+	})
+	return tasks
+}
+
+func stopOrder(tasks []*task) []*task {
+	slices.SortFunc(tasks, func(a, b *task) int {
+		return b.rank - a.rank
+	})
+	return tasks
 }

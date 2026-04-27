@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -48,6 +49,7 @@ type SetupActors struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewSetupActors(args SetupActorsArguments) (*SetupActors, error) {
@@ -80,13 +82,11 @@ func (c *SetupActors) Start(ctx context.Context) error {
 		return err
 	}
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.checkSetupActors(c.ctx, user); err != nil {
@@ -100,7 +100,7 @@ func (c *SetupActors) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -110,8 +110,10 @@ func (c *SetupActors) Stopped() bool {
 }
 
 func (c *SetupActors) Stop() {
-	c.cancel()
-	c.running.Store(false)
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *SetupActors) checkSetupActors(ctx context.Context, user string) error {

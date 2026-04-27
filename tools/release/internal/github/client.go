@@ -65,6 +65,9 @@ type FindCommitParams struct {
 	Pattern string
 }
 
+// BackportLabelColor is the hex color for backport labels (without '#' prefix).
+const BackportLabelColor = "63a504"
+
 // CreateLabelParams holds parameters for CreateLabel.
 type CreateLabelParams struct {
 	Name        string // Label name
@@ -157,7 +160,15 @@ func (c *Client) GetRefSHA(ctx context.Context, ref string) (string, error) {
 	// Try as a tag
 	tagRef, _, err := c.api.Git.GetRef(ctx, c.owner, c.repo, "tags/"+ref)
 	if err == nil {
-		return tagRef.GetObject().GetSHA(), nil
+		sha := tagRef.GetObject().GetSHA()
+		if tagRef.GetObject().GetType() == "tag" {
+			tagObj, _, tagErr := c.api.Git.GetTag(ctx, c.owner, c.repo, sha)
+			if tagErr != nil {
+				return "", fmt.Errorf("dereferencing annotated tag %s: %w", ref, tagErr)
+			}
+			sha = tagObj.GetObject().GetSHA()
+		}
+		return sha, nil
 	}
 
 	// Try as a commit SHA
@@ -381,8 +392,9 @@ func (c *Client) IsBranchMergedInto(ctx context.Context, source, target string) 
 	return status == "behind" || status == "identical", nil
 }
 
-// CreateLabel creates a new label in the repository.
-func (c *Client) CreateLabel(ctx context.Context, p CreateLabelParams) error {
+// EnsureLabel creates a label if it doesn't already exist.
+// Returns true if the label was created, false if it already existed.
+func (c *Client) EnsureLabel(ctx context.Context, p CreateLabelParams) (bool, error) {
 	label := &github.Label{
 		Name:        github.String(p.Name),
 		Color:       github.String(p.Color),
@@ -390,11 +402,20 @@ func (c *Client) CreateLabel(ctx context.Context, p CreateLabelParams) error {
 	}
 
 	_, _, err := c.api.Issues.CreateLabel(ctx, c.owner, c.repo, label)
-	if err != nil {
-		return fmt.Errorf("creating label %q: %w", p.Name, err)
+	if err == nil {
+		return true, nil
 	}
 
-	return nil
+	var errResp *github.ErrorResponse
+	if errors.As(err, &errResp) {
+		for _, e := range errResp.Errors {
+			if e.Code == "already_exists" {
+				return false, nil
+			}
+		}
+	}
+
+	return false, fmt.Errorf("creating label %q: %w", p.Name, err)
 }
 
 // GetReleaseByTag fetches a release by its tag name.
@@ -415,52 +436,6 @@ func (c *Client) UpdateReleaseBody(ctx context.Context, releaseID int64, body st
 		return fmt.Errorf("updating release %d body: %w", releaseID, err)
 	}
 	return nil
-}
-
-// WaitForCheckRun polls until the named check run has completed successfully on the given ref,
-// or until the context is done (e.g. timeout). Ref can be a branch name or commit SHA.
-func (c *Client) WaitForCheckRun(ctx context.Context, ref, checkName string) error {
-	opts := &github.ListCheckRunsOptions{
-		Filter: github.String("latest"),
-		ListOptions: github.ListOptions{
-			PerPage: 100,
-		},
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("waiting for check %q: %w", checkName, ctx.Err())
-		default:
-		}
-		result, _, err := c.api.Checks.ListCheckRunsForRef(ctx, c.owner, c.repo, ref, opts)
-		if err != nil {
-			return fmt.Errorf("listing check runs for ref %s: %w", ref, err)
-		}
-		var found *github.CheckRun
-		for _, run := range result.CheckRuns {
-			if run.GetName() == checkName {
-				found = run
-				break
-			}
-		}
-		if found == nil {
-			// Check not yet reported; wait and retry
-			fmt.Printf("⏳ Check %q not yet reported; waiting and retrying...\n", checkName)
-			time.Sleep(20 * time.Second)
-			continue
-		}
-		status := found.GetStatus()
-		if status != "completed" {
-			fmt.Printf("⏳ Check %q not yet completed; waiting and retrying...\n", checkName)
-			time.Sleep(20 * time.Second)
-			continue
-		}
-		conclusion := found.GetConclusion()
-		if conclusion != "success" {
-			return fmt.Errorf("check %q completed with conclusion %q (expected success)", checkName, conclusion)
-		}
-		return nil
-	}
 }
 
 // DeleteBranch deletes the branch ref on the remote.
@@ -535,5 +510,8 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 
 // IsBot checks if a username appears to be a bot account.
 func IsBot(username string) bool {
-	return strings.HasSuffix(username, "[bot]") || strings.HasSuffix(username, "-bot") || username == "Copilot"
+	return strings.HasSuffix(username, "[bot]") ||
+		strings.HasSuffix(username, "-bot") ||
+		username == "Copilot" ||
+		username == "claude"
 }

@@ -12,7 +12,7 @@ title: loki.source.api
 
 # `loki.source.api`
 
-`loki.source.api` receives log entries over HTTP and forwards them to other `loki.*` components.
+`loki.source.api` receives log entries over HTTP and gRPC and forwards them to other `loki.*` components.
 
 The HTTP API exposed is compatible with [Loki push API][loki-push-api] and the `logproto` format.
 This means that other [`loki.write`][loki.write] components can be used as a client and send requests to `loki.source.api` which enables using {{< param "PRODUCT_NAME" >}} as a proxy for logs.
@@ -67,16 +67,24 @@ The `relabel_rules` field can make use of the `rules` export value from a [`loki
 
 You can use the following blocks with `loki.source.api`:
 
+{{< docs/alloy-config >}}
+
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
+| [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
+| `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
-
 [http]: #http
+[grpc]: #grpc
 [tls]: #tls
+
+{{< /docs/alloy-config >}}
+
+### `grpc`
+
+{{< docs/shared lookup="reference/components/loki-server-grpc.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `http`
 
@@ -84,7 +92,7 @@ For example, `http` > `tls` refers to a `tls` block defined inside an `http` blo
 
 ### `tls`
 
-The `tls` block configures TLS for the HTTP server.
+The `tls` block configures TLS for the HTTP and gRPC servers.
 
 {{< docs/shared lookup="reference/components/server-tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -101,9 +109,10 @@ The `tls` block configures TLS for the HTTP server.
 The following are some of the metrics that are exposed when this component is used.
 The metrics include labels such as `status_code` where relevant, which can be used to measure request success rates.
 
-* `loki_source_api_request_duration_seconds` (histogram): Time (in seconds) spent serving HTTP requests.
-* `loki_source_api_request_message_bytes` (histogram): Size (in bytes) of messages received in the request.
-* `loki_source_api_response_message_bytes` (histogram): Size (in bytes) of messages sent in response.
+* `loki_source_api_request_duration_seconds` (histogram): HTTP request handling time, in seconds.
+* `loki_source_api_inflight_requests` (gauge): Current number of inflight requests.
+* `loki_source_api_request_message_bytes` (histogram): Request message size, in bytes.
+* `loki_source_api_response_message_bytes` (histogram): Response message size, in bytes.
 * `loki_source_api_tcp_connections` (gauge): Current number of accepted TCP connections.
 * `loki_source_api_entries_written` (counter): Total number of log entries forwarded.
 

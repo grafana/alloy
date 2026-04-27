@@ -42,20 +42,29 @@ func TempoSearchQuery(tags map[string]string) string {
 
 // TracesTest checks that traces with the given tags are stored in Tempo
 func TracesTest(t *testing.T, tags map[string]string, testName string) {
+	TracesTestWithProbe(t, tags, testName, nil)
+}
+
+// TracesTestWithProbe checks that traces with the given tags are stored in Tempo,
+// optionally running probe logic before each Tempo query attempt.
+func TracesTestWithProbe(t *testing.T, tags map[string]string, testName string, probe func(c *assert.CollectT)) {
 	if tags == nil {
 		tags = make(map[string]string)
 	}
 	tags["test_name"] = testName
 
-	AssertTracesAvailable(t, tags)
+	AssertTracesAvailable(t, tags, probe)
 }
 
 // AssertTracesAvailable performs a Tempo search query and expects to eventually find traces with the given tags
-func AssertTracesAvailable(t *testing.T, tags map[string]string) {
-	query := TempoSearchQuery(tags)
+func AssertTracesAvailable(t *testing.T, tags map[string]string, probe func(c *assert.CollectT)) {
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		if probe != nil {
+			probe(c)
+		}
+
 		var searchResponse TempoTraceSearchResponse
-		_, err := FetchDataFromURL(query, &searchResponse)
+		_, err := FetchDataFromURL(TempoSearchQuery(tags), &searchResponse)
 		assert.NoError(c, err)
 		assert.NotEmpty(c, searchResponse.Traces, "Expected to find traces matching the search criteria")
 

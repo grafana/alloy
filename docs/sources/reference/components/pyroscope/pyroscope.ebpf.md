@@ -21,7 +21,9 @@ The `pyroscope.ebpf` component embeds the [`grafana/opentelemetry-ebpf-profiler`
  [`open-telemetry/opentelemetry-ebpf-profiler`]: https://github.com/open-telemetry/opentelemetry-ebpf-profiler
 
 {{< admonition type="note" >}}
-To use the  `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
+To use the `pyroscope.ebpf` component you must run {{< param "PRODUCT_NAME" >}} as root and inside the host PID namespace.
+On Kubernetes, the simplest option is to set `securityContext.privileged: true`.
+Users who prefer least-privilege can instead grant the [specific capabilities required](#required-privileges).
 {{< /admonition >}}
 
 {{< admonition type="note" >}}
@@ -29,6 +31,22 @@ The profiler requires file system storage at `/tmp/symb-cache` to store symbol c
 {{< /admonition >}}
 
 You can specify multiple `pyroscope.ebpf` components by giving them different labels, however it's not recommended as it can lead to additional memory and CPU usage.
+
+## Required privileges
+
+When running on Kubernetes without `privileged: true`, grant the following Linux capabilities and mount the kernel filesystem paths:
+
+| Capability           | Purpose                                                                                                                                 |
+|----------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `BPF`                | Load and manage eBPF programs and maps.                                                                                                 |
+| `PERFMON`            | Attach perf events and read performance counters.                                                                                       |
+| `SYS_PTRACE`         | Read `/proc/<pid>/` entries.                                                                                                            |
+| `CHECKPOINT_RESTORE` | Follow magic-links in `/proc/<pid>/map_files/*` for ELF symbol reading (kernel 5.9+; use `SYS_ADMIN` on older kernels).                 |
+| `SYS_RESOURCE`       | Raise `RLIMIT_MEMLOCK` for eBPF map locking.                                                                                            |
+| `DAC_READ_SEARCH`    | Read ELF binaries and `/proc` entries regardless of DAC permission bits.                                                                |
+| `SYSLOG`             | Read the kernel ring buffer for eBPF verifier diagnostics.                                                                              |
+
+Mount `/sys/kernel/tracing` (on older Kernel versions you might need `/sys/kernel/debug` instead) from the host as read-only volumes so the tracer can attach tracepoints.
 
 ## Supported languages
 
@@ -110,6 +128,63 @@ Several arguments are marked as "Deprecated (no-op)". These arguments were previ
 * `pyroscope_ebpf_profiling_sessions_failing_total` (counter): Number of profiling sessions failed.
 * `pyroscope_ebpf_profiling_sessions_total` (counter): Number of profiling sessions completed.
 * `pyroscope_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
+
+### eBPF profiler internal metrics
+
+The component also exposes internal metrics from the embedded eBPF profiler.
+These metrics are only emitted after they have been recorded at least once, so not all metrics appear on every host.
+The metrics carry an `otel_scope_name="pyroscope.ebpf"` label.
+
+Notable metrics include:
+
+#### Native unwinding
+
+* `UnwindNativeAttempts_total` (counter): Unwind attempts since the previous check.
+* `UnwindNativeFrames_total` (counter): Unwound frames since the previous check.
+* `UnwindNativeStackDeltaStop_total` (counter): Number of stop stack deltas in the native unwinder (success).
+* `UnwindNativeSmallPC_total` (counter): Number of times PC held a value smaller than 0x1000.
+* `UnwindErrStackLengthExceeded_total` (counter): Number of times MAX_FRAME_UNWINDS has been exceeded.
+
+#### Interpreter unwinding
+
+* `UnwindPythonAttempts_total` (counter): Number of attempted Python unwinds.
+* `UnwindPythonFrames_total` (counter): Number of unwound Python frames.
+* `UnwindHotspotAttempts_total` (counter): Number of attempted Hotspot JVM unwinds.
+* `UnwindHotspotFrames_total` (counter): Number of unwound Hotspot JVM frames.
+* `UnwindRubyAttempts_total` (counter): Number of attempted Ruby unwinds.
+* `UnwindRubyFrames_total` (counter): Number of unwound Ruby frames.
+* `UnwindPHPAttempts_total` (counter): Number of attempted PHP unwinds.
+* `UnwindPHPFrames_total` (counter): Number of unwound PHP frames.
+* `UnwindPerlAttempts_total` (counter): Number of attempted Perl unwinds.
+* `UnwindPerlFrames_total` (counter): Number of unwound Perl frames.
+* `UnwindV8Attempts_total` (counter): Number of attempted V8 unwinds.
+* `UnwindV8Frames_total` (counter): Number of unwound V8 frames.
+* `UnwindDotnetAttempts_total` (counter): Number of attempted .NET unwinds.
+* `UnwindDotnetFrames_total` (counter): Number of unwound .NET frames.
+
+#### Symbolization
+
+* `PythonSymbolizationSuccesses_total` (counter): Number of successfully symbolized Python frames.
+* `PythonSymbolizationFailures_total` (counter): Number of Python frames that failed symbolization.
+* `HotspotSymbolizationSuccesses_total` (counter): Number of successfully symbolized Hotspot frames.
+* `HotspotSymbolizationFailures_total` (counter): Number of Hotspot frames that failed symbolization.
+* `RubySymbolizationSuccess_total` (counter): Number of successfully symbolized Ruby frames.
+* `RubySymbolizationFailure_total` (counter): Number of Ruby frames that failed symbolization.
+
+#### Process management
+
+* `NumProcNew_total` (counter): Number of new PID events.
+* `NumProcExit_total` (counter): Number of exit PID events.
+* `NumGenericPID_total` (counter): Number of generic PID events.
+
+#### eBPF map state
+
+* `NumExeIDLoadedToEBPF` (gauge): The number of executables loaded to eBPF maps.
+* `HashmapPidPageToMappingInfo` (gauge): Current size of the pid_page_to_mapping_info hash map.
+* `HashmapNumStackDeltaPages` (gauge): Current size of the stack delta pages hash map.
+* `UnwindInfoArraySize` (gauge): Current size of the unwind info array.
+
+The full list of ~213 metrics is defined in the [`opentelemetry-ebpf-profiler` metrics.json](https://github.com/grafana/opentelemetry-ebpf-profiler/blob/main/metrics/metrics.json).
 
 ## Profile collecting behavior
 

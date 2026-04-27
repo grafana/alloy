@@ -48,10 +48,10 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
@@ -61,7 +61,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
@@ -122,7 +121,7 @@ type Options struct {
 
 // Runtime is the Alloy system.
 type Runtime struct {
-	log    log.Logger
+	log    *slog.Logger
 	tracer *tracing.Tracer
 	opts   controllerOptions
 
@@ -168,7 +167,7 @@ type controllerOptions struct {
 // given modReg.
 func newController(o controllerOptions) (*Runtime, error) {
 	var (
-		logger     = log.With(o.Logger, "controller_id", o.ControllerID)
+		logger     = o.Logger.Slog().With("controller_id", o.ControllerID)
 		tracer     = o.Tracer
 		workerPool = o.WorkerPool
 	)
@@ -183,7 +182,7 @@ func newController(o controllerOptions) (*Runtime, error) {
 	}
 
 	if workerPool == nil {
-		level.Info(logger).Log("msg", "no worker pool provided, creating a default pool")
+		logger.Info("no worker pool provided, creating a default pool")
 		workerPool = worker.NewDefaultWorkerPool()
 	}
 
@@ -265,11 +264,13 @@ func newController(o controllerOptions) (*Runtime, error) {
 // Run starts the Alloy controller, blocking until the provided context is
 // canceled. Run must only be called once.
 func (f *Runtime) Run(ctx context.Context) {
-	defer func() { _ = f.sched.Close() }()
-	defer f.loader.Cleanup(!f.opts.IsModule)
-	defer level.Debug(f.log).Log("msg", "Alloy controller exiting")
+	defer func() {
+		f.log.Debug("Alloy controller exiting")
+		f.loader.Cleanup(!f.opts.IsModule)
+		f.sched.Stop()
+	}()
 
-	level.Debug(f.log).Log("msg", "Running alloy controller")
+	f.log.Debug("Running alloy controller")
 
 	for {
 		select {
@@ -283,40 +284,10 @@ func (f *Runtime) Run(ctx context.Context) {
 			all := f.updateQueue.DequeueAll()
 			f.loader.EvaluateDependants(ctx, all)
 		case <-f.loadFinished:
-			level.Info(f.log).Log("msg", "scheduling loaded components and services")
-
-			var (
-				components = f.loader.Components()
-				services   = f.loader.Services()
-				imports    = f.loader.Imports()
-				forEachs   = f.loader.ForEachs()
-
-				runnables = make([]controller.RunnableNode, 0, len(components)+len(services)+len(imports))
-			)
-			for _, c := range components {
-				runnables = append(runnables, c)
+			f.log.Info("scheduling loaded components and services")
+			if err := f.sched.Synchronize(f.loader.Graph()); err != nil {
+				f.log.Error("failed to load components and services", "err", err)
 			}
-
-			for _, i := range imports {
-				runnables = append(runnables, i)
-			}
-
-			for _, fe := range forEachs {
-				runnables = append(runnables, fe)
-			}
-
-			// Only the root controller should run services, since modules share the
-			// same service instance as the root.
-			if !f.opts.IsModule {
-				for _, svc := range services {
-					runnables = append(runnables, svc)
-				}
-			}
-
-			if err := f.sched.Synchronize(runnables); err != nil {
-				level.Error(f.log).Log("msg", "failed to load components and services", "err", err)
-			}
-
 			f.loadComplete.Store(true)
 		}
 	}
@@ -332,7 +303,7 @@ func (f *Runtime) Run(ctx context.Context) {
 func (f *Runtime) LoadSource(source *Source, args map[string]any, configPath string) error {
 	modulePath, err := util.ExtractDirPath(configPath)
 	if err != nil {
-		level.Warn(f.log).Log("msg", "failed to extract directory path from configPath", "configPath", configPath, "err", err)
+		f.log.Warn("failed to extract directory path from configPath", "configPath", configPath, "err", err)
 	}
 	return f.applyLoaderConfig(controller.ApplyOptions{
 		Args:            args,
