@@ -330,7 +330,7 @@ func TestShardingConsumer_ConsumeEntry(t *testing.T) {
 
 func labelsForShard(consumer *ShardingConsumer, shard int) model.LabelSet {
 	for i := 0; ; i++ {
-		labels := model.LabelSet{"job": model.LabelValue(string(strconv.Itoa(i)))}
+		labels := model.LabelSet{"job": model.LabelValue(strconv.Itoa(i))}
 		if consumer.shardFor(labels) == shard {
 			return labels
 		}

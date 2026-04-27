@@ -69,7 +69,7 @@ func (s *ShardingConsumer) Consume(ctx context.Context, batch Batch) error {
 		})
 	}
 
-	return s.joinErrors(ctx, errChans)
+	return s.joinErrors(errChans)
 }
 
 func (s *ShardingConsumer) consume(ctx context.Context, shard int, batch Batch) <-chan error {
@@ -111,7 +111,7 @@ func (s *ShardingConsumer) ConsumeEntry(ctx context.Context, entry Entry) error 
 	case s.shards[s.shardFor(entry.Labels)] <- req:
 	}
 
-	return s.joinErrors(ctx, []<-chan error{errCh})
+	return s.joinErrors([]<-chan error{errCh})
 }
 
 // Stop stops the shards and waits for them to exit.
@@ -142,7 +142,7 @@ type shardingRequest struct {
 	errCh   chan<- error
 }
 
-func (s *ShardingConsumer) joinErrors(ctx context.Context, errChans []<-chan error) error {
+func (s *ShardingConsumer) joinErrors(errChans []<-chan error) error {
 	errs := make([]error, 0, len(errChans))
 
 	for _, errCh := range errChans {
