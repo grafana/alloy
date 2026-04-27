@@ -55,11 +55,15 @@ You can use the following argument with `discovery.relabel`:
 
 You can use the following block with `discovery.relabel`:
 
+{{< docs/alloy-config >}}
+
 | Block          | Description                           | Required |
 | -------------- | ------------------------------------- | -------- |
 | [`rule`][rule] | Relabeling rules to apply to targets. | no       |
 
 [rule]: #rule
+
+{{< /docs/alloy-config >}}
 
 ### `rule`
 

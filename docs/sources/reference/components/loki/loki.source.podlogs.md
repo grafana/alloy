@@ -123,6 +123,8 @@ In addition to the meta labels, the following labels are exposed to tell `loki.s
 
 You can use the following blocks with `loki.source.podlogs`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                         | Description                                                                                 | Required |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
 | [`client`][client]                                            | Configures Kubernetes client used to tail logs.                                             | no       |
@@ -138,9 +140,6 @@ You can use the following blocks with `loki.source.podlogs`:
 | [`selector`][selector]                                        | Label selector for which `PodLogs` to discover.                                             | no       |
 | `selector` > [`match_expression`][match_expression]           | Label selector expression for which `PodLogs` to discover.                                  | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `basic_auth` refers to a `basic_auth` block defined inside a `client` block.
-
 [client]: #client
 [authorization]: #authorization
 [basic_auth]: #basic_auth
@@ -150,6 +149,8 @@ For example, `client` > `basic_auth` refers to a `basic_auth` block defined insi
 [oauth2]: #oauth2
 [selector]: #selector-and-namespace_selector
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 

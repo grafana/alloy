@@ -24,7 +24,7 @@ const ComponentList = ({ components, overrideModuleID, useRemotecfg, handleSorti
    */
   const renderTableData = () => {
     return components.map(({ health, localID: id, moduleID }) => (
-      <tr key={id} style={{ lineHeight: '2.5' }}>
+      <tr key={id}>
         <td>
           <HealthLabel health={health.state} />
         </td>

@@ -55,6 +55,8 @@ This option won't change the hostname applied to metrics or traces if they alrea
 
 You can use the following blocks with `otelcol.exporter.datadog`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                    | Required |
 |----------------------------------------|--------------------------------------------------------------------------------|----------|
 | [`api`][api]                           | Configures authentication with Datadog                                         | yes      |
@@ -72,9 +74,6 @@ You can use the following blocks with `otelcol.exporter.datadog`:
 | `sending_queue` > [`batch`][batch]     | Configures batching requests based on a timeout and a minimum number of items. | no       |
 | [`traces`][traces]                     | Trace exporter specific configuration.                                         | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `metrics` > `summaries` refers to a `summaries` block defined inside a `metrics` block.
-
 [api]: #api
 [batch]: #batch
 [client]: #client
@@ -89,6 +88,8 @@ For example, `metrics` > `summaries` refers to a `summaries` block defined insid
 [sums]: #sums
 [summaries]: #summaries
 [traces]: #traces
+
+{{< /docs/alloy-config >}}
 
 ### `api`
 

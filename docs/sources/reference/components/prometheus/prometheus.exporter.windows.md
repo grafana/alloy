@@ -56,6 +56,8 @@ A block has no effect unless you enable its collector.
 You can use the following blocks with `prometheus.exporter.windows`.
 Each block only takes effect if you include its corresponding collector in `enabled_collectors`.
 
+{{< docs/alloy-config >}}
+
 | Name                                       | Description                                                               | Required |
 | ------------------------------------------ | ------------------------------------------------------------------------- | -------- |
 | [`dfsr`][dfsr]                             | Configures the `dfsr` collector.                                          | no       |
@@ -83,16 +85,6 @@ Each block only takes effect if you include its corresponding collector in `enab
 | [`text_file`][text_file]                   | (Deprecated: use `textfile` instead) Configures the `textfile` collector. | no       |
 | [`update`][update]                         | Configures the `update` collector.                                        | no       |
 
-{{< admonition type="caution" >}}
-The `text_file` block is deprecated as of {{< param "PRODUCT_NAME" >}} v1.11.0.
-Use the `textfile` block to configure the `textfile` collector.
-{{< /admonition >}}
-
-{{< admonition type="note" >}}
-The `msmq` block is deprecated as of {{< param "PRODUCT_NAME" >}} v1.9.0.
-You can still include this block in your configuration files, but it has no effect.
-{{< /admonition >}}
-
 [dfsr]: #dfsr
 [dns]: #dns
 [exchange]: #exchange
@@ -117,6 +109,18 @@ You can still include this block in your configuration files, but it has no effe
 [text_file]: #text_file-deprecated-use-textfile-instead
 [tcp]: #tcp
 [update]: #update
+
+{{< /docs/alloy-config >}}
+
+{{< admonition type="caution" >}}
+The `text_file` block is deprecated as of {{< param "PRODUCT_NAME" >}} v1.11.0.
+Use the `textfile` block to configure the `textfile` collector.
+{{< /admonition >}}
+
+{{< admonition type="note" >}}
+The `msmq` block is deprecated as of {{< param "PRODUCT_NAME" >}} v1.9.0.
+You can still include this block in your configuration files, but it has no effect.
+{{< /admonition >}}
 
 ### `dfsr`
 

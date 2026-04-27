@@ -2,6 +2,12 @@ package database_observability
 
 import "github.com/grafana/alloy/internal/component/common/relabel"
 
+const (
+	ProviderNameLabel    = "provider_name"
+	ProviderRegionLabel  = "provider_region"
+	ProviderAccountLabel = "provider_account"
+)
+
 func GetRelabelingRules(serverID string, cp *CloudProvider) []*relabel.Config {
 	r := relabel.DefaultRelabelConfig // use default to avoid defining all fields
 	r.Replacement = serverID
@@ -14,17 +20,17 @@ func GetRelabelingRules(serverID string, cp *CloudProvider) []*relabel.Config {
 		if cp.AWS != nil {
 			providerName := relabel.DefaultRelabelConfig
 			providerName.Replacement = "aws"
-			providerName.TargetLabel = "provider_name"
+			providerName.TargetLabel = ProviderNameLabel
 			providerName.Action = relabel.Replace
 
 			providerRegion := relabel.DefaultRelabelConfig
 			providerRegion.Replacement = cp.AWS.ARN.Region
-			providerRegion.TargetLabel = "provider_region"
+			providerRegion.TargetLabel = ProviderRegionLabel
 			providerRegion.Action = relabel.Replace
 
 			providerAccount := relabel.DefaultRelabelConfig
 			providerAccount.Replacement = cp.AWS.ARN.AccountID
-			providerAccount.TargetLabel = "provider_account"
+			providerAccount.TargetLabel = ProviderAccountLabel
 			providerAccount.Action = relabel.Replace
 
 			rs = append(rs, &providerName, &providerRegion, &providerAccount)
@@ -32,17 +38,35 @@ func GetRelabelingRules(serverID string, cp *CloudProvider) []*relabel.Config {
 		if cp.Azure != nil {
 			providerName := relabel.DefaultRelabelConfig
 			providerName.Replacement = "azure"
-			providerName.TargetLabel = "provider_name"
+			providerName.TargetLabel = ProviderNameLabel
 			providerName.Action = relabel.Replace
 
 			providerRegion := relabel.DefaultRelabelConfig
 			providerRegion.Replacement = cp.Azure.ResourceGroup
-			providerRegion.TargetLabel = "provider_region"
+			providerRegion.TargetLabel = ProviderRegionLabel
 			providerRegion.Action = relabel.Replace
 
 			providerAccount := relabel.DefaultRelabelConfig
 			providerAccount.Replacement = cp.Azure.SubscriptionID
-			providerAccount.TargetLabel = "provider_account"
+			providerAccount.TargetLabel = ProviderAccountLabel
+			providerAccount.Action = relabel.Replace
+
+			rs = append(rs, &providerName, &providerRegion, &providerAccount)
+		}
+		if cp.GCP != nil {
+			providerName := relabel.DefaultRelabelConfig
+			providerName.Replacement = "gcp"
+			providerName.TargetLabel = ProviderNameLabel
+			providerName.Action = relabel.Replace
+
+			providerRegion := relabel.DefaultRelabelConfig
+			providerRegion.Replacement = cp.GCP.Region
+			providerRegion.TargetLabel = ProviderRegionLabel
+			providerRegion.Action = relabel.Replace
+
+			providerAccount := relabel.DefaultRelabelConfig
+			providerAccount.Replacement = cp.GCP.ProjectID
+			providerAccount.TargetLabel = ProviderAccountLabel
 			providerAccount.Action = relabel.Replace
 
 			rs = append(rs, &providerName, &providerRegion, &providerAccount)

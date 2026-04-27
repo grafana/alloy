@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/vm"
@@ -16,7 +15,7 @@ var _ BlockNode = (*LoggingConfigNode)(nil)
 type LoggingConfigNode struct {
 	nodeID        string
 	componentName string
-	l             log.Logger
+	l             *logging.Logger
 
 	mut   sync.RWMutex
 	block *ast.BlockStmt // Current Alloy blocks to derive config from
@@ -65,7 +64,7 @@ func (cn *LoggingConfigNode) Evaluate(scope *vm.Scope) error {
 		}
 	}
 
-	if err := cn.l.(*logging.Logger).Update(args); err != nil {
+	if err := cn.l.Update(args); err != nil {
 		return fmt.Errorf("could not update logger: %w", err)
 	}
 
