@@ -136,10 +136,13 @@ func (t *SyslogTarget) handleMessageError(err error) {
 
 func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc5424.SyslogMessage) {
 	if msg.Message == nil {
-		t.metrics.syslogEmptyMessages.Inc()
+		hasStructuredData := msg.StructuredData != nil && len(*msg.StructuredData) > 0
+		if !hasStructuredData {
+			t.metrics.syslogEmptyMessages.Inc()
 
-		if !t.config.RFC5424AllowEmptyMsg {
-			return
+			if !t.config.RFC5424AllowEmptyMsg {
+				return
+			}
 		}
 	}
 

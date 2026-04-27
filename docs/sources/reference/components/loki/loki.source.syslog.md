@@ -170,6 +170,7 @@ You can't use the `rfc3164_default_to_current_year`, `use_incoming_timestamp`, a
   `loki.source.syslog` drops messages with empty MSG content by default.
   Set `rfc5424_allow_empty_msg` to `true` to forward them.
   `loki.source.syslog` increments the `loki_source_syslog_empty_messages_total` counter in both cases for debugging.
+  Messages with empty MSG content but non-empty STRUCTURED-DATA are always forwarded regardless of `rfc5424_allow_empty_msg`, since their payload lives in the structured-data section. This is common in Junos `sd-syslog` flow records and similar network gear.
 - **`raw`**
   Disables log line parsing. This format allows receiving non-RFC5424 compliant logs, such as [CEF][cef].
   Raw logs can be forwarded to [`loki.process`](./loki.process.md) component for parsing.

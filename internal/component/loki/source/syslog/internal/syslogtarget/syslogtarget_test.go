@@ -608,8 +608,8 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenAllowed(t *testing.T) {
 }
 
 func TestSyslogTarget_RFC5424MessageEmptyMSGWhenNotAllowed(t *testing.T) {
-	// RFC5424 message with empty MSG part (no content after structured data)
-	msg := `<14>1 2026-02-19T14:57:17.097Z secfw-a RT_FLOW - RT_FLOW_SESSION_DENY [junos@2636.1.1.1.2.129 application="UNKNOWN"]`
+	// RFC5424 message with NILVALUE structured data and no MSG.
+	msg := `<14>1 2026-02-19T14:57:17.097Z secfw-a RT_FLOW - RT_FLOW_SESSION_DENY -`
 
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
@@ -644,6 +644,63 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenNotAllowed(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return time.Since(start) >= 100*time.Millisecond && len(handler.Received()) == 0
 	}, 200*time.Millisecond, 10*time.Millisecond, "RFC5424 log with nil Message should be dropped when RFC5424AllowEmptyMsg is false")
+}
+
+// RFC5424 messages with no MSG body but populated STRUCTURED-DATA are common in
+// the wild (Junos sd-syslog flow records, OTel collectors, various network gear)
+// and should always be forwarded regardless of RFC5424AllowEmptyMsg, since the
+// payload lives in the structured-data section.
+func TestSyslogTarget_RFC5424EmptyMSGWithStructuredDataAlwaysAllowed(t *testing.T) {
+	msg := `<14>1 2026-02-19T14:57:17.097Z secfw-a RT_FLOW - RT_FLOW_SESSION_DENY [junos@99999 application="UNKNOWN" source_address="10.0.0.1"]`
+
+	handler := loki.NewCollectingHandler()
+	defer handler.Stop()
+
+	relabelCfg := unmarshalRelabelCfg(t, `
+- source_labels: ['__syslog_message_sd_junos_99999_application']
+  target_label: 'application'
+- source_labels: ['__syslog_message_sd_junos_99999_source_address']
+  target_label: 'source_address'
+`)
+
+	metrics := NewMetrics(nil)
+	tgt, err := NewSyslogTarget(TargetParams{
+		Metrics: metrics,
+		Logger:  logging.NewSlogNop(),
+		Handler: handler,
+		Relabel: relabelCfg,
+		Config: &scrapeconfig.SyslogTargetConfig{
+			ListenAddress:        "127.0.0.1:0",
+			ListenProtocol:       ProtocolUDP,
+			RFC5424AllowEmptyMsg: false,
+			LabelStructuredData:  true,
+			Labels: model.LabelSet{
+				"test": "syslog_target",
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Eventually(t, tgt.Ready, time.Second, 10*time.Millisecond)
+	defer func() {
+		require.NoError(t, tgt.Stop())
+	}()
+
+	addr := tgt.ListenAddress().String()
+	c, err := net.Dial(ProtocolUDP, addr)
+	require.NoError(t, err)
+
+	err = writeMessagesToStream(c, []string{msg}, fmtNewline)
+	require.NoError(t, err)
+	require.NoError(t, c.Close())
+
+	require.Eventuallyf(t, func() bool {
+		return len(handler.Received()) == 1
+	}, time.Second, time.Millisecond, "Expected to receive 1 message, got %d.", len(handler.Received()))
+
+	entry := handler.Received()[0]
+	require.Equal(t, "", entry.Line, "MSG is empty so the line is empty")
+	require.Equal(t, model.LabelValue("UNKNOWN"), entry.Labels["application"])
+	require.Equal(t, model.LabelValue("10.0.0.1"), entry.Labels["source_address"])
 }
 
 const layout = "Jan 02 15:04:05"
