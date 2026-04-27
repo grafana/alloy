@@ -112,7 +112,6 @@ func (exp *logsExporter) SetReceivers(receivers []loki.LogsReceiver) {
 func (exp *logsExporter) Name() string { return "logs exporter" }
 
 func (exp *logsExporter) Export(ctx context.Context, p payload.Payload) error {
-
 	var (
 		errs []error
 		meta = p.Meta.KeyVal()
