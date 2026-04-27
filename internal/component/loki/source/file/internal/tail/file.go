@@ -284,13 +284,9 @@ func (f *File) reopen(truncated bool) error {
 
 	f.file.Close()
 
-	backoff := backoff.New(f.ctx, backoff.Config{
-		MinBackoff: f.cfg.WatcherConfig.MinPollFrequency,
-		MaxBackoff: f.cfg.WatcherConfig.MaxPollFrequency,
-		MaxRetries: 20,
-	})
+	defer f.backoff.Reset()
 
-	for backoff.Ongoing() {
+	for f.backoff.Ongoing() {
 		file, err := fileext.OpenFile(f.cfg.Filename)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -308,14 +304,14 @@ func (f *File) reopen(truncated bool) error {
 		if err != nil {
 			level.Debug(f.logger).Log("msg", "failed to stat new file to be tailed, will try to open it again")
 			file.Close()
-			backoff.Wait()
+			f.backoff.Wait()
 			continue
 		}
 
 		// Check to see if we are trying to reopen and tail the exact same file (and it was not truncated).
 		if !truncated && cf != nil && os.SameFile(cf, nf) {
 			file.Close()
-			backoff.Wait()
+			f.backoff.Wait()
 			continue
 		}
 
@@ -347,5 +343,5 @@ func (f *File) reopen(truncated bool) error {
 		break
 	}
 
-	return backoff.Err()
+	return f.backoff.Err()
 }
