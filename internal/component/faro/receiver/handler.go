@@ -182,15 +182,12 @@ func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p pa
 
 	var wg sync.WaitGroup
 	for _, exp := range h.exporters {
-		wg.Add(1)
-		go func(exp exporter) {
-			defer wg.Done()
-
+		wg.Go(func() {
 			if err := exp.Export(req.Context(), p); err != nil {
 				level.Error(h.log).Log("msg", "exporter failed with error", "exporter", exp.Name(), "err", err)
 				h.errorsTotal.WithLabelValues(exp.Name()).Inc()
 			}
-		}(exp)
+		})
 	}
 	wg.Wait()
 

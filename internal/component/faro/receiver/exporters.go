@@ -112,37 +112,55 @@ func (exp *logsExporter) SetReceivers(receivers []loki.LogsReceiver) {
 func (exp *logsExporter) Name() string { return "logs exporter" }
 
 func (exp *logsExporter) Export(ctx context.Context, p payload.Payload) error {
-	meta := p.Meta.KeyVal()
+	var (
+		errs []error
+		meta = p.Meta.KeyVal()
+	)
 
-	var errs []error
+	// send returns early on context cancellation.
+	// Other errors are accumulated in errs.
+	send := func(kv *payload.KeyVal) error {
+		payload.MergeKeyVal(kv, meta)
+
+		err := exp.sendKeyValsToLogsPipeline(ctx, kv)
+		if errors.Is(err, context.Canceled) {
+			return err
+		}
+
+		if err != nil {
+			errs = append(errs, err)
+		}
+
+		return nil
+	}
 
 	// log events
 	for _, logItem := range p.Logs {
-		kv := logItem.KeyVal()
-		payload.MergeKeyVal(kv, meta)
-		errs = append(errs, exp.sendKeyValsToLogsPipeline(ctx, kv))
+		if err := send(logItem.KeyVal()); err != nil {
+			return err
+		}
 	}
 
 	// exceptions
 	for _, exception := range p.Exceptions {
 		transformedException := transformException(exp.log, exp.sourceMaps, &exception, p.Meta.App.Release)
-		kv := transformedException.KeyVal()
-		payload.MergeKeyVal(kv, meta)
-		errs = append(errs, exp.sendKeyValsToLogsPipeline(ctx, kv))
+		if err := send(transformedException.KeyVal()); err != nil {
+			return err
+		}
 	}
 
 	// measurements
 	for _, measurement := range p.Measurements {
-		kv := measurement.KeyVal()
-		payload.MergeKeyVal(kv, meta)
-		errs = append(errs, exp.sendKeyValsToLogsPipeline(ctx, kv))
+		if err := send(measurement.KeyVal()); err != nil {
+			return err
+		}
 	}
 
 	// events
 	for _, event := range p.Events {
-		kv := event.KeyVal()
-		payload.MergeKeyVal(kv, meta)
-		errs = append(errs, exp.sendKeyValsToLogsPipeline(ctx, kv))
+		if err := send(event.KeyVal()); err != nil {
+			return err
+		}
 	}
 
 	return errors.Join(errs...)
