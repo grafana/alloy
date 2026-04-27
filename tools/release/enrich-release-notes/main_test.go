@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestExtractCommitSHA(t *testing.T) {
 	tests := []struct {
@@ -85,6 +88,21 @@ func TestFormatAttribution(t *testing.T) {
 				t.Errorf("formatAttribution(%v) = %q, want %q", tt.usernames, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestOnlyOneLinePerEntry(t *testing.T) {
+	line := "* Fix release notes ([abc1234](https://github.com/grafana/alloy/commit/abc1234))\r"
+
+	result := appendAttribution(line, []string{"alice"})
+
+	if strings.ContainsAny(result, "\r\n") {
+		t.Fatalf("appendAttribution() returned a multi-line entry: %q", result)
+	}
+
+	expected := "* Fix release notes ([abc1234](https://github.com/grafana/alloy/commit/abc1234)) (@alice)"
+	if result != expected {
+		t.Errorf("appendAttribution() = %q, want %q", result, expected)
 	}
 }
 
