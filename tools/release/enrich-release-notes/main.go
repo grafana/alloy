@@ -130,15 +130,13 @@ func addContributorInfo(ctx context.Context, client *gh.Client, body string) str
 	lines := strings.Split(body, "\n")
 
 	for i, line := range lines {
-		trimmedLine := strings.TrimRightFunc(line, unicode.IsSpace)
-
-		if trimmedLine == "" {
+		if strings.TrimSpace(line) == "" {
 			continue
 		}
 
-		fmt.Printf("   Processing line %d: %s\n", i, trimmedLine)
+		fmt.Printf("   Processing line %d: %s\n", i, line)
 
-		sha := extractCommitSHA(trimmedLine)
+		sha := extractCommitSHA(line)
 		if sha == "" {
 			fmt.Printf("   No commit SHA found in line %d\n", i)
 			continue
@@ -155,7 +153,7 @@ func addContributorInfo(ctx context.Context, client *gh.Client, body string) str
 		}
 
 		fmt.Printf("   Commit %s: %v\n", sha, contributors)
-		lines[i] = trimmedLine + " " + formatAttribution(contributors)
+		lines[i] = appendAttribution(line, contributors)
 	}
 
 	return strings.Join(lines, "\n")
@@ -210,6 +208,10 @@ func formatAttribution(usernames []string) string {
 		mentions = append(mentions, "@"+u)
 	}
 	return "(" + strings.Join(mentions, ", ") + ")"
+}
+
+func appendAttribution(line string, contributors []string) string {
+	return strings.TrimRightFunc(line, unicode.IsSpace) + " " + formatAttribution(contributors)
 }
 
 // appendFooter reads the release notes footer template and appends it with version substitution.
