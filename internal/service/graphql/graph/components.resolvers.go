@@ -10,21 +10,42 @@ import (
 
 	"github.com/grafana/alloy/internal/service/graphql/graph/model"
 	"github.com/grafana/alloy/internal/service/graphql/utils"
+	"github.com/grafana/alloy/syntax/encoding/alloyjson"
 )
 
 // Arguments is the resolver for the arguments field.
 func (r *componentResolver) Arguments(ctx context.Context, obj *model.Component) (string, error) {
-	return utils.MarshalBodyToString(obj.ComponentInfo.Arguments), nil
+	body, err := alloyjson.MarshalBody(obj.ComponentInfo.Arguments)
+	if err != nil {
+		return "[]", err // [] is the "no arguments" behavior from alloyjson
+	}
+	return string(body), nil
 }
 
 // Exports is the resolver for the exports field.
-func (r *componentResolver) Exports(ctx context.Context, obj *model.Component) (string, error) {
-	return utils.MarshalBodyToString(obj.ComponentInfo.Exports), nil
+func (r *componentResolver) Exports(ctx context.Context, obj *model.Component) (*string, error) {
+	if obj.ComponentInfo.Exports == nil {
+		return nil, nil
+	}
+	body, err := alloyjson.MarshalBody(obj.ComponentInfo.Exports)
+	if err != nil {
+		return nil, err
+	}
+	result := string(body)
+	return &result, nil
 }
 
 // DebugInfo is the resolver for the debugInfo field.
-func (r *componentResolver) DebugInfo(ctx context.Context, obj *model.Component) (string, error) {
-	return utils.MarshalBodyToString(obj.ComponentInfo.DebugInfo), nil
+func (r *componentResolver) DebugInfo(ctx context.Context, obj *model.Component) (*string, error) {
+	if obj.ComponentInfo.DebugInfo == nil {
+		return nil, nil
+	}
+	body, err := alloyjson.MarshalBody(obj.ComponentInfo.DebugInfo)
+	if err != nil {
+		return nil, err
+	}
+	result := string(body)
+	return &result, nil
 }
 
 // Components is the resolver for the components field.

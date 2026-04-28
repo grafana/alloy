@@ -89,7 +89,13 @@ func (s *Service) ServiceHandler(host service.Host) (base string, handler http.H
 	alloyApi.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), router)
 
 	if s.opts.EnableGraphQL {
-		graphql_service.RegisterRoutes(s.opts.UIPrefix, router, host, s.opts.Logger, s.opts.EnableGraphQLPlayground)
+		graphql_service.RegisterRoutes(graphql_service.RegisterRoutesParams{
+			Router:           router,
+			Logger:           s.opts.Logger,
+			URLPrefix:        s.opts.UIPrefix,
+			Host:             host,
+			EnablePlayground: s.opts.EnableGraphQLPlayground,
+		})
 	} else {
 		level.Debug(s.opts.Logger).Log("msg", "GraphQL API is not enabled")
 	}

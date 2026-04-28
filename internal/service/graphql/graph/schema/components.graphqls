@@ -24,10 +24,10 @@ type Component {
   arguments: String!
 
   "Exports of the component."
-  exports: String!
+  exports: String
 
   "Debug info of the component."
-  debugInfo: String!
+  debugInfo: String
 }
 
 """

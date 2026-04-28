@@ -27,22 +27,30 @@ type AlloyGraphQLProvider struct {
 	playground http.Handler
 }
 
-func RegisterRoutes(urlPrefix string, r *mux.Router, host service.Host, logger log.Logger, enablePlayground bool) {
-	if logger == nil {
-		logger = log.NewNopLogger()
+type RegisterRoutesParams struct {
+	Router           *mux.Router
+	Logger           log.Logger
+	URLPrefix        string
+	Host             service.Host
+	EnablePlayground bool
+}
+
+func RegisterRoutes(params RegisterRoutesParams) {
+	if params.Logger == nil {
+		params.Logger = log.NewNopLogger()
 	}
 
-	provider := NewAlloyGraphQLProvider(urlPrefix, host, enablePlayground)
+	provider := newAlloyGraphQLProvider(params.URLPrefix, params.Host, params.EnablePlayground)
 
-	r.Handle(path.Join(urlPrefix, "/graphql"), provider.srv)
+	params.Router.Handle(path.Join(params.URLPrefix, "/graphql"), provider.srv)
 
-	if enablePlayground {
-		level.Info(logger).Log("msg", "GraphQL playground is enabled")
-		r.Handle(path.Join(urlPrefix, "/graphql/playground"), provider.playground)
+	if params.EnablePlayground {
+		level.Info(params.Logger).Log("msg", "GraphQL playground is enabled")
+		params.Router.Handle(path.Join(params.URLPrefix, "/graphql/playground"), provider.playground)
 	}
 }
 
-func NewAlloyGraphQLProvider(urlPrefix string, host service.Host, enablePlayground bool) *AlloyGraphQLProvider {
+func newAlloyGraphQLProvider(urlPrefix string, host service.Host, enablePlayground bool) *AlloyGraphQLProvider {
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{Resolvers: &graph.Resolver{
 		Host: host,
 	}}))

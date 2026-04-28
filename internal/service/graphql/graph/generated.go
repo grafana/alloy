@@ -73,8 +73,8 @@ type AlloyResolver interface {
 }
 type ComponentResolver interface {
 	Arguments(ctx context.Context, obj *model.Component) (string, error)
-	Exports(ctx context.Context, obj *model.Component) (string, error)
-	DebugInfo(ctx context.Context, obj *model.Component) (string, error)
+	Exports(ctx context.Context, obj *model.Component) (*string, error)
+	DebugInfo(ctx context.Context, obj *model.Component) (*string, error)
 }
 type QueryResolver interface {
 	Alloy(ctx context.Context) (model.Alloy, error)
@@ -675,9 +675,9 @@ func (ec *executionContext) _Component_exports(ctx context.Context, field graphq
 			return ec.Resolvers.Component().Exports(ctx, obj)
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -704,9 +704,9 @@ func (ec *executionContext) _Component_debugInfo(ctx context.Context, field grap
 			return ec.Resolvers.Component().DebugInfo(ctx, obj)
 		},
 		nil,
-		ec.marshalNString2string,
+		ec.marshalOString2ᚖstring,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -2644,16 +2644,13 @@ func (ec *executionContext) _Component(ctx context.Context, sel ast.SelectionSet
 		case "exports":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Component_exports(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -2680,16 +2677,13 @@ func (ec *executionContext) _Component(ctx context.Context, sel ast.SelectionSet
 		case "debugInfo":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Component_debugInfo(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
