@@ -193,7 +193,6 @@ func (j *jsonStage) simplifyType(value any) (any, bool) {
 				j.logger.Debug("failed to marshal complex type back to string", "err", err)
 				return nil, false
 			}
-
 		}
 		return string(jm), true
 	}

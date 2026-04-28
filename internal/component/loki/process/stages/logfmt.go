@@ -139,7 +139,6 @@ func (j *logfmtStage) Process(labels model.LabelSet, extracted map[string]any, t
 
 			if regexExtractedEntriesCount > 0 {
 				j.logger.Debug("found some mappings via regex in logfmt stage", "found", regexExtractedEntriesCount)
-
 			}
 
 			j.logger.Debug("extracted data debug in logfmt stage", "extracted_data", extracted)
