@@ -6,7 +6,7 @@ dist:
   output_path: .
 
 extensions:
-  - gomod: github.com/grafana/alloy/extension/alloyengine v0.1.0
+  - gomod: github.com/grafana/alloy/extension/alloyengine v1.16.0 # x-release-please-version
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.147.0

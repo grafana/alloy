@@ -41,6 +41,10 @@
           "path": "extension/alloyengine/go.mod"
         }
       ]
+    },
+    "syntax": {
+      "release-type": "go",
+      "changelog-path": "CHANGELOG.md"
     }
   }
 }
