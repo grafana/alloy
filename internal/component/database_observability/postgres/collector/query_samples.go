@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -636,7 +637,7 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		we.LastWaitTime,
-		classifyPostgresWaitEventType(we.WaitEventType),
+		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
 		we.WaitEvent,
 		waitEventFullName,
 		we.BlockedByPIDs,
@@ -644,15 +645,62 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 	)
 }
 
-// classifyPostgresWaitEventType maps a raw PostgreSQL wait event type to a standardized category.
-func classifyPostgresWaitEventType(rawType string) string {
+// postgresReplicationWaitEventPrefixes lists wait_event name prefixes that
+// indicate replication activity regardless of wait_event_type. Matched first
+// so that, e.g., Client:WalSenderWaitForWAL routes to Replication Wait
+// instead of Network Wait, and Activity:WalSenderMain (older PG versions)
+// routes to Replication Wait instead of Other Wait.
+var postgresReplicationWaitEventPrefixes = []string{
+	"SyncRep",
+	"WalSender",
+	"WalReceiver",
+	"Recovery",
+	"LogicalApply",
+	"LogicalLauncher",
+	"LogicalSync",
+	"LogicalParallelApply",
+	"LogicalRep",
+	"ReplicationSlot",
+	"ReplicationOrigin",
+}
+
+func isPostgresReplicationWaitEvent(waitEvent string) bool {
+	for _, p := range postgresReplicationWaitEventPrefixes {
+		if strings.HasPrefix(waitEvent, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// classifyPostgresWaitEventType maps a (wait_event_type, wait_event) pair
+// to one of six standardized buckets:
+//
+//	IO Wait          — disk / file / page I/O
+//	Network Wait     — client connection I/O
+//	Lock Wait        — heavyweight user-visible cascade locks (resolvable via pg_locks)
+//	Engine Wait      — engine-internal synchronization (LWLock, BufferPin, non-replication IPC)
+//	Replication Wait — anything related to streaming/logical replication
+//	Other Wait       — idle, timer, extension, injection-point, unknown
+//
+// The replication name-rule is checked before the type switch so events
+// land in Replication regardless of which type Postgres assigns them in
+// any given version (Activity in older PG, Client/IPC/Timeout in newer).
+func classifyPostgresWaitEventType(rawType, waitEvent string) string {
+	if isPostgresReplicationWaitEvent(waitEvent) {
+		return "Replication Wait"
+	}
 	switch rawType {
 	case "IO":
 		return "IO Wait"
-	case "Lock", "LWLock", "Activity", "Extension", "InjectionPoint", "IPC", "Timeout", "BufferPin":
-		return "Lock Wait"
 	case "Client":
 		return "Network Wait"
+	case "Lock":
+		return "Lock Wait"
+	case "LWLock", "BufferPin", "IPC":
+		return "Engine Wait"
+	case "Activity", "Timeout", "Extension", "InjectionPoint":
+		return "Other Wait"
 	default:
 		return "Other Wait"
 	}

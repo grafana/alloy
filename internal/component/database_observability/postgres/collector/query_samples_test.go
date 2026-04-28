@@ -1374,21 +1374,67 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 
 func TestClassifyPostgresWaitEventType(t *testing.T) {
 	testCases := []struct {
+		name     string
 		rawType  string
+		event    string
 		expected string
 	}{
-		{"IO", "IO Wait"},
-		{"Lock", "Lock Wait"},
-		{"LWLock", "Lock Wait"},
-		{"Activity", "Lock Wait"},
-		{"Client", "Network Wait"},
-		{"unknown_type", "Other Wait"},
-		{"", "Other Wait"},
+		// IO
+		{"IO_DataFileRead", "IO", "DataFileRead", "IO Wait"},
+		{"IO_AuroraStorageLogAllocate", "IO", "AuroraStorageLogAllocate", "IO Wait"},
+		{"IO_SnapbuildSync", "IO", "SnapbuildSync", "IO Wait"},
+
+		// Network
+		{"Client_ClientRead", "Client", "ClientRead", "Network Wait"},
+		{"Client_ClientWrite", "Client", "ClientWrite", "Network Wait"},
+
+		// Lock (cascade)
+		{"Lock_relation", "Lock", "relation", "Lock Wait"},
+		{"Lock_transactionid", "Lock", "transactionid", "Lock Wait"},
+		{"Lock_extend", "Lock", "extend", "Lock Wait"},
+
+		// Engine
+		{"LWLock_BufferMapping", "LWLock", "BufferMapping", "Engine Wait"},
+		{"LWLock_BufferContent", "LWLock", "BufferContent", "Engine Wait"},
+		{"LWLock_WALInsert", "LWLock", "WALInsert", "Engine Wait"},
+		{"LWLock_LockManager", "LWLock", "LockManager", "Engine Wait"},
+		{"LWLock_pg_stat_statements", "LWLock", "pg_stat_statements", "Engine Wait"},
+		{"BufferPin", "BufferPin", "BufferPin", "Engine Wait"},
+		{"IPC_BufferIO", "IPC", "BufferIO", "Engine Wait"},
+		{"IPC_MessageQueueSend", "IPC", "MessageQueueSend", "Engine Wait"},
+		{"IPC_ParallelFinish", "IPC", "ParallelFinish", "Engine Wait"},
+
+		// Replication via name-rule (Client type → Replication, not Network)
+		{"Client_WalSenderWaitForWAL", "Client", "WalSenderWaitForWAL", "Replication Wait"},
+		// Replication via name-rule (Activity type, older PG → Replication, not Other)
+		{"Activity_WalSenderMain", "Activity", "WalSenderMain", "Replication Wait"},
+		// Replication via name-rule (IPC type → Replication, not Engine)
+		{"IPC_SyncRep", "IPC", "SyncRep", "Replication Wait"},
+		// Replication via name-rule (Timeout type → Replication, not Other)
+		{"Timeout_RecoveryApplyDelay", "Timeout", "RecoveryApplyDelay", "Replication Wait"},
+		{"LogicalApplyOffsetUpdate", "IPC", "LogicalApplyOffsetUpdate", "Replication Wait"},
+		{"WalReceiverMain", "Activity", "WalReceiverMain", "Replication Wait"},
+		{"ReplicationSlotDrop", "IPC", "ReplicationSlotDrop", "Replication Wait"},
+		{"ReplicationOriginDrop", "IPC", "ReplicationOriginDrop", "Replication Wait"},
+
+		// Other
+		{"Activity_AutoVacuumMain", "Activity", "AutoVacuumMain", "Other Wait"},
+		{"Timeout_SpinDelay", "Timeout", "SpinDelay", "Other Wait"},
+		{"Timeout_PgSleep", "Timeout", "PgSleep", "Other Wait"},
+		{"Extension", "Extension", "Extension", "Other Wait"},
+		{"InjectionPoint", "InjectionPoint", "InjectionPoint", "Other Wait"},
+
+		// idle row appears with empty type and event name "idle"
+		{"idle_event", "", "idle", "Other Wait"},
+
+		// Defensive
+		{"unknown_type", "unknown_type", "Whatever", "Other Wait"},
+		{"empty", "", "", "Other Wait"},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.rawType, func(t *testing.T) {
-			result := classifyPostgresWaitEventType(tc.rawType)
+		t.Run(tc.name, func(t *testing.T) {
+			result := classifyPostgresWaitEventType(tc.rawType, tc.event)
 			require.Equal(t, tc.expected, result)
 		})
 	}
