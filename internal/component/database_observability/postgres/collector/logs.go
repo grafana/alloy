@@ -24,6 +24,7 @@ import (
 const (
 	LogsCollector         = "logs"
 	OP_PG_ERROR           = "pg_error"
+	OP_PG_SLOW_QUERY      = "pg_slow_query"
 	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
 
 	defaultPendingErrorTimeout = 5 * time.Second
@@ -42,6 +43,10 @@ type pendingError struct {
 	user       string
 	timestamp  time.Time
 }
+
+// slowQueryRegex matches the slow-query log line shape emitted by PostgreSQL at LOG severity:
+// LOG:  duration: <ms> ms  statement: <sql>
+var slowQueryRegex = regexp.MustCompile(`LOG:\s+duration:\s+([\d.]+)\s+ms\s+statement:\s+(.+)$`)
 
 // Postgres log format regex
 var logFormatRegex = regexp.MustCompile(
@@ -224,6 +229,31 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	if isContinuationLine(line) {
 		l.processContinuation(line)
+		return nil
+	}
+
+	// Slow-query handling: PostgreSQL emits these at LOG severity, so they're
+	// dropped by the ERROR/FATAL/PANIC severity filter below. Match the
+	// "LOG: duration: ... statement: ..." pattern first; if it matches, emit
+	// a pg_slow_query Loki entry and return.
+	if m := slowQueryRegex.FindStringSubmatch(line); m != nil {
+		if !logFormatRegex.MatchString(line) {
+			// Not in our expected prefix format; skip without complaining (the
+			// counter for invalid format is for ERROR-class lines).
+			return nil
+		}
+		// Historical-log filter (same as the ERROR path).
+		if !l.afterStartTime(line) {
+			return nil
+		}
+		datname, user := extractDatnameAndUser(line)
+		if slices.Contains(l.excludeDatabases, datname) || slices.Contains(l.excludeUsers, user) {
+			return nil
+		}
+		durationMs := m[1]
+		stmt := strings.TrimSpace(m[2])
+		fp, _, _ := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
+		l.emitSlowQueryEntry(datname, user, durationMs, stmt, fp)
 		return nil
 	}
 
@@ -413,6 +443,69 @@ func (l *Logs) emitErrorEntry(p *pendingError, statement, fp string) {
 	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
 		logging.LevelError,
 		OP_PG_ERROR,
+		line,
+		push.LabelsAdapter{
+			push.LabelAdapter{Name: "query_fingerprint", Value: fp},
+		},
+	)
+}
+
+// extractDatnameAndUser parses the log_line_prefix portion to pull out the
+// "%u@%d:" segment. Returns ("", "") if the format doesn't match.
+func extractDatnameAndUser(line string) (datname, user string) {
+	atIdx := strings.Index(line, "@")
+	if atIdx == -1 {
+		return "", ""
+	}
+	afterAt := line[atIdx+1:]
+	pidMarkerIdx := strings.Index(afterAt, ":[")
+	if pidMarkerIdx == -1 {
+		return "", ""
+	}
+	datname = strings.TrimSpace(afterAt[:pidMarkerIdx])
+
+	beforeAt := line[:atIdx]
+	lastColonBeforeAt := strings.LastIndex(beforeAt, ":")
+	if lastColonBeforeAt == -1 {
+		return datname, ""
+	}
+	user = strings.TrimSpace(beforeAt[lastColonBeforeAt+1:])
+	return datname, user
+}
+
+// afterStartTime returns true if the line's parsed timestamp is after the
+// collector's start time, so historical logs are skipped.
+func (l *Logs) afterStartTime(line string) bool {
+	if len(line) <= 30 {
+		return true
+	}
+	colonIdx := strings.Index(line[20:], ":")
+	if colonIdx <= 0 {
+		return true
+	}
+	timestampStr := strings.TrimSpace(line[:20+colonIdx])
+	for _, layout := range []string{
+		"2006-01-02 15:04:05.000 MST",
+		"2006-01-02 15:04:05.000 -07",
+		"2006-01-02 15:04:05 MST",
+		"2006-01-02 15:04:05 -07",
+	} {
+		if logTimestamp, err := time.Parse(layout, timestampStr); err == nil {
+			return logTimestamp.After(l.startTime)
+		}
+	}
+	return true
+}
+
+func (l *Logs) emitSlowQueryEntry(datname, user, durationMs, statement, fp string) {
+	statementPreview := truncateString(statement, 200)
+	line := fmt.Sprintf(
+		`datname=%q user=%q duration_ms=%q statement_preview=%q`,
+		datname, user, durationMs, statementPreview,
+	)
+	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
+		logging.LevelInfo,
+		OP_PG_SLOW_QUERY,
 		line,
 		push.LabelsAdapter{
 			push.LabelAdapter{Name: "query_fingerprint", Value: fp},

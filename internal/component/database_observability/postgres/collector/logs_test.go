@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 )
 
 func TestLogsCollector_ParseRDSFormat(t *testing.T) {
@@ -884,4 +885,65 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 		}
 	}
 	require.Equal(t, float64(1), totalCount, "only the non-excluded user log should be counted")
+}
+
+func TestLogsCollector_EmitsSlowQueryWithFingerprint(t *testing.T) {
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
+	registry := prometheus.NewRegistry()
+
+	receiver := loki.NewLogsReceiver()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	const sqlText = "SELECT pg_sleep(1)"
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[12345]:1:00000:" + ts2 + ":1/0:0:c1::psqlLOG:  duration: 1234.567 ms  statement: " + sqlText,
+	}}
+
+	require.Eventually(t, func() bool {
+		for _, e := range entryHandler.Received() {
+			if string(e.Labels["op"]) == "pg_slow_query" {
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, 50*time.Millisecond, "expected a pg_slow_query entry")
+
+	var slowEntry loki.Entry
+	for _, e := range entryHandler.Received() {
+		if string(e.Labels["op"]) == "pg_slow_query" {
+			slowEntry = e
+			break
+		}
+	}
+
+	expectedFP, _, fpErr := fingerprint.Fingerprint(sqlText, fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+	require.NotEmpty(t, expectedFP)
+
+	var gotFP string
+	for _, m := range slowEntry.Entry.StructuredMetadata {
+		if m.Name == "query_fingerprint" {
+			gotFP = m.Value
+		}
+	}
+	require.Equal(t, expectedFP, gotFP)
+
+	require.Contains(t, slowEntry.Entry.Line, `datname="books_store"`)
+	require.Contains(t, slowEntry.Entry.Line, `user="user"`)
+	require.Contains(t, slowEntry.Entry.Line, `duration_ms="1234.567"`)
+	require.Contains(t, slowEntry.Entry.Line, `statement_preview="SELECT pg_sleep(1)"`)
 }
