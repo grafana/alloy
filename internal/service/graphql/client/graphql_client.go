@@ -64,15 +64,17 @@ func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
 	}
 
 	req.Header = c.headers.Clone()
-
 	resp, err := c.httpClient.Do(req)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute request: %w", err)
 	}
+
+	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to execute request: %s", resp.Status)
 	}
-	defer resp.Body.Close()
 
 	buf := new(bytes.Buffer)
 	_, err = buf.ReadFrom(resp.Body)

@@ -27,11 +27,20 @@ const ServiceName = "ui"
 // Options are used to configure the UI service. Options are constant for the
 // lifetime of the UI service.
 type Options struct {
-	UIPrefix                string                        // Path prefix to host the UI at.
-	CallbackManager         livedebugging.CallbackManager // CallbackManager is used for live debugging in the UI.
-	Logger                  log.Logger
-	EnableGraphQL           bool // Whether the GraphQL API is enabled.
-	EnableGraphQLPlayground bool // Whether the GraphQL playground UI is enabled.
+	// UIPrefix is the path prefix to host the UI at.
+	UIPrefix string
+
+	// CallbackManager is used for live debugging in the UI.
+	CallbackManager livedebugging.CallbackManager
+
+	// Logger is used for structured logging across the service.
+	Logger log.Logger
+
+	// EnableGraphQL specifies whether the GraphQL API is enabled.
+	EnableGraphQL bool
+
+	// EnableGraphQLPlayground specifies whether the GraphQL playground UI is enabled.
+	EnableGraphQLPlayground bool
 }
 
 // Service implements the UI service.

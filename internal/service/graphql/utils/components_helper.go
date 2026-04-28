@@ -51,7 +51,7 @@ func GetComponentByID(host service.Host, id string) (*component.Info, error) {
 		return nil, err
 	}
 
-	return remoteHost.GetComponent(component.ID{LocalID: parsedID.LocalID}, defaultInfoOpts)
+	return remoteHost.GetComponent(parsedID, defaultInfoOpts)
 }
 
 func getRemoteHost(host service.Host) (service.Host, error) {
