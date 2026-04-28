@@ -493,13 +493,45 @@ func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, flo
 	return timerClause, limit
 }
 
-// classifyMySQLWaitEventType maps a raw MySQL performance_schema wait event name
-// to a standardized category, aligned with the wait taxonomy used elsewhere:
+// isMySQLReplicationWaitEvent matches MySQL wait events that are part of
+// replication (slave/relay-log) machinery. Checked before the generic
+// synch/IO rules so that, e.g., wait/synch/mutex/sql/Relay_log_info::*
+// routes to Replication Wait instead of Engine Wait.
+func isMySQLReplicationWaitEvent(name string) bool {
+	if strings.HasPrefix(name, "wait/io/file/sql/relaylog") {
+		return true
+	}
+	rest, ok := strings.CutPrefix(name, "wait/synch/")
+	if !ok {
+		return false
+	}
+	// rest is "<primitive>/<owner>/<symbol>" e.g. "mutex/sql/Slave_jobs_lock".
+	// Match owner=="sql" with symbol prefixed Slave_ or Relay_log_info.
+	parts := strings.SplitN(rest, "/", 3)
+	if len(parts) < 3 {
+		return false
+	}
+	if parts[1] != "sql" {
+		return false
+	}
+	return strings.HasPrefix(parts[2], "Slave_") || strings.HasPrefix(parts[2], "Relay_log_info")
+}
+
+// classifyMySQLWaitEventType maps a raw MySQL performance_schema wait event
+// name to one of six standardized buckets:
 //
-//	IO Wait      = wait/io/(file|table).+
-//	Network Wait = wait/io/socket.+
-//	Lock Wait    = wait/(io/lock|synch|lock).+
+//	IO Wait          — disk / file / table page I/O
+//	Network Wait     — client connection socket I/O
+//	Lock Wait        — heavyweight user-visible cascade locks (table, metadata, row lock)
+//	Engine Wait      — engine-internal synchronization (mutex/cond/rwlock/prlock/sxlock)
+//	Replication Wait — relay-log I/O and slave/relay synchronization
+//	Other Wait       — anything else, including names that don't start with "wait/"
+//
+// The replication carve-out is checked before the generic prefix switch.
 func classifyMySQLWaitEventType(waitEventName string) string {
+	if isMySQLReplicationWaitEvent(waitEventName) {
+		return "Replication Wait"
+	}
 	rest, ok := strings.CutPrefix(waitEventName, "wait/")
 	if !ok {
 		return "Other Wait"
@@ -509,10 +541,10 @@ func classifyMySQLWaitEventType(waitEventName string) string {
 		return "IO Wait"
 	case strings.HasPrefix(rest, "io/socket/"):
 		return "Network Wait"
-	case strings.HasPrefix(rest, "io/lock/"),
-		strings.HasPrefix(rest, "synch/"),
-		strings.HasPrefix(rest, "lock/"):
+	case strings.HasPrefix(rest, "io/lock/"), strings.HasPrefix(rest, "lock/"):
 		return "Lock Wait"
+	case strings.HasPrefix(rest, "synch/"):
+		return "Engine Wait"
 	}
 	return "Other Wait"
 }

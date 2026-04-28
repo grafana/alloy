@@ -3233,17 +3233,47 @@ func TestClassifyMySQLWaitEventType(t *testing.T) {
 		input    string
 		expected string
 	}{
+		// IO
 		{"wait/io/file/innodb/innodb_data_file", "IO Wait"},
+		{"wait/io/file/sql/binlog", "IO Wait"},
+		{"wait/io/file/sql/io_cache", "IO Wait"},
+		{"wait/io/file/sql/slow_log", "IO Wait"},
 		{"wait/io/table/sql/handler", "IO Wait"},
+
+		// Network
 		{"wait/io/socket/sql/client_connection", "Network Wait"},
+
+		// Lock (cascade)
 		{"wait/io/lock/table/handler", "Lock Wait"},
 		{"wait/lock/table/sql/handler", "Lock Wait"},
 		{"wait/lock/metadata/sql/mdl", "Lock Wait"},
-		{"wait/synch/mutex/sql/LOCK_open", "Lock Wait"},
-		{"wait/synch/rwlock/sql/LOCK_system_variables", "Lock Wait"},
+
+		// Engine (was Lock or Other under the old scheme)
+		{"wait/synch/mutex/sql/LOCK_open", "Engine Wait"},
+		{"wait/synch/mutex/sql/LOCK_table_cache", "Engine Wait"},
+		{"wait/synch/mutex/sql/LOG::LOCK_log", "Engine Wait"},
+		{"wait/synch/mutex/sql/MYSQL_BIN_LOG::LOCK_done", "Engine Wait"},
+		{"wait/synch/mutex/sql/LOCK_global_system_variables", "Engine Wait"},
+		{"wait/synch/cond/sql/MYSQL_BIN_LOG::COND_done", "Engine Wait"},
+		{"wait/synch/rwlock/sql/LOCK_system_variables_hash", "Engine Wait"},
+		{"wait/synch/prlock/sql/MDL_lock::rwlock", "Engine Wait"},
+		{"wait/synch/mutex/innodb/trx_mutex", "Engine Wait"},
+		{"wait/synch/mutex/innodb/dict_table_mutex", "Engine Wait"},
+
+		// Replication carve-outs (precede the generic synch → Engine and io/file → IO rules)
+		{"wait/io/file/sql/relaylog", "Replication Wait"},
+		{"wait/io/file/sql/relaylog_index", "Replication Wait"},
+		{"wait/synch/mutex/sql/Slave_jobs_lock", "Replication Wait"},
+		{"wait/synch/mutex/sql/Slave_worker::jobs_lock", "Replication Wait"},
+		{"wait/synch/cond/sql/Slave_worker::jobs_cond", "Replication Wait"},
+		{"wait/synch/mutex/sql/Relay_log_info::pending_jobs_lock", "Replication Wait"},
+		{"wait/synch/mutex/sql/Relay_log_info::log_space_lock", "Replication Wait"},
+
+		// Other / unknown
 		{"wait/unknown/something", "Other Wait"},
 		{"not_a_wait_event", "Other Wait"},
 		{"", "Other Wait"},
+		{"idle", "Other Wait"},
 	}
 
 	for _, tc := range tests {
