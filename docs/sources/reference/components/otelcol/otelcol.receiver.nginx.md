@@ -12,7 +12,7 @@ title: otelcol.receiver.nginx
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.receiver.nginx` reads Nginx metrics and forwards them to other `otelcol.*` components.
+`otelcol.receiver.nginx` reads NGINX metrics and forwards them to other `otelcol.*` components.
 
 {{< admonition type="note" >}}
 `otelcol.receiver.nginx` is a wrapper over the upstream OpenTelemetry Collector [`nginx`][] receiver.
@@ -21,7 +21,7 @@ Bug reports or feature requests will be redirected to the upstream repository, i
 [`nginx`]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/nginxreceiver
 {{< /admonition >}}
 
-This receiver supports Nginx. Refer to the upstream [`nginx`][] receiver documentation for more details.
+This receiver supports NGINX. Refer to the upstream [`nginx`][] receiver documentation for more details.
 
 You can specify multiple `otelcol.receiver.nginx` components by giving them different labels.
 
@@ -46,11 +46,11 @@ otelcol.receiver.nginx "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.nginx`:
 
-| Name                  | Type       | Description                                           | Default | Required |
-| --------------------- | ---------- | ----------------------------------------------------- | ------- | -------- |
-| `endpoint`            | `string`   | The URL of the NGINX status endpoint.                 |         | yes      |
-| `collection_interval` | `duration` | Defines how often to collect metrics.                 | `"10s"` | no       |
-| `initial_delay`       | `duration` | Defines how long this receiver waits before starting. | `"1s"`  | no       |
+| Name                  | Type       | Description                                            | Default | Required |
+| --------------------- | ---------- | ------------------------------------------------------ | ------- | -------- |
+| `endpoint`            | `string`   | The URL of the NGINX status endpoint.                  |         | yes      |
+| `collection_interval` | `duration` | Defines how often to collect metrics.                  | `"10s"` | no       |
+| `initial_delay`       | `duration` | Defines how long this receiver waits before it starts. | `"1s"`  | no       |
 
 ## Blocks
 
@@ -92,7 +92,7 @@ You can use the following blocks with `otelcol.receiver.nginx`:
 
 ## Example
 
-The following example collects all available metrics from an Nginx server and forwards them to an exporter.
+The following example collects all available metrics from an NGINX server and forwards them to an exporter.
 
 ```alloy
 otelcol.receiver.nginx "default" {
