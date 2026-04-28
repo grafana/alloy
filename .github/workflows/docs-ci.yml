@@ -1,0 +1,15 @@
+name: Documentation CI
+on:
+  pull_request:
+    paths: ["docs/sources/**"]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  docs-ci:
+    uses: grafana/writers-toolkit/.github/workflows/docs-ci.yml@main
+    with:
+      build: true
+      build-website-directory: content/docs/alloy/latest
+      vale: true
