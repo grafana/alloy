@@ -240,6 +240,7 @@ type Component struct {
 	openSQL            func(driverName, dataSourceName string) (*sql.DB, error)
 	logsReceiver       loki.LogsReceiver
 	exporterCollectors []prometheus.Collector
+	queryHashRegistry  *collector.QueryHashRegistry
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -433,6 +434,16 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		cp = cloudProvider
 	}
 
+	const queryHashRegistrySize = 5000 // matches pg_stat_statements.max default ceiling
+	const queryHashRegistryTTL = 30 * time.Minute
+	c.queryHashRegistry = collector.NewQueryHashRegistry(queryHashRegistrySize, queryHashRegistryTTL)
+
+	queryHashMetrics := collector.NewQueryHashMetricsCollector(c.queryHashRegistry, generatedSystemID)
+	if err := c.registry.Register(queryHashMetrics); err != nil {
+		return fmt.Errorf("failed to register query_hash_info metrics: %w", err)
+	}
+	c.exporterCollectors = append(c.exporterCollectors, queryHashMetrics)
+
 	if len(c.args.Targets) == 0 {
 		if c.args.PrometheusExporter == nil {
 			d := PrometheusExporterArguments(exporter_postgres.DefaultArguments)
@@ -589,14 +600,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:               c.dbConnection,
-			CollectInterval:  c.args.QueryDetailsArguments.CollectInterval,
-			StatementsLimit:  c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     c.args.ExcludeUsers,
-			EntryHandler:     entryHandler,
-			TableRegistry:    tableRegistry,
-			Logger:           c.opts.Logger,
+			DB:                c.dbConnection,
+			CollectInterval:   c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit:   c.args.QueryDetailsArguments.StatementsLimit,
+			ExcludeDatabases:  c.args.ExcludeDatabases,
+			ExcludeUsers:      c.args.ExcludeUsers,
+			EntryHandler:      entryHandler,
+			TableRegistry:     tableRegistry,
+			Logger:            c.opts.Logger,
+			QueryHashRegistry: c.queryHashRegistry,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
