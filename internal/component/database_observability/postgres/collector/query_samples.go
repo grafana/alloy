@@ -111,6 +111,8 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction         bool
 	ExcludeCurrentUser            bool
 	EnablePreClassifiedWaitEvents bool
+	QueryHashRegistry             *QueryHashRegistry
+	TrackActivityQuerySize        int
 }
 
 type QuerySamples struct {
@@ -122,6 +124,8 @@ type QuerySamples struct {
 	disableQueryRedaction         bool
 	excludeCurrentUser            bool
 	enablePreClassifiedWaitEvents bool
+	queryHashRegistry             *QueryHashRegistry
+	trackActivityQuerySize        int
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -232,6 +236,8 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		excludeCurrentUser:            args.ExcludeCurrentUser,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
+		queryHashRegistry:             args.QueryHashRegistry,
+		trackActivityQuerySize:        args.TrackActivityQuerySize,
 		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 		samples:                       map[SampleKey]*SampleState{},

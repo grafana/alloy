@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -417,6 +418,18 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
+	var trackActivityQuerySize int
+	{
+		var raw sql.NullString
+		if err := dbConnection.QueryRowContext(ctx, "SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'").Scan(&raw); err != nil {
+			level.Warn(c.opts.Logger).Log("msg", "failed to read track_activity_query_size; truncation sentinel will not fire", "err", err)
+		} else if raw.Valid {
+			if v, err := strconv.Atoi(raw.String); err == nil {
+				trackActivityQuerySize = v
+			}
+		}
+	}
+
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
 
 	var cp *database_observability.CloudProvider
@@ -515,7 +528,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
+	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp, trackActivityQuerySize); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -562,7 +575,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider) error {
+func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, trackActivityQuerySize int) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -630,6 +643,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
 			ExcludeCurrentUser:            c.args.QuerySampleArguments.ExcludeCurrentUser,
 			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
+			QueryHashRegistry:             c.queryHashRegistry,
+			TrackActivityQuerySize:        trackActivityQuerySize,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
