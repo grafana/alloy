@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	lokiMapMatchModeStrict  = "strict"
+	lokiMapMatchModeExact   = "exact"
 	lokiMapMatchModePartial = "partial"
 )
 
@@ -255,12 +255,12 @@ func buildLokiMatchers(match LokiMatchSchema) ([]harness.EntryMatcher, error) {
 
 func isPartialLokiMapMatch(name string, match LokiMapMatchSchema) (bool, error) {
 	switch match.Mode {
-	case "", lokiMapMatchModeStrict:
+	case "", lokiMapMatchModeExact:
 		return false, nil
 	case lokiMapMatchModePartial:
 		return true, nil
 	default:
-		return false, fmt.Errorf("%s mode must be %q or %q, got %q", name, lokiMapMatchModeStrict, lokiMapMatchModePartial, match.Mode)
+		return false, fmt.Errorf("%s mode must be %q or %q, got %q", name, lokiMapMatchModeExact, lokiMapMatchModePartial, match.Mode)
 	}
 }
 
