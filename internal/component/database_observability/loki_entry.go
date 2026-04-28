@@ -30,3 +30,9 @@ func BuildLokiEntryWithStructuredMetadata(level logging.Level, op, line string, 
 	e.Entry.StructuredMetadata = metadata
 	return e
 }
+
+func BuildLokiEntryWithTimestampAndStructuredMetadata(level logging.Level, op, line string, timestamp int64, metadata push.LabelsAdapter) loki.Entry {
+	e := BuildLokiEntryWithTimestamp(level, op, line, timestamp)
+	e.Entry.StructuredMetadata = metadata
+	return e
+}

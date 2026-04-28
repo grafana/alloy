@@ -742,9 +742,10 @@ func TestLogsCollector_AttachesQueryFingerprintToError(t *testing.T) {
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 	pid := "12345"
 
-	// ERROR line
+	// ERROR line — capture its timestamp so we can assert it is preserved on the emitted entry.
+	errorEntryTs := time.Now()
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
+		Timestamp: errorEntryTs,
 		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  relation \"missing\" does not exist",
 	}}
 	// STATEMENT continuation
@@ -778,6 +779,9 @@ func TestLogsCollector_AttachesQueryFingerprintToError(t *testing.T) {
 		}
 	}
 	require.NotEmpty(t, gotFP, "fingerprint should be set when STATEMENT is present")
+
+	// Timestamp must match the ERROR entry's timestamp, not the time the entry was emitted.
+	require.True(t, errEntry.Entry.Timestamp.Equal(errorEntryTs), "pg_error entry should preserve the source timestamp")
 
 	// And the line carries the structured fields
 	require.Contains(t, errEntry.Entry.Line, `severity="ERROR"`)
@@ -908,8 +912,10 @@ func TestLogsCollector_EmitsSlowQueryWithFingerprint(t *testing.T) {
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 
 	const sqlText = "SELECT pg_sleep(1)"
+	// Capture the inbound timestamp so we can assert it is preserved on the emitted entry.
+	inboundTs := time.Now()
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
+		Timestamp: inboundTs,
 		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[12345]:1:00000:" + ts2 + ":1/0:0:c1::psqlLOG:  duration: 1234.567 ms  statement: " + sqlText,
 	}}
 
@@ -941,6 +947,9 @@ func TestLogsCollector_EmitsSlowQueryWithFingerprint(t *testing.T) {
 		}
 	}
 	require.Equal(t, expectedFP, gotFP)
+
+	// Timestamp must match the inbound entry's timestamp, not the time the entry was emitted.
+	require.True(t, slowEntry.Entry.Timestamp.Equal(inboundTs), "pg_slow_query entry should preserve the source timestamp")
 
 	require.Contains(t, slowEntry.Entry.Line, `datname="books_store"`)
 	require.Contains(t, slowEntry.Entry.Line, `user="user"`)

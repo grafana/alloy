@@ -253,7 +253,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		durationMs := m[1]
 		stmt := strings.TrimSpace(m[2])
 		fp, _, _ := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
-		l.emitSlowQueryEntry(datname, user, durationMs, stmt, fp)
+		l.emitSlowQueryEntry(entry.Entry.Timestamp, datname, user, durationMs, stmt, fp)
 		return nil
 	}
 
@@ -440,10 +440,16 @@ func (l *Logs) emitErrorEntry(p *pendingError, statement, fp string) {
 		p.severity, p.sqlstate, sqlstateClass, p.datname, p.user, statementPreview,
 	)
 
-	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
+	ts := p.timestamp.UnixNano()
+	if p.timestamp.IsZero() {
+		ts = time.Now().UnixNano()
+	}
+
+	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestampAndStructuredMetadata(
 		logging.LevelError,
 		OP_PG_ERROR,
 		line,
+		ts,
 		push.LabelsAdapter{
 			push.LabelAdapter{Name: "query_fingerprint", Value: fp},
 		},
@@ -497,16 +503,21 @@ func (l *Logs) afterStartTime(line string) bool {
 	return true
 }
 
-func (l *Logs) emitSlowQueryEntry(datname, user, durationMs, statement, fp string) {
+func (l *Logs) emitSlowQueryEntry(timestamp time.Time, datname, user, durationMs, statement, fp string) {
 	statementPreview := truncateString(statement, 200)
 	line := fmt.Sprintf(
 		`datname=%q user=%q duration_ms=%q statement_preview=%q`,
 		datname, user, durationMs, statementPreview,
 	)
-	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
+	ts := timestamp.UnixNano()
+	if timestamp.IsZero() {
+		ts = time.Now().UnixNano()
+	}
+	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestampAndStructuredMetadata(
 		logging.LevelInfo,
 		OP_PG_SLOW_QUERY,
 		line,
+		ts,
 		push.LabelsAdapter{
 			push.LabelAdapter{Name: "query_fingerprint", Value: fp},
 		},

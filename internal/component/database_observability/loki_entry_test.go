@@ -41,3 +41,20 @@ func TestBuildLokiEntryWithStructuredMetadata(t *testing.T) {
 	require.Equal(t, "query_fingerprint", e.StructuredMetadata[0].Name)
 	require.Equal(t, "abc123", e.StructuredMetadata[0].Value)
 }
+
+func TestBuildLokiEntryWithTimestampAndStructuredMetadata(t *testing.T) {
+	e := BuildLokiEntryWithTimestampAndStructuredMetadata(
+		logging.LevelInfo,
+		"op_test",
+		`key="value"`,
+		42,
+		push.LabelsAdapter{
+			push.LabelAdapter{Name: "query_fingerprint", Value: "abc123"},
+		},
+	)
+	require.Equal(t, model.LabelValue("op_test"), e.Labels["op"])
+	require.Equal(t, `level="info" key="value"`, e.Line)
+	require.Equal(t, int64(42), e.Entry.Timestamp.UnixNano())
+	require.Len(t, e.StructuredMetadata, 1)
+	require.Equal(t, "abc123", e.StructuredMetadata[0].Value)
+}
