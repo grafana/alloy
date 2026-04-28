@@ -720,6 +720,125 @@ func TestLogsCollector_ExcludeDatabases(t *testing.T) {
 	require.Equal(t, float64(1), totalCount, "only the non-excluded database log should be counted")
 }
 
+func TestLogsCollector_AttachesQueryFingerprintToError(t *testing.T) {
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
+	registry := prometheus.NewRegistry()
+
+	receiver := loki.NewLogsReceiver()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	pid := "12345"
+
+	// ERROR line
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  relation \"missing\" does not exist",
+	}}
+	// STATEMENT continuation
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      "STATEMENT:  SELECT * FROM missing WHERE id = $1",
+	}}
+
+	require.Eventually(t, func() bool {
+		for _, e := range entryHandler.Received() {
+			if string(e.Labels["op"]) == "pg_error" {
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, 50*time.Millisecond, "expected a pg_error entry")
+
+	var errEntry loki.Entry
+	for _, e := range entryHandler.Received() {
+		if string(e.Labels["op"]) == "pg_error" {
+			errEntry = e
+			break
+		}
+	}
+
+	// Assert structured metadata carries the fingerprint
+	var gotFP string
+	for _, m := range errEntry.Entry.StructuredMetadata {
+		if m.Name == "query_fingerprint" {
+			gotFP = m.Value
+		}
+	}
+	require.NotEmpty(t, gotFP, "fingerprint should be set when STATEMENT is present")
+
+	// And the line carries the structured fields
+	require.Contains(t, errEntry.Entry.Line, `severity="ERROR"`)
+	require.Contains(t, errEntry.Entry.Line, `sqlstate="42P01"`)
+	require.Contains(t, errEntry.Entry.Line, `datname="books_store"`)
+	require.Contains(t, errEntry.Entry.Line, `user="user"`)
+	require.Contains(t, errEntry.Entry.Line, `statement_preview="SELECT * FROM missing WHERE id = $1"`)
+}
+
+func TestLogsCollector_EmitsErrorWithEmptyFingerprintAfterTimeout(t *testing.T) {
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
+	registry := prometheus.NewRegistry()
+
+	receiver := loki.NewLogsReceiver()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond // tighten for the test
+
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// ERROR line with no following STATEMENT
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[99999]:1:53300:" + ts2 + ":1/0:0:c1::psqlFATAL:  too many connections",
+	}}
+
+	require.Eventually(t, func() bool {
+		for _, e := range entryHandler.Received() {
+			if string(e.Labels["op"]) == "pg_error" {
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, 50*time.Millisecond, "timeout-emitted entry should appear")
+
+	var errEntry loki.Entry
+	for _, e := range entryHandler.Received() {
+		if string(e.Labels["op"]) == "pg_error" {
+			errEntry = e
+			break
+		}
+	}
+	for _, m := range errEntry.Entry.StructuredMetadata {
+		if m.Name == "query_fingerprint" {
+			require.Equal(t, "", m.Value, "fingerprint should be empty when no STATEMENT arrived")
+		}
+	}
+	require.Contains(t, errEntry.Entry.Line, `severity="FATAL"`)
+	require.Contains(t, errEntry.Entry.Line, `statement_preview=""`)
+}
+
 func TestLogsCollector_ExcludeUsers(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()

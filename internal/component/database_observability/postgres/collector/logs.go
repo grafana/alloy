@@ -10,17 +10,38 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
 	LogsCollector         = "logs"
+	OP_PG_ERROR           = "pg_error"
 	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
+
+	defaultPendingErrorTimeout = 5 * time.Second
 )
+
+// pendingError buffers an ERROR/FATAL/PANIC log line until either its
+// matching STATEMENT continuation arrives (allowing us to attach a SQL
+// fingerprint) or pendingErrorTimeout elapses (we emit with an empty
+// fingerprint). PostgreSQL emits the continuation immediately after the
+// corresponding error from the same backend.
+type pendingError struct {
+	receivedAt time.Time
+	severity   string
+	sqlstate   string
+	datname    string
+	user       string
+	timestamp  time.Time
+}
 
 // Postgres log format regex
 var logFormatRegex = regexp.MustCompile(
@@ -69,6 +90,10 @@ type Logs struct {
 	validLogsThisMinute   int
 	invalidLogsThisMinute int
 
+	pendingErrors       map[string]*pendingError
+	pendingMu           sync.Mutex
+	pendingErrorTimeout time.Duration
+
 	startTime time.Time
 }
 
@@ -76,16 +101,18 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:           log.With(args.Logger, "collector", LogsCollector),
-		entryHandler:     args.EntryHandler,
-		registry:         args.Registry,
-		receiver:         args.Receiver,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		ctx:              ctx,
-		cancel:           cancel,
-		stopped:          atomic.NewBool(false),
-		startTime:        time.Now(),
+		logger:              log.With(args.Logger, "collector", LogsCollector),
+		entryHandler:        args.EntryHandler,
+		registry:            args.Registry,
+		receiver:            args.Receiver,
+		excludeDatabases:    args.ExcludeDatabases,
+		excludeUsers:        args.ExcludeUsers,
+		ctx:                 ctx,
+		cancel:              cancel,
+		stopped:             atomic.NewBool(false),
+		startTime:           time.Now(),
+		pendingErrors:       make(map[string]*pendingError),
+		pendingErrorTimeout: defaultPendingErrorTimeout,
 	}
 
 	l.initMetrics()
@@ -94,6 +121,10 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 }
 
 func (l *Logs) initMetrics() {
+	// Note: query_fingerprint deliberately is NOT a label here — fingerprints can
+	// be highly cardinal and we surface them on the emitted Loki entry's
+	// structured metadata instead. Joining metrics+logs by fingerprint goes
+	// through the database_observability_query_hash_info join metric.
 	l.errorsBySQLState = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: "database_observability",
@@ -139,6 +170,16 @@ func (l *Logs) Stop() {
 	l.stopped.Store(true)
 	l.wg.Wait()
 
+	// Drain any pending errors that never received a STATEMENT continuation.
+	// Force-flush by treating every remaining entry as expired.
+	l.pendingMu.Lock()
+	remaining := l.pendingErrors
+	l.pendingErrors = make(map[string]*pendingError)
+	l.pendingMu.Unlock()
+	for _, p := range remaining {
+		l.emitErrorEntry(p, "", "")
+	}
+
 	l.registry.Unregister(l.errorsBySQLState)
 	l.registry.Unregister(l.parseErrors)
 }
@@ -149,6 +190,15 @@ func (l *Logs) Stopped() bool {
 
 func (l *Logs) run() {
 	level.Debug(l.logger).Log("msg", "collector running, waiting for log entries")
+
+	// Ticker fires at least twice per pendingErrorTimeout window so a
+	// pending entry is emitted within at most one extra tick after expiry.
+	tickPeriod := l.pendingErrorTimeout / 2
+	if tickPeriod < 50*time.Millisecond {
+		tickPeriod = 50 * time.Millisecond
+	}
+	timeoutTicker := time.NewTicker(tickPeriod)
+	defer timeoutTicker.Stop()
 
 	for {
 		select {
@@ -163,6 +213,8 @@ func (l *Logs) run() {
 					"line_preview", truncateString(entry.Entry.Line, 100),
 				)
 			}
+		case <-timeoutTicker.C:
+			l.flushExpiredPending()
 		}
 	}
 }
@@ -171,6 +223,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	line := entry.Entry.Line
 
 	if isContinuationLine(line) {
+		l.processContinuation(line)
 		return nil
 	}
 
@@ -266,7 +319,105 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		user,
 	).Inc()
 
+	// Buffer the error so the matching STATEMENT continuation can attach SQL
+	// text (and thus a query_fingerprint) before we emit a Loki entry.
+	pidStart := strings.Index(afterAt, "[")
+	pidEnd := strings.Index(afterAt, "]")
+	pid := ""
+	if pidStart != -1 && pidEnd > pidStart {
+		pid = afterAt[pidStart+1 : pidEnd]
+	}
+
+	l.pendingMu.Lock()
+	l.pendingErrors[pid] = &pendingError{
+		receivedAt: time.Now(),
+		severity:   severity,
+		sqlstate:   sqlstateCode,
+		datname:    database,
+		user:       user,
+		timestamp:  entry.Entry.Timestamp,
+	}
+	l.pendingMu.Unlock()
+
 	return nil
+}
+
+// processContinuation handles a continuation line. Today only STATEMENT:
+// continuations are interesting — they carry the SQL text that produced the
+// preceding error. PostgreSQL emits the continuation immediately after the
+// corresponding error from the same backend; the continuation does NOT carry
+// log_line_prefix metadata, so we cannot match it by PID. Instead we attach
+// to the most recently buffered pending error, which works because logs from
+// a single connection are serialized by PostgreSQL.
+func (l *Logs) processContinuation(line string) {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, "STATEMENT:") {
+		return
+	}
+	stmt := strings.TrimSpace(strings.TrimPrefix(trimmed, "STATEMENT:"))
+
+	l.pendingMu.Lock()
+	var bestPID string
+	var bestEntry *pendingError
+	for pid, p := range l.pendingErrors {
+		if bestEntry == nil || p.receivedAt.After(bestEntry.receivedAt) {
+			bestPID = pid
+			bestEntry = p
+		}
+	}
+	if bestEntry != nil {
+		delete(l.pendingErrors, bestPID)
+	}
+	l.pendingMu.Unlock()
+
+	if bestEntry == nil {
+		return
+	}
+
+	fp, _, _ := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
+	l.emitErrorEntry(bestEntry, stmt, fp)
+}
+
+// flushExpiredPending emits Loki entries for any pending errors older than
+// pendingErrorTimeout that never had their STATEMENT continuation arrive.
+// They emit with an empty fingerprint.
+func (l *Logs) flushExpiredPending() {
+	deadline := time.Now().Add(-l.pendingErrorTimeout)
+	l.pendingMu.Lock()
+	expired := make(map[string]*pendingError)
+	for pid, p := range l.pendingErrors {
+		if p.receivedAt.Before(deadline) {
+			expired[pid] = p
+			delete(l.pendingErrors, pid)
+		}
+	}
+	l.pendingMu.Unlock()
+
+	for _, p := range expired {
+		l.emitErrorEntry(p, "", "")
+	}
+}
+
+func (l *Logs) emitErrorEntry(p *pendingError, statement, fp string) {
+	sqlstateClass := ""
+	if len(p.sqlstate) >= 2 {
+		sqlstateClass = p.sqlstate[:2]
+	}
+	statementPreview := truncateString(statement, 200)
+
+	line := fmt.Sprintf(
+		`severity=%q sqlstate=%q sqlstate_class=%q datname=%q user=%q statement_preview=%q`,
+		p.severity, p.sqlstate, sqlstateClass, p.datname, p.user, statementPreview,
+	)
+
+	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithStructuredMetadata(
+		logging.LevelError,
+		OP_PG_ERROR,
+		line,
+		push.LabelsAdapter{
+			push.LabelAdapter{Name: "query_fingerprint", Value: fp},
+		},
+	)
 }
 
 // isContinuationLine checks if a line is part of a multi-line PostgreSQL error
