@@ -171,9 +171,42 @@ The `data_source_name` is inherited from the parent block.
 
 Refer to [`prometheus.exporter.postgres`](../../prometheus/prometheus.exporter.postgres/) docs for the full list of supported arguments and sub-blocks.
 
+## Emitted metrics
+
+`database_observability.postgres` registers the following Prometheus metrics on the component's own `/metrics` endpoint.
+
+| Name                                         | Type    | Description                                                                                                                                                                                                                                                                                          |
+|----------------------------------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `database_observability_query_hash_info`     | gauge   | Maps each `pg_stat_statements.queryid` to a stable, version-independent `query_fingerprint` computed by Alloy from the query's parsed AST. Value is always `1`. Labels: `queryid`, `query_fingerprint`, `server_id`, `datname`. Use as a join metric to attach `query_fingerprint` to existing series without increasing cardinality on the source. |
+| `database_observability_pg_errors_total`     | counter | Number of log lines with errors by severity and SQL state code. Labels: `severity`, `sqlstate`, `sqlstate_class`, `datname`, `user`.                                                                                                                                                                |
+
+You can use the join metric in PromQL to attach `query_fingerprint` to existing `pg_stat_statements` series:
+
+```promql
+pg_stat_statements_calls_total
+  * on (queryid, datname) group_left(query_fingerprint)
+    database_observability_query_hash_info
+```
+
+## Emitted Loki entries
+
+The component emits Loki log entries to the configured `forward_to` targets. Each entry carries an `op` label identifying the source of the line.
+
+| `op` label                | Source collector | Description                                                                                                                               | Structured metadata |
+|---------------------------|------------------|-------------------------------------------------------------------------------------------------------------------------------------------|---------------------|
+| `query_association`       | `query_details`  | One entry per slow query observed in `pg_stat_statements`, with the `queryid`, computed `query_fingerprint`, normalized text, and database. |                     |
+| `query_parsed_table_name` | `query_details`  | One entry per table referenced by a slow query, with validation against the schema registry.                                               |                     |
+| `query_sample`            | `query_samples`  | One entry per active sample observed in `pg_stat_activity`, emitted at session-end or idle transition.                                     | `query_fingerprint` |
+| `wait_event`              | `query_samples`  | One entry per consecutive wait event observed during an active session, with the raw `wait_event_type` and `wait_event` names.             | `query_fingerprint` |
+| `wait_event_v2`           | `query_samples`  | Same as `wait_event` with `wait_event_type` pre-classified as `IO Wait`, `Lock Wait`, `Network Wait`, or `Other Wait`.                    | `query_fingerprint` |
+| `pg_error`                | `logs`           | One entry per ERROR/FATAL/PANIC line in the PostgreSQL server log, with severity, SQL state, and the originating SQL when available.       | `query_fingerprint` |
+| `pg_slow_query`           | `logs`           | One entry per slow-query log line (`log_min_duration_statement`), with the duration in milliseconds and the SQL.                          | `query_fingerprint` |
+
+The `query_fingerprint` value is the same for `pg_stat_statements` metrics, `pg_stat_activity` samples, and PostgreSQL server log lines. Alloy computes it client-side using the same normalization across all sources, which enables joining metrics and logs by fingerprint on managed services (RDS, Aurora) where `pg_stat_statements.queryid` is not available in `log_line_prefix`.
+
 ## `logs` collector
 
-The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point and exports Prometheus metrics for query and server errors.
+The `logs` collector processes PostgreSQL logs received through the `logs_receiver` entry point. It increments error metrics, captures the SQL behind ERROR/FATAL/PANIC entries from `STATEMENT:` continuation lines, parses slow-query log entries (`log_min_duration_statement`), and emits Loki entries for both with `query_fingerprint` attached as structured metadata so logs can be correlated with `pg_stat_statements` metrics — including on managed services (RDS, Aurora) where `pg_stat_statements.queryid` is not available in `log_line_prefix`.
 
 The `logs_receiver` entry point must be fed by `loki` log source components, for example:
 
