@@ -35,6 +35,14 @@ jobs:
         os: [windows-2022]
     runs-on: ${{ matrix.os }}
     steps:
+    - name: Ensure Docker is running (Docker issue workaround)
+      id: docker-workaround
+      run: |
+        $dockerState = Get-Service -Name "docker"
+        if ($dockerState.Status -ne "Running") {
+          Start-Service -Name "docker"
+        }
+
       # This step needs to run before "Checkout code".
       # That's because it generates a new file.
       # We don't want this file to end up in the repo directory.

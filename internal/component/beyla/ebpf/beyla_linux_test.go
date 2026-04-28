@@ -230,7 +230,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
 	require.False(t, cfg.EBPF.BpfDebug)
 	require.False(t, cfg.EBPF.ProtocolDebug)
-	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.OpenAI.Enabled)
+	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
 	require.Len(t, cfg.Filters.Application, 1)
 	require.Len(t, cfg.Filters.Network, 1)
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
@@ -737,11 +737,12 @@ func TestConvert_Attributes(t *testing.T) {
 
 	expectedConfig := beyla.Attributes{
 		Kubernetes: transform.KubernetesDecorator{
-			Enable:                kubeflags.EnableFlag(args.Kubernetes.Enable),
-			InformersSyncTimeout:  15 * time.Second,
-			InformersResyncPeriod: 30 * time.Minute,
-			ResourceLabels:        beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
-			MetaCacheAddress:      "localhost:9090",
+			Enable:                   kubeflags.EnableFlag(args.Kubernetes.Enable),
+			InformersSyncTimeout:     15 * time.Second,
+			InformersResyncPeriod:    30 * time.Minute,
+			ReconnectInitialInterval: beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval,
+			ResourceLabels:           beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
+			MetaCacheAddress:         "localhost:9090",
 		},
 		HostID: beyla.HostIDConfig{},
 		Select: attributes.Selection{
@@ -758,6 +759,7 @@ func TestConvert_Attributes(t *testing.T) {
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
 	expectedConfig.MetadataRetry = beyla.DefaultConfig().Attributes.MetadataRetry
+	expectedConfig.Kubernetes.ReconnectInitialInterval = beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval
 
 	config := args.Convert()
 
@@ -941,7 +943,7 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.ContextPropagation = obiCfg.ContextPropagationTCP
 	expectedConfig.BpfDebug = true
 	expectedConfig.ProtocolDebug = true
-	expectedConfig.PayloadExtraction.HTTP.OpenAI.Enabled = true
+	expectedConfig.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = true
 
 	config, err := args.Convert()
 	require.NoError(t, err)
@@ -1272,7 +1274,7 @@ func TestMetrics_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Metrics{
-				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo", "memcached", "genai"},
 			},
 		},
 		{
@@ -1618,7 +1620,7 @@ func TestTraces_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Traces{
-				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo", "memcached", "genai"},
 			},
 		},
 		{
@@ -1804,6 +1806,139 @@ func TestEnvVars(t *testing.T) {
 	require.Equal(t, debug.TracePrinterJSON, cfg.TracePrinter)
 }
 
+func TestMetrics_Validate_ExemplarFilter(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Metrics
+		wantErr string
+	}{
+		{
+			name: "empty exemplar_filter is valid",
+			args: Metrics{},
+		},
+		{
+			name: "always_on is valid",
+			args: Metrics{ExemplarFilter: "always_on"},
+		},
+		{
+			name: "always_off is valid",
+			args: Metrics{ExemplarFilter: "always_off"},
+		},
+		{
+			name: "trace_based is valid",
+			args: Metrics{ExemplarFilter: "trace_based"},
+		},
+		{
+			name:    "invalid value",
+			args:    Metrics{ExemplarFilter: "invalid"},
+			wantErr: `metrics.exemplar_filter: invalid value "invalid"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestMetrics_Convert_ExemplarFilter(t *testing.T) {
+	args := Metrics{ExemplarFilter: "always_on"}
+	cfg := args.Convert()
+	require.Equal(t, "always_on", cfg.ExemplarFilter)
+
+	args = Metrics{ExemplarFilter: ""}
+	cfg = args.Convert()
+	require.Equal(t, beyla.DefaultConfig().Prometheus.ExemplarFilter, cfg.ExemplarFilter)
+}
+
+func TestMetrics_Validate_FeatureWildcard(t *testing.T) {
+	tests := []struct {
+		name string
+		args Metrics
+	}{
+		{name: "wildcard star", args: Metrics{Features: []string{"*"}}},
+		{name: "wildcard all", args: Metrics{Features: []string{"all"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.NoError(t, tt.args.Validate())
+			require.True(t, tt.args.hasAppFeature())
+		})
+	}
+}
+
+func TestEBPF_Convert_MapsConfig(t *testing.T) {
+	args := EBPF{MapsConfig: EBPFMapsConfig{GlobalScaleFactor: 2}}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, 2, cfg.MapsConfig.GlobalScaleFactor)
+
+	args = EBPF{}
+	cfg, err = args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, 0, cfg.MapsConfig.GlobalScaleFactor)
+}
+
+func TestInjector_Validate_ImageVolumePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Injector
+		wantErr string
+	}{
+		{
+			name: "image_volume_path alone is valid",
+			args: Injector{ImageVolumePath: "/var/oci"},
+		},
+		{
+			name: "image_volume_path with host_mount_path is invalid",
+			args: Injector{
+				ImageVolumePath: "/var/oci",
+				HostMountPath:   "/host",
+			},
+			wantErr: "injector.image_volume_path and injector.host_mount_path are mutually exclusive",
+		},
+		{
+			name: "image_volume_path with sdk_package_version is invalid",
+			args: Injector{
+				ImageVolumePath: "/var/oci",
+				SDKPkgVersion:   "1.0.0",
+			},
+			wantErr: "injector.image_volume_path and injector.sdk_package_version are mutually exclusive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestInjector_Convert_ImageVolumePath(t *testing.T) {
+	args := Injector{ImageVolumePath: "/var/oci"}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, "/var/oci", cfg.ImageVolumePath)
+
+	args = Injector{}
+	cfg, err = args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, "", cfg.ImageVolumePath)
+}
+
 func TestSurveyDisabled(t *testing.T) {
 	comp := &Component{
 		args: Arguments{
@@ -1840,4 +1975,40 @@ func TestSurveyEnabled(t *testing.T) {
 	require.True(t, cfg.Discovery.SurveyEnabled())
 	require.Equal(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
 	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
+}
+
+func TestAnthropicPayloadExtraction(t *testing.T) {
+	in := `
+		ebpf {
+			payload_extraction {
+				http {
+					anthropic {
+						enabled = true
+					}
+				}
+			}
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.Anthropic.Enabled)
+	require.False(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
+}
+
+func TestKubernetesReconnectInitialInterval(t *testing.T) {
+	in := `
+		attributes {
+			kubernetes {
+				enable = "true"
+				reconnect_initial_interval = "5s"
+			}
+		}
+	`
+	var args Arguments
+	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, 5*time.Second, cfg.Attributes.Kubernetes.ReconnectInitialInterval)
 }
