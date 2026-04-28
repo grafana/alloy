@@ -9,6 +9,10 @@ permissions: {}
 jobs:
   docs-ci:
     uses: grafana/writers-toolkit/.github/workflows/docs-ci.yml@main
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
     with:
       build: true
       build-website-directory: content/docs/alloy/latest
