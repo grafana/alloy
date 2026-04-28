@@ -191,15 +191,9 @@ func (s Stream) Clone() Stream {
 	}
 	for _, entry := range s.Entries {
 		e := push.Entry{
-			Timestamp: entry.Timestamp,
-			Line:      entry.Line,
-		}
-
-		if entry.StructuredMetadata != nil {
-			e.StructuredMetadata = make(push.LabelsAdapter, 0, len(entry.StructuredMetadata))
-			for _, s := range entry.StructuredMetadata {
-				e.StructuredMetadata = append(e.StructuredMetadata, push.LabelAdapter{Name: s.Name, Value: s.Value})
-			}
+			Timestamp:          entry.Timestamp,
+			Line:               entry.Line,
+			StructuredMetadata: slices.Clone(entry.StructuredMetadata),
 		}
 
 		cloned.Entries = append(cloned.Entries, e)
