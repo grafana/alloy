@@ -14,6 +14,11 @@ import (
 	"github.com/grafana/loki/pkg/push"
 )
 
+const (
+	lokiMapMatchModeStrict  = "strict"
+	lokiMapMatchModePartial = "partial"
+)
+
 // TestSchema describes a declarative pipeline test loaded from a text file.
 type TestSchema struct {
 	Config ConfigSchema    `yaml:"config"`
@@ -76,23 +81,28 @@ type AssertionSchema struct {
 	Loki []LokiAssertionSchema `yaml:"loki"`
 }
 
-// LokiAssertionSchema describes one declarative Loki entry assertion. When
-// Count is omitted, at least one matching entry must exist. When Count is set,
-// exactly Count matching entries must exist. Mode controls how map-like fields
-// such as labels and structured metadata are matched.
+// LokiAssertionSchema describes one declarative Loki assertion. Count
+// assertions require Count and may optionally include match fields. Contains
+// assertions require at least one match field.
 type LokiAssertionSchema struct {
 	Type  string          `yaml:"type"`
 	Count *int            `yaml:"count,omitempty"`
-	Mode  string          `yaml:"mode,omitempty"`
 	Match LokiMatchSchema `yaml:"match,omitempty"`
 }
 
 // LokiMatchSchema describes Loki entry fields used by declarative assertions.
 type LokiMatchSchema struct {
-	Labels             map[string]string `yaml:"labels,omitempty"`
-	Line               string            `yaml:"line,omitempty"`
-	Timestamp          string            `yaml:"timestamp,omitempty"`
-	StructuredMetadata map[string]string `yaml:"structured_metadata,omitempty"`
+	Line               string             `yaml:"line,omitempty"`
+	Timestamp          string             `yaml:"timestamp,omitempty"`
+	Labels             LokiMapMatchSchema `yaml:"labels,omitempty"`
+	StructuredMetadata LokiMapMatchSchema `yaml:"structured_metadata,omitempty"`
+}
+
+// LokiMapMatchSchema describes map-like Loki entry fields. Mode controls
+// whether Values must match exactly or be contained in the actual field.
+type LokiMapMatchSchema struct {
+	Mode   string            `yaml:"mode,omitempty"`
+	Values map[string]string `yaml:"values,omitempty"`
 }
 
 // produceInputs sends all configured test inputs into the running pipeline.
@@ -155,22 +165,26 @@ func buildLokiEntry(entry LokiEntrySchema) (loki.Entry, error) {
 	), nil
 }
 
-// buildAssertions builds runtime assertions from the declarative schema.
 func buildAssertions(assertions AssertionSchema) ([]harness.Assertion, error) {
 	return buildLokiAssertions(assertions.Loki)
 }
 
-// buildLokiAssertions builds Loki assertions from the declarative schema.
 func buildLokiAssertions(assertions []LokiAssertionSchema) ([]harness.Assertion, error) {
 	out := make([]harness.Assertion, 0, len(assertions))
 	for _, assertion := range assertions {
 		switch assertion.Type {
-		case "entry":
-			built, err := buildLokiEntryAssertion(assertion)
+		case "count":
+			assert, err := buildLokiCountAssertion(assertion)
 			if err != nil {
 				return nil, err
 			}
-			out = append(out, built)
+			out = append(out, assert)
+		case "contains":
+			assert, err := buildLokiContainsAssertion(assertion)
+			if err != nil {
+				return nil, err
+			}
+			out = append(out, assert)
 		default:
 			return nil, fmt.Errorf("unknown assertion type %q", assertion.Type)
 		}
@@ -178,24 +192,41 @@ func buildLokiAssertions(assertions []LokiAssertionSchema) ([]harness.Assertion,
 	return out, nil
 }
 
-func buildLokiEntryAssertion(assertion LokiAssertionSchema) (harness.Assertion, error) {
-	matchers, err := buildLokiMatchers(assertion.Match, assertion.Mode)
+func buildLokiCountAssertion(assertion LokiAssertionSchema) (harness.Assertion, error) {
+	matchers, err := buildLokiMatchers(assertion.Match)
 	if err != nil {
 		return nil, err
 	}
 
-	if assertion.Count == nil && len(matchers) == 0 {
-		return nil, errors.New("entry requires count or at least one match field")
+	if assertion.Count == nil {
+		return nil, errors.New("count requires count")
 	}
 
-	return harness.LokiEntries(assertion.Count, matchers...), nil
+	return harness.LokiEntryCount(*assertion.Count, matchers...), nil
 }
 
-func buildLokiMatchers(match LokiMatchSchema, mode string) ([]harness.EntryMatcher, error) {
+func buildLokiContainsAssertion(assertion LokiAssertionSchema) (harness.Assertion, error) {
+	matchers, err := buildLokiMatchers(assertion.Match)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(matchers) == 0 {
+		return nil, errors.New("contains requires at least one match field")
+	}
+
+	return harness.LokiContainsEntry(matchers...), nil
+}
+
+func buildLokiMatchers(match LokiMatchSchema) ([]harness.EntryMatcher, error) {
 	matchers := make([]harness.EntryMatcher, 0, 4)
 
-	if len(match.Labels) > 0 {
-		matchers = append(matchers, harness.LokiEntryLabels(toLabelSet(match.Labels), mode == "partial"))
+	if len(match.Labels.Values) > 0 {
+		partial, err := isPartialLokiMapMatch("labels", match.Labels)
+		if err != nil {
+			return nil, err
+		}
+		matchers = append(matchers, harness.LokiEntryLabels(toLabelSet(match.Labels.Values), partial))
 	}
 
 	if match.Line != "" {
@@ -211,11 +242,26 @@ func buildLokiMatchers(match LokiMatchSchema, mode string) ([]harness.EntryMatch
 		matchers = append(matchers, harness.LokiEntryTimestamp(parsed))
 	}
 
-	if len(match.StructuredMetadata) > 0 {
-		matchers = append(matchers, harness.LokiEntryStructuredMetadata(toLabelsAdapter(match.StructuredMetadata), mode == "partial"))
+	if len(match.StructuredMetadata.Values) > 0 {
+		partial, err := isPartialLokiMapMatch("structured_metadata", match.StructuredMetadata)
+		if err != nil {
+			return nil, err
+		}
+		matchers = append(matchers, harness.LokiEntryStructuredMetadata(toLabelsAdapter(match.StructuredMetadata.Values), partial))
 	}
 
 	return matchers, nil
+}
+
+func isPartialLokiMapMatch(name string, match LokiMapMatchSchema) (bool, error) {
+	switch match.Mode {
+	case "", lokiMapMatchModeStrict:
+		return false, nil
+	case lokiMapMatchModePartial:
+		return true, nil
+	default:
+		return false, fmt.Errorf("%s mode must be %q or %q, got %q", name, lokiMapMatchModeStrict, lokiMapMatchModePartial, match.Mode)
+	}
 }
 
 func toLabelSet(labels map[string]string) model.LabelSet {

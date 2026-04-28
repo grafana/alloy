@@ -47,10 +47,10 @@ func (e AssertionErrors) Error() string {
 	return strings.TrimSuffix(builder.String(), "\n")
 }
 
-// LokiEntries returns an Assertion over Loki entries matched by all provided
-// matchers. When want is nil, at least one matching entry must exist. When
-// want is non-nil, exactly *want matching entries must exist.
-func LokiEntries(want *int, matchers ...EntryMatcher) Assertion {
+// LokiEntryCount returns an Assertion that passes when exactly want Loki
+// entries match all provided matchers. When no matchers are provided, all
+// entries are counted.
+func LokiEntryCount(want int, matchers ...EntryMatcher) Assertion {
 	return func(s snapshot) error {
 		var got int
 		for _, entry := range s.loki {
@@ -59,44 +59,53 @@ func LokiEntries(want *int, matchers ...EntryMatcher) Assertion {
 			}
 		}
 
-		conditions := make([]string, 0, len(matchers))
-		for _, matcher := range matchers {
-			if matcher.text == "" {
-				continue
-			}
-			conditions = append(conditions, matcher.text)
-		}
-
-		if want != nil {
-			if got == *want {
-				return nil
-			}
-
-			message := fmt.Sprintf("want %d, got %d", *want, got)
-			if len(conditions) > 0 {
-				message += " for " + strings.Join(conditions, ", ")
-			}
-
-			return AssertionError{
-				Kind:    "loki.entry",
-				Message: message,
-			}
-		}
-
-		if got > 0 {
+		if got == want {
 			return nil
 		}
 
-		message := "no matching entry found"
-		if len(conditions) > 0 {
-			message += " for " + strings.Join(conditions, ", ")
+		message := fmt.Sprintf("want %d, got %d", want, got)
+		if conditions := matcherConditions(matchers); len(conditions) > 0 {
+			message += " for " + conditions
 		}
 
 		return AssertionError{
-			Kind:    "loki.entry",
+			Kind:    "loki.count",
 			Message: message,
 		}
 	}
+}
+
+// LokiContainsEntry returns an Assertion that passes when the snapshot contains
+// at least one Loki entry matched by all provided matchers.
+func LokiContainsEntry(matchers ...EntryMatcher) Assertion {
+	return func(s snapshot) error {
+		for _, entry := range s.loki {
+			if entryMatches(entry, matchers...) {
+				return nil
+			}
+		}
+
+		message := "no matching entry found"
+		if conditions := matcherConditions(matchers); len(conditions) > 0 {
+			message += " for " + conditions
+		}
+
+		return AssertionError{
+			Kind:    "loki.contains",
+			Message: message,
+		}
+	}
+}
+
+func matcherConditions(matchers []EntryMatcher) string {
+	conditions := make([]string, 0, len(matchers))
+	for _, matcher := range matchers {
+		if matcher.text == "" {
+			continue
+		}
+		conditions = append(conditions, matcher.text)
+	}
+	return strings.Join(conditions, ", ")
 }
 
 func entryMatches(entry loki.Entry, matchers ...EntryMatcher) bool {
