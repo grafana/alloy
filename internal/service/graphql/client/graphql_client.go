@@ -16,7 +16,7 @@ import (
 type GraphQLClient struct {
 	endpoint   string
 	httpClient *http.Client
-	headers    map[string]string
+	headers    http.Header
 }
 
 // GraphQLRequest represents a GraphQL request
@@ -33,18 +33,21 @@ type GraphQLResponse struct {
 
 // NewGraphQLClient creates a new GraphQL client
 func NewGraphQLClient(endpoint string) *GraphQLClient {
+	headers := make(http.Header)
+	headers.Set("Content-Type", "application/json")
+
 	return &GraphQLClient{
 		endpoint: endpoint,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
-		headers: make(map[string]string),
+		headers: headers,
 	}
 }
 
 // SetHeader sets a custom header (useful for future auth support)
 func (c *GraphQLClient) SetHeader(key, value string) {
-	c.headers[key] = value
+	c.headers.Set(key, value)
 }
 
 // Execute sends a GraphQL query and returns the raw response bytes
@@ -60,10 +63,7 @@ func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	for key, value := range c.headers {
-		req.Header.Set(key, value)
-	}
+	req.Header = c.headers.Clone()
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
