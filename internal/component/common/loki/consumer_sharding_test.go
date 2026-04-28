@@ -200,7 +200,6 @@ func TestShardingConsumer_Consume(t *testing.T) {
 		err := consumer.Consume(t.Context(), batch)
 		require.ErrorIs(t, err, ErrConsumerStopped)
 	})
-
 }
 
 func TestShardingConsumer_ConsumeEntry(t *testing.T) {
