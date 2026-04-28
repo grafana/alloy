@@ -14,7 +14,7 @@ type Component {
   "Health status of the component."
   health: Health!
 
-  "Fully-qualified ID of the component."
+  "Fully qualified ID of the component."
   id: ID!
 
   "Name of the component."

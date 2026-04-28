@@ -9,7 +9,7 @@ import (
 // Represents build and runtime information for an Alloy instance.
 // Contains version control and build environment details.
 type Alloy struct {
-	// The git branch from which this build was created
+	// The Git branch from which this build was created
 	Branch string `json:"branch"`
 	// The timestamp of when this build was created
 	BuildDate string `json:"buildDate"`
@@ -17,7 +17,7 @@ type Alloy struct {
 	BuildUser string `json:"buildUser"`
 	// Whether the Alloy instance is up and running
 	IsReady bool `json:"isReady"`
-	// The git commit hash from which this build was created
+	// The Git commit hash from which this build was created
 	Revision string `json:"revision"`
 	// The semantic version of this Alloy build
 	Version string `json:"version"`

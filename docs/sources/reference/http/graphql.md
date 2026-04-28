@@ -58,11 +58,11 @@ None.
 
 #### Fields
 
-- **`branch`:** The git branch from which this build was created.
+- **`branch`:** The Git branch from which this build was created.
 - **`buildDate`:** The timestamp of when this build was created.
 - **`buildUser`:** The user account that initiated this build.
 - **`isReady`:** Whether the {{< param "PRODUCT_NAME" >}} instance is up and running.
-- **`revision`:** The git commit hash from which this build was created.
+- **`revision`:** The Git commit hash from which this build was created.
 - **`version`:** The semantic version of this {{< param "PRODUCT_NAME" >}} build.
 
 ### `components`
@@ -78,8 +78,11 @@ None.
 - **`health`:** Health status of the component.
   - **`message`:** Message of the health status.
   - **`lastUpdated`:** Last updated time of the health status.
-- **`id`:** Fully-qualified ID of the component.
+- **`id`:** Fully qualified ID of the component.
 - **`name`:** Name of the component.
+- **`arguments`:** Arguments of the component.
+- **`exports`:** Exports of the component.
+- **`debugInfo`:** Debug info of the component.
 
 ### `component`
 
@@ -94,8 +97,11 @@ Component by ID.
 - **`health`:** Health status of the component.
   - **`message`:** Message of the health status.
   - **`lastUpdated`:** Last updated time of the health status.
-- **`id`:** Fully-qualified ID of the component.
+- **`id`:** Fully qualified ID of the component.
 - **`name`:** Name of the component.
+- **`arguments`:** Arguments of the component.
+- **`exports`:** Exports of the component.
+- **`debugInfo`:** Debug info of the component.
 
 The query returns `null` if no component matches the given arguments.
 
