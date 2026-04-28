@@ -6,6 +6,10 @@ config: |
       values = ["pod"]
     }
 
+    stage.label_drop {
+      values = ["service_name"]
+    }
+
     stage.static_labels {
       values = {
         branch = "drop_existing_metadata",
@@ -21,6 +25,10 @@ config: |
 
   loki.process "add_new_metadata" {
     forward_to = [loki.write.primary.receiver]
+
+    stage.label_drop {
+      values = ["namespace"]
+    }
 
     stage.static_labels {
       values = {
@@ -49,6 +57,7 @@ inputs:
       entries:
         - labels:
             service_name: api
+            namespace: ns1
           line: "fanout log line"
           timestamp: "2026-04-27T12:00:00Z"
           structured_metadata:
@@ -61,18 +70,21 @@ assert:
     - type: contains
       match:
         labels:
-          service_name: api
+          values:
+            namespace: ns1
         line: "fanout log line"
         timestamp: "2026-04-27T12:00:00Z"
         structured_metadata:
-          branch: drop_existing_metadata
+          values:
+            branch: drop_existing_metadata
     - type: contains
       match:
         labels:
-          service_name: api
+          values:
+            service_name: api
         line: "fanout log line"
         timestamp: "2026-04-27T12:00:00Z"
         structured_metadata:
-          pod: api-1234
-          branch: add_new_metadata
- 
+          values:
+            pod: api-1234
+            branch: add_new_metadata
