@@ -37,6 +37,11 @@ const (
 // should skip emitting fingerprints for these (don't even use a sentinel).
 var ErrEmpty = errors.New("fingerprint: empty query text")
 
+var (
+	sentinelTruncatedFp  = FingerprintOf(SentinelTruncated)
+	sentinelUnparsableFp = FingerprintOf(SentinelUnparsable)
+)
+
 // Fingerprint runs the three-stage pipeline:
 //  1. Parse the input as-is.
 //  2. If parsing fails, balance unclosed quotes and parentheses and retry.
@@ -46,8 +51,13 @@ var ErrEmpty = errors.New("fingerprint: empty query text")
 // `track_activity_query_size` and is only consulted when source ==
 // SourcePgStatActivity. Pass 0 for other sources.
 //
-// The returned `repaired` flag reports whether stage 2 was needed; callers may
-// log this as a metric to detect upstream truncation issues.
+// The returned `repaired` flag is true when the input did NOT parse as-is
+// (i.e. either stage 2 succeeded, or both stage 2 and stage 3 ran). To
+// distinguish a successful repair from a sentinel fallback, compare the
+// returned fingerprint against FingerprintOf(SentinelTruncated) /
+// FingerprintOf(SentinelUnparsable). Callers may log `repaired` as a metric
+// to detect upstream truncation issues, and the sentinel fingerprints as
+// separate counters to detect parse failures Alloy could not recover from.
 func Fingerprint(query string, source Source, trackActivityQuerySize int) (fp string, repaired bool, err error) {
 	if strings.TrimSpace(query) == "" {
 		return "", false, ErrEmpty
@@ -79,14 +89,26 @@ func FingerprintOf(text string) string {
 
 func sentinelFingerprint(query string, source Source, trackActivityQuerySize int) string {
 	if source == SourcePgStatActivity && trackActivityQuerySize > 0 && len(query) == trackActivityQuerySize-1 {
-		return FingerprintOf(SentinelTruncated)
+		return sentinelTruncatedFp
 	}
-	return FingerprintOf(SentinelUnparsable)
+	return sentinelUnparsableFp
 }
 
 // repair closes unclosed single/double quotes and balances unclosed
 // parentheses, mirroring pganalyze's `fixTruncatedQuery`. The repaired text
 // is only used for fingerprint computation — it is not emitted anywhere.
+//
+// This is a heuristic and has known false positives:
+//   - Doubled-apostrophe escapes inside string literals (`'O''Brien'`) are
+//     counted as four separate `'` characters, so a truncation mid-name like
+//     `'O''Brien` looks balanced and gets passed to the parser unrepaired.
+//   - Dollar-quoted strings (`$body$ ... $body$`) are not understood at all.
+//   - Backslash-escaped quotes (with `standard_conforming_strings = off`) are
+//     similarly miscounted.
+//
+// Quote-balancing must run before paren-balancing — a string that ends in
+// `'(` should have the quote closed first, or paren-balancing would append
+// `)` outside the (still unclosed) string.
 func repair(query string) string {
 	if strings.Count(query, "'")%2 == 1 {
 		query += "'"

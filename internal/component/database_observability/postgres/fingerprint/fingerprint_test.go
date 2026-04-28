@@ -24,17 +24,23 @@ func TestFingerprint_DifferentForDifferentQueries(t *testing.T) {
 }
 
 func TestFingerprint_RepairUnclosedQuotes(t *testing.T) {
+	want, _, errWant := Fingerprint("SELECT * FROM t WHERE name = 'oh no'", SourceLog, 0)
+	require.NoError(t, errWant)
+
 	fp, repaired, err := Fingerprint("SELECT * FROM t WHERE name = 'oh no", SourceLog, 0)
 	require.NoError(t, err)
 	assert.True(t, repaired, "should report that repair was used")
-	assert.NotEqual(t, "", fp)
+	assert.Equal(t, want, fp, "repaired fingerprint must match the closed-quote form")
 }
 
 func TestFingerprint_RepairUnclosedParens(t *testing.T) {
+	want, _, errWant := Fingerprint("SELECT * FROM t WHERE id IN (1, 2, 3)", SourceLog, 0)
+	require.NoError(t, errWant)
+
 	fp, repaired, err := Fingerprint("SELECT * FROM t WHERE id IN (1, 2, 3", SourceLog, 0)
 	require.NoError(t, err)
 	assert.True(t, repaired)
-	assert.NotEqual(t, "", fp)
+	assert.Equal(t, want, fp, "repaired fingerprint must match the closed-paren form")
 }
 
 func TestFingerprint_TruncatedSentinelOnPgStatActivity(t *testing.T) {
@@ -55,6 +61,27 @@ func TestFingerprint_UnparsableSentinel(t *testing.T) {
 func TestFingerprint_EmptyAndNullInputs(t *testing.T) {
 	_, _, err := Fingerprint("", SourcePgStatStatements, 0)
 	assert.Error(t, err, "empty input should error so callers can skip emitting")
+}
+
+func TestFingerprint_SentinelStability(t *testing.T) {
+	t.Run("truncated sentinel is stable", func(t *testing.T) {
+		const trackSize = 1024
+		bad := makeUnparsableOfLen(trackSize - 1)
+
+		first, _, err1 := Fingerprint(bad, SourcePgStatActivity, trackSize)
+		require.NoError(t, err1)
+		second, _, err2 := Fingerprint(bad, SourcePgStatActivity, trackSize)
+		require.NoError(t, err2)
+		assert.Equal(t, first, second)
+		assert.Equal(t, FingerprintOf(SentinelTruncated), first)
+	})
+
+	t.Run("unparsable sentinel is stable", func(t *testing.T) {
+		first, _, _ := Fingerprint("$$$ not sql at all $$$", SourcePgStatStatements, 0)
+		second, _, _ := Fingerprint("$$$ not sql at all $$$", SourcePgStatStatements, 0)
+		assert.Equal(t, first, second)
+		assert.Equal(t, FingerprintOf(SentinelUnparsable), first)
+	})
 }
 
 // makeUnparsableOfLen returns a string of exactly n bytes that is invalid SQL
