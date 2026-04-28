@@ -1100,6 +1100,8 @@ exclude (
 	k8s.io/client-go v12.0.0+incompatible
 )
 
+tool github.com/99designs/gqlgen
+
 // BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
 // Replace yaml.v2 with fork
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
