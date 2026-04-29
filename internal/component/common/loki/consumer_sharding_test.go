@@ -17,7 +17,7 @@ func TestShardingConsumer_Consume(t *testing.T) {
 	t.Run("splits batch into streams", func(t *testing.T) {
 		const created = int64(1234)
 
-		first := model.LabelSet{"job": "fist"}
+		first := model.LabelSet{"job": "first"}
 		second := model.LabelSet{"job": "second"}
 
 		c := NewCollectingConsumer()
