@@ -699,8 +699,6 @@ func classifyPostgresWaitEventType(rawType, waitEvent string) string {
 		return "Lock Wait"
 	case "LWLock", "BufferPin", "IPC":
 		return "Engine Wait"
-	case "Activity", "Timeout", "Extension", "InjectionPoint":
-		return "Other Wait"
 	default:
 		return "Other Wait"
 	}
