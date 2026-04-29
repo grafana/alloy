@@ -1427,6 +1427,119 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		// The wait event log should use the NESTED wait event details, not the outer handler
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
 	})
+
+	t.Run("wait/io/table/sql/handler with nested event classifies on nested name in v2 mode", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			EngineVersion:                 latestCompatibleVersion,
+			CollectInterval:               time.Second,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			EnablePreClassifiedWaitEvents: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.SQL_TEXT",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"select * from books where id = ?",
+					"70000000",
+					"20000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"200",                                  // WAIT_EVENT_ID (outer table handler)
+					"201",                                  // WAIT_END_EVENT_ID
+					"wait/io/table/sql/handler",            // WAIT_EVENT_NAME (the handler wrapper)
+					"books",                                // WAIT_OBJECT_NAME
+					"TABLE",                                // WAIT_OBJECT_TYPE
+					"900000000",                            // WAIT_TIMER_WAIT (0.9ms)
+					"210",                                  // NESTED_WAIT_EVENT_ID
+					"211",                                  // NESTED_WAIT_END_EVENT_ID
+					"wait/io/file/innodb/innodb_data_file", // NESTED_WAIT_EVENT_NAME (actual I/O)
+					"ibdata1",                              // NESTED_WAIT_OBJECT_NAME
+					"FILE",                                 // NESTED_WAIT_OBJECT_TYPE
+					"500000000",                            // NESTED_WAIT_TIMER_WAIT (0.5ms)
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[1].Labels)
+		// v2 line should carry the NESTED event name and the classification derived from it,
+		// not the outer wrapper. Pins the wiring that feeds the substituted name to the classifier.
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_event_type=\"IO Wait\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
+	})
 }
 
 func TestQuerySamples_SampleMinDuration(t *testing.T) {
