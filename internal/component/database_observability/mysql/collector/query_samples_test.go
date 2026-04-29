@@ -1424,7 +1424,6 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
-		// The wait event log should use the NESTED wait event details, not the outer handler
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
 	})
 
@@ -1536,8 +1535,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[1].Labels)
-		// v2 line should carry the NESTED event name and the classification derived from it,
-		// not the outer wrapper. Pins the wiring that feeds the substituted name to the classifier.
+		// Pins that wait_event_type is derived from the substituted (nested) name,
+		// not the outer wrapper.
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_event_type=\"IO Wait\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
 	})
 }
@@ -3820,7 +3819,7 @@ func TestClassifyMySQLWaitEventType(t *testing.T) {
 		{"wait/lock/table/sql/handler", "Lock Wait"},
 		{"wait/lock/metadata/sql/mdl", "Lock Wait"},
 
-		// Engine (was Lock or Other under the old scheme)
+		// Engine
 		{"wait/synch/mutex/sql/LOCK_open", "Engine Wait"},
 		{"wait/synch/mutex/sql/LOCK_table_cache", "Engine Wait"},
 		{"wait/synch/mutex/sql/LOG::LOCK_log", "Engine Wait"},
@@ -3832,7 +3831,7 @@ func TestClassifyMySQLWaitEventType(t *testing.T) {
 		{"wait/synch/mutex/innodb/trx_mutex", "Engine Wait"},
 		{"wait/synch/mutex/innodb/dict_table_mutex", "Engine Wait"},
 
-		// Replication carve-outs (precede the generic synch -> Engine and io/file -> IO rules).
+		// Replication
 		{"wait/io/file/sql/relaylog", "Replication Wait"},
 		{"wait/io/file/sql/relaylog_index", "Replication Wait"},
 		{"wait/synch/mutex/sql/Slave_jobs_lock", "Replication Wait"},

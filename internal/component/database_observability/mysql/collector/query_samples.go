@@ -434,10 +434,9 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			objectType := row.WaitObjectType.String
 			waitTime := row.WaitTime.Float64
 
-			// When the outer event is wait/io/table/sql/handler it is just a handler
-			// wrapper; the SQL JOIN populates nested_waits.* only in that case, so
-			// substitute the nested event here to surface the actual underlying I/O
-			// wait.
+			// wait/io/table/sql/handler is a molecule event wrapping the actual I/O;
+			// the SQL JOIN populates nested_waits.* only for that outer name, so a
+			// valid nested row means we should surface its fields instead.
 			// See https://dev.mysql.com/doc/refman/5.7/en/performance-schema-atom-molecule-events.html
 			if row.NestedWaitEventID.Valid && row.NestedWaitTime.Valid {
 				eventID = row.NestedWaitEventID.String

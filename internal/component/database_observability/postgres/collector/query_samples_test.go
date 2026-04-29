@@ -1404,13 +1404,11 @@ func TestClassifyPostgresWaitEventType(t *testing.T) {
 		{"IPC_MessageQueueSend", "IPC", "MessageQueueSend", "Engine Wait"},
 		{"IPC_ParallelFinish", "IPC", "ParallelFinish", "Engine Wait"},
 
-		// Replication via name-rule (Client type → Replication, not Network)
+		// Replication: name-rule wins over the raw type (Client/Activity/IPC/Timeout
+		// all route here when the event name matches the replication prefix list).
 		{"Client_WalSenderWaitForWAL", "Client", "WalSenderWaitForWAL", "Replication Wait"},
-		// Replication via name-rule (Activity type, older PG → Replication, not Other)
 		{"Activity_WalSenderMain", "Activity", "WalSenderMain", "Replication Wait"},
-		// Replication via name-rule (IPC type → Replication, not Engine)
 		{"IPC_SyncRep", "IPC", "SyncRep", "Replication Wait"},
-		// Replication via name-rule (Timeout type → Replication, not Other)
 		{"Timeout_RecoveryApplyDelay", "Timeout", "RecoveryApplyDelay", "Replication Wait"},
 		{"LogicalApplyOffsetUpdate", "IPC", "LogicalApplyOffsetUpdate", "Replication Wait"},
 		{"LogicalApplySendData", "IPC", "LogicalApplySendData", "Replication Wait"},
@@ -1435,8 +1433,6 @@ func TestClassifyPostgresWaitEventType(t *testing.T) {
 
 		// idle row appears with empty type and event name "idle"
 		{"idle_event", "", "idle", "Other Wait"},
-
-		// Defensive
 		{"unknown_type", "unknown_type", "Whatever", "Other Wait"},
 		{"empty", "", "", "Other Wait"},
 	}
