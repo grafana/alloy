@@ -63,10 +63,10 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 	fanout := NewFanoutConsumer([]Consumer{
 		consumerFunc{
 			consume: func(_ context.Context, batch Batch) error {
-				batch.IterMut(func(entry *Entry) EntryAction {
+				batch.Apply(func(entry *Entry) EntryAction {
 					entry.Line = "mutated by first"
 					entry.Labels = bar
-					return ActionKeep
+					return ApplyActionKeep
 				})
 				firstBatch = batch
 				return firstErr

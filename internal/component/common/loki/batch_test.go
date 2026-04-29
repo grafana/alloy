@@ -27,7 +27,7 @@ func TestBatch_Add(t *testing.T) {
 	require.Equal(t, []push.Entry{{Line: "3"}}, streams[1].Entries)
 }
 
-func TestBatch_IterMut(t *testing.T) {
+func TestBatch_Apply(t *testing.T) {
 	foo := model.LabelSet{"job": "foo"}
 	bar := model.LabelSet{"job": "bar"}
 
@@ -41,20 +41,20 @@ func TestBatch_IterMut(t *testing.T) {
 	require.Equal(t, 3, b.EntryLen())
 	require.Equal(t, 1, b.StreamLen())
 
-	b.IterMut(func(entry *Entry) EntryAction {
+	b.Apply(func(entry *Entry) EntryAction {
 		switch entry.Line {
 		case "keep":
 			entry.Line = "kept"
-			return ActionKeep
+			return ApplyActionKeep
 		case "move":
 			entry.Line = "moved"
 			entry.Labels = bar
-			return ActionKeep
+			return ApplyActionKeep
 		case "drop":
-			return ActionDrop
+			return ApplyActionDrop
 		default:
 			t.Fatalf("unexpected entry %q", entry.Line)
-			return ActionDrop
+			return ApplyActionDrop
 		}
 	})
 
@@ -104,20 +104,20 @@ func TestBatch_Clone(t *testing.T) {
 
 	cloned := original.Clone()
 
-	original.IterMut(func(entry *Entry) EntryAction {
+	original.Apply(func(entry *Entry) EntryAction {
 		switch entry.Line {
 		case "keep":
 			entry.Line = "kept"
-			return ActionKeep
+			return ApplyActionKeep
 		case "move":
 			entry.Line = "moved"
 			entry.Labels = bar
-			return ActionKeep
+			return ApplyActionKeep
 		case "drop":
-			return ActionDrop
+			return ApplyActionDrop
 		default:
 			t.Fatalf("unexpected entry %q", entry.Line)
-			return ActionDrop
+			return ApplyActionDrop
 		}
 	})
 

@@ -52,14 +52,14 @@ func (b *Batch) add(labels model.LabelSet, entries ...push.Entry) {
 type EntryAction uint8
 
 const (
-	ActionKeep EntryAction = iota
-	ActionDrop
+	ApplyActionKeep EntryAction = iota
+	ApplyActionDrop
 )
 
-// IterMut calls fn for each entry in the batch.
+// Apply calls fn for each entry in the batch.
 // Kept entries are written back, dropped entries are removed,
 // and entries whose labels change are moved to a different stream.
-func (b *Batch) IterMut(fn func(entry *Entry) EntryAction) {
+func (b *Batch) Apply(fn func(entry *Entry) EntryAction) {
 	type movedEntry struct {
 		labels model.LabelSet
 		entry  push.Entry
@@ -88,7 +88,7 @@ func (b *Batch) IterMut(fn func(entry *Entry) EntryAction) {
 			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), b.created, e)
 			action := fn(&entry)
 
-			if action == ActionDrop {
+			if action == ApplyActionDrop {
 				continue
 			}
 
@@ -98,6 +98,7 @@ func (b *Batch) IterMut(fn func(entry *Entry) EntryAction) {
 					entry:  entry.Entry,
 				})
 				newLen++
+
 				continue
 			}
 
