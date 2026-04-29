@@ -3099,11 +3099,9 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 }
 
-// TestQuerySamples_WaitEventCounter_MatchesLogLines verifies the invariant
-// that for every emitted wait_event_v2 log entry, the counter delta for
-// (digest, schema) equals duration_seconds(wait_time). The counter is only
-// wired when EnablePreClassifiedWaitEvents is true; the parent component
-// passes nil otherwise.
+// TestQuerySamples_WaitEventCounter_MatchesLogLines pins the invariant that
+// the counter delta for (digest, schema) equals the sum of wait_time on
+// every emitted wait_event_v2 line for that key.
 func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 	waitOp := OP_WAIT_EVENT_V2
 	t.Run("wait_event_v2", func(t *testing.T) {
@@ -3131,8 +3129,6 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Rows cover: accumulation on same key, different digests, different
-		// schemas, and a row with no wait event (nil wait fields).
 		rows := [][]driver.Value{
 			// (digest_A, schema_X): two rows, 0.1ms + 0.2ms = 0.3ms
 			{"schema_X", "1", "10", "11", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "100", "101", "wait/io/file/x", "obj", "typ", "100000000", "u", "h", "1000", "1", "1"},
@@ -3177,9 +3173,8 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 		require.Eventually(t, collector.Stopped, 5*time.Second, 100*time.Millisecond)
 		require.NoError(t, mock.ExpectationsWereMet())
 
-		// Derive expected counter values by parsing the emitted wait-event log
-		// lines. This exercises the "counter equals what we logged" invariant
-		// rather than hard-coding the expected sums.
+		// Build expected counter values by parsing the emitted log lines so
+		// the assertion drifts with the emitter rather than with hard-coded sums.
 		digestRe := regexp.MustCompile(`digest="([^"]+)"`)
 		schemaRe := regexp.MustCompile(`schema="([^"]+)"`)
 		waitTimeRe := regexp.MustCompile(`wait_time="([^"]+)"`)
