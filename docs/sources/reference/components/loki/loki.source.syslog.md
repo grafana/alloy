@@ -17,7 +17,9 @@ The messages must be compliant with the [RFC5424](https://www.rfc-editor.org/rfc
 For a detailed example, refer to the [Monitor RFC5424-compliant syslog messages with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-syslog-messages/) scenario.
 
 {{< admonition type="note" >}}
-If your messages aren't RFC5424 compliant, you can use `raw` syslog format in combination with the [`loki.process`](../loki.process.md) component.
+If your messages don't conform to either RFC5424 or RFC3164, for example CEF logs, you can use the `raw` syslog format in combination with the [`loki.process`](../loki.process.md) component for custom parsing.
+
+If you receive RFC3164 messages from Cisco IOS devices that include non-standard Cisco extensions, use `syslog_format = "rfc3164"` with the [`rfc3164_cisco_components`](#rfc3164_cisco_components) block.
 
 The `raw` syslog format is an [experimental][] feature.
 
