@@ -54,6 +54,12 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -88,6 +94,12 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -116,6 +128,12 @@ func TestQuerySamples(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1318,7 +1336,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1329,6 +1347,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -1358,6 +1377,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					"select * from books where id = ?",
 					"70000000",
 					"20000000",
 					"5",
@@ -1427,7 +1447,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1438,6 +1458,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -1467,6 +1488,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					"select * from books where id = ?",
 					"70000000",
 					"20000000",
 					"5",
@@ -3669,6 +3691,8 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 				"statements.ROWS_AFFECTED", "statements.ERRORS",
 				"waits.event_id", "waits.end_event_id", "waits.event_name",
 				"waits.object_name", "waits.object_type", "waits.timer_wait",
+				"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
+				"nested_waits.object_name", "nested_waits.object_type", "nested_waits.timer_wait",
 				"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
 			}).AddRow(
@@ -3676,6 +3700,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 				"70000000", "20000000", "5", "5", "0", "0",
 				"124", "124", "wait/io/file/innodb/innodb_data_file",
 				"wait_object_name", "wait_object_type", "100000000",
+				nil, nil, nil, nil, nil, nil,
 				"some_user", "some_host",
 				"10000000", "456", "457",
 			),
@@ -3733,6 +3758,8 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 				"statements.ROWS_AFFECTED", "statements.ERRORS",
 				"waits.event_id", "waits.end_event_id", "waits.event_name",
 				"waits.object_name", "waits.object_type", "waits.timer_wait",
+				"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
+				"nested_waits.object_name", "nested_waits.object_type", "nested_waits.timer_wait",
 				"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
 			}).AddRow(
@@ -3740,6 +3767,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 				"70000000", "20000000", "5", "5", "0", "0",
 				"124", "124", "wait/io/file/innodb/innodb_data_file",
 				"wait_object_name", "wait_object_type", "100000000",
+				nil, nil, nil, nil, nil, nil,
 				"some_user", "some_host",
 				"10000000", "456", "457",
 			),
