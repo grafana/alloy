@@ -29,7 +29,7 @@ inputs:
             filename: worker.log
             service_name: worker
             namespace: ns2
-          line: '{"ts":"2026-04-22T12:01:00Z","level":"info","request_id":"req-300","user_id":"user-100","msg":"sucessful request"}'
+          line: '{"ts":"2026-04-22T12:01:00Z","level":"info","request_id":"req-300","user_id":"user-100","msg":"successful request"}'
         - labels:
             pod: audit-7788
             filename: audit.log
@@ -65,7 +65,7 @@ assert:
             cluster: prod-us
             namespace: ns2
             service_name: worker
-        line: "sucessful request"
+        line: "successful request"
         timestamp: "2026-04-22T12:01:00Z"
         structured_metadata:
           values:

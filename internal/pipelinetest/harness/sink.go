@@ -37,7 +37,7 @@ type SinkArguments struct{}
 
 type SinkExports struct {
 	LokiPushUrl  string            `alloy:"loki_push_url,attr"`
-	LokiReceiver loki.LogsReceiver `alloy:"lokireceiver,attr"`
+	LokiReceiver loki.LogsReceiver `alloy:"loki_receiver,attr"`
 }
 
 type Sink struct {
@@ -62,7 +62,7 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	router.HandleFunc(lokiPushPath, func(w http.ResponseWriter, r *http.Request) {
 		var req push.PushRequest
 		if err := util.ParseProtoReader(r.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &req, util.RawSnappy); err != nil {
-			w.WriteHeader(http.StatusNoContent)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 

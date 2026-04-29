@@ -57,6 +57,8 @@ func (s *Source) Run(ctx context.Context) error {
 }
 
 func (s *Source) Update(args component.Arguments) error {
+	newArgs := args.(SourceArguments)
+	s.lokiFanout.UpdateChildren(newArgs.ForwardTo.Logs)
 	return nil
 }
 

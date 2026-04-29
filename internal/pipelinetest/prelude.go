@@ -21,7 +21,7 @@ func withPrelude(schema TestSchema) string {
 func rewritePipelineTestRefs(source string) string {
 	replacer := strings.NewReplacer(
 		"pipelinetest.loki.url", "pipelinetest.sink.out.loki_push_url",
-		"pipelinetest.loki.receiver", "pipelinetest.sink.out.lokireceiver",
+		"pipelinetest.loki.receiver", "pipelinetest.sink.out.loki_receiver",
 	)
 	return replacer.Replace(source)
 }
