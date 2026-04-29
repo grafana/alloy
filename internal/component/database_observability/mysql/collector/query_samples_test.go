@@ -1427,7 +1427,6 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		// The wait event log should use the NESTED wait event details, not the outer handler
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
 	})
-
 }
 
 func TestQuerySamples_SampleMinDuration(t *testing.T) {
