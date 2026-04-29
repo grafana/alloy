@@ -431,6 +431,11 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					waitV2LogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
+
+				if c.waitEventCounter != nil {
+					waitTimeSeconds := waitTime / 1000.0 // waitTime is in ms
+					c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(waitTimeSeconds)
+				}
 			} else {
 				waitLogMessage := fmt.Sprintf(
 					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
@@ -453,11 +458,6 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					waitLogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
-			}
-
-			if c.waitEventCounter != nil {
-				waitTimeSeconds := waitTime / 1000.0 // waitTime is in ms
-				c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(waitTimeSeconds)
 			}
 		}
 	}
