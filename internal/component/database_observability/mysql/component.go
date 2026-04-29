@@ -618,17 +618,22 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 
 		if c.waitEventCounter != nil {
 			c.registry.Unregister(c.waitEventCounter)
+			c.waitEventCounter = nil
 		}
-		c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "database_observability_wait_event_seconds_total",
-			Help: "Total wait time in seconds per query, aggregated by server, query digest, and database.",
-		}, []string{"server_id", "digest", "schema"})
-		if err := c.registry.Register(c.waitEventCounter); err != nil {
-			level.Warn(c.opts.Logger).Log("msg", "failed to register wait event counter", "err", err)
-		}
-		curriedCounter, err := c.waitEventCounter.CurryWith(prometheus.Labels{"server_id": serverID})
-		if err != nil {
-			level.Warn(c.opts.Logger).Log("msg", "failed to curry wait event counter", "err", err)
+		var curriedCounter *prometheus.CounterVec
+		if c.args.QuerySamplesArguments.EnablePreClassifiedWaitEvents {
+			c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+				Name: "database_observability_wait_event_seconds_total",
+				Help: "Total wait time in seconds per query, aggregated by server, query digest, and database.",
+			}, []string{"server_id", "digest", "schema"})
+			if err := c.registry.Register(c.waitEventCounter); err != nil {
+				level.Warn(c.opts.Logger).Log("msg", "failed to register wait event counter", "err", err)
+			}
+			cc, err := c.waitEventCounter.CurryWith(prometheus.Labels{"server_id": serverID})
+			if err != nil {
+				level.Warn(c.opts.Logger).Log("msg", "failed to curry wait event counter", "err", err)
+			}
+			curriedCounter = cc
 		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
