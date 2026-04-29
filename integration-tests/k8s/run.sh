@@ -11,6 +11,7 @@ SKIP_ALLOY_IMAGE=false
 SHARD=""
 PACKAGE_SCOPE="./integration-tests/k8s/tests/..."
 RUN_REGEX=""
+ALLOY_CONTROLLER="${ALLOY_CONTROLLER:-deployment}"
 
 log() {
   echo "[k8s-itest] $*"
@@ -33,7 +34,13 @@ cleanup() {
 }
 
 cluster_exists() {
-  kind get clusters | rg -qx "${CLUSTER_NAME}"
+  local name
+  while IFS= read -r name; do
+    if [[ "${name}" == "${CLUSTER_NAME}" ]]; then
+      return 0
+    fi
+  done < <(kind get clusters)
+  return 1
 }
 
 usage() {
@@ -46,6 +53,7 @@ Flags:
   --shard i/n          Forward shard to tests via -args -shard=i/n
   --package <path>     Run one package path (default: ./integration-tests/k8s/tests/...)
   --run <regex>        Forward -run regex to go test
+  --alloy-controller   Alloy chart controller type (deployment|daemonset|statefulset)
 EOF
 }
 
@@ -71,6 +79,10 @@ while [[ $# -gt 0 ]]; do
       RUN_REGEX="${2:-}"
       shift 2
       ;;
+    --alloy-controller)
+      ALLOY_CONTROLLER="${2:-}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -89,7 +101,6 @@ require_cmd kubectl
 require_cmd helm
 require_cmd go
 require_cmd make
-require_cmd rg
 
 cd "${REPO_ROOT}"
 mkdir -p "$(dirname "${KUBECONFIG_PATH}")"
@@ -121,6 +132,7 @@ kind get kubeconfig --name "${CLUSTER_NAME}" > "${KUBECONFIG_PATH}"
 export KUBECONFIG="${KUBECONFIG_PATH}"
 export ALLOY_K8S_MANAGED_CLUSTER=1
 export ALLOY_IMAGE
+export ALLOY_K8S_CONTROLLER_TYPE="${ALLOY_CONTROLLER}"
 
 log "loading required images to kind"
 kind load docker-image "${ALLOY_IMAGE}" --name "${CLUSTER_NAME}"
@@ -131,7 +143,7 @@ kind load docker-image prom/blackbox-exporter:v0.25.0 --name "${CLUSTER_NAME}"
 
 PROM_OPERATOR_VERSION="${PROM_OPERATOR_VERSION:-v0.81.0}"
 log "installing prometheus operator bundle ${PROM_OPERATOR_VERSION}"
-kubectl apply --server-side -f "https://github.com/prometheus-operator/prometheus-operator/releases/download/${PROM_OPERATOR_VERSION}/bundle.yaml"
+kubectl apply --server-side --validate=false -f "https://github.com/prometheus-operator/prometheus-operator/releases/download/${PROM_OPERATOR_VERSION}/bundle.yaml"
 
 GO_TEST_ARGS=(-tags="gore2regex alloyintegrationtests" -timeout 30m)
 if [[ -n "${RUN_REGEX}" ]]; then

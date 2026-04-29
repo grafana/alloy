@@ -91,7 +91,7 @@ func installAlloy(ctx *TestContext, configPath string) error {
 	}
 
 	return step("install alloy via helm chart", func() error {
-		return runCommand(
+		args := []string{
 			"helm",
 			"upgrade",
 			"--install",
@@ -99,16 +99,19 @@ func installAlloy(ctx *TestContext, configPath string) error {
 			filepath.Join(repoRoot, "operations/helm/charts/alloy"),
 			"--namespace", ctx.Namespace,
 			"--wait",
-			"--set", "fullnameOverride=alloy-"+ctx.Name,
-			"--set", "image.repository="+ctx.AlloyImageRepository,
-			"--set", "image.tag="+ctx.AlloyImageTag,
-			"--set", "controller.type=deployment",
-			"--set", "controller.replicas=1",
+			"--set", "fullnameOverride=alloy-" + ctx.Name,
+			"--set", "image.repository=" + ctx.AlloyImageRepository,
+			"--set", "image.tag=" + ctx.AlloyImageTag,
+			"--set", "controller.type=" + ctx.ControllerType,
 			"--set", "alloy.stabilityLevel=experimental",
 			"--set", "alloy.configMap.create=false",
 			"--set", "alloy.configMap.name=alloy-config",
 			"--set", "alloy.configMap.key=config.alloy",
-		)
+		}
+		if ctx.ControllerType == "deployment" {
+			args = append(args, "--set", "controller.replicas=1")
+		}
+		return runCommand(args[0], args[1:]...)
 	})
 }
 

@@ -26,6 +26,7 @@ type Options struct {
 	PodWaits     []string
 	Namespace    string
 	AlloyRelease string
+	Controller   string
 }
 
 type TestContext struct {
@@ -36,6 +37,7 @@ type TestContext struct {
 	Shard                shardConfig
 	AlloyImageRepository string
 	AlloyImageTag        string
+	ControllerType       string
 	client               *kubernetes.Clientset
 }
 
@@ -96,6 +98,7 @@ func RunTestMain(m *testing.M, opts Options) {
 		Shard:                shard,
 		AlloyImageRepository: imageRepo,
 		AlloyImageTag:        imageTag,
+		ControllerType:       resolveControllerType(opts.Controller),
 		client:               client,
 	}
 
@@ -157,17 +160,6 @@ func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, "_", "-")
 }
 
-func stableInt(s string) int {
-	v := 0
-	for _, ch := range s {
-		v += int(ch)
-	}
-	if v < 0 {
-		return -v
-	}
-	return v
-}
-
 func pickFreeLocalPort() string {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -193,4 +185,25 @@ func repoRootFromCwd() (string, error) {
 		}
 		dir = next
 	}
+}
+
+func resolveControllerType(optionValue string) string {
+	valid := map[string]struct{}{
+		"deployment":  {},
+		"daemonset":   {},
+		"statefulset": {},
+	}
+
+	controller := optionValue
+	if controller == "" {
+		controller = os.Getenv("ALLOY_K8S_CONTROLLER_TYPE")
+	}
+	if controller == "" {
+		controller = "deployment"
+	}
+	if _, ok := valid[controller]; !ok {
+		fmt.Fprintf(os.Stderr, "invalid controller type %q (expected deployment|daemonset|statefulset)\n", controller)
+		os.Exit(1)
+	}
+	return controller
 }
