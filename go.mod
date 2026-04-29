@@ -998,10 +998,12 @@ require (
 )
 
 require (
+	github.com/99designs/gqlgen v0.17.89
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.55.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.147.0
 	github.com/spf13/viper v1.21.0
+	github.com/vektah/gqlparser/v2 v2.5.32
 	github.com/zricethezav/gitleaks/v8 v8.30.0
 )
 
@@ -1023,6 +1025,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0 // indirect
 	github.com/STARRY-S/zip v0.2.3 // indirect
 	github.com/VictoriaMetrics/easyproto v1.1.3 // indirect
+	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/alecthomas/repr v0.5.2 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.5 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.53.6 // indirect
@@ -1050,6 +1053,7 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.2 // indirect
+	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/gnostic v0.7.1 // indirect
 	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
@@ -1074,13 +1078,14 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/sorairolake/lzip-go v0.3.8 // indirect
+	github.com/sosodev/duration v1.4.0 // indirect
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spiffe/go-spiffe/v2 v2.6.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tetratelabs/wazero v1.9.0 // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
-	github.com/vektah/gqlparser/v2 v2.5.32 // indirect
+	github.com/urfave/cli/v3 v3.7.0 // indirect
 	github.com/wasilibs/go-re2 v1.9.0 // indirect
 	github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
@@ -1094,6 +1099,8 @@ exclude (
 	k8s.io/client-go v8.0.0+incompatible
 	k8s.io/client-go v12.0.0+incompatible
 )
+
+tool github.com/99designs/gqlgen
 
 // BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
 // Replace yaml.v2 with fork
