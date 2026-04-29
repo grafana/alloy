@@ -12,59 +12,59 @@ weight: 900
 {{< param "PRODUCT_NAME" >}} maintainers use this anonymous information to learn how the open source community runs {{< param "PRODUCT_NAME" >}}.
 This data helps the {{< param "PRODUCT_NAME" >}} team prioritize features and improve documentation.
 
-The anonymous usage statistics reporting is **enabled by default**.
-You can opt out by passing the [CLI flag][command line flag] `--disable-reporting`.
+{{< param "PRODUCT_NAME" >}} reports anonymous usage statistics by default.
+To opt out, use the [CLI flag][command line flag] `--disable-reporting`.
 
 ## The statistics server
 
-When usage statistics reporting is enabled, a server that Grafana Labs runs collects the information.
-The statistics are sent via HTTP POST to `https://stats.grafana.org/alloy-usage-report`.
-This is an ingest-only endpoint and isn't browsable.
+{{< param "PRODUCT_NAME" >}} sends usage statistics to a server that Grafana Labs runs.
+It sends data to `https://stats.grafana.org/alloy-usage-report` with an HTTP POST request.
+This endpoint only accepts data and isn't available to view in a browser.
 
-## Which information is collected
+## What {{% param "PRODUCT_NAME" %}} collects
 
-When usage statistics reporting is enabled, {{< param "PRODUCT_NAME" >}} collects the following information:
+{{< param "PRODUCT_NAME" >}} collects the following information:
 
-* A randomly generated, anonymous, unique ID (UUID).
-* The timestamp when the UUID was first generated.
-* The scheduled interval time for the report (by default, every four hours).
-* The version of {{< param "PRODUCT_NAME" >}}.
-* The operating system where {{< param "PRODUCT_NAME" >}} is running.
-* The system architecture where {{< param "PRODUCT_NAME" >}} is running.
-* A list of enabled [components][].
-* The deployment method for {{< param "PRODUCT_NAME" >}}, such as `docker`, `helm`, `operator`, `deb`, `rpm`, `brew`, or `binary`.
+- A randomly generated anonymous UUID.
+- The timestamp when {{< param "PRODUCT_NAME" >}} first created the UUID.
+- The scheduled report interval, which defaults to four hours.
+- The version of {{< param "PRODUCT_NAME" >}}.
+- The operating system where {{< param "PRODUCT_NAME" >}} runs.
+- The system architecture where {{< param "PRODUCT_NAME" >}} runs.
+- A list of enabled [components][].
+- The deployment method, such as `docker`, `helm`, `operator`, `deb`, `rpm`, `brew`, or `binary`.
 
 {{< admonition type="note" >}}
-{{< param "PRODUCT_NAME" >}} maintainers commit to keeping the list of tracked information updated over time.
-Any changes are reported in the CHANGELOG.
+{{< param "PRODUCT_NAME" >}} maintainers update this list of tracked information over time and report any changes in the CHANGELOG.
 {{< /admonition >}}
 
-## Disable the anonymous usage statistics reporting
+## Disable anonymous usage statistics
 
-If possible, we ask you to keep the usage reporting feature enabled to help us understand how the open source community runs {{< param "PRODUCT_NAME" >}}.
-If you want to opt out of anonymous usage statistics reporting, pass the [CLI flag][command line flag] `--disable-reporting`.
+If possible, keep this feature enabled.
+It helps Grafana Labs understand how the open source community uses {{< param "PRODUCT_NAME" >}}.
+To opt out of anonymous usage statistics, use the [CLI flag][command line flag] `--disable-reporting`.
 
-### Example: Opt-out of data collection with Ansible
+### Example: Opt out of data collection with Ansible
 
 ```yaml
 - name: Install Alloy
-  hosts: all
-  become: true
-  tasks:
-    - name: Install Alloy
-      ansible.builtin.include_role:
-        name: grafana.grafana.alloy
-      vars:
-        alloy_env_file_vars:
-          CUSTOM_ARGS: "--disable-reporting"
+  hosts: all
+  become: true
+  tasks:
+    - name: Install Alloy
+      ansible.builtin.include_role:
+        name: grafana.grafana.alloy
+      vars:
+        alloy_env_file_vars:
+          CUSTOM_ARGS: "--disable-reporting"
 ```
 
-### Example: Opt-out of data collection on Linux
+### Example: Opt out of data collection on Linux
 
 1. Edit the environment file for the service:
 
-   * Debian-based systems: edit `/etc/default/alloy`
-   * RedHat or SUSE-based systems: edit `/etc/sysconfig/alloy`
+   - Debian-based systems: edit `/etc/default/alloy`
+   - RedHat or SUSE-based systems: edit `/etc/sysconfig/alloy`
 
 1. Add `--disable-reporting` to the `CUSTOM_ARGS` environment variable.
 1. Restart the Alloy service:
