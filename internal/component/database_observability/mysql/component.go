@@ -624,7 +624,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		if c.args.QuerySamplesArguments.EnablePreClassifiedWaitEvents {
 			c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
 				Name: "database_observability_wait_event_seconds_total",
-				Help: "Total wait time in seconds per query, aggregated by server, query digest, and database.",
+				Help: "Total wait time in seconds per query, aggregated by server, query digest, and schema.",
 			}, []string{"server_id", "digest", "schema"})
 			if err := c.registry.Register(c.waitEventCounter); err != nil {
 				level.Warn(c.opts.Logger).Log("msg", "failed to register wait event counter", "err", err)
