@@ -13,12 +13,13 @@ weight: 900
 This data helps the {{< param "PRODUCT_NAME" >}} team prioritize features and improve documentation.
 
 The anonymous usage statistics reporting is **enabled by default**.
-You can opt out by setting the [CLI flag][command line flag] `--disable-reporting` to `true`.
+You can opt out by passing the [CLI flag][command line flag] `--disable-reporting`.
 
 ## The statistics server
 
 When usage statistics reporting is enabled, a server that Grafana Labs runs collects the information.
-The statistics are collected at `https://stats.grafana.org`.
+The statistics are sent via HTTP POST to `https://stats.grafana.org/alloy-usage-report`.
+This is an ingest-only endpoint and isn't browsable.
 
 ## Which information is collected
 
@@ -26,12 +27,12 @@ When usage statistics reporting is enabled, {{< param "PRODUCT_NAME" >}} collect
 
 * A randomly generated, anonymous, unique ID (UUID).
 * The timestamp when the UUID was first generated.
-* The timestamp when the report was created (by default, every four hours).
+* The scheduled interval time for the report (by default, every four hours).
 * The version of {{< param "PRODUCT_NAME" >}}.
 * The operating system where {{< param "PRODUCT_NAME" >}} is running.
 * The system architecture where {{< param "PRODUCT_NAME" >}} is running.
 * A list of enabled [components][].
-* The deployment method for {{< param "PRODUCT_NAME" >}}, such as Docker, Helm, or a Linux package.
+* The deployment method for {{< param "PRODUCT_NAME" >}}, such as `docker`, `helm`, `operator`, `deb`, `rpm`, `brew`, or `binary`.
 
 {{< admonition type="note" >}}
 {{< param "PRODUCT_NAME" >}} maintainers commit to keeping the list of tracked information updated over time.
@@ -41,7 +42,7 @@ Any changes are reported in the CHANGELOG.
 ## Disable the anonymous usage statistics reporting
 
 If possible, we ask you to keep the usage reporting feature enabled to help us understand how the open source community runs {{< param "PRODUCT_NAME" >}}.
-If you want to opt out of anonymous usage statistics reporting, set the [CLI flag][command line flag] `--disable-reporting` to `true`.
+If you want to opt out of anonymous usage statistics reporting, pass the [CLI flag][command line flag] `--disable-reporting`.
 
 ### Example: Opt-out of data collection with Ansible
 
