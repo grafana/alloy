@@ -435,10 +435,11 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			waitTime := row.WaitTime.Float64
 
 			// When the outer event is wait/io/table/sql/handler it is just a handler
-			// wrapper; use the nested event instead when available to surface the
-			// actual underlying I/O wait.
+			// wrapper; the SQL JOIN populates nested_waits.* only in that case, so
+			// substitute the nested event here to surface the actual underlying I/O
+			// wait.
 			// See https://dev.mysql.com/doc/refman/5.7/en/performance-schema-atom-molecule-events.html
-			if row.NestedWaitEventID.Valid && row.NestedWaitTime.Valid && row.WaitEventName.String == "wait/io/table/sql/handler" {
+			if row.NestedWaitEventID.Valid && row.NestedWaitTime.Valid {
 				eventID = row.NestedWaitEventID.String
 				endEventID = row.NestedWaitEndEventID.String
 				eventName = row.NestedWaitEventName.String
