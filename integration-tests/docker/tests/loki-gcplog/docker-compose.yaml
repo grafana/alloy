@@ -1,0 +1,47 @@
+services:
+  pubsub-emulator:
+    image: messagebird/gcloud-pubsub-emulator:latest
+    container_name: pubsub-emulator
+    environment:
+      # Pre-create the topic+subscription pair on boot so Alloy can start subscribing
+      # immediately and the test publisher has a topic to publish to.
+      PUBSUB_PROJECT1: "test-project,gcplog-topic:gcplog-subscription"
+    ports:
+      - "8681:8681"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8681 || exit 1"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+      start_period: 10s
+
+  alloy:
+    image: alloy-integration-tests
+    depends_on:
+      pubsub-emulator:
+        condition: service_healthy
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr
+      - 0.0.0.0:12345
+      - --stability.level
+      - generally-available
+    environment:
+      PUBSUB_EMULATOR_HOST: pubsub-emulator:8681
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+    ports:
+      - "1518:1518"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/12345"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    networks:
+      - default
+      - alloy-integration-tests_integration-tests
+
+networks:
+  alloy-integration-tests_integration-tests:
+    external: true
