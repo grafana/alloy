@@ -29,8 +29,8 @@ The exporter offers the following three options for gathering metrics.
    1. This approach doesn't work with all resource types, and Azure doesn't document which resource types do or don't work.
    1. A resource type that's not supported produces errors that look like `Resource type: microsoft.containerservice/managedclusters not enabled for Cross Resource metrics`.
    1. If you encounter one of these errors you must use the default Azure Resource Graph based option to gather metrics.
-1. Use the [Azure Monitor Batch API](https://learn.microsoft.com/en-us/rest/api/monitor/metrics-batch/batch) by setting `use_batch_api` to `true`.
-   1. This batches up to 50 resources per API call using the Azure Monitor data plane (`https://<region>.metrics.monitor.azure.com`).
+1. Set use_batch_api` to `true` to use the [Azure Monitor Batch API](https://learn.microsoft.com/en-us/rest/api/monitor/metrics-batch/batch).
+   1. This uses the Azure Monitor data plane (`https://<region>.metrics.monitor.azure.com`) to batch up to 50 resources per API call.
    1. The data plane has **separate rate limits** from the ARM management plane, which significantly reduces 429 (Too Many Requests) throttling when monitoring many resources.
    1. Resources are discovered using Azure Resource Graph (like option 1), then grouped by subscription and region for batch retrieval.
    1. Cannot be used together with `regions`. Use `resource_graph_query_filter` to target specific regions instead.
@@ -45,7 +45,7 @@ The account used by {{< param "PRODUCT_NAME" >}} needs:
 * When using an Azure Resource Graph query, [read access to the resources that will be queried by Resource Graph](https://learn.microsoft.com/en-us/azure/governance/resource-graph/overview#permissions-in-azure-resource-graph).
 <!-- vale Grafana.GoogleSpacing = NO -->
 * Permissions to call the [Microsoft.Insights Metrics API](https://learn.microsoft.com/en-us/rest/api/monitor/metrics/list) which should be the `Microsoft.Insights/Metrics/Read` permission.
-* When using `use_batch_api`, the identity also needs access to the Azure Monitor data plane (`https://<region>.metrics.monitor.azure.com`). This uses a different OAuth2 scope than the ARM management plane. In most environments this works with the same identity, but restrictive configurations may require additional permissions.
+* When you use `use_batch_api`, the identity also needs access to the Azure Monitor data plane (`https://<region>.metrics.monitor.azure.com`). This uses a different OAuth2 scope than the ARM management plane. In most environments this works with the same identity, but restrictive configurations may require additional permissions.
 <!-- vale Grafana.GoogleSpacing = YES -->
 
 ## Usage
@@ -201,8 +201,8 @@ Replace the following:
 
 ### Batch API example
 
-The following example uses the Batch API to collect metrics from Azure Key Vault resources across multiple subscriptions
-with reduced API call overhead. This is recommended when monitoring many resources to avoid ARM rate limiting.
+The following example uses the Batch API to collect metrics from Azure Key Vault resources across multiple subscriptions with reduced API call overhead.
+This is recommended when monitoring many resources to avoid ARM rate limiting.
 
 ```alloy
 prometheus.exporter.azure "keyvault" {
