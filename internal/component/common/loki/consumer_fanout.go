@@ -54,7 +54,7 @@ func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
 
 func (f *FanoutConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 	// NOTE: It's important that we hold a read lock for the duration of ConsumeEntry
-	// rather than making a copy of children and releasing the lock early.
+	// rather than making a copy of consumers and releasing the lock early.
 	//
 	// When config is updated, the loader evaluates all components and updates
 	// them while they continue running. The scheduler only stops removed components
