@@ -1,0 +1,36 @@
+//go:build alloyintegrationtests && k8sv2integrationtests
+
+package k8sv2
+
+import (
+	"flag"
+	"os"
+	"testing"
+	"time"
+)
+
+// testsRootPath is the tests directory relative to the k8s-v2 package. The
+// harness TestMain runs with this package's directory as cwd (that's how
+// `go test` works) so the path is short. The runner uses a different
+// constant (`testsRootFromRepo`) because it runs from the repository root.
+const testsRootPath = "tests"
+
+var (
+	selectedTestsFlag = flag.String("k8s.v2.tests", "all", "Comma-separated k8s-v2 tests to run (default: all)")
+	keepClusterFlag   = flag.Bool("k8s.v2.keep-cluster", false, "Keep KinD cluster after test run for debugging")
+	keepDepsFlag      = flag.Bool("k8s.v2.keep-deps", false, "Keep installed dependencies after test run (requires k8s.v2.keep-cluster=true)")
+	reuseClusterFlag  = flag.String("k8s.v2.reuse-cluster", "", "Reuse an existing Kind cluster by name")
+	reuseDepsFlag     = flag.Bool("k8s.v2.reuse-deps", false, "When reusing a cluster, skip dependency install/uninstall checks")
+	setupTimeoutFlag  = flag.Duration("k8s.v2.setup-timeout", 20*time.Minute, "Setup timeout for cluster create and dependency install")
+	readinessTimeout  = flag.Duration("k8s.v2.readiness-timeout", 2*time.Minute, "Readiness timeout for dependency checks")
+	parallelFlag      = flag.Int("k8s.v2.parallel", 4, "Maximum number of tests to execute in parallel")
+	debugFlag         = flag.Bool("k8s.v2.debug", false, "Enable debug logging for setup and dependency checks")
+	alloyImageFlag    = flag.String("k8s.v2.alloy-image", "", "Alloy image reference to load into Kind and use in Helm (for example: alloy-ci:pr-sha)")
+	alloyPullPolicy   = flag.String("k8s.v2.alloy-image-pull-policy", "", "Optional Helm image.pullPolicy override for Alloy")
+)
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	exitCode := newHarness().run(m)
+	os.Exit(exitCode)
+}

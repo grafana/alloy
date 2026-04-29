@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logs-source
+  namespace: ${TEST_NAMESPACE}
+data:
+  app.log: |
+    INFO startup test_id=${TEST_ID} component=writer seq=01
+    DEBUG opening input file test_id=${TEST_ID} component=writer seq=02
+    INFO parsed config test_id=${TEST_ID} component=writer seq=03
+    WARN retrying transient fs read test_id=${TEST_ID} component=writer seq=04
+    INFO retry succeeded test_id=${TEST_ID} component=writer seq=05
+    DEBUG rotating buffer test_id=${TEST_ID} component=writer seq=06
+    INFO sync complete test_id=${TEST_ID} component=writer seq=07
+    INFO checkpoint written test_id=${TEST_ID} component=writer seq=08
+    DEBUG flush complete test_id=${TEST_ID} component=writer seq=09
+    INFO writer idle test_id=${TEST_ID} component=writer seq=10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-generator
+  namespace: ${TEST_NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-generator
+      test-id: ${TEST_ID}
+  template:
+    metadata:
+      labels:
+        app: log-generator
+        test-id: ${TEST_ID}
+    spec:
+      containers:
+        - name: writer
+          image: busybox:1.36
+          args:
+            - "sh"
+            - "-c"
+            - "cat /input/app.log && sleep 600"
+          volumeMounts:
+            - name: input
+              mountPath: /input
+      volumes:
+        - name: input
+          configMap:
+            name: logs-source

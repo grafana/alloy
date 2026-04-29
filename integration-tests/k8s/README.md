@@ -1,3 +1,9 @@
+A newer requirement-driven harness with parallel test execution and per-test
+isolation is under development in
+[`integration-tests/k8s-v2`](../k8s-v2/README.md). New Kubernetes
+integration tests should prefer that harness; this directory remains for
+existing coverage until migration is complete.
+
 Use this command to run the tests:
 
 ```

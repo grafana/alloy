@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metrics-generator
+  namespace: ${TEST_NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: metrics-generator
+      test-id: ${TEST_ID}
+  template:
+    metadata:
+      labels:
+        app: metrics-generator
+        test-id: ${TEST_ID}
+    spec:
+      containers:
+        - name: avalanche
+          image: quay.io/prometheuscommunity/avalanche:v0.8.0
+          args:
+            - "--metric-count=20"
+            - "--series-count=5"
+            - "--value-interval=500ms"
+          ports:
+            - containerPort: 9001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: metrics-generator
+  namespace: ${TEST_NAMESPACE}
+spec:
+  selector:
+    app: metrics-generator
+    test-id: ${TEST_ID}
+  ports:
+    - name: http
+      port: 9001
+      targetPort: 9001
