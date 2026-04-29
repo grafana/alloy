@@ -42,9 +42,100 @@ This endpoint only accepts data and isn't available to view in a browser.
 
 If possible, keep this feature enabled.
 It helps Grafana Labs understand how the open source community uses {{< param "PRODUCT_NAME" >}}.
-To opt out of anonymous usage statistics, use the [CLI flag][command line flag] `--disable-reporting`.
+To opt out of anonymous usage statistics, use the [CLI flag][command line flag] `--disable-reporting` with the method that matches your install type.
 
-### Example: Opt out of data collection with Ansible
+### Linux
+
+1. Edit the environment file for the service:
+   - Debian-based systems: edit `/etc/default/alloy`
+   - RedHat or SUSE-based systems: edit `/etc/sysconfig/alloy`
+
+1. Add `--disable-reporting` to the `CUSTOM_ARGS` environment variable.
+
+1. Restart the {{< param "PRODUCT_NAME" >}} service:
+
+   ```shell
+   sudo systemctl restart alloy
+   ```
+
+### Windows
+
+{{< param "PRODUCT_NAME" >}} runs as a Windows service and reads its command-line arguments from the registry.
+
+1. Open the Registry Editor:
+   1. Right-click the **Start** menu and select **Run**.
+   1. Type `regedit` and click **OK**.
+
+1. Navigate to `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy`.
+
+1. Double-click the **Arguments** value.
+
+1. Add `--disable-reporting` on a separate line at the end of the arguments list.
+
+1. Click **OK**.
+
+1. Restart the {{< param "PRODUCT_NAME" >}} service:
+   1. Right-click the **Start** menu and select **Run**.
+   1. Type `services.msc` and click **OK**.
+   1. Right-click the **{{< param "PRODUCT_NAME" >}}** service and select **All Tasks > Restart**.
+
+### macOS
+
+{{< param "PRODUCT_NAME" >}} reads extra command-line flags from a dedicated file when you install it with Homebrew.
+
+1. Edit `$(brew --prefix)/etc/alloy/extra-args.txt`.
+
+1. Add `--disable-reporting` on a separate line.
+
+1. Restart the {{< param "PRODUCT_NAME" >}} service:
+
+   ```shell
+   brew services restart grafana/grafana/alloy
+   ```
+
+### Docker
+
+Add `--disable-reporting` to the `alloy run` arguments in your `docker run` command:
+
+```shell
+docker run \
+  -v <CONFIG_FILE_PATH>:/etc/alloy/config.alloy \
+  -p 12345:12345 \
+  grafana/alloy:latest \
+    run --server.http.listen-addr=0.0.0.0:12345 \
+    --storage.path=/var/lib/alloy/data \
+    --disable-reporting \
+    /etc/alloy/config.alloy
+```
+
+Replace the following:
+
+- _`<CONFIG_FILE_PATH>`_: The path to your configuration file on the host system.
+
+### Helm
+
+The Grafana Alloy Helm chart includes a dedicated value to disable usage statistics. Set `alloy.enableReporting` to `false` in your `values.yaml`:
+
+```yaml
+alloy:
+  enableReporting: false
+```
+
+Then apply the change:
+
+```shell
+helm upgrade --namespace <NAMESPACE> <RELEASE_NAME> grafana/alloy -f <VALUES_PATH>
+```
+
+Replace the following:
+
+- _`<NAMESPACE>`_: The namespace for your {{< param "PRODUCT_NAME" >}} installation.
+- _`<RELEASE_NAME>`_: The name of your {{< param "PRODUCT_NAME" >}} Helm release.
+- _`<VALUES_PATH>`_: The path to your `values.yaml` file.
+
+### Ansible
+
+Set `CUSTOM_ARGS` in your playbook using the Grafana Ansible collection:
 
 ```yaml
 - name: Install Alloy
@@ -59,19 +150,18 @@ To opt out of anonymous usage statistics, use the [CLI flag][command line flag] 
           CUSTOM_ARGS: "--disable-reporting"
 ```
 
-### Example: Opt out of data collection on Linux
+### Binary
 
-1. Edit the environment file for the service:
+Add `--disable-reporting` to the `alloy run` command:
 
-   - Debian-based systems: edit `/etc/default/alloy`
-   - RedHat or SUSE-based systems: edit `/etc/sysconfig/alloy`
+```shell
+<BINARY_PATH> run --disable-reporting <CONFIG_PATH>
+```
 
-1. Add `--disable-reporting` to the `CUSTOM_ARGS` environment variable.
-1. Restart the Alloy service:
+Replace the following:
 
-   ```shell
-   sudo systemctl restart alloy
-   ```
+- _`<BINARY_PATH>`_: The path to the {{< param "PRODUCT_NAME" >}} binary.
+- _`<CONFIG_PATH>`_: The path to your {{< param "PRODUCT_NAME" >}} configuration file.
 
 [components]: ../get-started/components/
 [command line flag]: ../reference/cli/run/
