@@ -62,8 +62,11 @@ func (s *Source) Update(args component.Arguments) error {
 	return nil
 }
 
-func (s *Source) SendEntries(entries ...loki.Entry) {
+func (s *Source) SendEntries(ctx context.Context, entries ...loki.Entry) error {
 	for _, e := range entries {
-		_ = s.lokiFanout.Send(context.Background(), e)
+		if err := s.lokiFanout.Send(ctx, e); err != nil {
+			return err
+		}
 	}
+	return nil
 }

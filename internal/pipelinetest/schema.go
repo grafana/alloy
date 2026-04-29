@@ -1,6 +1,7 @@
 package pipelinetest
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -106,11 +107,11 @@ type LokiMapMatchSchema struct {
 }
 
 // produceInputs sends all configured test inputs into the running pipeline.
-func produceInputs(alloy *harness.Alloy, inputs InputSchema) error {
-	return produceLokiInputs(alloy, inputs.Loki)
+func produceInputs(ctx context.Context, alloy *harness.Alloy, inputs InputSchema) error {
+	return produceLokiInputs(ctx, alloy, inputs.Loki)
 }
 
-func produceLokiInputs(alloy *harness.Alloy, inputs []LokiInputSchema) error {
+func produceLokiInputs(ctx context.Context, alloy *harness.Alloy, inputs []LokiInputSchema) error {
 	for i, input := range inputs {
 		if len(input.Entries) == 0 {
 			continue
@@ -127,7 +128,9 @@ func produceLokiInputs(alloy *harness.Alloy, inputs []LokiInputSchema) error {
 			return fmt.Errorf("loki input %d: %w", i, err)
 		}
 
-		source.SendEntries(entries...)
+		if err := source.SendEntries(ctx, entries...); err != nil {
+			return err
+		}
 	}
 
 	return nil

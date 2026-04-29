@@ -34,7 +34,7 @@ func TestPipelines(t *testing.T) {
 
 			var schema TestSchema
 			require.NoError(t, yaml.Unmarshal(bb, &schema))
-			require.NoError(t, RunTest(schema, TestConfig{DataPath: t.TempDir()}))
+			require.NoError(t, RunTest(t.Context(), schema, TestConfig{DataPath: t.TempDir()}))
 		})
 	}
 }
