@@ -3260,7 +3260,7 @@ func TestClassifyMySQLWaitEventType(t *testing.T) {
 		{"wait/synch/mutex/innodb/trx_mutex", "Engine Wait"},
 		{"wait/synch/mutex/innodb/dict_table_mutex", "Engine Wait"},
 
-		// Replication carve-outs (precede the generic synch → Engine and io/file → IO rules)
+		// Replication carve-outs (precede the generic synch -> Engine and io/file -> IO rules).
 		{"wait/io/file/sql/relaylog", "Replication Wait"},
 		{"wait/io/file/sql/relaylog_index", "Replication Wait"},
 		{"wait/synch/mutex/sql/Slave_jobs_lock", "Replication Wait"},
@@ -3268,6 +3268,15 @@ func TestClassifyMySQLWaitEventType(t *testing.T) {
 		{"wait/synch/cond/sql/Slave_worker::jobs_cond", "Replication Wait"},
 		{"wait/synch/mutex/sql/Relay_log_info::pending_jobs_lock", "Replication Wait"},
 		{"wait/synch/mutex/sql/Relay_log_info::log_space_lock", "Replication Wait"},
+		// MySQL 8.0.22+ renamed Slave_* to Replica_*.
+		{"wait/synch/mutex/sql/Replica_jobs_lock", "Replication Wait"},
+		{"wait/synch/mutex/sql/Replica_committed_queue_lock", "Replication Wait"},
+		// MySQL 5.7 used Master_info, MySQL 8.0+ uses Source_info.
+		{"wait/synch/mutex/sql/Master_info::data_lock", "Replication Wait"},
+		{"wait/synch/mutex/sql/Source_info::data_lock", "Replication Wait"},
+		// Relay-log internal mutexes and multi-threaded replica coordination.
+		{"wait/synch/mutex/sql/MYSQL_RELAY_LOG::LOCK_log", "Replication Wait"},
+		{"wait/synch/mutex/sql/Mts_submode_logical_clock::data_lock", "Replication Wait"},
 
 		// Other / unknown
 		{"wait/unknown/something", "Other Wait"},

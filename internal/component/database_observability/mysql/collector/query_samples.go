@@ -493,6 +493,16 @@ func (c *QuerySamples) determineTimerClauseAndLimit(uptime float64) (string, flo
 	return timerClause, limit
 }
 
+var mysqlSynchReplicationSymbolPrefixes = []string{
+	"Slave_",
+	"Replica_",
+	"Master_info",
+	"Source_info",
+	"Relay_log_info",
+	"MYSQL_RELAY_LOG",
+	"Mts_",
+}
+
 func isMySQLReplicationWaitEvent(name string) bool {
 	if strings.HasPrefix(name, "wait/io/file/sql/relaylog") {
 		return true
@@ -509,7 +519,12 @@ func isMySQLReplicationWaitEvent(name string) bool {
 	if parts[1] != "sql" {
 		return false
 	}
-	return strings.HasPrefix(parts[2], "Slave_") || strings.HasPrefix(parts[2], "Relay_log_info")
+	for _, p := range mysqlSynchReplicationSymbolPrefixes {
+		if strings.HasPrefix(parts[2], p) {
+			return true
+		}
+	}
+	return false
 }
 
 func classifyMySQLWaitEventType(waitEventName string) string {

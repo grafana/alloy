@@ -1413,9 +1413,16 @@ func TestClassifyPostgresWaitEventType(t *testing.T) {
 		// Replication via name-rule (Timeout type → Replication, not Other)
 		{"Timeout_RecoveryApplyDelay", "Timeout", "RecoveryApplyDelay", "Replication Wait"},
 		{"LogicalApplyOffsetUpdate", "IPC", "LogicalApplyOffsetUpdate", "Replication Wait"},
+		{"LogicalApplySendData", "IPC", "LogicalApplySendData", "Replication Wait"},
 		{"WalReceiverMain", "Activity", "WalReceiverMain", "Replication Wait"},
+		{"WalReceiverWaitStart", "IPC", "WalReceiverWaitStart", "Replication Wait"},
 		{"ReplicationSlotDrop", "IPC", "ReplicationSlotDrop", "Replication Wait"},
 		{"ReplicationOriginDrop", "IPC", "ReplicationOriginDrop", "Replication Wait"},
+		// PG 17+ replication-slot sync between primary and standby.
+		{"ReplicationSlotsyncMain", "Activity", "ReplicationSlotsyncMain", "Replication Wait"},
+		// Standby recovery conflicts.
+		{"RecoveryConflictSnapshot", "IPC", "RecoveryConflictSnapshot", "Replication Wait"},
+		{"RecoveryConflictBufferpin", "IPC", "RecoveryConflictBufferpin", "Replication Wait"},
 
 		// Other
 		{"Activity_AutoVacuumMain", "Activity", "AutoVacuumMain", "Other Wait"},
@@ -1423,6 +1430,8 @@ func TestClassifyPostgresWaitEventType(t *testing.T) {
 		{"Timeout_PgSleep", "Timeout", "PgSleep", "Other Wait"},
 		{"Extension", "Extension", "Extension", "Other Wait"},
 		{"InjectionPoint", "InjectionPoint", "InjectionPoint", "Other Wait"},
+		// PG 17+ WAL summarizer is for incremental backup, not replication.
+		{"WalSummarizerWal", "Activity", "WalSummarizerWal", "Other Wait"},
 
 		// idle row appears with empty type and event name "idle"
 		{"idle_event", "", "idle", "Other Wait"},
