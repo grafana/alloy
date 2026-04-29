@@ -1,0 +1,90 @@
+config: |
+  loki.process "drop_existing_metadata" {
+    forward_to = [loki.write.primary.receiver]
+
+    stage.structured_metadata_drop {
+      values = ["pod"]
+    }
+
+    stage.label_drop {
+      values = ["service_name"]
+    }
+
+    stage.static_labels {
+      values = {
+        branch = "drop_existing_metadata",
+      }
+    }
+
+    stage.structured_metadata {
+      values = {
+        branch = "",
+      }
+    }
+  }
+
+  loki.process "add_new_metadata" {
+    forward_to = [loki.write.primary.receiver]
+
+    stage.label_drop {
+      values = ["namespace"]
+    }
+
+    stage.static_labels {
+      values = {
+        branch = "add_new_metadata",
+      }
+    }
+
+    stage.structured_metadata {
+      values = {
+        branch = "",
+      }
+    }
+  }
+
+  loki.write "primary" {
+    endpoint {
+      url = pipelinetest.loki.url
+    }
+  }
+
+inputs:
+  loki:
+    - components:
+        - loki.process.drop_existing_metadata.receiver
+        - loki.process.add_new_metadata.receiver
+      entries:
+        - labels:
+            service_name: api
+            namespace: ns1
+          line: "fanout log line"
+          timestamp: "2026-04-27T12:00:00Z"
+          structured_metadata:
+            pod: api-1234
+
+assert:
+  loki:
+    - type: count
+      count: 2
+    - type: contains
+      match:
+        labels:
+          values:
+            namespace: ns1
+        line: "fanout log line"
+        timestamp: "2026-04-27T12:00:00Z"
+        structured_metadata:
+          values:
+            branch: drop_existing_metadata
+    - type: contains
+      match:
+        labels:
+          values:
+            service_name: api
+        line: "fanout log line"
+        timestamp: "2026-04-27T12:00:00Z"
+        structured_metadata:
+          values:
+            pod: api-1234
+            branch: add_new_metadata
