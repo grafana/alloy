@@ -17,9 +17,9 @@ The messages must be compliant with the [RFC5424](https://www.rfc-editor.org/rfc
 For a detailed example, refer to the [Monitor RFC5424-compliant syslog messages with Grafana Alloy](https://grafana.com/docs/alloy/latest/monitor/monitor-syslog-messages/) scenario.
 
 {{< admonition type="note" >}}
-If your messages aren't RFC5424 compliant, you can use `raw` syslog format in combination with the [`loki.process`](./loki.process.md) component.
+If your messages aren't RFC5424 compliant, you can use `raw` syslog format in combination with the [`loki.process`](../loki.process.md) component.
 
-Please note, that the `raw` syslog format is an [experimental][] feature.
+The `raw` syslog format is an [experimental][] feature.
 
 [experimental]: https://grafana.com/docs/release-life-cycle/
 
