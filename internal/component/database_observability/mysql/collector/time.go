@@ -49,10 +49,6 @@ func millisecondsToNanoseconds(milliseconds float64) float64 {
 	return milliseconds * nanosecondsPerMillisecond
 }
 
-func millisecondsToSeconds(milliseconds float64) float64 {
-	return milliseconds / millisecondsPerSecond
-}
-
 func picosecondsToSeconds(picoseconds float64) float64 {
 	return picoseconds / picosecondsPerSecond
 }

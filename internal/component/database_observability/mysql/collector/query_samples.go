@@ -445,7 +445,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				)
 
 				if c.waitEventCounter != nil {
-					c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(millisecondsToSeconds(waitTime))
+					c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(picosecondsToSeconds(row.WaitTime.Float64))
 				}
 			} else {
 				waitLogMessage := fmt.Sprintf(
