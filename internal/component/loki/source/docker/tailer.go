@@ -17,10 +17,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/moby/moby/api/pkg/stdcopy"
-	"github.com/moby/moby/client"
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/client"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -63,7 +63,6 @@ func newTailer(
 	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval time.Duration,
 	componentStopping func() bool,
 ) (*tailer, error) {
-
 	labelsStr := labels.String()
 	pos, err := position.Get(positions.CursorKey(containerID), labelsStr)
 	if err != nil {

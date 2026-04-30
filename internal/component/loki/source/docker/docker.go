@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/moby/moby/client"
 	"github.com/go-kit/log"
+	"github.com/moby/moby/client"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -122,7 +122,7 @@ type Component struct {
 
 // New creates a new loki.source.file component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	err := os.MkdirAll(o.DataPath, 0750)
+	err := os.MkdirAll(o.DataPath, 0o750)
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
