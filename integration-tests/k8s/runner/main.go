@@ -112,7 +112,8 @@ func parseFlags() (config, error) {
 	flag.StringVar(&cfg.packageScope, "package", cfg.packageScope, "Run one package path")
 	flag.StringVar(&cfg.runRegex, "run", "", "Forward -run regex to go test")
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage: go run ./integration-tests/k8s/runner [flags]\n\n")
+		_, _ = fmt.Fprintln(flag.CommandLine.Output(), "Usage: go run ./integration-tests/k8s/runner [flags]")
+		_, _ = fmt.Fprintln(flag.CommandLine.Output())
 		flag.PrintDefaults()
 	}
 	flag.Parse()
