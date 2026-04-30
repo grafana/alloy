@@ -87,7 +87,8 @@ WHERE
 	statements.DIGEST IS NOT NULL
 	AND statements.SQL_TEXT IS NOT NULL
 	AND statements.CURRENT_SCHEMA NOT IN %s
-	%s %s`
+	%s %s
+ORDER BY statements.thread_id, statements.EVENT_ID`
 
 const updateSetupConsumers = `
 	UPDATE performance_schema.setup_consumers
@@ -288,6 +289,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 	c.timerBookmark = limit
 	c.lastUptime = uptime
 
+	lastThreadIDLogged := ""
 	lastDigestLogged := ""
 	lastEventIDLogged := ""
 
@@ -414,7 +416,8 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
 		}
 
-		if lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
+		if lastThreadIDLogged != row.ThreadID.String || lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
+			lastThreadIDLogged = row.ThreadID.String
 			lastDigestLogged = row.Digest.String
 			lastEventIDLogged = row.StatementEventID.String
 
