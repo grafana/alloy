@@ -5,7 +5,7 @@ module github.com/grafana/alloy/otel_engine
 go 1.26.2
 
 require (
-	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
+	github.com/grafana/alloy v1.16.0
 	github.com/grafana/alloy/extension/alloyengine v0.1.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.147.0
@@ -518,7 +518,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/gosnmp/gosnmp v1.41.0 // indirect
 	github.com/grafana/alloy-remote-config v0.0.12 // indirect
-	github.com/grafana/alloy/syntax v0.1.0 // indirect
+	github.com/grafana/alloy/syntax v0.2.0 // indirect
 	github.com/grafana/beyla/v3 v3.9.5 // indirect
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20250218151502-6e97feaee761 // indirect
 	github.com/grafana/ckit v0.0.0-20251024151910-87043f5a3cf7 // indirect
