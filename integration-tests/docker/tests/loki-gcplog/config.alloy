@@ -1,5 +1,5 @@
-// Push receiver: HTTP server bound to :1518; the host-run Go test posts
-// Pub/Sub envelopes to this port directly.
+// Push receiver: HTTP server bound to :1518
+// The host-run Go test posts Pub/Sub envelopes to this port directly.
 loki.source.gcplog "push" {
 	push {
 		http {
@@ -15,6 +15,8 @@ loki.source.gcplog "push" {
 // Pull receiver: subscribes to the pre-created subscription on the Pub/Sub
 // emulator. The PUBSUB_EMULATOR_HOST env var (set on the alloy container)
 // redirects the Google Pub/Sub client to the emulator.
+//
+// The PUBSUB_EMULATOR_HOST env var is read by "cloud.google.com/go/pubsub/v2" under the hood.
 loki.source.gcplog "pull" {
 	pull {
 		project_id   = "test-project"

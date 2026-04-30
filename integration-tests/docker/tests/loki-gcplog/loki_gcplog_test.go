@@ -88,12 +88,12 @@ var resourceShapes = []resourceShape{
 func TestLokiGcplog(t *testing.T) {
 	ctx := t.Context()
 
-	// ---- Push: per-resource-type batches ----
+	// Push: per-resource-type batches
 	for _, rs := range resourceShapes {
 		require.NoError(t, postEnvelopes(ctx, "", buildEntries(rs, entriesPerType, "")))
 	}
 
-	// ---- Push: tenant header batch (X-Scope-OrgID -> tenant_id) ----
+	// Push: tenant header batch (X-Scope-OrgID -> tenant_id)
 	tenantShape := resourceShape{
 		resourceType: "k8s_cluster",
 		resourceLabel: map[string]string{
@@ -106,10 +106,10 @@ func TestLokiGcplog(t *testing.T) {
 	}
 	require.NoError(t, postEnvelopes(ctx, tenantOrgID, buildEntries(tenantShape, tenantEntries, "tenant ")))
 
-	// ---- Pull: publish identical per-resource-type batches via the emulator ----
+	// Pull: publish identical per-resource-type batches via the emulator
 	require.NoError(t, publishViaEmulator(ctx, t, resourceShapes, entriesPerType))
 
-	// ---- Assert ----
+	// Assert
 	totalPush := entriesPerType*len(resourceShapes) + tenantEntries
 	totalPull := entriesPerType * len(resourceShapes)
 
