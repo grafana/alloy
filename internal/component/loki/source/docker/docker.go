@@ -15,7 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/client"
+	"github.com/moby/moby/client"
 	"github.com/go-kit/log"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -261,7 +261,6 @@ func (c *Component) getClient(args Arguments) (client.APIClient, error) {
 
 	opts := []client.Opt{
 		client.WithHost(args.Host),
-		client.WithAPIVersionNegotiation(),
 	}
 
 	// There are other protocols than HTTP supported by the Docker daemon, like
@@ -284,7 +283,7 @@ func (c *Component) getClient(args Arguments) (client.APIClient, error) {
 		)
 	}
 
-	client, err := client.NewClientWithOpts(opts...)
+	client, err := client.New(opts...)
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "could not create new Docker client", "err", err)
 		return c.client, fmt.Errorf("failed to build docker client: %w", err)

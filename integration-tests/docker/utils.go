@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/netip"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/go-connections/nat"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/mount"
+	"github.com/moby/moby/api/types/network"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 	"gopkg.in/yaml.v3"
@@ -179,24 +180,21 @@ func prepareContainerFiles(absTestDir string) ([]testcontainers.ContainerFile, [
 
 // Create a container request based on the test directory.
 func createContainerRequest(dirName, testDir string, port int, networkName string, containerFiles []testcontainers.ContainerFile, cfg TestConfig, alloyImage string) testcontainers.ContainerRequest {
-	natPort, err := nat.NewPort("tcp", strconv.Itoa(port))
-	if err != nil {
-		panic(fmt.Sprintf("failed to build natPort: %v", err))
-	}
-
-	portBindings := make(nat.PortMap)
 	defaultPortStr := fmt.Sprintf("%d/tcp", port)
-	portBindings[nat.Port(defaultPortStr)] = []nat.PortBinding{
-		{HostIP: "0.0.0.0", HostPort: strconv.Itoa(port)},
+	hostIP := netip.MustParseAddr("0.0.0.0")
+
+	portBindings := make(network.PortMap)
+	portBindings[network.MustParsePort(defaultPortStr)] = []network.PortBinding{
+		{HostIP: hostIP, HostPort: strconv.Itoa(port)},
 	}
 
 	exposedPorts := []string{defaultPortStr}
 	if len(cfg.Container.Ports) > 0 {
 		for _, pm := range cfg.Container.Ports {
-			exposedPorts = append(exposedPorts, fmt.Sprintf("%d/%s", pm.Container, pm.Protocol))
 			portStr := fmt.Sprintf("%d/%s", pm.Container, pm.Protocol)
-			portBindings[nat.Port(portStr)] = []nat.PortBinding{
-				{HostIP: "0.0.0.0", HostPort: strconv.Itoa(pm.Host)},
+			exposedPorts = append(exposedPorts, portStr)
+			portBindings[network.MustParsePort(portStr)] = []network.PortBinding{
+				{HostIP: hostIP, HostPort: strconv.Itoa(pm.Host)},
 			}
 		}
 	}
@@ -229,7 +227,7 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 	req := testcontainers.ContainerRequest{
 		Image:        alloyImage,
 		ExposedPorts: exposedPorts,
-		WaitingFor:   wait.ForListeningPort(natPort),
+		WaitingFor:   wait.ForListeningPort(defaultPortStr),
 		Cmd:          cmd,
 		Env:          cfg.Container.Environment,
 		HostConfigModifier: func(hc *container.HostConfig) {
