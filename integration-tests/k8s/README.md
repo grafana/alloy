@@ -6,7 +6,7 @@ Run the Kubernetes integration tests with:
 make integration-test-k8s
 ```
 
-`integration-tests/k8s/run.sh` is the canonical entrypoint. It always uses a
+`integration-tests/k8s/runner` is the canonical entrypoint. It always uses a
 runner-managed kind cluster and kubeconfig (never your default kube context),
 then executes `go test` for `integration-tests/k8s/tests/...`.
 

@@ -203,7 +203,7 @@ integration-test-docker:
 
 .PHONY: integration-test-k8s
 integration-test-k8s:
-	./integration-tests/k8s/run.sh $(RUN_ARGS)
+	go run ./integration-tests/k8s/runner $(RUN_ARGS)
 
 # Windows service integration test. Runs only on Windows with Administrator privileges.
 # Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.

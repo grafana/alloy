@@ -20,12 +20,12 @@ func managedClusterEnabled() bool {
 
 func kubeconfigFromEnv() (string, error) {
 	if !managedClusterEnabled() {
-		return "", fmt.Errorf("missing %s=1, run tests with make integration-test-k8s or integration-tests/k8s/run.sh", managedClusterEnv)
+		return "", fmt.Errorf("missing %s=1, run tests with make integration-test-k8s or go run ./integration-tests/k8s/runner", managedClusterEnv)
 	}
 
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if kubeconfig == "" {
-		return "", errors.New("missing KUBECONFIG, run tests with make integration-test-k8s or integration-tests/k8s/run.sh")
+		return "", errors.New("missing KUBECONFIG, run tests with make integration-test-k8s or go run ./integration-tests/k8s/runner")
 	}
 	if !filepath.IsAbs(kubeconfig) {
 		return "", fmt.Errorf("KUBECONFIG must be an absolute path, got %q", kubeconfig)
