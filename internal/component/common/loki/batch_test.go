@@ -27,7 +27,7 @@ func TestBatch_Add(t *testing.T) {
 	require.Equal(t, []push.Entry{{Line: "3"}}, streams[1].Entries)
 }
 
-func TestBatch_Apply(t *testing.T) {
+func TestBatch_FilterMap(t *testing.T) {
 	foo := model.LabelSet{"job": "foo"}
 	bar := model.LabelSet{"job": "bar"}
 
@@ -41,20 +41,20 @@ func TestBatch_Apply(t *testing.T) {
 	require.Equal(t, 3, b.EntryLen())
 	require.Equal(t, 1, b.StreamLen())
 
-	b.Apply(func(entry *Entry) EntryAction {
+	b.FilterMap(func(entry *Entry) FilterMapAction {
 		switch entry.Line {
 		case "keep":
 			entry.Line = "kept"
-			return ApplyActionKeep
+			return FilterMapActionKeep
 		case "move":
 			entry.Line = "moved"
 			entry.Labels = bar
-			return ApplyActionKeep
+			return FilterMapActionKeep
 		case "drop":
-			return ApplyActionDrop
+			return FilterMapActionDrop
 		default:
 			t.Fatalf("unexpected entry %q", entry.Line)
-			return ApplyActionDrop
+			return FilterMapActionDrop
 		}
 	})
 
@@ -104,20 +104,20 @@ func TestBatch_Clone(t *testing.T) {
 
 	cloned := original.Clone()
 
-	original.Apply(func(entry *Entry) EntryAction {
+	original.FilterMap(func(entry *Entry) FilterMapAction {
 		switch entry.Line {
 		case "keep":
 			entry.Line = "kept"
-			return ApplyActionKeep
+			return FilterMapActionKeep
 		case "move":
 			entry.Line = "moved"
 			entry.Labels = bar
-			return ApplyActionKeep
+			return FilterMapActionKeep
 		case "drop":
-			return ApplyActionDrop
+			return FilterMapActionDrop
 		default:
 			t.Fatalf("unexpected entry %q", entry.Line)
-			return ApplyActionDrop
+			return FilterMapActionDrop
 		}
 	})
 
