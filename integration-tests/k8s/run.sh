@@ -138,7 +138,7 @@ PROM_OPERATOR_VERSION="${PROM_OPERATOR_VERSION:-v0.81.0}"
 log "installing prometheus operator bundle ${PROM_OPERATOR_VERSION}"
 kubectl apply --server-side --validate=false -f "https://github.com/prometheus-operator/prometheus-operator/releases/download/${PROM_OPERATOR_VERSION}/bundle.yaml"
 
-GO_TEST_ARGS=(-tags="gore2regex alloyintegrationtests" -timeout 30m)
+GO_TEST_ARGS=(-tags="gore2regex" -timeout 30m)
 if [[ -n "${RUN_REGEX}" ]]; then
   GO_TEST_ARGS+=(-run "${RUN_REGEX}")
 fi

@@ -48,12 +48,14 @@ func (s shardConfig) shouldRun(key string) bool {
 	if s.total == 0 {
 		return true
 	}
+	// Sharding is done at the test-package level.
+	// The package key is hashed so each shard gets a stable subset.
 	hasher := fnv.New32a()
 	_, _ = hasher.Write([]byte(key))
 	return int(hasher.Sum32()%uint32(s.total)) == s.index
 }
 
-func SkipShard(t *testing.T, name string) {
+func shardCheck(t *testing.T, name string) {
 	t.Helper()
 	shard, err := parseShard()
 	if err != nil {

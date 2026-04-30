@@ -14,8 +14,12 @@ const (
 	managedClusterEnv = "ALLOY_K8S_MANAGED_CLUSTER"
 )
 
+func managedClusterEnabled() bool {
+	return os.Getenv(managedClusterEnv) == "1"
+}
+
 func kubeconfigFromEnv() (string, error) {
-	if os.Getenv(managedClusterEnv) != "1" {
+	if !managedClusterEnabled() {
 		return "", fmt.Errorf("missing %s=1, run tests with make integration-test-k8s or integration-tests/k8s/run.sh", managedClusterEnv)
 	}
 

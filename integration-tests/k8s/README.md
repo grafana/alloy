@@ -15,11 +15,12 @@ Useful options (forwarded with `RUN_ARGS`):
 ```sh
 make integration-test-k8s RUN_ARGS='--reuse-cluster'
 make integration-test-k8s RUN_ARGS='--skip-alloy-image'
+# Split test packages across 2 shards and run shard index 0.
 make integration-test-k8s RUN_ARGS='--shard 0/2'
 make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/prometheus-operator'
 ```
 
-Controller type is chosen per test package in its `TestMain` via
+Controller type is chosen per test package in `Setup(...)` via
 `harness.Options{Controller: ...}`.
 
 If reuse mode leaves a broken cluster behind:

@@ -67,7 +67,7 @@ func installAlloy(ctx *TestContext, configPath string) error {
 		"create",
 		"configmap",
 		"alloy-config",
-		"--namespace", ctx.Namespace,
+		"--namespace", ctx.namespace,
 		"--from-file=config.alloy="+absConfigPath,
 		"--dry-run=client",
 		"-o", "yaml",
@@ -98,30 +98,29 @@ func installAlloy(ctx *TestContext, configPath string) error {
 			"--install",
 			"alloy",
 			filepath.Join(repoRoot, "operations/helm/charts/alloy"),
-			"--namespace", ctx.Namespace,
+			"--namespace", ctx.namespace,
 			"--wait",
-			"--set", "fullnameOverride=alloy-" + ctx.Name,
-			"--set", "image.repository=" + ctx.AlloyImageRepository,
-			"--set", "image.tag=" + ctx.AlloyImageTag,
-			"--set", "controller.type=" + ctx.ControllerType,
+			"--set", "fullnameOverride=alloy-" + ctx.name,
+			"--set", "image.repository=" + ctx.alloyImageRepository,
+			"--set", "image.tag=" + ctx.alloyImageTag,
+			"--set", "controller.type=" + ctx.controllerType,
 			"--set", "alloy.stabilityLevel=experimental",
 			"--set", "alloy.configMap.create=false",
 			"--set", "alloy.configMap.name=alloy-config",
 			"--set", "alloy.configMap.key=config.alloy",
 		}
-		if ctx.ControllerType == "deployment" {
+		if ctx.controllerType == "deployment" {
 			args = append(args, "--set", "controller.replicas=1")
 		}
 		return runCommand(args[0], args[1:]...)
 	})
 }
 
-func applyWorkloads(path, namespace string) error {
+func applyWorkloads(path string) error {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		return fmt.Errorf("resolve workloads path: %w", err)
 	}
-	_ = namespace
 	return step("apply workloads", func() error {
 		return runCommand("kubectl", "apply", "-f", absPath)
 	})

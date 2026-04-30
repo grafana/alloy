@@ -1,5 +1,3 @@
-//go:build alloyintegrationtests
-
 package prometheusoperator
 
 import (
@@ -9,7 +7,6 @@ import (
 )
 
 func TestPrometheusOperator(t *testing.T) {
-	harness.SkipShard(t, "prometheus-operator")
 	kt := harness.Setup(t, harness.Options{
 		Name:       "prometheus-operator",
 		ConfigPath: "./config/config.alloy",
@@ -19,10 +16,10 @@ func TestPrometheusOperator(t *testing.T) {
 	})
 	defer kt.Cleanup(t)
 
-	kt.WaitForPodRunning(t, kt.Namespace, "app.kubernetes.io/name=alloy")
-	kt.WaitForPodRunning(t, kt.Namespace, "app=prom-gen")
-	kt.WaitForPodRunning(t, kt.Namespace, "app=blackbox-exporter")
-	kt.WaitForPodRunning(t, kt.Namespace, "app.kubernetes.io/component=distributor")
+	kt.WaitForPodRunning(t, kt.Namespace(), "app.kubernetes.io/name=alloy")
+	kt.WaitForPodRunning(t, kt.Namespace(), "app=prom-gen")
+	kt.WaitForPodRunning(t, kt.Namespace(), "app=blackbox-exporter")
+	kt.WaitForPodRunning(t, kt.Namespace(), "app.kubernetes.io/component=distributor")
 
 	t.Run("ServiceMonitors", func(t *testing.T) {
 		// Check that Mimir received metrics from the ServiceMonitor target.

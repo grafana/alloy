@@ -18,30 +18,32 @@ const (
 )
 
 type Options struct {
-	Name         string
-	ConfigPath   string
-	Workloads    string
-	Backends     []Backend
-	PodWaits     []string
-	Namespace    string
-	AlloyRelease string
-	Controller   string
+	Name       string
+	ConfigPath string
+	Workloads  string
+	Backends   []Backend
+	Namespace  string
+	Controller string
 }
 
 type TestContext struct {
-	Name                 string
-	Namespace            string
-	TestID               string
-	MimirLocalPort       string
-	AlloyImageRepository string
-	AlloyImageTag        string
-	ControllerType       string
+	name                 string
+	namespace            string
+	mimirLocalPort       string
+	alloyImageRepository string
+	alloyImageTag        string
+	controllerType       string
 	client               *kubernetes.Clientset
 	stopPortForward      func()
+	diagnosticHooks      []diagnosticHook
 }
 
 func Setup(t *testing.T, opts Options) *TestContext {
 	t.Helper()
+	shardCheck(t, opts.Name)
+	if !managedClusterEnabled() {
+		t.Skip("requires managed k8s test runner; use make integration-test-k8s")
+	}
 
 	kubeconfig, err := kubeconfigFromEnv()
 	if err != nil {
@@ -68,15 +70,16 @@ func Setup(t *testing.T, opts Options) *TestContext {
 	}
 
 	ctx := &TestContext{
-		Name:                 opts.Name,
-		Namespace:            namespace,
-		TestID:               opts.Name,
-		MimirLocalPort:       pickFreeLocalPort(),
-		AlloyImageRepository: imageRepo,
-		AlloyImageTag:        imageTag,
-		ControllerType:       resolveControllerType(opts.Controller),
+		name:                 opts.Name,
+		namespace:            namespace,
+		mimirLocalPort:       pickFreeLocalPort(),
+		alloyImageRepository: imageRepo,
+		alloyImageTag:        imageTag,
+		controllerType:       resolveControllerType(opts.Controller),
 		client:               client,
 	}
+	ctx.registerDiagnosticHook("namespace state", namespaceDiagnosticsHook)
+	ctx.registerDiagnosticHook("alloy logs", alloyDiagnosticsHook)
 
 	if err := ensureCleanNamespace(ctx); err != nil {
 		t.Fatalf("prepare namespace: %v", err)
@@ -84,22 +87,23 @@ func Setup(t *testing.T, opts Options) *TestContext {
 	for _, backend := range opts.Backends {
 		switch backend {
 		case BackendMimir:
-			if err := installMimir(ctx.Namespace); err != nil {
+			if err := installMimir(ctx.namespace); err != nil {
 				t.Fatalf("install mimir: %v", err)
 			}
+			ctx.registerDiagnosticHook("mimir logs", mimirDiagnosticsHook)
 		default:
 			t.Fatalf("unsupported backend %q", backend)
 		}
 	}
 
-	if err := applyWorkloads(opts.Workloads, ctx.Namespace); err != nil {
+	if err := applyWorkloads(opts.Workloads); err != nil {
 		t.Fatalf("apply workloads: %v", err)
 	}
 	if err := installAlloy(ctx, opts.ConfigPath); err != nil {
 		t.Fatalf("install alloy: %v", err)
 	}
 	if containsBackend(opts.Backends, BackendMimir) {
-		stop, err := startPortForward(ctx.Namespace, ctx.MimirLocalPort)
+		stop, err := startPortForward(ctx.namespace, ctx.mimirLocalPort)
 		if err != nil {
 			t.Fatalf("start mimir port-forward: %v", err)
 		}
@@ -118,9 +122,13 @@ func (ctx *TestContext) Cleanup(t *testing.T) {
 	if t.Failed() {
 		collectFailureDiagnostics(ctx)
 	}
-	if err := deleteNamespace(ctx.Namespace); err != nil {
-		t.Logf("cleanup namespace %s failed: %v", ctx.Namespace, err)
+	if err := deleteNamespace(ctx.namespace); err != nil {
+		t.Logf("cleanup namespace %s failed: %v", ctx.namespace, err)
 	}
+}
+
+func (ctx *TestContext) Namespace() string {
+	return ctx.namespace
 }
 
 func containsBackend(backends []Backend, backend Backend) bool {
