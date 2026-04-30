@@ -17,8 +17,10 @@ make integration-test-k8s RUN_ARGS='--reuse-cluster'
 make integration-test-k8s RUN_ARGS='--skip-alloy-image'
 make integration-test-k8s RUN_ARGS='--shard 0/2'
 make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/prometheus-operator'
-make integration-test-k8s RUN_ARGS='--alloy-controller daemonset'
 ```
+
+Controller type is chosen per test package in its `TestMain` via
+`harness.Options{Controller: ...}`.
 
 If reuse mode leaves a broken cluster behind:
 

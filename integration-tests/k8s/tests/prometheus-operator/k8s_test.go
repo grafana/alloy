@@ -9,8 +9,16 @@ import (
 )
 
 func TestPrometheusOperator(t *testing.T) {
-	harness.SkipShard(t)
-	kt := harness.Current(t)
+	harness.SkipShard(t, "prometheus-operator")
+	kt := harness.Setup(t, harness.Options{
+		Name:       "prometheus-operator",
+		ConfigPath: "./config/config.alloy",
+		Workloads:  "./config/workloads.yaml",
+		Backends:   []harness.Backend{harness.BackendMimir},
+		Controller: "daemonset",
+	})
+	defer kt.Cleanup(t)
+
 	kt.WaitForPodRunning(t, kt.Namespace, "app.kubernetes.io/name=alloy")
 	kt.WaitForPodRunning(t, kt.Namespace, "app=prom-gen")
 	kt.WaitForPodRunning(t, kt.Namespace, "app=blackbox-exporter")

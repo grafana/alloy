@@ -53,15 +53,16 @@ func (s shardConfig) shouldRun(key string) bool {
 	return int(hasher.Sum32()%uint32(s.total)) == s.index
 }
 
-func SkipShard(t *testing.T) {
+func SkipShard(t *testing.T, name string) {
 	t.Helper()
-	if current == nil {
-		t.Fatalf("harness is not initialized, use harness.RunTestMain in TestMain")
+	shard, err := parseShard()
+	if err != nil {
+		t.Fatalf("invalid shard flag: %v", err)
 	}
-	if current.Shard.total == 0 {
+	if shard.total == 0 {
 		return
 	}
-	if !current.Shard.shouldRun(current.Name) {
-		t.Skipf("skipping %s for shard %d/%d", current.Name, current.Shard.index, current.Shard.total)
+	if !shard.shouldRun(name) {
+		t.Skipf("skipping %s for shard %d/%d", name, shard.index, shard.total)
 	}
 }

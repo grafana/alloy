@@ -34,3 +34,9 @@ func ensureCleanNamespace(ctx *TestContext) error {
 		return nil
 	})
 }
+
+func deleteNamespace(namespace string) error {
+	return step("cleanup namespace "+namespace, func() error {
+		return runCommand("kubectl", "delete", "namespace", namespace, "--ignore-not-found=true", "--wait=true", "--timeout=10m")
+	})
+}

@@ -91,6 +91,7 @@ func installAlloy(ctx *TestContext, configPath string) error {
 	}
 
 	return step("install alloy via helm chart", func() error {
+		// TODO: Add optional per-test custom values.yaml support for Alloy helm installs.
 		args := []string{
 			"helm",
 			"upgrade",

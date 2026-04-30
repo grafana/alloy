@@ -11,7 +11,6 @@ SKIP_ALLOY_IMAGE=false
 SHARD=""
 PACKAGE_SCOPE="./integration-tests/k8s/tests/..."
 RUN_REGEX=""
-ALLOY_CONTROLLER="${ALLOY_CONTROLLER:-deployment}"
 
 log() {
   echo "[k8s-itest] $*"
@@ -50,10 +49,9 @@ Usage: ./integration-tests/k8s/run.sh [flags]
 Flags:
   --reuse-cluster      Reuse fixed kind cluster and keep it after test run
   --skip-alloy-image   Do not run make alloy-image (requires image to exist)
-  --shard i/n          Forward shard to tests via -args -shard=i/n
+  --shard i/n          Split test packages across shards (e.g., CI parallel jobs)
   --package <path>     Run one package path (default: ./integration-tests/k8s/tests/...)
   --run <regex>        Forward -run regex to go test
-  --alloy-controller   Alloy chart controller type (deployment|daemonset|statefulset)
 EOF
 }
 
@@ -77,10 +75,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --run)
       RUN_REGEX="${2:-}"
-      shift 2
-      ;;
-    --alloy-controller)
-      ALLOY_CONTROLLER="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -132,7 +126,6 @@ kind get kubeconfig --name "${CLUSTER_NAME}" > "${KUBECONFIG_PATH}"
 export KUBECONFIG="${KUBECONFIG_PATH}"
 export ALLOY_K8S_MANAGED_CLUSTER=1
 export ALLOY_IMAGE
-export ALLOY_K8S_CONTROLLER_TYPE="${ALLOY_CONTROLLER}"
 
 log "loading required images to kind"
 kind load docker-image "${ALLOY_IMAGE}" --name "${CLUSTER_NAME}"

@@ -1,7 +1,6 @@
 package harness
 
 import (
-	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -34,45 +33,23 @@ type TestContext struct {
 	Namespace            string
 	TestID               string
 	MimirLocalPort       string
-	Shard                shardConfig
 	AlloyImageRepository string
 	AlloyImageTag        string
 	ControllerType       string
 	client               *kubernetes.Clientset
+	stopPortForward      func()
 }
 
-var current *TestContext
-
-func Current(t *testing.T) *TestContext {
+func Setup(t *testing.T, opts Options) *TestContext {
 	t.Helper()
-	if current == nil {
-		t.Fatalf("harness is not initialized, use harness.RunTestMain in TestMain")
-	}
-	return current
-}
-
-func RunTestMain(m *testing.M, opts Options) {
-	flag.Parse()
-
-	shard, err := parseShard()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "invalid shard flag: %v\n", err)
-		os.Exit(1)
-	}
-	if !shard.shouldRun(opts.Name) {
-		fmt.Printf("[k8s-itest] skipping package %s for shard %s\n", opts.Name, *shardFlag)
-		os.Exit(0)
-	}
 
 	kubeconfig, err := kubeconfigFromEnv()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		t.Fatalf("%v", err)
 	}
 	client, err := newClient(kubeconfig)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "create kubernetes client: %v\n", err)
-		os.Exit(1)
+		t.Fatalf("create kubernetes client: %v", err)
 	}
 
 	namespace := opts.Namespace
@@ -90,61 +67,60 @@ func RunTestMain(m *testing.M, opts Options) {
 		}
 	}
 
-	current = &TestContext{
+	ctx := &TestContext{
 		Name:                 opts.Name,
 		Namespace:            namespace,
 		TestID:               opts.Name,
 		MimirLocalPort:       pickFreeLocalPort(),
-		Shard:                shard,
 		AlloyImageRepository: imageRepo,
 		AlloyImageTag:        imageTag,
 		ControllerType:       resolveControllerType(opts.Controller),
 		client:               client,
 	}
 
-	if err := ensureCleanNamespace(current); err != nil {
-		fmt.Fprintf(os.Stderr, "prepare namespace: %v\n", err)
-		os.Exit(1)
+	if err := ensureCleanNamespace(ctx); err != nil {
+		t.Fatalf("prepare namespace: %v", err)
 	}
 	for _, backend := range opts.Backends {
 		switch backend {
 		case BackendMimir:
-			if err := installMimir(current.Namespace); err != nil {
-				fmt.Fprintf(os.Stderr, "install mimir: %v\n", err)
-				os.Exit(1)
+			if err := installMimir(ctx.Namespace); err != nil {
+				t.Fatalf("install mimir: %v", err)
 			}
 		default:
-			fmt.Fprintf(os.Stderr, "unsupported backend %q\n", backend)
-			os.Exit(1)
+			t.Fatalf("unsupported backend %q", backend)
 		}
 	}
 
-	if err := applyWorkloads(opts.Workloads, current.Namespace); err != nil {
-		fmt.Fprintf(os.Stderr, "apply workloads: %v\n", err)
-		os.Exit(1)
+	if err := applyWorkloads(opts.Workloads, ctx.Namespace); err != nil {
+		t.Fatalf("apply workloads: %v", err)
 	}
-	if err := installAlloy(current, opts.ConfigPath); err != nil {
-		fmt.Fprintf(os.Stderr, "install alloy: %v\n", err)
-		os.Exit(1)
+	if err := installAlloy(ctx, opts.ConfigPath); err != nil {
+		t.Fatalf("install alloy: %v", err)
 	}
-	var stopPortForward func()
 	if containsBackend(opts.Backends, BackendMimir) {
-		stop, err := startPortForward(current.Namespace, current.MimirLocalPort)
+		stop, err := startPortForward(ctx.Namespace, ctx.MimirLocalPort)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "start mimir port-forward: %v\n", err)
-			os.Exit(1)
+			t.Fatalf("start mimir port-forward: %v", err)
 		}
-		stopPortForward = stop
+		ctx.stopPortForward = stop
 	}
 
-	exitCode := m.Run()
-	if stopPortForward != nil {
-		stopPortForward()
+	return ctx
+}
+
+func (ctx *TestContext) Cleanup(t *testing.T) {
+	t.Helper()
+
+	if ctx.stopPortForward != nil {
+		ctx.stopPortForward()
 	}
-	if exitCode != 0 {
-		collectFailureDiagnostics(current)
+	if t.Failed() {
+		collectFailureDiagnostics(ctx)
 	}
-	os.Exit(exitCode)
+	if err := deleteNamespace(ctx.Namespace); err != nil {
+		t.Logf("cleanup namespace %s failed: %v", ctx.Namespace, err)
+	}
 }
 
 func containsBackend(backends []Backend, backend Backend) bool {
@@ -195,9 +171,6 @@ func resolveControllerType(optionValue string) string {
 	}
 
 	controller := optionValue
-	if controller == "" {
-		controller = os.Getenv("ALLOY_K8S_CONTROLLER_TYPE")
-	}
 	if controller == "" {
 		controller = "deployment"
 	}
