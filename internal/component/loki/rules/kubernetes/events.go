@@ -80,6 +80,9 @@ func (c *Component) processEvent(ctx context.Context, e kubernetes.Event) error 
 }
 
 func (c *Component) syncLoki(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, kubernetes.RulerSyncTimeout)
+	defer cancel()
+
 	rulesByNamespace, err := c.lokiClient.ListRules(ctx, "")
 	if err != nil {
 		level.Error(c.log).Log("msg", "failed to list rules from loki", "err", err)
