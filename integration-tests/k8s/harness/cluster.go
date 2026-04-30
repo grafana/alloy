@@ -1,7 +1,6 @@
 package harness
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +11,7 @@ import (
 
 const (
 	managedClusterEnv = "ALLOY_K8S_MANAGED_CLUSTER"
+	kubeconfigEnv     = "ALLOY_K8S_KUBECONFIG"
 )
 
 func managedClusterEnabled() bool {
@@ -23,17 +23,25 @@ func kubeconfigFromEnv() (string, error) {
 		return "", fmt.Errorf("missing %s=1, run tests with make integration-test-k8s or go run ./integration-tests/k8s/runner", managedClusterEnv)
 	}
 
-	kubeconfig := os.Getenv("KUBECONFIG")
+	kubeconfig := os.Getenv(kubeconfigEnv)
 	if kubeconfig == "" {
-		return "", errors.New("missing KUBECONFIG, run tests with make integration-test-k8s or go run ./integration-tests/k8s/runner")
+		return "", fmt.Errorf("missing %s, run tests with make integration-test-k8s or go run ./integration-tests/k8s/runner", kubeconfigEnv)
 	}
 	if !filepath.IsAbs(kubeconfig) {
-		return "", fmt.Errorf("KUBECONFIG must be an absolute path, got %q", kubeconfig)
+		return "", fmt.Errorf("%s must be an absolute path, got %q", kubeconfigEnv, kubeconfig)
 	}
 	if _, err := os.Stat(kubeconfig); err != nil {
-		return "", fmt.Errorf("KUBECONFIG %q is not accessible: %w", kubeconfig, err)
+		return "", fmt.Errorf("%s %q is not accessible: %w", kubeconfigEnv, kubeconfig, err)
 	}
 	return kubeconfig, nil
+}
+
+func commandEnv() []string {
+	env := os.Environ()
+	if kubeconfig := os.Getenv(kubeconfigEnv); kubeconfig != "" {
+		env = append(env, "KUBECONFIG="+kubeconfig)
+	}
+	return env
 }
 
 func newClient(kubeconfig string) (*kubernetes.Clientset, error) {

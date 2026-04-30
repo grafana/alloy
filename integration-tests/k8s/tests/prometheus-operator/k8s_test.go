@@ -15,6 +15,7 @@ func TestPrometheusOperator(t *testing.T) {
 		Controller: "daemonset",
 	})
 	defer kt.Cleanup(t)
+	mimir := kt.Mimir(t)
 
 	kt.WaitForPodRunning(t, kt.Namespace(), "app.kubernetes.io/name=alloy")
 	kt.WaitForPodRunning(t, kt.Namespace(), "app=prom-gen")
@@ -24,7 +25,7 @@ func TestPrometheusOperator(t *testing.T) {
 	t.Run("ServiceMonitors", func(t *testing.T) {
 		// Check that Mimir received metrics from the ServiceMonitor target.
 		// All metrics are prefixed with test_servicemonitors_ via relabeling.
-		kt.QueryMimirMetrics(t, "servicemonitor", []string{
+		mimir.QueryMetrics(t, "servicemonitor", []string{
 			"test_servicemonitors_golang_counter",
 			"test_servicemonitors_golang_gauge",
 		})
@@ -33,7 +34,7 @@ func TestPrometheusOperator(t *testing.T) {
 	t.Run("PodMonitors", func(t *testing.T) {
 		// Check that Mimir received metrics from the PodMonitor target.
 		// All metrics are prefixed with test_podmonitors_ via relabeling.
-		kt.QueryMimirMetrics(t, "podmonitor", []string{
+		mimir.QueryMetrics(t, "podmonitor", []string{
 			"test_podmonitors_golang_counter",
 			"test_podmonitors_golang_gauge",
 		})
@@ -42,7 +43,7 @@ func TestPrometheusOperator(t *testing.T) {
 	t.Run("Probes", func(t *testing.T) {
 		// Check that Mimir received metrics from the Probe target.
 		// All metrics are prefixed with test_probes_ via relabeling.
-		kt.QueryMimirMetrics(t, "probe", []string{
+		mimir.QueryMetrics(t, "probe", []string{
 			"test_probes_probe_success",
 			"test_probes_probe_duration_seconds",
 		})
@@ -51,7 +52,7 @@ func TestPrometheusOperator(t *testing.T) {
 	t.Run("ScrapeConfigs", func(t *testing.T) {
 		// Check that Mimir received metrics from the ScrapeConfig target.
 		// All metrics are prefixed with test_scrapeconfigs_ via relabeling.
-		kt.QueryMimirMetrics(t, "scrapeconfig", []string{
+		mimir.QueryMetrics(t, "scrapeconfig", []string{
 			"test_scrapeconfigs_golang_counter",
 			"test_scrapeconfigs_golang_gauge",
 		})

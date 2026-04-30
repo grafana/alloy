@@ -51,6 +51,53 @@ type ExpectedMetadata struct {
 	Help string
 }
 
+type MimirDependency struct {
+	localPort       string
+	stopPortForward func()
+}
+
+func newMimirDependency() *MimirDependency {
+	return &MimirDependency{
+		localPort: pickFreeLocalPort(),
+	}
+}
+
+func (m *MimirDependency) Name() Backend {
+	return BackendMimir
+}
+
+func (m *MimirDependency) Install(ctx *TestContext) error {
+	if err := installMimir(ctx.namespace); err != nil {
+		return err
+	}
+	ctx.registerDiagnosticHook("mimir logs", mimirDiagnosticsHook)
+
+	stop, err := startPortForward(ctx.namespace, m.localPort)
+	if err != nil {
+		return err
+	}
+	m.stopPortForward = stop
+	return nil
+}
+
+func (m *MimirDependency) Cleanup() {
+	if m.stopPortForward != nil {
+		m.stopPortForward()
+	}
+}
+
+func (m *MimirDependency) endpoint(path string) string {
+	return "http://localhost:" + m.localPort + path
+}
+
+func (ctx *TestContext) Mimir(t *testing.T) *MimirDependency {
+	t.Helper()
+	if ctx.mimir == nil {
+		t.Fatal("mimir dependency is not installed for this test")
+	}
+	return ctx.mimir
+}
+
 func (ctx *TestContext) WaitForPodRunning(t *testing.T, namespace, labelSelector string) {
 	t.Helper()
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
@@ -66,19 +113,9 @@ func (ctx *TestContext) WaitForPodRunning(t *testing.T, namespace, labelSelector
 	}, timeout, retryInterval)
 }
 
-func (ctx *TestContext) Curl(c *assert.CollectT, url string) string {
-	resp, err := http.Get(url)
-	require.NoError(c, err)
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(c, err)
-	return string(body)
-}
-
-func (ctx *TestContext) QueryMimirMetrics(t *testing.T, alloyIntTest string, expectedMetrics []string) {
+func (m *MimirDependency) QueryMetrics(t *testing.T, alloyIntTest string, expectedMetrics []string) {
 	t.Helper()
-	mimirURL := "http://localhost:" + ctx.mimirLocalPort + "/prometheus/api/v1/"
+	mimirURL := m.endpoint("/prometheus/api/v1/")
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		queryURL, err := url.Parse(mimirURL + "series")
@@ -87,7 +124,7 @@ func (ctx *TestContext) QueryMimirMetrics(t *testing.T, alloyIntTest string, exp
 		values.Add("match[]", "{"+intTestLabel+"=\""+alloyIntTest+"\"}")
 		queryURL.RawQuery = values.Encode()
 		query := queryURL.String()
-		resp := ctx.Curl(c, query)
+		resp := curl(c, query)
 
 		var metricsResponse MetricsResponse
 		err = json.Unmarshal([]byte(resp), &metricsResponse)
@@ -110,12 +147,12 @@ func (ctx *TestContext) QueryMimirMetrics(t *testing.T, alloyIntTest string, exp
 	}, timeout, retryInterval)
 }
 
-func (ctx *TestContext) QueryMimirMetadata(t *testing.T, expectedMetadata map[string]ExpectedMetadata) {
+func (m *MimirDependency) QueryMetadata(t *testing.T, expectedMetadata map[string]ExpectedMetadata) {
 	t.Helper()
-	mimirURL := "http://localhost:" + ctx.mimirLocalPort + "/prometheus/api/v1/"
+	mimirURL := m.endpoint("/prometheus/api/v1/")
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		resp := ctx.Curl(c, mimirURL+"metadata")
+		resp := curl(c, mimirURL+"metadata")
 		var metadataResponse MetadataResponse
 		err := json.Unmarshal([]byte(resp), &metadataResponse)
 		require.NoError(c, err, "failed to parse metadata response: %s", resp)
@@ -143,14 +180,14 @@ func (ctx *TestContext) QueryMimirMetadata(t *testing.T, expectedMetadata map[st
 	}, timeout, retryInterval)
 }
 
-func (ctx *TestContext) CheckMimirConfig(t *testing.T, expectedFile string) {
+func (m *MimirDependency) CheckConfig(t *testing.T, expectedFile string) {
 	t.Helper()
 	expectedMimirConfigBytes, err := os.ReadFile(expectedFile)
 	require.NoError(t, err)
 	expectedMimirConfig := string(expectedMimirConfigBytes)
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		actualMimirConfig := ctx.Curl(c, "http://localhost:"+ctx.mimirLocalPort+"/api/v1/alerts")
+		actualMimirConfig := curl(c, m.endpoint("/api/v1/alerts"))
 		require.Equal(c, expectedMimirConfig, actualMimirConfig)
 	}, timeout, retryInterval)
 }
@@ -166,7 +203,7 @@ func startPortForward(namespace, localPort string) (func(), error) {
 	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
+	cmd.Env = commandEnv()
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
@@ -209,7 +246,7 @@ func collectFailureDiagnostics(ctx *TestContext) {
 		fmt.Printf("[k8s-itest] diagnostics hook done name=%q time=%s\n", hook.name, time.Since(start).Round(time.Millisecond))
 	}
 	fmt.Printf("[k8s-itest] repro: make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/%s'\n", ctx.name)
-	fmt.Printf("[k8s-itest] kubeconfig: %s\n", os.Getenv("KUBECONFIG"))
+	fmt.Printf("[k8s-itest] kubeconfig: %s\n", os.Getenv(kubeconfigEnv))
 }
 
 func namespaceDiagnosticsHook(c context.Context, ctx *TestContext) error {
@@ -250,7 +287,7 @@ func runDiagnosticCommands(c context.Context, commands [][]string) error {
 
 func runDiagnosticCommand(c context.Context, name string, args ...string) error {
 	cmd := exec.CommandContext(c, name, args...)
-	cmd.Env = os.Environ()
+	cmd.Env = commandEnv()
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -266,4 +303,14 @@ func runDiagnosticCommand(c context.Context, name string, args ...string) error 
 		return fmt.Errorf("%s %v timed out: %w", name, args, c.Err())
 	}
 	return fmt.Errorf("%s %v failed: %w", name, args, err)
+}
+
+func curl(c *assert.CollectT, targetURL string) string {
+	resp, err := http.Get(targetURL)
+	require.NoError(c, err)
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(c, err)
+	return string(body)
 }

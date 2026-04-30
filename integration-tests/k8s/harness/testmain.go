@@ -29,12 +29,12 @@ type Options struct {
 type TestContext struct {
 	name                 string
 	namespace            string
-	mimirLocalPort       string
 	alloyImageRepository string
 	alloyImageTag        string
 	controllerType       string
 	client               *kubernetes.Clientset
-	stopPortForward      func()
+	dependencies         []dependency
+	mimir                *MimirDependency
 	diagnosticHooks      []diagnosticHook
 }
 
@@ -72,7 +72,6 @@ func Setup(t *testing.T, opts Options) *TestContext {
 	ctx := &TestContext{
 		name:                 opts.Name,
 		namespace:            namespace,
-		mimirLocalPort:       pickFreeLocalPort(),
 		alloyImageRepository: imageRepo,
 		alloyImageTag:        imageTag,
 		controllerType:       resolveControllerType(opts.Controller),
@@ -84,15 +83,17 @@ func Setup(t *testing.T, opts Options) *TestContext {
 	if err := ensureCleanNamespace(ctx); err != nil {
 		t.Fatalf("prepare namespace: %v", err)
 	}
-	for _, backend := range opts.Backends {
-		switch backend {
-		case BackendMimir:
-			if err := installMimir(ctx.namespace); err != nil {
-				t.Fatalf("install mimir: %v", err)
-			}
-			ctx.registerDiagnosticHook("mimir logs", mimirDiagnosticsHook)
-		default:
-			t.Fatalf("unsupported backend %q", backend)
+	dependencies, err := buildDependencies(opts.Backends)
+	if err != nil {
+		t.Fatalf("resolve dependencies: %v", err)
+	}
+	for _, dep := range dependencies {
+		if err := dep.Install(ctx); err != nil {
+			t.Fatalf("install dependency %q: %v", dep.Name(), err)
+		}
+		ctx.dependencies = append(ctx.dependencies, dep)
+		if mimirDep, ok := dep.(*MimirDependency); ok {
+			ctx.mimir = mimirDep
 		}
 	}
 
@@ -102,13 +103,6 @@ func Setup(t *testing.T, opts Options) *TestContext {
 	if err := installAlloy(ctx, opts.ConfigPath); err != nil {
 		t.Fatalf("install alloy: %v", err)
 	}
-	if containsBackend(opts.Backends, BackendMimir) {
-		stop, err := startPortForward(ctx.namespace, ctx.mimirLocalPort)
-		if err != nil {
-			t.Fatalf("start mimir port-forward: %v", err)
-		}
-		ctx.stopPortForward = stop
-	}
 
 	return ctx
 }
@@ -116,8 +110,8 @@ func Setup(t *testing.T, opts Options) *TestContext {
 func (ctx *TestContext) Cleanup(t *testing.T) {
 	t.Helper()
 
-	if ctx.stopPortForward != nil {
-		ctx.stopPortForward()
+	for i := len(ctx.dependencies) - 1; i >= 0; i-- {
+		ctx.dependencies[i].Cleanup()
 	}
 	if t.Failed() {
 		collectFailureDiagnostics(ctx)
@@ -129,15 +123,6 @@ func (ctx *TestContext) Cleanup(t *testing.T) {
 
 func (ctx *TestContext) Namespace() string {
 	return ctx.namespace
-}
-
-func containsBackend(backends []Backend, backend Backend) bool {
-	for _, b := range backends {
-		if b == backend {
-			return true
-		}
-	}
-	return false
 }
 
 func sanitizeName(name string) string {

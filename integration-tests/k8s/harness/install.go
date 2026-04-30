@@ -13,7 +13,7 @@ func runCommand(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
+	cmd.Env = commandEnv()
 	return cmd.Run()
 }
 
@@ -23,7 +23,7 @@ func runCommandOutput(name string, args ...string) (string, error) {
 	var stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	cmd.Env = os.Environ()
+	cmd.Env = commandEnv()
 	err := cmd.Run()
 	if err != nil {
 		return "", fmt.Errorf("%s %v failed: %w: %s", name, args, err, strings.TrimSpace(stderr.String()))
@@ -80,7 +80,7 @@ func installAlloy(ctx *TestContext, configPath string) error {
 	cmd.Stdin = strings.NewReader(manifest)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = os.Environ()
+	cmd.Env = commandEnv()
 	if err := step("apply alloy configmap", cmd.Run); err != nil {
 		return err
 	}
@@ -123,11 +123,5 @@ func applyWorkloads(path string) error {
 	}
 	return step("apply workloads", func() error {
 		return runCommand("kubectl", "apply", "-f", absPath)
-	})
-}
-
-func DeleteAlertmanagerConfig(namespace, name string) error {
-	return step("delete alertmanagerconfig "+name, func() error {
-		return runCommand("kubectl", "delete", "alertmanagerconfig", name, "--namespace", namespace)
 	})
 }

@@ -13,7 +13,8 @@ import (
 )
 
 const (
-	clusterName = "alloy-k8s-integration"
+	clusterName   = "alloy-k8s-integration"
+	kubeconfigEnv = "ALLOY_K8S_KUBECONFIG"
 )
 
 type config struct {
@@ -191,10 +192,10 @@ func configureKubeEnv(cfg config) error {
 		return fmt.Errorf("kind get kubeconfig: %w", err)
 	}
 
-	if err := os.Setenv("KUBECONFIG", cfg.kubeconfig); err != nil {
+	if err := os.Setenv("ALLOY_K8S_MANAGED_CLUSTER", "1"); err != nil {
 		return err
 	}
-	if err := os.Setenv("ALLOY_K8S_MANAGED_CLUSTER", "1"); err != nil {
+	if err := os.Setenv(kubeconfigEnv, cfg.kubeconfig); err != nil {
 		return err
 	}
 	return os.Setenv("ALLOY_IMAGE", cfg.alloyImage)
@@ -220,11 +221,11 @@ func loadImages(cfg config) error {
 func installPrometheusOperator(version string) error {
 	logf("installing prometheus operator bundle %s", version)
 	url := fmt.Sprintf("https://github.com/prometheus-operator/prometheus-operator/releases/download/%s/bundle.yaml", version)
-	return runCommand("kubectl", "apply", "--server-side", "--validate=false", "-f", url)
+	return runCommand("kubectl", "apply", "--kubeconfig", os.Getenv(kubeconfigEnv), "--server-side", "--validate=false", "-f", url)
 }
 
 func runGoTests(cfg config) error {
-	args := []string{"test", `-tags=gore2regex`, "-timeout", "30m"}
+	args := []string{"test", "-v", `-tags=gore2regex`, "-timeout", "30m"}
 	if cfg.runRegex != "" {
 		args = append(args, "-run", cfg.runRegex)
 	}

@@ -16,18 +16,19 @@ func TestMimirAlerts(t *testing.T) {
 		Controller: "deployment",
 	})
 	defer kt.Cleanup(t)
+	mimir := kt.Mimir(t)
 
 	kt.WaitForPodRunning(t, kt.Namespace(), "app.kubernetes.io/name=alloy")
 	kt.WaitForPodRunning(t, kt.Namespace(), "app.kubernetes.io/component=alertmanager")
 
 	t.Run("Initial Config", func(t *testing.T) {
-		kt.CheckMimirConfig(t, "./expected/expected_1.yml")
+		mimir.CheckConfig(t, "./expected/expected_1.yml")
 	})
 
 	t.Run("Deleted Config", func(t *testing.T) {
-		require.NoError(t, harness.DeleteAlertmanagerConfig(kt.Namespace(), "alertmgr-config2"))
+		require.NoError(t, harness.Kubectl("delete", "alertmanagerconfig", "alertmgr-config2", "--namespace", kt.Namespace()))
 
 		// Mimir's config should now omit the deleted Alertmanagerconfig CRD.
-		kt.CheckMimirConfig(t, "./expected/expected_2.yml")
+		mimir.CheckConfig(t, "./expected/expected_2.yml")
 	})
 }
