@@ -90,12 +90,12 @@ type QuerySamplesArguments struct {
 	CollectInterval               time.Duration
 	ExcludeSchemas                []string
 	EntryHandler                  loki.EntryHandler
+	Registry                      *prometheus.Registry
 	DisableQueryRedaction         bool
 	AutoEnableSetupConsumers      bool
 	SetupConsumersCheckInterval   time.Duration
 	SampleMinDuration             time.Duration
 	WaitEventMinDuration          time.Duration
-	WaitEventCounter              *prometheus.CounterVec
 	EnablePreClassifiedWaitEvents bool
 
 	Logger log.Logger
@@ -107,6 +107,7 @@ type QuerySamples struct {
 	collectInterval               time.Duration
 	excludeSchemas                []string
 	entryHandler                  loki.EntryHandler
+	registry                      *prometheus.Registry
 	disableQueryRedaction         bool
 	autoEnableSetupConsumers      bool
 	setupConsumersCheckInterval   time.Duration
@@ -137,10 +138,18 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		setupConsumersCheckInterval:   args.SetupConsumersCheckInterval,
 		sampleMinDuration:             args.SampleMinDuration,
 		waitEventMinDuration:          args.WaitEventMinDuration,
-		waitEventCounter:              args.WaitEventCounter,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
 		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
+	}
+
+	if args.EnablePreClassifiedWaitEvents && args.Registry != nil {
+		c.registry = args.Registry
+		c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "database_observability_wait_event_seconds_total",
+			Help: "Total wait time in seconds per query, aggregated by query digest and schema.",
+		}, []string{"digest", "schema"})
+		args.Registry.MustRegister(c.waitEventCounter)
 	}
 
 	return c, nil
@@ -203,6 +212,9 @@ func (c *QuerySamples) Stop() {
 		c.cancel()
 	}
 	c.wg.Wait()
+	if c.registry != nil && c.waitEventCounter != nil {
+		c.registry.Unregister(c.waitEventCounter)
+	}
 }
 
 func (c *QuerySamples) runSetupConsumersCheck() {
@@ -433,8 +445,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 				)
 
 				if c.waitEventCounter != nil {
-					waitTimeSeconds := waitTime / 1000.0 // waitTime is in ms
-					c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(waitTimeSeconds)
+					c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(millisecondsToSeconds(waitTime))
 				}
 			} else {
 				waitLogMessage := fmt.Sprintf(

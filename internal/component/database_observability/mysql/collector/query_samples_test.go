@@ -3110,24 +3110,19 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki.NewCollectingHandler()
-
-		fullCounter := prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "db_obs_wait_event_seconds_total_test",
-			Help: "Test counter",
-		}, []string{"server_id", "digest", "schema"})
-		curriedCounter, err := fullCounter.CurryWith(prometheus.Labels{"server_id": "srv"})
-		require.NoError(t, err)
+		registry := prometheus.NewRegistry()
 
 		collector, err := NewQuerySamples(QuerySamplesArguments{
 			DB:                            db,
 			EngineVersion:                 latestCompatibleVersion,
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
+			Registry:                      registry,
 			Logger:                        log.NewLogfmtLogger(os.Stderr),
-			WaitEventCounter:              curriedCounter,
 			EnablePreClassifiedWaitEvents: true,
 		})
 		require.NoError(t, err)
+		require.NotNil(t, collector.waitEventCounter)
 
 		rows := [][]driver.Value{
 			// (digest_A, schema_X): two rows, 0.1ms + 0.2ms = 0.3ms
@@ -3199,10 +3194,9 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 		require.Len(t, expected, 3, "digest_C has no wait event, so only 3 (digest, schema) groups should be seen")
 
 		for key, expSec := range expected {
-			counter, err := fullCounter.GetMetricWith(prometheus.Labels{
-				"server_id": "srv",
-				"digest":    key[0],
-				"schema":    key[1],
+			counter, err := collector.waitEventCounter.GetMetricWith(prometheus.Labels{
+				"digest": key[0],
+				"schema": key[1],
 			})
 			require.NoError(t, err)
 			var m dto.Metric
