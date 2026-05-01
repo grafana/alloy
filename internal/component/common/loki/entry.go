@@ -1,6 +1,7 @@
 package loki
 
 import (
+	"slices"
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
@@ -47,8 +48,12 @@ type Entry struct {
 func (e *Entry) Clone() Entry {
 	return Entry{
 		Labels:  e.Labels.Clone(),
-		Entry:   e.Entry,
 		created: e.created,
+		Entry: push.Entry{
+			Timestamp:          e.Entry.Timestamp,
+			Line:               e.Entry.Line,
+			StructuredMetadata: slices.Clone(e.Entry.StructuredMetadata),
+		},
 	}
 }
 

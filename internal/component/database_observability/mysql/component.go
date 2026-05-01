@@ -738,6 +738,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
 		DB:              c.dbConnection,
 		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
+		ExcludeSchemas:  c.args.ExcludeSchemas,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
 	})
