@@ -192,6 +192,7 @@ func createContainerRequest(dirName, testDir string, port int, networkName strin
 	if len(cfg.Container.Ports) > 0 {
 		for _, pm := range cfg.Container.Ports {
 			portStr := fmt.Sprintf("%d/%s", pm.Container, pm.Protocol)
+			exposedPorts = append(exposedPorts, portStr)
 			portBindings[network.MustParsePort(portStr)] = []network.PortBinding{
 				{
 					HostIP: hostIP, HostPort: strconv.Itoa(pm.Host),
