@@ -37,6 +37,9 @@ jobs:
     # transitive deps slipping in unguarded.
     name: Maintain developer-friendly mac-to-linux cross-compile
     runs-on: macos-15-xlarge
+    env:
+      CGO_ENABLED: 0
+      GOOS: linux
     steps:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -47,11 +50,7 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
-    - name: Build collector linux/amd64
-      run: cd collector && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build .
-    - name: Build collector linux/arm64
-      run: cd collector && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build .
-    - name: Build pyroscope playground linux/amd64
-      run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./internal/component/pyroscope/util/internal/cmd/playground
-    - name: Build pyroscope playground linux/arm64
-      run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./internal/component/pyroscope/util/internal/cmd/playground
+    - run: cd collector && GOARCH=amd64 go build .
+    - run: cd collector && GOARCH=arm64 go build .
+    - run: GOARCH=amd64 go build ./internal/component/pyroscope/util/internal/cmd/playground
+    - run: GOARCH=arm64 go build ./internal/component/pyroscope/util/internal/cmd/playground
