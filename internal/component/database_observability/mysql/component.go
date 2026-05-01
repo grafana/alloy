@@ -621,6 +621,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
 			ExcludeSchemas:                c.args.ExcludeSchemas,
 			EntryHandler:                  entryHandler,
+			Registry:                      c.registry,
 			Logger:                        c.opts.Logger,
 			DisableQueryRedaction:         c.args.QuerySamplesArguments.DisableQueryRedaction,
 			AutoEnableSetupConsumers:      c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,

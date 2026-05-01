@@ -10,6 +10,7 @@ import (
 
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -89,6 +90,7 @@ type QuerySamplesArguments struct {
 	CollectInterval               time.Duration
 	ExcludeSchemas                []string
 	EntryHandler                  loki.EntryHandler
+	Registry                      *prometheus.Registry
 	DisableQueryRedaction         bool
 	AutoEnableSetupConsumers      bool
 	SetupConsumersCheckInterval   time.Duration
@@ -105,11 +107,13 @@ type QuerySamples struct {
 	collectInterval               time.Duration
 	excludeSchemas                []string
 	entryHandler                  loki.EntryHandler
+	registry                      *prometheus.Registry
 	disableQueryRedaction         bool
 	autoEnableSetupConsumers      bool
 	setupConsumersCheckInterval   time.Duration
 	sampleMinDuration             time.Duration
 	waitEventMinDuration          time.Duration
+	waitEventCounter              *prometheus.CounterVec
 	enablePreClassifiedWaitEvents bool
 
 	logger  log.Logger
@@ -137,6 +141,16 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
 		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
+	}
+
+	if args.EnablePreClassifiedWaitEvents && args.Registry != nil {
+		c.registry = args.Registry
+		c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "database_observability",
+			Name:      "wait_event_seconds_total",
+			Help:      "Total duration of wait events in seconds.",
+		}, []string{"digest", "schema"})
+		args.Registry.MustRegister(c.waitEventCounter)
 	}
 
 	return c, nil
@@ -199,6 +213,9 @@ func (c *QuerySamples) Stop() {
 		c.cancel()
 	}
 	c.wg.Wait()
+	if c.registry != nil && c.waitEventCounter != nil {
+		c.registry.Unregister(c.waitEventCounter)
+	}
 }
 
 func (c *QuerySamples) runSetupConsumersCheck() {
@@ -427,6 +444,10 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 					waitV2LogMessage,
 					int64(millisecondsToNanoseconds(row.TimestampMilliseconds)),
 				)
+
+				if c.waitEventCounter != nil {
+					c.waitEventCounter.WithLabelValues(row.Digest.String, row.Schema.String).Add(picosecondsToSeconds(row.WaitTime.Float64))
+				}
 			} else {
 				waitLogMessage := fmt.Sprintf(
 					`schema="%s" user="%s" client_host="%s" thread_id="%s" digest="%s" event_id="%s" wait_event_id="%s" wait_end_event_id="%s" wait_event_name="%s" wait_object_name="%s" wait_object_type="%s" wait_time="%fms"`,
