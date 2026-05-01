@@ -17,11 +17,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/client"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -98,7 +97,7 @@ func (t *tailer) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			res, err := t.client.ContainerInspect(ctx, t.containerID)
+			res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
 					level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
@@ -106,13 +105,13 @@ func (t *tailer) Run(ctx context.Context) {
 				continue
 			}
 
-			finished, err := time.Parse(time.RFC3339Nano, res.State.FinishedAt)
+			finished, err := time.Parse(time.RFC3339Nano, res.Container.State.FinishedAt)
 			if err != nil {
 				level.Error(t.logger).Log("msg", "error parsing finished time for Docker container", "id", t.containerID, "error", err)
 				finished = time.Unix(0, 0)
 			}
 
-			if res.State.Running || finished.Unix() >= t.last.Load() {
+			if res.Container.State.Running || finished.Unix() >= t.last.Load() {
 				t.startIfNotRunning()
 			}
 		case <-ctx.Done():
@@ -131,14 +130,14 @@ func (t *tailer) startIfNotRunning() {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerID)
 
 		ctx := context.Background()
-		info, err := t.client.ContainerInspect(ctx, t.containerID)
+		info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 		if err != nil {
 			level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerID, "err", err)
 			t.err = err
 			return
 		}
 
-		reader, err := t.client.ContainerLogs(ctx, t.containerID, container.LogsOptions{
+		reader, err := t.client.ContainerLogs(ctx, t.containerID, client.ContainerLogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
 			Follow:     true,
@@ -156,7 +155,7 @@ func (t *tailer) startIfNotRunning() {
 		t.running = true
 		// processLoop will start 3 goroutines that we need to wait for if Stop is called.
 		t.wg.Add(3)
-		go t.processLoop(ctx, info.Config.Tty, reader)
+		go t.processLoop(ctx, info.Container.Config.Tty, reader)
 	}
 }
 
