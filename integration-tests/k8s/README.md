@@ -20,8 +20,8 @@ make integration-test-k8s RUN_ARGS='--shard 0/2'
 make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/prometheus-operator'
 ```
 
-Controller type is chosen per test package in `Setup(...)` via
-`harness.Options{Controller: ...}`.
+Controller type is chosen per test package via
+`deps.NewAlloy(deps.AlloyOptions{Controller: ...})`.
 
 If reuse mode leaves a broken cluster behind:
 

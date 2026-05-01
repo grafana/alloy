@@ -1,6 +1,7 @@
 package harness
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"os"
@@ -11,19 +12,10 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type Backend string
-
-const (
-	BackendMimir Backend = "mimir"
-)
-
 type Options struct {
-	Name       string
-	ConfigPath string
-	Workloads  string
-	Backends   []Backend
-	Namespace  string
-	Controller string
+	Name         string
+	Dependencies []Dependency
+	Namespace    string
 }
 
 type TestContext struct {
@@ -31,10 +23,8 @@ type TestContext struct {
 	namespace            string
 	alloyImageRepository string
 	alloyImageTag        string
-	controllerType       string
 	client               *kubernetes.Clientset
-	dependencies         []dependency
-	mimir                *MimirDependency
+	dependencies         []Dependency
 	diagnosticHooks      []diagnosticHook
 }
 
@@ -55,7 +45,7 @@ func Setup(t *testing.T, opts Options) *TestContext {
 	}
 
 	namespace := opts.Namespace
-	if namespace == "" {
+	if namespace == "" { // If no namespace is provided, generate a default namespace.
 		namespace = "test-" + sanitizeName(opts.Name)
 	}
 
@@ -74,34 +64,18 @@ func Setup(t *testing.T, opts Options) *TestContext {
 		namespace:            namespace,
 		alloyImageRepository: imageRepo,
 		alloyImageTag:        imageTag,
-		controllerType:       resolveControllerType(opts.Controller),
 		client:               client,
 	}
-	ctx.registerDiagnosticHook("namespace state", namespaceDiagnosticsHook)
-	ctx.registerDiagnosticHook("alloy logs", alloyDiagnosticsHook)
-
+	ctx.AddDiagnosticHook("namespace state", namespaceDiagnosticsHook(ctx.namespace))
 	if err := ensureCleanNamespace(ctx); err != nil {
 		t.Fatalf("prepare namespace: %v", err)
 	}
-	dependencies, err := buildDependencies(opts.Backends)
-	if err != nil {
-		t.Fatalf("resolve dependencies: %v", err)
-	}
-	for _, dep := range dependencies {
+
+	for _, dep := range opts.Dependencies {
 		if err := dep.Install(ctx); err != nil {
 			t.Fatalf("install dependency %q: %v", dep.Name(), err)
 		}
 		ctx.dependencies = append(ctx.dependencies, dep)
-		if mimirDep, ok := dep.(*MimirDependency); ok {
-			ctx.mimir = mimirDep
-		}
-	}
-
-	if err := applyWorkloads(opts.Workloads); err != nil {
-		t.Fatalf("apply workloads: %v", err)
-	}
-	if err := installAlloy(ctx, opts.ConfigPath); err != nil {
-		t.Fatalf("install alloy: %v", err)
 	}
 
 	return ctx
@@ -110,19 +84,24 @@ func Setup(t *testing.T, opts Options) *TestContext {
 func (ctx *TestContext) Cleanup(t *testing.T) {
 	t.Helper()
 
-	for i := len(ctx.dependencies) - 1; i >= 0; i-- {
-		ctx.dependencies[i].Cleanup()
-	}
 	if t.Failed() {
 		collectFailureDiagnostics(ctx)
 	}
-	if err := deleteNamespace(ctx.namespace); err != nil {
-		t.Logf("cleanup namespace %s failed: %v", ctx.namespace, err)
+	for i := len(ctx.dependencies) - 1; i >= 0; i-- {
+		ctx.dependencies[i].Cleanup()
 	}
 }
 
 func (ctx *TestContext) Namespace() string {
 	return ctx.namespace
+}
+
+func (ctx *TestContext) Name() string {
+	return ctx.name
+}
+
+func (ctx *TestContext) AddDiagnosticHook(name string, fn func(context.Context) error) {
+	ctx.diagnosticHooks = append(ctx.diagnosticHooks, diagnosticHook{name: name, fn: fn})
 }
 
 func sanitizeName(name string) string {
@@ -154,22 +133,4 @@ func repoRootFromCwd() (string, error) {
 		}
 		dir = next
 	}
-}
-
-func resolveControllerType(optionValue string) string {
-	valid := map[string]struct{}{
-		"deployment":  {},
-		"daemonset":   {},
-		"statefulset": {},
-	}
-
-	controller := optionValue
-	if controller == "" {
-		controller = "deployment"
-	}
-	if _, ok := valid[controller]; !ok {
-		fmt.Fprintf(os.Stderr, "invalid controller type %q (expected deployment|daemonset|statefulset)\n", controller)
-		os.Exit(1)
-	}
-	return controller
 }

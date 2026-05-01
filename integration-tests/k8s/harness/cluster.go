@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	managedClusterEnv = "ALLOY_K8S_MANAGED_CLUSTER"
-	kubeconfigEnv     = "ALLOY_K8S_KUBECONFIG"
+	managedClusterEnv = "ALLOY_TESTS_MANAGED_CLUSTER"
+	kubeconfigEnv     = "ALLOY_TESTS_KUBECONFIG"
 )
 
 func managedClusterEnabled() bool {

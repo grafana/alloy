@@ -3,24 +3,34 @@ package prometheusoperator
 import (
 	"testing"
 
+	"github.com/grafana/alloy/integration-tests/k8s/deps"
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
 )
 
 func TestPrometheusOperator(t *testing.T) {
-	kt := harness.Setup(t, harness.Options{
-		Name:       "prometheus-operator",
+	testNamespace := "test-prometheus-operator"
+	mimir := deps.NewMimir(deps.MimirOptions{Namespace: testNamespace})
+	alloy := deps.NewAlloy(deps.AlloyOptions{
+		Namespace:  testNamespace,
 		ConfigPath: "./config/config.alloy",
-		Workloads:  "./config/workloads.yaml",
-		Backends:   []harness.Backend{harness.BackendMimir},
 		Controller: "daemonset",
+		Release:    "alloy-prometheus-operator",
+	})
+	workloads := deps.NewCustomWorkloads(deps.CustomWorkloadsOptions{
+		Path:              "./config/workloads.yaml",
+		ManagedNamespaces: []string{testNamespace},
+	})
+	kt := harness.Setup(t, harness.Options{
+		Name:         "prometheus-operator",
+		Dependencies: []harness.Dependency{mimir, workloads, alloy},
+		Namespace:    testNamespace,
 	})
 	defer kt.Cleanup(t)
-	mimir := kt.Mimir(t)
 
-	kt.WaitForPodRunning(t, kt.Namespace(), "app.kubernetes.io/name=alloy")
-	kt.WaitForPodRunning(t, kt.Namespace(), "app=prom-gen")
-	kt.WaitForPodRunning(t, kt.Namespace(), "app=blackbox-exporter")
-	kt.WaitForPodRunning(t, kt.Namespace(), "app.kubernetes.io/component=distributor")
+	kt.WaitForAllPodsRunning(t, kt.Namespace(), "app.kubernetes.io/name=alloy")
+	kt.WaitForAllPodsRunning(t, kt.Namespace(), "app=prom-gen")
+	kt.WaitForAllPodsRunning(t, kt.Namespace(), "app=blackbox-exporter")
+	kt.WaitForAllPodsRunning(t, kt.Namespace(), "app.kubernetes.io/component=distributor")
 
 	t.Run("ServiceMonitors", func(t *testing.T) {
 		// Check that Mimir received metrics from the ServiceMonitor target.

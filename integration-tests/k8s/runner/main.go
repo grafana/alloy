@@ -14,7 +14,8 @@ import (
 
 const (
 	clusterName   = "alloy-k8s-integration"
-	kubeconfigEnv = "ALLOY_K8S_KUBECONFIG"
+	kubeconfigEnv = "ALLOY_TESTS_KUBECONFIG"
+	managedEnv    = "ALLOY_TESTS_MANAGED_CLUSTER"
 )
 
 type config struct {
@@ -192,7 +193,7 @@ func configureKubeEnv(cfg config) error {
 		return fmt.Errorf("kind get kubeconfig: %w", err)
 	}
 
-	if err := os.Setenv("ALLOY_K8S_MANAGED_CLUSTER", "1"); err != nil {
+	if err := os.Setenv(managedEnv, "1"); err != nil {
 		return err
 	}
 	if err := os.Setenv(kubeconfigEnv, cfg.kubeconfig); err != nil {

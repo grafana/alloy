@@ -1,4 +1,4 @@
-package harness
+package deps
 
 import (
 	"bytes"
@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -15,10 +16,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/integration-tests/k8s/harness"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
@@ -26,6 +26,8 @@ const (
 	timeout       = 5 * time.Minute
 	retryInterval = 500 * time.Millisecond
 	diagTimeout   = 20 * time.Second
+
+	kubeconfigEnv = "ALLOY_TESTS_KUBECONFIG"
 )
 
 type MetricsResponse struct {
@@ -51,69 +53,53 @@ type ExpectedMetadata struct {
 	Help string
 }
 
-type MimirDependency struct {
+type Mimir struct {
+	namespace       string
 	localPort       string
 	stopPortForward func()
 }
 
-func newMimirDependency() *MimirDependency {
-	return &MimirDependency{
-		localPort: pickFreeLocalPort(),
+type MimirOptions struct {
+	Namespace string
+}
+
+func NewMimir(opts MimirOptions) *Mimir {
+	return &Mimir{namespace: opts.Namespace}
+}
+
+func (m *Mimir) Name() string {
+	return "mimir"
+}
+
+func (m *Mimir) Install(ctx *harness.TestContext) error {
+	if m.namespace == "" {
+		m.namespace = ctx.Namespace()
 	}
-}
+	if m.namespace == "" {
+		return fmt.Errorf("mimir namespace is required")
+	}
 
-func (m *MimirDependency) Name() Backend {
-	return BackendMimir
-}
-
-func (m *MimirDependency) Install(ctx *TestContext) error {
-	if err := installMimir(ctx.namespace); err != nil {
+	if err := installMimir(m.namespace); err != nil {
 		return err
 	}
-	ctx.registerDiagnosticHook("mimir logs", mimirDiagnosticsHook)
+	ctx.AddDiagnosticHook("mimir logs", m.diagnosticsHook())
 
-	stop, err := startPortForward(ctx.namespace, m.localPort)
+	localPort, stop, err := startPortForwardWithRetries(m.namespace, 5)
 	if err != nil {
 		return err
 	}
+	m.localPort = localPort
 	m.stopPortForward = stop
 	return nil
 }
 
-func (m *MimirDependency) Cleanup() {
+func (m *Mimir) Cleanup() {
 	if m.stopPortForward != nil {
 		m.stopPortForward()
 	}
 }
 
-func (m *MimirDependency) endpoint(path string) string {
-	return "http://localhost:" + m.localPort + path
-}
-
-func (ctx *TestContext) Mimir(t *testing.T) *MimirDependency {
-	t.Helper()
-	if ctx.mimir == nil {
-		t.Fatal("mimir dependency is not installed for this test")
-	}
-	return ctx.mimir
-}
-
-func (ctx *TestContext) WaitForPodRunning(t *testing.T, namespace, labelSelector string) {
-	t.Helper()
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		pods, err := ctx.client.CoreV1().Pods(namespace).List(t.Context(), metav1.ListOptions{
-			LabelSelector: labelSelector,
-		})
-		require.NoError(c, err)
-		require.NotEmpty(c, pods.Items, "no pods for namespace=%s selector=%s", namespace, labelSelector)
-		for _, pod := range pods.Items {
-			require.Nil(c, pod.DeletionTimestamp, "pod %s is deleting", pod.Name)
-			require.Equal(c, corev1.PodRunning, pod.Status.Phase, "pod %s is not running", pod.Name)
-		}
-	}, timeout, retryInterval)
-}
-
-func (m *MimirDependency) QueryMetrics(t *testing.T, alloyIntTest string, expectedMetrics []string) {
+func (m *Mimir) QueryMetrics(t *testing.T, alloyIntTest string, expectedMetrics []string) {
 	t.Helper()
 	mimirURL := m.endpoint("/prometheus/api/v1/")
 
@@ -123,8 +109,7 @@ func (m *MimirDependency) QueryMetrics(t *testing.T, alloyIntTest string, expect
 		values := queryURL.Query()
 		values.Add("match[]", "{"+intTestLabel+"=\""+alloyIntTest+"\"}")
 		queryURL.RawQuery = values.Encode()
-		query := queryURL.String()
-		resp := curl(c, query)
+		resp := curl(c, queryURL.String())
 
 		var metricsResponse MetricsResponse
 		err = json.Unmarshal([]byte(resp), &metricsResponse)
@@ -147,7 +132,7 @@ func (m *MimirDependency) QueryMetrics(t *testing.T, alloyIntTest string, expect
 	}, timeout, retryInterval)
 }
 
-func (m *MimirDependency) QueryMetadata(t *testing.T, expectedMetadata map[string]ExpectedMetadata) {
+func (m *Mimir) QueryMetadata(t *testing.T, expectedMetadata map[string]ExpectedMetadata) {
 	t.Helper()
 	mimirURL := m.endpoint("/prometheus/api/v1/")
 
@@ -180,7 +165,7 @@ func (m *MimirDependency) QueryMetadata(t *testing.T, expectedMetadata map[strin
 	}, timeout, retryInterval)
 }
 
-func (m *MimirDependency) CheckConfig(t *testing.T, expectedFile string) {
+func (m *Mimir) CheckConfig(t *testing.T, expectedFile string) {
 	t.Helper()
 	expectedMimirConfigBytes, err := os.ReadFile(expectedFile)
 	require.NoError(t, err)
@@ -190,6 +175,68 @@ func (m *MimirDependency) CheckConfig(t *testing.T, expectedFile string) {
 		actualMimirConfig := curl(c, m.endpoint("/api/v1/alerts"))
 		require.Equal(c, expectedMimirConfig, actualMimirConfig)
 	}, timeout, retryInterval)
+}
+
+func (m *Mimir) endpoint(path string) string {
+	return "http://localhost:" + m.localPort + path
+}
+
+func (m *Mimir) diagnosticsHook() func(context.Context) error {
+	namespace := m.namespace
+	return func(c context.Context) error {
+		hookCtx, cancel := context.WithTimeout(c, diagTimeout)
+		defer cancel()
+		return runDiagnosticCommands(hookCtx, [][]string{
+			{"kubectl", "--namespace", namespace, "logs", "-l", "app.kubernetes.io/component=distributor", "--all-containers=true", "--tail", "200"},
+			{"kubectl", "--namespace", namespace, "logs", "-l", "app.kubernetes.io/component=alertmanager", "--all-containers=true", "--tail", "200"},
+		})
+	}
+}
+
+func installMimir(namespace string) error {
+	if err := step("helm repo add grafana", func() error {
+		return runCommand("helm", "repo", "add", "grafana", "https://grafana.github.io/helm-charts")
+	}); err != nil {
+		return err
+	}
+	if err := step("helm repo update", func() error {
+		return runCommand("helm", "repo", "update")
+	}); err != nil {
+		return err
+	}
+	return step("install mimir", func() error {
+		return runCommand(
+			"helm",
+			"upgrade",
+			"--install",
+			"mimir",
+			"grafana/mimir-distributed",
+			"--version", "5.8.0",
+			"--namespace", namespace,
+			"--create-namespace",
+			"--wait",
+		)
+	})
+}
+
+func startPortForwardWithRetries(namespace string, attempts int) (string, func(), error) {
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		localPort, err := pickFreeLocalPort()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		stop, err := startPortForward(namespace, localPort)
+		if err == nil {
+			return localPort, stop, nil
+		}
+		lastErr = err
+	}
+	if lastErr == nil {
+		lastErr = fmt.Errorf("unable to allocate local port for port-forward")
+	}
+	return "", nil, fmt.Errorf("failed to start mimir port-forward after %d attempts: %w", attempts, lastErr)
 }
 
 func startPortForward(namespace, localPort string) (func(), error) {
@@ -207,66 +254,40 @@ func startPortForward(namespace, localPort string) (func(), error) {
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
+
+	waitCh := make(chan error, 1)
+	go func() {
+		waitCh <- cmd.Wait()
+	}()
+
+	select {
+	case err := <-waitCh:
+		return nil, fmt.Errorf("port-forward exited early: %w", err)
+	case <-time.After(500 * time.Millisecond):
+	}
+
 	return func() {
 		if cmd.Process != nil {
 			_ = cmd.Process.Kill()
 		}
-		done := make(chan struct{})
-		go func() {
-			_ = cmd.Wait()
-			close(done)
-		}()
 		select {
-		case <-done:
+		case <-waitCh:
 		case <-time.After(5 * time.Second):
 		}
 	}, nil
 }
 
-type diagnosticHook struct {
-	name string
-	fn   func(context.Context, *TestContext) error
-}
-
-func (ctx *TestContext) registerDiagnosticHook(name string, fn func(context.Context, *TestContext) error) {
-	ctx.diagnosticHooks = append(ctx.diagnosticHooks, diagnosticHook{name: name, fn: fn})
-}
-
-func collectFailureDiagnostics(ctx *TestContext) {
-	fmt.Printf("[k8s-itest] collecting failure diagnostics namespace=%s\n", ctx.namespace)
-	for _, hook := range ctx.diagnosticHooks {
-		hookCtx, cancel := context.WithTimeout(context.Background(), diagTimeout)
-		start := time.Now()
-		err := hook.fn(hookCtx, ctx)
-		cancel()
-		if err != nil {
-			fmt.Printf("[k8s-itest] diagnostics hook failed name=%q time=%s err=%v\n", hook.name, time.Since(start).Round(time.Millisecond), err)
-			continue
-		}
-		fmt.Printf("[k8s-itest] diagnostics hook done name=%q time=%s\n", hook.name, time.Since(start).Round(time.Millisecond))
+func pickFreeLocalPort() (string, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return "", err
 	}
-	fmt.Printf("[k8s-itest] repro: make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/%s'\n", ctx.name)
-	fmt.Printf("[k8s-itest] kubeconfig: %s\n", os.Getenv(kubeconfigEnv))
-}
-
-func namespaceDiagnosticsHook(c context.Context, ctx *TestContext) error {
-	return runDiagnosticCommands(c, [][]string{
-		{"kubectl", "--namespace", ctx.namespace, "get", "pods", "-o", "wide"},
-		{"kubectl", "--namespace", ctx.namespace, "describe", "pods"},
-	})
-}
-
-func alloyDiagnosticsHook(c context.Context, ctx *TestContext) error {
-	return runDiagnosticCommands(c, [][]string{
-		{"kubectl", "--namespace", ctx.namespace, "logs", "-l", "app.kubernetes.io/name=alloy", "--all-containers=true", "--tail", "200"},
-	})
-}
-
-func mimirDiagnosticsHook(c context.Context, ctx *TestContext) error {
-	return runDiagnosticCommands(c, [][]string{
-		{"kubectl", "--namespace", ctx.namespace, "logs", "-l", "app.kubernetes.io/component=distributor", "--all-containers=true", "--tail", "200"},
-		{"kubectl", "--namespace", ctx.namespace, "logs", "-l", "app.kubernetes.io/component=alertmanager", "--all-containers=true", "--tail", "200"},
-	})
+	defer l.Close()
+	_, port, err := net.SplitHostPort(l.Addr().String())
+	if err != nil {
+		return "", err
+	}
+	return port, nil
 }
 
 func runDiagnosticCommands(c context.Context, commands [][]string) error {
@@ -303,6 +324,34 @@ func runDiagnosticCommand(c context.Context, name string, args ...string) error 
 		return fmt.Errorf("%s %v timed out: %w", name, args, c.Err())
 	}
 	return fmt.Errorf("%s %v failed: %w", name, args, err)
+}
+
+func runCommand(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Env = commandEnv()
+	return cmd.Run()
+}
+
+func commandEnv() []string {
+	env := os.Environ()
+	if kubeconfig := os.Getenv(kubeconfigEnv); kubeconfig != "" {
+		env = append(env, "KUBECONFIG="+kubeconfig)
+	}
+	return env
+}
+
+func step(name string, fn func() error) error {
+	start := time.Now()
+	fmt.Printf("[k8s-itest] %s...\n", name)
+	err := fn()
+	if err != nil {
+		fmt.Printf("[k8s-itest] failed %s time=%s err=%v\n", name, time.Since(start).Round(time.Millisecond), err)
+		return err
+	}
+	fmt.Printf("[k8s-itest] done %s time=%s\n", name, time.Since(start).Round(time.Millisecond))
+	return nil
 }
 
 func curl(c *assert.CollectT, targetURL string) string {
