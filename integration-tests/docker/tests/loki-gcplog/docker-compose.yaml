@@ -1,7 +1,6 @@
 services:
   pubsub-emulator:
     image: messagebird/gcloud-pubsub-emulator@sha256:7ac0917f6278e3c1d27ecc3d390edfe913b66887ea23af9d3aa459e766ed736c
-    container_name: pubsub-emulator
     environment:
       # Pre-create the topic+subscription pair on boot so Alloy can start subscribing
       # immediately and the test publisher has a topic to publish to.

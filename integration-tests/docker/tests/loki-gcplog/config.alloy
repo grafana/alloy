@@ -106,8 +106,7 @@ loki.process "pull" {
 	forward_to = [loki.relabel.test.receiver]
 }
 
-// Drop labels that should not be indexed (they are already promoted to
-// structured metadata by the stage above).
+// Drop labels that should not be indexed.
 loki.relabel "test" {
 	forward_to = [loki.write.test.receiver]
 
