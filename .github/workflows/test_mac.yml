@@ -31,8 +31,11 @@ jobs:
     - name: Test
       run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
 
-  cross-compile-collector-linux-nocgo:
-    name: Cross-compile collector for linux with CGO disabled
+  cross-compile-mac-to-linux-nocgo:
+    # Keeps mac-to-linux cross-compilation working for developers who build
+    # Alloy on macOS but test/run on linux. Catches regressions like CGO-only
+    # transitive deps slipping in unguarded.
+    name: Maintain developer-friendly mac-to-linux cross-compile
     runs-on: macos-15-xlarge
     steps:
     - name: Checkout code
@@ -44,7 +47,11 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
-    - name: Build linux/amd64
+    - name: Build collector linux/amd64
       run: cd collector && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build .
-    - name: Build linux/arm64
+    - name: Build collector linux/arm64
       run: cd collector && CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build .
+    - name: Build pyroscope playground linux/amd64
+      run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./internal/component/pyroscope/util/internal/cmd/playground
+    - name: Build pyroscope playground linux/arm64
+      run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./internal/component/pyroscope/util/internal/cmd/playground

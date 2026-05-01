@@ -27,21 +27,3 @@ jobs:
           cache: false
 
       - run: sudo make test-pyroscope
-
-  cross-compile-pyroscope-playground-linux-nocgo:
-    name: Cross-compile pyroscope playground for linux with CGO disabled
-    runs-on: macos-15-xlarge
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-      - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-        with:
-          go-version-file: go.mod
-          cache: false
-      - name: Build linux/amd64
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build ./internal/component/pyroscope/util/internal/cmd/playground
-      - name: Build linux/arm64
-        run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build ./internal/component/pyroscope/util/internal/cmd/playground
