@@ -2,10 +2,7 @@ package harness
 
 import (
 	"context"
-	"fmt"
-	"net"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -106,31 +103,4 @@ func (ctx *TestContext) AddDiagnosticHook(name string, fn func(context.Context) 
 
 func sanitizeName(name string) string {
 	return strings.ReplaceAll(name, "_", "-")
-}
-
-func pickFreeLocalPort() string {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return "22021"
-	}
-	defer l.Close()
-	parts := strings.Split(l.Addr().String(), ":")
-	return parts[len(parts)-1]
-}
-
-func repoRootFromCwd() (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-	for {
-		if _, statErr := os.Stat(filepath.Join(dir, "go.mod")); statErr == nil {
-			return dir, nil
-		}
-		next := filepath.Dir(dir)
-		if next == dir {
-			return "", fmt.Errorf("unable to find repo root from %s", dir)
-		}
-		dir = next
-	}
 }

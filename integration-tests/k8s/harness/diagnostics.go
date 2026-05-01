@@ -44,14 +44,6 @@ func namespaceDiagnosticsHook(namespace string) func(context.Context) error {
 	}
 }
 
-func alloyDiagnosticsHook(namespace string) func(context.Context) error {
-	return func(c context.Context) error {
-		return runDiagnosticCommands(c, [][]string{
-			{"kubectl", "--namespace", namespace, "logs", "-l", "app.kubernetes.io/name=alloy", "--all-containers=true", "--tail", "200"},
-		})
-	}
-}
-
 func runDiagnosticCommands(c context.Context, commands [][]string) error {
 	var errs []string
 	for _, args := range commands {

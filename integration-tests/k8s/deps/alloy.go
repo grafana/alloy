@@ -23,6 +23,8 @@ type Alloy struct {
 	opts AlloyOptions
 }
 
+const defaultAlloyController = "deployment"
+
 func NewAlloy(opts AlloyOptions) *Alloy {
 	return &Alloy{opts: opts}
 }
@@ -47,7 +49,7 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 
 	controller := a.opts.Controller
 	if controller == "" {
-		controller = "deployment"
+		controller = defaultAlloyController
 	}
 	if controller != "deployment" && controller != "daemonset" && controller != "statefulset" {
 		return fmt.Errorf("invalid alloy controller type %q (expected deployment|daemonset|statefulset)", controller)
@@ -114,7 +116,7 @@ func (a *Alloy) Install(ctx *harness.TestContext) error {
 		"--set", "alloy.configMap.name=alloy-config",
 		"--set", "alloy.configMap.key=config.alloy",
 	}
-	if controller == "deployment" {
+	if controller == defaultAlloyController {
 		args = append(args, "--set", "controller.replicas=1")
 	}
 	if err := runCommand(args[0], args[1:]...); err != nil {
