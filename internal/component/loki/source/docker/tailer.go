@@ -19,8 +19,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
-	"github.com/moby/moby/client"
 	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/client"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
