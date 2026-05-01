@@ -6,7 +6,9 @@ dist:
   output_path: .
 
 extensions:
-  - gomod: github.com/grafana/alloy/extension/alloyengine v0.1.0
+  - gomod: github.com/grafana/alloy v1.16.0 # x-release-please-version
+    import: github.com/grafana/alloy/extension/alloyengine
+    name: alloyengine
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.147.0
@@ -101,7 +103,6 @@ replaces:
   # Local modules.
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
-  - github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
   # BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
