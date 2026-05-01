@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -259,10 +258,7 @@ func buildPushEnvelopeBody(entry gcpLogEntry, idx int) ([]byte, error) {
 func publishViaEmulator(ctx context.Context, t *testing.T, shapes []resourceShape, perShape int) error {
 	t.Helper()
 
-	if err := os.Setenv(emulatorEnvVar, emulatorHost); err != nil {
-		return fmt.Errorf("set %s: %w", emulatorEnvVar, err)
-	}
-
+	t.Setenv(emulatorEnvVar, emulatorHost)
 	client, err := newEmulatorClient(ctx)
 	if err != nil {
 		return err
