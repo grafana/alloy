@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
-	lru "github.com/hashicorp/golang-lru/v2"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -48,8 +48,14 @@ type Arguments struct {
 	// The relabelling rules to apply to each metric before it's forwarded.
 	MetricRelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
 
-	// Cache size to use for LRU cache.
+	// CacheSize is the bounded LRU cache size. Mutually exclusive with
+	// CacheTTL: when CacheTTL is set, CacheSize must be 0.
 	CacheSize int `alloy:"max_cache_size,attr,optional"`
+
+	// CacheTTL opts in to a time-bounded cache that sizes itself to the
+	// working set of series flowing through the component. When set,
+	// CacheSize must be 0.
+	CacheTTL time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -59,10 +65,26 @@ func (arg *Arguments) SetToDefault() {
 	}
 }
 
+// minCacheTTL rejects values short enough to be effectively useless
+// (almost certainly a typo, e.g. "5" interpreted as nanoseconds).
+const minCacheTTL = 5 * time.Second
+
 // Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
-	if arg.CacheSize <= 0 {
-		return fmt.Errorf("max_cache_size must be greater than 0 and is %d", arg.CacheSize)
+	if arg.CacheSize < 0 {
+		return fmt.Errorf("max_cache_size must be >= 0; got %d", arg.CacheSize)
+	}
+	if arg.CacheTTL < 0 {
+		return fmt.Errorf("cache_ttl must be >= 0; got %s", arg.CacheTTL)
+	}
+	if arg.CacheSize > 0 && arg.CacheTTL > 0 {
+		return fmt.Errorf("max_cache_size and cache_ttl are mutually exclusive: set max_cache_size = 0 to use cache_ttl, or unset cache_ttl to keep the bounded LRU cache")
+	}
+	if arg.CacheSize == 0 && arg.CacheTTL == 0 {
+		return fmt.Errorf("one of max_cache_size or cache_ttl must be set")
+	}
+	if arg.CacheTTL > 0 && arg.CacheTTL < minCacheTTL {
+		return fmt.Errorf("cache_ttl must be at least %s when set; got %s", minCacheTTL, arg.CacheTTL)
 	}
 	return nil
 }
@@ -83,14 +105,14 @@ type Component struct {
 	metricsOutgoing  prometheus_client.Counter
 	cacheHits        prometheus_client.Counter
 	cacheMisses      prometheus_client.Counter
-	cacheSize        prometheus_client.Gauge
 	cacheDeletes     prometheus_client.Counter
+	cacheTTLCounters ttlCounters
 	fanout           *prometheus.Fanout
 	exited           atomic.Bool
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 
-	cache *lru.Cache[uint64, labels.Labels]
+	cache relabelCache
 }
 
 var (
@@ -100,11 +122,6 @@ var (
 
 // New creates a new prometheus.relabel component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	cache, err := lru.New[uint64, labels.Labels](args.CacheSize)
-	if err != nil {
-		return nil, err
-	}
-
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
 	if err != nil {
 		return nil, err
@@ -117,7 +134,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	ls := data.(labelstore.LabelStore)
 	c := &Component{
 		opts:               o,
-		cache:              cache,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 	c.metricsProcessed = prometheus_client.NewCounter(prometheus_client.CounterOpts{
@@ -136,16 +152,37 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		Name: "alloy_prometheus_relabel_cache_hits",
 		Help: "Total number of cache hits",
 	})
-	c.cacheSize = prometheus_client.NewGauge(prometheus_client.GaugeOpts{
-		Name: "alloy_prometheus_relabel_cache_size",
-		Help: "Total size of relabel cache",
-	})
 	c.cacheDeletes = prometheus_client.NewCounter(prometheus_client.CounterOpts{
 		Name: "alloy_prometheus_relabel_cache_deletes",
 		Help: "Total number of cache deletes",
 	})
+	c.cacheTTLCounters = ttlCounters{
+		evictions: prometheus_client.NewCounter(prometheus_client.CounterOpts{
+			Name: "alloy_prometheus_relabel_cache_ttl_evictions_total",
+			Help: "Number of relabel cache entries removed by the periodic TTL scan. Always 0 when cache_ttl is unset.",
+		}),
+		rebuilds: prometheus_client.NewCounter(prometheus_client.CounterOpts{
+			Name: "alloy_prometheus_relabel_cache_ttl_rebuilds_total",
+			Help: "Number of times the TTL cache's underlying map has been rebuilt to release bucket memory after a shrink. Always 0 when cache_ttl is unset.",
+		}),
+	}
+	c.cache = newRelabelCache(args, c.cacheTTLCounters)
 
-	for _, metric := range []prometheus_client.Collector{c.metricsProcessed, c.metricsOutgoing, c.cacheMisses, c.cacheHits, c.cacheSize, c.cacheDeletes} {
+	cacheSizeGauge := prometheus_client.NewGaugeFunc(prometheus_client.GaugeOpts{
+		Name: "alloy_prometheus_relabel_cache_size",
+		Help: "Total size of relabel cache.",
+	}, func() float64 {
+		c.mut.RLock()
+		cache := c.cache
+		c.mut.RUnlock()
+		return float64(cache.Len())
+	})
+
+	collectors := []prometheus_client.Collector{
+		c.metricsProcessed, c.metricsOutgoing, c.cacheMisses, c.cacheHits, c.cacheDeletes,
+		c.cacheTTLCounters.evictions, c.cacheTTLCounters.rebuilds, cacheSizeGauge,
+	}
+	for _, metric := range collectors {
 		err = o.Registerer.Register(metric)
 		if err != nil {
 			return nil, err
@@ -227,6 +264,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer c.exited.Store(true)
 	defer c.fanout.Clear()
+	defer func() {
+		c.mut.RLock()
+		c.cache.Close()
+		c.mut.RUnlock()
+	}()
 
 	<-ctx.Done()
 	return nil
@@ -238,7 +280,10 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.clearCache(newArgs.CacheSize)
+	if c.cache != nil {
+		c.cache.Close()
+	}
+	c.cache = newRelabelCache(newArgs, c.cacheTTLCounters)
 	c.mrc = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
@@ -276,9 +321,6 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 	if value.IsStaleNaN(val) {
 		c.deleteFromCache(lbls)
 	}
-	// Set the cache size to the cache.len
-	// TODO(@mattdurham): Instead of setting this each time could collect on demand for better performance.
-	c.cacheSize.Set(float64(c.cache.Len()))
 
 	count := uint64(1)
 	if relabelled.Len() == 0 {
@@ -307,11 +349,6 @@ func (c *Component) deleteFromCache(lbls labels.Labels) {
 
 	hash := lbls.Hash()
 	c.cache.Remove(hash)
-}
-
-func (c *Component) clearCache(cacheSize int) {
-	cache, _ := lru.New[uint64, labels.Labels](cacheSize)
-	c.cache = cache
 }
 
 func (c *Component) addToCache(lbls labels.Labels, relabeled labels.Labels, keep bool) {

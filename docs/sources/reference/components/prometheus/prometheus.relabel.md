@@ -48,10 +48,23 @@ prometheus.relabel "<LABEL>" {
 
 You can use the following arguments with `prometheus.relabel`:
 
-| Name             | Type                    | Description                                                             | Default  | Required |
-| ---------------- | ----------------------- | ----------------------------------------------------------------------- | -------- | -------- |
-| `forward_to`     | `list(MetricsReceiver)` | Where the metrics should be forwarded to, after relabeling takes place. |          | yes      |
-| `max_cache_size` | `int`                   | The maximum number of elements to hold in the relabeling cache.         | `100000` | no       |
+| Name             | Type                    | Description                                                                                                                 | Default  | Required |
+| ---------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------- | -------- |
+| `forward_to`     | `list(MetricsReceiver)` | Where the metrics should be forwarded to, after relabeling takes place.                                                     |          | yes      |
+| `max_cache_size` | `int`                   | The maximum number of elements to hold in the relabeling LRU cache.                                                         | `100000` | no       |
+| `cache_ttl`      | `duration`              | When set, switches the cache to TTL mode: entries expire after this duration. Mutually exclusive with `max_cache_size > 0`. | `0`      | no       |
+
+`prometheus.relabel` ships with two cache modes. By default, the component uses a bounded LRU cache (`max_cache_size = 100000`, `cache_ttl = 0`):
+
+* **LRU (default)**: `max_cache_size > 0`, `cache_ttl = 0`. Hash-keyed LRU with a fixed entry cap. When the cache is smaller than the cardinality of metrics flowing through the component, the LRU can degenerate into thrashing—the entry it just evicted is the next one requested.
+* **TTL**: `max_cache_size = 0`, `cache_ttl > 0` (minimum `5s`). Entries expire a fixed duration after their last insertion; the cache sizes itself to the working set of series flowing through the component. Recommended when cardinality is variable or substantially larger than `max_cache_size` would allow.
+
+`max_cache_size` and `cache_ttl` are mutually exclusive: exactly one must be non-zero. To switch to TTL mode, set `max_cache_size = 0` and `cache_ttl` to a non-zero duration (`10m` is a reasonable starting point).
+
+### TTL mode caveats
+
+* Series that send a Prometheus stale marker are evicted immediately, the same as in LRU mode. The TTL is a backstop for series that disappear *without* a stale marker (for example, a target lost without a final scrape)—those linger up to `cache_ttl` before the periodic scan evicts them. Workloads that churn through unique series faster than stale markers can clear them (for example, an exporter emitting random label values) hurt either mode: TTL holds entries until they expire, and LRU thrashes—every call re-runs the relabel rules *and* pays the cache lock/map overhead. Fix the source of the churn rather than relying on the cache to absorb it.
+* The cache is keyed by the input labels' hash, so two label sets that hash to the same value share a cache entry. Under LRU mode, eviction by size pressure naturally bounds how long a wrong cached value can persist; under TTL mode that window is bounded by `cache_ttl` instead, which is typically longer.
 
 ## Blocks
 
@@ -96,6 +109,8 @@ In those cases, exported fields are kept at their last healthy values.
 * `prometheus_relabel_cache_hits` (counter): Total number of cache hits.
 * `prometheus_relabel_cache_misses` (counter): Total number of cache misses.
 * `prometheus_relabel_cache_size` (gauge): Total size of relabel cache.
+* `prometheus_relabel_cache_ttl_evictions_total` (counter): Cache entries removed by the periodic TTL scan. Always `0` when `cache_ttl` is unset.
+* `prometheus_relabel_cache_ttl_rebuilds_total` (counter): Number of times the TTL cache's internal map has been rebuilt to release bucket memory after a shrink. Always `0` when `cache_ttl` is unset.
 * `prometheus_relabel_metrics_processed` (counter): Total number of metrics processed.
 * `prometheus_relabel_metrics_written` (counter): Total number of metrics written.
 
