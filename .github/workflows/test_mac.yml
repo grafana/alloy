@@ -32,9 +32,6 @@ jobs:
       run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
 
   cross-compile-mac-to-linux-nocgo:
-    # Keeps mac-to-linux cross-compilation working for developers who build
-    # Alloy on macOS but test/run on linux. Catches regressions like CGO-only
-    # transitive deps slipping in unguarded.
     name: Maintain developer-friendly mac-to-linux cross-compile
     runs-on: macos-15-xlarge
     env:
