@@ -146,8 +146,9 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	if args.EnablePreClassifiedWaitEvents && args.Registry != nil {
 		c.registry = args.Registry
 		c.waitEventCounter = prometheus.NewCounterVec(prometheus.CounterOpts{
-			Name: "database_observability_wait_event_seconds_total",
-			Help: "Total wait time in seconds per query, aggregated by query digest and schema.",
+			Namespace: "database_observability",
+			Name:      "wait_event_seconds_total",
+			Help:      "Total duration of wait events in seconds.",
 		}, []string{"digest", "schema"})
 		args.Registry.MustRegister(c.waitEventCounter)
 	}
