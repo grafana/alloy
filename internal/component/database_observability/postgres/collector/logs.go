@@ -65,12 +65,13 @@ var supportedSeverities = map[string]struct{}{
 }
 
 type LogsArguments struct {
-	Receiver         loki.LogsReceiver
-	EntryHandler     loki.EntryHandler
-	Logger           log.Logger
-	Registry         *prometheus.Registry
-	ExcludeDatabases []string
-	ExcludeUsers     []string
+	Receiver              loki.LogsReceiver
+	EntryHandler          loki.EntryHandler
+	Logger                log.Logger
+	Registry              *prometheus.Registry
+	ExcludeDatabases      []string
+	ExcludeUsers          []string
+	DisableQueryRedaction bool
 }
 
 type Logs struct {
@@ -78,9 +79,10 @@ type Logs struct {
 	entryHandler loki.EntryHandler
 	registry     *prometheus.Registry
 
-	receiver         loki.LogsReceiver
-	excludeDatabases []string
-	excludeUsers     []string
+	receiver              loki.LogsReceiver
+	excludeDatabases      []string
+	excludeUsers          []string
+	disableQueryRedaction bool
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -106,18 +108,19 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:              log.With(args.Logger, "collector", LogsCollector),
-		entryHandler:        args.EntryHandler,
-		registry:            args.Registry,
-		receiver:            args.Receiver,
-		excludeDatabases:    args.ExcludeDatabases,
-		excludeUsers:        args.ExcludeUsers,
-		ctx:                 ctx,
-		cancel:              cancel,
-		stopped:             atomic.NewBool(false),
-		startTime:           time.Now(),
-		pendingErrors:       make(map[string]*pendingError),
-		pendingErrorTimeout: defaultPendingErrorTimeout,
+		logger:                log.With(args.Logger, "collector", LogsCollector),
+		entryHandler:          args.EntryHandler,
+		registry:              args.Registry,
+		receiver:              args.Receiver,
+		excludeDatabases:      args.ExcludeDatabases,
+		excludeUsers:          args.ExcludeUsers,
+		disableQueryRedaction: args.DisableQueryRedaction,
+		ctx:                   ctx,
+		cancel:                cancel,
+		stopped:               atomic.NewBool(false),
+		startTime:             time.Now(),
+		pendingErrors:         make(map[string]*pendingError),
+		pendingErrorTimeout:   defaultPendingErrorTimeout,
 	}
 
 	l.initMetrics()
@@ -444,12 +447,24 @@ func (l *Logs) emitErrorEntry(p *pendingError, statement, fp string) {
 	if len(p.sqlstate) >= 2 {
 		sqlstateClass = p.sqlstate[:2]
 	}
-	statementPreview := truncateString(statement, 200)
 
-	line := fmt.Sprintf(
-		`severity=%q sqlstate=%q sqlstate_class=%q datname=%q user=%q statement_preview=%q`,
-		p.severity, p.sqlstate, sqlstateClass, p.datname, p.user, statementPreview,
-	)
+	// statement_preview is gated behind disable_query_redaction (matches the
+	// privacy boundary established by the query_samples collector). When
+	// redaction is on, the field is omitted entirely; the fingerprint is still
+	// emitted because it's a hash, not text.
+	var line string
+	if l.disableQueryRedaction {
+		statementPreview := truncateString(statement, 200)
+		line = fmt.Sprintf(
+			`severity=%q sqlstate=%q sqlstate_class=%q datname=%q user=%q statement_preview=%q`,
+			p.severity, p.sqlstate, sqlstateClass, p.datname, p.user, statementPreview,
+		)
+	} else {
+		line = fmt.Sprintf(
+			`severity=%q sqlstate=%q sqlstate_class=%q datname=%q user=%q`,
+			p.severity, p.sqlstate, sqlstateClass, p.datname, p.user,
+		)
+	}
 
 	ts := p.timestamp.UnixNano()
 	if p.timestamp.IsZero() {
@@ -515,11 +530,22 @@ func (l *Logs) afterStartTime(line string) bool {
 }
 
 func (l *Logs) emitSlowQueryEntry(timestamp time.Time, datname, user, durationMs, statement, fp string) {
-	statementPreview := truncateString(statement, 200)
-	line := fmt.Sprintf(
-		`datname=%q user=%q duration_ms=%q statement_preview=%q`,
-		datname, user, durationMs, statementPreview,
-	)
+	// statement_preview is gated behind disable_query_redaction (matches the
+	// privacy boundary established by the query_samples collector). The
+	// duration and fingerprint are always emitted.
+	var line string
+	if l.disableQueryRedaction {
+		statementPreview := truncateString(statement, 200)
+		line = fmt.Sprintf(
+			`datname=%q user=%q duration_ms=%q statement_preview=%q`,
+			datname, user, durationMs, statementPreview,
+		)
+	} else {
+		line = fmt.Sprintf(
+			`datname=%q user=%q duration_ms=%q`,
+			datname, user, durationMs,
+		)
+	}
 	ts := timestamp.UnixNano()
 	if timestamp.IsZero() {
 		ts = time.Now().UnixNano()

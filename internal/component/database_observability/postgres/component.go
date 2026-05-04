@@ -709,14 +709,18 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		c.collectors = append(c.collectors, hcCollector)
 	}
 
-	// Logs collector is always enabled
+	// Logs collector is always enabled. It reuses query_samples'
+	// disable_query_redaction setting to gate the raw SQL on its emitted
+	// pg_error and pg_slow_query Loki entries (matches the precedent set by
+	// the query_samples collector).
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver:         c.logsReceiver,
-		EntryHandler:     entryHandler,
-		Logger:           c.opts.Logger,
-		Registry:         c.registry,
-		ExcludeDatabases: c.args.ExcludeDatabases,
-		ExcludeUsers:     c.args.ExcludeUsers,
+		Receiver:              c.logsReceiver,
+		EntryHandler:          entryHandler,
+		Logger:                c.opts.Logger,
+		Registry:              c.registry,
+		ExcludeDatabases:      c.args.ExcludeDatabases,
+		ExcludeUsers:          c.args.ExcludeUsers,
+		DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)

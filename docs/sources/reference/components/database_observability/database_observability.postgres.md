@@ -138,7 +138,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | Name                      | Type       | Description                                                   | Default | Required |
 |---------------------------|------------|---------------------------------------------------------------|---------|----------|
 | `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
-| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
+| `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). Also enables raw SQL in `pg_error` and `pg_slow_query` log entries from the `logs` collector. | `false` | no       |
 | `exclude_current_user`    | `bool`     | Do not collect query samples for current database user.       | `true`  | no       |
 | `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
 
@@ -199,8 +199,8 @@ The component emits Loki log entries to the configured `forward_to` targets. Eac
 | `query_sample`            | `query_samples`  | One entry per active sample observed in `pg_stat_activity`, emitted at session-end or idle transition.                                     | `query_fingerprint` |
 | `wait_event`              | `query_samples`  | One entry per consecutive wait event observed during an active session, with the raw `wait_event_type` and `wait_event` names.             | `query_fingerprint` |
 | `wait_event_v2`           | `query_samples`  | Same as `wait_event` with `wait_event_type` pre-classified as `IO Wait`, `Lock Wait`, `Network Wait`, or `Other Wait`.                    | `query_fingerprint` |
-| `pg_error`                | `logs`           | One entry per ERROR/FATAL/PANIC line in the PostgreSQL server log, with severity, SQL state, and the originating SQL when available.       | `query_fingerprint` |
-| `pg_slow_query`           | `logs`           | One entry per slow-query log line (`log_min_duration_statement`), with the duration in milliseconds and the SQL.                          | `query_fingerprint` |
+| `pg_error`                | `logs`           | One entry per ERROR/FATAL/PANIC line in the PostgreSQL server log, with severity, SQL state, and the originating SQL when available. The `statement_preview` field is omitted unless `query_samples.disable_query_redaction` is set. | `query_fingerprint` |
+| `pg_slow_query`           | `logs`           | One entry per slow-query log line (`log_min_duration_statement`), with the duration in milliseconds and the SQL. The `statement_preview` field is omitted unless `query_samples.disable_query_redaction` is set. | `query_fingerprint` |
 
 The `query_fingerprint` value is the same for `pg_stat_statements` metrics, `pg_stat_activity` samples, and PostgreSQL server log lines. Alloy computes it client-side using the same normalization across all sources, which enables joining metrics and logs by fingerprint on managed services (RDS, Aurora) where `pg_stat_statements.queryid` is not available in `log_line_prefix`.
 
