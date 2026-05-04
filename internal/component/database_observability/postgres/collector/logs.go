@@ -359,6 +359,17 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	l.pendingMu.Lock()
+	if existing, ok := l.pendingErrors[pid]; ok {
+		// Same backend issued a new error before its predecessor's STATEMENT
+		// arrived. Emit the predecessor with no fingerprint so it doesn't get
+		// lost, then take the new one's slot. pg_errors_total has already
+		// incremented for the predecessor, so dropping its Loki entry would
+		// create inconsistent metric/log counts.
+		delete(l.pendingErrors, pid)
+		l.pendingMu.Unlock()
+		l.emitErrorEntry(existing, "", "")
+		l.pendingMu.Lock()
+	}
 	l.pendingErrors[pid] = &pendingError{
 		receivedAt: time.Now(),
 		severity:   severity,

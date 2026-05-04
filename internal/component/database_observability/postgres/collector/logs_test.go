@@ -957,6 +957,55 @@ func TestLogsCollector_EmitsSlowQueryWithFingerprint(t *testing.T) {
 	require.Contains(t, slowEntry.Entry.Line, `statement_preview="SELECT pg_sleep(1)"`)
 }
 
+// TestLogsCollector_DisplacedPendingErrorIsEmittedNotDropped asserts that when
+// a PID issues a new ERROR before its predecessor's STATEMENT continuation
+// arrives, the predecessor is emitted (with empty fingerprint) rather than
+// being silently overwritten in the pendingErrors map.
+func TestLogsCollector_DisplacedPendingErrorIsEmittedNotDropped(t *testing.T) {
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
+	registry := prometheus.NewRegistry()
+
+	receiver := loki.NewLogsReceiver()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond // tighten so the second pending entry flushes within the test
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	pid := "12345"
+
+	// Two ERRORs from the same PID with no STATEMENT between them. The first
+	// is displaced when the second arrives; the second flushes via timeout.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@d:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  first",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@d:[" + pid + "]:1:42P02:" + ts2 + ":1/0:0:c1::psqlERROR:  second",
+	}}
+
+	// Both should produce a pg_error Loki entry; the first must not be silently dropped.
+	require.Eventually(t, func() bool {
+		count := 0
+		for _, e := range entryHandler.Received() {
+			if string(e.Labels["op"]) == "pg_error" {
+				count++
+			}
+		}
+		return count == 2
+	}, 2*time.Second, 50*time.Millisecond, "expected both pg_error entries to be emitted")
+}
+
 // TestLogsCollector_DoesNotDeadlockWhenEmittingPgError is a regression test for
 // the production deadlock where EntryHandler was wired to the input receiver's
 // channel. Production now uses a separate fanout channel for emitted entries;
