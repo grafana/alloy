@@ -315,6 +315,11 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	if pid != "" {
 		l.pendingMu.Lock()
+		// If a previous error from this PID is still pending (no STATEMENT
+		// arrived within the timeout window), the new error displaces it.
+		// The displaced error is NOT credited to the fingerprint counter —
+		// only pg_errors_total counts it. This keeps the new metric strictly
+		// equal to "errors with successfully captured SQL".
 		l.pendingErrors[pid] = &pendingError{
 			receivedAt:    time.Now(),
 			severity:      severity,
