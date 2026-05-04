@@ -23,7 +23,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/loki/util"
 )
@@ -262,7 +262,7 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			logger := log.NewLogfmtLogger(os.Stdout)
-			marker := internal.NewNopMarkerHandler()
+			marker := marker.NewNopMarkerHandler()
 
 			endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
 			require.NoError(t, err)
@@ -336,20 +336,20 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 	} {
 		b.Run(name, func(b *testing.B) {
 			b.Run("implementation=wal_nil_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
-					return internal.NewNopMarkerHandler()
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.MarkerHandler {
+					return marker.NewNopMarkerHandler()
 				})
 			})
 
 			b.Run("implementation=wal_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.MarkerHandler {
 					dir := b.TempDir()
 					nopLogger := log.NewNopLogger()
 
-					markerFileHandler, err := internal.NewMarkerFileHandler(nopLogger, dir)
+					markerFileHandler, err := marker.NewMarkerFileHandler(nopLogger, dir)
 					require.NoError(b, err)
 
-					markerHandler := internal.NewMarkerHandler(markerFileHandler, time.Minute, nopLogger, internal.NewMarkerMetrics(nil).CurryWithId("test"))
+					markerHandler := marker.NewMarkerHandler(markerFileHandler, time.Minute, nopLogger, marker.NewMarkerMetrics(nil).CurryWithId("test"))
 
 					return markerHandler
 				})
@@ -362,7 +362,7 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 	}
 }
 
-func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) internal.MarkerHandler) {
+func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) marker.MarkerHandler) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
@@ -503,7 +503,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := newMetrics(reg)
-	endpoint, err := newEndpoint(m, cfg, logger, internal.NewNopMarkerHandler())
+	endpoint, err := newEndpoint(m, cfg, logger, marker.NewNopMarkerHandler())
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}

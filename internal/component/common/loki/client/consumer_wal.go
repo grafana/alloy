@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/prometheus/tsdb/record"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
@@ -37,7 +37,7 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 		endpointsCheck = make(map[string]struct{})
 
 		walWatcherMetrics  = wal.NewWatcherMetrics(reg)
-		walMarkerMetrics   = internal.NewMarkerMetrics(reg)
+		walMarkerMetrics   = marker.NewMarkerMetrics(reg)
 		walEndpointMetrics = newWALEndpointMetrics(reg)
 	)
 
@@ -49,11 +49,11 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 		}
 		endpointsCheck[name] = struct{}{}
 
-		markerFileHandler, err := internal.NewMarkerFileHandler(logger, walCfg.Dir)
+		markerFileHandler, err := marker.NewMarkerFileHandler(logger, walCfg.Dir)
 		if err != nil {
 			return nil, err
 		}
-		markerHandler := internal.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.CurryWithId(name))
+		markerHandler := marker.NewMarkerHandler(markerFileHandler, walCfg.MaxSegmentAge, logger, walMarkerMetrics.CurryWithId(name))
 
 		endpoint, err := newEndpoint(metrics, cfg, logger, markerHandler)
 		if err != nil {
@@ -141,7 +141,7 @@ func (m *WALConsumer) stop(drain bool) {
 	stopWG.Wait()
 }
 
-func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *walEndpointMetrics, markerHandler internal.MarkerHandler) *walEndpointAdapter {
+func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *walEndpointMetrics, markerHandler marker.MarkerHandler) *walEndpointAdapter {
 	c := &walEndpointAdapter{
 		logger:   log.With(logger, "component", "waladapter"),
 		metrics:  metrics,
@@ -170,7 +170,7 @@ type walEndpointAdapter struct {
 	seriesSegment map[chunks.HeadSeriesRef]int
 	seriesLock    sync.RWMutex
 
-	markerHandler internal.MarkerHandler
+	markerHandler marker.MarkerHandler
 }
 
 func (c *walEndpointAdapter) SeriesReset(segmentNum int) {

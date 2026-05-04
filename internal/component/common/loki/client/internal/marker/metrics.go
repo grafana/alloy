@@ -1,4 +1,4 @@
-package internal
+package marker
 
 import (
 	"github.com/grafana/alloy/internal/util"
