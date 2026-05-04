@@ -2,12 +2,12 @@ package relabel
 
 import (
 	"sync"
-	"sync/atomic"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
+	"go.uber.org/atomic"
 )
 
 // relabelCache is the per-component cache of relabeled labels keyed by
