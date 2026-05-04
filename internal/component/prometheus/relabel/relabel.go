@@ -65,10 +65,7 @@ func (arg *Arguments) SetToDefault() {
 	}
 }
 
-// minCacheTTL rejects values short enough that the cache can't
-// realistically size itself to the working set: with the scan interval
-// scaled to a fraction of the TTL, very short TTLs make scan frequency
-// approach the cost of just doing the relabel work uncached.
+// minCacheTTL keeps the scan cadence (TTL/4) from dominating real work.
 const minCacheTTL = 1 * time.Minute
 
 // Validate implements syntax.Validator.

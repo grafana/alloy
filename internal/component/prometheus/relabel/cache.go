@@ -2,6 +2,7 @@ package relabel
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru/v2"
@@ -9,16 +10,9 @@ import (
 	"github.com/prometheus/prometheus/model/labels"
 )
 
-// relabelCache abstracts the per-component cache of relabeled labels keyed
-// by the input labels' hash. Implementations cover two modes selectable
-// via Arguments: bounded LRU (default) and time-bounded ("size dictated
-// by working set"). All methods are safe for concurrent use.
-//
-// Implementations own any background work (e.g. periodic eviction).
-// `newRelabelCache` returns a ready-to-use cache; callers must invoke
-// Close when the cache is no longer needed. Tests that want to drive
-// eviction manually can use the per-impl bare constructors (e.g.
-// `newTTLRelabelCache`) which don't spawn the background goroutine.
+// relabelCache is the per-component cache of relabeled labels keyed by
+// the input labels' hash. Implementations are safe for concurrent use
+// and may own background goroutines; callers must Close when done.
 type relabelCache interface {
 	// Get returns the cached relabel result for the given hash. The
 	// boolean is false if no entry is cached (or, in TTL mode, if the
@@ -35,11 +29,8 @@ type relabelCache interface {
 	Close()
 }
 
-// newRelabelCache constructs a cache impl based on Arguments and
-// readies it for use (TTL caches have their background scan goroutine
-// running on return). Validation has already ensured exactly one of
-// CacheSize and CacheTTL is non-zero, so the lru.New error here is
-// effectively unreachable in production but propagated for safety.
+// newRelabelCache constructs a cache from args. TTL caches return with
+// their scan goroutine already running; the caller owns Close.
 func newRelabelCache(args Arguments, evictions prometheus_client.Counter) (relabelCache, error) {
 	if args.CacheTTL > 0 {
 		c := newTTLRelabelCache(args.CacheTTL, evictions)
@@ -72,23 +63,24 @@ func (c *lruRelabelCache) Remove(hash uint64) {
 func (c *lruRelabelCache) Len() int { return c.c.Len() }
 func (c *lruRelabelCache) Close()   {}
 
+// ttlEntry's lbls is immutable after insertion (same input hash always
+// yields the same relabel output within a cache lifetime); expires is
+// atomic so Get can slide the TTL window without taking the write lock.
 type ttlEntry struct {
 	lbls    labels.Labels
-	expires time.Time
+	expires atomic.Int64 // Unix seconds
 }
 
-// ttlRelabelCache is a TTL-bounded cache without a hard size limit. The
-// active set sizes itself to the working set of series flowing through
-// the component. Entries expire after a fixed TTL relative to the most
-// recent insertion.
+// ttlRelabelCache is a TTL-bounded cache with no hard size limit. Each
+// Get slides the entry's expiry forward, so active series stay cached
+// while inactive entries are reaped after cache_ttl.
 //
-// Note: Go maps don't return bucket memory on delete, so the underlying
-// map's footprint stays at the peak working set for the cache's
-// lifetime. Operators who need to reclaim that memory should restart
-// the component (config reload also recreates the cache from scratch).
+// Go maps don't release bucket memory on delete, so the underlying map
+// holds at the peak working set for the cache's lifetime; restart or
+// config reload to reclaim it.
 type ttlRelabelCache struct {
 	mu      sync.RWMutex
-	entries map[uint64]ttlEntry
+	entries map[uint64]*ttlEntry
 
 	ttl          time.Duration
 	scanInterval time.Duration
@@ -101,17 +93,14 @@ type ttlRelabelCache struct {
 	scanWG    sync.WaitGroup
 }
 
-// scanIntervalFor scales the background scan cadence to the configured
-// TTL: scanning at TTL/4 caps the post-expiry lag at ~25% of the TTL,
-// which keeps the cache sized to roughly the working set without
-// scanning so often that the bookkeeping dominates real work.
+// scanIntervalFor caps post-expiry lag at ~25% of the TTL.
 func scanIntervalFor(ttl time.Duration) time.Duration {
 	return ttl / 4
 }
 
 func newTTLRelabelCache(ttl time.Duration, evictions prometheus_client.Counter) *ttlRelabelCache {
 	return &ttlRelabelCache{
-		entries:      make(map[uint64]ttlEntry),
+		entries:      make(map[uint64]*ttlEntry),
 		ttl:          ttl,
 		scanInterval: scanIntervalFor(ttl),
 		evictions:    evictions,
@@ -126,17 +115,23 @@ func (c *ttlRelabelCache) Get(hash uint64) (labels.Labels, bool) {
 	if !ok {
 		return labels.EmptyLabels(), false
 	}
-	// Lazy expiration: an entry past its expiry counts as a miss even if
-	// the periodic scan hasn't pruned it yet.
-	if time.Now().After(entry.expires) {
-		return labels.EmptyLabels(), false
-	}
+	// Slide the TTL window forward without upgrading to the write lock.
+	entry.expires.Store(time.Now().Add(c.ttl).Unix())
 	return entry.lbls, true
 }
 
 func (c *ttlRelabelCache) Add(hash uint64, lbls labels.Labels) {
+	expires := time.Now().Add(c.ttl).Unix()
 	c.mu.Lock()
-	c.entries[hash] = ttlEntry{lbls: lbls, expires: time.Now().Add(c.ttl)}
+	if existing, ok := c.entries[hash]; ok {
+		// Concurrent miss: keep lbls immutable and just refresh expiry.
+		existing.expires.Store(expires)
+		c.mu.Unlock()
+		return
+	}
+	e := &ttlEntry{lbls: lbls}
+	e.expires.Store(expires)
+	c.entries[hash] = e
 	c.mu.Unlock()
 }
 
@@ -172,11 +167,8 @@ func (c *ttlRelabelCache) start() {
 	})
 }
 
-// Close terminates the background scan goroutine (if any) and blocks
-// until it exits. Idempotent. Safe to call even if start was never
-// called. The blocking-wait matters for testing/synctest's deadlock
-// detector, which fires if any goroutine in the bubble is still
-// running when the test's main goroutine returns.
+// Close terminates the background scan goroutine and blocks until it
+// exits. Idempotent.
 func (c *ttlRelabelCache) Close() {
 	c.closeOnce.Do(func() { close(c.closeCh) })
 	c.scanWG.Wait()
@@ -184,12 +176,13 @@ func (c *ttlRelabelCache) Close() {
 
 // scan prunes expired entries.
 func (c *ttlRelabelCache) scan(now time.Time) {
+	nowSec := now.Unix()
 	// Phase 1: collect expired keys under RLock. If there's no work,
 	// skip the write lock entirely.
 	c.mu.RLock()
 	var expired []uint64
 	for h, e := range c.entries {
-		if now.After(e.expires) {
+		if nowSec > e.expires.Load() {
 			expired = append(expired, h)
 		}
 	}
@@ -202,10 +195,10 @@ func (c *ttlRelabelCache) scan(now time.Time) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Phase 2: prune. Re-check expiry per key in case a concurrent
-	// Add refreshed the entry between the phases.
+	// Phase 2: prune. Re-check expiry per key in case a concurrent Get
+	// slid the entry forward (or Add refreshed it) between the phases.
 	for _, h := range expired {
-		if e, ok := c.entries[h]; ok && now.After(e.expires) {
+		if e, ok := c.entries[h]; ok && nowSec > e.expires.Load() {
 			delete(c.entries, h)
 			c.evictions.Inc()
 		}

@@ -54,27 +54,25 @@ func TestLRURelabelCache_BasicOps(t *testing.T) {
 	require.False(t, ok)
 }
 
-func TestTTLRelabelCache_LazyExpiry(t *testing.T) {
+// TestTTLRelabelCache_GetReturnsCachedValuePastExpiry confirms that
+// scan is the sole arbiter of eviction: a Get on an entry whose
+// nominal expiry has passed but which scan hasn't pruned still returns
+// a hit (and slides the entry forward). The cached value is always
+// correct since relabel rules can't change without rebuilding the
+// cache, so there's no reason to force a re-relabel on the caller.
+func TestTTLRelabelCache_GetReturnsCachedValuePastExpiry(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		raw, err := newRelabelCache(Arguments{CacheTTL: 30 * time.Second}, newTestEvictionsCounter())
-		require.NoError(t, err)
-		c := raw.(*ttlRelabelCache)
+		c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
 		defer c.Close()
 
 		lbls := labels.FromStrings("a", "b")
 		c.Add(1, lbls)
 
-		// Within TTL: hit.
+		// Past the TTL with no scan in between.
+		time.Sleep(2 * time.Minute)
 		got, ok := c.Get(1)
-		require.True(t, ok)
+		require.True(t, ok, "Get returns cached value until scan prunes it")
 		require.Equal(t, lbls, got)
-
-		// Advance past TTL: lazy expiry rejects the entry on Get even
-		// though Scan hasn't run yet.
-		time.Sleep(31 * time.Second)
-		_, ok = c.Get(1)
-		require.False(t, ok)
-		// Entry is still in the map until Scan prunes it.
 		require.Equal(t, 1, c.Len())
 	})
 }
@@ -126,5 +124,55 @@ func TestTTLRelabelCache_StaleRemove(t *testing.T) {
 		_, ok := c.Get(1)
 		require.False(t, ok, "Remove must drop the entry immediately, even with a long TTL")
 		require.Equal(t, 0, c.Len())
+	})
+}
+
+// TestTTLRelabelCache_GetSlidesExpiry asserts that a successful Get
+// pushes the entry's expiry forward by a full TTL, so series that
+// stay active stay cached without ever paying for re-relabeling.
+func TestTTLRelabelCache_GetSlidesExpiry(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
+		defer c.Close()
+
+		c.Add(1, labels.FromStrings("a", "b"))
+
+		// Halfway through the TTL: still a hit, and the Get slides
+		// expiry from t=60s out to t=90s.
+		time.Sleep(30 * time.Second)
+		_, ok := c.Get(1)
+		require.True(t, ok)
+
+		// Now at t=80s — past the original t=60s expiry. Without
+		// sliding, this would be a miss. With sliding, the entry's
+		// expiry is t=90s, so it's still valid.
+		time.Sleep(50 * time.Second)
+		_, ok = c.Get(1)
+		require.True(t, ok, "Get must slide the TTL window forward")
+	})
+}
+
+// TestTTLRelabelCache_ScanLeavesActiveEntries confirms the scanner
+// does not evict an entry whose Get keeps refreshing it, even when
+// scans fire after each TTL window's nominal expiry.
+func TestTTLRelabelCache_ScanLeavesActiveEntries(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		evictions := newTestEvictionsCounter()
+		c := newTTLRelabelCache(time.Minute, evictions)
+		defer c.Close()
+
+		c.Add(1, labels.FromStrings("a", "b"))
+
+		// Three full TTL cycles: each cycle, Get keeps the entry hot,
+		// then scan runs after the original-expiry would have hit.
+		for cycle := 0; cycle < 3; cycle++ {
+			time.Sleep(45 * time.Second)
+			_, ok := c.Get(1)
+			require.True(t, ok)
+			c.scan(time.Now())
+		}
+
+		require.Equal(t, 1, c.Len())
+		require.Equal(t, float64(0), counterVal(t, evictions))
 	})
 }

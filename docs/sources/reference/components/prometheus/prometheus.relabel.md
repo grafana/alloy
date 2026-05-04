@@ -57,14 +57,21 @@ You can use the following arguments with `prometheus.relabel`:
 `prometheus.relabel` ships with two cache modes. By default, the component uses a bounded LRU cache (`max_cache_size = 100000`, `cache_ttl = 0`):
 
 * **LRU (default)**: `max_cache_size > 0`, `cache_ttl = 0`. Hash-keyed LRU with a fixed entry cap. When the cache is smaller than the cardinality of metrics flowing through the component, the LRU can degenerate into thrashing—the entry it just evicted is the next one requested.
-* **TTL**: `max_cache_size = 0`, `cache_ttl > 0` (minimum `1m`). Entries expire a fixed duration after their last insertion; the cache sizes itself to the working set of series flowing through the component. Recommended when cardinality is variable or substantially larger than `max_cache_size` would allow.
+* **TTL**: `max_cache_size = 0`, `cache_ttl > 0` (minimum `1m`). Entries expire after `cache_ttl` of inactivity—each cache hit slides the entry's expiry forward, so series that stay active stay cached. The cache sizes itself to the working set of series flowing through the component.
 
-`max_cache_size` and `cache_ttl` are mutually exclusive: exactly one must be non-zero. To switch to TTL mode, set `max_cache_size = 0` and `cache_ttl` to a non-zero duration (`10m` is a reasonable starting point).
+If you don't know the cardinality of metrics flowing through this component, prefer TTL mode—it sizes itself to the working set without you having to estimate `max_cache_size`. To switch to TTL mode, set `max_cache_size = 0` and `cache_ttl` to a non-zero duration (`10m` is a reasonable starting point):
 
-### TTL mode caveats
+```alloy
+prometheus.relabel "example" {
+  forward_to     = [/* ... */]
+  max_cache_size = 0
+  cache_ttl      = "10m"
+}
+```
 
-* Series that send a Prometheus stale marker are evicted immediately, the same as in LRU mode. The TTL is a backstop for series that disappear *without* a stale marker (for example, a target lost without a final scrape)—those linger up to `cache_ttl` before the periodic scan evicts them. Workloads that churn through unique series faster than stale markers can clear them (for example, an exporter emitting random label values) hurt either mode: TTL holds entries until they expire, and LRU thrashes—every call re-runs the relabel rules *and* pays the cache lock/map overhead. Fix the source of the churn rather than relying on the cache to absorb it.
-* The cache is keyed by the input labels' hash, so two label sets that hash to the same value share a cache entry. Under LRU mode, eviction by size pressure naturally bounds how long a wrong cached value can persist; under TTL mode that window is bounded by `cache_ttl` instead, which is typically longer.
+`max_cache_size` and `cache_ttl` are mutually exclusive: exactly one must be non-zero.
+
+In TTL mode, series that send a Prometheus stale marker are evicted immediately, just as in LRU mode. Series that disappear *without* a stale marker (for example, a target lost without a final scrape) linger up to `cache_ttl` before the periodic scan evicts them.
 
 ## Blocks
 

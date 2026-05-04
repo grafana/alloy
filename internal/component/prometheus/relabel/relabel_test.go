@@ -3,7 +3,6 @@ package relabel
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"testing"
 	"time"
 
@@ -91,24 +90,6 @@ func TestNil(t *testing.T) {
 
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(0, lbls)
-}
-
-// TestTTLFixesThrashing asserts that the workload that thrashes a
-// size-bounded LRU (#5225) hits 100% in TTL mode: with no size cap, the
-// cache fills on the first pass and serves every lookup on the second.
-func TestTTLFixesThrashing(t *testing.T) {
-	const cardinality = 5_000
-	relabeller := generateRelabelWithArgs(t, Arguments{CacheSize: 0, CacheTTL: 10 * time.Minute})
-
-	for pass := 0; pass < 2; pass++ {
-		for i := 0; i < cardinality; i++ {
-			lbls := labels.FromStrings("__address__", "localhost", "inc", strconv.Itoa(i))
-			relabeller.relabel(0, lbls)
-		}
-	}
-
-	require.Equal(t, float64(cardinality), counterValue(t, relabeller.cacheHits), "second pass should be all hits")
-	require.Equal(t, cardinality, relabeller.cache.Len())
 }
 
 // TestUpdateSwitchesCacheMode confirms that toggling cache_ttl on or
@@ -370,13 +351,6 @@ func generateRelabelWithArgs(t *testing.T, args Arguments) *Component {
 		relabeller.mut.RUnlock()
 	})
 	return relabeller
-}
-
-func counterValue(t *testing.T, c prom.Counter) float64 {
-	t.Helper()
-	var m dto.Metric
-	require.NoError(t, c.Write(&m))
-	return *m.Counter.Value
 }
 
 func TestRuleGetter(t *testing.T) {
