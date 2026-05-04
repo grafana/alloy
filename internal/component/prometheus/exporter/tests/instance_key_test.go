@@ -295,6 +295,27 @@ func TestInstanceKey(t *testing.T) {
 			expectedInstanceLabel: "host01:1521",
 		},
 		{
+			testName:      "oracledb multiple databases",
+			componentName: "prometheus.exporter.oracledb",
+			args: oracledb.Arguments{
+				Databases: []oracledb.DatabaseTarget{
+					{
+						Name:             "db_a",
+						ConnectionString: "host01:1521/svc_a",
+						Username:         "u",
+						Password:         "p",
+					},
+					{
+						Name:             "db_b",
+						ConnectionString: "host02:1521/svc_b",
+						Username:         "u",
+						Password:         "p",
+					},
+				},
+			},
+			expectedInstanceLabel: "prometheus.exporter.oracledb.test_comp_id",
+		},
+		{
 			testName:      "postgres",
 			componentName: "prometheus.exporter.postgres",
 			args: postgres.Arguments{

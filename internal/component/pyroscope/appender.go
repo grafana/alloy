@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -61,10 +61,10 @@ type Fanout struct {
 	writeLatency prometheus.Histogram
 }
 
-func (f *Fanout) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (f *Fanout) DebugInfoClients() []*debuginfoclient.Client {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
-	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
+	var clients []*debuginfoclient.Client
 	for _, c := range f.children {
 		clients = append(clients, c.DebugInfoClients()...)
 	}

@@ -124,6 +124,9 @@ func (e *eventProcessor) enqueueSyncMimir() {
 }
 
 func (e *eventProcessor) syncMimir(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, kubernetes.RulerSyncTimeout)
+	defer cancel()
+
 	rulesByNamespace, err := e.mimirClient.ListRules(ctx, "")
 	if err != nil {
 		level.Error(e.logger).Log("msg", "failed to list rules from mimir", "err", err)

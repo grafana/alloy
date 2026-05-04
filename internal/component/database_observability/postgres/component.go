@@ -85,6 +85,7 @@ type Arguments struct {
 type CloudProvider struct {
 	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
 	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
+	GCP   *GCPCloudProviderInfo   `alloy:"gcp,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
@@ -97,10 +98,15 @@ type AzureCloudProviderInfo struct {
 	ServerName     string `alloy:"server_name,attr,optional"`
 }
 
+type GCPCloudProviderInfo struct {
+	ConnectionName string `alloy:"connection_name,attr"`
+}
+
 type QuerySampleArguments struct {
-	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
-	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
+	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
+	ExcludeCurrentUser            bool          `alloy:"exclude_current_user,attr,optional"`
+	EnablePreClassifiedWaitEvents bool          `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type QueryDetailsArguments struct {
@@ -115,31 +121,33 @@ type SchemaDetailsArguments struct {
 	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
-var DefaultArguments = Arguments{
-	ExcludeDatabases: []string{},
-	ExcludeUsers:     []string{},
-	QuerySampleArguments: QuerySampleArguments{
-		CollectInterval:       15 * time.Second,
-		DisableQueryRedaction: false,
-		ExcludeCurrentUser:    true,
-	},
-	QueryDetailsArguments: QueryDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		StatementsLimit: 100,
-	},
-	SchemaDetailsArguments: SchemaDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		CacheEnabled:    true,
-		CacheSize:       256,
-		CacheTTL:        10 * time.Minute,
-	},
-	ExplainPlansArguments: ExplainPlansArguments{
-		CollectInterval: 1 * time.Minute,
-		PerCollectRatio: 1.0,
-	},
-	HealthCheckArguments: HealthCheckArguments{
-		CollectInterval: 1 * time.Hour,
-	},
+func defaultArguments() Arguments {
+	return Arguments{
+		ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
+		ExcludeUsers:     database_observability.DefaultExcludedUsers(),
+		QuerySampleArguments: QuerySampleArguments{
+			CollectInterval:       15 * time.Second,
+			DisableQueryRedaction: false,
+			ExcludeCurrentUser:    true,
+		},
+		QueryDetailsArguments: QueryDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			StatementsLimit: 100,
+		},
+		SchemaDetailsArguments: SchemaDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+		},
+		ExplainPlansArguments: ExplainPlansArguments{
+			CollectInterval: 1 * time.Minute,
+			PerCollectRatio: 1.0,
+		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
 }
 
 type ExplainPlansArguments struct {
@@ -170,16 +178,31 @@ func (a *PrometheusExporterArguments) Validate() error {
 }
 
 func (a *Arguments) SetToDefault() {
-	*a = DefaultArguments
+	*a = defaultArguments()
 }
 
 func (a *Arguments) Validate() error {
-	_, err := pq.ParseURL(string(a.DataSourceName))
+	_, err := pq.ParseURL(string(a.DataSourceName)) //nolint:staticcheck // pq.ParseURL is deprecated but needed for URL validation
 	if err != nil {
 		return err
 	}
 	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
 		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
+	}
+	if a.CloudProvider != nil {
+		count := 0
+		if a.CloudProvider.AWS != nil {
+			count++
+		}
+		if a.CloudProvider.Azure != nil {
+			count++
+		}
+		if a.CloudProvider.GCP != nil {
+			count++
+		}
+		if count > 1 {
+			return fmt.Errorf("cloud_provider: at most one of aws, azure, or gcp must be specified")
+		}
 	}
 	return nil
 }
@@ -271,6 +294,8 @@ func (c *Component) Run(ctx context.Context) error {
 			for _, collector := range c.collectors {
 				collector.Stop()
 			}
+			c.cleanupExporterCollectors()
+
 			if c.dbConnection != nil {
 				c.dbConnection.Close()
 			}
@@ -347,11 +372,24 @@ func (c *Component) tryReconnect(ctx context.Context) error {
 	return nil
 }
 
+// cleanupExporterCollectors releases resources held by embedded exporter collectors.
+// Callers must hold c.mut.
+func (c *Component) cleanupExporterCollectors() {
+	for _, col := range c.exporterCollectors {
+		if closable, ok := col.(interface{ CloseServers() }); ok {
+			closable.CloseServers()
+		}
+		c.registry.Unregister(col)
+	}
+	c.exporterCollectors = nil
+}
+
 func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	if c.dbConnection != nil {
 		c.dbConnection.Close()
 		c.dbConnection = nil
 	}
+	c.cleanupExporterCollectors()
 
 	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
@@ -394,11 +432,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		}
 		cp = cloudProvider
 	}
-
-	for _, col := range c.exporterCollectors {
-		c.registry.Unregister(col)
-	}
-	c.exporterCollectors = nil
 
 	if len(c.args.Targets) == 0 {
 		if c.args.PrometheusExporter == nil {
@@ -576,14 +609,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QuerySamplesCollector] {
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                    c.dbConnection,
-			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
-			ExcludeDatabases:      c.args.ExcludeDatabases,
-			ExcludeUsers:          c.args.ExcludeUsers,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
+			DB:                            c.dbConnection,
+			CollectInterval:               c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:              c.args.ExcludeDatabases,
+			ExcludeUsers:                  c.args.ExcludeUsers,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
+			ExcludeCurrentUser:            c.args.QuerySampleArguments.ExcludeCurrentUser,
+			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
@@ -634,10 +668,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// HealthCheck collector is always enabled
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
-		DB:              c.dbConnection,
-		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
-		EntryHandler:    entryHandler,
-		Logger:          c.opts.Logger,
+		DB:               c.dbConnection,
+		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeUsers:     c.args.ExcludeUsers,
+		EntryHandler:     entryHandler,
+		Logger:           c.opts.Logger,
 	})
 	if err != nil {
 		logStartError(collector.HealthCheckCollector, "create", err)

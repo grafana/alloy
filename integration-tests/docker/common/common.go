@@ -21,7 +21,20 @@ const (
 )
 
 func FetchDataFromURL(url string, target Unmarshaler) (string, error) {
-	resp, err := http.Get(url)
+	return FetchDataFromURLWithHeaders(url, nil, target)
+}
+
+func FetchDataFromURLWithHeaders(url string, headers map[string]string, target Unmarshaler) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	for key, value := range headers {
+		req.Header.Set(key, value)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}

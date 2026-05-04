@@ -1,0 +1,58 @@
+config: |
+  import.file "module" {
+    filename = "./tests/modules/loki_pipeline.alloy"
+  }
+
+  loki.source.file "f" {
+    targets = [
+      {
+        __path__     = "./tests/loki-pipeline-file/api.log",
+        pod          = "api-1234",
+        service_name = "api",
+        namespace    = "ns1",
+      },
+      {
+        __path__     = "./tests/loki-pipeline-file/worker.log",
+        pod          = "worker-3345",
+        service_name = "worker",
+        namespace    = "ns2",
+      },
+      {
+        __path__     = "./tests/loki-pipeline-file/audit.log",
+        pod          = "audit-7788",
+        service_name = "audit",
+        namespace    = "ns3",
+      },
+    ]
+
+    forward_to = [module.loki_pipeline.p.receiver]
+  }
+
+  module.loki_pipeline "p" {
+    forward_to = [loki.write.primary.receiver]
+  }
+
+  loki.write "primary" {
+    endpoint {
+      url = pipelinetest.loki.url
+    }
+  }
+
+assert:
+  loki:
+    - type: count
+      count: 100
+      match:
+        labels:
+          mode: partial
+          values:
+            namespace: ns1
+            service_name: api
+    - type: count
+      count: 100
+      match:
+        labels:
+          mode: partial
+          values:
+            namespace: ns2
+            service_name: worker

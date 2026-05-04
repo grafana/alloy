@@ -47,6 +47,7 @@
 ##   generate-helm-docs        Generate Helm chart documentation.
 ##   generate-helm-tests       Generate Helm chart tests.
 ##   generate-ui               Generate the UI assets.
+##   generate-graphql          Generate the GraphQL assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
 ##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
@@ -199,7 +200,7 @@ endif
 
 .PHONY: integration-test-docker
 integration-test-docker:
-	cd integration-tests/docker && $(GO_ENV) go run .
+	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m
 
 .PHONY: integration-test-k8s
 integration-test-k8s: alloy-image
@@ -274,8 +275,15 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
+
+generate-graphql:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./internal/service/graphql && GOOS= GOARCH= go generate ./...
+endif
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)

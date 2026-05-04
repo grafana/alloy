@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,10 +18,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -40,7 +41,7 @@ func TestTailer(t *testing.T) {
 
 	logger := log.NewNopLogger()
 	entryHandler := loki.NewCollectingHandler()
-	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
+	client, err := client.New(client.WithHost(server.URL))
 	require.NoError(t, err)
 
 	ps, err := positions.New(logger, positions.Config{
@@ -116,7 +117,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
+	client, err := client.New(client.WithHost(server.URL))
 	require.NoError(t, err)
 
 	tgt, err := newTailer(
@@ -248,7 +249,7 @@ func TestTailerConsumeLines(t *testing.T) {
 		}
 
 		bb := &bytes.Buffer{}
-		writer := stdcopy.NewStdWriter(bb, stdcopy.Stdout)
+		writer := newStdWriter(bb, stdcopy.Stdout)
 		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n2023-12-09T12:00:00.000000000Z line\n"))
 		require.NoError(t, err)
 
@@ -287,7 +288,7 @@ func TestTailerConsumeLines(t *testing.T) {
 		}
 
 		bb := &bytes.Buffer{}
-		writer := stdcopy.NewStdWriter(bb, stdcopy.Stdout)
+		writer := newStdWriter(bb, stdcopy.Stdout)
 
 		line := bytes.Repeat([]byte{'a'}, dockerMaxChunkSize*64*10)
 		line = append(line, '\n')
@@ -389,9 +390,7 @@ func newDockerServer(t *testing.T) *httptest.Server {
 		default:
 			w.Header().Set("Content-Type", "application/json")
 			info := container.InspectResponse{
-				ContainerJSONBase: &container.ContainerJSONBase{
-					State: &container.State{},
-				},
+				State:           &container.State{},
 				Mounts:          []container.MountPoint{},
 				Config:          &container.Config{Tty: false},
 				NetworkSettings: &container.NetworkSettings{},
@@ -472,19 +471,40 @@ type clientMock struct {
 	finishedAt func() string
 }
 
-func (mock clientMock) ContainerInspect(ctx context.Context, c string) (container.InspectResponse, error) {
-	return container.InspectResponse{
-		ContainerJSONBase: &container.ContainerJSONBase{
+func (mock clientMock) ContainerInspect(ctx context.Context, c string, opts client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
+	return client.ContainerInspectResult{
+		Container: container.InspectResponse{
 			ID: c,
 			State: &container.State{
 				Running:    mock.running(),
 				FinishedAt: mock.finishedAt(),
 			},
+			Config: &container.Config{Tty: true},
 		},
-		Config: &container.Config{Tty: true},
 	}, nil
 }
 
-func (mock clientMock) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
+func (mock clientMock) ContainerLogs(ctx context.Context, id string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
 	return io.NopCloser(strings.NewReader(mock.logLine)), nil
+}
+
+// newStdWriter frames each Write into the multiplexed stream format that
+// stdcopy.StdCopy consumes.
+func newStdWriter(w io.Writer, t stdcopy.StdType) io.Writer {
+	return &stdWriter{Writer: w, t: t}
+}
+
+type stdWriter struct {
+	io.Writer
+	t stdcopy.StdType
+}
+
+func (sw *stdWriter) Write(p []byte) (int, error) {
+	var hdr [8]byte
+	hdr[0] = byte(sw.t)
+	binary.BigEndian.PutUint32(hdr[4:], uint32(len(p)))
+	if _, err := sw.Writer.Write(hdr[:]); err != nil {
+		return 0, err
+	}
+	return sw.Writer.Write(p)
 }
