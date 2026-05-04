@@ -89,6 +89,9 @@ func Test_defaultExclusions(t *testing.T) {
 		"db-o11y",
 		"rdsadmin",
 	}, args.ExcludeUsers)
+
+	assert.True(t, args.ExcludeCurrentUser, "exclude_current_user should default to true")
+	assert.Nil(t, args.QuerySampleArguments.ExcludeCurrentUser, "query_samples.exclude_current_user should default to unset")
 }
 
 func Test_enableOrDisableCollectors(t *testing.T) {
@@ -339,6 +342,107 @@ func TestQueryRedactionConfig(t *testing.T) {
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 		assert.False(t, args.QuerySampleArguments.DisableQueryRedaction, "query redaction should be enabled when explicitly set to false")
+	})
+}
+
+func TestQuerySamples_ExcludeCurrentUser_ConfigParsing(t *testing.T) {
+	t.Run("unset by default", func(t *testing.T) {
+		cfg := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		assert.Nil(t, args.QuerySampleArguments.ExcludeCurrentUser, "should default to nil (unset)")
+	})
+
+	t.Run("explicitly true", func(t *testing.T) {
+		cfg := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		query_samples {
+			exclude_current_user = true
+		}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NotNil(t, args.QuerySampleArguments.ExcludeCurrentUser)
+		assert.True(t, *args.QuerySampleArguments.ExcludeCurrentUser)
+	})
+
+	t.Run("explicitly false", func(t *testing.T) {
+		cfg := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		query_samples {
+			exclude_current_user = false
+		}
+		`
+		var args Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+		require.NotNil(t, args.QuerySampleArguments.ExcludeCurrentUser)
+		assert.False(t, *args.QuerySampleArguments.ExcludeCurrentUser)
+	})
+}
+
+func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
+	t.Run("when true, queries current_user and merges it into effective exclude list", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectPing()
+		mock.ExpectQuery(selectServerInfo).
+			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+		mock.ExpectQuery(`SELECT current_user`).
+			WillReturnRows(sqlmock.NewRows([]string{"current_user"}).AddRow("alloy_monitor"))
+
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
+		c.args.ExcludeCurrentUser = true
+		c.args.ExcludeUsers = []string{"rdsadmin"}
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("when false, current_user is not queried", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectPing()
+		mock.ExpectQuery(selectServerInfo).
+			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
+		c.args.ExcludeCurrentUser = false
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("returns wrapped error when current_user query fails", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectPing()
+		mock.ExpectQuery(selectServerInfo).
+			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+		mock.ExpectQuery(`SELECT current_user`).WillReturnError(assert.AnError)
+
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
+		c.args.ExcludeCurrentUser = true
+
+		err = c.connectAndStartCollectors(context.Background())
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to query current_user")
 	})
 }
 
@@ -793,7 +897,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
 		// First mock: will fail
-		db1, mock1, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		db1, mock1, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db1.Close()
 
@@ -807,11 +911,11 @@ func TestPostgres_Reconnection(t *testing.T) {
 		assert.NotEmpty(t, c.healthErr.Load())
 
 		// Second mock: will succeed
-		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true), sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db2.Close()
 		mock2.ExpectPing()
-		mock2.ExpectQuery(`SELECT.*system_identifier.*inet_server_addr.*inet_server_port.*version`).
+		mock2.ExpectQuery(selectServerInfo).
 			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
 				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
 		c.openSQL = func(_ string, _ string) (*sql.DB, error) { return db2, nil }
