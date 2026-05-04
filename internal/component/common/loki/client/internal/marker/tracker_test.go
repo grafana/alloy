@@ -18,10 +18,10 @@ func TestTracker(t *testing.T) {
 		require.NoError(t, err)
 		f.MarkSegment(10)
 
-		mh := NewSegmentTracker(f, time.Minute, logger, metrics)
-		defer mh.Stop()
+		st := NewSegmentTracker(f, time.Minute, logger, metrics)
+		defer st.Stop()
 
-		require.Equal(t, 10, mh.LastMarkedSegment())
+		require.Equal(t, 10, st.LastMarkedSegment())
 	})
 
 	t.Run("last marked segment is updated when sends complete", func(t *testing.T) {
@@ -29,15 +29,15 @@ func TestTracker(t *testing.T) {
 		require.NoError(t, err)
 		f.MarkSegment(10)
 
-		mh := NewSegmentTracker(f, time.Minute, logger, metrics)
-		defer mh.Stop()
+		st := NewSegmentTracker(f, time.Minute, logger, metrics)
+		defer st.Stop()
 
-		mh.UpdateReceivedData(11, 10)
-		mh.UpdateSentData(11, 5)
-		mh.UpdateSentData(11, 5)
+		st.UpdateReceivedData(11, 10)
+		st.UpdateSentData(11, 5)
+		st.UpdateSentData(11, 5)
 
 		require.Eventually(t, func() bool {
-			return mh.LastMarkedSegment() == 11
+			return st.LastMarkedSegment() == 11
 		}, time.Second, time.Millisecond*100, "expected last marked segment to catch up")
 		require.Equal(t, 11, f.LastMarkedSegment())
 	})
@@ -47,21 +47,21 @@ func TestTracker(t *testing.T) {
 		require.NoError(t, err)
 		f.MarkSegment(10)
 
-		mh := NewSegmentTracker(f, 2*time.Second, logger, metrics)
-		defer mh.Stop()
+		st := NewSegmentTracker(f, 2*time.Second, logger, metrics)
+		defer st.Stop()
 
 		// segment 11 has 5 pending data items, and will become old after 2 secs
-		mh.UpdateReceivedData(11, 10)
-		mh.UpdateSentData(11, 5)
+		st.UpdateReceivedData(11, 10)
+		st.UpdateSentData(11, 5)
 
 		// wait until segment becomes old
 		time.Sleep(2*time.Second + time.Millisecond*100)
 
 		// send dummy data item to trigger find
-		mh.UpdateReceivedData(12, 1)
+		st.UpdateReceivedData(12, 1)
 
 		require.Eventually(t, func() bool {
-			return mh.LastMarkedSegment() == 11
+			return st.LastMarkedSegment() == 11
 		}, 3*time.Second, time.Millisecond*100, "expected last marked segment to catch up")
 		require.Equal(t, 11, f.LastMarkedSegment())
 	})
@@ -88,7 +88,7 @@ func TestFindLastMarkableSegment(t *testing.T) {
 				lastUpdate: now,
 			},
 		}
-		require.Equal(t, 4, FindMarkableSegment(data, time.Minute))
+		require.Equal(t, 4, findMarkableSegment(data, time.Minute))
 	})
 
 	t.Run("all segments with count zero, and one too old, highest numbered should be marked", func(t *testing.T) {
@@ -111,7 +111,7 @@ func TestFindLastMarkableSegment(t *testing.T) {
 				lastUpdate: now,
 			},
 		}
-		require.Equal(t, 4, FindMarkableSegment(data, time.Minute))
+		require.Equal(t, 4, findMarkableSegment(data, time.Minute))
 		// items that should have been cleanup up
 		require.Len(t, data, 0)
 	})
@@ -135,7 +135,7 @@ func TestFindLastMarkableSegment(t *testing.T) {
 				lastUpdate: now,
 			},
 		}
-		require.Equal(t, 2, FindMarkableSegment(data, time.Minute))
+		require.Equal(t, 2, findMarkableSegment(data, time.Minute))
 		require.NotContains(t, data, 1)
 		require.NotContains(t, data, 2)
 	})
@@ -160,7 +160,7 @@ func TestFindLastMarkableSegment(t *testing.T) {
 			},
 		}
 		lenBefore := len(data)
-		require.Equal(t, -1, FindMarkableSegment(data, time.Minute))
+		require.Equal(t, -1, findMarkableSegment(data, time.Minute))
 		require.Len(t, data, lenBefore, "none key should have been deleted")
 	})
 	t.Run("should find only item with zero, and clean it up", func(t *testing.T) {
@@ -171,7 +171,7 @@ func TestFindLastMarkableSegment(t *testing.T) {
 				lastUpdate: now,
 			},
 		}
-		require.Equal(t, 11, FindMarkableSegment(data, time.Minute))
+		require.Equal(t, 11, findMarkableSegment(data, time.Minute))
 		require.Len(t, data, 0)
 	})
 }

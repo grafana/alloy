@@ -22,7 +22,7 @@ var (
 	errMaxStreamsLimitExceeded = errors.New("streams limit exceeded")
 )
 
-// sentDataTracker is a slice of the marker.Tracker interface, that the batch interacts with to report the event that
+// sentDataTracker is a subset of the marker.Tracker interface, that the batch interacts with to report the event that
 // all data in the batch has been delivered or a client failed to do so.
 type sentDataTracker interface {
 	UpdateSentData(segmentId, dataCount int)
