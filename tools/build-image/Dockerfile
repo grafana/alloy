@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.21@sha256:27f9262d43452075f3c410287a2c43f5ef1bf7ec2bb06e8c9eeb1b8d453087bc
+# syntax=docker/dockerfile:1.23@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
 
 # NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
@@ -15,18 +15,18 @@ ARG GO_RUNTIME=mustoverride
 #
 
 # Dependency: docker (for building images)
-FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 as docker
+FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as docker
 RUN apk add --no-cache docker-cli docker-cli-buildx
 
 # Dependency: helm
-FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 as helm
+FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as helm
 RUN apk add --no-cache helm
 
 # Dependency: nsis (for building Windows installers)
 # TODO: Use nsis with conda so that we don't have to pull those packages from the internet.
 # https://nsis.sourceforge.io/Conda
 # TODO: Why do we use i386? Is it correct?
-FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659 as nsis
+FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as nsis
 RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip \
  && unzip AccessControl.zip -d /usr/share/nsis/ \
  && mkdir -p /usr/share/nsis/Plugins/x86-unicode \
