@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMarkerFileHandler(t *testing.T) {
+func TestFile(t *testing.T) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 	getTempDir := func(t *testing.T) string {
 		dir := t.TempDir()
@@ -19,7 +19,7 @@ func TestMarkerFileHandler(t *testing.T) {
 
 	t.Run("invalid last marked segment when there's no marker file", func(t *testing.T) {
 		dir := getTempDir(t)
-		fh, err := NewMarkerFileHandler(logger, dir)
+		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
 		require.Equal(t, -1, fh.LastMarkedSegment())
@@ -27,7 +27,7 @@ func TestMarkerFileHandler(t *testing.T) {
 
 	t.Run("reads the last segment from existing marker file", func(t *testing.T) {
 		dir := getTempDir(t)
-		fh, err := NewMarkerFileHandler(logger, dir)
+		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
 		// write first something to marker
@@ -42,7 +42,7 @@ func TestMarkerFileHandler(t *testing.T) {
 
 	t.Run("marks segment, and then reads value from it", func(t *testing.T) {
 		dir := getTempDir(t)
-		fh, err := NewMarkerFileHandler(logger, dir)
+		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
 		fh.MarkSegment(12)
@@ -51,7 +51,7 @@ func TestMarkerFileHandler(t *testing.T) {
 
 	t.Run("marker file and directory is created with correct permissions", func(t *testing.T) {
 		dir := getTempDir(t)
-		fh, err := NewMarkerFileHandler(logger, dir)
+		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
 		fh.MarkSegment(12)

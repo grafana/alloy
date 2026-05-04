@@ -31,47 +31,45 @@ type MarkerFileHandler interface {
 	MarkSegment(segment int)
 }
 
-type markerFileHandler struct {
+type File struct {
 	logger                    log.Logger
 	lastMarkedSegmentDir      string
 	lastMarkedSegmentFilePath string
 }
 
 var (
-	_ MarkerFileHandler = (*markerFileHandler)(nil)
+	_ MarkerFileHandler = (*File)(nil)
 )
 
-// NewMarkerFileHandler creates a new markerFileHandler.
-func NewMarkerFileHandler(logger log.Logger, walDir string) (MarkerFileHandler, error) {
-	markerDir := filepath.Join(walDir, markerFolderName)
+// NewFile creates a new marker File.
+func NewFile(logger log.Logger, dir string) (*File, error) {
+	markerDir := filepath.Join(dir, markerFolderName)
 	// attempt to create dir if doesn't exist
 	if err := os.MkdirAll(markerDir, markerFolderMode); err != nil {
 		return nil, fmt.Errorf("error creating segment marker folder %q: %w", markerDir, err)
 	}
 
-	mfh := &markerFileHandler{
+	return &File{
 		logger:                    logger,
 		lastMarkedSegmentDir:      filepath.Join(markerDir),
 		lastMarkedSegmentFilePath: filepath.Join(markerDir, markerFileName),
-	}
-
-	return mfh, nil
+	}, nil
 }
 
 // LastMarkedSegment implements wlog.Marker.
-func (mfh *markerFileHandler) LastMarkedSegment() int {
-	bs, err := os.ReadFile(mfh.lastMarkedSegmentFilePath)
+func (f *File) LastMarkedSegment() int {
+	bs, err := os.ReadFile(f.lastMarkedSegmentFilePath)
 	if os.IsNotExist(err) {
-		level.Warn(mfh.logger).Log("msg", "marker segment file does not exist", "file", mfh.lastMarkedSegmentFilePath)
+		level.Warn(f.logger).Log("msg", "marker segment file does not exist", "file", f.lastMarkedSegmentFilePath)
 		return -1
 	} else if err != nil {
-		level.Error(mfh.logger).Log("msg", "could not access segment marker file", "file", mfh.lastMarkedSegmentFilePath, "err", err)
+		level.Error(f.logger).Log("msg", "could not access segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
 		return -1
 	}
 
 	savedSegment, err := decodeV1(bs)
 	if err != nil {
-		level.Error(mfh.logger).Log("msg", "could not decode segment marker file", "file", mfh.lastMarkedSegmentFilePath, "err", err)
+		level.Error(f.logger).Log("msg", "could not decode segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
 		return -1
 	}
 
@@ -79,25 +77,25 @@ func (mfh *markerFileHandler) LastMarkedSegment() int {
 }
 
 // MarkSegment implements MarkerHandler.
-func (mfh *markerFileHandler) MarkSegment(segment int) {
+func (f *File) MarkSegment(segment int) {
 	encodedMarker, err := encodeV1(uint64(segment))
 	if err != nil {
-		level.Error(mfh.logger).Log("msg", "failed to encode marker when marking segment", "err", err)
+		level.Error(f.logger).Log("msg", "failed to encode marker when marking segment", "err", err)
 		return
 	}
 
-	if err := mfh.atomicallyWriteMarker(encodedMarker); err != nil {
-		level.Error(mfh.logger).Log("msg", "could not replace segment marker file", "file", mfh.lastMarkedSegmentFilePath, "err", err)
+	if err := f.atomicallyWriteMarker(encodedMarker); err != nil {
+		level.Error(f.logger).Log("msg", "could not replace segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
 		return
 	}
 
-	level.Debug(mfh.logger).Log("msg", "updated segment marker file", "file", mfh.lastMarkedSegmentFilePath, "segment", segment)
+	level.Debug(f.logger).Log("msg", "updated segment marker file", "file", f.lastMarkedSegmentFilePath, "segment", segment)
 }
 
 // atomicallyWriteMarker attempts to perform an atomic write of the marker contents. This is delegated to
 // https://github.com/natefinch/atomic/blob/master/atomic.go, that first handles atomic file renaming for UNIX and
 // Windows systems. Also, atomic.WriteFile will first write the contents to a temporal file, and then perform the atomic
 // rename, swapping the marker, or not at all.
-func (mfh *markerFileHandler) atomicallyWriteMarker(bs []byte) error {
-	return atomic.WriteFile(mfh.lastMarkedSegmentFilePath, bytes.NewReader(bs))
+func (f *File) atomicallyWriteMarker(bs []byte) error {
+	return atomic.WriteFile(f.lastMarkedSegmentFilePath, bytes.NewReader(bs))
 }
