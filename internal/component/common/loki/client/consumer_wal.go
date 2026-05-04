@@ -37,7 +37,7 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 		endpointsCheck = make(map[string]struct{})
 
 		walWatcherMetrics  = wal.NewWatcherMetrics(reg)
-		walMarkerMetrics   = marker.NewMarkerMetrics(reg)
+		walMarkerMetrics   = marker.NewMetrics(reg)
 		walEndpointMetrics = newWALEndpointMetrics(reg)
 	)
 

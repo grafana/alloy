@@ -31,7 +31,7 @@ func (m *mockMarkerFileHandler) MarkSegment(segment int) {
 func TestMarkerHandler(t *testing.T) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 	// drive-by test: if metrics don't have the id curried, it panics when emitting them
-	metrics := NewMarkerMetrics(nil).CurryWithId("test")
+	metrics := NewMetrics(nil).CurryWithId("test")
 	t.Run("returns last marked segment from file handler on start", func(t *testing.T) {
 		f, err := NewFile(logger, t.TempDir())
 		require.NoError(t, err)

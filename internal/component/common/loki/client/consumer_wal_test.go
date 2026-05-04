@@ -349,7 +349,7 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 					markerFileHandler, err := marker.NewFile(nopLogger, dir)
 					require.NoError(b, err)
 
-					markerHandler := marker.NewMarkerHandler(markerFileHandler, time.Minute, nopLogger, marker.NewMarkerMetrics(nil).CurryWithId("test"))
+					markerHandler := marker.NewMarkerHandler(markerFileHandler, time.Minute, nopLogger, marker.NewMetrics(nil).CurryWithId("test"))
 
 					return markerHandler
 				})

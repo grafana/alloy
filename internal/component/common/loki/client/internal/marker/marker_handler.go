@@ -34,7 +34,7 @@ type markerHandler struct {
 	logger            log.Logger
 	file              *File
 	maxSegmentAge     time.Duration
-	metrics           *MarkerMetrics
+	metrics           *Metrics
 	quit              chan struct{}
 	runFindTicker     *time.Ticker
 	wg                sync.WaitGroup
@@ -49,7 +49,7 @@ type dataUpdate struct {
 var _ MarkerHandler = (*markerHandler)(nil)
 
 // NewMarkerHandler creates a new markerHandler.
-func NewMarkerHandler(file *File, maxSegmentAge time.Duration, logger log.Logger, metrics *MarkerMetrics) MarkerHandler {
+func NewMarkerHandler(file *File, maxSegmentAge time.Duration, logger log.Logger, metrics *Metrics) MarkerHandler {
 	mh := &markerHandler{
 		lastMarkedSegment: -1, // Segment ID last marked on disk.
 		file:              file,
