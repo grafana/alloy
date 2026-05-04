@@ -13,13 +13,13 @@ import (
 )
 
 const (
-	MarkerFolderName = "remote"
-	MarkerFileName   = "segment_marker"
+	markerFolderName = "remote"
+	markerFileName   = "segment_marker"
 
-	MarkerFolderMode        os.FileMode = 0o700
-	MarkerWindowsFolderMode os.FileMode = 0o777
-	MarkerFileMode          os.FileMode = 0o600
-	MarkerWindowsFileMode   os.FileMode = 0o666
+	markerFolderMode        os.FileMode = 0o700
+	markerWindowsFolderMode os.FileMode = 0o777
+	markerFileMode          os.FileMode = 0o600
+	markerWindowsFileMode   os.FileMode = 0o666
 )
 
 // MarkerFileHandler is a file-backed wal.Marker, that also allows one to write to the backing store as particular
@@ -43,16 +43,16 @@ var (
 
 // NewMarkerFileHandler creates a new markerFileHandler.
 func NewMarkerFileHandler(logger log.Logger, walDir string) (MarkerFileHandler, error) {
-	markerDir := filepath.Join(walDir, MarkerFolderName)
+	markerDir := filepath.Join(walDir, markerFolderName)
 	// attempt to create dir if doesn't exist
-	if err := os.MkdirAll(markerDir, MarkerFolderMode); err != nil {
+	if err := os.MkdirAll(markerDir, markerFolderMode); err != nil {
 		return nil, fmt.Errorf("error creating segment marker folder %q: %w", markerDir, err)
 	}
 
 	mfh := &markerFileHandler{
 		logger:                    logger,
 		lastMarkedSegmentDir:      filepath.Join(markerDir),
-		lastMarkedSegmentFilePath: filepath.Join(markerDir, MarkerFileName),
+		lastMarkedSegmentFilePath: filepath.Join(markerDir, markerFileName),
 	}
 
 	return mfh, nil
@@ -69,7 +69,7 @@ func (mfh *markerFileHandler) LastMarkedSegment() int {
 		return -1
 	}
 
-	savedSegment, err := DecodeMarkerV1(bs)
+	savedSegment, err := decodeV1(bs)
 	if err != nil {
 		level.Error(mfh.logger).Log("msg", "could not decode segment marker file", "file", mfh.lastMarkedSegmentFilePath, "err", err)
 		return -1
@@ -80,7 +80,7 @@ func (mfh *markerFileHandler) LastMarkedSegment() int {
 
 // MarkSegment implements MarkerHandler.
 func (mfh *markerFileHandler) MarkSegment(segment int) {
-	encodedMarker, err := EncodeMarkerV1(uint64(segment))
+	encodedMarker, err := encodeV1(uint64(segment))
 	if err != nil {
 		level.Error(mfh.logger).Log("msg", "failed to encode marker when marking segment", "err", err)
 		return

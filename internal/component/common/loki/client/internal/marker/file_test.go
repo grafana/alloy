@@ -31,10 +31,10 @@ func TestMarkerFileHandler(t *testing.T) {
 		require.NoError(t, err)
 
 		// write first something to marker
-		markerFile := filepath.Join(dir, MarkerFolderName, MarkerFileName)
-		bs, err := EncodeMarkerV1(10)
+		markerFile := filepath.Join(dir, markerFolderName, markerFileName)
+		bs, err := encodeV1(10)
 		require.NoError(t, err)
-		err = os.WriteFile(markerFile, bs, MarkerFileMode)
+		err = os.WriteFile(markerFile, bs, markerFileMode)
 		require.NoError(t, err)
 
 		require.Equal(t, 10, fh.LastMarkedSegment())
@@ -56,20 +56,20 @@ func TestMarkerFileHandler(t *testing.T) {
 
 		fh.MarkSegment(12)
 		// check folder first
-		stats, err := os.Stat(filepath.Join(dir, MarkerFolderName))
+		stats, err := os.Stat(filepath.Join(dir, markerFolderName))
 		require.NoError(t, err)
 		if runtime.GOOS == "windows" {
-			require.Equal(t, MarkerWindowsFolderMode, stats.Mode().Perm())
+			require.Equal(t, markerWindowsFolderMode, stats.Mode().Perm())
 		} else {
-			require.Equal(t, MarkerFolderMode, stats.Mode().Perm())
+			require.Equal(t, markerFolderMode, stats.Mode().Perm())
 		}
 		// then file
-		stats, err = os.Stat(filepath.Join(dir, MarkerFolderName, MarkerFileName))
+		stats, err = os.Stat(filepath.Join(dir, markerFolderName, markerFileName))
 		require.NoError(t, err)
 		if runtime.GOOS == "windows" {
-			require.Equal(t, MarkerWindowsFileMode, stats.Mode().Perm())
+			require.Equal(t, markerWindowsFileMode, stats.Mode().Perm())
 		} else {
-			require.Equal(t, MarkerFileMode, stats.Mode().Perm())
+			require.Equal(t, markerFileMode, stats.Mode().Perm())
 		}
 	})
 }
