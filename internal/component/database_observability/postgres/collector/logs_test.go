@@ -846,3 +846,48 @@ func TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter(t *test
 	// pg_errors_by_fingerprint_total stays at 0 — there was no STATEMENT.
 	require.Equal(t, 0, testutil.CollectAndCount(c.errorsByFingerprint, "database_observability_pg_errors_by_fingerprint_total"))
 }
+
+func TestLogsCollector_DisplacedPendingDoesNotDoubleCount(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	pid := "55555"
+	// ERROR #1 (no STATEMENT yet).
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  err one",
+	}}
+	// ERROR #2 from same PID (displaces #1).
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P02:" + ts2 + ":1/0:0:c1::psqlERROR:  err two",
+	}}
+	// STATEMENT for #2.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      "STATEMENT:  SELECT 2",
+	}}
+
+	expectedFP, _, _ := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog, 0)
+
+	// Exactly one increment, with err two's labels and SELECT 2's fingerprint.
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P02", "42", "books_store", expectedFP)) == 1
+	}, 2*time.Second, 50*time.Millisecond)
+	// And nothing under err one's labels.
+	require.Equal(t, float64(0), testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP)))
+}
