@@ -15,9 +15,7 @@ var ErrConsumerStopped = errors.New("consumer stopped")
 // NewShardingConsumer creates a Consumer which shards streams across a fixed
 // number of shards before forwarding them to the downstream consumer.
 func NewShardingConsumer(shards int, consumer Consumer) *ShardingConsumer {
-	if shards <= 0 {
-		shards = 1
-	}
+	shards = max(shards, 1)
 
 	s := &ShardingConsumer{
 		consumer: consumer,

@@ -82,7 +82,7 @@ func (b *Batch) FilterMap(fn func(entry *Entry) FilterMapAction) {
 
 		for _, e := range stream.Entries {
 			// FIXME(kalleep): This clone protects stream.Labels from in-place mutation
-			// through Entry.Labels, which is a map. Most IterMut callbacks do not change
+			// through Entry.Labels, which is a map. Most FilterMap callbacks do not change
 			// labels, so once the new batched pipeline owns this path, consider replacing
 			// direct label access with copy-on-write label mutation methods.
 			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), b.created, e)
