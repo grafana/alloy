@@ -1,7 +1,7 @@
 name: alloy-integration-tests
 services:
   mimir:
-    image: grafana/mimir:3.0.4@sha256:686138d9f941508c99c931cc9e69bf9f6100dd4d2d623bf57b38d5c25ee645c1
+    image: grafana/mimir:3.0.6@sha256:4508fd612969dfcf4b50276856fd05d5a971b15e494ad53da911b44781446f2b
     volumes:
       - ./configs/mimir:/etc/mimir-config
     entrypoint:
@@ -79,7 +79,7 @@ services:
       - integration-tests
 
   loki:
-    image: grafana/loki:3.6.7@sha256:3c8fd3570dd9219951a60d3f919c7f31923d10baee578b77bc26c4a0b32d092d
+    image: grafana/loki:3.7.1@sha256:73e905b51a7f917f7a1075e4be68759df30226e03dcb3cd2213b989cc0dc8eb4
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
@@ -96,7 +96,7 @@ services:
       - integration-tests
 
   redis:
-    image: redis:6.2.21-alpine@sha256:46884be93652d02a96a176ccf173d1040bef365c5706aa7b6a1931caec8bfeef
+    image: redis:6.2.21-alpine@sha256:2da4679295e9402100d6ddafe65705f0fefc4173ff7bd0968c1c09f14e940779
     ports:
       - "6379:6379"
     healthcheck:
@@ -109,7 +109,7 @@ services:
       - integration-tests
 
   redis-init:
-    image: redis:6.2.21-alpine@sha256:46884be93652d02a96a176ccf173d1040bef365c5706aa7b6a1931caec8bfeef
+    image: redis:6.2.21-alpine@sha256:2da4679295e9402100d6ddafe65705f0fefc4173ff7bd0968c1c09f14e940779
     depends_on:
       redis:
         condition: service_healthy
@@ -129,7 +129,7 @@ services:
       - integration-tests
 
   mysql:
-    image: mysql:8.4@sha256:da906917ca4ace3ba55538b7c2ee97a9bc865ef14a4b6920b021f0249d603f3d
+    image: mysql:8.4@sha256:43bd9764df60666fb2ba2cf8217dd17b3d2414c150005d2fdd07a0cd73d3b7f5
     container_name: mysql
     ports:
       - "3306:3306"
@@ -142,7 +142,7 @@ services:
       - integration-tests
 
   postgres:
-    image: postgres:16@sha256:2586e2a95d1c9b31cb2967feb562948f7d364854453d703039b6efa45fe48417
+    image: postgres:16@sha256:71e27bf60b70bded003791b5573f8b808365613f341df20ffcf0c1ed7bc13ddf
     container_name: postgres
     ports:
       - "5432:5432"
@@ -155,7 +155,7 @@ services:
       - integration-tests
 
   postgres-init:
-    image: postgres:16@sha256:2586e2a95d1c9b31cb2967feb562948f7d364854453d703039b6efa45fe48417
+    image: postgres:16@sha256:71e27bf60b70bded003791b5573f8b808365613f341df20ffcf0c1ed7bc13ddf
     depends_on:
       - postgres
     volumes:
