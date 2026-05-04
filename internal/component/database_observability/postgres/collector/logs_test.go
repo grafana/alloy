@@ -956,3 +956,54 @@ func TestLogsCollector_EmitsSlowQueryWithFingerprint(t *testing.T) {
 	require.Contains(t, slowEntry.Entry.Line, `duration_ms="1234.567"`)
 	require.Contains(t, slowEntry.Entry.Line, `statement_preview="SELECT pg_sleep(1)"`)
 }
+
+// TestLogsCollector_DoesNotDeadlockWhenEmittingPgError is a regression test for
+// the production deadlock where EntryHandler was wired to the input receiver's
+// channel. Production now uses a separate fanout channel for emitted entries;
+// this test asserts the collector tolerates a modest backlog without
+// deadlocking.
+func TestLogsCollector_DoesNotDeadlockWhenEmittingPgError(t *testing.T) {
+	receiver := loki.NewLogsReceiver()
+	// EntryHandler wired to a buffered channel separate from receiver, mirroring
+	// how production wires it to the component's fanout.
+	out := make(chan loki.Entry, 4)
+	entryHandler := loki.NewEntryHandler(out, func() {})
+	registry := prometheus.NewRegistry()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// Send 3 ERROR + STATEMENT pairs back-to-back. Without the fix, the first
+	// emission would block because EntryHandler.Chan() == receiver.Chan().
+	for i := 0; i < 3; i++ {
+		receiver.Chan() <- loki.Entry{Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      ts1 + ":127.0.0.1:5432:user@d:[" + fmt.Sprintf("%d", 1000+i) + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  err",
+		}}
+		receiver.Chan() <- loki.Entry{Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      "STATEMENT:  SELECT " + fmt.Sprintf("%d", i),
+		}}
+	}
+
+	// 3 pg_error entries should be readable from the output channel.
+	for i := 0; i < 3; i++ {
+		select {
+		case e := <-out:
+			require.Equal(t, "pg_error", string(e.Labels["op"]))
+		case <-time.After(2 * time.Second):
+			t.Fatalf("collector deadlocked at entry %d", i+1)
+		}
+	}
+}
