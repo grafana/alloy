@@ -11,7 +11,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
-type MarkerHandler interface {
+type Tracker interface {
 	wal.Marker
 
 	// UpdateReceivedData sends an update event to the handler, that informs that some dataUpdate, coming from a particular WAL
@@ -26,9 +26,9 @@ type MarkerHandler interface {
 	Stop()
 }
 
-// markerHandler implements MarkerHandler, processing data update events in an asynchronous manner, and tracking the last
+// SegmentTracker implements Tracker, processing data update events in an asynchronous manner, and tracking the last
 // consumed segment in a file.
-type markerHandler struct {
+type SegmentTracker struct {
 	dataIOUpdate      chan dataUpdate
 	lastMarkedSegment int
 	logger            log.Logger
@@ -46,11 +46,11 @@ type dataUpdate struct {
 	dataCount int
 }
 
-var _ MarkerHandler = (*markerHandler)(nil)
+var _ Tracker = (*SegmentTracker)(nil)
 
-// NewMarkerHandler creates a new markerHandler.
-func NewMarkerHandler(file *File, maxSegmentAge time.Duration, logger log.Logger, metrics *Metrics) MarkerHandler {
-	mh := &markerHandler{
+// NewTracker creates a new SegmentTracker.
+func NewTracker(file *File, maxSegmentAge time.Duration, logger log.Logger, metrics *Metrics) *SegmentTracker {
+	t := &SegmentTracker{
 		lastMarkedSegment: -1, // Segment ID last marked on disk.
 		file:              file,
 		//TODO: What is a good size for the channel?
@@ -65,28 +65,27 @@ func NewMarkerHandler(file *File, maxSegmentAge time.Duration, logger log.Logger
 	}
 
 	// Load the last marked segment from disk (if it exists).
-	if lastSegment := mh.file.LastMarkedSegment(); lastSegment >= 0 {
-		mh.lastMarkedSegment = lastSegment
+	if lastSegment := t.file.LastMarkedSegment(); lastSegment >= 0 {
+		t.lastMarkedSegment = lastSegment
 	}
 
-	mh.wg.Add(1)
-	go mh.runUpdatePendingData()
+	t.wg.Go(t.runUpdatePendingData)
 
-	return mh
+	return t
 }
 
-func (mh *markerHandler) LastMarkedSegment() int {
+func (mh *SegmentTracker) LastMarkedSegment() int {
 	return mh.file.LastMarkedSegment()
 }
 
-func (mh *markerHandler) UpdateReceivedData(segmentId, dataCount int) {
+func (mh *SegmentTracker) UpdateReceivedData(segmentId, dataCount int) {
 	mh.dataIOUpdate <- dataUpdate{
 		segmentId: segmentId,
 		dataCount: dataCount,
 	}
 }
 
-func (mh *markerHandler) UpdateSentData(segmentId, dataCount int) {
+func (mh *SegmentTracker) UpdateSentData(segmentId, dataCount int) {
 	mh.dataIOUpdate <- dataUpdate{
 		segmentId: segmentId,
 		dataCount: -1 * dataCount,
@@ -111,9 +110,7 @@ type processDataItem struct {
 // and a procedure is triggered to find the "last consumed segment", implemented by FindMarkableSegment. Since this
 // last procedure could be expensive, it's execution is run at most if a segment has reached count zero, of when a timer
 // is fired (once per second).
-func (mh *markerHandler) runUpdatePendingData() {
-	defer mh.wg.Done()
-
+func (mh *SegmentTracker) runUpdatePendingData() {
 	segmentDataCount := make(map[int]*countDataItem)
 
 	for {
@@ -159,7 +156,7 @@ func (mh *markerHandler) runUpdatePendingData() {
 	}
 }
 
-func (mh *markerHandler) Stop() {
+func (mh *SegmentTracker) Stop() {
 	mh.runFindTicker.Stop()
 	mh.quit <- struct{}{}
 	mh.wg.Wait()
@@ -211,24 +208,24 @@ func FindMarkableSegment(segmentDataCount map[int]*countDataItem, tooOldThreshol
 	return lastZero
 }
 
-// NewNopMarkerHandler creates a new no-op marker handler that implements
-// MarkerHandler but performs no operations. This is useful when marker tracking
+// NewNopTracker creates a new no-op Tracker.
+// This is useful when marker tracking
 // is not needed or disabled.
-func NewNopMarkerHandler() *NopMarkerHandler {
-	return &NopMarkerHandler{}
+func NewNopTracker() *NopTracker {
+	return &NopTracker{}
 }
 
-var _ MarkerHandler = (*NopMarkerHandler)(nil)
+var _ Tracker = (*NopTracker)(nil)
 
-// NopMarkerHandler is a no-op implementation of MarkerHandler. All methods
+// NopTracker is a no-op implementation of Tracker. All methods
 // are implemented as empty functions, making it suitable for use when marker
 // tracking functionality is not required.
-type NopMarkerHandler struct{}
+type NopTracker struct{}
 
-func (n *NopMarkerHandler) LastMarkedSegment() int { return 0 }
+func (n *NopTracker) LastMarkedSegment() int { return -1 }
 
-func (n *NopMarkerHandler) UpdateReceivedData(segmentId int, dataCount int) {}
+func (n *NopTracker) UpdateReceivedData(segmentId int, dataCount int) {}
 
-func (n *NopMarkerHandler) UpdateSentData(segmentId int, dataCount int) {}
+func (n *NopTracker) UpdateSentData(segmentId int, dataCount int) {}
 
-func (n *NopMarkerHandler) Stop() {}
+func (n *NopTracker) Stop() {}

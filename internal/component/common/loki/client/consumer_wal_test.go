@@ -262,7 +262,7 @@ func TestWALEndpoint(t *testing.T) {
 			}
 
 			logger := log.NewLogfmtLogger(os.Stdout)
-			marker := marker.NewNopMarkerHandler()
+			marker := marker.NewNopTracker()
 
 			endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
 			require.NoError(t, err)
@@ -336,22 +336,20 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 	} {
 		b.Run(name, func(b *testing.B) {
 			b.Run("implementation=wal_nil_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.MarkerHandler {
-					return marker.NewNopMarkerHandler()
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.Tracker {
+					return marker.NewNopTracker()
 				})
 			})
 
 			b.Run("implementation=wal_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.MarkerHandler {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.Tracker {
 					dir := b.TempDir()
 					nopLogger := log.NewNopLogger()
 
-					markerFileHandler, err := marker.NewFile(nopLogger, dir)
+					f, err := marker.NewFile(nopLogger, dir)
 					require.NoError(b, err)
 
-					markerHandler := marker.NewMarkerHandler(markerFileHandler, time.Minute, nopLogger, marker.NewMetrics(nil).CurryWithId("test"))
-
-					return markerHandler
+					return marker.NewSegmentTracker(f, time.Minute, nopLogger, marker.NewMetrics(nil).CurryWithId("test"))
 				})
 			})
 
@@ -362,7 +360,7 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 	}
 }
 
-func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) marker.MarkerHandler) {
+func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) marker.Tracker) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
@@ -503,7 +501,7 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 
 	m := newMetrics(reg)
-	endpoint, err := newEndpoint(m, cfg, logger, marker.NewNopMarkerHandler())
+	endpoint, err := newEndpoint(m, cfg, logger, marker.NewNopTracker())
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}

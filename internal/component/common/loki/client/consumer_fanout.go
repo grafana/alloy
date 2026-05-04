@@ -34,7 +34,7 @@ func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, cfgs ...Con
 		}
 
 		endpointsCheck[name] = struct{}{}
-		endpoint, err := newEndpoint(metrics, cfg, logger, marker.NewNopMarkerHandler())
+		endpoint, err := newEndpoint(metrics, cfg, logger, marker.NewNopTracker())
 		if err != nil {
 			return nil, fmt.Errorf("error starting endpoint: %w", err)
 		}

@@ -27,7 +27,7 @@ type endpoint struct {
 	backoff *backoff.Backoff
 }
 
-func newEndpoint(metrics *metrics, cfg Config, logger log.Logger, markerHandler marker.MarkerHandler) (*endpoint, error) {
+func newEndpoint(metrics *metrics, cfg Config, logger log.Logger, markerHandler marker.Tracker) (*endpoint, error) {
 	logger = log.With(logger, "component", "endpoint", "host", cfg.URL.Host)
 
 	shards, err := newShards(metrics, logger, markerHandler, cfg)

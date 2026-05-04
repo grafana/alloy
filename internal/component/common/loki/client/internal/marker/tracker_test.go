@@ -7,28 +7,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 )
 
-type mockMarkerFileHandler struct {
-	lastMarkedSegment atomic.Int64
-}
-
-func newMockMarkerFileHandler(seg int) *mockMarkerFileHandler {
-	mh := &mockMarkerFileHandler{}
-	mh.MarkSegment(seg)
-	return mh
-}
-
-func (m *mockMarkerFileHandler) LastMarkedSegment() int {
-	return int(m.lastMarkedSegment.Load())
-}
-
-func (m *mockMarkerFileHandler) MarkSegment(segment int) {
-	m.lastMarkedSegment.Store(int64(segment))
-}
-
-func TestMarkerHandler(t *testing.T) {
+func TestTracker(t *testing.T) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 	// drive-by test: if metrics don't have the id curried, it panics when emitting them
 	metrics := NewMetrics(nil).CurryWithId("test")
@@ -37,7 +18,7 @@ func TestMarkerHandler(t *testing.T) {
 		require.NoError(t, err)
 		f.MarkSegment(10)
 
-		mh := NewMarkerHandler(f, time.Minute, logger, metrics)
+		mh := NewSegmentTracker(f, time.Minute, logger, metrics)
 		defer mh.Stop()
 
 		require.Equal(t, 10, mh.LastMarkedSegment())
@@ -48,7 +29,7 @@ func TestMarkerHandler(t *testing.T) {
 		require.NoError(t, err)
 		f.MarkSegment(10)
 
-		mh := NewMarkerHandler(f, time.Minute, logger, metrics)
+		mh := NewSegmentTracker(f, time.Minute, logger, metrics)
 		defer mh.Stop()
 
 		mh.UpdateReceivedData(11, 10)
@@ -66,7 +47,7 @@ func TestMarkerHandler(t *testing.T) {
 		require.NoError(t, err)
 		f.MarkSegment(10)
 
-		mh := NewMarkerHandler(f, 2*time.Second, logger, metrics)
+		mh := NewSegmentTracker(f, 2*time.Second, logger, metrics)
 		defer mh.Stop()
 
 		// segment 11 has 5 pending data items, and will become old after 2 secs

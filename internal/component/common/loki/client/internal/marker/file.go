@@ -62,7 +62,7 @@ func (f *File) LastMarkedSegment() int {
 	return int(savedSegment)
 }
 
-// MarkSegment implements MarkerHandler.
+// MarkSegment stores segment as the last marked WAL segment.
 func (f *File) MarkSegment(segment int) {
 	encodedMarker, err := encodeV1(uint64(segment))
 	if err != nil {
