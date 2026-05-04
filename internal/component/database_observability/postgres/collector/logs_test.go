@@ -808,3 +808,41 @@ func TestLogsCollector_IncrementsErrorsByFingerprint_OnErrorPlusStatement(t *tes
 	got := testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP))
 	require.Equal(t, float64(1), got)
 }
+
+func TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond
+
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// ERROR with no following STATEMENT.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[99999]:1:53300:" + ts2 + ":1/0:0:c1::psqlFATAL:  too many connections",
+	}}
+
+	// pg_errors_total increments immediately (existing behavior).
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "books_store", "user")) == 1
+	}, 1*time.Second, 50*time.Millisecond)
+
+	// Wait past the pending timeout window plus a tick.
+	time.Sleep(300 * time.Millisecond)
+
+	// pg_errors_by_fingerprint_total stays at 0 — there was no STATEMENT.
+	require.Equal(t, 0, testutil.CollectAndCount(c.errorsByFingerprint, "database_observability_pg_errors_by_fingerprint_total"))
+}
