@@ -8,7 +8,7 @@ permissions: {}
 
 jobs:
   docs-ci:
-    uses: grafana/writers-toolkit/.github/workflows/docs-ci.yml@main
+    uses: grafana/writers-toolkit/.github/workflows/docs-ci.yml@7a79d43d42911bad62d63cf4f0f6616d9194f8c7 # main
     permissions:
       checks: write
       contents: read

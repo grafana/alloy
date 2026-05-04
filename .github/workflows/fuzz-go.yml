@@ -93,7 +93,7 @@ jobs:
         run: echo "FUZZ_CACHE=$(go env GOCACHE)/fuzz" >> $GITHUB_ENV
 
       - name: Restore fuzz cache
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: ${{ env.FUZZ_CACHE }}
           key: fuzz-${{ matrix.package }}-${{ matrix.function }}-${{ github.sha }}
@@ -135,7 +135,7 @@ jobs:
       - name: Upload fuzz failure as artifact
         id: artifact
         if: ${{ failure() && steps.new-failure.outputs.file != '' }}
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: failure-${{ steps.new-failure.outputs.package }}-${{ steps.new-failure.outputs.function }}
           path: ${{ steps.new-failure.outputs.file }}

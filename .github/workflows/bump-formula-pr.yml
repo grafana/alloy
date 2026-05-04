@@ -29,7 +29,7 @@ jobs:
           ALLOYBOT_PRIVATE_KEY=alloybot:private_key
         export_env: false
 
-    - uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+    - uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
       id: app-token
       with:
         app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
@@ -56,7 +56,7 @@ jobs:
         git config --global user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
 
     - name: Get latest release
-      uses: rez0n/actions-github-release@794c12f5e8d629e6ca329cf2e2daeb0f0ce6a3ce # main
+      uses: rez0n/actions-github-release@05fabbd6b2b3ce3383299555ea518faea69b736d # main
       id: latest_release
       with:
         token: ${{ steps.app-token.outputs.token }}

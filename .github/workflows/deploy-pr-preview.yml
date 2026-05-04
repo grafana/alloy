@@ -15,7 +15,7 @@ permissions:
 jobs:
   deploy-pr-preview:
     if: "!github.event.pull_request.head.repo.fork"
-    uses: grafana/writers-toolkit/.github/workflows/deploy-preview.yml@main
+    uses: grafana/writers-toolkit/.github/workflows/deploy-preview.yml@7a79d43d42911bad62d63cf4f0f6616d9194f8c7 # main
     # ^ We can't pin a hash for this action because deploy-preview's checkout step relies on it
     # having been called against the main branch
     permissions:
