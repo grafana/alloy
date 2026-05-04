@@ -65,9 +65,11 @@ func (arg *Arguments) SetToDefault() {
 	}
 }
 
-// minCacheTTL rejects values short enough to be effectively useless
-// (almost certainly a typo, e.g. "5" interpreted as nanoseconds).
-const minCacheTTL = 5 * time.Second
+// minCacheTTL rejects values short enough that the cache can't
+// realistically size itself to the working set: with the scan interval
+// scaled to a fraction of the TTL, very short TTLs make scan frequency
+// approach the cost of just doing the relabel work uncached.
+const minCacheTTL = 1 * time.Minute
 
 // Validate implements syntax.Validator.
 func (arg *Arguments) Validate() error {
@@ -97,18 +99,18 @@ type Exports struct {
 
 // Component implements the prometheus.relabel component.
 type Component struct {
-	mut              sync.RWMutex
-	opts             component.Options
-	mrc              []*relabel.Config
-	receiver         *prometheus.Interceptor
-	metricsProcessed prometheus_client.Counter
-	metricsOutgoing  prometheus_client.Counter
-	cacheHits        prometheus_client.Counter
-	cacheMisses      prometheus_client.Counter
-	cacheDeletes     prometheus_client.Counter
-	cacheTTLCounters ttlCounters
-	fanout           *prometheus.Fanout
-	exited           atomic.Bool
+	mut               sync.RWMutex
+	opts              component.Options
+	mrc               []*relabel.Config
+	receiver          *prometheus.Interceptor
+	metricsProcessed  prometheus_client.Counter
+	metricsOutgoing   prometheus_client.Counter
+	cacheHits         prometheus_client.Counter
+	cacheMisses       prometheus_client.Counter
+	cacheDeletes      prometheus_client.Counter
+	cacheTTLEvictions prometheus_client.Counter
+	fanout            *prometheus.Fanout
+	exited            atomic.Bool
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 
@@ -156,17 +158,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		Name: "alloy_prometheus_relabel_cache_deletes",
 		Help: "Total number of cache deletes",
 	})
-	c.cacheTTLCounters = ttlCounters{
-		evictions: prometheus_client.NewCounter(prometheus_client.CounterOpts{
-			Name: "alloy_prometheus_relabel_cache_ttl_evictions_total",
-			Help: "Number of relabel cache entries removed by the periodic TTL scan. Always 0 when cache_ttl is unset.",
-		}),
-		rebuilds: prometheus_client.NewCounter(prometheus_client.CounterOpts{
-			Name: "alloy_prometheus_relabel_cache_ttl_rebuilds_total",
-			Help: "Number of times the TTL cache's underlying map has been rebuilt to release bucket memory after a shrink. Always 0 when cache_ttl is unset.",
-		}),
+	c.cacheTTLEvictions = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "alloy_prometheus_relabel_cache_ttl_evictions",
+		Help: "Number of relabel cache entries removed by the periodic TTL scan. Always 0 when cache_ttl is unset.",
+	})
+	c.cache, err = newRelabelCache(args, c.cacheTTLEvictions)
+	if err != nil {
+		return nil, err
 	}
-	c.cache = newRelabelCache(args, c.cacheTTLCounters)
 
 	cacheSizeGauge := prometheus_client.NewGaugeFunc(prometheus_client.GaugeOpts{
 		Name: "alloy_prometheus_relabel_cache_size",
@@ -180,11 +179,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	collectors := []prometheus_client.Collector{
 		c.metricsProcessed, c.metricsOutgoing, c.cacheMisses, c.cacheHits, c.cacheDeletes,
-		c.cacheTTLCounters.evictions, c.cacheTTLCounters.rebuilds, cacheSizeGauge,
+		c.cacheTTLEvictions, cacheSizeGauge,
 	}
 	for _, metric := range collectors {
 		err = o.Registerer.Register(metric)
 		if err != nil {
+			c.cache.Close()
 			return nil, err
 		}
 	}
@@ -254,6 +254,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	// Call to Update() to set the relabelling rules once at the start.
 	if err = c.Update(args); err != nil {
+		c.cache.Close()
 		return nil, err
 	}
 
@@ -280,10 +281,14 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
+	cache, err := newRelabelCache(newArgs, c.cacheTTLEvictions)
+	if err != nil {
+		return err
+	}
 	if c.cache != nil {
 		c.cache.Close()
 	}
-	c.cache = newRelabelCache(newArgs, c.cacheTTLCounters)
+	c.cache = cache
 	c.mrc = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 

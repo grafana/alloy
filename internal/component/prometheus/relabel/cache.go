@@ -1,7 +1,6 @@
 package relabel
 
 import (
-	"maps"
 	"sync"
 	"time"
 
@@ -11,10 +10,9 @@ import (
 )
 
 // relabelCache abstracts the per-component cache of relabeled labels keyed
-// by the input labels' hash. Implementations cover three modes selectable
-// via Arguments: bounded LRU (default), no caching at all, and
-// time-bounded ("size dictated by working set"). All methods are safe for
-// concurrent use.
+// by the input labels' hash. Implementations cover two modes selectable
+// via Arguments: bounded LRU (default) and time-bounded ("size dictated
+// by working set"). All methods are safe for concurrent use.
 //
 // Implementations own any background work (e.g. periodic eviction).
 // `newRelabelCache` returns a ready-to-use cache; callers must invoke
@@ -40,15 +38,19 @@ type relabelCache interface {
 // newRelabelCache constructs a cache impl based on Arguments and
 // readies it for use (TTL caches have their background scan goroutine
 // running on return). Validation has already ensured exactly one of
-// CacheSize and CacheTTL is non-zero.
-func newRelabelCache(args Arguments, counters ttlCounters) relabelCache {
+// CacheSize and CacheTTL is non-zero, so the lru.New error here is
+// effectively unreachable in production but propagated for safety.
+func newRelabelCache(args Arguments, evictions prometheus_client.Counter) (relabelCache, error) {
 	if args.CacheTTL > 0 {
-		c := newTTLRelabelCache(args.CacheTTL, counters)
+		c := newTTLRelabelCache(args.CacheTTL, evictions)
 		c.start()
-		return c
+		return c, nil
 	}
-	c, _ := lru.New[uint64, labels.Labels](args.CacheSize)
-	return &lruRelabelCache{c: c}
+	c, err := lru.New[uint64, labels.Labels](args.CacheSize)
+	if err != nil {
+		return nil, err
+	}
+	return &lruRelabelCache{c: c}, nil
 }
 
 type lruRelabelCache struct {
@@ -70,11 +72,6 @@ func (c *lruRelabelCache) Remove(hash uint64) {
 func (c *lruRelabelCache) Len() int { return c.c.Len() }
 func (c *lruRelabelCache) Close()   {}
 
-type ttlCounters struct {
-	evictions prometheus_client.Counter
-	rebuilds  prometheus_client.Counter
-}
-
 type ttlEntry struct {
 	lbls    labels.Labels
 	expires time.Time
@@ -84,16 +81,19 @@ type ttlEntry struct {
 // active set sizes itself to the working set of series flowing through
 // the component. Entries expire after a fixed TTL relative to the most
 // recent insertion.
+//
+// Note: Go maps don't return bucket memory on delete, so the underlying
+// map's footprint stays at the peak working set for the cache's
+// lifetime. Operators who need to reclaim that memory should restart
+// the component (config reload also recreates the cache from scratch).
 type ttlRelabelCache struct {
 	mu      sync.RWMutex
 	entries map[uint64]ttlEntry
 
-	ttl time.Duration
+	ttl          time.Duration
+	scanInterval time.Duration
 
-	peak        int // highest len(entries) observed since lastRebuild
-	lastRebuild time.Time
-
-	counters ttlCounters
+	evictions prometheus_client.Counter
 
 	startOnce sync.Once
 	closeOnce sync.Once
@@ -101,12 +101,21 @@ type ttlRelabelCache struct {
 	scanWG    sync.WaitGroup
 }
 
-func newTTLRelabelCache(ttl time.Duration, counters ttlCounters) *ttlRelabelCache {
+// scanIntervalFor scales the background scan cadence to the configured
+// TTL: scanning at TTL/4 caps the post-expiry lag at ~25% of the TTL,
+// which keeps the cache sized to roughly the working set without
+// scanning so often that the bookkeeping dominates real work.
+func scanIntervalFor(ttl time.Duration) time.Duration {
+	return ttl / 4
+}
+
+func newTTLRelabelCache(ttl time.Duration, evictions prometheus_client.Counter) *ttlRelabelCache {
 	return &ttlRelabelCache{
-		entries:  make(map[uint64]ttlEntry),
-		ttl:      ttl,
-		counters: counters,
-		closeCh:  make(chan struct{}),
+		entries:      make(map[uint64]ttlEntry),
+		ttl:          ttl,
+		scanInterval: scanIntervalFor(ttl),
+		evictions:    evictions,
+		closeCh:      make(chan struct{}),
 	}
 }
 
@@ -128,9 +137,6 @@ func (c *ttlRelabelCache) Get(hash uint64) (labels.Labels, bool) {
 func (c *ttlRelabelCache) Add(hash uint64, lbls labels.Labels) {
 	c.mu.Lock()
 	c.entries[hash] = ttlEntry{lbls: lbls, expires: time.Now().Add(c.ttl)}
-	if l := len(c.entries); l > c.peak {
-		c.peak = l
-	}
 	c.mu.Unlock()
 }
 
@@ -146,16 +152,13 @@ func (c *ttlRelabelCache) Len() int {
 	return len(c.entries)
 }
 
-// scanInterval is how often the background scan runs.
-const scanInterval = 1 * time.Minute
-
 // start spawns the background scan goroutine. Idempotent.
 func (c *ttlRelabelCache) start() {
 	c.startOnce.Do(func() {
 		c.scanWG.Add(1)
 		go func() {
 			defer c.scanWG.Done()
-			t := time.NewTicker(scanInterval)
+			t := time.NewTicker(c.scanInterval)
 			defer t.Stop()
 			for {
 				select {
@@ -179,12 +182,10 @@ func (c *ttlRelabelCache) Close() {
 	c.scanWG.Wait()
 }
 
-// scan prunes expired entries and, when the underlying map has shrunk
-// far below its high-water mark, reallocates it to release bucket
-// memory (Go maps never shrink on delete).
+// scan prunes expired entries.
 func (c *ttlRelabelCache) scan(now time.Time) {
-	// Phase 1: collect expired keys and peek at the rebuild predicate
-	// under RLock. If neither has work, skip the write lock entirely.
+	// Phase 1: collect expired keys under RLock. If there's no work,
+	// skip the write lock entirely.
 	c.mu.RLock()
 	var expired []uint64
 	for h, e := range c.entries {
@@ -192,59 +193,21 @@ func (c *ttlRelabelCache) scan(now time.Time) {
 			expired = append(expired, h)
 		}
 	}
-	rebuildEligible := c.shouldRebuildLocked(now)
 	c.mu.RUnlock()
 
-	if len(expired) == 0 && !rebuildEligible {
+	if len(expired) == 0 {
 		return
 	}
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Phase 2a: prune. Re-check expiry per key in case a concurrent
+	// Phase 2: prune. Re-check expiry per key in case a concurrent
 	// Add refreshed the entry between the phases.
 	for _, h := range expired {
 		if e, ok := c.entries[h]; ok && now.After(e.expires) {
 			delete(c.entries, h)
-			c.counters.evictions.Inc()
+			c.evictions.Inc()
 		}
 	}
-
-	// Phase 2b: re-evaluate the rebuild predicate now that we've
-	// pruned, then rebuild if still eligible.
-	if !c.shouldRebuildLocked(now) {
-		return
-	}
-	c.entries = maps.Clone(c.entries)
-	c.peak = len(c.entries)
-	c.lastRebuild = now
-	c.counters.rebuilds.Inc()
-}
-
-// Exposed as vars so tests can override. The floor is set so a 50%
-// shrink reclaims ~2MB of bucket memory — small enough to skip noise,
-// large enough that rebuilds are worth the write-lock window.
-var (
-	rebuildFloor   = 32_768
-	rebuildSpacing = 30 * time.Minute
-)
-
-// shouldRebuildLocked decides whether the underlying map should be
-// reallocated. Returns true when (a) the high-water mark crossed
-// rebuildFloor (skips trivial caches), (b) live entries have fallen to
-// half the peak or less, and (c) at least rebuildSpacing has passed
-// since the last rebuild (avoids churn on oscillating workloads). Must
-// be called with at least the read lock held.
-func (c *ttlRelabelCache) shouldRebuildLocked(now time.Time) bool {
-	if c.peak < rebuildFloor {
-		return false
-	}
-	if len(c.entries)*2 > c.peak {
-		return false
-	}
-	if !c.lastRebuild.IsZero() && now.Sub(c.lastRebuild) < rebuildSpacing {
-		return false
-	}
-	return true
 }

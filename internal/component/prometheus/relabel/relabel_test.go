@@ -30,10 +30,10 @@ func TestUpdateReset(t *testing.T) {
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(0, lbls)
 	require.True(t, relabeller.cache.Len() == 1)
-	_ = relabeller.Update(Arguments{
+	require.NoError(t, relabeller.Update(Arguments{
 		CacheSize:            100000,
 		MetricRelabelConfigs: []*alloy_relabel.Config{},
-	})
+	}))
 	require.True(t, relabeller.cache.Len() == 0)
 }
 
@@ -44,12 +44,12 @@ func TestValidator(t *testing.T) {
 		wantErr string
 	}{
 		{name: "default LRU", args: Arguments{CacheSize: 1}},
-		{name: "TTL only", args: Arguments{CacheSize: 0, CacheTTL: time.Minute}},
+		{name: "TTL only", args: Arguments{CacheSize: 0, CacheTTL: 5 * time.Minute}},
 		{name: "negative size", args: Arguments{CacheSize: -1}, wantErr: "max_cache_size must be >= 0"},
 		{name: "negative ttl", args: Arguments{CacheSize: 1, CacheTTL: -time.Second}, wantErr: "cache_ttl must be >= 0"},
 		{name: "both set", args: Arguments{CacheSize: 100, CacheTTL: time.Minute}, wantErr: "mutually exclusive"},
 		{name: "neither set", args: Arguments{}, wantErr: "one of max_cache_size or cache_ttl must be set"},
-		{name: "ttl too short", args: Arguments{CacheSize: 0, CacheTTL: time.Second}, wantErr: "at least"},
+		{name: "ttl too short", args: Arguments{CacheSize: 0, CacheTTL: 30 * time.Second}, wantErr: "at least"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -177,6 +177,11 @@ func TestCacheSizeMetric(t *testing.T) {
 				GetServiceData: getServiceData,
 			}, args)
 			require.NoError(t, err)
+			t.Cleanup(func() {
+				relabeller.mut.RLock()
+				relabeller.cache.Close()
+				relabeller.mut.RUnlock()
+			})
 
 			relabeller.relabel(0, labels.FromStrings("__address__", "localhost"))
 
@@ -359,6 +364,11 @@ func generateRelabelWithArgs(t *testing.T, args Arguments) *Component {
 	}, args)
 	require.NotNil(t, relabeller)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		relabeller.mut.RLock()
+		relabeller.cache.Close()
+		relabeller.mut.RUnlock()
+	})
 	return relabeller
 }
 
