@@ -26,31 +26,31 @@ func counterVal(t *testing.T, c prometheus_client.Counter) float64 {
 func TestLRURelabelCache_FillsToCap(t *testing.T) {
 	c, err := newRelabelCache(Arguments{CacheSize: 100_000}, newTestEvictionsCounter())
 	require.NoError(t, err)
-	defer c.Close()
+	defer c.close()
 	for i := uint64(0); i < 600_000; i++ {
-		c.Add(i, labels.FromStrings("k", "v"))
+		c.add(i, labels.FromStrings("k", "v"))
 	}
-	require.Equal(t, 100_000, c.Len())
+	require.Equal(t, 100_000, c.len())
 }
 
 func TestLRURelabelCache_BasicOps(t *testing.T) {
 	c, err := newRelabelCache(Arguments{CacheSize: 100}, newTestEvictionsCounter())
 	require.NoError(t, err)
-	defer c.Close()
+	defer c.close()
 	require.IsType(t, &lruRelabelCache{}, c)
 
 	lbls := labels.FromStrings("a", "b")
-	_, ok := c.Get(1)
+	_, ok := c.get(1)
 	require.False(t, ok)
 
-	c.Add(1, lbls)
-	got, ok := c.Get(1)
+	c.add(1, lbls)
+	got, ok := c.get(1)
 	require.True(t, ok)
 	require.Equal(t, lbls, got)
-	require.Equal(t, 1, c.Len())
+	require.Equal(t, 1, c.len())
 
-	c.Remove(1)
-	_, ok = c.Get(1)
+	c.remove(1)
+	_, ok = c.get(1)
 	require.False(t, ok)
 }
 
@@ -63,17 +63,17 @@ func TestLRURelabelCache_BasicOps(t *testing.T) {
 func TestTTLRelabelCache_GetReturnsCachedValuePastExpiry(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
-		defer c.Close()
+		defer c.close()
 
 		lbls := labels.FromStrings("a", "b")
-		c.Add(1, lbls)
+		c.add(1, lbls)
 
 		// Past the TTL with no scan in between.
 		time.Sleep(2 * time.Minute)
-		got, ok := c.Get(1)
+		got, ok := c.get(1)
 		require.True(t, ok, "Get returns cached value until scan prunes it")
 		require.Equal(t, lbls, got)
-		require.Equal(t, 1, c.Len())
+		require.Equal(t, 1, c.len())
 	})
 }
 
@@ -81,16 +81,16 @@ func TestTTLRelabelCache_ScanEvicts(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		evictions := newTestEvictionsCounter()
 		c := newTTLRelabelCache(time.Minute, evictions)
-		defer c.Close()
+		defer c.close()
 
-		c.Add(1, labels.FromStrings("a", "b"))
-		c.Add(2, labels.FromStrings("c", "d"))
-		require.Equal(t, 2, c.Len())
+		c.add(1, labels.FromStrings("a", "b"))
+		c.add(2, labels.FromStrings("c", "d"))
+		require.Equal(t, 2, c.len())
 
 		time.Sleep(2 * time.Minute)
 		c.scan(time.Now())
 
-		require.Equal(t, 0, c.Len())
+		require.Equal(t, 0, c.len())
 		require.Equal(t, float64(2), counterVal(t, evictions))
 	})
 }
@@ -99,15 +99,15 @@ func TestTTLRelabelCache_ScanLeavesFreshEntries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		evictions := newTestEvictionsCounter()
 		c := newTTLRelabelCache(time.Minute, evictions)
-		defer c.Close()
+		defer c.close()
 
-		c.Add(1, labels.FromStrings("old", ""))
+		c.add(1, labels.FromStrings("old", ""))
 		time.Sleep(90 * time.Second)
-		c.Add(2, labels.FromStrings("fresh", ""))
+		c.add(2, labels.FromStrings("fresh", ""))
 		c.scan(time.Now())
 
-		require.Equal(t, 1, c.Len())
-		_, ok := c.Get(2)
+		require.Equal(t, 1, c.len())
+		_, ok := c.get(2)
 		require.True(t, ok)
 		require.Equal(t, float64(1), counterVal(t, evictions))
 	})
@@ -116,14 +116,14 @@ func TestTTLRelabelCache_ScanLeavesFreshEntries(t *testing.T) {
 func TestTTLRelabelCache_StaleRemove(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := newTTLRelabelCache(time.Hour, newTestEvictionsCounter())
-		defer c.Close()
+		defer c.close()
 
-		c.Add(1, labels.FromStrings("a", "b"))
-		c.Remove(1)
+		c.add(1, labels.FromStrings("a", "b"))
+		c.remove(1)
 
-		_, ok := c.Get(1)
+		_, ok := c.get(1)
 		require.False(t, ok, "Remove must drop the entry immediately, even with a long TTL")
-		require.Equal(t, 0, c.Len())
+		require.Equal(t, 0, c.len())
 	})
 }
 
@@ -133,21 +133,21 @@ func TestTTLRelabelCache_StaleRemove(t *testing.T) {
 func TestTTLRelabelCache_GetSlidesExpiry(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		c := newTTLRelabelCache(time.Minute, newTestEvictionsCounter())
-		defer c.Close()
+		defer c.close()
 
-		c.Add(1, labels.FromStrings("a", "b"))
+		c.add(1, labels.FromStrings("a", "b"))
 
 		// Halfway through the TTL: still a hit, and the Get slides
 		// expiry from t=60s out to t=90s.
 		time.Sleep(30 * time.Second)
-		_, ok := c.Get(1)
+		_, ok := c.get(1)
 		require.True(t, ok)
 
 		// Now at t=80s — past the original t=60s expiry. Without
 		// sliding, this would be a miss. With sliding, the entry's
 		// expiry is t=90s, so it's still valid.
 		time.Sleep(50 * time.Second)
-		_, ok = c.Get(1)
+		_, ok = c.get(1)
 		require.True(t, ok, "Get must slide the TTL window forward")
 	})
 }
@@ -159,20 +159,20 @@ func TestTTLRelabelCache_ScanLeavesActiveEntries(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		evictions := newTestEvictionsCounter()
 		c := newTTLRelabelCache(time.Minute, evictions)
-		defer c.Close()
+		defer c.close()
 
-		c.Add(1, labels.FromStrings("a", "b"))
+		c.add(1, labels.FromStrings("a", "b"))
 
 		// Three full TTL cycles: each cycle, Get keeps the entry hot,
 		// then scan runs after the original-expiry would have hit.
 		for cycle := 0; cycle < 3; cycle++ {
 			time.Sleep(45 * time.Second)
-			_, ok := c.Get(1)
+			_, ok := c.get(1)
 			require.True(t, ok)
 			c.scan(time.Now())
 		}
 
-		require.Equal(t, 1, c.Len())
+		require.Equal(t, 1, c.len())
 		require.Equal(t, float64(0), counterVal(t, evictions))
 	})
 }

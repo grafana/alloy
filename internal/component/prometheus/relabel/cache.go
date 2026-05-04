@@ -12,21 +12,20 @@ import (
 
 // relabelCache is the per-component cache of relabeled labels keyed by
 // the input labels' hash. Implementations are safe for concurrent use
-// and may own background goroutines; callers must Close when done.
+// and may own background goroutines; callers must close when done.
 type relabelCache interface {
-	// Get returns the cached relabel result for the given hash. The
-	// boolean is false if no entry is cached (or, in TTL mode, if the
-	// entry has expired).
-	Get(hash uint64) (labels.Labels, bool)
-	// Add inserts or refreshes the cached relabel result for the given
+	// get returns the cached relabel result for the given hash. The
+	// boolean is false if no entry is cached.
+	get(hash uint64) (labels.Labels, bool)
+	// add inserts or refreshes the cached relabel result for the given
 	// hash.
-	Add(hash uint64, lbls labels.Labels)
-	// Remove drops the cached entry for the given hash, if present.
-	Remove(hash uint64)
-	// Len returns the number of entries currently in the cache.
-	Len() int
-	// Close releases any background resources held by the cache.
-	Close()
+	add(hash uint64, lbls labels.Labels)
+	// remove drops the cached entry for the given hash, if present.
+	remove(hash uint64)
+	// len returns the number of entries currently in the cache.
+	len() int
+	// close releases any background resources held by the cache.
+	close()
 }
 
 // newRelabelCache constructs a cache from args. TTL caches return with
@@ -48,20 +47,20 @@ type lruRelabelCache struct {
 	c *lru.Cache[uint64, labels.Labels]
 }
 
-func (c *lruRelabelCache) Get(hash uint64) (labels.Labels, bool) {
+func (c *lruRelabelCache) get(hash uint64) (labels.Labels, bool) {
 	return c.c.Get(hash)
 }
 
-func (c *lruRelabelCache) Add(hash uint64, lbls labels.Labels) {
+func (c *lruRelabelCache) add(hash uint64, lbls labels.Labels) {
 	c.c.Add(hash, lbls)
 }
 
-func (c *lruRelabelCache) Remove(hash uint64) {
+func (c *lruRelabelCache) remove(hash uint64) {
 	c.c.Remove(hash)
 }
 
-func (c *lruRelabelCache) Len() int { return c.c.Len() }
-func (c *lruRelabelCache) Close()   {}
+func (c *lruRelabelCache) len() int { return c.c.Len() }
+func (c *lruRelabelCache) close()   {}
 
 // ttlEntry's lbls is immutable after insertion (same input hash always
 // yields the same relabel output within a cache lifetime); expires is
@@ -108,7 +107,7 @@ func newTTLRelabelCache(ttl time.Duration, evictions prometheus_client.Counter) 
 	}
 }
 
-func (c *ttlRelabelCache) Get(hash uint64) (labels.Labels, bool) {
+func (c *ttlRelabelCache) get(hash uint64) (labels.Labels, bool) {
 	c.mu.RLock()
 	entry, ok := c.entries[hash]
 	c.mu.RUnlock()
@@ -120,7 +119,7 @@ func (c *ttlRelabelCache) Get(hash uint64) (labels.Labels, bool) {
 	return entry.lbls, true
 }
 
-func (c *ttlRelabelCache) Add(hash uint64, lbls labels.Labels) {
+func (c *ttlRelabelCache) add(hash uint64, lbls labels.Labels) {
 	expires := time.Now().Add(c.ttl).Unix()
 	c.mu.Lock()
 	if existing, ok := c.entries[hash]; ok {
@@ -135,13 +134,13 @@ func (c *ttlRelabelCache) Add(hash uint64, lbls labels.Labels) {
 	c.mu.Unlock()
 }
 
-func (c *ttlRelabelCache) Remove(hash uint64) {
+func (c *ttlRelabelCache) remove(hash uint64) {
 	c.mu.Lock()
 	delete(c.entries, hash)
 	c.mu.Unlock()
 }
 
-func (c *ttlRelabelCache) Len() int {
+func (c *ttlRelabelCache) len() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return len(c.entries)
@@ -167,9 +166,9 @@ func (c *ttlRelabelCache) start() {
 	})
 }
 
-// Close terminates the background scan goroutine and blocks until it
+// close terminates the background scan goroutine and blocks until it
 // exits. Idempotent.
-func (c *ttlRelabelCache) Close() {
+func (c *ttlRelabelCache) close() {
 	c.closeOnce.Do(func() { close(c.closeCh) })
 	c.scanWG.Wait()
 }

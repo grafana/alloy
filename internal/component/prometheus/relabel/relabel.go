@@ -171,7 +171,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		c.mut.RLock()
 		cache := c.cache
 		c.mut.RUnlock()
-		return float64(cache.Len())
+		return float64(cache.len())
 	})
 
 	collectors := []prometheus_client.Collector{
@@ -181,7 +181,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	for _, metric := range collectors {
 		err = o.Registerer.Register(metric)
 		if err != nil {
-			c.cache.Close()
+			c.cache.close()
 			return nil, err
 		}
 	}
@@ -251,7 +251,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	// Call to Update() to set the relabelling rules once at the start.
 	if err = c.Update(args); err != nil {
-		c.cache.Close()
+		c.cache.close()
 		return nil, err
 	}
 
@@ -264,7 +264,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer c.fanout.Clear()
 	defer func() {
 		c.mut.RLock()
-		c.cache.Close()
+		c.cache.close()
 		c.mut.RUnlock()
 	}()
 
@@ -283,7 +283,7 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 	if c.cache != nil {
-		c.cache.Close()
+		c.cache.close()
 	}
 	c.cache = cache
 	c.mrc = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.MetricRelabelConfigs)
@@ -343,23 +343,23 @@ func (c *Component) relabel(val float64, lbls labels.Labels) labels.Labels {
 
 func (c *Component) getFromCache(lbls labels.Labels) (labels.Labels, bool) {
 	hash := lbls.Hash()
-	return c.cache.Get(hash)
+	return c.cache.get(hash)
 }
 
 func (c *Component) deleteFromCache(lbls labels.Labels) {
 	c.cacheDeletes.Inc()
 
 	hash := lbls.Hash()
-	c.cache.Remove(hash)
+	c.cache.remove(hash)
 }
 
 func (c *Component) addToCache(lbls labels.Labels, relabeled labels.Labels, keep bool) {
 	hash := lbls.Hash()
 	if !keep {
-		c.cache.Add(hash, labels.EmptyLabels())
+		c.cache.add(hash, labels.EmptyLabels())
 		return
 	}
-	c.cache.Add(hash, relabeled)
+	c.cache.add(hash, relabeled)
 }
 
 func (c *Component) LiveDebugging() {}

@@ -28,12 +28,12 @@ func TestUpdateReset(t *testing.T) {
 	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(0, lbls)
-	require.True(t, relabeller.cache.Len() == 1)
+	require.True(t, relabeller.cache.len() == 1)
 	require.NoError(t, relabeller.Update(Arguments{
 		CacheSize:            100000,
 		MetricRelabelConfigs: []*alloy_relabel.Config{},
 	}))
-	require.True(t, relabeller.cache.Len() == 0)
+	require.True(t, relabeller.cache.len() == 0)
 }
 
 func TestValidator(t *testing.T) {
@@ -160,7 +160,7 @@ func TestCacheSizeMetric(t *testing.T) {
 			require.NoError(t, err)
 			t.Cleanup(func() {
 				relabeller.mut.RLock()
-				relabeller.cache.Close()
+				relabeller.cache.close()
 				relabeller.mut.RUnlock()
 			})
 
@@ -347,7 +347,7 @@ func generateRelabelWithArgs(t *testing.T, args Arguments) *Component {
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		relabeller.mut.RLock()
-		relabeller.cache.Close()
+		relabeller.cache.close()
 		relabeller.mut.RUnlock()
 	})
 	return relabeller
