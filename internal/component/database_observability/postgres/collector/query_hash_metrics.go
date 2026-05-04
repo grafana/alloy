@@ -16,18 +16,16 @@ import (
 // series labels so we don't bump cardinality on every scrape.
 type QueryHashMetricsCollector struct {
 	registry *QueryHashRegistry
-	serverID string
 	desc     *prometheus.Desc
 }
 
-func NewQueryHashMetricsCollector(registry *QueryHashRegistry, serverID string) *QueryHashMetricsCollector {
+func NewQueryHashMetricsCollector(registry *QueryHashRegistry) *QueryHashMetricsCollector {
 	return &QueryHashMetricsCollector{
 		registry: registry,
-		serverID: serverID,
 		desc: prometheus.NewDesc(
 			prometheus.BuildFQName("database_observability", "", "query_hash_info"),
 			"Mapping of PostgreSQL queryid to semantic query fingerprint",
-			[]string{"queryid", "query_fingerprint", "server_id", "datname"},
+			[]string{"queryid", "query_fingerprint", "datname"},
 			nil,
 		),
 	}
@@ -45,7 +43,6 @@ func (c *QueryHashMetricsCollector) Collect(ch chan<- prometheus.Metric) {
 			1,
 			queryID,
 			info.Fingerprint,
-			c.serverID,
 			info.DatabaseName,
 		)
 	}

@@ -451,7 +451,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	const queryHashRegistryTTL = 30 * time.Minute
 	c.queryHashRegistry = collector.NewQueryHashRegistry(queryHashRegistrySize, queryHashRegistryTTL)
 
-	queryHashMetrics := collector.NewQueryHashMetricsCollector(c.queryHashRegistry, generatedSystemID)
+	queryHashMetrics := collector.NewQueryHashMetricsCollector(c.queryHashRegistry)
 	if err := c.registry.Register(queryHashMetrics); err != nil {
 		return fmt.Errorf("failed to register query_hash_info metrics: %w", err)
 	}
