@@ -32,8 +32,7 @@ func TestFile(t *testing.T) {
 
 		// write first something to marker
 		markerFile := filepath.Join(dir, markerFolderName, markerFileName)
-		bs, err := encodeV1(10)
-		require.NoError(t, err)
+		bs := encodeV1(10)
 		err = os.WriteFile(markerFile, bs, markerFileMode)
 		require.NoError(t, err)
 

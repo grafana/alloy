@@ -12,7 +12,7 @@ var (
 
 // encodeV1 encodes the segment number, from whom we need to create a marker, in the marker file format,
 // which in v1 includes the segment number and a trailing CRC code of the first 10 bytes.
-func encodeV1(segment uint64) ([]byte, error) {
+func encodeV1(segment uint64) []byte {
 	// marker format v1
 	// marker [ 0 , 1 ] - HEADER, which is used to track version
 	// marker [ 2 , 9 ] - encoded uint64 which is the content of the marker, the last "consumed" segment
@@ -27,7 +27,7 @@ func encodeV1(segment uint64) ([]byte, error) {
 	checksum := crc32.ChecksumIEEE(bs[0:10])
 	binary.BigEndian.PutUint32(bs[10:], checksum)
 
-	return bs, nil
+	return bs
 }
 
 // decodeV1 decodes the segment number from a segment marker, encoded with EncodeMarkerV1.

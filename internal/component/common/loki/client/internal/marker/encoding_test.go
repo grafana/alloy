@@ -9,8 +9,7 @@ import (
 func TestEncodingV1(t *testing.T) {
 	t.Run("encode and decode", func(t *testing.T) {
 		segment := uint64(123)
-		bs, err := encodeV1(segment)
-		require.NoError(t, err)
+		bs := encodeV1(segment)
 
 		gotSegment, err := decodeV1(bs)
 		require.NoError(t, err)
@@ -20,13 +19,12 @@ func TestEncodingV1(t *testing.T) {
 	t.Run("decoding errors", func(t *testing.T) {
 		t.Run("bad checksum", func(t *testing.T) {
 			segment := uint64(123)
-			bs, err := encodeV1(segment)
-			require.NoError(t, err)
+			bs := encodeV1(segment)
 
 			// change last byte
 			bs[13] = '5'
 
-			_, err = decodeV1(bs)
+			_, err := decodeV1(bs)
 			require.Error(t, err)
 		})
 
@@ -37,13 +35,12 @@ func TestEncodingV1(t *testing.T) {
 
 		t.Run("bad header", func(t *testing.T) {
 			segment := uint64(123)
-			bs, err := encodeV1(segment)
-			require.NoError(t, err)
+			bs := encodeV1(segment)
 
 			// change first header byte
 			bs[0] = '5'
 
-			_, err = decodeV1(bs)
+			_, err := decodeV1(bs)
 			require.Error(t, err)
 		})
 	})

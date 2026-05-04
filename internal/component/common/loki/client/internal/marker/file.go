@@ -64,13 +64,7 @@ func (f *File) LastMarkedSegment() int {
 
 // MarkSegment stores segment as the last marked WAL segment.
 func (f *File) MarkSegment(segment int) {
-	encodedMarker, err := encodeV1(uint64(segment))
-	if err != nil {
-		level.Error(f.logger).Log("msg", "failed to encode marker when marking segment", "err", err)
-		return
-	}
-
-	if err := f.atomicallyWriteMarker(encodedMarker); err != nil {
+	if err := f.atomicallyWriteMarker(encodeV1(uint64(segment))); err != nil {
 		level.Error(f.logger).Log("msg", "could not replace segment marker file", "file", f.lastMarkedSegmentFilePath, "err", err)
 		return
 	}
