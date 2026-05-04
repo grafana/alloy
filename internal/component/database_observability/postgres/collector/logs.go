@@ -56,8 +56,9 @@ type Logs struct {
 	excludeDatabases []string
 	excludeUsers     []string
 
-	errorsBySQLState *prometheus.CounterVec
-	parseErrors      prometheus.Counter
+	errorsBySQLState    *prometheus.CounterVec
+	errorsByFingerprint *prometheus.CounterVec
+	parseErrors         prometheus.Counter
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -103,6 +104,15 @@ func (l *Logs) initMetrics() {
 		[]string{"severity", "sqlstate", "sqlstate_class", "datname", "user"},
 	)
 
+	l.errorsByFingerprint = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: "database_observability",
+			Name:      "pg_errors_by_fingerprint_total",
+			Help:      "Number of PostgreSQL log errors with a captured query fingerprint, partitioned by severity, SQL state, and the originating query's fingerprint. Counts a subset of pg_errors_total (only errors for which Alloy successfully observed the matching STATEMENT continuation).",
+		},
+		[]string{"severity", "sqlstate", "sqlstate_class", "datname", "query_fingerprint"},
+	)
+
 	l.parseErrors = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: "database_observability",
@@ -113,6 +123,7 @@ func (l *Logs) initMetrics() {
 
 	l.registry.MustRegister(
 		l.errorsBySQLState,
+		l.errorsByFingerprint,
 		l.parseErrors,
 	)
 }
@@ -140,6 +151,7 @@ func (l *Logs) Stop() {
 	l.wg.Wait()
 
 	l.registry.Unregister(l.errorsBySQLState)
+	l.registry.Unregister(l.errorsByFingerprint)
 	l.registry.Unregister(l.parseErrors)
 }
 
