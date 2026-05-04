@@ -41,20 +41,20 @@ func TestBatch_FilterMap(t *testing.T) {
 	require.Equal(t, 3, b.EntryLen())
 	require.Equal(t, 1, b.StreamLen())
 
-	b.FilterMap(func(entry *Entry) FilterMapAction {
+	b.FilterMap(func(entry *Entry) bool {
 		switch entry.Line {
 		case "keep":
 			entry.Line = "kept"
-			return FilterMapActionKeep
+			return true
 		case "move":
 			entry.Line = "moved"
 			entry.Labels = bar
-			return FilterMapActionKeep
+			return true
 		case "drop":
-			return FilterMapActionDrop
+			return false
 		default:
 			t.Fatalf("unexpected entry %q", entry.Line)
-			return FilterMapActionDrop
+			return false
 		}
 	})
 
@@ -104,20 +104,20 @@ func TestBatch_Clone(t *testing.T) {
 
 	cloned := original.Clone()
 
-	original.FilterMap(func(entry *Entry) FilterMapAction {
+	original.FilterMap(func(entry *Entry) bool {
 		switch entry.Line {
 		case "keep":
 			entry.Line = "kept"
-			return FilterMapActionKeep
+			return true
 		case "move":
 			entry.Line = "moved"
 			entry.Labels = bar
-			return FilterMapActionKeep
+			return true
 		case "drop":
-			return FilterMapActionDrop
+			return false
 		default:
 			t.Fatalf("unexpected entry %q", entry.Line)
-			return FilterMapActionDrop
+			return false
 		}
 	})
 

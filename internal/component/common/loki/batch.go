@@ -49,17 +49,10 @@ func (b *Batch) add(labels model.LabelSet, entries ...push.Entry) {
 	b.streams = append(b.streams, NewStream(labels, entries...))
 }
 
-type FilterMapAction uint8
-
-const (
-	FilterMapActionKeep FilterMapAction = iota
-	FilterMapActionDrop
-)
-
-// FilterMap calls fn for each entry in the batch.
-// Kept entries are written back, dropped entries are removed,
-// and entries whose labels change are moved to a different stream.
-func (b *Batch) FilterMap(fn func(entry *Entry) FilterMapAction) {
+// FilterMap calls fn for each entry in the batch. If fn returns true the
+// entry is kept, if fn returns false the entry is dropped. Kept entries are
+// written back, and entries whose labels change are moved to a different stream.
+func (b *Batch) FilterMap(fn func(entry *Entry) (keep bool)) {
 	type movedEntry struct {
 		labels model.LabelSet
 		entry  push.Entry
@@ -86,9 +79,7 @@ func (b *Batch) FilterMap(fn func(entry *Entry) FilterMapAction) {
 			// labels, so once the new batched pipeline owns this path, consider replacing
 			// direct label access with copy-on-write label mutation methods.
 			entry := NewEntryWithCreatedUnixMicro(stream.Labels.Clone(), b.created, e)
-			action := fn(&entry)
-
-			if action == FilterMapActionDrop {
+			if !fn(&entry) {
 				continue
 			}
 
