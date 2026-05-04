@@ -24,18 +24,22 @@ const (
 )
 
 type HealthCheckArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	EntryHandler    loki.EntryHandler
+	DB               *sql.DB
+	CollectInterval  time.Duration
+	ExcludeDatabases []string
+	ExcludeUsers     []string
+	EntryHandler     loki.EntryHandler
 
 	Logger log.Logger
 }
 
 type HealthCheck struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	entryHandler    loki.EntryHandler
-	logger          log.Logger
+	dbConnection     *sql.DB
+	collectInterval  time.Duration
+	excludeDatabases []string
+	excludeUsers     []string
+	entryHandler     loki.EntryHandler
+	logger           log.Logger
 
 	running *atomic.Bool
 	ctx     context.Context
@@ -45,11 +49,13 @@ type HealthCheck struct {
 
 func NewHealthCheck(args HealthCheckArguments) (*HealthCheck, error) {
 	h := &HealthCheck{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		entryHandler:    args.EntryHandler,
-		logger:          log.With(args.Logger, "collector", HealthCheckCollector),
-		running:         &atomic.Bool{},
+		dbConnection:     args.DB,
+		collectInterval:  args.CollectInterval,
+		excludeDatabases: args.ExcludeDatabases,
+		excludeUsers:     args.ExcludeUsers,
+		entryHandler:     args.EntryHandler,
+		logger:           log.With(args.Logger, "collector", HealthCheckCollector),
+		running:          &atomic.Bool{},
 	}
 	return h, nil
 }
@@ -109,7 +115,9 @@ func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 		checkAlloyVersion,
 		checkPgStatStatementsEnabled,
 		checkTrackActivityQuerySize,
+		checkComputeQueryIdEnabled,
 		checkMonitoringUserPrivileges,
+		c.checkPgStatStatementsHasRows,
 	}
 
 	for _, checkFn := range checks {
@@ -201,5 +209,46 @@ func checkMonitoringUserPrivileges(ctx context.Context, db *sql.DB) healthCheckR
 		r.err = fmt.Errorf("iterate pg_stat_statements: %w", err)
 	}
 
+	return r
+}
+
+// checkComputeQueryIdEnabled verifies the compute_query_id is not disabled
+func checkComputeQueryIdEnabled(ctx context.Context, db *sql.DB) healthCheckResult {
+	r := healthCheckResult{name: "ComputeQueryIdEnabled"}
+	const q = `SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`
+
+	var setting string
+	if err := db.QueryRowContext(ctx, q).Scan(&setting); err != nil {
+		r.err = fmt.Errorf("query compute_query_id: %w", err)
+		return r
+	}
+	r.value = setting
+	r.result = setting != "off"
+	return r
+}
+
+// checkPgStatStatementsHasRows ensures pg_stat_statements has at least one row
+// with a real queryid (non-null and non-zero) for a database/user we'd actually
+// ingest after applying the exclude_databases / exclude_users filters.
+func (c *HealthCheck) checkPgStatStatementsHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
+	r := healthCheckResult{name: "PgStatStatementsHasRows"}
+	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
+	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
+	q := fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_stat_statements
+			JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
+			WHERE pg_database.datname NOT IN %s
+			  AND pg_stat_statements.queryid <> 0
+			  %s
+		)`, excludedDatabasesClause, excludedUsersClause)
+
+	var hasRows bool
+	if err := db.QueryRowContext(ctx, q).Scan(&hasRows); err != nil {
+		r.err = err
+		return r
+	}
+	r.result = hasRows
 	return r
 }
