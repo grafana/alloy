@@ -49,7 +49,7 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 		}
 		endpointsCheck[name] = struct{}{}
 
-		markerFileHandler, err := marker.NewMarkerFileHandler(logger, walCfg.Dir)
+		markerFileHandler, err := marker.NewFile(logger, walCfg.Dir)
 		if err != nil {
 			return nil, err
 		}

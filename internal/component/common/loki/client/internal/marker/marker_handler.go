@@ -32,7 +32,7 @@ type markerHandler struct {
 	dataIOUpdate      chan dataUpdate
 	lastMarkedSegment int
 	logger            log.Logger
-	markerFileHandler MarkerFileHandler
+	file              *File
 	maxSegmentAge     time.Duration
 	metrics           *MarkerMetrics
 	quit              chan struct{}
@@ -49,10 +49,10 @@ type dataUpdate struct {
 var _ MarkerHandler = (*markerHandler)(nil)
 
 // NewMarkerHandler creates a new markerHandler.
-func NewMarkerHandler(mfh MarkerFileHandler, maxSegmentAge time.Duration, logger log.Logger, metrics *MarkerMetrics) MarkerHandler {
+func NewMarkerHandler(file *File, maxSegmentAge time.Duration, logger log.Logger, metrics *MarkerMetrics) MarkerHandler {
 	mh := &markerHandler{
 		lastMarkedSegment: -1, // Segment ID last marked on disk.
-		markerFileHandler: mfh,
+		file:              file,
 		//TODO: What is a good size for the channel?
 		dataIOUpdate: make(chan dataUpdate, 100),
 		quit:         make(chan struct{}),
@@ -65,7 +65,7 @@ func NewMarkerHandler(mfh MarkerFileHandler, maxSegmentAge time.Duration, logger
 	}
 
 	// Load the last marked segment from disk (if it exists).
-	if lastSegment := mh.markerFileHandler.LastMarkedSegment(); lastSegment >= 0 {
+	if lastSegment := mh.file.LastMarkedSegment(); lastSegment >= 0 {
 		mh.lastMarkedSegment = lastSegment
 	}
 
@@ -76,7 +76,7 @@ func NewMarkerHandler(mfh MarkerFileHandler, maxSegmentAge time.Duration, logger
 }
 
 func (mh *markerHandler) LastMarkedSegment() int {
-	return mh.markerFileHandler.LastMarkedSegment()
+	return mh.file.LastMarkedSegment()
 }
 
 func (mh *markerHandler) UpdateReceivedData(segmentId, dataCount int) {
@@ -152,7 +152,7 @@ func (mh *markerHandler) runUpdatePendingData() {
 		markableSegment := FindMarkableSegment(segmentDataCount, mh.maxSegmentAge)
 		level.Debug(mh.logger).Log("msg", fmt.Sprintf("found as markable segment %d", markableSegment))
 		if markableSegment > mh.lastMarkedSegment {
-			mh.markerFileHandler.MarkSegment(markableSegment)
+			mh.file.MarkSegment(markableSegment)
 			mh.lastMarkedSegment = markableSegment
 			mh.metrics.lastMarkedSegment.WithLabelValues().Set(float64(markableSegment))
 		}

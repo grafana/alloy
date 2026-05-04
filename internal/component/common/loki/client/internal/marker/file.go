@@ -8,7 +8,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/natefinch/atomic"
 )
 
@@ -22,24 +21,11 @@ const (
 	markerWindowsFileMode   os.FileMode = 0o666
 )
 
-// MarkerFileHandler is a file-backed wal.Marker, that also allows one to write to the backing store as particular
-// segment number as the last one marked.
-type MarkerFileHandler interface {
-	wal.Marker
-
-	// MarkSegment writes in the backing file-store that a particular segment is the last one marked.
-	MarkSegment(segment int)
-}
-
 type File struct {
 	logger                    log.Logger
 	lastMarkedSegmentDir      string
 	lastMarkedSegmentFilePath string
 }
-
-var (
-	_ MarkerFileHandler = (*File)(nil)
-)
 
 // NewFile creates a new marker File.
 func NewFile(logger log.Logger, dir string) (*File, error) {

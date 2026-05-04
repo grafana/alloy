@@ -33,16 +33,22 @@ func TestMarkerHandler(t *testing.T) {
 	// drive-by test: if metrics don't have the id curried, it panics when emitting them
 	metrics := NewMarkerMetrics(nil).CurryWithId("test")
 	t.Run("returns last marked segment from file handler on start", func(t *testing.T) {
-		mockMFH := newMockMarkerFileHandler(10)
-		mh := NewMarkerHandler(mockMFH, time.Minute, logger, metrics)
+		f, err := NewFile(logger, t.TempDir())
+		require.NoError(t, err)
+		f.MarkSegment(10)
+
+		mh := NewMarkerHandler(f, time.Minute, logger, metrics)
 		defer mh.Stop()
 
 		require.Equal(t, 10, mh.LastMarkedSegment())
 	})
 
 	t.Run("last marked segment is updated when sends complete", func(t *testing.T) {
-		mockMFH := newMockMarkerFileHandler(10)
-		mh := NewMarkerHandler(mockMFH, time.Minute, logger, metrics)
+		f, err := NewFile(logger, t.TempDir())
+		require.NoError(t, err)
+		f.MarkSegment(10)
+
+		mh := NewMarkerHandler(f, time.Minute, logger, metrics)
 		defer mh.Stop()
 
 		mh.UpdateReceivedData(11, 10)
@@ -52,12 +58,15 @@ func TestMarkerHandler(t *testing.T) {
 		require.Eventually(t, func() bool {
 			return mh.LastMarkedSegment() == 11
 		}, time.Second, time.Millisecond*100, "expected last marked segment to catch up")
-		require.Equal(t, 11, mockMFH.LastMarkedSegment())
+		require.Equal(t, 11, f.LastMarkedSegment())
 	})
 
 	t.Run("last marked segment is updated when segment becomes old", func(t *testing.T) {
-		mockMFH := newMockMarkerFileHandler(10)
-		mh := NewMarkerHandler(mockMFH, 2*time.Second, logger, metrics)
+		f, err := NewFile(logger, t.TempDir())
+		require.NoError(t, err)
+		f.MarkSegment(10)
+
+		mh := NewMarkerHandler(f, 2*time.Second, logger, metrics)
 		defer mh.Stop()
 
 		// segment 11 has 5 pending data items, and will become old after 2 secs
@@ -73,7 +82,7 @@ func TestMarkerHandler(t *testing.T) {
 		require.Eventually(t, func() bool {
 			return mh.LastMarkedSegment() == 11
 		}, 3*time.Second, time.Millisecond*100, "expected last marked segment to catch up")
-		require.Equal(t, 11, mockMFH.LastMarkedSegment())
+		require.Equal(t, 11, f.LastMarkedSegment())
 	})
 }
 
