@@ -10,9 +10,9 @@ var (
 	markerHeaderV1 = []byte{'0', '1'}
 )
 
-// EncodeMarkerV1 encodes the segment number, from whom we need to create a marker, in the marker file format,
+// encodeV1 encodes the segment number, from whom we need to create a marker, in the marker file format,
 // which in v1 includes the segment number and a trailing CRC code of the first 10 bytes.
-func EncodeMarkerV1(segment uint64) ([]byte, error) {
+func encodeV1(segment uint64) ([]byte, error) {
 	// marker format v1
 	// marker [ 0 , 1 ] - HEADER, which is used to track version
 	// marker [ 2 , 9 ] - encoded uint64 which is the content of the marker, the last "consumed" segment
@@ -30,8 +30,8 @@ func EncodeMarkerV1(segment uint64) ([]byte, error) {
 	return bs, nil
 }
 
-// DecodeMarkerV1 decodes the segment number from a segment marker, encoded with EncodeMarkerV1.
-func DecodeMarkerV1(bs []byte) (uint64, error) {
+// decodeV1 decodes the segment number from a segment marker, encoded with EncodeMarkerV1.
+func decodeV1(bs []byte) (uint64, error) {
 	// first check that read byte stream has expected length
 	if len(bs) != 14 {
 		return 0, fmt.Errorf("bad length %d", len(bs))
