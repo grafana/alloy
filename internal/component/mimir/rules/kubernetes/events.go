@@ -383,7 +383,7 @@ func (e *eventProcessor) getKubernetesState() (map[string][]*promv1.PrometheusRu
 // stored in mimir. This function, along with isManagedMimirNamespace, is used to
 // determine if a rule CRD is managed by Alloy.
 func mimirNamespaceForRuleCRD(prefix, separator string, pr *promv1.PrometheusRule) string {
-	return prefix+separator+pr.Namespace+separator+pr.Name+separator+pr.UID
+	return prefix + separator + pr.Namespace + separator + pr.Name + separator + string(pr.UID)
 }
 
 // isManagedMimirNamespace returns true if the namespace is managed by Alloy.
