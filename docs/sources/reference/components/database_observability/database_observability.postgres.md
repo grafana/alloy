@@ -184,6 +184,17 @@ The `logs_receiver` entry point must be fed by `loki` log source components, for
 Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.
 {{< /admonition >}}
 
+### `database_observability_pg_errors_by_fingerprint_total`
+
+| Property      | Value                                                                                                                                                                                |
+|---------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Type**      | counter                                                                                                                                                                              |
+| **Labels**    | `severity`, `sqlstate`, `sqlstate_class`, `datname`, `query_fingerprint`                                                                                                             |
+| **Subset of** | `database_observability_pg_errors_total` — increments only when Alloy successfully observes the matching `STATEMENT:` continuation line and computes a fingerprint from the SQL text. |
+| **Use**       | Compute error rate per logical query: `sum by (datname, query_fingerprint) (rate(database_observability_pg_errors_by_fingerprint_total[5m]))`                                        |
+
+The `query_fingerprint` value is computed client-side by Alloy from the parsed AST (libpg_query). Two queries that differ only in comments, whitespace, or literal values produce the same fingerprint — so an error rate keyed by fingerprint groups every variant of one logical query together. Errors without a captured `STATEMENT:` continuation (for example, connection failures or internal server errors) contribute only to `pg_errors_total`, not to this metric.
+
 ## Example
 
 ```alloy
