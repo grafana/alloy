@@ -2,12 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Emit one structured Loki entry per PostgreSQL ERROR+STATEMENT pair, labelled `op="error"`, carrying the SQL text in the body and rich correlation metadata (`query_fingerprint`, `pid`, `xid`, `application_name`, `error_message`, etc.) as Loki structured metadata. This replaces the previously planned high-cardinality `database_observability_pg_errors_by_fingerprint_total` counter — `query_fingerprint` is unbounded and unsafe as a Prometheus label.
+**Goal:** Emit one Loki entry per PostgreSQL ERROR+STATEMENT pair, labelled `op="error"`, carrying every high-cardinality field — `query_fingerprint`, `pid`, `xid`, `application_name`, `error_message`, the SQL itself, etc. — as logfmt key/value pairs in the line body. No Loki structured metadata is used. This replaces the previously planned high-cardinality `database_observability_pg_errors_by_fingerprint_total` counter — `query_fingerprint` is unbounded and unsafe as a Prometheus label.
 
 **Cardinality model:**
 - **Stable Loki labels** (low cardinality): `op="error"`, `severity`, `sqlstate_class`, `datname`.
-- **Structured metadata** (high cardinality fine in Loki): `query_fingerprint`, `pid`, `backend_start`, `application_name`, `sqlstate`, `xid`, `client_addr`, `client_port`, `session_id`, `error_message`, `user`.
-- **Log line body**: the assembled SQL text from the STATEMENT continuation.
+- **No structured metadata.** Everything else goes into the log line body as logfmt key/value pairs. Downstream consumers parse with `| logfmt`.
+- **Log line body** (logfmt): `query_fingerprint`, `pid`, `backend_start`, `application_name`, `sqlstate`, `xid` (omitted when `0`), `client_addr`, `client_port`, `session_id`, `user`, `error_message`, `statement`. The `statement` field carries the assembled SQL with newlines collapsed to single spaces so the body stays a single logfmt line.
 
 **LogQL replacement for the dropped metric:**
 ```
@@ -19,7 +19,7 @@ sum by (datname, query_fingerprint)
 1. **Keep** the freestanding `fingerprint` package (already shipped on this branch — three-stage parse/repair/sentinel pipeline using `pg_query_go/v6`).
 2. **Keep** all the log-parsing state machine in the logs collector (already shipped on this branch): TAB-continuation accumulation, prefixed-STATEMENT detection, statement-flush-before-pending-expiration ordering. None of that changes.
 3. **Drop** the `database_observability_pg_errors_by_fingerprint_total` counter — its registration, its increment paths, its tests, its docs entry.
-4. **Add** a Loki entry emission path. When a STATEMENT flushes (via `flushStatementLocked` or `processBareContinuation`), build a `loki.Entry` with stable labels + structured metadata + body, and forward via the existing `entryHandler` field on `Logs` (currently wired but unused).
+4. **Add** a Loki entry emission path. When a STATEMENT flushes (via `flushStatementLocked` or `processBareContinuation`), build a `loki.Entry` with the stable labels + a logfmt body and forward via the existing `entryHandler` field on `Logs` (currently wired but unused).
 5. **Keep** `database_observability_pg_errors_total` exactly as-is — low-cardinality parent counter, useful as a denominator and as a "did we see the error at all" indicator.
 
 **Tech stack unchanged:** Go (CGo via `pg_query_go/v6` for libpg_query); `prometheus/client_golang`; the existing `loki.LogsReceiver` plumbing already used by the logs collector; `loki.EntryHandler` for fanout.
@@ -470,23 +470,10 @@ func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
         "datname":        model.LabelValue(entry.datname),
     }
 
-    // Structured metadata: high cardinality fields. Emitted as a Loki
-    // `push.LabelsAdapter` (Loki structured metadata).
-    metadata := push.LabelsAdapter{
-        push.LabelAdapter{Name: "query_fingerprint",  Value: fp},
-        push.LabelAdapter{Name: "pid",                Value: entry.pid},
-        push.LabelAdapter{Name: "backend_start",      Value: entry.backendStart},
-        push.LabelAdapter{Name: "application_name",   Value: entry.applicationName},
-        push.LabelAdapter{Name: "sqlstate",           Value: entry.sqlstate},
-        push.LabelAdapter{Name: "client_addr",        Value: entry.clientAddr},
-        push.LabelAdapter{Name: "client_port",        Value: entry.clientPort},
-        push.LabelAdapter{Name: "session_id",         Value: entry.sessionID},
-        push.LabelAdapter{Name: "user",               Value: entry.user},
-        push.LabelAdapter{Name: "error_message",      Value: entry.errorMessage},
-    }
-    if entry.xid != "" {
-        metadata = append(metadata, push.LabelAdapter{Name: "xid", Value: entry.xid})
-    }
+    // Body is a single logfmt line. No structured metadata — every
+    // high-cardinality field lives here so that `| logfmt` in LogQL
+    // surfaces them as parsed labels at query time.
+    line := buildErrorLine(entry, fp, stmt)
 
     ts := entry.timestamp
     if ts.IsZero() {
@@ -496,11 +483,91 @@ func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
     l.entryHandler.Chan() <- loki.Entry{
         Labels: labels,
         Entry: push.Entry{
-            Timestamp:          ts,
-            Line:               stmt,
-            StructuredMetadata: metadata,
+            Timestamp: ts,
+            Line:      line,
         },
     }
+}
+
+// buildErrorLine assembles a logfmt line containing every high-cardinality
+// field for one ERROR+STATEMENT pair. The `statement` field carries the
+// assembled SQL; newlines and tabs are collapsed to single spaces so the
+// whole entry stays a single logfmt line.
+func buildErrorLine(entry *pendingError, fp, stmt string) string {
+    fields := []struct{ k, v string }{
+        {"sqlstate", entry.sqlstate},
+        {"query_fingerprint", fp},
+        {"pid", entry.pid},
+        {"backend_start", entry.backendStart},
+        {"application_name", entry.applicationName},
+        {"client_addr", entry.clientAddr},
+        {"client_port", entry.clientPort},
+        {"session_id", entry.sessionID},
+        {"user", entry.user},
+        {"error_message", entry.errorMessage},
+        {"statement", collapseWhitespace(stmt)},
+    }
+    if entry.xid != "" {
+        // Insert xid right after sqlstate to keep ordering stable for tests.
+        fields = append(fields[:1],
+            append([]struct{ k, v string }{{"xid", entry.xid}}, fields[1:]...)...)
+    }
+
+    var b strings.Builder
+    for i, f := range fields {
+        if f.v == "" && f.k != "statement" && f.k != "error_message" {
+            // Skip empty optional fields except those that are always present.
+            continue
+        }
+        if i > 0 && b.Len() > 0 {
+            b.WriteByte(' ')
+        }
+        b.WriteString(f.k)
+        b.WriteByte('=')
+        b.WriteString(logfmtQuote(f.v))
+    }
+    return b.String()
+}
+
+// collapseWhitespace reduces all runs of whitespace (including tabs and
+// newlines) to a single space, then trims. Used so multi-line SQL fits in
+// a single-line logfmt body.
+func collapseWhitespace(s string) string {
+    var b strings.Builder
+    b.Grow(len(s))
+    inSpace := false
+    for _, r := range s {
+        if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
+            if !inSpace {
+                b.WriteByte(' ')
+                inSpace = true
+            }
+            continue
+        }
+        b.WriteRune(r)
+        inSpace = false
+    }
+    return strings.TrimSpace(b.String())
+}
+
+// logfmtQuote returns v as a logfmt value: bare if safe, otherwise wrapped
+// in double quotes with internal `"` and `\` backslash-escaped.
+func logfmtQuote(v string) string {
+    needsQuote := strings.ContainsAny(v, " =\"")
+    if !needsQuote {
+        return v
+    }
+    var b strings.Builder
+    b.Grow(len(v) + 2)
+    b.WriteByte('"')
+    for _, r := range v {
+        if r == '"' || r == '\\' {
+            b.WriteByte('\\')
+        }
+        b.WriteRune(r)
+    }
+    b.WriteByte('"')
+    return b.String()
 }
 ```
 
@@ -575,10 +642,21 @@ func drainEntries(t *testing.T, handler loki.EntryHandler, want int, timeout tim
 Assert:
 - exactly 1 entry arrived,
 - Labels: `op=error severity=ERROR sqlstate_class=42 datname=books_store`,
-- Line body equals the SQL,
-- StructuredMetadata contains `query_fingerprint` (matching what `fingerprint.Fingerprint` returns), `pid`, `application_name`, `sqlstate=42P01`, `error_message` containing `relation "missing" does not exist`,
-- `xid` is absent (input had `xid=0`),
+- Line body parses as logfmt and contains the expected key/value pairs:
+  - `query_fingerprint` matches `fingerprint.Fingerprint(SQL, SourceLog, 0)`,
+  - `pid`, `application_name`, `session_id`, `user`,
+  - `sqlstate=42P01`,
+  - `error_message="..."` containing `relation "missing" does not exist`,
+  - `statement="..."` containing the SQL with whitespace collapsed,
+  - `xid` is **absent** from the body (input had `xid=0`),
 - `Timestamp` matches the parsed `%m`.
+
+Use a small helper:
+```go
+// parseLogfmt is a minimal logfmt parser for tests — supports bare and
+// double-quoted values with `\"` and `\\` escapes. Returns map[k]v.
+func parseLogfmt(t *testing.T, line string) map[string]string { ... }
+```
 
 - [ ] **Step 2: Rewrite `TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter` → `TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry`**
 
@@ -590,22 +668,22 @@ Same scenario as before: same PID, two ERROR lines, then one STATEMENT. Assert e
 
 - [ ] **Step 4: Rewrite `TestLogsCollector_PrefixedStatement_MultiLine` → `TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement`**
 
-Same scenario; assert the entry's body equals the assembled multi-line SQL (newline-joined), and `query_fingerprint` matches `fingerprint.Fingerprint(assembledSQL, ...)`.
+Same scenario; assert the entry's body is logfmt where the `statement` field equals the **whitespace-collapsed** assembled SQL, and `query_fingerprint` matches `fingerprint.Fingerprint(assembledSQL, fingerprint.SourceLog, 0)` (fingerprint is computed on the original multi-line text, not the collapsed form — they parse to the same AST).
 
 - [ ] **Step 5: Rewrite `TestLogsCollector_StatementSurvivesTimeoutFlush` → `TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry`**
 
 Same scenario; assert the entry arrives within `2 × pendingErrorTimeout` from a quiet log channel.
 
-- [ ] **Step 6: Add a new test asserting `xid` presence/absence**
+- [ ] **Step 6: Add a new test asserting `xid` field presence/absence in the body**
 
 ```go
-func TestLogsCollector_OmitsXidMetadataWhenZero(t *testing.T) { ... }
-func TestLogsCollector_IncludesXidMetadataWhenNonZero(t *testing.T) { ... }
+func TestLogsCollector_OmitsXidFieldWhenZero(t *testing.T) { ... }
+func TestLogsCollector_IncludesXidFieldWhenNonZero(t *testing.T) { ... }
 ```
 
 - [ ] **Step 7: Add a new test asserting `application_name` round-trips**
 
-Use `[unknown]` (the default) and a real value (e.g. `psql`); assert the metadata reflects each.
+Use `[unknown]` (the default) and a real value (e.g. `psql`); assert the parsed body's `application_name` field reflects each. Confirm that values containing characters that need quoting (`[unknown]` has `[`/`]`, fine; values with spaces would be quoted) round-trip correctly through `parseLogfmt`.
 
 - [ ] **Step 8: Run all logs tests**
 
@@ -642,28 +720,31 @@ Section copy:
 ```markdown
 ### Emitted Loki entries
 
-The `logs` collector forwards a structured Loki entry to its `forward_to`
-target for every PostgreSQL `ERROR`/`FATAL`/`PANIC` for which the matching
-`STATEMENT:` continuation was successfully observed.
+The `logs` collector forwards a Loki entry to its `forward_to` target for every
+PostgreSQL `ERROR`/`FATAL`/`PANIC` for which the matching `STATEMENT:`
+continuation was successfully observed. The entry uses a small set of stable
+labels and encodes everything else as logfmt key/value pairs in the line body
+— no Loki structured metadata is used, so the entries are portable across
+Loki versions and downstream tooling that expects line-only ingest.
 
-| Field                          | Source                  | Notes                                                                 |
-|--------------------------------|-------------------------|-----------------------------------------------------------------------|
-| Label `op`                     | constant                | `error`                                                               |
-| Label `severity`               | log keyword             | `ERROR`, `FATAL`, or `PANIC`                                          |
-| Label `sqlstate_class`         | first 2 chars of `%e`   | `40`, `42`, `53`, `23`, ...                                           |
-| Label `datname`                | `%d`                    | database name                                                         |
-| Body                           | STATEMENT continuation  | the assembled SQL text (multi-line preserved with `\n`)               |
-| Metadata `query_fingerprint`   | computed                | `libpg_query` fingerprint of the SQL text (16-char hex)               |
-| Metadata `pid`                 | `%p`                    | backend PID                                                           |
-| Metadata `backend_start`       | `%s`                    | session start timestamp, raw text                                     |
-| Metadata `application_name`    | `%a`                    | typically `[unknown]` unless set client-side                          |
-| Metadata `sqlstate`            | `%e`                    | full 5-character SQLSTATE                                             |
-| Metadata `xid`                 | `%x`                    | omitted when 0 (read-only / not yet assigned)                         |
-| Metadata `client_addr`         | host portion of `%r`    | `[local]` for unix-domain                                             |
-| Metadata `client_port`         | port portion of `%r`    | empty for unix-domain                                                 |
-| Metadata `session_id`          | `%c`                    | unique per backend connection                                         |
-| Metadata `user`                | `%u`                    | also present on `pg_errors_total` as a label                          |
-| Metadata `error_message`       | text after `<sev>:`     | the human-readable message body                                       |
+| Field                  | Source                  | Notes                                                       |
+|------------------------|-------------------------|-------------------------------------------------------------|
+| Label `op`             | constant                | `error`                                                     |
+| Label `severity`       | log keyword             | `ERROR`, `FATAL`, or `PANIC`                                |
+| Label `sqlstate_class` | first 2 chars of `%e`   | `40`, `42`, `53`, `23`, ...                                 |
+| Label `datname`        | `%d`                    | database name                                               |
+| Body field `sqlstate`  | `%e`                    | full 5-character SQLSTATE                                   |
+| Body field `xid`       | `%x`                    | omitted when `0` (read-only / not yet assigned)             |
+| Body field `query_fingerprint` | computed         | `libpg_query` fingerprint of the SQL text (16-char hex)     |
+| Body field `pid`       | `%p`                    | backend PID                                                 |
+| Body field `backend_start`     | `%s`             | session start timestamp, raw text                           |
+| Body field `application_name`  | `%a`             | typically `[unknown]` unless set client-side                |
+| Body field `client_addr` | host portion of `%r`  | `[local]` for unix-domain                                   |
+| Body field `client_port` | port portion of `%r`  | empty for unix-domain                                       |
+| Body field `session_id`  | `%c`                  | unique per backend connection                               |
+| Body field `user`        | `%u`                  | also present on `pg_errors_total` as a label                |
+| Body field `error_message` | text after `<sev>:` | human-readable error message                                |
+| Body field `statement`   | STATEMENT body        | assembled SQL with whitespace collapsed to single spaces    |
 
 Compute error rate per logical query in LogQL:
 
@@ -675,7 +756,8 @@ sum by (datname, query_fingerprint)
 Correlate to `pg_stat_activity` samples emitted by the `query_samples`
 collector by joining on `query_fingerprint` AND `pid` AND a small time window
 around the entry's timestamp. If the failed query was inside a write
-transaction, `xid` is also a deterministic key against `pg_stat_activity.backend_xid`.
+transaction, `xid` is also a deterministic key against
+`pg_stat_activity.backend_xid`.
 ```
 
 - [ ] **Step 3: Commit**
@@ -704,7 +786,7 @@ git commit -m "docs(database_observability/postgres): document op=error Loki ent
 **Type consistency:**
 - `pendingError` field set in Task 2 is read by `emitErrorEntry` in Task 3.
 - `loki.Entry` shape matches `loki.EntryHandler.Chan()` consumer side already used elsewhere in alloy.
-- Stable label keys are quoted as `model.LabelValue`; metadata keys are `push.LabelAdapter`.
+- Stable label keys are quoted as `model.LabelValue`; everything else lives in the logfmt body, no structured metadata.
 
 **Open follow-ups (out of scope of this plan):**
 - Adding `virtualtransaction` to `query_samples` (one extra column joined from `pg_locks`) for deterministic `(pid, vxid)` correlation regardless of read/write.
