@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.16.1](https://github.com/grafana/alloy/compare/v1.16.0...v1.16.1) (2026-05-05)
+
+
+### Bug Fixes 🐛
+
+* **deb:** Restart Alloy only on upgrade in postinst script [backport] ([#6129](https://github.com/grafana/alloy/issues/6129)) ([14481bc](https://github.com/grafana/alloy/commit/14481bcf37230f8a34c68b766be436d918f507aa))
+* **logging:** Fix startup deadlock when components log before logging config is evaluated [backport] ([#6135](https://github.com/grafana/alloy/issues/6135)) ([f1eb20e](https://github.com/grafana/alloy/commit/f1eb20e523319152e53449fbb3d584e1c9fb145d))
+* Migrate from Docker to Moby [backport] ([#6172](https://github.com/grafana/alloy/issues/6172)) ([51b52b0](https://github.com/grafana/alloy/commit/51b52b01cd9f3dea1b318b96d0b8266c84b8694c))
+* Update to Beyla 3.9.7 [backport] ([#6182](https://github.com/grafana/alloy/issues/6182)) ([5ef4ab1](https://github.com/grafana/alloy/commit/5ef4ab15086dc2baba6316f76bc25544cb558720))
+* Update to Beyla 3.9.8 [backport] ([#6191](https://github.com/grafana/alloy/issues/6191)) ([2095e76](https://github.com/grafana/alloy/commit/2095e7656245d9516ef3025de0e6863ad1ee7282))
+
 ## [1.16.0](https://github.com/grafana/alloy/compare/v1.15.0...v1.16.0) (2026-04-22)
 
 
