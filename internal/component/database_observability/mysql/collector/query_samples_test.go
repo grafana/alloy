@@ -3815,6 +3815,13 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 			{"schema_X", "1", "30", "31", "digest_B", "sql2", "70000000", "20000000", "5", "5", "0", "0", "300", "301", "wait/lock/metadata", "obj", "typ", "50000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 			// (digest_A, schema_Y): 0.075ms — same digest, different schema
 			{"schema_Y", "1", "40", "41", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "400", "401", "wait/synch/mutex", "obj", "typ", "75000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			// (digest_D, schema_X): wait/io/table/sql/handler molecule with two
+			// nested atoms (same outer event_id, two rows from the JOIN). Pre-fix,
+			// the counter added outer 5ms twice (over-count by N). Post-fix, each
+			// row contributes its own nested timer, matching the log line.
+			// Expected counter contribution: 0.4ms + 0.6ms = 1.0ms total.
+			{"schema_X", "1", "60", "61", "digest_D", "sql4", "70000000", "20000000", "5", "5", "0", "0", "500", "501", "wait/io/table/sql/handler", "books", "TABLE", "5000000000", "510", "511", "wait/io/file/innodb/innodb_data_file", "ibdata1", "FILE", "400000000", "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "60", "61", "digest_D", "sql4", "70000000", "20000000", "5", "5", "0", "0", "500", "501", "wait/io/table/sql/handler", "books", "TABLE", "5000000000", "520", "521", "wait/io/file/innodb/innodb_data_file", "ibdata1", "FILE", "600000000", "u", "h", "1000", "1", "1"},
 			// digest_C: no wait event (nil wait fields) — must not increment any counter
 			{"schema_X", "1", "50", "51", "digest_C", "sql3", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 		}
@@ -3843,9 +3850,9 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 
 		require.NoError(t, collector.Start(t.Context()))
 
-		// 5 query samples + 4 wait events = 9 entries.
+		// 6 query samples (digest_D's two rows dedup to one) + 6 wait events = 12 entries.
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 9
+			return len(lokiClient.Received()) == 12
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -3875,8 +3882,8 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 			require.NoError(t, err)
 			expected[[2]string{d[1], s[1]}] += dur.Seconds()
 		}
-		require.Equal(t, 4, waitEventEntries, "should emit one wait-event log per row with a valid wait event")
-		require.Len(t, expected, 3, "digest_C has no wait event, so only 3 (digest, schema) groups should be seen")
+		require.Equal(t, 6, waitEventEntries, "should emit one wait-event log per row with a valid wait event")
+		require.Len(t, expected, 4, "digest_C has no wait event, so only 4 (digest, schema) groups should be seen")
 
 		for key, expSec := range expected {
 			counter, err := collector.waitEventCounter.GetMetricWith(prometheus.Labels{
