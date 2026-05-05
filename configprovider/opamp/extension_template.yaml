@@ -1,0 +1,12 @@
+extensions:
+  opamp:
+    instance_uid: "{{.InstanceUid}}"
+    server:
+      ws:
+        endpoint: "ws://127.0.0.1:{{.LocalPort}}/v1/opamp"
+        tls:
+          insecure: true
+    capabilities:
+      reports_available_components: true
+service:
+  extensions: [opamp]

@@ -97,6 +97,7 @@ providers:
   - gomod: go.opentelemetry.io/collector/confmap/provider/httpprovider v1.45.0
   - gomod: go.opentelemetry.io/collector/confmap/provider/httpsprovider v1.45.0
   - gomod: go.opentelemetry.io/collector/confmap/provider/yamlprovider v1.45.0
+  - gomod: github.com/grafana/alloy/configprovider/opamp v0.0.1
 
 replaces:
   # Local modules.
@@ -104,6 +105,7 @@ replaces:
   - github.com/grafana/alloy/syntax => ../syntax
   - github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
   - github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension => ../extension/opampextension
+  - github.com/grafana/alloy/configprovider/opamp => ../configprovider/opamp
   # BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
