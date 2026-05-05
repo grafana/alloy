@@ -1,16 +1,16 @@
-package internal
+package marker
 
 import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type MarkerMetrics struct {
+type Metrics struct {
 	lastMarkedSegment *prometheus.GaugeVec
 }
 
-func NewMarkerMetrics(reg prometheus.Registerer) *MarkerMetrics {
-	m := &MarkerMetrics{
+func NewMetrics(reg prometheus.Registerer) *Metrics {
+	m := &Metrics{
 		lastMarkedSegment: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "loki_write",
@@ -29,8 +29,8 @@ func NewMarkerMetrics(reg prometheus.Registerer) *MarkerMetrics {
 
 // CurryWithId returns a curried version of MarkerMetrics, with the id label pre-filled. This is a helper that avoids
 // having to move the id around where it's unnecessary, and won't change inside the consumer of the metrics.
-func (m *MarkerMetrics) CurryWithId(id string) *MarkerMetrics {
-	return &MarkerMetrics{
+func (m *Metrics) CurryWithId(id string) *Metrics {
+	return &Metrics{
 		lastMarkedSegment: m.lastMarkedSegment.MustCurryWith(map[string]string{
 			"id": id,
 		}),
