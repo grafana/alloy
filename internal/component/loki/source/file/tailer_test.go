@@ -253,11 +253,8 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	require.NoError(t, err)
 	file.Close()
 
-	positionsFile, err := positions.New(l, positions.Config{
-		SyncPeriod:        50 * time.Millisecond,
-		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
-		IgnoreInvalidYaml: false,
-		ReadOnly:          false,
+	positionsFile, err := positions.New(l, filepath.Join(tempDir, "positions.yaml"), positions.Config{
+		SyncPeriod: 50 * time.Millisecond,
 	})
 	require.NoError(t, err)
 	defer positionsFile.Stop()
