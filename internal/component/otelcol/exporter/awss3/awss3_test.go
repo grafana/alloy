@@ -241,6 +241,7 @@ func TestConfig(t *testing.T) {
 				disable_ssl = true
 				compression = "gzip"
 				region = "us-east-2"
+				unique_key_func_name = "uuidv7"
 			}
 			resource_attrs_to_s3 {
 				s3_bucket = "resource_bucket"
@@ -269,6 +270,7 @@ func TestConfig(t *testing.T) {
 					RetryMode:           "standard",
 					RetryMaxAttempts:    3,
 					RetryMaxBackoff:     20 * time.Second,
+					UniqueKeyFuncName:   "uuidv7",
 				},
 				ResourceAttrsToS3: awss3exporter.ResourceAttrsToS3{
 					S3Prefix: "resource_prefix",
