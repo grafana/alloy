@@ -128,7 +128,7 @@ channels:
 
 ## Cutting a new PATCH release
 
-The process for this is exactly the same as a minor release with two notable exceptions:
+The process for this is exactly the same as a minor release with a few notable exceptions:
 
 1. Backport your changes to the release branch (which is automatically created after the
    corresponding minor is tagged).
@@ -137,6 +137,7 @@ The process for this is exactly the same as a minor release with two notable exc
    bump**. If they're not, follow the steps below for modifying PR changelog entries, or if you
    truly goofed and backported a feature instead of a fix, revert it and update changelog entries as
    necessary.
+4. Patch releases typically do not have RCs.
 
 ## Modifying a PR's CHANGELOG entry post-merge
 
