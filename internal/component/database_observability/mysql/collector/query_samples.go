@@ -440,7 +440,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			// wait/io/table/sql/handler is a molecule event wrapping the actual I/O;
 			// the SQL JOIN populates nested_waits.* only for that outer name, so a
 			// valid nested row means we should surface its fields instead.
-			// See https://dev.mysql.com/doc/refman/5.7/en/performance-schema-atom-molecule-events.html
+			// See https://dev.mysql.com/doc/refman/8.0/en/performance-schema-atom-molecule-events.html
 			if row.NestedWaitEventID.Valid && row.NestedWaitTime.Valid {
 				eventID = row.NestedWaitEventID.String
 				endEventID = row.NestedWaitEndEventID.String
