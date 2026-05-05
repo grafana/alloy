@@ -859,6 +859,15 @@ func hasSampleForMetric(samples map[string]*testappender.MetricSample, name stri
 	return false
 }
 
+func hasHistogramForMetric(histograms map[string]*testappender.HistogramSample, name string) bool {
+	for _, h := range histograms {
+		if h.Labels.Get("__name__") == name {
+			return true
+		}
+	}
+	return false
+}
+
 // TestRuntimeUpdate verifies that config fields can (or gracefully cannot) be changed
 // while the component is running, and that targets are always updated regardless.
 func TestRuntimeUpdate(t *testing.T) {
@@ -890,6 +899,13 @@ func TestRuntimeUpdate(t *testing.T) {
 			return reg
 		}
 	}
+	histogramRegistry := func() func(t *testing.T) *prometheus_client.Registry {
+		return func(t *testing.T) *prometheus_client.Registry {
+			reg := prometheus_client.NewRegistry()
+			reg.MustRegister(setupTestMixedHistogram())
+			return reg
+		}
+	}
 
 	tests := []testCase{
 		{
@@ -917,51 +933,50 @@ func TestRuntimeUpdate(t *testing.T) {
 			},
 		},
 		{
-			// Changing scrape_native_histograms is silently ignored (a warning is logged); the component
-			// must keep running and must still apply the updated target list.
-			// server_b_up can only appear once the target switches to server B.
-			name:           "scrape_native_histograms change is ignored but component continues with updated targets",
-			setupRegistryA: singleGaugeRegistry("server_a_up"),
-			setupRegistryB: singleGaugeRegistry("server_b_up"),
+			// Changing scrape_native_histograms should restart scrape loops with the new
+			// scrape config, so native histograms start being written after the update.
+			name:           "scrape_native_histograms change starts collecting native histograms",
+			setupRegistryA: histogramRegistry(),
+			setupRegistryB: histogramRegistry(),
 			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
 				args.ScrapeNativeHistograms = false
+				args.ScrapeClassicHistograms = true
 				require.NoError(t, args.Validate())
 				return args
 			},
-			updatedArgs: func(t *testing.T, _, addrB string, app storage.Appendable) Arguments {
-				// Flip ScrapeNativeHistograms AND change the target. The ScrapeNativeHistograms change
-				// must be ignored (warning logged) while the target change must still take effect.
-				args := defaultFastScrapeArgs(addrB, app)
+			updatedArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
+				args := defaultFastScrapeArgs(addrA, app)
 				args.ScrapeNativeHistograms = true
+				args.ScrapeClassicHistograms = true
 				require.NoError(t, args.Validate())
 				return args
 			},
 			preUpdateCheck: func(ct *assert.CollectT, c testappender.CollectingAppender) {
-				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "server_a_up"), "server_a_up should appear before update")
+				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "test_mixed_histogram_count"))
+				assert.False(ct, hasHistogramForMetric(c.CollectedHistograms(), "test_mixed_histogram"))
 			},
 			postUpdateCheck: func(ct *assert.CollectT, c testappender.CollectingAppender) {
-				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "server_b_up"), "server_b_up should appear: targets must be updated even when scrape_native_histograms change is ignored")
+				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "test_mixed_histogram_count"))
+				assert.True(ct, hasHistogramForMetric(c.CollectedHistograms(), "test_mixed_histogram"))
 			},
 		},
 		{
-			// Changing extra_metrics is silently ignored (a warning is logged); the component
+			// Changing honor_metadata is silently ignored (a warning is logged); the component
 			// must keep running and must still apply the updated target list.
 			// server_b_up can only appear once the target switches to server B.
-			name:           "extra_metrics change is ignored but component continues with updated targets",
+			name:           "honor_metadata change is ignored but component continues with updated targets",
 			setupRegistryA: singleGaugeRegistry("server_a_up"),
 			setupRegistryB: singleGaugeRegistry("server_b_up"),
 			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
 				args := defaultFastScrapeArgs(addrA, app)
-				args.ExtraMetrics = false
+				args.HonorMetadata = false
 				require.NoError(t, args.Validate())
 				return args
 			},
 			updatedArgs: func(t *testing.T, _, addrB string, app storage.Appendable) Arguments {
-				// Flip ExtraMetrics AND change the target. The ExtraMetrics change must be
-				// ignored (warning logged) while the target change must still take effect.
 				args := defaultFastScrapeArgs(addrB, app)
-				args.ExtraMetrics = true
+				args.HonorMetadata = true
 				require.NoError(t, args.Validate())
 				return args
 			},
@@ -969,8 +984,35 @@ func TestRuntimeUpdate(t *testing.T) {
 				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "server_a_up"), "server_a_up should appear before update")
 			},
 			postUpdateCheck: func(ct *assert.CollectT, c testappender.CollectingAppender) {
-				// TODO: Also check the log for the warning
-				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "server_b_up"), "server_b_up should appear: targets must be updated even when extra_metrics change is ignored")
+				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "server_b_up"), "server_b_up should appear: targets must be updated even when honor_metadata change is ignored")
+			},
+		},
+		{
+			// Changing enable_type_and_unit_labels is silently ignored (a warning is logged); the component
+			// must keep running and must still apply the updated target list.
+			// server_b_up can only appear once the target switches to server B.
+			name:           "enable_type_and_unit_labels change is ignored but component continues with updated targets",
+			setupRegistryA: singleGaugeRegistry("server_a_up"),
+			setupRegistryB: singleGaugeRegistry("server_b_up"),
+			initialArgs: func(t *testing.T, addrA, _ string, app storage.Appendable) Arguments {
+				args := defaultFastScrapeArgs(addrA, app)
+				args.EnableTypeAndUnitLabels = false
+				args.Clustering = cluster.ComponentBlock{}
+				require.NoError(t, args.Validate())
+				return args
+			},
+			updatedArgs: func(t *testing.T, _, addrB string, app storage.Appendable) Arguments {
+				args := defaultFastScrapeArgs(addrB, app)
+				args.EnableTypeAndUnitLabels = true
+				args.Clustering = cluster.ComponentBlock{}
+				require.NoError(t, args.Validate())
+				return args
+			},
+			preUpdateCheck: func(ct *assert.CollectT, c testappender.CollectingAppender) {
+				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "server_a_up"), "server_a_up should appear before update")
+			},
+			postUpdateCheck: func(ct *assert.CollectT, c testappender.CollectingAppender) {
+				assert.True(ct, hasSampleForMetric(c.CollectedSamples(), "server_b_up"), "server_b_up should appear: targets must be updated even when enable_type_and_unit_labels change is ignored")
 			},
 		},
 		{

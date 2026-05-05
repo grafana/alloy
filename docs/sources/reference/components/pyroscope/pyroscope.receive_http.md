@@ -46,15 +46,16 @@ You can use the following argument with `pyroscope.receive_http`:
 
 You can use the following blocks with `pyroscope.receive_http`:
 
+{{< docs/alloy-config >}}
+
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
-
 [http]: #http
+
+{{< /docs/alloy-config >}}
 
 ### `http`
 

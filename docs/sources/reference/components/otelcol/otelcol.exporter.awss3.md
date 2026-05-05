@@ -49,6 +49,8 @@ You can use the following argument with `otelcol.exporter.awss3`:
 
 You can use the following blocks with `otelcol.exporter.awss3`:
 
+{{< docs/alloy-config >}}
+
 | Block                                          | Description                                                                                              | Required |
 |------------------------------------------------|----------------------------------------------------------------------------------------------------------|----------|
 | [`s3_uploader`][s3_uploader]                   | Configures the AWS S3 bucket details to send telemetry data to.                                          | yes      |
@@ -64,6 +66,8 @@ You can use the following blocks with `otelcol.exporter.awss3`:
 [sending_queue]: #sending_queue
 [batch]: #batch
 [resource_attrs_to_s3]: #resource_attrs_to_s3-block
+
+{{< /docs/alloy-config >}}
 
 ### `s3_uploader`
 

@@ -2496,6 +2496,26 @@ func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
 	assert.Nil(t, output)
 }
 
+func TestPostgresPreparedStatementParamCount(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		want  int
+	}{
+		{name: "empty", query: "", want: 0},
+		{name: "no placeholders", query: "SELECT 1", want: 0},
+		{name: "single placeholder", query: "SELECT * FROM t WHERE a = $1", want: 1},
+		{name: "repeated same index", query: "SELECT * FROM t WHERE a = $1 AND b = $1", want: 1},
+		{name: "issue example", query: `SELECT t2.payload FROM t1 INNER JOIN t2 ON t1.x = t2.x WHERE t1.a = $1 AND t2.a = $1 ORDER BY t1.x DESC LIMIT $2 OFFSET $3`, want: 3},
+		{name: "highest index wins", query: "SELECT * FROM t WHERE a = $10 AND b = $1", want: 10},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, postgresPreparedStatementParamCount(tt.query))
+		})
+	}
+}
+
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
@@ -2845,6 +2865,24 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
+					"testdb123459": {
+						queryId:    "123459",
+						queryText:  "show search_path",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123460": {
+						queryId:    "123460",
+						queryText:  "call refresh_summary()",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123461": {
+						queryId:    "123461",
+						queryText:  "do 'begin perform 1; end'",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
@@ -2852,7 +2890,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				entryHandler:       lokiClient,
-				currentBatchSize:   3,
+				currentBatchSize:   6,
 			}
 
 			err = explainPlan.fetchExplainPlans(t.Context())
@@ -2860,14 +2898,14 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.NoError(t, err)
 			require.Eventually(
 				t,
-				func() bool { return len(lokiClient.Received()) == 3 },
+				func() bool { return len(lokiClient.Received()) == 6 },
 				5*time.Second,
 				10*time.Millisecond,
 				"did not receive the explain plan output log message within the timeout",
 			)
 
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 3, len(lokiEntries))
+			require.Equal(t, 6, len(lokiEntries))
 
 			require.NotContains(t, logBuffer.String(), "error")
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -2986,6 +3024,74 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			mock.ExpectExec("PREPARE explain_plan_123456 AS with cte as (select * from some_table where id = $1) select * from cte").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			err = explainPlan.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+			assert.Equal(t, 1, dbConnFactory.InstantiationCount)
+
+			require.Eventually(
+				t,
+				func() bool {
+					return len(lokiClient.Received()) == 1
+				},
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
+
+			require.NotContains(t, logBuffer.String(), "error")
+		})
+
+		t.Run("repeated placeholder uses max parameter index for EXECUTE", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			dupParamQuery := "SELECT * FROM t1 INNER JOIN t2 ON t1.x = t2.x WHERE t1.a = $1 AND t2.a = $1 ORDER BY t1.x DESC LIMIT $2 OFFSET $3"
+			explainPlan = &ExplainPlans{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
+				dbVersion:           post17ver,
+				queryCache: map[string]*queryInfo{
+					"testdb123456": {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  dupParamQuery,
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]*queryInfo{},
+				finishedQueryCache: map[string]*queryInfo{},
+				excludeDatabases:   []string{},
+				perScrapeRatio:     1.0,
+				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+			require.NoError(t, err)
+			require.Equal(t, 1, len(archive.Files))
+			jsonFile := archive.Files[0]
+			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
+			jsonData := jsonFile.Data
+
+			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS " + dupParamQuery).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null,null,null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
 
 			err = explainPlan.fetchExplainPlans(t.Context())

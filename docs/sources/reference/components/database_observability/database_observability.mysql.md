@@ -20,7 +20,6 @@ It forwards this data as log entries to Loki receivers and exports targets for P
 database_observability.mysql "<LABEL>" {
   data_source_name = <DATA_SOURCE_NAME>
   forward_to       = [<LOKI_RECEIVERS>]
-  targets          = "<TARGET_LIST>"
 }
 ```
 
@@ -32,10 +31,10 @@ You can use the following arguments with `database_observability.mysql`:
 |--------------------------------------------|----------------------|-----------------------------------------------------------------------------|---------|----------|
 | `data_source_name`                         | `secret`             | [Data Source Name][] for the MySQL server to connect to.                    |         | yes      |
 | `forward_to`                               | `list(LogsReceiver)` | Where to forward log entries after processing.                              |         | yes      |
-| `targets`                                  | `list(map(string))`  | List of targets to scrape.                                                  |         | yes      |
+| `targets`                                  | `list(map(string))`  | List of external targets to scrape.                                         |         | no       |
 | `disable_collectors`                       | `list(string)`       | A list of collectors to disable from the default set.                       |         | no       |
 | `enable_collectors`                        | `list(string)`       | A list of collectors to enable on top of the default set.                   |         | no       |
-| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               |         | no       |
+| `exclude_schemas`                          | `list(string)`       | A list of schemas to exclude from monitoring.                               | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `allow_update_performance_schema_settings` | `boolean`            | Whether to allow updates to `performance_schema` settings in any collector. Enable this in conjunction with other collector-specific settings where required. | `false` | no       |
 
 The following collectors are configurable:
@@ -54,26 +53,28 @@ The following collectors are configurable:
 
 You can use the following blocks with `database_observability.mysql`:
 
-| Block                                | Description                                       | Required |
-|--------------------------------------|---------------------------------------------------|----------|
-| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
-| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
-| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
-| [`setup_consumers`][setup_consumers] | Configure the `setup_consumers` collector.        | no       |
-| [`setup_actors`][setup_actors]       | Configure the `setup_actors` collector.           | no       |
-| [`query_details`][query_details]     | Configure the queries collector.                  | no       |
-| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
-| [`explain_plans`][explain_plans]     | Configure the explain plans collector.            | no       |
-| [`locks`][locks]                     | Configure the locks collector.                    | no       |
-| [`query_samples`][query_samples]     | Configure the query samples collector.            | no       |
-| [`health_check`][health_check]       | Configure the health check collector.             | no       |
+{{< docs/alloy-config >}}
 
-The > symbol indicates deeper levels of nesting.
-For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an `cloud_provider` block.
+| Block                                            | Description                                       | Required |
+|--------------------------------------------------|---------------------------------------------------|----------|
+| [`cloud_provider`][cloud_provider]               | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]                  | Provide AWS database host information.            | no       |
+| `cloud_provider` > [`azure`][azure]              | Provide Azure database host information.          | no       |
+| `cloud_provider` > [`gcp`][gcp]                  | Provide GCP database host information.            | no       |
+| [`setup_consumers`][setup_consumers]             | Configure the `setup_consumers` collector.        | no       |
+| [`setup_actors`][setup_actors]                   | Configure the `setup_actors` collector.           | no       |
+| [`query_details`][query_details]                 | Configure the queries collector.                  | no       |
+| [`schema_details`][schema_details]               | Configure the schema and table details collector. | no       |
+| [`explain_plans`][explain_plans]                 | Configure the explain plans collector.            | no       |
+| [`locks`][locks]                                 | Configure the locks collector.                    | no       |
+| [`query_samples`][query_samples]                 | Configure the query samples collector.            | no       |
+| [`health_check`][health_check]                   | Configure the health check collector.             | no       |
+| [`prometheus_exporter`][prometheus_exporter]     | Configure the embedded mysqld_exporter.           | no       |
 
 [cloud_provider]: #cloud_provider
 [aws]: #aws
 [azure]: #azure
+[gcp]: #gcp
 [setup_consumers]: #setup_consumers
 [query_details]: #query_details
 [schema_details]: #schema_details
@@ -82,11 +83,14 @@ For example, `cloud_provider` > `aws` refers to a `aws` block defined inside an 
 [query_samples]: #query_samples
 [setup_actors]: #setup_actors
 [health_check]: #health_check
+[prometheus_exporter]: #prometheus_exporter
+
+{{< /docs/alloy-config >}}
 
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`][aws] blocks.
+It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
@@ -108,6 +112,14 @@ The `azure` block supplies the identifying information for the database being mo
 | `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
 | `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
 | `server_name`     | `string` | The database server name.                            |         | no       |
+
+### `gcp`
+
+The `gcp` block supplies the identifying information for the GCP Cloud SQL database being monitored.
+
+| Name              | Type     | Description                                                                                                                 | Default | Required |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
 ### `setup_consumers`
 
@@ -143,7 +155,7 @@ The `azure` block supplies the identifying information for the database being mo
 
 | Name               | Type       | Description                                                                            | Default | Required |
 | ------------------ | ---------- | -------------------------------------------------------------------------------------- | ------- | -------- |
-| `collect_interval` | `duration` | How frequently to collect information from database.                                   | `"1m"`  | no       |
+| `collect_interval` | `duration` | How frequently to collect information from database.                                   | `"30s"`  | no       |
 | `threshold`        | `duration` | Threshold for locks to be considered slow. Locks that exceed this duration are logged. | `"1s"`  | no       |
 
 ### `query_samples`
@@ -156,6 +168,7 @@ The `azure` block supplies the identifying information for the database being mo
 | `setup_consumers_check_interval` | `duration` | How frequently to check if `setup_consumers` are correctly enabled.            | `"1h"`  | no       |
 | `sample_min_duration`            | `duration` | Minimum duration for query samples to be collected. Set to "0s" to disable filtering and collect all samples regardless of their duration.| `"0s"`  | no       |
 | `wait_event_min_duration`        | `duration` | Minimum duration for a wait event to be collected. Set to "0s" to disable filtering and collect all wait events regardless of their duration.  | `"1us"` | no       |
+| `enable_pre_classified_wait_events` | `boolean` | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
 
 ### `setup_actors`
 
@@ -165,12 +178,18 @@ The `azure` block supplies the identifying information for the database being mo
 | `collect_interval`         | `duration` | How frequently to check if `setup_actors` are configured correctly.    | `"1h"`  | no       |
 
 
-### `health_checks`
+### `health_check`
 
 | Name                       | Type       | Description                                                            | Default | Required |
 | -------------------------- | ---------- | ---------------------------------------------------------------------- | ------- | -------- |
 | `collect_interval`         | `duration` | How frequently to run health checks.                                   | `"1h"`  | no       |
 
+### `prometheus_exporter`
+
+The `prometheus_exporter` block configures the embedded mysqld_exporter scrapers.
+The `data_source_name` is inherited from the parent block.
+
+Refer to [`prometheus.exporter.mysql`](../../prometheus/prometheus.exporter.mysql/) docs for the full list of supported arguments and sub-blocks.
 
 ## Example
 

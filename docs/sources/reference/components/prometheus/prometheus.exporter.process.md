@@ -51,11 +51,15 @@ Set `remove_empty_groups` to `true` to remove the old groups, and prevent the hi
 
 You can use the following block with `prometheus.exporter.process`:
 
+{{< docs/alloy-config >}}
+
 | Name        | Description                                                                    | Required |
 | ----------- | ------------------------------------------------------------------------------ | -------- |
 | [matcher][] | A collection of matching rules to use for deciding which processes to monitor. | no       |
 
 [matcher]: #matcher
+
+{{< /docs/alloy-config >}}
 
 ### `matcher`
 

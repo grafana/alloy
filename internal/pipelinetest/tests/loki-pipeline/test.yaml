@@ -1,0 +1,74 @@
+config: |
+  import.file "module" {
+    filename = "./tests/modules/loki_pipeline.alloy"
+  }
+
+  module.loki_pipeline "p" {
+    forward_to = [loki.write.primary.receiver]
+  }
+  
+  loki.write "primary" {
+    endpoint {
+      url = pipelinetest.loki.url  
+    }
+  }
+
+inputs:
+  loki:
+    - components:
+        - module.loki_pipeline.p.receiver
+      entries:
+        - labels:
+            pod: api-1234
+            filename: api.log
+            service_name: api
+            namespace: ns1
+          line: 'ts=2026-04-22T12:00:00Z level=error request_id=req-1 user_id=user-42 msg="api token token:Aa1Bb2Cc3Dd4Ee5Ff6Gg7Hh8Ii9Jj0Kk failed"'
+        - labels:
+            pod: worker-3345
+            filename: worker.log
+            service_name: worker
+            namespace: ns2
+          line: '{"ts":"2026-04-22T12:01:00Z","level":"info","request_id":"req-300","user_id":"user-100","msg":"successful request"}'
+        - labels:
+            pod: audit-7788
+            filename: audit.log
+            service_name: audit
+            namespace: ns3
+          line: 'audit log'
+
+        
+assert:
+  loki:
+    - type: count
+      count: 2
+    - type: contains
+      match:
+        labels:
+          values:
+            level: error
+            cluster: prod-eu
+            namespace: ns1
+            service_name: api
+        line: "api token token:***REDACTED*** failed"
+        timestamp: "2026-04-22T12:00:00Z"
+        structured_metadata:
+          values:
+            pod: api-1234
+            user_id: user-42
+            request_id: req-1
+    - type: contains
+      match:
+        labels:
+          values:
+            level: info
+            cluster: prod-us
+            namespace: ns2
+            service_name: worker
+        line: "successful request"
+        timestamp: "2026-04-22T12:01:00Z"
+        structured_metadata:
+          values:
+            pod: worker-3345
+            user_id: user-100
+            request_id: req-300

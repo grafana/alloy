@@ -46,6 +46,8 @@ You can use the following argument with `pyroscope.write`:
 
 You can use the following blocks with `pyroscope.write`:
 
+{{< docs/alloy-config >}}
+
 | Block                                              | Description                                                | Required |
 | -------------------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`endpoint`][endpoint]                             | Location to send profiles to.                              | no       |
@@ -55,14 +57,13 @@ You can use the following blocks with `pyroscope.write`:
 | `endpoint` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `endpoint` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
-
 [endpoint]: #endpoint
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [oauth2]: #oauth2
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
 
 ### `endpoint`
 

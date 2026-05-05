@@ -1,0 +1,20 @@
+test_timeout: "15m"
+
+alloy_container:
+  dockerfile: Dockerfile.alloy
+
+additional_containers:
+  - name: oracledb1
+    image: gvenzl/oracle-free:23-slim
+    environment:
+      ORACLE_PASSWORD: testpassword
+    startup_healthcheck:
+      test: ["CMD", "/opt/oracle/healthcheck.sh"]
+      interval: 2s
+  - name: oracledb2
+    image: gvenzl/oracle-free:23-slim
+    environment:
+      ORACLE_PASSWORD: testpassword
+    startup_healthcheck:
+      test: ["CMD", "/opt/oracle/healthcheck.sh"]
+      interval: 2s

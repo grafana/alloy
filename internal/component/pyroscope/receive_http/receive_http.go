@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"reflect"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
 	"github.com/go-kit/log"
@@ -21,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -28,7 +30,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"go.opentelemetry.io/otel/trace"
-	"google.golang.org/grpc"
 )
 
 func init() {
@@ -46,25 +47,29 @@ func init() {
 type Arguments struct {
 	Server    *fnet.ServerConfig     `alloy:",squash"`
 	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
+
+	DebugInfoUploadTimeout time.Duration `alloy:"debug_info_upload_timeout,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
-		Server: fnet.DefaultServerConfig(),
+		Server:                 fnet.DefaultServerConfig(),
+		DebugInfoUploadTimeout: 2 * time.Minute,
 	}
 	a.Server.HTTP.ConnLimit = 64 / 4 * 1024
 }
 
 type Component struct {
-	server             *fnet.TargetServer
-	serverConfig       *fnet.HTTPConfig
-	uncheckedCollector *util.UncheckedCollector
-	appendables        []pyroscope.Appendable
-	grpcServer         *grpc.Server
-	mut                sync.Mutex
-	logger             log.Logger
-	tracer             trace.Tracer
+	server                 *fnet.TargetServer
+	serverConfig           *fnet.HTTPConfig
+	uncheckedCollector     *util.UncheckedCollector
+	appendables            []pyroscope.Appendable
+	debugInfoUploadTimeout time.Duration
+	mut                    sync.Mutex
+	logger                 log.Logger
+	tracer                 trace.Tracer
+	metrics                *metrics
 }
 
 func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, args Arguments) (*Component, error) {
@@ -76,6 +81,7 @@ func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, args
 		tracer:             tracer,
 		uncheckedCollector: uncheckedCollector,
 		appendables:        args.ForwardTo,
+		metrics:            newMetrics(reg),
 	}
 
 	if err := c.Update(args); err != nil {
@@ -106,16 +112,12 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) update(args component.Arguments) (bool, error) {
 	shutdown := false
 	newArgs := args.(Arguments)
-	// required for debug info upload over grpc over http2 over http server port
-	if newArgs.Server.HTTP.HTTP2 == nil {
-		newArgs.Server.HTTP.HTTP2 = &fnet.HTTP2Config{}
-	}
-	newArgs.Server.HTTP.HTTP2.Enabled = true
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
 	c.appendables = newArgs.ForwardTo
+	c.debugInfoUploadTimeout = newArgs.DebugInfoUploadTimeout
 
 	serverNeedsRestarting := !reflect.DeepEqual(c.serverConfig, newArgs.Server.HTTP)
 	if !serverNeedsRestarting {
@@ -147,6 +149,11 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 		// mount connect go pushv1
 		pathPush, handlePush := pushv1connect.NewPusherServiceHandler(c)
 		router.PathPrefix(pathPush).Handler(handlePush).Methods(http.MethodPost)
+
+		// mount connect debuginfo handlers (ShouldInitiateUpload, UploadFinished)
+		debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(router, c)
+		// mount plain HTTP upload proxy
+		router.Handle("/debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}", c.UploadHTTPHandler()).Methods(http.MethodPost)
 	})
 }
 
@@ -304,10 +311,6 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Component) shutdownServer() {
-	if c.grpcServer != nil {
-		c.grpcServer.GracefulStop()
-		c.grpcServer = nil
-	}
 	if c.server != nil {
 		c.server.StopAndShutdown()
 		c.server = nil

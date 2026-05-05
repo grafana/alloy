@@ -6,7 +6,9 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+	"unsafe"
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
@@ -20,9 +22,9 @@ var (
 	errMaxStreamsLimitExceeded = errors.New("streams limit exceeded")
 )
 
-// SentDataMarkerHandler is a slice of the MarkerHandler interface, that the batch interacts with to report the event that
+// sentDataTracker is a subset of the marker.Tracker interface, that the batch interacts with to report the event that
 // all data in the batch has been delivered or a client failed to do so.
-type SentDataMarkerHandler interface {
+type sentDataTracker interface {
 	UpdateSentData(segmentId, dataCount int)
 }
 
@@ -133,9 +135,9 @@ func (b *batch) countForSegment(segmentNum int) {
 }
 
 // reportAsSentData reports sent data counts per segment and observes per-entry propagation latency.
-func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observer) {
+func (b *batch) reportAsSentData(t sentDataTracker, obs prometheus.Observer) {
 	for seg, data := range b.segmentCounter {
-		h.UpdateSentData(seg, data)
+		t.UpdateSentData(seg, data)
 	}
 
 	now := time.Now().UnixMicro()
@@ -151,11 +153,36 @@ func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observe
 	}
 }
 
+// 15 matches Loki's default maximum for indexed labels.
+const maxPooledLabelNamesCapacity = 15
+
+var labelNamesPool = sync.Pool{
+	New: func() any {
+		s := make([]model.LabelName, 0, maxPooledLabelNamesCapacity)
+		return &s
+	},
+}
+
 // labelsMapToString encodes an entry's label set as a string, ignoring internal labels
 func labelsMapToString(ls model.LabelSet) string {
-	var b strings.Builder
-	totalSize := 2
-	lstrs := make([]model.LabelName, 0, len(ls))
+	var (
+		totalSize = 2
+		pooled    = labelNamesPool.Get().(*[]model.LabelName)
+		lstrs     = *pooled
+	)
+
+	defer func() {
+		// Only return slices that stayed within the pooled capacity, this avoids
+		// retaining large one-off backing arrays.
+		if cap(lstrs) <= maxPooledLabelNamesCapacity {
+			// append may have updated the slice header so write it back before
+			// returning the slice to the pool.
+			// This is not necessary with the current cap check, but we keep it so
+			// the pooled slice state stays correct if that ever changes.
+			*pooled = lstrs[:0]
+			labelNamesPool.Put(pooled)
+		}
+	}()
 
 	for l, v := range ls {
 		// skip internal labels
@@ -168,19 +195,26 @@ func labelsMapToString(ls model.LabelSet) string {
 		totalSize += len(l) + 2 + len(v) + 3
 	}
 
-	b.Grow(totalSize)
-	b.WriteByte('{')
 	slices.Sort(lstrs)
+
+	// Build into a local byte slice so strconv.AppendQuote can write directly
+	// into the final buffer. With strings.Builder we would need strconv.Quote,
+	// which creates an intermediate quoted string for each label value.
+	buf := make([]byte, 0, totalSize)
+	buf = append(buf, '{')
 	for i, l := range lstrs {
 		if i > 0 {
-			b.WriteString(", ")
+			buf = append(buf, ',', ' ')
 		}
 
-		b.WriteString(string(l))
-		b.WriteString(`=`)
-		b.WriteString(strconv.Quote(string(ls[l])))
+		buf = append(buf, string(l)...)
+		buf = append(buf, '=')
+		buf = strconv.AppendQuote(buf, string(ls[l]))
 	}
-	b.WriteByte('}')
+	buf = append(buf, '}')
 
-	return b.String()
+	// #nosec G103 nosemgrep: use-of-unsafe-block
+	// Safety: buf is local to this call and is never mutated again after converting
+	// it to a string so the returned strings backing bytes remain immutable.
+	return unsafe.String(unsafe.SliceData(buf), len(buf))
 }

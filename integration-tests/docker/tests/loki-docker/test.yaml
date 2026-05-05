@@ -1,0 +1,17 @@
+alloy_container:
+  use_docker_sock: true
+
+additional_containers:
+  - name: producer-1
+    image: loki-docker-producer:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+  - name: producer-2
+    image: loki-docker-producer:latest
+  - name: producer-3
+    image: loki-docker-producer:latest
+  - name: producer-4
+    image: loki-docker-producer:latest
+ 
+ 
