@@ -184,16 +184,48 @@ The `logs_receiver` entry point must be fed by `loki` log source components, for
 Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.
 {{< /admonition >}}
 
-### `database_observability_pg_errors_by_fingerprint_total`
+### Emitted Loki entries
 
-| Property      | Value                                                                                                                                                                                |
-|---------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Type**      | counter                                                                                                                                                                              |
-| **Labels**    | `severity`, `sqlstate`, `sqlstate_class`, `datname`, `query_fingerprint`                                                                                                             |
-| **Subset of** | `database_observability_pg_errors_total` — increments only when Alloy successfully observes the matching `STATEMENT:` continuation line and computes a fingerprint from the SQL text. |
-| **Use**       | Compute error rate per logical query: `sum by (datname, query_fingerprint) (rate(database_observability_pg_errors_by_fingerprint_total[5m]))`                                        |
+Alongside `database_observability_pg_errors_total`, the `logs` collector
+forwards a Loki entry on its `forward_to` target for every PostgreSQL
+`ERROR`/`FATAL`/`PANIC` for which the matching `STATEMENT:` continuation was
+successfully observed. The entry uses a single stable label and encodes
+every other field as logfmt key/value pairs in the line body — no Loki
+structured metadata is used, so the entries are portable across Loki
+versions and downstream tooling.
 
-The `query_fingerprint` value is computed client-side by Alloy from the parsed AST (libpg_query). Two queries that differ only in comments, whitespace, or literal values produce the same fingerprint — so an error rate keyed by fingerprint groups every variant of one logical query together. Errors without a captured `STATEMENT:` continuation (for example, connection failures or internal server errors) contribute only to `pg_errors_total`, not to this metric.
+| Field                          | Source                  | Notes                                                                |
+|--------------------------------|-------------------------|----------------------------------------------------------------------|
+| Label `op`                     | constant                | `error`                                                              |
+| Body field `level`             | constant                | `info` (Alloy convention from `BuildLokiEntry`)                      |
+| Body field `severity`          | log keyword             | `ERROR`, `FATAL`, or `PANIC`                                         |
+| Body field `sqlstate`          | `%e`                    | full 5-character SQLSTATE                                            |
+| Body field `sqlstate_class`    | first 2 chars of `%e`   | `40`, `42`, `53`, `23`, ...                                          |
+| Body field `datname`           | `%d`                    | database name                                                        |
+| Body field `query_fingerprint` | computed                | `libpg_query` fingerprint of the SQL text (16-char hex)              |
+| Body field `pid`               | `%p`                    | backend PID                                                          |
+| Body field `backend_start`     | `%s`                    | session start timestamp (raw text)                                   |
+| Body field `application_name`  | `%a`                    | typically `[unknown]` unless set client-side                         |
+| Body field `xid`               | `%x`                    | omitted when `0` (read-only / not yet assigned)                      |
+| Body field `client_addr`       | host portion of `%r`    | `[local]` for unix-domain                                            |
+| Body field `client_port`       | port portion of `%r`    | empty for unix-domain                                                |
+| Body field `session_id`        | `%c`                    | unique per backend connection                                        |
+| Body field `user`              | `%u`                    | also present on `pg_errors_total` as a label                         |
+| Body field `error_message`     | text after `<sev>:`     | human-readable error message                                         |
+| Body field `statement`         | STATEMENT body          | assembled SQL with whitespace collapsed to single spaces             |
+
+Compute error rate per logical query in LogQL:
+
+```logql
+sum by (datname, query_fingerprint)
+  (count_over_time({op="error"} | logfmt [5m]))
+```
+
+Correlate to `pg_stat_activity` samples emitted by the `query_samples`
+collector by joining on `query_fingerprint` AND `pid` AND a small time
+window around the entry's timestamp. If the failed query was inside a write
+transaction, `xid` is also a deterministic key against
+`pg_stat_activity.backend_xid`.
 
 ## Example
 

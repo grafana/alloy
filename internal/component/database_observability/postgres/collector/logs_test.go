@@ -769,95 +769,150 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 	require.Equal(t, float64(1), totalCount, "only the non-excluded user log should be counted")
 }
 
-func TestLogsCollector_IncrementsErrorsByFingerprint_OnErrorPlusStatement(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	receiver := loki.NewLogsReceiver()
-
-	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
-	})
-	require.NoError(t, err)
-	require.NoError(t, c.Start(context.Background()))
-	t.Cleanup(c.Stop)
-
-	ts := c.startTime.Add(10 * time.Second).UTC()
-	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
-	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
-
-	// ERROR row.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[12345]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  relation \"missing\" does not exist",
-	}}
-	// STATEMENT continuation.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      "STATEMENT:  SELECT * FROM missing WHERE id = $1",
-	}}
-
-	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1", fingerprint.SourceLog, 0)
-	require.NoError(t, fpErr)
-
-	require.Eventually(t, func() bool {
-		return testutil.CollectAndCount(c.errorsByFingerprint, "database_observability_pg_errors_by_fingerprint_total") >= 1
-	}, 2*time.Second, 50*time.Millisecond)
-
-	got := testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP))
-	require.Equal(t, float64(1), got)
+// drainEntries reads up to want entries from the handler's channel within
+// timeout. Returns whatever arrived in order.
+func drainEntries(t *testing.T, ch chan loki.Entry, want int, timeout time.Duration) []loki.Entry {
+	t.Helper()
+	out := make([]loki.Entry, 0, want)
+	deadline := time.Now().Add(timeout)
+	for len(out) < want && time.Now().Before(deadline) {
+		select {
+		case e := <-ch:
+			out = append(out, e)
+		case <-time.After(25 * time.Millisecond):
+		}
+	}
+	return out
 }
 
-func TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter(t *testing.T) {
+// parseLogfmt is a minimal logfmt parser for tests. Supports bare and
+// double-quoted values with `\"` and `\\` escapes. It does NOT round-trip
+// arbitrary escapes — only what buildErrorLine emits.
+func parseLogfmt(t *testing.T, s string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for i := 0; i < len(s); {
+		// Skip whitespace.
+		for i < len(s) && s[i] == ' ' {
+			i++
+		}
+		if i >= len(s) {
+			break
+		}
+		// Read key.
+		ks := i
+		for i < len(s) && s[i] != '=' && s[i] != ' ' {
+			i++
+		}
+		if i >= len(s) || s[i] != '=' {
+			break
+		}
+		key := s[ks:i]
+		i++ // consume '='
+		// Read value.
+		var val string
+		if i < len(s) && s[i] == '"' {
+			i++
+			var b strings.Builder
+			for i < len(s) {
+				c := s[i]
+				if c == '\\' && i+1 < len(s) {
+					b.WriteByte(s[i+1])
+					i += 2
+					continue
+				}
+				if c == '"' {
+					i++
+					break
+				}
+				b.WriteByte(c)
+				i++
+			}
+			val = b.String()
+		} else {
+			vs := i
+			for i < len(s) && s[i] != ' ' {
+				i++
+			}
+			val = s[vs:i]
+		}
+		out[key] = val
+	}
+	return out
+}
+
+func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
 		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
 	c.pendingErrorTimeout = 100 * time.Millisecond
-
 	require.NoError(t, c.Start(context.Background()))
 	t.Cleanup(c.Stop)
 
 	ts := c.startTime.Add(10 * time.Second).UTC()
 	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	pid := "12345"
 
-	// ERROR with no following STATEMENT.
+	// Prefix-formatted ERROR with the trailing-colon log_line_prefix.
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[99999]:1:53300:" + ts2 + ":1/0:0:c1::psqlFATAL:  too many connections",
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:69fa58c6.30:[unknown]:ERROR:  relation \"missing\" does not exist",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:2:42P01:" + ts2 + ":1/0:0:69fa58c6.30:[unknown]:STATEMENT:  SELECT * FROM missing WHERE id = $1",
 	}}
 
-	// pg_errors_total increments immediately (existing behavior).
-	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "books_store", "user")) == 1
-	}, 1*time.Second, 50*time.Millisecond)
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	e := got[0]
+	require.Equal(t, "error", string(e.Labels["op"]))
 
-	// Wait past the pending timeout window plus a tick.
-	time.Sleep(300 * time.Millisecond)
+	body := strings.TrimPrefix(e.Line, `level="info" `)
+	fields := parseLogfmt(t, body)
 
-	// pg_errors_by_fingerprint_total stays at 0 — there was no STATEMENT.
-	require.Equal(t, 0, testutil.CollectAndCount(c.errorsByFingerprint, "database_observability_pg_errors_by_fingerprint_total"))
+	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1", fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, "42P01", fields["sqlstate"])
+	require.Equal(t, "42", fields["sqlstate_class"])
+	require.Equal(t, "books_store", fields["datname"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+	require.Equal(t, pid, fields["pid"])
+	require.Equal(t, "[unknown]", fields["application_name"])
+	require.Equal(t, "127.0.0.1", fields["client_addr"])
+	require.Equal(t, "54321", fields["client_port"])
+	require.Equal(t, "69fa58c6.30", fields["session_id"])
+	require.Equal(t, "user", fields["user"])
+	require.Equal(t, "SELECT * FROM missing WHERE id = $1", fields["statement"])
+	require.Contains(t, fields["error_message"], `relation "missing" does not exist`)
+	_, hasXid := fields["xid"]
+	require.False(t, hasXid, "xid must be omitted when %x = 0")
 }
 
-func TestLogsCollector_DisplacedPendingDoesNotDoubleCount(t *testing.T) {
+func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
 		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond
 	require.NoError(t, c.Start(context.Background()))
 	t.Cleanup(c.Stop)
 
@@ -865,44 +920,77 @@ func TestLogsCollector_DisplacedPendingDoesNotDoubleCount(t *testing.T) {
 	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 
-	pid := "55555"
-	// ERROR #1 (no STATEMENT yet).
+	// FATAL with no following STATEMENT.
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  err one",
-	}}
-	// ERROR #2 from same PID (displaces #1).
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P02:" + ts2 + ":1/0:0:c1::psqlERROR:  err two",
-	}}
-	// STATEMENT for #2.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      "STATEMENT:  SELECT 2",
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[99999]:1:53300:" + ts2 + ":1/0:0:c1:[unknown]:FATAL:  too many connections",
 	}}
 
-	expectedFP, _, _ := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog, 0)
-
-	// Exactly one increment, with err two's labels and SELECT 2's fingerprint.
+	// pg_errors_total increments immediately.
 	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P02", "42", "books_store", expectedFP)) == 1
-	}, 2*time.Second, 50*time.Millisecond)
-	// And nothing under err one's labels.
-	require.Equal(t, float64(0), testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP)))
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "books_store", "user")) == 1
+	}, 1*time.Second, 50*time.Millisecond)
+
+	// No entry should arrive even after the timeout window.
+	got := drainEntries(t, entryCh, 1, 400*time.Millisecond)
+	require.Len(t, got, 0, "no STATEMENT → no Loki entry")
 }
 
-// TestLogsCollector_PrefixedStatement_MultiLine exercises the production
-// shape of a STATEMENT continuation: it carries the full log_line_prefix and
-// is followed by TAB-prefixed lines for the rest of the multi-line SQL. The
-// next prefix-formatted log line flushes the buffer.
-func TestLogsCollector_PrefixedStatement_MultiLine(t *testing.T) {
+func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
 		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	pid := "55555"
+
+	// ERROR #1 displaced by ERROR #2 from same PID.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1:[unknown]:ERROR:  err one",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:2:42P02:" + ts2 + ":1/0:0:c1:[unknown]:ERROR:  err two",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:3:42P02:" + ts2 + ":1/0:0:c1:[unknown]:STATEMENT:  SELECT 2",
+	}}
+
+	got := drainEntries(t, entryCh, 2, 1*time.Second)
+	require.Len(t, got, 1, "exactly one entry: only the second error's STATEMENT was matched")
+
+	body := strings.TrimPrefix(got[0].Line, `level="info" `)
+	fields := parseLogfmt(t, body)
+	require.Equal(t, "42P02", fields["sqlstate"])
+	require.Equal(t, "err two", fields["error_message"])
+}
+
+// TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement exercises the
+// production shape: STATEMENT keyword line carries the prefix and is followed
+// by TAB-prefixed continuations. The next prefix line flushes the buffer.
+func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
 	})
@@ -915,62 +1003,55 @@ func TestLogsCollector_PrefixedStatement_MultiLine(t *testing.T) {
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 	pid := "38"
 
-	// ERROR with the trailing-colon log_line_prefix (`...:[unknown]:ERROR:`).
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
 		Line:      ts1 + ":127.0.0.1(50904):app-user@books_store:[" + pid + "]:4:40001:" + ts2 + ":3/27:0:69fa3de3.26:[unknown]:ERROR:  could not serialize access due to concurrent update",
 	}}
-	// STATEMENT keyword line carries the prefix and first SQL fragment.
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
 		Line:      ts1 + ":127.0.0.1(50904):app-user@books_store:[" + pid + "]:5:40001:" + ts2 + ":3/27:0:69fa3de3.26:[unknown]:STATEMENT:  WITH target_books AS (",
 	}}
-	// TAB-continuation lines hold the rest of the SQL.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      "\tSELECT id FROM books WHERE id = $1",
-	}}
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      "\t)",
-	}}
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      "\tUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id",
-	}}
-	// A subsequent prefix line flushes the STATEMENT buffer.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tSELECT id FROM books WHERE id = $1"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"}}
+	// Next prefix line flushes the buffered STATEMENT.
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
 		Line:      ts1 + ":127.0.0.1(50904):app-user@books_store:[" + pid + "]:6:00000:" + ts2 + ":3/27:0:69fa3de3.26:[unknown]:LOG:  duration: 1.234 ms",
 	}}
 
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	body := strings.TrimPrefix(got[0].Line, `level="info" `)
+	fields := parseLogfmt(t, body)
+
 	expectedSQL := "WITH target_books AS (\nSELECT id FROM books WHERE id = $1\n)\nUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
 	expectedFP, _, fpErr := fingerprint.Fingerprint(expectedSQL, fingerprint.SourceLog, 0)
 	require.NoError(t, fpErr)
 
-	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "40001", "40", "books_store", expectedFP)) == 1
-	}, 2*time.Second, 50*time.Millisecond)
+	collapsed := "WITH target_books AS ( SELECT id FROM books WHERE id = $1 ) UPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, "40001", fields["sqlstate"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+	require.Equal(t, collapsed, fields["statement"])
 }
 
-// TestLogsCollector_StatementSurvivesTimeoutFlush exercises the case where
-// an ERROR + STATEMENT pair is followed by a long quiet period that exceeds
-// pendingErrorTimeout. The expiration ticker must flush the in-progress
-// STATEMENT (consuming its pending) before pending expiration deletes it,
-// otherwise the fingerprint counter under-counts the parent counter.
-func TestLogsCollector_StatementSurvivesTimeoutFlush(t *testing.T) {
+// TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an
+// in-progress STATEMENT buffered just before pendingErrorTimeout still emits
+// — flushExpiredPending consumes the pending before expiring it.
+func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
 		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
 	c.pendingErrorTimeout = 100 * time.Millisecond
-
 	require.NoError(t, c.Start(context.Background()))
 	t.Cleanup(c.Stop)
 
@@ -979,7 +1060,6 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush(t *testing.T) {
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 	pid := "310"
 
-	// ERROR + STATEMENT arrive nearly simultaneously, then nothing.
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
 		Line:      ts1 + ":127.0.0.1(60228):app-user@books_store:[" + pid + "]:4:40001:" + ts2 + ":1/1:0:c1:[unknown]:ERROR:  could not serialize access due to concurrent update",
@@ -989,12 +1069,49 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush(t *testing.T) {
 		Line:      ts1 + ":127.0.0.1(60228):app-user@books_store:[" + pid + "]:5:40001:" + ts2 + ":1/1:0:c1:[unknown]:STATEMENT:  INSERT INTO t (a) VALUES ($1)",
 	}}
 
-	expectedFP, _, fpErr := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog, 0)
-	require.NoError(t, fpErr)
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	body := strings.TrimPrefix(got[0].Line, `level="info" `)
+	fields := parseLogfmt(t, body)
+	expectedFP, _, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog, 0)
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+	require.Equal(t, "INSERT INTO t (a) VALUES ($1)", fields["statement"])
+}
 
-	// Wait past the timeout window — the ticker must flush the buffered
-	// STATEMENT and increment the fingerprint counter, not silently drop.
-	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "40001", "40", "books_store", expectedFP)) == 1
-	}, 2*time.Second, 50*time.Millisecond)
+func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	pid := "77"
+
+	// %x = 12345 (non-zero).
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(11111):user@books_store:[" + pid + "]:1:23505:" + ts2 + ":2/9:12345:69fa58c6.4d:[unknown]:ERROR:  duplicate key violates unique constraint",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(11111):user@books_store:[" + pid + "]:2:23505:" + ts2 + ":2/9:12345:69fa58c6.4d:[unknown]:STATEMENT:  INSERT INTO t (a) VALUES (1)",
+	}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	body := strings.TrimPrefix(got[0].Line, `level="info" `)
+	fields := parseLogfmt(t, body)
+	require.Equal(t, "12345", fields["xid"])
 }
