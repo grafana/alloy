@@ -288,13 +288,10 @@ func (t *tailer) processLogStream(ctx context.Context, stream io.ReadCloser, han
 			}
 			lastReadTime = entryTimestamp
 
-			entry := loki.Entry{
-				Labels: t.lset.Clone(),
-				Entry: push.Entry{
-					Timestamp: entryTimestamp,
-					Line:      entryLine,
-				},
-			}
+			entry := loki.NewEntry(t.lset.Clone(), push.Entry{
+				Timestamp: entryTimestamp,
+				Line:      entryLine,
+			})
 
 			select {
 			case <-ctx.Done():

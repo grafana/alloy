@@ -47,17 +47,21 @@ You can use the following arguments with `discovery.azure`:
 
 You can use the following blocks with `discovery.azure`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                      | Required |
 | -------------------------------------- | ------------------------------------------------ | -------- |
 | [`managed_identity`][managed_identity] | Managed Identity configuration for Azure API.    | no       |
 | [`oauth`][oauth]                       | OAuth 2.0 configuration for Azure API.           | no       |
 | [`tls_config`][tls_config]             | TLS configuration for requests to the Azure API. | no       |
 
-You must specify exactly one of the `oauth` or `managed_identity` blocks.
-
 [managed_identity]: #managed_identity
 [oauth]: #oauth
 [tls_config]: #tls_config
+
+{{< /docs/alloy-config >}}
+
+You must specify exactly one of the `oauth` or `managed_identity` blocks.
 
 ### `managed_identity`
 

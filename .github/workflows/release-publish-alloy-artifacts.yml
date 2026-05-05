@@ -1,13 +1,53 @@
 name: Publish Alloy release artifacts
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        # When dry_run is true, the validate job will intentionally fail and all downstream jobs will be skipped.
+        description: 'Dry run (do not publish any artifacts)'
+        type: boolean
+        default: true
+env:
+  RELEASE_TAG: ${{ github.ref_name }}
 
 permissions:
   contents: read
 
 jobs:
+  validate:
+    name: Validate ref is a tag
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check ref type
+      env:
+        REF_TYPE: ${{ github.ref_type }}
+        REF_NAME: ${{ github.ref_name }}
+        DRY_RUN: ${{ inputs.dry_run }}
+      run: |
+        if [[ "$REF_TYPE" != "tag" ]]; then
+          echo "::error::This workflow must be run from a tag, not a branch. Change the ref to a release tag (e.g., v1.14.0)."
+          exit 1
+        fi
+        if [[ "$REF_NAME" != v* ]]; then
+          echo "::error::Tag must start with 'v' (e.g., v1.14.0). Got: $REF_NAME"
+          exit 1
+        fi
+        if [[ "$DRY_RUN" == "true" ]]; then
+          echo "Dry run enabled for $REF_NAME. The following would run:"
+          echo "  - Publish Linux container images"
+          echo "  - Publish Windows container image"
+          echo "  - Build and sign Windows executables and installer"
+          echo "  - Upload release artifacts to GitHub"
+          echo "  - Submit WinGet manifest"
+          echo "::error::Set dry_run to false to publish."
+          exit 1
+        fi
+
   publish_linux_container:
+    needs: validate
     uses: ./.github/workflows/publish-alloy-linux.yml
     permissions:
       contents: read
@@ -16,6 +56,7 @@ jobs:
       img-name: alloy
 
   publish_linux_boringcrypto_container:
+    needs: validate
     uses: ./.github/workflows/publish-alloy-linux.yml
     permissions:
       contents: read
@@ -24,27 +65,27 @@ jobs:
       img-name: alloy-boringcrypto
 
   publish_windows_container:
+    needs: validate
     uses: ./.github/workflows/publish-alloy-windows.yml
     permissions:
       contents: read
       id-token: write
     with:
       img-name: alloy
+      ref: ${{ github.ref_name }}
 
   build_alloy:
     name: Build Alloy
-    container: grafana/alloy-build-image:v0.1.26@sha256:54ef2371fc6b049d932c58d4622c88b573b45c393b7622fe6cca492ac4525dbe
+    container: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
-    - publish_linux_container
-    - publish_linux_boringcrypto_container
-    - publish_windows_container
+    - validate
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        ref: ${{ github.event.release.tag_name }}
+        ref: ${{ env.RELEASE_TAG }}
         persist-credentials: false
 
     - name: Set ownership
@@ -54,7 +95,7 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Set up Go
-      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
         cache: false
@@ -63,17 +104,17 @@ jobs:
       run: |
         RELEASE_BUILD=1 make -j4 dist
       env:
-        VERSION: ${{ github.event.release.tag_name }}
+        VERSION: ${{ env.RELEASE_TAG }}
 
     - name: Publish dist
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: dist
         path: ./dist
         if-no-files-found: error
 
     - name: Publish unsigned Windows executables
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: windows-executables
         path: |
@@ -115,16 +156,16 @@ jobs:
 
   build_alloy_windows_installer:
     name: Build Alloy Windows installer with signed executables
-    container: grafana/alloy-build-image:v0.1.25@sha256:306ef67a1593ebdcdc3de9e7360001183830f45b05f213cd2c6f47114196c9a6
+    container: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
     - sign_alloy_windows
     steps:
     - name: Checkout code
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        ref: ${{ github.event.release.tag_name }}
+        ref: ${{ env.RELEASE_TAG }}
         persist-credentials: false
 
     - name: Set ownership
@@ -134,13 +175,13 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Set up Go
-      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
         cache: false
 
     - name: Download signed Windows executables
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         name: windows-executables-signed
         path: .
@@ -150,10 +191,10 @@ jobs:
       run: |
         RELEASE_BUILD=1 makensis -V4 -DVERSION=${VERSION} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
       env:
-        VERSION: ${{ github.event.release.tag_name }}
+        VERSION: ${{ env.RELEASE_TAG }}
 
     - name: Publish unsigned Windows installer
-      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
       with:
         name: windows-installer-unsigned
         path: ./dist/alloy-installer-windows-amd64.exe
@@ -193,7 +234,7 @@ jobs:
 
   upload_release_artifacts:
     name: Upload release artifacts
-    container: grafana/alloy-build-image:v0.1.25@sha256:306ef67a1593ebdcdc3de9e7360001183830f45b05f213cd2c6f47114196c9a6
+    container: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -215,7 +256,7 @@ jobs:
           ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
     - name: Create GitHub app token 🔐
-      uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2.2.1
+      uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
       id: app-token
       with:
         app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
@@ -224,9 +265,9 @@ jobs:
         repositories: alloy
 
     - name: Checkout repository 🛎️
-      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        ref: ${{ github.event.release.tag_name }}
+        ref: ${{ env.RELEASE_TAG }}
         token: ${{ steps.app-token.outputs.token }}
         persist-credentials: false
 
@@ -237,38 +278,33 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Download dist
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         name: dist
         path: dist
 
     # Overwrite the original Windows Alloy executable with the signed version
     - name: Download signed Windows executable
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         name: windows-executables-signed
         path: .
 
     # Overwrite the original Windows Alloy installer with the signed version
     - name: Download signed Windows installer
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:
         name: windows-installer-signed
         path: dist
 
+    - name: Package Alloy mixin dashboards
+      run: make dist-alloy-mixin-zip
+      env:
+        RELEASE_TAG: ${{ env.RELEASE_TAG }}
+
     - name: Publish release artifacts
       run: ./tools/publish-release-artifacts.sh
       env:
-        RELEASE_TAG: ${{ github.event.release.tag_name }}
+        RELEASE_TAG: ${{ env.RELEASE_TAG }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
 
-  submit_winget_manifest:
-    name: Submit WinGet Manifest
-    needs:
-    - upload_release_artifacts
-    uses: ./.github/workflows/release-submit-winget-manifest.yml
-    permissions:
-      contents: read
-      id-token: write
-    with:
-      release-tag: ${{ github.event.release.tag_name }}

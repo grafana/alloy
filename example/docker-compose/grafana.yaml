@@ -58,7 +58,7 @@ services:
       - MIMIR_ADDRESS=http://mimir:9009
       - MIMIR_TENANT_ID=fake
     volumes:
-      - ../operations/alloy-mixin:/etc/alloy-mixin
+      - ../../operations/alloy-mixin:/etc/alloy-mixin
     working_dir: /etc/alloy-mixin
     command: grr watch . ./grizzly.jsonnet
 

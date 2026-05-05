@@ -15,8 +15,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
+	"github.com/moby/moby/client"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -122,7 +122,7 @@ type Component struct {
 
 // New creates a new loki.source.file component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	err := os.MkdirAll(o.DataPath, 0750)
+	err := os.MkdirAll(o.DataPath, 0o750)
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
@@ -160,8 +160,7 @@ func (c *Component) Run(ctx context.Context) error {
 		c.exited.Store(true)
 		c.posFile.Stop()
 
-		// Start black hole drain routine to prevent deadlock when we call c.scheduler.Stop().
-		source.Drain(c.handler, func() {
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			c.scheduler.Stop()
@@ -169,7 +168,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	// Start consume and fanout loop
-	source.Consume(ctx, c.handler, c.fanout)
+	loki.Consume(ctx, c.handler, c.fanout)
 	return nil
 }
 
@@ -262,7 +261,6 @@ func (c *Component) getClient(args Arguments) (client.APIClient, error) {
 
 	opts := []client.Opt{
 		client.WithHost(args.Host),
-		client.WithAPIVersionNegotiation(),
 	}
 
 	// There are other protocols than HTTP supported by the Docker daemon, like
@@ -285,7 +283,7 @@ func (c *Component) getClient(args Arguments) (client.APIClient, error) {
 		)
 	}
 
-	client, err := client.NewClientWithOpts(opts...)
+	client, err := client.New(opts...)
 	if err != nil {
 		level.Error(c.opts.Logger).Log("msg", "could not create new Docker client", "err", err)
 		return c.client, fmt.Errorf("failed to build docker client: %w", err)

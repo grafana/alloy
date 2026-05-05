@@ -51,20 +51,19 @@ If set, these arguments override the `client.endpoint` field for the correspondi
 
 You can use the following blocks with `otelcol.exporter.otlphttp`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                 | Description                                                                    | Required |
-|-------------------------------------------------------|--------------------------------------------------------------------------------|----------|
+| ----------------------------------------------------- | ------------------------------------------------------------------------------ | -------- |
 | [`client`][client]                                    | Configures the HTTP client to send telemetry data to.                          | yes      |
 | `client` > [`compression_params`][compression_params] | Configure advanced compression options.                                        | no       |
 | `client` > [`cookies`][cookies]                       | Store cookies from server responses and reuse them in subsequent requests.     | no       |
 | `client` > [`tls`][tls]                               | Configures TLS for the HTTP client.                                            | no       |
-| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS key_file.                                  | no       |
+| `client` > `tls` > [`tpm`][tpm]                       | Configures TPM settings for the TLS `key_file`.                                | no       |
 | [`debug_metrics`][debug_metrics]                      | Configures the metrics that this component generates to monitor its state.     | no       |
 | [`retry_on_failure`][retry_on_failure]                | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]                      | Configures queueing and batching for the exporter.                             | no       |
 | `sending_queue` > [`batch`][batch]                    | Configures batching requests based on a timeout and a minimum number of items. | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `client` > `tls` refers to a `tls` block defined inside a `client` block.
 
 [client]: #client
 [tls]: #tls
@@ -75,6 +74,8 @@ For example, `client` > `tls` refers to a `tls` block defined inside a `client` 
 [batch]: #batch
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `client`
 
@@ -150,7 +151,29 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.exporter.otlphttp` doesn't expose any component-specific debug information.
 
-## Example
+## Examples
+
+### Grafana Cloud
+
+This example creates an exporter which can send OTLP logs, metrics, and traces to Grafana Cloud using basic authentication:
+
+```alloy
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = `https://otlp-gateway-prod-gb-south-0.grafana.net/otlp`
+    auth     = otelcol.auth.basic.creds.handler
+  }
+}
+
+otelcol.auth.basic "creds" {
+  client_auth {
+    username = sys.env("OTLP_USERNAME")
+    password = sys.env("OTLP_API_KEY")
+  }
+}
+```
+
+### Local Tempo database
 
 This example creates an exporter to send data to a locally running Grafana Tempo without TLS:
 
@@ -165,6 +188,7 @@ otelcol.exporter.otlphttp "tempo" {
     }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

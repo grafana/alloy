@@ -78,11 +78,6 @@ func (s *tenantStage) Process(labels model.LabelSet, extracted map[string]any, t
 	labels[ReservedLabelTenantID] = model.LabelValue(tenantID)
 }
 
-// Name implements Stage
-func (s *tenantStage) Name() string {
-	return StageTypeTenant
-}
-
 func (s *tenantStage) getTenantFromSourceField(extracted map[string]any) string {
 	// Get the tenant ID from the source data
 	value, ok := extracted[s.cfg.Source]

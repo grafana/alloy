@@ -128,7 +128,7 @@ Here is a summary of the relationships between the key dependencies of Alloy.
 
 ## Steps to update key dependencies
 
-Don't write anything in this document. Create a separate document called 'deps-update-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
+Don't write anything in this document. Create a separate document called 'deps-update-<version>-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
 
 ### Step 1: Familiarize yourself with the tools and snippets
 
@@ -148,9 +148,11 @@ The key dependencies that are using the same minor versions as the ones we want 
 
 For all the key dependencies as defined above that are replaced with forks, list the changes that have been added to the current fork, using the tools and snippets to help you. NOTE: do not investigate forks of Prometheus exporters, as we keep them out of the scope of this process for now.
 
+Start with `dependency-replacements.yaml`. Every replace entry must have a comment with a link to an upstream issue or PR. Use that link to understand why the fork exists and whether it is still needed. If you add or change a replace, include or update that link.
+
 Make a short summary of the forks: what version they fork from (if it's possible to determine), the list of commits that are added to the fork, and one sentence summary of these changes.
 
-Search for a GitHub issue or upstream PR associated with the fork. They are often mentioned through a comment in the commit message, a PR description on the fork or in the go.mod file. Verify if the required changes were already upstreamed and if we no longer need the fork. Use "Checking if a fork is still needed" tool described below to verify. Always make sure that the changes required are indeed part of the new version and are already released. Otherwise, we may need to keep the fork.
+Search for a GitHub issue or upstream PR associated with the fork. They are often mentioned in `dependency-replacements.yaml`, the commit message, a PR description on the fork, or in the go.mod file. Verify if the required changes were already upstreamed and if we no longer need the fork. Use "Checking if a fork is still needed" tool described below to verify. Always make sure that the changes required are indeed part of the new version and are already released. Otherwise, we may need to keep the fork.
 
 If the fork is using a branch or a tag with certain naming convention that can be continued, determine the expected name of the new branch or tag in the fork that can use the latest version of the upstream key dependency as the base.
 
@@ -165,7 +167,9 @@ Only continue to the next step if all the key dependenies have a fork ready, don
 
 ### Step 4: Update Go modules to desired versions
 
-Having determined the desired versions of the key dependencies, update the go.mod file to use the desired versions. Make sure you keep in mind the relationships between the key dependencies as described in the "Key Dependency Relationships" section above.
+Replace directives are generated. Do not edit them directly in go.mod or builder-config.yaml. Update `dependency-replacements.yaml`, run `make generate-module-dependencies` and ` make generate-otel-collector-distro` to update the root go.mod, extension/alloyengine/go.mod, collector/go.mod, collector/builder-config.yaml and generate otel distro
+
+Having determined the desired versions of the key dependencies, update the go.mod files to use the desired versions. Make sure you keep in mind the relationships between the key dependencies as described in the "Key Dependency Relationships" section above.
 
 You know the update is successful if `go mod tidy` can successfully resolve the dependencies.
 
@@ -196,7 +200,7 @@ Make sure you organise the go.mod in the following way:
 - module name, go version, etc.
 - direct dependencies in one require() block
 - indirect dependencies in another require() block
-- all the replace directives in separate lines with comments
+- keep the generated replace block as-is; place any local replaces outside of it
 - anything else
 
 After reorganising the go.mod, make sure you run `go mod tidy` again to make sure it is still successful and properly formatted.
@@ -204,6 +208,8 @@ After reorganising the go.mod, make sure you run `go mod tidy` again to make sur
 ### Step 6: Fix compilation errors
 
 If you run `go build` or `go test` directly, you may not get the correct build tags. Make sure you use them. These can be found in the Makefile. You can also use `make alloy` to build the whole project.
+
+Alloy uses the OTel Collector Builder (OCB) for the collector distro. If you change OTel dependencies or `collector/builder-config.yaml`, run `make generate-otel-collector-distro` and commit the generated collector files before building or testing.
 
 Start fixing the compilation errors in the following order, which ensures we start with more fundamental issues and work our way down to the more complex ones:
 
@@ -286,3 +292,28 @@ Consider this step successful if all the tests pass and there were no big change
 If the tests pass, but we had to change the test expectations in a meaningful way that will impact end users, explain what is the breaking change.
 
 If after all your best efforts there are remaining test failures, make sure you give me a snippet command on how to run that specific test so I can quickly run it on my machine and see what is going on. Provide description of what you think is failing and how does it relate to our dependency updates.
+
+
+### Step 8: Fetch changelog for target release
+Fetch the changelog using curl
+
+For otel we are interested in these repos
+* github.com/open-telemetry/opentelemetry-collector
+* github.com/open-telemetry/opentelemetry-go-build-tools
+* github.com/grafana/opentelemetry-ebpf-instrumentation
+* github.com/grafana/opentelemetry-ebpf-profiler
+
+Run curl to get changelog for release
+```
+curl https://api.github.com/repos/<repo>/<project>/releases/tags/<version>
+```
+
+Use this information to check if any of our components have new arguments and to document important changes in step 9.
+
+### Step 9: Update user facing documentation:
+
+We have documentation for our components. If we have new arguments / blocks they should be added to the documentation. If default values changed we should update docs as well. This documentation is stored in md files prefix by component name and must be updated.
+
+### Step 10: Note down important changes
+
+It's important to list changes done in dependencies. Especially breaking changes and changes to default config values. What we note down here should only be user facing changes and not internal implementation details.

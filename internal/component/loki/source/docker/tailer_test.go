@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,9 +18,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	"github.com/go-kit/log"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/client"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -39,7 +41,7 @@ func TestTailer(t *testing.T) {
 
 	logger := log.NewNopLogger()
 	entryHandler := loki.NewCollectingHandler()
-	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
+	client, err := client.New(client.WithHost(server.URL))
 	require.NoError(t, err)
 
 	ps, err := positions.New(logger, positions.Config{
@@ -115,7 +117,7 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	client, err := client.NewClientWithOpts(client.WithHost(server.URL))
+	client, err := client.New(client.WithHost(server.URL))
 	require.NoError(t, err)
 
 	tgt, err := newTailer(
@@ -216,6 +218,102 @@ func TestTailerNeverStarted(t *testing.T) {
 	require.NotPanics(t, func() { cancel() })
 }
 
+var _ io.ReadCloser = (*stringReader)(nil)
+
+func newStringReader(s string) *stringReader {
+	return &stringReader{Reader: strings.NewReader(s)}
+}
+
+type stringReader struct {
+	*strings.Reader
+}
+
+func (s *stringReader) Close() error {
+	return nil
+}
+
+func TestTailerConsumeLines(t *testing.T) {
+	t.Run("skip empty line", func(t *testing.T) {
+		collector := loki.NewCollectingHandler()
+		tailer := &tailer{
+			logger:            log.NewNopLogger(),
+			recv:              collector.Receiver(),
+			positions:         positions.NewNop(),
+			containerID:       "test",
+			metrics:           newMetrics(prometheus.DefaultRegisterer),
+			running:           true,
+			wg:                sync.WaitGroup{},
+			last:              atomic.NewInt64(0),
+			since:             atomic.NewInt64(0),
+			componentStopping: func() bool { return false },
+		}
+
+		bb := &bytes.Buffer{}
+		writer := newStdWriter(bb, stdcopy.Stdout)
+		_, err := writer.Write([]byte("2023-12-09T12:00:00.000000000Z \n2023-12-09T12:00:00.000000000Z line\n"))
+		require.NoError(t, err)
+
+		tailer.wg.Add(3)
+		go func() {
+			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+		}()
+
+		require.Eventually(t, func() bool {
+			return len(collector.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
+		entry := collector.Received()[0]
+
+		expectedLine := "line"
+		expectedTimestamp, err := time.Parse(time.RFC3339Nano, "2023-12-09T12:00:00.000000000Z")
+		require.NoError(t, err)
+
+		require.Equal(t, expectedLine, entry.Line)
+		require.Equal(t, expectedTimestamp, entry.Timestamp)
+	})
+
+	t.Run("bigger than max size", func(t *testing.T) {
+		collector := loki.NewCollectingHandler()
+		tailer := &tailer{
+			logger:            log.NewJSONLogger(os.Stdout),
+			recv:              collector.Receiver(),
+			positions:         positions.NewNop(),
+			containerID:       "test",
+			metrics:           newMetrics(prometheus.DefaultRegisterer),
+			running:           true,
+			wg:                sync.WaitGroup{},
+			last:              atomic.NewInt64(0),
+			since:             atomic.NewInt64(0),
+			componentStopping: func() bool { return false },
+		}
+
+		bb := &bytes.Buffer{}
+		writer := newStdWriter(bb, stdcopy.Stdout)
+
+		line := bytes.Repeat([]byte{'a'}, dockerMaxChunkSize*64*10)
+		line = append(line, '\n')
+
+		_, err := writer.Write(append([]byte("2023-12-09T12:00:00.000000000Z "), line...))
+		require.NoError(t, err)
+
+		_, err = writer.Write([]byte("2023-12-09T12:00:00.000000000Z next line\n"))
+		require.NoError(t, err)
+
+		tailer.wg.Add(3)
+
+		go func() {
+			tailer.processLoop(t.Context(), false, newStringReader(bb.String()))
+		}()
+
+		require.Eventually(t, func() bool {
+			return len(collector.Received()) == 1
+		}, 2*time.Second, 50*time.Millisecond)
+
+		entry := collector.Received()[0]
+		require.Equal(t, "next line", entry.Line)
+	})
+}
+
 func TestChunkWriter(t *testing.T) {
 	logger := log.NewNopLogger()
 	var buf bytes.Buffer
@@ -254,6 +352,25 @@ func TestChunkWriter(t *testing.T) {
 	assert.Equal(t, expected, buf.Bytes())
 }
 
+func TestExtractTsFromBytes(t *testing.T) {
+	t.Run("invalid timestamp", func(t *testing.T) {
+		_, _, err := extractTsFromBytes([]byte("123 test\n"))
+		require.Error(t, err)
+	})
+
+	t.Run("valid timestamp empty line", func(t *testing.T) {
+		ts, _, err := extractTsFromBytes([]byte("2024-05-02T13:11:55.879889Z \n"))
+		require.NoError(t, err)
+		expectedTs, err := time.Parse(time.RFC3339Nano, "2024-05-02T13:11:55.879889Z")
+		require.NoError(t, err)
+		require.Equal(t, expectedTs, ts)
+	})
+	t.Run("valid timestamp no space", func(t *testing.T) {
+		_, _, err := extractTsFromBytes([]byte("2024-05-02T13:11:55.879889Z\n"))
+		require.Error(t, err)
+	})
+}
+
 func newDockerServer(t *testing.T) *httptest.Server {
 	h := func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
@@ -273,9 +390,7 @@ func newDockerServer(t *testing.T) *httptest.Server {
 		default:
 			w.Header().Set("Content-Type", "application/json")
 			info := container.InspectResponse{
-				ContainerJSONBase: &container.ContainerJSONBase{
-					State: &container.State{},
-				},
+				State:           &container.State{},
 				Mounts:          []container.MountPoint{},
 				Config:          &container.Config{Tty: false},
 				NetworkSettings: &container.NetworkSettings{},
@@ -356,19 +471,40 @@ type clientMock struct {
 	finishedAt func() string
 }
 
-func (mock clientMock) ContainerInspect(ctx context.Context, c string) (container.InspectResponse, error) {
-	return container.InspectResponse{
-		ContainerJSONBase: &container.ContainerJSONBase{
+func (mock clientMock) ContainerInspect(ctx context.Context, c string, opts client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
+	return client.ContainerInspectResult{
+		Container: container.InspectResponse{
 			ID: c,
 			State: &container.State{
 				Running:    mock.running(),
 				FinishedAt: mock.finishedAt(),
 			},
+			Config: &container.Config{Tty: true},
 		},
-		Config: &container.Config{Tty: true},
 	}, nil
 }
 
-func (mock clientMock) ContainerLogs(ctx context.Context, container string, options container.LogsOptions) (io.ReadCloser, error) {
+func (mock clientMock) ContainerLogs(ctx context.Context, id string, options client.ContainerLogsOptions) (client.ContainerLogsResult, error) {
 	return io.NopCloser(strings.NewReader(mock.logLine)), nil
+}
+
+// newStdWriter frames each Write into the multiplexed stream format that
+// stdcopy.StdCopy consumes.
+func newStdWriter(w io.Writer, t stdcopy.StdType) io.Writer {
+	return &stdWriter{Writer: w, t: t}
+}
+
+type stdWriter struct {
+	io.Writer
+	t stdcopy.StdType
+}
+
+func (sw *stdWriter) Write(p []byte) (int, error) {
+	var hdr [8]byte
+	hdr[0] = byte(sw.t)
+	binary.BigEndian.PutUint32(hdr[4:], uint32(len(p)))
+	if _, err := sw.Writer.Write(hdr[:]); err != nil {
+		return 0, err
+	}
+	return sw.Writer.Write(p)
 }

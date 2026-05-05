@@ -1,4 +1,4 @@
-FROM library/golang:1.24.0-windowsservercore-ltsc2022
+FROM golang:1.26.2-windowsservercore-ltsc2022@sha256:b36e6e1036d0746855a215ecc693bdc45879a74a15edc797fc9af6cc3f505863
 
 SHELL ["powershell", "-command"]
 

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -21,7 +22,6 @@ import (
 
 const (
 	SchemaDetailsCollector = "schema_details"
-	OP_SCHEMA_DETECTION    = "schema_detection"
 	OP_TABLE_DETECTION     = "table_detection"
 	OP_CREATE_STATEMENT    = "create_statement"
 )
@@ -124,6 +124,7 @@ type SchemaDetails struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 type tableInfo struct {
@@ -195,13 +196,11 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.extractSchema(c.ctx); err != nil {
@@ -215,7 +214,7 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -224,9 +223,11 @@ func (c *SchemaDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *SchemaDetails) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *SchemaDetails) extractSchema(ctx context.Context) error {
@@ -245,12 +246,6 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			break
 		}
 		schemas = append(schemas, schema)
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_SCHEMA_DETECTION,
-			fmt.Sprintf(`schema="%s"`, schema),
-		)
 	}
 
 	if err := rs.Err(); err != nil {
@@ -270,7 +265,6 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			level.Error(c.logger).Log("msg", "failed to query tables", "err", err)
 			break
 		}
-		defer rs.Close()
 
 		for rs.Next() {
 			var tableName, tableType string
@@ -296,8 +290,11 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			)
 		}
 
-		if err := rs.Err(); err != nil {
-			return fmt.Errorf("failed to iterate over tables result set: %w", err)
+		iterErr := rs.Err()
+		rs.Close()
+
+		if iterErr != nil {
+			return fmt.Errorf("failed to iterate over tables result set: %w", iterErr)
 		}
 	}
 

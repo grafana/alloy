@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/DataDog/go-sqllexer"
@@ -39,14 +40,17 @@ var selectQueriesFromActivity = `
 				FROM pg_stat_statements
 		)
 		AND pg_database.datname NOT IN %s
+		%s
 	ORDER BY total_exec_time DESC
-	LIMIT 100
+	LIMIT %d
 `
 
 type QueryDetailsArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
+	StatementsLimit  int
 	ExcludeDatabases []string
+	ExcludeUsers     []string
 	EntryHandler     loki.EntryHandler
 	TableRegistry    *TableRegistry
 
@@ -56,7 +60,9 @@ type QueryDetailsArguments struct {
 type QueryDetails struct {
 	dbConnection     *sql.DB
 	collectInterval  time.Duration
+	statementsLimit  int
 	excludeDatabases []string
+	excludeUsers     []string
 	entryHandler     loki.EntryHandler
 	tableRegistry    *TableRegistry
 	normalizer       *sqllexer.Normalizer
@@ -65,16 +71,19 @@ type QueryDetails struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
 		dbConnection:     args.DB,
 		collectInterval:  args.CollectInterval,
+		statementsLimit:  args.StatementsLimit,
 		excludeDatabases: args.ExcludeDatabases,
+		excludeUsers:     args.ExcludeUsers,
 		entryHandler:     args.EntryHandler,
 		tableRegistry:    args.TableRegistry,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true)),
+		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
 		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:          &atomic.Bool{},
 	}, nil
@@ -92,13 +101,11 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.fetchAndAssociate(c.ctx); err != nil {
@@ -112,7 +119,7 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -121,13 +128,17 @@ func (c *QueryDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *QueryDetails) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
-func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
-	query := fmt.Sprintf(selectQueriesFromActivity, buildExcludedDatabasesClause(c.excludeDatabases))
+func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
+	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
+	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
+	query := fmt.Sprintf(selectQueriesFromActivity, excludedDatabasesClause, excludedUsersClause, c.statementsLimit)
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to fetch statements from pg_stat_statements view: %w", err)
@@ -163,14 +174,15 @@ func (c QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 		for _, table := range tables {
 			validated := false
+			resolvedTable := table
 			if c.tableRegistry != nil {
-				validated = c.tableRegistry.IsValid(databaseName, table)
+				resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
 			}
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, table, validated),
+				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
 			)
 		}
 	}

@@ -39,15 +39,29 @@ func init() {
 	integrations_v2.RegisterLegacy(&Config{}, integrations_v2.TypeMultiplex, metricsutils.NewNamedShim("cloudwatch"))
 }
 
+// DefaultConfig holds the default settings for the cloudwatch_exporter integration.
+var DefaultConfig = Config{
+	UseAWSSDKVersion2: true,
+}
+
 // Config is the configuration for the CloudWatch metrics integration
 type Config struct {
-	STSRegion         string                `yaml:"sts_region"`
-	FIPSDisabled      bool                  `yaml:"fips_disabled"`
-	Discovery         DiscoveryConfig       `yaml:"discovery"`
-	Static            []StaticJob           `yaml:"static"`
-	Debug             bool                  `yaml:"debug"`
-	DecoupledScrape   DecoupledScrapeConfig `yaml:"decoupled_scraping"`
-	UseAWSSDKVersion2 bool                  `yaml:"aws_sdk_version_v2"`
+	STSRegion       string                `yaml:"sts_region"`
+	FIPSDisabled    bool                  `yaml:"fips_disabled"`
+	Discovery       DiscoveryConfig       `yaml:"discovery"`
+	Static          []StaticJob           `yaml:"static"`
+	Debug           bool                  `yaml:"debug"`
+	DecoupledScrape DecoupledScrapeConfig `yaml:"decoupled_scraping"`
+
+	// UseAWSSDKVersion2 is deprecated and has no effect.
+	UseAWSSDKVersion2 bool `yaml:"aws_sdk_version_v2"`
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler for Config.
+func (c *Config) UnmarshalYAML(unmarshal func(any) error) error {
+	*c = DefaultConfig
+	type plain Config
+	return unmarshal((*plain)(c))
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.
@@ -138,15 +152,20 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 	if err != nil {
 		return nil, fmt.Errorf("invalid cloudwatch exporter configuration: %w", err)
 	}
+
+	if !c.UseAWSSDKVersion2 {
+		level.Warn(l).Log("msg", "the `aws_sdk_version_v2` argument is deprecated and has no effect, AWS SDK for Go v2 is always used - remove this argument from your configuration")
+	}
+
 	if c.DecoupledScrape.Enabled {
 		scrapeInterval := defaultDecoupledScrapingInterval
 		if v := c.DecoupledScrape.ScrapeInterval; v != nil {
 			scrapeInterval = *v
 		}
-		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, c.Debug, labelsSnakeCase, c.UseAWSSDKVersion2)
+		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, labelsSnakeCase, c.Debug)
 	}
 
-	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, c.Debug, labelsSnakeCase, c.UseAWSSDKVersion2)
+	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, labelsSnakeCase, c.Debug)
 }
 
 // getHash calculates the MD5 hash of the yaml representation of the config

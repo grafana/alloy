@@ -570,9 +570,9 @@ func (fakeHost) ListComponents(moduleID string, opts component.InfoOptions) ([]*
 func (fakeHost) GetServiceConsumers(_ string) []service.Consumer { return nil }
 func (fakeHost) GetService(_ string) (service.Service, bool)     { return nil, false }
 
-func (f fakeHost) NewController(id string) service.Controller {
+func (f fakeHost) NewController(id string) (service.Controller, error) {
 	logger, _ := logging.New(io.Discard, logging.DefaultOptions)
-	ctrl := alloy_runtime.New(alloy_runtime.Options{
+	ctrl, err := alloy_runtime.New(alloy_runtime.Options{
 		ControllerID:    ServiceName,
 		Logger:          logger,
 		Tracer:          nil,
@@ -582,8 +582,11 @@ func (f fakeHost) NewController(id string) service.Controller {
 		OnExportsChange: func(map[string]any) {},
 		Services:        []service.Service{livedebugging.New()},
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	return serviceController{ctrl}
+	return serviceController{ctrl}, nil
 }
 
 type serviceController struct {

@@ -2496,6 +2496,26 @@ func TestNewExplainPlanOutput_InvalidJSON(t *testing.T) {
 	assert.Nil(t, output)
 }
 
+func TestPostgresPreparedStatementParamCount(t *testing.T) {
+	tests := []struct {
+		name  string
+		query string
+		want  int
+	}{
+		{name: "empty", query: "", want: 0},
+		{name: "no placeholders", query: "SELECT 1", want: 0},
+		{name: "single placeholder", query: "SELECT * FROM t WHERE a = $1", want: 1},
+		{name: "repeated same index", query: "SELECT * FROM t WHERE a = $1 AND b = $1", want: 1},
+		{name: "issue example", query: `SELECT t2.payload FROM t1 INNER JOIN t2 ON t1.x = t2.x WHERE t1.a = $1 AND t2.a = $1 ORDER BY t1.x DESC LIMIT $2 OFFSET $3`, want: 3},
+		{name: "highest index wins", query: "SELECT * FROM t WHERE a = $10 AND b = $1", want: 10},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, postgresPreparedStatementParamCount(tt.query))
+		})
+	}
+}
+
 func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
@@ -2534,7 +2554,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", exclusionClause)).WillReturnRows(rows)
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", exclusionClause, "")).WillReturnRows(rows)
 
 			ctx := context.Background()
 			err = explainPlan.populateQueryCache(ctx)
@@ -2570,7 +2590,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
 				AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
 
-			expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"information_schema"}))
+			expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"information_schema"}), "")
 			mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
 
 			ctx := context.Background()
@@ -2604,7 +2624,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()))
 
@@ -2630,7 +2650,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now()))
 
@@ -2657,7 +2677,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now().Add(-time.Minute)))
 
@@ -2757,7 +2777,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause)).WillReturnRows(rows)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).WillReturnRows(rows)
 
 		ctx := context.Background()
 		err = explainPlan.fetchExplainPlans(ctx)
@@ -2845,6 +2865,24 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
+					"testdb123459": {
+						queryId:    "123459",
+						queryText:  "show search_path",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123460": {
+						queryId:    "123460",
+						queryText:  "call refresh_summary()",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123461": {
+						queryId:    "123461",
+						queryText:  "do 'begin perform 1; end'",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
@@ -2852,7 +2890,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				entryHandler:       lokiClient,
-				currentBatchSize:   3,
+				currentBatchSize:   6,
 			}
 
 			err = explainPlan.fetchExplainPlans(t.Context())
@@ -2860,14 +2898,14 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.NoError(t, err)
 			require.Eventually(
 				t,
-				func() bool { return len(lokiClient.Received()) == 3 },
+				func() bool { return len(lokiClient.Received()) == 6 },
 				5*time.Second,
 				10*time.Millisecond,
 				"did not receive the explain plan output log message within the timeout",
 			)
 
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 3, len(lokiEntries))
+			require.Equal(t, 6, len(lokiEntries))
 
 			require.NotContains(t, logBuffer.String(), "error")
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -2915,8 +2953,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
+			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table where id = $1").WillReturnResult(sqlmock.NewResult(0, 1))
-			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
@@ -2982,10 +3020,78 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
+			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS with cte as (select * from some_table where id = $1) select * from cte").WillReturnResult(sqlmock.NewResult(0, 1))
-			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
+			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+			err = explainPlan.fetchExplainPlans(t.Context())
+			require.NoError(t, err)
+
+			assert.NoError(t, mock.ExpectationsWereMet())
+			assert.Equal(t, 1, dbConnFactory.InstantiationCount)
+
+			require.Eventually(
+				t,
+				func() bool {
+					return len(lokiClient.Received()) == 1
+				},
+				5*time.Second,
+				10*time.Millisecond,
+				"did not receive the explain plan output log message within the timeout",
+			)
+
+			require.NotContains(t, logBuffer.String(), "error")
+		})
+
+		t.Run("repeated placeholder uses max parameter index for EXECUTE", func(t *testing.T) {
+			db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+			require.NoError(t, err)
+			defer db.Close()
+
+			lokiClient.Clear()
+			logBuffer.Reset()
+			dbConnFactory := &mockDbConnectionFactory{
+				db:                 db,
+				Mock:               &mock,
+				InstantiationCount: 0,
+			}
+			dupParamQuery := "SELECT * FROM t1 INNER JOIN t2 ON t1.x = t2.x WHERE t1.a = $1 AND t2.a = $1 ORDER BY t1.x DESC LIMIT $2 OFFSET $3"
+			explainPlan = &ExplainPlans{
+				dbConnection:        db,
+				dbDSN:               "postgres://user:pass@host:1234/database",
+				dbConnectionFactory: dbConnFactory.NewDBConnection,
+				dbVersion:           post17ver,
+				queryCache: map[string]*queryInfo{
+					"testdb123456": {
+						datname:    "testdb",
+						queryId:    "123456",
+						queryText:  dupParamQuery,
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+				},
+				queryDenylist:      map[string]*queryInfo{},
+				finishedQueryCache: map[string]*queryInfo{},
+				excludeDatabases:   []string{},
+				perScrapeRatio:     1.0,
+				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				currentBatchSize:   1,
+				entryHandler:       lokiClient,
+			}
+
+			archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+			require.NoError(t, err)
+			require.Equal(t, 1, len(archive.Files))
+			jsonFile := archive.Files[0]
+			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
+			jsonData := jsonFile.Data
+
+			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("PREPARE explain_plan_123456 AS " + dupParamQuery).WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null,null,null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
 
 			err = explainPlan.fetchExplainPlans(t.Context())
@@ -3049,8 +3155,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.Equal(t, "complex_aggregation_with_case.json", jsonFile.Name)
 			jsonData := jsonFile.Data
 
+			mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("PREPARE explain_plan_123456 AS select * from some_table").WillReturnResult(sqlmock.NewResult(0, 1))
-			mock.ExpectExec("SET search_path TO testdb, public").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
 			mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
 			mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
@@ -3105,7 +3211,7 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 	}
 
 	// Verify the query uses the custom exclusion clause that includes both default and user-provided exclusions
-	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"excluded_db"}))
+	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"excluded_db"}), "")
 
 	// Return only non-excluded database rows (simulating SQL-level filtering)
 	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
@@ -3119,6 +3225,47 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 	// Verify only included_db query is in the cache
 	assert.Len(t, explainPlan.queryCache, 1)
 	assert.Contains(t, explainPlan.queryCache, "included_db222222")
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlans_ExcludeUsers(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	post17ver := semver.MustParse("17.0.0")
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	explainPlan := &ExplainPlans{
+		dbConnection:       db,
+		dbVersion:          post17ver,
+		queryCache:         make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]*queryInfo),
+		finishedQueryCache: make(map[string]*queryInfo),
+		excludeUsers:       []string{"excluded_user"},
+		perScrapeRatio:     1.0,
+		logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		entryHandler:       lokiClient,
+	}
+
+	expectedExcludedUsersClause := buildExcludedUsersClause([]string{"excluded_user"}, "pg_get_userbyid(s.userid)")
+	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, expectedExcludedUsersClause)
+
+	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+		AddRow("testdb", "111111", "SELECT * FROM test_table", int64(5), time.Now())
+
+	mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
+
+	err = explainPlan.populateQueryCache(context.Background())
+	require.NoError(t, err)
+
+	assert.Len(t, explainPlan.queryCache, 1)
+	assert.Contains(t, explainPlan.queryCache, "testdb111111")
 
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

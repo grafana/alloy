@@ -42,26 +42,26 @@ otelcol.receiver.kafka "<LABEL>" {
 
 You can use the following arguments with `otelcol.receiver.kafka`:
 
-| Name                                       | Type            | Description                                                                                                           | Default            | Required |
-| ------------------------------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------ | -------- |
-| `brokers`                                  | `list(string)`  | Kafka brokers to connect to.                                                                                          |                    | yes      |
-| `protocol_version`                         | `string`        | Kafka protocol version to use.                                                                                        |                    | yes      |
-| `client_id`                                | `string`        | Consumer client ID to use.                                                                                            | `"otel-collector"` | no       |
-| `default_fetch_size`                       | `int`           | The default number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
-| `encoding`                                 | `string`        | (Deprecated) Encoding of payload read from Kafka.                                                                     | `"otlp_proto"`     | no       |
-| `group_id`                                 | `string`        | Consumer group to consume messages from.                                                                              | `"otel-collector"` | no       |
-| `group_instance_id`                        | `string`        | A unique identifier for the consumer instance within a consumer group.                                                | `""`               | no       |
-| `group_rebalance_strategy`                 | `string`        | The strategy used to assign partitions to consumers within a consumer group.                                          | `"range"`          | no       |
-| `heartbeat_interval`                       | `duration`      | The expected time between heartbeats to the consumer coordinator when using Kafka group management.                   | `"3s"`             | no       |
-| `initial_offset`                           | `string`        | Initial offset to use if no offset was previously committed.                                                          | `"latest"`         | no       |
-| `max_fetch_size`                           | `int`           | The maximum number of message bytes to fetch in a request.                                                            | `0`                | no       |
-| `max_fetch_wait`                           | `duration`      | The maximum amount of time the broker should wait for `min_fetch_size` bytes to be available before returning anyway. | `"250ms"`          | no       |
-| `max_partition_fetch_size`                 | `int`           | The default number of message bytes to fetch per partition in a request.                                              | `1048576`          | no       |
-| `min_fetch_size`                           | `int`           | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |
-| `rack_id`                                  | `string`        | The rack identifier for this client. Used for rack-aware replica selection when supported by the brokers.            | `""`               | no       |
-| `resolve_canonical_bootstrap_servers_only` | `bool`          | Whether to resolve then reverse-lookup broker IPs during startup.                                                     | `false`            | no       |
-| `session_timeout`                          | `duration`      | The request timeout for detecting client failures when using Kafka group management.                                  | `"10s"`            | no       |
-| `use_leader_epoch`                         | `bool`          | Whether to use leader epoch for log truncation detection (KIP-320).                                                   | `true`             | no       |
+| Name                                       | Type           | Description                                                                                                           | Default            | Required |
+| ------------------------------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------ | -------- |
+| `brokers`                                  | `list(string)` | Kafka brokers to connect to.                                                                                          | `[]`               | yes      |
+| `protocol_version`                         | `string`       | Kafka protocol version to use.                                                                                        | `""`               | yes      |
+| `client_id`                                | `string`       | Consumer client ID to use.                                                                                            | `"otel-collector"` | no       |
+| `conn_idle_timeout`                        | `duration`     | Time after which idle connections are not reused and may be closed.                                                   | `"9m"`             | no       |
+| `encoding`                                 | `string`       | (Deprecated) Encoding of payload read from Kafka.                                                                     | `"otlp_proto"`     | no       |
+| `group_id`                                 | `string`       | Consumer group to consume messages from.                                                                              | `"otel-collector"` | no       |
+| `group_instance_id`                        | `string`       | A unique identifier for the consumer instance within a consumer group.                                                | `""`               | no       |
+| `group_rebalance_strategy`                 | `string`       | The strategy used to assign partitions to consumers within a consumer group.                                          | `"range"`          | no       |
+| `heartbeat_interval`                       | `duration`     | The expected time between heartbeats to the consumer coordinator when using Kafka group management.                   | `"3s"`             | no       |
+| `initial_offset`                           | `string`       | Initial offset to use if no offset was previously committed.                                                          | `"latest"`         | no       |
+| `max_fetch_size`                           | `int`          | The maximum number of message bytes to fetch in a request.                                                            | `1048576`          | no       |
+| `max_fetch_wait`                           | `duration`     | The maximum amount of time the broker should wait for `min_fetch_size` bytes to be available before returning anyway. | `"250ms"`          | no       |
+| `max_partition_fetch_size`                 | `int`          | The default number of message bytes to fetch per partition in a request.                                              | `1048576`          | no       |
+| `min_fetch_size`                           | `int`          | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |
+| `rack_id`                                  | `string`       | The rack identifier for this client. Used for rack-aware replica selection when supported by the brokers.             | `""`               | no       |
+| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                     | `false`            | no       |
+| `session_timeout`                          | `duration`     | The request timeout for detecting client failures when using Kafka group management.                                  | `"10s"`            | no       |
+| `use_leader_epoch`                         | `bool`         | Whether to use leader epoch for log truncation detection (KIP-320).                                                   | `true`             | no       |
 
 For `max_fetch_size`, the value `0` means no limit.
 
@@ -79,33 +79,38 @@ Disabling can improve compatibility with brokers that don't fully support leader
 
 `initial_offset` must be either `"latest"` or `"earliest"`.
 
-The `group_rebalance_strategy` argument determines how Kafka distributes topic partitions among the consumers in the group during rebalances. 
+The `group_rebalance_strategy` argument determines how Kafka distributes topic partitions among the consumers in the group during rebalances.
 Supported strategies are:
 
-- `range`: This strategy assigns partitions to consumers based on a range. 
-  It aims to distribute partitions evenly across consumers, but it can lead to uneven distribution if the number of partitions is not a multiple of the number of consumers. 
+- `range`: This strategy assigns partitions to consumers based on a range.
+  It aims to distribute partitions evenly across consumers, but it can lead to uneven distribution if the number of partitions is not a multiple of the number of consumers.
   For more information, refer to the Kafka RangeAssignor documentation, see [RangeAssignor][].
-- `roundrobin`: This strategy assigns partitions to consumers in a round-robin fashion. 
-  It ensures a more even distribution of partitions across consumers, especially when the number of partitions is not a multiple of the number of consumers. 
+- `roundrobin`: This strategy assigns partitions to consumers in a round-robin fashion.
+  It ensures a more even distribution of partitions across consumers, especially when the number of partitions is not a multiple of the number of consumers.
   For more information, refer to the Kafka RoundRobinAssignor documentation, see [RoundRobinAssignor][].
-- `sticky`: This strategy aims to maintain the same partition assignments during rebalances as much as possible. 
-  It minimizes the number of partition movements, which can be beneficial for stateful consumers. 
+- `sticky`: This strategy aims to maintain the same partition assignments during rebalances as much as possible.
+  It minimizes the number of partition movements, which can be beneficial for stateful consumers.
   For more information, refer to the Kafka StickyAssignor documentation, see [StickyAssignor][].
+- `cooperative-sticky`: This strategy uses incremental cooperative rebalancing to reduce partition movement during rebalances.
+  For more information, refer to the Kafka CooperativeStickyAssignor documentation, see [CooperativeStickyAssignor][].
 
 Using a `group_instance_id` is useful for stateful consumers or when you need to ensure that a specific consumer instance is always assigned the same set of partitions.
 
-- If `group_instance_id` is set to a non-empty string, the consumer is treated as a static member of the group. 
+- If `group_instance_id` is set to a non-empty string, the consumer is treated as a static member of the group.
   This means that the consumer will maintain its partition assignments across restarts and rebalances, as long as it rejoins the group with the same `group_instance_id`.
-- If `group_instance_id` is set to an empty string (or not set), the consumer is treated as a dynamic member. 
+- If `group_instance_id` is set to an empty string (or not set), the consumer is treated as a dynamic member.
   In this case, the consumer's partition assignments may change during rebalances.
 
 [RangeAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/RangeAssignor.html
 [RoundRobinAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/RoundRobinAssignor.html
 [StickyAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/StickyAssignor.html
+[CooperativeStickyAssignor]: https://kafka.apache.org/31/javadoc/org/apache/kafka/clients/consumer/CooperativeStickyAssignor.html
 
 ## Blocks
 
 You can use the following blocks with `otelcol.receiver.kafka`:
+
+{{< docs/alloy-config >}}
 
 | Block                                            | Description                                                                                | Required |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ | -------- |
@@ -116,7 +121,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | `authentication` > [`sasl`][sasl]                | Authenticates against Kafka brokers with SASL.                                             | no       |
 | `authentication` > `sasl` > [`aws_msk`][aws_msk] | Additional SASL parameters when using AWS_MSK_IAM_OAUTHBEARER.                             | no       |
 | `authentication` > [`tls`][tls]                  | (Deprecated) Configures TLS for connecting to the Kafka brokers.                           | no       |
-| `authentication` > `tls` > [`tpm`][tpm]          | Configures TPM settings for the TLS key_file.                                              | no       |
+| `authentication` > `tls` > [`tpm`][tpm]          | Configures TPM settings for the TLS `key_file`.                                            | no       |
 | [`autocommit`][autocommit]                       | Configures how to automatically commit updated topic offsets to back to the Kafka brokers. | no       |
 | [`debug_metrics`][debug_metrics]                 | Configures the metrics which this component generates to monitor its state.                | no       |
 | [`logs`][logs]                                   | Configures how to send logs to Kafka brokers.                                              | no       |
@@ -128,10 +133,7 @@ You can use the following blocks with `otelcol.receiver.kafka`:
 | [`metrics`][metrics]                             | Configures how to send metrics to Kafka brokers.                                           | no       |
 | [`traces`][traces]                               | Configures how to send traces to Kafka brokers.                                            | no       |
 | [`tls`][tls][]                                   | Configures TLS for connecting to the Kafka brokers.                                        | no       |
-| `tls` > [`tpm`][tpm]                             | Configures TPM settings for the TLS key_file.                                              | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `authentication` > `tls` refers to a `tls` block defined inside an `authentication` block.
+| `tls` > [`tpm`][tpm]                             | Configures TPM settings for the TLS `key_file`.                                            | no       |
 
 [logs]: #logs
 [metrics]: #metrics
@@ -152,6 +154,8 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 [output]: #output
 [error_backoff]: #error_backoff
 
+{{< /docs/alloy-config >}}
+
 ### `output`
 
 {{< badge text="Required" >}}
@@ -162,11 +166,11 @@ For example, `authentication` > `tls` refers to a `tls` block defined inside an 
 
 The `logs` block configures how to receive logs from Kafka brokers.
 
-| Name       | Type            | Description                                                                                    | Default          | Required |
-| ---------- | --------------- | ---------------------------------------------------------------------------------------------- | ---------------- | -------- |
-| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                   | `"otlp_proto"`   | no       |
-| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which logs will be received. | `""`             | no       |
-| `topics`   | `list(string)`  | The names of the Kafka topics on which logs will be received.                                  | `["otlp_logs"]`  | no       |
+| Name       | Type           | Description                                                                                    | Default         | Required |
+| ---------- | -------------- | ---------------------------------------------------------------------------------------------- | --------------- | -------- |
+| `encoding` | `string`       | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                   | `"otlp_proto"`  | no       |
+| `topic`    | `string`       | (Deprecated: use `topics` instead) The name of the Kafka topic on which logs will be received. | `""`            | no       |
+| `topics`   | `list(string)` | The names of the Kafka topics on which logs will be received.                                  | `["otlp_logs"]` | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -177,11 +181,11 @@ If `topic` is set, it will take precedence over default value of `topics`.
 
 The `metrics` block configures how to receive metrics from Kafka brokers.
 
-| Name       | Type            | Description                                                                                       | Default             | Required |
-| ---------- | --------------- | ------------------------------------------------------------------------------------------------- | ------------------- | -------- |
-| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                      | `"otlp_proto"`      | no       |
-| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which metrics will be received. | `""`                | no       |
-| `topics`   | `list(string)`  | The names of the Kafka topics on which metrics will be received.                                  | `["otlp_metrics"]`  | no       |
+| Name       | Type           | Description                                                                                       | Default            | Required |
+| ---------- | -------------- | ------------------------------------------------------------------------------------------------- | ------------------ | -------- |
+| `encoding` | `string`       | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                      | `"otlp_proto"`     | no       |
+| `topic`    | `string`       | (Deprecated: use `topics` instead) The name of the Kafka topic on which metrics will be received. | `""`               | no       |
+| `topics`   | `list(string)` | The names of the Kafka topics on which metrics will be received.                                  | `["otlp_metrics"]` | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -192,11 +196,11 @@ If `topic` is set, it will take precedence over default value of `topics`.
 
 The `traces` block configures how to receive traces from Kafka brokers.
 
-| Name       | Type            | Description                                                                                      | Default          | Required |
-| ---------- | --------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
-| `encoding` | `string`        | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                     | `"otlp_proto"`   | no       |
-| `topic`    | `string`        | (Deprecated: use `topics` instead) The name of the Kafka topic on which traces will be received. | `""`             | no       |
-| `topics`   | `list(string)`  | The names of the Kafka topics on which traces will be received.                                  | `["otlp_spans"]` | no       |
+| Name       | Type           | Description                                                                                      | Default          | Required |
+| ---------- | -------------- | ------------------------------------------------------------------------------------------------ | ---------------- | -------- |
+| `encoding` | `string`       | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                     | `"otlp_proto"`   | no       |
+| `topic`    | `string`       | (Deprecated: use `topics` instead) The name of the Kafka topic on which traces will be received. | `""`             | no       |
+| `topics`   | `list(string)` | The names of the Kafka topics on which traces will be received.                                  | `["otlp_spans"]` | no       |
 
 {{< admonition type="warning" >}}
 The `topic` argument is deprecated in favor of `topics`.
@@ -381,18 +385,19 @@ otelcol.receiver.kafka "default" {
 
 otelcol.processor.batch "default" {
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("OTLP_ENDPOINT")
   }
 }
 ```
+
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
 ## Compatible components

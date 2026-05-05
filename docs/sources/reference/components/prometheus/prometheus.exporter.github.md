@@ -25,19 +25,30 @@ prometheus.exporter.github "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.github`:
 
-| Name             | Type           | Description                                                      | Default                    | Required |
-| ---------------- | -------------- | ---------------------------------------------------------------- | -------------------------- | -------- |
-| `api_token_file` | `string`       | File containing API token to use to authenticate against GitHub. |                            | no       |
-| `api_token`      | `secret`       | API token to use to authenticate against GitHub.                 |                            | no       |
-| `api_url`        | `string`       | The full URI of the GitHub API.                                  | `"https://api.github.com"` | no       |
-| `organizations`  | `list(string)` | GitHub organizations for which to collect metrics.               |                            | no       |
-| `repositories`   | `list(string)` | GitHub repositories for which to collect metrics.                |                            | no       |
-| `users`          | `list(string)` | A list of GitHub users for which to collect metrics.             |                            | no       |
+| Name                          | Type           | Description                                                      | Default                    | Required |
+| ----------------------------- | -------------- | ---------------------------------------------------------------- | -------------------------- | -------- |
+| `api_token_file`              | `string`       | File containing API token to use to authenticate against GitHub. |                            | no       |
+| `api_token`                   | `secret`       | API token to use to authenticate against GitHub.                 |                            | no       |
+| `api_url`                     | `string`       | The full URI of the GitHub API.                                  | `"https://api.github.com"` | no       |
+| `github_app_id`               | `number`       | The GitHub App ID for authentication.                            |                            | no       |
+| `github_app_installation_id`  | `number`       | The GitHub App installation ID for authentication.               |                            | no       |
+| `github_app_key_path`         | `string`       | Path to the GitHub App private key file.                         |                            | no       |
+| `github_rate_limit`           | `number`       | Threshold for GitHub App rate limit to trigger re-authentication.| `15000`                    | no       |
+| `organizations`               | `list(string)` | GitHub organizations for which to collect metrics.               |                            | no       |
+| `repositories`                | `list(string)` | GitHub repositories for which to collect metrics.                |                            | no       |
+| `users`                       | `list(string)` | A list of GitHub users for which to collect metrics.             |                            | no       |
+
+### Authentication
 
 GitHub uses an aggressive rate limit for unauthenticated requests based on IP address.
-To allow more API requests, we recommend that you configure either `api_token` or `api_token_file` to authenticate against GitHub.
+To allow more API requests, we recommend that you configure either token or GitHub App authentication.
+
+* **Token authentication**: Set `api_token` or `api_token_file` with a personal access token or classic token.
+* **GitHub App authentication**: Set `github_app_id`, `github_app_installation_id`, and `github_app_key_path` to authenticate as a GitHub App.
 
 When provided, `api_token_file` takes precedence over `api_token`.
+
+You can't use both token authentication and GitHub App authentication simultaneously.
 
 ## Blocks
 
@@ -60,7 +71,11 @@ In those cases, exported fields retain their last healthy values.
 
 `prometheus.exporter.github` doesn't expose any component-specific debug metrics.
 
-## Example
+## Examples
+
+The following examples demonstrate token authentication and GitHub App authentication.
+
+### Token authentication
 
 The following example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.github`:
 
@@ -68,6 +83,42 @@ The following example uses a [`prometheus.scrape`][scrape] component to collect 
 prometheus.exporter.github "example" {
   api_token_file = "/etc/github-api-token"
   repositories   = ["grafana/alloy"]
+}
+
+// Configure a prometheus.scrape component to collect github metrics.
+prometheus.scrape "demo" {
+  targets    = prometheus.exporter.github.example.targets
+  forward_to = [prometheus.remote_write.demo.receiver]
+}
+
+prometheus.remote_write "demo" {
+  endpoint {
+    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
+
+    basic_auth {
+      username = "<USERNAME>"
+      password = "<PASSWORD>"
+    }
+  }
+}
+```
+
+Replace the following:
+
+- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
+- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
+- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
+
+### GitHub App authentication
+
+The following example uses GitHub App authentication to collect metrics:
+
+```alloy
+prometheus.exporter.github "example" {
+  repositories                 = ["grafana/alloy"]
+  github_app_id                = 123456
+  github_app_installation_id   = 789012
+  github_app_key_path          = "/etc/github-app-key.pem"
 }
 
 // Configure a prometheus.scrape component to collect github metrics.

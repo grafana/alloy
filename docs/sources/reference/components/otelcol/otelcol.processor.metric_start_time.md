@@ -13,6 +13,9 @@ title: otelcol.processor.metric_start_time
 `otelcol.processor.metric_start_time` accepts metrics from other `otelcol` components and sets the start time for cumulative metric datapoints which do not already have a start time.
 This processor is commonly used with `otelcol.receiver.prometheus`, which produces metric points without a [start time][otlp-start-time].
 
+Grafana Mimir ingests OTLP metric start times only when it is configured with the `-distributor.otel-created-timestamp-zero-ingestion-enabled` flag.
+Without this configuration, setting start times in {{< param "PRODUCT_NAME" >}} has no effect on ingestion behavior.
+
 {{< admonition type="note" >}}
 `otelcol.processor.metric_start_time` is a wrapper over the upstream OpenTelemetry Collector [`metricstarttime`][] processor.
 Bug reports or feature requests will be redirected to the upstream repository, if necessary.
@@ -128,6 +131,8 @@ Any additional data from resources removed from the cache will be given a new st
 
 You can use the following blocks with `otelcol.processor.metric_start_time`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -135,6 +140,8 @@ You can use the following blocks with `otelcol.processor.metric_start_time`:
 
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -179,18 +186,18 @@ otelcol.receiver.prometheus "default" {
 
 otelcol.processor.metric_start_time "default" {
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
 
-### Using subtract_initial_point strategy
+### Using `subtract_initial_point` strategy
 
 This example uses the `subtract_initial_point` strategy, which preserves cumulative semantics and produces correct rates:
 
@@ -205,20 +212,20 @@ otelcol.processor.metric_start_time "default" {
   strategy = "subtract_initial_point"
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
 
-### Using start_time_metric strategy with custom regex
+### Use a `start_time_metric` strategy with a custom regular expression
 
-This example uses the `start_time_metric` strategy with a custom regex to find the start time metric:
+This example uses the `start_time_metric` strategy with a custom regular expression to find the start time metric:
 
 ```alloy
 otelcol.receiver.prometheus "default" {
@@ -233,11 +240,11 @@ otelcol.processor.metric_start_time "default" {
   start_time_metric_regex  = "^.+_start_time$"
 
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }

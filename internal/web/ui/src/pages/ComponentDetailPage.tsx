@@ -5,6 +5,7 @@ import { ComponentView } from '../features/component/ComponentView';
 import { type ComponentDetail, type ComponentInfo, componentInfoByID } from '../features/component/types';
 import { useComponentInfo } from '../hooks/componentInfo';
 import { parseID } from '../utils/id';
+import styles from './ComponentDetailPage.module.css';
 
 const ComponentDetailPage: FC = () => {
   const { '*': id } = useParams();
@@ -13,6 +14,7 @@ const ComponentDetailPage: FC = () => {
   const infoByID = componentInfoByID(components);
 
   const [component, setComponent] = useState<ComponentDetail | undefined>(undefined);
+  const [loadingEndpoint, setLoadingEndpoint] = useState<string | null>(null);
 
   useEffect(
     function () {
@@ -20,12 +22,16 @@ const ComponentDetailPage: FC = () => {
         return;
       }
 
+      const abortController = new AbortController();
       const fetchURL = `./api/v0/web/components/${id}`;
+      setLoadingEndpoint(fetchURL);
+
       const worker = async () => {
         // Request is relative to the <base> tag inside of <head>.
         const resp = await fetch(fetchURL, {
           cache: 'no-cache',
           credentials: 'same-origin',
+          signal: abortController.signal,
         });
         const data: ComponentDetail = await resp.json();
 
@@ -35,6 +41,7 @@ const ComponentDetailPage: FC = () => {
           const moduleComponentsResp = await fetch(modulesURL, {
             cache: 'no-cache',
             credentials: 'same-origin',
+            signal: abortController.signal,
           });
           const moduleComponents = (await moduleComponentsResp.json()) as ComponentInfo[];
 
@@ -42,14 +49,34 @@ const ComponentDetailPage: FC = () => {
         }
 
         setComponent(data);
+        setLoadingEndpoint(null);
       };
 
-      worker().catch(console.error);
+      worker().catch((err) => {
+        // Ignore abort errors - these are expected when the effect cleans up
+        if (err instanceof Error && err.name === 'AbortError') {
+          return;
+        }
+        console.error(err);
+      });
+
+      return () => {
+        abortController.abort();
+      };
     },
     [id]
   );
 
-  return component ? <ComponentView component={component} info={infoByID} /> : <div></div>;
+  if (component) {
+    return <ComponentView component={component} info={infoByID} />;
+  }
+
+  return (
+    <div className={styles.content}>
+      <p className={styles.message}>Loading component data...</p>
+      {loadingEndpoint && <p className={styles.endpoint}>Fetching: {loadingEndpoint}</p>}
+    </div>
+  );
 };
 
 export default ComponentDetailPage;

@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path"
 	"reflect"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/hashicorp/go-multierror"
 	"github.com/prometheus/prometheus/storage"
@@ -26,9 +26,9 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/nodeconf/foreach"
 	"github.com/grafana/alloy/internal/runtime/internal/worker"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util"
 	astutil "github.com/grafana/alloy/internal/util/ast"
 	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/diag"
@@ -37,7 +37,7 @@ import (
 
 // The Loader builds and evaluates ComponentNodes from Alloy blocks.
 type Loader struct {
-	log        log.Logger
+	logger     *slog.Logger
 	tracer     trace.TracerProvider
 	globals    ComponentGlobals
 	services   []service.Service
@@ -77,7 +77,7 @@ type LoaderOptions struct {
 
 // NewLoader creates a new Loader. Components built by the Loader will be built
 // with co for their options.
-func NewLoader(opts LoaderOptions) *Loader {
+func NewLoader(opts LoaderOptions) (*Loader, error) {
 	var (
 		globals  = opts.ComponentGlobals
 		services = opts.Services
@@ -92,7 +92,7 @@ func NewLoader(opts LoaderOptions) *Loader {
 	}
 
 	l := &Loader{
-		log:        log.With(globals.Logger, "controller_path", parent, "controller_id", id),
+		logger:     globals.Logger.Slog().With("controller_path", parent, "controller_id", id),
 		tracer:     tracing.WrapTracerForLoader(globals.TraceProvider, globals.ControllerID),
 		globals:    globals,
 		services:   services,
@@ -116,11 +116,21 @@ func NewLoader(opts LoaderOptions) *Loader {
 	l.cc = newControllerCollector(l, parent, id)
 
 	if globals.Registerer != nil {
-		globals.Registerer.MustRegister(l.cc)
-		globals.Registerer.MustRegister(l.cm)
+		// These metrics already being registered indicates there's already a loader which exists for this controller.
+		// Creating duplicate loaders should only happen in error states where we should not proceed further. One know
+		// case of this is when remotecfg loads an invalid config and attempts to reload the prior config.
+		existing := util.MustRegisterOrReturnExisting(globals.Registerer, l.cc)
+		if existing != nil {
+			return nil, fmt.Errorf("a loader exists already exists for %q", globals.ControllerID)
+		}
+
+		existing = util.MustRegisterOrReturnExisting(globals.Registerer, l.cm)
+		if existing != nil {
+			return nil, fmt.Errorf("a loader exists already exists for %q", globals.ControllerID)
+		}
 	}
 
-	return l
+	return l, nil
 }
 
 // ApplyOptions are options that can be provided when loading a new Alloy config.
@@ -187,12 +197,12 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 	spanCtx, span := tracer.Start(context.Background(), "GraphEvaluate", trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
-	logger := log.With(l.log, "trace_id", span.SpanContext().TraceID())
-	level.Info(logger).Log("msg", "starting complete graph evaluation")
+	logger := l.logger.With("trace_id", span.SpanContext().TraceID().String())
+	logger.Info("starting complete graph evaluation")
 	defer func() {
 		span.SetStatus(codes.Ok, "")
 
-		level.Info(logger).Log("msg", "finished complete graph evaluation", "duration", time.Since(start))
+		logger.Info("finished complete graph evaluation", "duration", time.Since(start))
 	}()
 
 	l.cache.ClearModuleExports()
@@ -205,7 +215,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 
 		start := time.Now()
 		defer func() {
-			level.Info(logger).Log("msg", "finished node evaluation", "node_id", n.NodeID(), "duration", time.Since(start))
+			logger.Info("finished node evaluation", "node_id", n.NodeID(), "duration", time.Since(start))
 		}()
 
 		var err error
@@ -296,7 +306,7 @@ func (l *Loader) Cleanup(stopWorkerPool bool) {
 		// Wait at most 5 seconds for currently evaluating components to finish.
 		err := l.workerPool.Stop(time.Second * 5)
 		if err != nil {
-			level.Warn(l.log).Log("msg", "timed out stopping worker pool", "err", err)
+			l.logger.Warn("timed out stopping worker pool", "err", err)
 		}
 	}
 	if l.globals.Registerer == nil {
@@ -651,7 +661,7 @@ func (l *Loader) wireGraphEdges(g *dag.Graph) diag.Diagnostics {
 
 		// Finally, wire component references.
 		l.cache.mut.RLock()
-		refs, nodeDiags := ComponentReferences(n, g, l.log, l.cache.GetContext(), l.globals.MinStability)
+		refs, nodeDiags := ComponentReferences(n, g, l.logger, l.cache.GetContext(), l.globals.MinStability)
 		l.cache.mut.RUnlock()
 		setDataFlowEdges(n, refs)
 		for _, ref := range refs {
@@ -757,7 +767,7 @@ func (l *Loader) EvaluateDependants(ctx context.Context, updatedNodes []*QueuedN
 			// Make sure we're in-sync with the current exports of parent.
 			err := l.cache.CacheExports(parentNode.ID(), parentNode.Exports())
 			if err != nil {
-				level.Error(l.log).Log("msg", "failed to cache exports during evaluation", "err", err)
+				l.logger.Error("failed to cache exports during evaluation", "err", err)
 			}
 		case *ImportConfigNode:
 			// Update the scope with the imported content.
@@ -791,8 +801,8 @@ func (l *Loader) EvaluateDependants(ctx context.Context, updatedNodes []*QueuedN
 				l.concurrentEvalFn(nodeRef, dependantCtx, tracer, parentRef)
 			})
 			if err != nil {
-				level.Warn(l.log).Log(
-					"msg", "failed to submit node for evaluation - will retry",
+				l.logger.Warn(
+					"failed to submit node for evaluation - will retry",
 					"err", err,
 					"node_id", n.NodeID(),
 					"originator_id", parent.Node.NodeID(),
@@ -807,8 +817,8 @@ func (l *Loader) EvaluateDependants(ctx context.Context, updatedNodes []*QueuedN
 			}
 		}
 		if err != nil && !retryBackoff.Ongoing() {
-			level.Error(l.log).Log(
-				"msg", "retry attempts exhausted when submitting node for evaluation to the worker pool - "+
+			l.logger.Error(
+				"retry attempts exhausted when submitting node for evaluation to the worker pool - "+
 					"this could be a deadlock, performance bottleneck or severe overload leading to goroutine starvation",
 				"err", err,
 				"node_id", n.NodeID(),
@@ -841,7 +851,7 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 	defer func() {
 		duration := time.Since(start)
 		l.cm.onComponentEvaluationDone(n.NodeID(), duration)
-		level.Debug(l.log).Log("msg", "finished node evaluation", "node_id", n.NodeID(), "duration", duration)
+		l.logger.Debug("finished node evaluation", "node_id", n.NodeID(), "duration", duration)
 	}()
 
 	var err error
@@ -853,7 +863,7 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 		ectx := l.cache.GetContext()
 		evalErr := n.Evaluate(ectx)
 
-		err = l.postEvaluate(l.log, n, evalErr)
+		err = l.postEvaluate(l.logger, n, evalErr)
 
 		// Additional post-evaluation steps necessary for module exports.
 		if exp, ok := n.(*ExportConfigNode); ok {
@@ -885,7 +895,7 @@ func (l *Loader) concurrentEvalFn(n dag.Node, spanCtx context.Context, tracer tr
 
 // evaluate constructs the final context for the BlockNode and
 // evaluates it. mut must be held when calling evaluate.
-func (l *Loader) evaluate(logger log.Logger, bn BlockNode) error {
+func (l *Loader) evaluate(logger *slog.Logger, bn BlockNode) error {
 	ectx := l.cache.GetContext()
 	err := bn.Evaluate(ectx)
 	return l.postEvaluate(logger, bn, err)
@@ -896,7 +906,7 @@ func (l *Loader) evaluate(logger log.Logger, bn BlockNode) error {
 // The evaluation err is passed as an argument to allow shadowing it with an error that could be more relevant to the user
 // but cannot be determined before the evaluation (for example, we must evaluate the argument node to see if it's optional before
 // raising an error when a value is missing). When err is not nil, this function must return an error.
-func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error {
+func (l *Loader) postEvaluate(logger *slog.Logger, bn BlockNode, err error) error {
 	switch c := bn.(type) {
 	case ComponentNode:
 		// Always update the cached exports, since that it might change when a component gets re-evaluated.
@@ -904,10 +914,10 @@ func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error 
 		err2 := l.cache.CacheExports(c.ID(), c.Exports())
 		if err2 != nil {
 			if err != nil {
-				level.Error(logger).Log("msg", "evaluation and exports caching failed", "eval err", err, "caching err", err2)
+				logger.Error("evaluation and exports caching failed", "eval_err", err, "caching_err", err2)
 				return errors.Join(err, err2)
 			} else {
-				level.Error(logger).Log("msg", "failed to cache exports after evaluation", "err", err2)
+				logger.Error("failed to cache exports after evaluation", "err", err2)
 				return err2
 			}
 		}
@@ -926,7 +936,7 @@ func (l *Loader) postEvaluate(logger log.Logger, bn BlockNode, err error) error 
 	}
 
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to evaluate config", "node", bn.NodeID(), "err", err)
+		logger.Error("failed to evaluate config", "node", bn.NodeID(), "err", err)
 		return err
 	}
 	return nil

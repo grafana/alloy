@@ -139,6 +139,8 @@ The supported values for `error_mode` are:
 
 You can use the following blocks with `otelcol.processor.transform`:
 
+{{< docs/alloy-config >}}
+
 | Block                                    | Description                                                                                   | Required |
 |------------------------------------------|-----------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                       | Configures where to send received telemetry data.                                             | yes      |
@@ -155,6 +157,8 @@ You can use the following blocks with `otelcol.processor.transform`:
 [debug_metrics]: #debug_metrics
 [statements]: #statements
 [OTTL Context]: #ottl-context
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -394,9 +398,9 @@ otelcol.processor.transform "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -419,9 +423,9 @@ otelcol.processor.transform "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -440,9 +444,9 @@ otelcol.processor.transform "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -463,9 +467,9 @@ otelcol.processor.transform "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -487,9 +491,9 @@ otelcol.processor.transform "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -535,9 +539,9 @@ otelcol.processor.transform "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -626,13 +630,13 @@ otelcol.processor.transform "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("OTLP_ENDPOINT")
   }
@@ -668,9 +672,9 @@ otelcol.processor.transform "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.otlp.default.input]
-    logs    = [otelcol.exporter.otlp.default.input]
-    traces  = [otelcol.exporter.otlp.default.input]
+    metrics = [otelcol.exporter.otlphttp.default.input]
+    logs    = [otelcol.exporter.otlphttp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```

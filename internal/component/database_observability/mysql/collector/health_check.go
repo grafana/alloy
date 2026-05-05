@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-kit/log"
@@ -25,6 +26,7 @@ const (
 type HealthCheckArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
+	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
 	Logger log.Logger
@@ -33,18 +35,21 @@ type HealthCheckArguments struct {
 type HealthCheck struct {
 	dbConnection    *sql.DB
 	collectInterval time.Duration
+	excludeSchemas  []string
 	entryHandler    loki.EntryHandler
 	logger          log.Logger
 
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewHealthCheck(args HealthCheckArguments) (*HealthCheck, error) {
 	h := &HealthCheck{
 		dbConnection:    args.DB,
 		collectInterval: args.CollectInterval,
+		excludeSchemas:  args.ExcludeSchemas,
 		entryHandler:    args.EntryHandler,
 		logger:          log.With(args.Logger, "collector", HealthCheckCollector),
 		running:         &atomic.Bool{},
@@ -64,13 +69,11 @@ func (c *HealthCheck) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			c.fetchHealthChecks(c.ctx)
@@ -81,7 +84,7 @@ func (c *HealthCheck) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -90,11 +93,11 @@ func (c *HealthCheck) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *HealthCheck) Stop() {
 	if c.cancel != nil {
 		c.cancel()
 	}
+	c.wg.Wait()
 }
 
 type healthCheckResult struct {
@@ -108,7 +111,7 @@ func (c *HealthCheck) fetchHealthChecks(ctx context.Context) {
 	checks := []func(context.Context, *sql.DB) healthCheckResult{
 		checkAlloyVersion,
 		checkRequiredGrants,
-		checkEventsStatementsDigestHasRows,
+		c.checkEventsStatementsDigestHasRows,
 	}
 
 	for _, checkFn := range checks {
@@ -221,10 +224,11 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 	return r
 }
 
-// checkEventsStatementsDigestHasRows ensures performance_schema.events_statements_summary_by_digest has rows.
-func checkEventsStatementsDigestHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
+// checkEventsStatementsDigestHasRows ensures performance_schema.events_statements_summary_by_digest has rows,
+// excluding system schemas.
+func (c *HealthCheck) checkEventsStatementsDigestHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PerformanceSchemaHasRows"}
-	const q = `SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest`
+	q := fmt.Sprintf(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN %s`, buildExcludedSchemasClause(c.excludeSchemas))
 	var rowCount int64
 	if err := db.QueryRowContext(ctx, q).Scan(&rowCount); err != nil {
 		r.err = err

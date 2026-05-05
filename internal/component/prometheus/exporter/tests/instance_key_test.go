@@ -124,8 +124,9 @@ func TestInstanceKey(t *testing.T) {
 			testName:      "cloudwatch",
 			componentName: "prometheus.exporter.cloudwatch",
 			args: cloudwatch.Arguments{
-				STSRegion:    "us-west-2",
-				FIPSDisabled: true,
+				STSRegion:         "us-west-2",
+				FIPSDisabled:      true,
+				UseAWSSDKVersion2: true,
 				Discovery: []cloudwatch.DiscoveryJob{
 					{
 						Type: "AWS/EC2",
@@ -292,6 +293,27 @@ func TestInstanceKey(t *testing.T) {
 				ConnectionString: "oracle://user:pass@host01:1521/service",
 			},
 			expectedInstanceLabel: "host01:1521",
+		},
+		{
+			testName:      "oracledb multiple databases",
+			componentName: "prometheus.exporter.oracledb",
+			args: oracledb.Arguments{
+				Databases: []oracledb.DatabaseTarget{
+					{
+						Name:             "db_a",
+						ConnectionString: "host01:1521/svc_a",
+						Username:         "u",
+						Password:         "p",
+					},
+					{
+						Name:             "db_b",
+						ConnectionString: "host02:1521/svc_b",
+						Username:         "u",
+						Password:         "p",
+					},
+				},
+			},
+			expectedInstanceLabel: "prometheus.exporter.oracledb.test_comp_id",
 		},
 		{
 			testName:      "postgres",

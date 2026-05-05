@@ -1649,6 +1649,26 @@ func TestExplainPlans(t *testing.T) {
 				"insert_digest",
 				"insert into some_table (col) values (1)",
 				lastSeen,
+			).AddRow(
+				"some_schema",
+				"show_digest",
+				"show global status like 'Uptime'",
+				lastSeen,
+			).AddRow(
+				"some_schema",
+				"kill_digest",
+				"kill query 123",
+				lastSeen,
+			).AddRow(
+				"some_schema",
+				"call_digest",
+				"call refresh_summary()",
+				lastSeen,
+			).AddRow(
+				"some_schema",
+				"do_digest",
+				"do release_lock('foo')",
+				lastSeen,
 			))
 
 			err = c.fetchExplainPlans(t.Context())
@@ -1656,14 +1676,14 @@ func TestExplainPlans(t *testing.T) {
 
 			require.Eventually(
 				t,
-				func() bool { return len(lokiClient.Received()) == 3 },
+				func() bool { return len(lokiClient.Received()) == 7 },
 				5*time.Second,
 				10*time.Millisecond,
 				"did not receive the explain plan output log messages within the timeout",
 			)
 
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 3, len(lokiEntries))
+			require.Equal(t, 7, len(lokiEntries))
 
 			for _, lokiEntry := range lokiEntries {
 				ep, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntry)
@@ -1875,6 +1895,47 @@ func TestQueryFailureDenylist(t *testing.T) {
 		require.Equal(t, 0, len(c.queryCache))
 		require.Equal(t, 1, len(c.queryDenylist))
 	})
+}
+
+func TestBatchSizeLimitsProcessing(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewExplainPlans(ExplainPlansArguments{
+		DB:             db,
+		Logger:         log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+		ScrapeInterval: time.Second,
+		PerScrapeRatio: 1,
+		EntryHandler:   lokiClient,
+		DBVersion:      "8.0.32",
+	})
+	require.NoError(t, err)
+
+	c.queryCache = map[string]*queryInfo{
+		"s1d1": newQueryInfo("s1", "d1", "select * from t1 where ..."),
+		"s1d2": newQueryInfo("s1", "d2", "select * from t2 where ..."),
+		"s1d3": newQueryInfo("s1", "d3", "select * from t3 where ..."),
+		"s1d4": newQueryInfo("s1", "d4", "select * from t4 where ..."),
+	}
+	c.currentBatchSize = 2
+
+	err = c.fetchExplainPlans(t.Context())
+	require.NoError(t, err)
+
+	require.Equal(t, 2, len(c.queryCache), "batch size limit should leave unprocessed items in cache")
+
+	require.Eventually(t,
+		func() bool { return len(lokiClient.Received()) == 2 },
+		5*time.Second, 10*time.Millisecond,
+		"expected exactly 2 loki entries (one per processed item), got %d", len(lokiClient.Received()),
+	)
+
+	err = mock.ExpectationsWereMet()
+	require.NoError(t, err)
 }
 
 func TestSchemaDenylist(t *testing.T) {

@@ -148,7 +148,7 @@ func TestUnmarshalDefault(t *testing.T) {
 			}),
 			HTTP: configoptional.Some[otlpreceiver.HTTPConfig](otlpreceiver.HTTPConfig{
 				ServerConfig: confighttp.ServerConfig{
-					Endpoint:              "0.0.0.0:4318",
+					NetAddr:               confignet.AddrConfig{Endpoint: "0.0.0.0:4318", Transport: confignet.TransportTypeTCP},
 					CompressionAlgorithms: []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"},
 					CORS:                  configoptional.Some[confighttp.CORSConfig](confighttp.CORSConfig{}),
 					KeepAlivesEnabled:     true,

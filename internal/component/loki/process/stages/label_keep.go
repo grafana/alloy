@@ -42,8 +42,3 @@ func (l *labelAllowStage) Process(labels model.LabelSet, extracted map[string]an
 		}
 	}
 }
-
-// Name implements Stage.
-func (l *labelAllowStage) Name() string {
-	return StageTypeLabelAllow
-}

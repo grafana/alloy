@@ -45,6 +45,8 @@ You can use the following argument with `loki.process`:
 
 You can use the following blocks with `loki.process`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                              | Description                                                    | Required |
 |--------------------------------------------------------------------|----------------------------------------------------------------|----------|
 | [`stage.cri`][stage.cri]                                           | Configures a pre-defined CRI-format pipeline.                  | no       |
@@ -78,8 +80,6 @@ You can use the following blocks with `loki.process`:
 | [`stage.truncate`][stage.truncate]                                 | Configures a `truncate` processing stage.                      | no       |
 | [`stage.windowsevent`][stage.windowsevent]                         | Configures a `windowsevent` processing stage.                  | no       |
 
-You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
-
 [stage.cri]: #stagecri
 [stage.decolorize]: #stagedecolorize
 [stage.docker]: #stagedocker
@@ -110,6 +110,10 @@ You can provide any number of these stage blocks nested inside `loki.process`. T
 [stage.truncate]: #stagetruncate
 [stage.timestamp]: #stagetimestamp
 [stage.windowsevent]: #stagewindowsevent
+
+{{< /docs/alloy-config >}}
+
+You can provide any number of these stage blocks nested inside `loki.process`. These blocks run in order of appearance in the configuration file.
 
 ### `stage.cri`
 
@@ -143,7 +147,7 @@ Given the following log line, the subsequent key-value pairs are created in the 
 
 content: message
 stream: stdout
-timestamp: 2019-04-30T02:12:41.8443515
+time: 2019-04-30T02:12:41.8443515
 ```
 
 ### `stage.decolorize`
@@ -496,12 +500,15 @@ The following arguments are supported:
 
 | Name             | Type          | Description                                           | Default | Required |
 | ---------------- | ------------- | ----------------------------------------------------- | ------- | -------- |
-| `expressions`    | `map(string)` | Key-value pairs of JMESPath expressions.              |         | yes      |
+| `expressions`    | `map(string)` | Key-value pairs of JMESPath expressions.              |         | no       |
+| `regex`          | `string`      | Regular expression matched against JSON keys.         |         | no       |
 | `drop_malformed` | `bool`        | Drop lines whose input can't be parsed as valid JSON. | `false` | no       |
 | `source`         | `string`      | Source of the data to parse as JSON.                  | `""`    | no       |
 
 The `expressions` field is the set of key-value pairs of JMESPath expressions to run.
-The map key defines the name with which the data is extracted, while the map value is the expression used to populate the value.
+The map key defines the name used to extract the data, while the map value is the expression used to populate the value.
+
+The `regex` field is a regular expression. All keys in the JSON source matching the regular expression are extracted.
 
 When configuring a JSON stage, the `source` field defines the source of data to parse as JSON.
 By default, this is the log line itself, but it can also be a previously extracted value.
@@ -582,15 +589,16 @@ stage.label_keep {
 
 ### `stage.labels`
 
-The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map and set new labels on incoming log entries.
+The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map or structured metadata and set new labels on incoming log entries.
 
 For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
 
 The following arguments are supported:
 
-| Name     | Type          | Description                             | Default | Required |
-| -------- | ------------- | --------------------------------------- | ------- | -------- |
-| `values` | `map(string)` | Configures a `labels` processing stage. | `{}`    | no       |
+| Name          | Type          | Description                                                                                              | Default       | Required |
+| ------------- | ------------- | -------------------------------------------------------------------------------------------------------- | ------------- | -------- |
+| `values`      | `map(string)` | Configures a `labels` processing stage.                                                                  | `{}`          | no       |
+| `source_type` | `string`      | Where to retrieve the data from.  Allowed values are `"extracted"` (default) or `"structured_metadata"`. | `"extracted"` | no       |
 
 In a labels stage, the map's keys define the label to set and the values are how to look them up.
 If the value is empty, it's inferred to be the same as the key.
@@ -601,6 +609,21 @@ stage.labels {
       env  = "",         // Sets up an 'env' label, based on the 'env' extracted value.
       user = "username", // Sets up a 'user' label, based on the 'username' extracted value.
     }
+}
+```
+
+```alloy
+stage.labels {
+    source_type = "structured_metadata"
+    values      = {
+      env  = "",         // Sets up an 'env' label, based on the 'env' structured metadata value.
+      user = "username", // Sets up a 'user' label, based on the 'username' structured metadata value.
+    }
+}
+
+// Drop the converted structured metadata
+stage.structured_metadata_drop {
+    values = [ "env", "username" ]
 }
 ```
 
@@ -653,19 +676,19 @@ The `stage.logfmt` inner block configures a processing stage that reads incoming
 
 The following arguments are supported:
 
-| Name      | Type          | Description                                    | Default | Required |
-| --------- | ------------- | ---------------------------------------------- | ------- | -------- |
-| `mapping` | `map(string)` | Key-value pairs of `logmft` fields to extract. |         | yes      |
-| `source`  | `string`      | Source of the data to parse as `logfmt`.       | `""`    | no       |
+| Name      | Type          | Description                                     | Default | Required |
+| --------- | ------------- | ----------------------------------------------- | ------- | -------- |
+| `mapping` | `map(string)` | Key-value pairs of `logmft` fields to extract.  |         | no       |
+| `regex`   | `string`      | Regular expression matched against logfmt keys. |         | no       |
+| `source`  | `string`      | Source of the data to parse as `logfmt`.        | `""`    | no       |
+
+The `mapping` field is the set of key-value pairs.
+The map key defines the name used to extract the data, while the map value is the logfmt field used to populate the value.
+
+The `regex` field is a regular expression. All logfmt fields matching the regular expression are extracted.
 
 The `source` field defines the source of data to parse as `logfmt`.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
-
-This stage uses the [go-logfmt][] unmarshaler, so that numeric or boolean types are unmarshalled into their correct form.
-The stage doesn't perform any other type conversions.
-If the extracted value is a complex type, it's treated as a string.
-
-[go-logfmt]: https://github.com/go-logfmt/logfmt
 
 The following log line and stages demonstrates how this works.
 
@@ -1488,7 +1511,7 @@ stage.sampling {
 
 ### `stage.static_labels`
 
-The `stage.static_labels` inner block configures a static_labels processing stage that adds a static set of labels to incoming log entries.
+The `stage.static_labels` inner block configures a `static_labels` processing stage that adds a static set of labels to incoming log entries.
 
 For labels that are dynamic, refer to [`stage.labels`][stage.labels]
 
@@ -1534,7 +1557,7 @@ stage.structured_metadata {
 
 ### `stage.structured_metadata_drop`
 
-The `stage.structured_metadata_drop` inner block configures a processing stage that drops structured metadata from incoming log entires.
+The `stage.structured_metadata_drop` inner block configures a processing stage that drops structured metadata from incoming log entries.
 
 The following arguments are supported:
 
@@ -1894,26 +1917,26 @@ The following block is supported inside the definition of `stage.truncate`:
 
 #### `rule`
 
-Defines a truncation rule that will apply to the log line, labels, structured_metadata, or extracted map.
+Defines a truncation rule that will apply to the log line, labels, structured metadata, or extracted map.
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                                  | Default  | Required |
-|---------------|----------|--------------------------------------------------------------|----------|----------|
-| `limit`       | `string` | Maximum length before truncating.                            | `""`     | yes      |
-| `source`      | `string` | Source of the data to truncate. If empty, will truncate all. | `""`     | no       |
-| `source_type` | `string` | Source location of the data to truncate.                     | `"line"` | no       |
-| `suffix`      | `string` | Suffix to append to truncated values.                        | ``       | no       |
+| Name          | Type           | Description                                                   | Default  | Required |
+|---------------|----------------|---------------------------------------------------------------|----------|----------|
+| `limit`       | `string`       | Maximum length before truncating.                             | `""`     | yes      |
+| `sources`     | `list(string)` | Sources of the data to truncate. If empty, will truncate all. | `""`     | no       |
+| `source_type` | `string`       | Source location of the data to truncate.                      | `"line"` | no       |
+| `suffix`      | `string`       | Suffix to append to truncated values.                         | ``       | no       |
 
 The `limit` attribute should be expressed in logical units, for example `"1KiB"`.
 The stage checks the byte length of the log line, label values, or structured metadata values against the configured limit and truncates if it exceeds the limit.
 If you provide a `suffix`, the limit is reduced by the length of the `suffix`, and the `suffix` is appended to the truncated value.
 
 The `source_type` attribute must be one of `"line"`, `"label"`, `"structured_metadata"`, or `"extracted"`.
-If the `source` attribute is specified, the stage will only truncate a label, structured_metadata, or extracted field of the same name.
-If `source` is empty, all labels, structured_metadata, or extracted fields will be truncated if they exceed the limit.
+If the `source` attribute is specified, the stage will only truncate a label, structured metadata, or extracted field of the same name.
+If `source` is empty, all labels, structured metadata, or extracted fields will be truncated if they exceed the limit.
 
-Whenever a line, label, extracted field, or structured_metadata value is truncated, the metric `loki_process_truncated_fields_total` is incremented.
+Whenever a line, label, extracted field, or structured metadata value is truncated, the metric `loki_process_truncated_fields_total` is incremented.
 The `field` label will either be `line`, `label`, `extracted`, or `structured_metadata`.
 
 If anything has been truncated, the extracted map for the entry contains a `"truncated"` field with a comma delimited list of field types that have been truncated.
@@ -2058,7 +2081,9 @@ The following fields are exported and can be referenced by other components:
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
 * `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
-* `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured_metadata values truncated as part of a `truncate` stage.
+* `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured metadata values truncated as part of a `truncate` stage.
+* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri][].
+* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri][].
 
 ## Example
 

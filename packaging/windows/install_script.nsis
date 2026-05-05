@@ -44,6 +44,7 @@ Var StabilityFlag
 Var User
 Var Password
 Var AuthFlag
+Var ForceRegistry
 
 # Pages during the installer.
 Page license
@@ -66,12 +67,21 @@ Section "install"
   ${GetOptions} $PassedInParameters "/CONFIG=" $Config
   ${GetOptions} $PassedInParameters "/USERNAME=" $User
   ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
+  ${GetOptions} $PassedInParameters "/FORCEREGISTRY=" $ForceRegistry
 
   # Calls to functions like nsExec::ExecToLog below push the exit code to the
   # stack, and must be popped after calling.
 
+  # When /FORCEREGISTRY=yes, delete all Alloy registry keys at the start so the
+  # rest of the installation can proceed as normal and write fresh values. This
+  # also cleans up any old or unused keys from previous versions.
+  ${If} $ForceRegistry == "yes"
+    nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy" /reg:64 /f'
+    Pop $0
+  ${EndIf}
+
   # Preemptively stop the existing service if it's running.
-  nsExec::ExecToLog 'sc stop "Alloy"'
+  nsExec::ExecToLog 'net stop "Alloy" /y'
   Pop $0
 
   # Configure the out path and copy files to it.
@@ -125,8 +135,8 @@ Section "install"
   nsExec::ExecToLog 'sc start "Alloy"'
   Pop $0
 
-  # Auto-restart Alloy on failure. Reset failure counter after 60 seconds without failure
-  nsExec::ExecToLog `sc failure "Alloy" reset= 60 actions= restart/5000 reboot= "Alloy has failed. Restarting in 5 seconds"`
+  # Auto-restart Alloy on failure with delays of 1 minute, 5 minutes, and 5 minutes. Reset failure counter after 1 day without failure.
+  nsExec::ExecToLog `sc failure "Alloy" reset= 86400 actions= restart/60000/restart/300000/restart/300000`
   Pop $0
 SectionEnd
 
@@ -173,7 +183,6 @@ Function CreateDataDirectory
 
     Return
 FunctionEnd
-
 
 # InitializeRegistry initializes the keys in the registry that the service
 # runner uses. If the registry values already exist, they are not overwritten.
@@ -273,7 +282,7 @@ Section "uninstall"
   DetailPrint "Starting uninstaller."
 
   # Stop and remove service.
-  nsExec::ExecToLog 'sc stop "Alloy"'
+  nsExec::ExecToLog 'net stop "Alloy" /y'
   Pop $0
   nsExec::ExecToLog 'sc delete "Alloy"'
   Pop $0

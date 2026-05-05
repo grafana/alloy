@@ -108,8 +108,12 @@ func TestBadOtelConfig(t *testing.T) {
 func TestBigConfig(t *testing.T) {
 	exampleBigConfig := `
     decision_wait               = "10s"
+    decision_wait_after_root_received = "5s"
     num_traces                  = 100
     expected_new_traces_per_sec = 10
+    sample_on_first_match = true
+    drop_pending_traces_on_shutdown = true
+    maximum_trace_size_bytes = 4096
     policy {
       name = "test-policy-1"
       type = "always_sample"
@@ -170,6 +174,14 @@ func TestBigConfig(t *testing.T) {
       }
     }
     policy {
+      name = "test-policy-bytes-limiting"
+      type = "bytes_limiting"
+      bytes_limiting {
+        bytes_per_second = 2048
+        burst_capacity = 4096
+      }
+    }
+    policy {
       name = "test-policy-9"
       type = "string_attribute"
       string_attribute {
@@ -202,6 +214,10 @@ func TestBigConfig(t *testing.T) {
         value = true
         invert_match = true
       }
+    }
+    policy {
+      name = "test-policy-trace-flags"
+      type = "trace_flags"
     }
     policy {
       name = "test-policy-13"
@@ -238,6 +254,19 @@ func TestBigConfig(t *testing.T) {
           "name != \"test_span_event_name\"",
           "attributes[\"test_event_attr_key_2\"] != \"test_event_attr_val_1\"",
         ]
+      }
+    }
+    policy{
+      name = "not-policy-1"
+      type = "not"
+      not {
+        not_sub_policy {
+          name = "test-not-sub-policy-1"
+          type = "status_code"
+          status_code {
+            status_codes = ["ERROR"]
+          }
+        }
       }
     }
     policy{
@@ -282,6 +311,29 @@ func TestBigConfig(t *testing.T) {
               "name != \"test_span_event_name\"",
               "attributes[\"test_event_attr_key_2\"] != \"test_event_attr_val_1\"",
             ]
+          }
+        }
+        and_sub_policy {
+          name = "test-and-policy-5"
+          type = "bytes_limiting"
+          bytes_limiting {
+            bytes_per_second = 1024
+            burst_capacity = 2048
+          }
+        }
+      }
+    }
+    policy {
+      name = "drop-policy-1"
+      type = "drop"
+      drop {
+        drop_sub_policy {
+          name = "test-drop-policy-1"
+          type = "string_attribute"
+          string_attribute {
+            key = "http.route"
+            values = ["/health", "/metrics"]
+            enabled_regex_matching = true
           }
         }
       }
@@ -334,6 +386,14 @@ func TestBigConfig(t *testing.T) {
               "name != \"test_span_event_name\"",
               "attributes[\"test_event_attr_key_2\"] != \"test_event_attr_val_1\"",
             ]
+          }
+        }
+        composite_sub_policy {
+          name = "test-composite-policy-6"
+          type = "bytes_limiting"
+          bytes_limiting {
+            bytes_per_second = 512
+            burst_capacity = 1024
           }
         }
         rate_allocation {

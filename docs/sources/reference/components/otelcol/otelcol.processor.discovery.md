@@ -88,11 +88,15 @@ For example, when `pod_associations` is `["ip", "net.host.ip"]`, `"net.host.ip"`
 
 You can use the following block with `otelcol.processor.discovery`:
 
+{{< docs/alloy-config >}}
+
 | Block              | Description                                       | Required |
 |--------------------|---------------------------------------------------|----------|
 | [`output`][output] | Configures where to send received telemetry data. | yes      |
 
 [output]: #output
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -134,7 +138,7 @@ otelcol.processor.discovery "default" {
     targets = discovery.http.dynamic_targets.targets
 
     output {
-        traces = [otelcol.exporter.otlp.default.input]
+        traces = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -158,7 +162,7 @@ otelcol.processor.discovery "default" {
     targets = array.concat(discovery.http.dynamic_targets.targets, discovery.kubelet.k8s_pods.targets)
 
     output {
-        traces = [otelcol.exporter.otlp.default.input]
+        traces = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```
@@ -178,7 +182,7 @@ otelcol.processor.discovery "default" {
         "test.label.with.dots" = "test.val2.with.dots"}]
 
     output {
-        traces = [otelcol.exporter.otlp.default.input]
+        traces = [otelcol.exporter.otlphttp.default.input]
     }
 }
 ```

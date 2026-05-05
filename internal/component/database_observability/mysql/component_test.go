@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"database/sql"
 	"net/http/httptest"
 	"regexp"
@@ -8,20 +9,45 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector"
+	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/pkg/push"
 )
+
+func Test_defaultExclusions(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}, args.ExcludeSchemas)
+}
 
 func Test_disableQueryRedaction(t *testing.T) {
 	t.Run("enable sql text when provided", func(t *testing.T) {
@@ -142,6 +168,27 @@ func Test_parseCloudProvider(t *testing.T) {
 		assert.Empty(t, args.CloudProvider.Azure.ServerName)
 	})
 
+	t.Run("parse gcp cloud provider block", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+		cloud_provider {
+			gcp {
+				connection_name = "my-gcp-project:us-central1:my-cloud-sql-instance"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.GCP)
+		assert.Equal(t, "my-gcp-project:us-central1:my-cloud-sql-instance", args.CloudProvider.GCP.ConnectionName)
+	})
+
 	t.Run("empty cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = ""
@@ -154,6 +201,27 @@ func Test_parseCloudProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Nil(t, args.CloudProvider)
+	})
+
+	t.Run("multiple cloud providers returns error", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = ""
+		forward_to = []
+		targets = []
+		cloud_provider {
+			aws {
+				arn = "arn:aws:rds:us-east-1:123456789012:db:mydb"
+			}
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.EqualError(t, err, "cloud_provider: at most one of aws, azure, or gcp must be specified")
 	})
 }
 
@@ -421,4 +489,191 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	body := rec.Body.String()
 	// connection_info remains 1 with labels
 	assert.Regexp(t, `(?m)^database_observability_connection_info\{[^}]*engine=\"mysql\"[^}]*engine_version=\"8\.0\.0\"[^}]*\}\s+1(\.0+)?$`, body)
+}
+
+func TestMySQL_Reconnection(t *testing.T) {
+	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test",
+			Logger:        kitlog.NewNopLogger(),
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db?timeout=100ms"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		c.healthErr.Store("initial error")
+
+		err = c.tryReconnect(context.Background())
+		assert.Error(t, err)
+		assert.NotEmpty(t, c.healthErr.Load())
+	})
+
+	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test",
+			Logger:        kitlog.NewNopLogger(),
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName:    alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db"),
+			ForwardTo:         []loki.LogsReceiver{},
+			Targets:           []discovery.Target{},
+			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
+			HealthCheckArguments: HealthCheckArguments{
+				CollectInterval: 1 * time.Hour,
+			},
+		}
+
+		// First mock: will fail
+		db1, mock1, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer db1.Close()
+
+		mock1.ExpectPing().WillReturnError(assert.AnError)
+
+		c := &Component{
+			opts:      opts,
+			args:      args,
+			fanout:    loki.NewFanout(args.ForwardTo),
+			handler:   loki.NewLogsReceiver(),
+			registry:  prometheus.NewRegistry(),
+			healthErr: atomic.NewString(""),
+			openSQL:   func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+		}
+		c.instanceKey = "test-instance"
+		c.baseTarget = discovery.NewTargetFromMap(map[string]string{
+			"instance": c.instanceKey,
+			"job":      "database_observability",
+		})
+
+		// First attempt: connection fails
+		err = c.tryReconnect(context.Background())
+		assert.Error(t, err)
+		assert.NotEmpty(t, c.healthErr.Load())
+
+		// Second mock: will succeed
+		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer db2.Close()
+
+		mock2.ExpectPing()
+		mock2.ExpectQuery(`SELECT @@server_uuid, @@hostname, VERSION\(\)`).
+			WillReturnRows(sqlmock.NewRows([]string{"server_uuid", "hostname", "version"}).
+				AddRow("uuid-1", "host-1", "8.0.0"))
+		mock2.ExpectPing()
+
+		c.openSQL = func(_ string, _ string) (*sql.DB, error) { return db2, nil }
+
+		// Second attempt: connection succeeds and clears error
+		err = c.tryReconnect(context.Background())
+		assert.NoError(t, err)
+		assert.Empty(t, c.healthErr.Load())
+	})
+
+	t.Run("Run exits on context cancellation", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test",
+			Logger:        kitlog.NewNopLogger(),
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db?timeout=100ms"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		ctx, cancel := context.WithCancel(context.Background())
+
+		runErr := make(chan error, 1)
+		go func() {
+			runErr <- c.Run(ctx)
+		}()
+
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+
+		select {
+		case err := <-runErr:
+			assert.NoError(t, err)
+		case <-time.After(5 * time.Second):
+			t.Fatal("Run did not exit after context cancellation")
+		}
+	})
+}
+
+func Test_PrometheusExporterBlock(t *testing.T) {
+	t.Run("absent when not specified", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		assert.Nil(t, args.PrometheusExporter)
+	})
+
+	t.Run("present with defaults when empty block", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_mysql.Arguments(*args.PrometheusExporter)
+		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
+	})
+
+	t.Run("present with custom collectors", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			prometheus_exporter {
+			  enable_collectors = ["perf_schema.eventsstatements", "perf_schema.eventswaits"]
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_mysql.Arguments(*args.PrometheusExporter)
+		assert.Equal(t, 2, exporterArgs.LockWaitTimeout) // default value
+		assert.Equal(t, []string{"perf_schema.eventsstatements", "perf_schema.eventswaits"}, args.PrometheusExporter.EnableCollectors)
+	})
+
+	t.Run("error when both prometheus_exporter and targets are set", func(t *testing.T) {
+		cfg := `
+			data_source_name = ""
+			forward_to = []
+			targets = [{"__address__" = "localhost:9104"}]
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "prometheus_exporter and targets are mutually exclusive")
+	})
 }

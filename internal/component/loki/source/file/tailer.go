@@ -4,7 +4,6 @@ package file
 // tailer implements the reader interface by using the github.com/grafana/tail package to tail files.
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -81,62 +80,6 @@ func newTailer(
 	}
 }
 
-// getLastLinePosition returns the offset of the start of the last line in the file at the given path.
-// It will read chunks of bytes starting from the end of the file to return the position of the last '\n' + 1.
-// If it cannot find any '\n' it will return 0.
-func getLastLinePosition(path string) (int64, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return 0, err
-	}
-	defer file.Close()
-
-	const chunkSize = 1024
-
-	buf := make([]byte, chunkSize)
-	fi, err := file.Stat()
-	if err != nil {
-		return 0, err
-	}
-
-	if fi.Size() == 0 {
-		return 0, nil
-	}
-
-	var pos = fi.Size() - chunkSize
-	if pos < 0 {
-		pos = 0
-	}
-
-	for {
-		_, err = file.Seek(pos, io.SeekStart)
-		if err != nil {
-			return 0, err
-		}
-
-		bytesRead, err := file.Read(buf)
-		if err != nil {
-			return 0, err
-		}
-
-		idx := bytes.LastIndexByte(buf[:bytesRead], '\n')
-		// newline found
-		if idx != -1 {
-			return pos + int64(idx) + 1, nil
-		}
-
-		// no newline found in the entire file
-		if pos == 0 {
-			return 0, nil
-		}
-
-		pos -= chunkSize
-		if pos < 0 {
-			pos = 0
-		}
-	}
-}
-
 func (t *tailer) Run(ctx context.Context) {
 	// Check if context was canceled between two calls to Run.
 	select {
@@ -161,19 +104,19 @@ func (t *tailer) Run(ctx context.Context) {
 
 	t.metrics.filesActive.Add(1.)
 
-	done := make(chan struct{})
 	ctx, cancel := context.WithCancel(ctx)
-	go func() {
-		// readLines closes done on exit
-		t.readLines(pos, done)
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		t.readLines(ctx, pos)
 		cancel()
-	}()
+	})
 
 	t.running.Store(true)
 	defer t.running.Store(false)
 
 	<-ctx.Done()
-	t.stop(done)
+	t.stop(&wg)
 }
 
 func (t *tailer) initRun() (int64, error) {
@@ -182,17 +125,16 @@ func (t *tailer) initRun() (int64, error) {
 		return 0, fmt.Errorf("failed to tail file: %w", err)
 	}
 
+	startFromEnd := t.tailFromEnd
+
 	pos, err := t.positions.Get(t.key.Path, t.key.Labels)
 	if err != nil {
 		switch t.onPositionsFileError {
 		case OnPositionsFileErrorSkip:
 			return 0, fmt.Errorf("failed to get file position: %w", err)
 		case OnPositionsFileErrorRestartEnd:
-			pos, err = getLastLinePosition(t.key.Path)
-			if err != nil {
-				return 0, fmt.Errorf("failed to get last line position after positions error: %w", err)
-			}
-			level.Info(t.logger).Log("msg", "retrieved the position of the last line after positions error")
+			startFromEnd = true
+			level.Info(t.logger).Log("msg", "reset position to end of file after position error")
 		default:
 			level.Debug(t.logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.onPositionsFileError)
 			fallthrough
@@ -220,20 +162,10 @@ func (t *tailer) initRun() (int64, error) {
 		t.positions.Remove(t.key.Path, t.key.Labels)
 	}
 
-	// If no cached position is found and the tailFromEnd option is enabled.
-	if pos == 0 && t.tailFromEnd {
-		pos, err = getLastLinePosition(t.key.Path)
-		if err != nil {
-			level.Error(t.logger).Log("msg", "failed to get a position from the end of the file, default to start of file", "error", err)
-		} else {
-			t.positions.Put(t.key.Path, t.key.Labels, pos)
-			level.Info(t.logger).Log("msg", "retrieved and stored the position of the last line")
-		}
-	}
-
 	tail, err := tail.NewFile(t.logger, &tail.Config{
 		Filename:      t.key.Path,
 		Offset:        pos,
+		StartFromEnd:  startFromEnd,
 		Encoding:      t.encoding,
 		Compression:   t.decompression.GetFormat(),
 		WatcherConfig: t.watcherConfig,
@@ -250,9 +182,11 @@ func (t *tailer) initRun() (int64, error) {
 
 // readLines reads lines from the tailed file by calling Next() in a loop.
 // It processes each line by sending it to the receiver's channel and updates
-// position tracking periodically. It exits when Next() returns an error,
-// this happens when the tail.File is stopped or or we have a unrecoverable error.
-func (t *tailer) readLines(pos int64, done chan struct{}) {
+// position tracking periodically. It exits either when Next() returns an error
+// (for example, when the tail.File is stopped, we have an unrecoverable error, or EOF
+// is reached for a fully consumed compressed file) or when the context is canceled,
+// including while a send to the receiver's channel is blocked.
+func (t *tailer) readLines(ctx context.Context, pos int64) {
 	level.Info(t.logger).Log("msg", "start tailing file")
 
 	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
@@ -270,7 +204,6 @@ func (t *tailer) readLines(pos int64, done chan struct{}) {
 	defer func() {
 		size, _ := t.file.Size()
 		t.updateStats(lastOffset, size)
-		close(done)
 	}()
 
 	for {
@@ -287,19 +220,20 @@ func (t *tailer) readLines(pos int64, done chan struct{}) {
 		}
 
 		t.metrics.readLines.WithLabelValues(t.key.Path).Inc()
-		entries <- loki.Entry{
-			Labels: t.labels,
-			Entry: push.Entry{
-				Timestamp: line.Time,
-				Line:      line.Text,
-			},
-		}
 
-		lastOffset = line.Offset
-		if time.Since(lastUpdatedPosition) >= positionInterval {
-			lastUpdatedPosition = time.Now()
-			size, _ := t.file.Size()
-			t.updateStats(lastOffset, size)
+		select {
+		case <-ctx.Done():
+			return
+		case entries <- loki.NewEntry(t.labels, push.Entry{
+			Timestamp: line.Time,
+			Line:      line.Text,
+		}):
+			lastOffset = line.Offset
+			if time.Since(lastUpdatedPosition) >= positionInterval {
+				lastUpdatedPosition = time.Now()
+				size, _ := t.file.Size()
+				t.updateStats(lastOffset, size)
+			}
 		}
 	}
 }
@@ -311,7 +245,7 @@ func (t *tailer) updateStats(offset int64, size int64) {
 	t.positions.Put(t.key.Path, t.key.Labels, offset)
 }
 
-func (t *tailer) stop(done chan struct{}) {
+func (t *tailer) stop(wg *sync.WaitGroup) {
 	if err := t.file.Stop(); err != nil {
 		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
@@ -325,23 +259,29 @@ func (t *tailer) stop(done chan struct{}) {
 
 	level.Debug(t.logger).Log("msg", "waiting for readLines to exit")
 
-	// Wait for readLines() to consume all the remaining messages and exit when the channel is closed
-	<-done
+	// Wait for readLines() to exit.
+	wg.Wait()
 
 	level.Info(t.logger).Log("msg", "stopped tailing file")
 
-	// We need to cleanup created metrics
+	// We need to cleanup created metrics.
 	t.cleanupMetrics()
 
-	// If the component is not stopping, then it means that the target for this component is gone and that
-	// we should clear the entry from the positions file.
-	if !t.componentStopping() {
+	if !t.shouldKeepPosition() {
 		t.positions.Remove(t.key.Path, t.key.Labels)
 	}
 }
 
 func (t *tailer) Key() positions.Entry {
 	return t.key
+}
+
+func (t *tailer) shouldKeepPosition() bool {
+	// NOTE: We want to keep position if component is stopping or decompression is enabled.
+	// If component is not stopping that means that target is gone and we should no longer tail the file.
+	// If decompression is enabled we read file until we reach EOF and stop so tailer will exit, but we need
+	// to remember the position so that we don't re-ingest it on restart.
+	return t.componentStopping() || t.decompression.Enabled
 }
 
 // cleanupMetrics removes all metrics exported by this tailer

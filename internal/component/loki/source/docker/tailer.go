@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -16,11 +17,10 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
+	"github.com/moby/moby/api/pkg/stdcopy"
+	"github.com/moby/moby/client"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -97,19 +97,21 @@ func (t *tailer) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			res, err := t.client.ContainerInspect(ctx, t.containerID)
+			res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 			if err != nil {
-				level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
+				if !errors.Is(err, context.Canceled) {
+					level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
+				}
 				continue
 			}
 
-			finished, err := time.Parse(time.RFC3339Nano, res.State.FinishedAt)
+			finished, err := time.Parse(time.RFC3339Nano, res.Container.State.FinishedAt)
 			if err != nil {
 				level.Error(t.logger).Log("msg", "error parsing finished time for Docker container", "id", t.containerID, "error", err)
 				finished = time.Unix(0, 0)
 			}
 
-			if res.State.Running || finished.Unix() >= t.last.Load() {
+			if res.Container.State.Running || finished.Unix() >= t.last.Load() {
 				t.startIfNotRunning()
 			}
 		case <-ctx.Done():
@@ -123,18 +125,19 @@ func (t *tailer) Run(ctx context.Context) {
 func (t *tailer) startIfNotRunning() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
 	if !t.running {
 		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerID)
 
 		ctx := context.Background()
-		info, err := t.client.ContainerInspect(ctx, t.containerID)
+		info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 		if err != nil {
 			level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerID, "err", err)
 			t.err = err
 			return
 		}
 
-		reader, err := t.client.ContainerLogs(ctx, t.containerID, container.LogsOptions{
+		reader, err := t.client.ContainerLogs(ctx, t.containerID, client.ContainerLogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
 			Follow:     true,
@@ -152,7 +155,7 @@ func (t *tailer) startIfNotRunning() {
 		t.running = true
 		// processLoop will start 3 goroutines that we need to wait for if Stop is called.
 		t.wg.Add(3)
-		go t.processLoop(ctx, info.Config.Tty, reader)
+		go t.processLoop(ctx, info.Container.Config.Tty, reader)
 	}
 }
 
@@ -160,6 +163,7 @@ func (t *tailer) startIfNotRunning() {
 func (t *tailer) stop() {
 	t.mu.Lock()
 	defer t.mu.Unlock()
+
 	if t.running {
 		t.running = false
 		if t.cancel != nil {
@@ -205,6 +209,7 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	// Start transferring
 	rstdout, wstdout := io.Pipe()
 	rstderr, wstderr := io.Pipe()
+
 	go func() {
 		defer func() {
 			t.wg.Done()
@@ -212,8 +217,12 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 			wstderr.Close()
 			t.stop()
 		}()
-		var written int64
-		var err error
+
+		var (
+			err     error
+			written int64
+		)
+
 		if tty {
 			written, err = io.Copy(wstdout, reader)
 		} else {
@@ -224,6 +233,7 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 			defer wcstderr.Close()
 			written, err = stdcopy.StdCopy(wcstdout, wcstderr, reader)
 		}
+
 		if err != nil {
 			level.Warn(t.logger).Log("msg", "could not transfer logs", "written", written, "container", t.containerID, "err", err)
 		} else {
@@ -232,8 +242,15 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 	}()
 
 	// Start processing
-	go t.process(rstdout, t.getStreamLabels("stdout"))
-	go t.process(rstderr, t.getStreamLabels("stderr"))
+	go func() {
+		defer t.wg.Done()
+		t.process(rstdout, t.getStreamLabels("stdout"))
+	}()
+
+	go func() {
+		defer t.wg.Done()
+		t.process(rstderr, t.getStreamLabels("stderr"))
+	}()
 
 	// Wait until done
 	<-ctx.Done()
@@ -242,19 +259,15 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 
 // extractTsFromBytes parses an RFC3339Nano timestamp from the byte slice.
 func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
-	const timestampLayout = "2006-01-02T15:04:05.999999999Z07:00"
-
 	spaceIdx := bytes.IndexByte(line, ' ')
-	if spaceIdx == -1 || spaceIdx >= len(line)-1 {
+	if spaceIdx == -1 || spaceIdx >= len(line) {
 		return time.Time{}, nil, fmt.Errorf("could not find timestamp in bytes")
 	}
 
-	// The unsafe.String is used here to avoid allocation and string conversion when parsing the timestamp
-	// This is safe because:
-	// 1. spaceIdx > 0 and spaceIdx < len(line)-1 is guaranteed by the check above
-	// 2. time.Parse doesn't retain the string after returning
-	// 3. The underlying bytes aren't modified during parsing
-	ts, err := time.Parse(timestampLayout, unsafe.String(&line[0], spaceIdx))
+	// The unsafe.String is used here to avoid allocation and string conversion when parsing the timestamp.
+	// This is safe because time.Parse doesn't retain the string after returning and
+	// the underlying bytes aren't modified during parsing.
+	ts, err := time.Parse(time.RFC3339Nano, unsafe.String(&line[0], spaceIdx))
 	if err != nil {
 		return time.Time{}, nil, fmt.Errorf("could not parse timestamp: %w", err)
 	}
@@ -262,29 +275,57 @@ func extractTsFromBytes(line []byte) (time.Time, []byte, error) {
 }
 
 func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
-	defer t.wg.Done()
-
-	scanner := bufio.NewScanner(r)
 	const maxCapacity = dockerMaxChunkSize * 64
+
+	reader := bufio.NewReader(r)
+	scanner := bufio.NewScanner(reader)
 	buf := make([]byte, 0, maxCapacity)
 	scanner.Buffer(buf, maxCapacity)
-	for scanner.Scan() {
-		line := scanner.Bytes()
 
-		ts, content, err := extractTsFromBytes(line)
+	for {
+		if !scanner.Scan() {
+			err := scanner.Err()
+			// We got EOF and should stop scanning.
+			if err == nil {
+				return
+			}
+
+			if errors.Is(err, bufio.ErrTooLong) {
+				level.Error(t.logger).Log("msg", "line too big, skipping")
+				err = skipUntilNewline(reader)
+			}
+
+			if err != nil {
+				// No more to read after we skipped to newline so we should stop.
+				if errors.Is(err, io.EOF) {
+					return
+				}
+				// An unexpected error and we stop reading.
+				level.Error(t.logger).Log("msg", "error reading docker log line", "err", err)
+				t.metrics.dockerErrors.Inc()
+			}
+
+			scanner = bufio.NewScanner(reader)
+			scanner.Buffer(buf[:0], maxCapacity)
+			continue
+		}
+
+		ts, content, err := extractTsFromBytes(scanner.Bytes())
 		if err != nil {
 			level.Error(t.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
 			t.metrics.dockerErrors.Inc()
 			continue
 		}
 
-		t.recv.Chan() <- loki.Entry{
-			Labels: logStreamLset,
-			Entry: push.Entry{
-				Timestamp: ts,
-				Line:      string(content),
-			},
+		if len(content) == 0 {
+			level.Debug(t.logger).Log("msg", "empty log, skipping line")
+			continue
 		}
+
+		t.recv.Chan() <- loki.NewEntry(logStreamLset, push.Entry{
+			Timestamp: ts,
+			Line:      string(content),
+		})
 		t.metrics.dockerEntries.Inc()
 
 		// NOTE(@tpaschalis) We don't save the positions entry with the
@@ -297,10 +338,6 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 		t.since.Store(ts.Unix())
 		t.last.Store(time.Now().Unix())
 	}
-	if err := scanner.Err(); err != nil {
-		level.Error(t.logger).Log("msg", "error reading docker log line", "err", err)
-		t.metrics.dockerErrors.Inc()
-	}
 }
 
 func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
@@ -309,6 +346,7 @@ func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
 	for k, v := range t.labels {
 		lb.Set(string(k), string(v))
 	}
+
 	lb.Set(dockerLabelLogStream, logStream)
 	processed, _ := relabel.Process(lb.Labels(), t.relabelConfig...)
 
@@ -321,6 +359,16 @@ func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
 	})
 
 	return filtered
+}
+
+func skipUntilNewline(r *bufio.Reader) error {
+	for {
+		_, err := r.ReadSlice('\n')
+		if errors.Is(err, bufio.ErrBufferFull) {
+			continue
+		}
+		return err
+	}
 }
 
 // dockerChunkWriter implements io.Writer to preprocess and reassemble Docker log frames.

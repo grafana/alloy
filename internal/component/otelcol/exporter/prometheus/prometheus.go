@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/prometheus/prometheus/storage"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus/internal/convert"
@@ -15,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/prometheus/prometheus/storage"
 )
 
 func init() {
@@ -40,6 +41,7 @@ type Arguments struct {
 	ForwardTo                     []storage.Appendable `alloy:"forward_to,attr"`
 	AddMetricSuffixes             bool                 `alloy:"add_metric_suffixes,attr,optional"`
 	ResourceToTelemetryConversion bool                 `alloy:"resource_to_telemetry_conversion,attr,optional"`
+	HonorMetadata                 bool                 `alloy:"honor_metadata,attr,optional"`
 }
 
 // DefaultArguments holds defaults values.
@@ -50,6 +52,7 @@ var DefaultArguments = Arguments{
 	GCFrequency:                   5 * time.Minute,
 	AddMetricSuffixes:             true,
 	ResourceToTelemetryConversion: false,
+	HonorMetadata:                 false,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -114,6 +117,8 @@ func New(o component.Options, c Arguments) (*Component, error) {
 
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
+	defer c.fanout.Clear()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -159,5 +164,6 @@ func convertArgumentsToConvertOptions(args Arguments) convert.Options {
 		IncludeScopeInfo:              args.IncludeScopeInfo,
 		AddMetricSuffixes:             args.AddMetricSuffixes,
 		ResourceToTelemetryConversion: args.ResourceToTelemetryConversion,
+		HonorMetadata:                 args.HonorMetadata,
 	}
 }

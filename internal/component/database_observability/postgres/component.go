@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"path"
 	"strings"
@@ -12,6 +13,8 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	pg_collector "github.com/prometheus-community/postgres_exporter/collector"
+	pg_exporter "github.com/prometheus-community/postgres_exporter/exporter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
@@ -23,7 +26,9 @@ import (
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
@@ -44,7 +49,7 @@ WHERE name = 'server_version';`
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
-		Stability: featuregate.StabilityPublicPreview,
+		Stability: featuregate.StabilityGenerallyAvailable,
 		Args:      Arguments{},
 		Exports:   Exports{},
 
@@ -62,22 +67,25 @@ var (
 type Arguments struct {
 	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
 	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets           []discovery.Target  `alloy:"targets,attr"`
+	Targets           []discovery.Target  `alloy:"targets,attr,optional"`
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
+	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
 
-	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
-	QuerySampleArguments   QuerySampleArguments   `alloy:"query_samples,block,optional"`
-	QueryTablesArguments   QueryTablesArguments   `alloy:"query_details,block,optional"`
-	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
-	ExplainPlansArguments  ExplainPlansArguments  `alloy:"explain_plans,block,optional"`
-	HealthCheckArguments   HealthCheckArguments   `alloy:"health_check,block,optional"`
+	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	QuerySampleArguments   QuerySampleArguments         `alloy:"query_samples,block,optional"`
+	QueryDetailsArguments  QueryDetailsArguments        `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments  ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments   HealthCheckArguments         `alloy:"health_check,block,optional"`
+	PrometheusExporter     *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
 }
 
 type CloudProvider struct {
 	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
 	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
+	GCP   *GCPCloudProviderInfo   `alloy:"gcp,block,optional"`
 }
 
 type AWSCloudProviderInfo struct {
@@ -90,14 +98,20 @@ type AzureCloudProviderInfo struct {
 	ServerName     string `alloy:"server_name,attr,optional"`
 }
 
-type QuerySampleArguments struct {
-	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
-	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
+type GCPCloudProviderInfo struct {
+	ConnectionName string `alloy:"connection_name,attr"`
 }
 
-type QueryTablesArguments struct {
+type QuerySampleArguments struct {
+	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
+	ExcludeCurrentUser            bool          `alloy:"exclude_current_user,attr,optional"`
+	EnablePreClassifiedWaitEvents bool          `alloy:"enable_pre_classified_wait_events,attr,optional"`
+}
+
+type QueryDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
+	StatementsLimit int           `alloy:"statements_limit,attr,optional"`
 }
 
 type SchemaDetailsArguments struct {
@@ -107,29 +121,33 @@ type SchemaDetailsArguments struct {
 	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
-var DefaultArguments = Arguments{
-	ExcludeDatabases: []string{},
-	QuerySampleArguments: QuerySampleArguments{
-		CollectInterval:       15 * time.Second,
-		DisableQueryRedaction: false,
-		ExcludeCurrentUser:    true,
-	},
-	QueryTablesArguments: QueryTablesArguments{
-		CollectInterval: 1 * time.Minute,
-	},
-	SchemaDetailsArguments: SchemaDetailsArguments{
-		CollectInterval: 1 * time.Minute,
-		CacheEnabled:    true,
-		CacheSize:       256,
-		CacheTTL:        10 * time.Minute,
-	},
-	ExplainPlansArguments: ExplainPlansArguments{
-		CollectInterval: 1 * time.Minute,
-		PerCollectRatio: 1.0,
-	},
-	HealthCheckArguments: HealthCheckArguments{
-		CollectInterval: 1 * time.Hour,
-	},
+func defaultArguments() Arguments {
+	return Arguments{
+		ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
+		ExcludeUsers:     database_observability.DefaultExcludedUsers(),
+		QuerySampleArguments: QuerySampleArguments{
+			CollectInterval:       15 * time.Second,
+			DisableQueryRedaction: false,
+			ExcludeCurrentUser:    true,
+		},
+		QueryDetailsArguments: QueryDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			StatementsLimit: 100,
+		},
+		SchemaDetailsArguments: SchemaDetailsArguments{
+			CollectInterval: 1 * time.Minute,
+			CacheEnabled:    true,
+			CacheSize:       256,
+			CacheTTL:        10 * time.Minute,
+		},
+		ExplainPlansArguments: ExplainPlansArguments{
+			CollectInterval: 1 * time.Minute,
+			PerCollectRatio: 1.0,
+		},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
 }
 
 type ExplainPlansArguments struct {
@@ -141,20 +159,57 @@ type HealthCheckArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
 }
 
+// PrometheusExporterArguments configures the embedded postgres_exporter scrapers.
+// When this block is present, postgres_exporter metrics are served alongside the
+// component's own metrics at the same /metrics endpoint.
+//
+// It is a distinct type (not an embedded struct) because the Alloy syntax
+// system does not support anonymous/embedded fields.
+// Note: data_source_names is ignored; the component's data_source_name is always used.
+type PrometheusExporterArguments exporter_postgres.Arguments
+
+func (a *PrometheusExporterArguments) SetToDefault() {
+	*a = PrometheusExporterArguments(exporter_postgres.DefaultArguments)
+}
+
+func (a *PrometheusExporterArguments) Validate() error {
+	args := exporter_postgres.Arguments(*a)
+	return args.Validate()
+}
+
 func (a *Arguments) SetToDefault() {
-	*a = DefaultArguments
+	*a = defaultArguments()
 }
 
 func (a *Arguments) Validate() error {
-	_, err := pq.ParseURL(string(a.DataSourceName))
+	_, err := pq.ParseURL(string(a.DataSourceName)) //nolint:staticcheck // pq.ParseURL is deprecated but needed for URL validation
 	if err != nil {
 		return err
+	}
+	if a.PrometheusExporter != nil && len(a.Targets) > 0 {
+		return fmt.Errorf("prometheus_exporter and targets are mutually exclusive: use prometheus_exporter to embed the exporter, or targets to scrape an external one")
+	}
+	if a.CloudProvider != nil {
+		count := 0
+		if a.CloudProvider.AWS != nil {
+			count++
+		}
+		if a.CloudProvider.Azure != nil {
+			count++
+		}
+		if a.CloudProvider.GCP != nil {
+			count++
+		}
+		if count > 1 {
+			return fmt.Errorf("cloud_provider: at most one of aws, azure, or gcp must be specified")
+		}
 	}
 	return nil
 }
 
 type Exports struct {
-	Targets []discovery.Target `alloy:"targets,attr"`
+	Targets      []discovery.Target `alloy:"targets,attr"`
+	LogsReceiver loki.LogsReceiver  `alloy:"logs_receiver,attr,optional"`
 }
 
 var (
@@ -171,18 +226,20 @@ type Collector interface {
 }
 
 type Component struct {
-	opts         component.Options
-	args         Arguments
-	mut          sync.RWMutex
-	receivers    []loki.LogsReceiver
-	handler      loki.LogsReceiver
-	registry     *prometheus.Registry
-	baseTarget   discovery.Target
-	collectors   []Collector
-	instanceKey  string
-	dbConnection *sql.DB
-	healthErr    *atomic.String
-	openSQL      func(driverName, dataSourceName string) (*sql.DB, error)
+	opts               component.Options
+	args               Arguments
+	handler            loki.LogsReceiver
+	fanout             *loki.Fanout
+	mut                sync.RWMutex
+	registry           *prometheus.Registry
+	baseTarget         discovery.Target
+	collectors         []Collector
+	instanceKey        string
+	dbConnection       *sql.DB
+	healthErr          *atomic.String
+	openSQL            func(driverName, dataSourceName string) (*sql.DB, error)
+	logsReceiver       loki.LogsReceiver
+	exporterCollectors []prometheus.Collector
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -191,13 +248,14 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 func new(opts component.Options, args Arguments, openFn func(driverName, dataSourceName string) (*sql.DB, error)) (*Component, error) {
 	c := &Component{
-		opts:      opts,
-		args:      args,
-		receivers: args.ForwardTo,
-		handler:   loki.NewLogsReceiver(),
-		registry:  prometheus.NewRegistry(),
-		healthErr: atomic.NewString(""),
-		openSQL:   openFn,
+		opts:         opts,
+		args:         args,
+		fanout:       loki.NewFanout(args.ForwardTo),
+		handler:      loki.NewLogsReceiver(),
+		registry:     prometheus.NewRegistry(),
+		healthErr:    atomic.NewString(""),
+		openSQL:      openFn,
+		logsReceiver: loki.NewLogsReceiver(),
 	}
 
 	instance, err := instanceKey(string(args.DataSourceName))
@@ -212,6 +270,12 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	}
 	c.baseTarget = baseTarget
 
+	// Export logs receiver immediately so loki.source.file can wire to it
+	opts.OnStateChange(Exports{
+		Targets:      []discovery.Target{},
+		LogsReceiver: c.logsReceiver,
+	})
+
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
@@ -222,28 +286,56 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		level.Info(c.opts.Logger).Log("msg", name+" component shutting down, stopping collectors")
-		c.mut.RLock()
-		for _, collector := range c.collectors {
-			collector.Stop()
-		}
-		if c.dbConnection != nil {
-			c.dbConnection.Close()
-		}
-		c.mut.RUnlock()
+
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+			c.mut.Lock()
+			defer c.mut.Unlock()
+
+			for _, collector := range c.collectors {
+				collector.Stop()
+			}
+			c.cleanupExporterCollectors()
+
+			if c.dbConnection != nil {
+				c.dbConnection.Close()
+			}
+		})
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.handler.Chan():
-			c.mut.RLock()
-			for _, receiver := range c.receivers {
-				receiver.Chan() <- entry
+	var (
+		wg                 sync.WaitGroup
+		consumeCtx, cancel = context.WithCancel(context.Background())
+	)
+
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
+
+	wg.Go(func() {
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		defer cancel()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				c.mut.RLock()
+				hasCollectors := len(c.collectors) > 0
+				c.mut.RUnlock()
+
+				if !hasCollectors {
+					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
+					if err := c.tryReconnect(ctx); err != nil {
+						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
+					}
+				}
 			}
-			c.mut.RUnlock()
 		}
-	}
+	})
+
+	wg.Wait()
+
+	return nil
 }
 
 func (c *Component) getBaseTarget() (discovery.Target, error) {
@@ -267,43 +359,61 @@ func (c *Component) reportError(errorMsg string, err error) {
 	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
 }
 
-func (c *Component) Update(args component.Arguments) error {
+func (c *Component) tryReconnect(ctx context.Context) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	if c.dbConnection != nil {
-		c.dbConnection.Close()
+	if err := c.connectAndStartCollectors(ctx); err != nil {
+		c.reportError("reconnection failed", err)
+		return err
 	}
 
-	c.args = args.(Arguments)
+	c.healthErr.Store("")
+	return nil
+}
+
+// cleanupExporterCollectors releases resources held by embedded exporter collectors.
+// Callers must hold c.mut.
+func (c *Component) cleanupExporterCollectors() {
+	for _, col := range c.exporterCollectors {
+		if closable, ok := col.(interface{ CloseServers() }); ok {
+			closable.CloseServers()
+		}
+		c.registry.Unregister(col)
+	}
+	c.exporterCollectors = nil
+}
+
+func (c *Component) connectAndStartCollectors(ctx context.Context) error {
+	if c.dbConnection != nil {
+		c.dbConnection.Close()
+		c.dbConnection = nil
+	}
+	c.cleanupExporterCollectors()
 
 	dbConnection, err := c.openSQL("postgres", string(c.args.DataSourceName))
 	if err != nil {
-		c.reportError("failed to open database connection", err)
-		return nil
+		return fmt.Errorf("failed to open database connection: %w", err)
 	}
 
 	if dbConnection == nil {
-		c.reportError("nil DB connection", nil)
-		return nil
+		return fmt.Errorf("nil DB connection")
 	}
+
 	if err = dbConnection.Ping(); err != nil {
-		c.reportError("failed to ping database", err)
-		return nil
+		dbConnection.Close()
+		return fmt.Errorf("failed to ping database: %w", err)
 	}
 	c.dbConnection = dbConnection
 
-	rs := dbConnection.QueryRowContext(context.Background(), selectServerInfo)
-	err = rs.Err()
-	if err != nil {
-		c.reportError("failed to query engine version", err)
-		return nil
+	rs := dbConnection.QueryRowContext(ctx, selectServerInfo)
+	if err := rs.Err(); err != nil {
+		return fmt.Errorf("failed to query engine version: %w", err)
 	}
 
 	var systemID, systemIP, systemPort, engineVersion sql.NullString
 	if err := rs.Scan(&systemID, &systemIP, &systemPort, &engineVersion); err != nil {
-		c.reportError("failed to scan engine version", err)
-		return nil
+		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
@@ -312,29 +422,81 @@ func (c *Component) Update(args component.Arguments) error {
 	if c.args.CloudProvider != nil {
 		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
 		if err != nil {
-			c.reportError("failed to collect cloud provider information from config", err)
-			return nil
+			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
 		}
 		cp = cloudProvider
 	} else {
 		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
 		if err != nil {
-			c.reportError("failed to collect cloud provider information from DSN", err)
-			return nil
+			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
 		}
 		cp = cloudProvider
 	}
 
-	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
-	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
-	for _, t := range c.args.Targets {
+	if len(c.args.Targets) == 0 {
+		if c.args.PrometheusExporter == nil {
+			d := PrometheusExporterArguments(exporter_postgres.DefaultArguments)
+			c.args.PrometheusExporter = &d
+		}
+		exporterArgs := exporter_postgres.Arguments(*c.args.PrometheusExporter)
+		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
+		dsn := string(c.args.DataSourceName)
+
+		e := pg_exporter.NewExporter(
+			[]string{dsn},
+			slogLogger,
+			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
+			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
+			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
+			pg_exporter.AutoDiscoverDatabases(true),
+			pg_exporter.ExcludeDatabases(c.args.ExcludeDatabases),
+			pg_exporter.WithMetricPrefix("pg"),
+		)
+		if err := c.registry.Register(e); err != nil {
+			return fmt.Errorf("failed to register prometheus_exporter: %w", err)
+		}
+		c.exporterCollectors = append(c.exporterCollectors, e)
+
+		if !exporterArgs.DisableDefaultMetrics {
+			collectorOpts := []pg_collector.Option{pg_collector.WithCollectionTimeout("10s")}
+			if exporterArgs.StatStatementFlags != nil {
+				collectorOpts = append(collectorOpts, pg_collector.WithStatStatementsConfig(pg_collector.StatStatementsConfig{
+					IncludeQuery:     exporterArgs.StatStatementFlags.IncludeQuery,
+					QueryLength:      exporterArgs.StatStatementFlags.QueryLength,
+					Limit:            exporterArgs.StatStatementFlags.Limit,
+					ExcludeDatabases: exporterArgs.StatStatementFlags.ExcludeDatabases,
+					ExcludeUsers:     exporterArgs.StatStatementFlags.ExcludeUsers,
+				}))
+			}
+			col, err := pg_collector.NewPostgresCollector(
+				slogLogger,
+				c.args.ExcludeDatabases,
+				dsn,
+				exporterArgs.EnabledCollectors,
+				collectorOpts...,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to create postgres collector: %w", err)
+			}
+			if err := c.registry.Register(col); err != nil {
+				return fmt.Errorf("failed to register postgres collector: %w", err)
+			}
+			c.exporterCollectors = append(c.exporterCollectors, col)
+		}
+	}
+
+	allTargets := append([]discovery.Target{c.baseTarget}, c.args.Targets...)
+	targets := make([]discovery.Target, 0, len(allTargets))
+	for _, t := range allTargets {
 		builder := discovery.NewTargetBuilderFrom(t)
 		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedSystemID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
+
 	c.opts.OnStateChange(Exports{
-		Targets: targets,
+		Targets:      targets,
+		LogsReceiver: c.logsReceiver,
 	})
 
 	for _, collector := range c.collectors {
@@ -343,7 +505,21 @@ func (c *Component) Update(args component.Arguments) error {
 	c.collectors = nil
 
 	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
-		c.reportError("failed to start collectors", err)
+		return fmt.Errorf("failed to start collectors: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	c.args = args.(Arguments)
+	c.fanout.UpdateChildren(c.args.ForwardTo)
+
+	if err := c.connectAndStartCollectors(context.Background()); err != nil {
+		c.reportError("failed to connect and start collectors", err)
 		return nil
 	}
 
@@ -414,8 +590,10 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
 			DB:               c.dbConnection,
-			CollectInterval:  c.args.QueryTablesArguments.CollectInterval,
+			CollectInterval:  c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit:  c.args.QueryDetailsArguments.StatementsLimit,
 			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeUsers:     c.args.ExcludeUsers,
 			EntryHandler:     entryHandler,
 			TableRegistry:    tableRegistry,
 			Logger:           c.opts.Logger,
@@ -431,13 +609,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QuerySamplesCollector] {
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                    c.dbConnection,
-			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
-			ExcludeDatabases:      c.args.ExcludeDatabases,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
+			DB:                            c.dbConnection,
+			CollectInterval:               c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:              c.args.ExcludeDatabases,
+			ExcludeUsers:                  c.args.ExcludeUsers,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
+			ExcludeCurrentUser:            c.args.QuerySampleArguments.ExcludeCurrentUser,
+			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
@@ -454,6 +634,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
 		CloudProvider: cloudProviderInfo,
+		DB:            c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.ConnectionInfoName, "create", err)
@@ -471,6 +652,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeDatabases: c.args.ExcludeDatabases,
+			ExcludeUsers:     c.args.ExcludeUsers,
 			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
 			EntryHandler:     entryHandler,
@@ -486,10 +668,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// HealthCheck collector is always enabled
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
-		DB:              c.dbConnection,
-		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
-		EntryHandler:    entryHandler,
-		Logger:          c.opts.Logger,
+		DB:               c.dbConnection,
+		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeUsers:     c.args.ExcludeUsers,
+		EntryHandler:     entryHandler,
+		Logger:           c.opts.Logger,
 	})
 	if err != nil {
 		logStartError(collector.HealthCheckCollector, "create", err)
@@ -498,6 +682,24 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			logStartError(collector.HealthCheckCollector, "start", err)
 		}
 		c.collectors = append(c.collectors, hcCollector)
+	}
+
+	// Logs collector is always enabled
+	logsCollector, err := collector.NewLogs(collector.LogsArguments{
+		Receiver:         c.logsReceiver,
+		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		Logger:           c.opts.Logger,
+		Registry:         c.registry,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeUsers:     c.args.ExcludeUsers,
+	})
+	if err != nil {
+		logStartError(collector.LogsCollector, "create", err)
+	} else {
+		if err := logsCollector.Start(context.Background()); err != nil {
+			logStartError(collector.LogsCollector, "start", err)
+		}
+		c.collectors = append(c.collectors, logsCollector)
 	}
 
 	if len(startErrors) > 0 {

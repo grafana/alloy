@@ -1,22 +1,19 @@
-name: Check docs
-on: [pull_request]
+name: Documentation CI
+on:
+  pull_request:
+    paths: ["docs/sources/**"]
+  workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
-  build-technical-documentation:
-    runs-on: "ubuntu-latest"
-    steps:
-    - name: "Checkout code"
-      uses: "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8" # v6.0.1
-      with:
-        persist-credentials: false
-
-    - name: "Build technical documentation"
-      run: >
-        docker run
-        --volume "${PWD}/docs/sources:/hugo/content/docs/alloy/latest"
-        --env HUGO_REFLINKSERRORLEVEL=ERROR
-        --rm grafana/docs-base:latest
-        /bin/bash -c 'echo -e "---\\nredirectURL: /docs/alloy/latest/\\ntype: redirect\\nversioned: true\\n---\\n" > /hugo/content/docs/alloy/_index.md && make hugo'
+  docs-ci:
+    uses: grafana/writers-toolkit/.github/workflows/docs-ci.yml@main
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+    with:
+      build: true
+      build-website-directory: content/docs/alloy/latest
+      vale: true

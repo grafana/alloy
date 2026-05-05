@@ -34,22 +34,13 @@ type TruncateConfig struct {
 }
 
 type RuleConfig struct {
-	Limit      units.Base2Bytes   `alloy:"limit,attr"`
-	Suffix     string             `alloy:"suffix,attr,optional"`
-	Sources    []string           `alloy:"sources,attr,optional"`
-	SourceType TruncateSourceType `alloy:"source_type,attr,optional"`
+	Limit      units.Base2Bytes `alloy:"limit,attr"`
+	Suffix     string           `alloy:"suffix,attr,optional"`
+	Sources    []string         `alloy:"sources,attr,optional"`
+	SourceType SourceType       `alloy:"source_type,attr,optional"`
 
 	effectiveLimit units.Base2Bytes
 }
-
-type TruncateSourceType string
-
-const (
-	TruncateSourceLine               TruncateSourceType = "line"
-	TruncateSourceLabel              TruncateSourceType = "label"
-	TruncateSourceStructuredMetadata TruncateSourceType = "structured_metadata"
-	TruncateSourceExtractedMap       TruncateSourceType = "extracted"
-)
 
 // validateTruncateConfig validates the TruncateConfig for the truncateStage
 func validateTruncateConfig(cfg *TruncateConfig) error {
@@ -65,10 +56,10 @@ func validateTruncateConfig(cfg *TruncateConfig) error {
 		}
 
 		if r.SourceType == "" {
-			r.SourceType = TruncateSourceLine
+			r.SourceType = SourceTypeLine
 		}
 
-		if r.SourceType == TruncateSourceLine && len(r.Sources) > 0 {
+		if r.SourceType == SourceTypeLine && len(r.Sources) > 0 {
 			return errors.New(errSourcesForLine)
 		}
 
@@ -113,7 +104,7 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 			truncated := map[string]struct{}{}
 			for _, r := range m.cfg.Rules {
 				switch r.SourceType {
-				case TruncateSourceLine:
+				case SourceTypeLine:
 					if len(e.Line) > int(r.effectiveLimit) {
 						e.Line = e.Line[:r.effectiveLimit] + r.Suffix
 						markTruncated(m.truncatedCount, truncated, truncateLineField)
@@ -122,7 +113,7 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 							level.Debug(m.logger).Log("msg", "line has been truncated", "limit", r.effectiveLimit, "truncated_line", e.Line)
 						}
 					}
-				case TruncateSourceLabel:
+				case SourceTypeLabel:
 					if len(r.Sources) > 0 {
 						for _, source := range r.Sources {
 							name := model.LabelName(source)
@@ -135,7 +126,7 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 							m.tryTruncateLabel(r, e.Labels, k, v, truncated)
 						}
 					}
-				case TruncateSourceStructuredMetadata:
+				case SourceTypeStructuredMetadata:
 					if len(r.Sources) > 0 {
 						for i, v := range e.StructuredMetadata {
 							if slices.Contains(r.Sources, v.Name) {
@@ -149,7 +140,7 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 							e.StructuredMetadata[i] = m.tryTruncateStructuredMetadata(r, v, truncated)
 						}
 					}
-				case TruncateSourceExtractedMap:
+				case SourceTypeExtractedMap:
 					if len(r.Sources) > 0 {
 						for _, source := range r.Sources {
 							if v, ok := e.Extracted[source]; ok {
@@ -217,11 +208,6 @@ func (m *truncateStage) tryTruncateStructuredMetadata(rule *RuleConfig, metadata
 func markTruncated(metric *prometheus.CounterVec, set map[string]struct{}, field string) {
 	metric.WithLabelValues(field).Inc()
 	set[field] = struct{}{}
-}
-
-// Name implements Stage
-func (m *truncateStage) Name() string {
-	return StageTypeTruncate
 }
 
 // Cleanup implements Stage.

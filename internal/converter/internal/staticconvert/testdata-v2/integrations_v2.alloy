@@ -186,7 +186,6 @@ prometheus.exporter.cloudwatch "integrations_cloudwatch_exporter" {
 	}
 
 	decoupled_scraping { }
-	aws_sdk_version_v2 = true
 }
 
 discovery.relabel "integrations_cloudwatch" {
@@ -323,39 +322,6 @@ prometheus.scrape "integrations_memcached" {
 	targets    = discovery.relabel.integrations_memcached.output
 	forward_to = [prometheus.remote_write.metrics_default.receiver]
 	job_name   = "integrations/memcached"
-}
-
-prometheus.exporter.mongodb "integrations_mongodb_exporter" {
-	mongodb_uri      = "mongodb://mongodb-a:27017"
-	direct_connect   = true
-	discovering_mode = true
-}
-
-discovery.relabel "integrations_mongodb" {
-	targets = prometheus.exporter.mongodb.integrations_mongodb_exporter.targets
-
-	rule {
-		source_labels = ["__address__"]
-		target_label  = "service_name"
-		replacement   = "replicaset1-node1"
-	}
-
-	rule {
-		source_labels = ["__address__"]
-		target_label  = "mongodb_cluster"
-		replacement   = "prod-cluster"
-	}
-
-	rule {
-		target_label = "job"
-		replacement  = "integrations/mongodb"
-	}
-}
-
-prometheus.scrape "integrations_mongodb" {
-	targets    = discovery.relabel.integrations_mongodb.output
-	forward_to = [prometheus.remote_write.metrics_default.receiver]
-	job_name   = "integrations/mongodb"
 }
 
 prometheus.exporter.mssql "integrations_mssql" {
@@ -763,4 +729,37 @@ prometheus.scrape "integrations_gcp" {
 	targets    = discovery.relabel.integrations_gcp.output
 	forward_to = [prometheus.remote_write.metrics_default.receiver]
 	job_name   = "integrations/gcp"
+}
+
+prometheus.exporter.mongodb "integrations_mongodb_exporter" {
+	mongodb_uri      = "mongodb://mongodb-a:27017"
+	direct_connect   = true
+	discovering_mode = true
+}
+
+discovery.relabel "integrations_mongodb" {
+	targets = prometheus.exporter.mongodb.integrations_mongodb_exporter.targets
+
+	rule {
+		source_labels = ["__address__"]
+		target_label  = "service_name"
+		replacement   = "replicaset1-node1"
+	}
+
+	rule {
+		source_labels = ["__address__"]
+		target_label  = "mongodb_cluster"
+		replacement   = "prod-cluster"
+	}
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/mongodb"
+	}
+}
+
+prometheus.scrape "integrations_mongodb" {
+	targets    = discovery.relabel.integrations_mongodb.output
+	forward_to = [prometheus.remote_write.metrics_default.receiver]
+	job_name   = "integrations/mongodb"
 }

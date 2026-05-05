@@ -57,6 +57,8 @@ The `__path__` field uses [doublestar][] style glob patterns:
 * `/tmp/**/*.log` matches all subdirectories of `tmp` and include any files that end in `*.log`.
 * `/tmp/apache/*.log` matches only files in `/tmp/apache/` that end in `*.log`.
 * `/tmp/**` matches all subdirectories of `tmp`, `tmp` itself, and all files.
+* `/tmp/*.{log,txt,json}` matches files with `.log`, `.txt`, or `.json` extensions in `/tmp/`.
+* `/var/log/{nginx,apache}/*.log` matches `.log` files in either the `nginx` or `apache` subdirectories.
 
 `local.file_match` doesn't ignore files when you set `ignore_older_than` to the default, `0s`.
 
@@ -180,6 +182,35 @@ Replace the following:
 * _`<LOKI_URL>`_: The URL of the Loki server to send logs to.
 * _`<USERNAME>`_: The username to use for authentication to the Loki API.
 * _`<PASSWORD>`_: The password to use for authentication to the Loki API.
+
+### Match multiple patterns
+
+This example shows how to use the `{a,b,c}` pattern syntax to match multiple file extensions, multiple directories, and exclude multiple file types in a single configuration.
+
+```alloy
+local.file_match "logs" {
+  path_targets = [
+    // Match .log, .txt, and .json files from nginx, apache, or caddy directories
+    // Exclude compressed and backup files
+    {
+      "__path__"         = "/var/log/{nginx,apache,caddy}/*.{log,txt,json}",
+      "__path_exclude__" = "/var/log/{nginx,apache,caddy}/*.{gz,zip,bak,old}",
+      "job"              = "webserver",
+    },
+  ]
+}
+
+loki.source.file "logs" {
+  targets    = local.file_match.logs.targets
+  forward_to = [loki.write.endpoint.receiver]
+}
+
+loki.write "endpoint" {
+  endpoint {
+    url = "<LOKI_URL>"
+  }
+}
+```
 
 ### Send Kubernetes Pod logs to Loki
 

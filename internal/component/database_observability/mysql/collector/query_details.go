@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/DataDog/go-sqllexer"
@@ -58,6 +59,7 @@ type QueryDetails struct {
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
+	wg      sync.WaitGroup
 }
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
@@ -88,13 +90,11 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 	c.ctx = ctx
 	c.cancel = cancel
 
-	go func() {
-		defer func() {
-			c.Stop()
-			c.running.Store(false)
-		}()
+	c.wg.Go(func() {
+		defer c.running.Store(false)
 
 		ticker := time.NewTicker(c.collectInterval)
+		defer ticker.Stop()
 
 		for {
 			if err := c.tablesFromEventsStatements(c.ctx); err != nil {
@@ -108,7 +108,7 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 				// continue loop
 			}
 		}
-	}()
+	})
 
 	return nil
 }
@@ -117,9 +117,11 @@ func (c *QueryDetails) Stopped() bool {
 	return !c.running.Load()
 }
 
-// Stop should be kept idempotent
 func (c *QueryDetails) Stop() {
-	c.cancel()
+	if c.cancel != nil {
+		c.cancel()
+	}
+	c.wg.Wait()
 }
 
 func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
@@ -131,7 +133,8 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 	defer rs.Close()
 
 	for rs.Next() {
-		var digest, digestText, schema, sampleText string
+		var digest, digestText, schema string
+		var sampleText sql.NullString
 		if err := rs.Scan(&digest, &digestText, &schema, &sampleText); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "schema", schema, "err", err)
 			continue
@@ -139,8 +142,8 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 
 		var tables []string
 		var parserErr, lexerErr error
-		if tables, parserErr = c.tryParseTableNames(sampleText, digestText); parserErr != nil {
-			if tables, lexerErr = c.tryTokenizeTableNames(sampleText, digestText); lexerErr != nil {
+		if tables, parserErr = c.tryParseTableNames(sampleText.String, digestText); parserErr != nil {
+			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
 				level.Warn(c.logger).Log("msg", "failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
 				continue
 			}

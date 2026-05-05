@@ -4,8 +4,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mitchellh/mapstructure"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/akamai"
+	alibabaecs "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/alibaba/ecs"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ec2"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/ecs"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/aws/eks"
@@ -27,12 +32,10 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/oraclecloud"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/scaleway"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/system"
+	tencentcvm "github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/tencent/cvm"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/upcloud"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/resourcedetection/internal/vultr"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
-	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
-	"github.com/stretchr/testify/require"
 )
 
 func TestArguments_UnmarshalAlloy(t *testing.T) {
@@ -72,11 +75,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		{
 			testName: "all_detectors_with_defaults",
 			cfg: `
-			detectors = ["env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "akamai", "consul", "digitalocean", "docker", "gcp", "heroku", "hetzner", "system", "openshift", "nova", "oraclecloud", "kubernetes_node", "dynatrace", "kubeadm", "scaleway", "upcloud", "vultr"]
+			detectors = ["env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "akamai", "consul", "digitalocean", "docker", "gcp", "heroku", "hetzner", "system", "openshift", "nova", "oraclecloud", "kubernetes_node", "dynatrace", "kubeadm", "scaleway", "upcloud", "vultr", "tencent_cvm", "alibaba_ecs"]
 			output {}
 			`,
 			expected: map[string]any{
-				"detectors":        []string{"env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "akamai", "consul", "digitalocean", "docker", "gcp", "heroku", "hetzner", "system", "openshift", "nova", "oraclecloud", "k8snode", "dynatrace", "kubeadm", "scaleway", "upcloud", "vultr"},
+				"detectors":        []string{"env", "ec2", "ecs", "eks", "elasticbeanstalk", "lambda", "azure", "aks", "akamai", "consul", "digitalocean", "docker", "gcp", "heroku", "hetzner", "system", "openshift", "nova", "oraclecloud", "k8snode", "dynatrace", "kubeadm", "scaleway", "upcloud", "vultr", "tencent_cvm", "alibaba_ecs"},
 				"timeout":          5 * time.Second,
 				"override":         true,
 				"ec2":              ec2.DefaultArguments.Convert(),
@@ -103,6 +106,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -138,6 +143,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -168,6 +175,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					"max_attempts":             3,
 					"max_backoff":              20 * time.Second,
 					"fail_on_missing_metadata": false,
+					"tags_from_imds":           false,
 				},
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),
@@ -192,6 +200,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -223,6 +233,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					"max_attempts":             3,
 					"max_backoff":              20 * time.Second,
 					"fail_on_missing_metadata": false,
+					"tags_from_imds":           false,
 				},
 				"ecs":              ecs.DefaultArguments.Convert(),
 				"eks":              eks.DefaultArguments.Convert(),
@@ -247,6 +258,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -316,6 +329,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -374,6 +389,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -448,6 +465,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -462,7 +481,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"eks": map[string]any{
-					"tags": []string{},
+					"tags":              []string{},
+					"node_from_env_var": "K8S_NODE_NAME",
 					"resource_attributes": map[string]any{
 						"cloud.platform": map[string]any{
 							"enabled": true,
@@ -495,6 +515,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -502,6 +524,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 			detectors = ["eks"]
 			eks {
+				node_from_env_var = "MY_CUSTOM_VAR"
 				resource_attributes {
 					cloud.account.id { enabled = true }
 					cloud.platform { enabled = true }
@@ -515,7 +538,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"eks": map[string]any{
-					"tags": []string{},
+					"tags":              []string{},
+					"node_from_env_var": "MY_CUSTOM_VAR",
 					"resource_attributes": map[string]any{
 						"cloud.account.id": map[string]any{
 							"enabled": true,
@@ -551,6 +575,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -622,6 +648,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -702,6 +730,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -749,6 +779,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -801,6 +833,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -838,6 +872,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -851,7 +887,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					cloud.platform { enabled = true }
 					cloud.provider { enabled = true }
 					cloud.region { enabled = false }
-					faas.id { enabled = false }
 					gcp.gce.instance.group_manager.zone { enabled = false }
 				}
 			}
@@ -876,9 +911,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 							"enabled": true,
 						},
 						"cloud.region": map[string]any{
-							"enabled": false,
-						},
-						"faas.id": map[string]any{
 							"enabled": false,
 						},
 						"faas.instance": map[string]any{
@@ -948,6 +980,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -985,6 +1019,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1037,6 +1073,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1074,6 +1112,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1149,6 +1189,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1186,6 +1228,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1248,6 +1292,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":     scaleway.DefaultArguments.Convert(),
 				"upcloud":      upcloud.DefaultArguments.Convert(),
 				"vultr":        vultr.DefaultArguments.Convert(),
+				"tencent_cvm":  tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":  alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1285,6 +1331,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1349,6 +1397,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1386,6 +1436,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1459,6 +1511,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1496,6 +1550,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1553,6 +1609,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		}, {
 			testName: "kubeadm_defaults",
@@ -1588,6 +1646,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1643,6 +1703,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1692,6 +1754,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1794,6 +1858,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1831,6 +1897,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1910,6 +1978,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1948,6 +2018,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -1956,29 +2028,11 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			detectors = ["dynatrace"]
 			timeout = "7s"
 			override = false
-			dynatrace {
-				resource_attributes {
-					host.name {
-						enabled = true
-					}
-					dt.entity.host {
-						enabled = true
-					}
-				}
-			}
+			dynatrace {}
 			output {}
 			`,
 			expected: map[string]any{
-				"dynatrace": map[string]any{
-					"resource_attributes": map[string]any{
-						"host.name": map[string]any{
-							"enabled": true,
-						},
-						"dt.entity.host": map[string]any{
-							"enabled": true,
-						},
-					},
-				},
+				"dynatrace":        map[string]any{},
 				"detectors":        []string{"dynatrace"},
 				"timeout":          7 * time.Second,
 				"override":         false,
@@ -2005,6 +2059,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2042,6 +2098,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2049,7 +2107,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			cfg: `
 			detectors = ["akamai"]
 			akamai {
-				fail_on_missing_metadata = true
 				resource_attributes {
 					cloud.provider { enabled = false }
 					cloud.region { enabled = true }
@@ -2064,7 +2121,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"timeout":   5 * time.Second,
 				"override":  true,
 				"akamai": map[string]any{
-					"fail_on_missing_metadata": true,
 					"resource_attributes": map[string]any{
 						"cloud.provider": map[string]any{
 							"enabled": false,
@@ -2103,6 +2159,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2140,6 +2198,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2199,6 +2259,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2236,6 +2298,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2299,6 +2363,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2336,6 +2402,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2419,6 +2487,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2456,6 +2526,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2517,6 +2589,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2554,6 +2628,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2615,6 +2691,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"oraclecloud":      oraclecloud.DefaultArguments.Convert(),
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2652,6 +2730,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2689,6 +2769,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2762,6 +2844,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 		{
@@ -2812,6 +2896,9 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 						"k8s.cluster.name": map[string]any{
 							"enabled": true,
 						},
+						"oracle_cloud.realm": map[string]any{
+							"enabled": true,
+						},
 					},
 				},
 				"ec2":              ec2.DefaultArguments.Convert(),
@@ -2837,6 +2924,8 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				"scaleway":         scaleway.DefaultArguments.Convert(),
 				"upcloud":          upcloud.DefaultArguments.Convert(),
 				"vultr":            vultr.DefaultArguments.Convert(),
+				"tencent_cvm":      tencentcvm.DefaultArguments.Convert(),
+				"alibaba_ecs":      alibabaecs.DefaultArguments.Convert(),
 			},
 		},
 	}

@@ -79,23 +79,20 @@ The `on_error` argument can take the following values:
 
 You can use the following blocks with `otelcol.receiver.syslog`:
 
+{{< docs/alloy-config >}}
+
 | Block                                  | Description                                                                                     | Required |
-|----------------------------------------|-------------------------------------------------------------------------------------------------|----------|
+| -------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- |
 | [`output`][output]                     | Configures where to send received telemetry data.                                               | yes      |
 | [`debug_metrics`][debug_metrics]       | Configures the metrics that this component generates to monitor its state.                      | no       |
 | [`retry_on_failure`][retry_on_failure] | Configures the retry behavior when the receiver encounters an error downstream in the pipeline. | no       |
 | [`tcp`][tcp]                           | Configures a TCP syslog server to receive syslog messages.                                      | no*      |
 | `tcp` > [`multiline`][multiline]       | Configures rules for multiline parsing of incoming messages                                     | no       |
 | `tcp` > [`tls`][tls]                   | Configures TLS for the TCP syslog server.                                                       | no       |
-| `tcp` > `tls` > [`tpm`][tpm]           | Configures TPM settings for the TLS key_file.                                                   | no       |
+| `tcp` > `tls` > [`tpm`][tpm]           | Configures TPM settings for the TLS `key_file`.                                                 | no       |
 | [`udp`][udp]                           | Configures a UDP syslog server to receive syslog messages.                                      | no*      |
 | `udp` > [`async`][async]               | Configures rules for asynchronous parsing of incoming messages.                                 | no       |
 | `udp` > [`multiline`][multiline]       | Configures rules for multiline parsing of incoming messages.                                    | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `tcp` > `tls` refers to a `tls` block defined inside a `tcp` block.
-
-A syslog receiver must have either a `udp` or `tcp` block configured.
 
 [tls]: #tls
 [tpm]: #tpm
@@ -106,6 +103,10 @@ A syslog receiver must have either a `udp` or `tcp` block configured.
 [retry_on_failure]: #retry_on_failure
 [debug_metrics]: #debug_metrics
 [output]: #output
+
+{{< /docs/alloy-config >}}
+
+A syslog receiver must have either a `udp` or `tcp` block configured.
 
 ### `output`
 

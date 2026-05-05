@@ -95,8 +95,10 @@ where the list of resolved endpoints changes frequently due to deployments and s
 
 You can use the following blocks with `otelcol.exporter.loadbalancing`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                     | Description                                                                       | Required |
-|-----------------------------------------------------------|-----------------------------------------------------------------------------------|----------|
+| --------------------------------------------------------- | --------------------------------------------------------------------------------- | -------- |
 | [`resolver`][resolver]                                    | Configures discovering the endpoints to export to.                                | yes      |
 | `resolver` > [`aws_cloud_map`][aws_cloud_map]             | AWS CloudMap-sourced list of endpoints to export to.                              | no       |
 | `resolver` > [`dns`][dns]                                 | DNS-sourced list of endpoints to export to.                                       | no       |
@@ -107,24 +109,13 @@ You can use the following blocks with `otelcol.exporter.loadbalancing`:
 | `protocol` > `otlp` > [`client`][client]                  | Configures the exporter gRPC client.                                              | no       |
 | `protocol` > `otlp` > `client` > [`keepalive`][keepalive] | Configures keepalive settings for the gRPC client.                                | no       |
 | `protocol` > `otlp` > `client` > [`tls`][tls]             | Configures TLS for the gRPC client.                                               | no       |
-| `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]     | Configures TPM settings for the TLS key_file.                                     | no       |
+| `protocol` > `otlp` > `client` > `tls` > [`tpm`][tpm]     | Configures TPM settings for the TLS `key_file`.                                   | no       |
 | `protocol` > `otlp` > [`queue`][queue]                    | Configures batching of data before sending.                                       | no       |
 | `protocol` > `otlp` > [`retry`][retry]                    | Configures retry mechanism for failed requests.                                   | no       |
 | [`sending_queue`][queue]                                  | Configures batching of data before sending to the `otlp > protocol` exporter.     | no       |
 | `sending_queue` > [`batch`][batch]                        | Configures batching requests based on a timeout and a minimum number of items.    | no       |
 | [`retry`][retry]                                          | Configures retry mechanism for failed requests to the `otlp > protocol` exporter. | no       |
 | [`debug_metrics`][debug_metrics]                          | Configures the metrics that this component generates to monitor its state.        | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `resolver` > `static` refers to a `static` block defined inside a `resolver` block.
-
-There are two types of [queue][] and [retry][] blocks:
-
-* The queue and retry blocks under `protocol > otlp`.
-  This is useful for temporary problems with a specific backend, like transient network issues.
-* The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`.
-  Those configuration options provide capability to re-route data into a new set of healthy backends.
-  This is useful for highly elastic environments like Kubernetes,  where the list of resolved endpoints changes frequently due to deployments and scaling events.
 
 [resolver]: #resolver
 [static]: #static
@@ -141,6 +132,16 @@ There are two types of [queue][] and [retry][] blocks:
 [batch]: #batch
 [retry]: #retry
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
+
+There are two types of [queue][] and [retry][] blocks:
+
+* The queue and retry blocks under `protocol > otlp`.
+  This is useful for temporary problems with a specific backend, like transient network issues.
+* The top-level queue and retry blocks for `otelcol.exporter.loadbalancing`.
+  Those configuration options provide capability to re-route data into a new set of healthy backends.
+  This is useful for highly elastic environments like Kubernetes,  where the list of resolved endpoints changes frequently due to deployments and scaling events.
 
 ### `resolver`
 

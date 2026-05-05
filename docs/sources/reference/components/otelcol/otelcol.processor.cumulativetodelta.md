@@ -65,6 +65,8 @@ When the collector (re)starts, there's no record of how much of a given cumulati
 
 You can use the following blocks with `otelcol.processor.cumulativetodelta`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 |----------------------------------|----------------------------------------------------------------------------|----------|
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
@@ -72,13 +74,15 @@ You can use the following blocks with `otelcol.processor.cumulativetodelta`:
 | [`exclude`][exclude]             | Configures which metrics to not convert to delta.                          | no       |
 | [`include`][include]             | Configures which metrics to convert to delta.                              | no       |
 
-If metric matches both `include` and `exclude`, exclude takes preference.
-If neither `include` nor `exclude` are supplied, no filtering is applied.
-
 [include]: #include
 [exclude]: #exclude
 [output]: #output
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
+
+If metric matches both `include` and `exclude`, exclude takes preference.
+If neither `include` nor `exclude` are supplied, no filtering is applied.
 
 ### `output`
 
@@ -143,23 +147,23 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example converts cumulative temporality metrics to delta before sending it to [`otelcol.exporter.otlp`][otelcol.exporter.otlp] for further processing.
+This example converts cumulative temporality metrics to delta before sending it to [`otelcol.exporter.otlphttp`][otelcol.exporter.otlphttp] for further processing.
 
 ```alloy
 otelcol.processor.cumulativetodelta "default" {
   output {
-    metrics = [otelcol.exporter.otlp.production.input]
+    metrics = [otelcol.exporter.otlphttp.production.input]
   }
 }
 
-otelcol.exporter.otlp "production" {
+otelcol.exporter.otlphttp "production" {
   client {
     endpoint = sys.env("OTLP_SERVER_ENDPOINT")
   }
 }
 ```
 
-[otelcol.exporter.otlp]: ../otelcol.exporter.otlp/
+[otelcol.exporter.otlphttp]: ../otelcol.exporter.otlphttp/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

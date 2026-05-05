@@ -1,22 +1,95 @@
 package postgres
 
 import (
+	"context"
+	"database/sql"
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
+	"github.com/grafana/alloy/internal/component/discovery"
+	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/loki/pkg/push"
 )
+
+func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error)) *Component {
+	t.Helper()
+	opts := cmp.Options{
+		ID:            "test",
+		Logger:        kitlog.NewNopLogger(),
+		OnStateChange: func(e cmp.Exports) {},
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
+		},
+	}
+	args := Arguments{
+		DataSourceName:    alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+		ForwardTo:         []loki.LogsReceiver{},
+		Targets:           []discovery.Target{},
+		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
+		HealthCheckArguments: HealthCheckArguments{
+			CollectInterval: 1 * time.Hour,
+		},
+	}
+	c := &Component{
+		opts:         opts,
+		args:         args,
+		fanout:       loki.NewFanout(args.ForwardTo),
+		handler:      loki.NewLogsReceiver(),
+		registry:     prometheus.NewRegistry(),
+		healthErr:    atomic.NewString(""),
+		openSQL:      openSQL,
+		logsReceiver: loki.NewLogsReceiver(),
+	}
+	c.instanceKey = "test-instance"
+	c.baseTarget = discovery.NewTargetFromMap(map[string]string{
+		"instance": c.instanceKey,
+		"job":      "database_observability",
+	})
+	return c
+}
+
+func Test_defaultExclusions(t *testing.T) {
+	exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+	`
+
+	var args Arguments
+	err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{
+		"alloydbadmin",
+		"alloydbmetadata",
+		"azure_maintenance",
+		"azure_sys",
+		"cloudsqladmin",
+		"rdsadmin",
+	}, args.ExcludeDatabases)
+
+	assert.Equal(t, []string{
+		"azuresu",
+		"cloudsqladmin",
+		"db-o11y",
+		"rdsadmin",
+	}, args.ExcludeUsers)
+}
 
 func Test_enableOrDisableCollectors(t *testing.T) {
 	t.Run("nothing specified (default behavior)", func(t *testing.T) {
@@ -280,7 +353,7 @@ func TestCollectionIntervals(t *testing.T) {
 		var args Arguments
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
-		assert.Equal(t, DefaultArguments.QuerySampleArguments.CollectInterval, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should default to 15 seconds")
+		assert.Equal(t, defaultArguments().QuerySampleArguments.CollectInterval, args.QuerySampleArguments.CollectInterval, "collect_interval for query_samples should default to 15 seconds")
 	})
 
 	t.Run("custom intervals", func(t *testing.T) {
@@ -333,8 +406,9 @@ func Test_addLokiLabels(t *testing.T) {
 func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
 	opts := cmp.Options{
-		ID:     "test.postgres",
-		Logger: kitlog.NewNopLogger(),
+		ID:            "test.postgres",
+		Logger:        kitlog.NewNopLogger(),
+		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
@@ -376,9 +450,9 @@ func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *te
 		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
 		require.NoError(t, err)
 
-		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheEnabled, args.SchemaDetailsArguments.CacheEnabled)
-		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheSize, args.SchemaDetailsArguments.CacheSize)
-		assert.Equal(t, DefaultArguments.SchemaDetailsArguments.CacheTTL, args.SchemaDetailsArguments.CacheTTL)
+		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheEnabled, args.SchemaDetailsArguments.CacheEnabled)
+		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheSize, args.SchemaDetailsArguments.CacheSize)
+		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheTTL, args.SchemaDetailsArguments.CacheTTL)
 	})
 
 	t.Run("custom cache configuration", func(t *testing.T) {
@@ -476,6 +550,27 @@ func Test_parseCloudProvider(t *testing.T) {
 		assert.Empty(t, args.CloudProvider.Azure.ServerName)
 	})
 
+	t.Run("parse gcp cloud provider block", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			gcp {
+				connection_name = "my-gcp-project:us-central1:my-cloud-sql-instance"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		require.NotNil(t, args.CloudProvider)
+		require.NotNil(t, args.CloudProvider.GCP)
+		assert.Equal(t, "my-gcp-project:us-central1:my-cloud-sql-instance", args.CloudProvider.GCP.ConnectionName)
+	})
+
 	t.Run("empty cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
 		data_source_name = "postgres://db"
@@ -488,5 +583,315 @@ func Test_parseCloudProvider(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Nil(t, args.CloudProvider)
+	})
+
+	t.Run("multiple cloud providers returns error", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		cloud_provider {
+			aws {
+				arn = "arn:aws:rds:us-east-1:123456789012:db:mydb"
+			}
+			azure {
+				subscription_id = "sub-12345-abcde"
+				resource_group  = "my-resource-group"
+			}
+		}
+	`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.EqualError(t, err, "cloud_provider: at most one of aws, azure, or gcp must be specified")
+	})
+}
+
+func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
+	var exports Exports
+	opts := cmp.Options{
+		ID:         "test",
+		Logger:     kitlog.NewNopLogger(),
+		Registerer: nil,
+		OnStateChange: func(e cmp.Exports) {
+			exports = e.(Exports)
+		},
+		GetServiceData: func(name string) (any, error) {
+			return http_service.Data{
+				HTTPListenAddr:   "localhost:12345",
+				MemoryListenAddr: "",
+				BaseHTTPPath:     "/",
+				DialFunc:         nil,
+			}, nil
+		},
+	}
+
+	args := Arguments{
+		DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
+		ForwardTo:      []loki.LogsReceiver{},
+		Targets:        []discovery.Target{},
+	}
+
+	c, err := New(opts, args)
+	require.NoError(t, err)
+
+	require.NotNil(t, exports.LogsReceiver, "LogsReceiver should be exported immediately")
+	require.NotNil(t, c.logsReceiver, "component should have logsReceiver initialized")
+	assert.Equal(t, c.logsReceiver, exports.LogsReceiver)
+}
+
+func Test_connectAndStartCollectors(t *testing.T) {
+	t.Run("returns error when database connection fails", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test-component",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/unreachable?sslmode=disable&connect_timeout=1"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		// Verify that connectAndStartCollectors returns an error
+		err = c.connectAndStartCollectors(context.Background())
+		assert.Error(t, err, "should return error when connection fails")
+		assert.Contains(t, err.Error(), "failed to", "error should indicate connection failure")
+	})
+
+	t.Run("closes existing connection before reconnecting", func(t *testing.T) {
+		// This test verifies that connectAndStartCollectors properly closes
+		// an existing connection before attempting a new one
+		opts := cmp.Options{
+			ID:            "test-component",
+			Logger:        kitlog.NewNopLogger(),
+			Registerer:    nil,
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{
+					HTTPListenAddr:   "localhost:12345",
+					MemoryListenAddr: "",
+					BaseHTTPPath:     "/",
+					DialFunc:         nil,
+				}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		// The component should handle nil dbConnection gracefully
+		assert.Nil(t, c.dbConnection, "dbConnection should be nil initially after failed connection")
+
+		// Calling connectAndStartCollectors again should not panic
+		err = c.connectAndStartCollectors(context.Background())
+		assert.Error(t, err, "should return error for unreachable database")
+	})
+}
+
+type fakeClosableCollector struct {
+	prometheus.Collector
+	closeCalls int
+}
+
+func newFakeClosableCollector(name string) *fakeClosableCollector {
+	gauge := prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: name,
+		Help: name,
+	})
+	return &fakeClosableCollector{Collector: gauge}
+}
+
+func (c *fakeClosableCollector) CloseServers() {
+	c.closeCalls++
+}
+
+func TestComponent_cleanupExporterCollectors(t *testing.T) {
+	t.Run("closes closable exporters and unregisters them", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		collector := newFakeClosableCollector("test_cleanup_exporter_collectors_closable")
+		require.NoError(t, registry.Register(collector))
+
+		c := &Component{
+			registry:           registry,
+			exporterCollectors: []prometheus.Collector{collector},
+		}
+
+		c.cleanupExporterCollectors()
+
+		assert.Equal(t, 1, collector.closeCalls)
+		assert.Nil(t, c.exporterCollectors)
+		assert.False(t, registry.Unregister(collector))
+	})
+
+	t.Run("unregisters non-closable collectors without panicking", func(t *testing.T) {
+		registry := prometheus.NewRegistry()
+		collector := prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "test_cleanup_exporter_collectors_plain",
+			Help: "test",
+		})
+		collector.Set(1)
+		require.NoError(t, registry.Register(collector))
+
+		c := &Component{
+			registry:           registry,
+			exporterCollectors: []prometheus.Collector{collector},
+		}
+
+		c.cleanupExporterCollectors()
+
+		assert.Nil(t, c.exporterCollectors)
+		assert.False(t, registry.Unregister(collector))
+	})
+}
+
+func TestPostgres_Reconnection(t *testing.T) {
+	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
+		opts := cmp.Options{
+			ID:            "test",
+			Logger:        kitlog.NewNopLogger(),
+			OnStateChange: func(e cmp.Exports) {},
+			GetServiceData: func(name string) (any, error) {
+				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
+			},
+		}
+
+		args := Arguments{
+			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
+			ForwardTo:      []loki.LogsReceiver{},
+			Targets:        []discovery.Target{},
+		}
+
+		c, err := New(opts, args)
+		require.NoError(t, err)
+
+		c.healthErr.Store("initial error")
+
+		err = c.tryReconnect(context.Background())
+		assert.Error(t, err)
+		assert.NotEmpty(t, c.healthErr.Load())
+	})
+
+	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
+		// First mock: will fail
+		db1, mock1, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer db1.Close()
+
+		mock1.ExpectPing().WillReturnError(assert.AnError)
+
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db1, nil })
+
+		// First attempt: connection fails
+		err = c.tryReconnect(context.Background())
+		assert.Error(t, err)
+		assert.NotEmpty(t, c.healthErr.Load())
+
+		// Second mock: will succeed
+		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
+		require.NoError(t, err)
+		defer db2.Close()
+		mock2.ExpectPing()
+		mock2.ExpectQuery(`SELECT.*system_identifier.*inet_server_addr.*inet_server_port.*version`).
+			WillReturnRows(sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+				AddRow("1234567890", "127.0.0.1", "5432", "14.0"))
+		c.openSQL = func(_ string, _ string) (*sql.DB, error) { return db2, nil }
+
+		// Second attempt: connection succeeds and clears error
+		err = c.tryReconnect(context.Background())
+		assert.NoError(t, err)
+		assert.Empty(t, c.healthErr.Load())
+	})
+
+	t.Run("Run exits on context cancellation", func(t *testing.T) {
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return nil, assert.AnError })
+		oldCollector := newFakeClosableCollector("test_run_cleanup_old_exporter")
+		require.NoError(t, c.registry.Register(oldCollector))
+		c.exporterCollectors = []prometheus.Collector{oldCollector}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		err := c.Run(ctx)
+		assert.NoError(t, err)
+
+		assert.Equal(t, 1, oldCollector.closeCalls)
+		assert.Nil(t, c.exporterCollectors)
+		assert.False(t, c.registry.Unregister(oldCollector))
+	})
+}
+
+func Test_PrometheusExporterBlock(t *testing.T) {
+	t.Run("absent when not specified", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		assert.Nil(t, args.PrometheusExporter)
+	})
+
+	t.Run("present with defaults when empty block", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_postgres.Arguments(*args.PrometheusExporter)
+		assert.False(t, exporterArgs.DisableDefaultMetrics)
+		assert.False(t, exporterArgs.DisableSettingsMetrics)
+	})
+
+	t.Run("present with explicit config", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			prometheus_exporter {
+				disable_settings_metrics = true
+			}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.NoError(t, err)
+		require.NotNil(t, args.PrometheusExporter)
+		exporterArgs := exporter_postgres.Arguments(*args.PrometheusExporter)
+		assert.True(t, exporterArgs.DisableSettingsMetrics)
+	})
+
+	t.Run("error when both prometheus_exporter and targets are set", func(t *testing.T) {
+		cfg := `
+			data_source_name = "postgresql://user:pass@localhost:5432/db"
+			forward_to = []
+			targets = [{"__address__" = "localhost:9187"}]
+			prometheus_exporter {}
+		`
+		var args Arguments
+		err := syntax.Unmarshal([]byte(cfg), &args)
+		require.ErrorContains(t, err, "prometheus_exporter and targets are mutually exclusive")
 	})
 }

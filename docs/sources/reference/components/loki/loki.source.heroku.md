@@ -55,19 +55,20 @@ The `relabel_rules` field can make use of the `rules` export value from a `loki.
 
 You can use the following blocks with `loki.source.heroku`:
 
+{{< docs/alloy-config >}}
+
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
 | [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
-| `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
+| `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `http` > `tls` refers to a `tls` block defined inside an `http` block.
 
 [http]: #http
 [grpc]: #grpc
 [tls]: #tls
+
+{{< /docs/alloy-config >}}
 
 ### `grpc`
 
@@ -116,6 +117,11 @@ configuration.
 
 ## Debug metrics
 
+* `loki_source_heroku_drain_target_inflight_requests` (gauge): Current number of inflight requests.
+* `loki_source_heroku_drain_target_request_duration_seconds` (histogram): HTTP request handling time, in seconds.
+* `loki_source_heroku_drain_target_request_message_bytes` (histogram): Request message size, in bytes.
+* `loki_source_heroku_drain_target_response_message_bytes` (histogram): Response message size, in bytes.
+* `loki_source_heroku_drain_target_tcp_connections` (gauge): Current number of accepted TCP connections.
 * `loki_source_heroku_drain_entries_total` (counter): Number of successful entries received by the Heroku target.
 * `loki_source_heroku_drain_parsing_errors_total` (counter): Number of parsing errors while receiving Heroku messages.
 

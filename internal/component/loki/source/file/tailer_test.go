@@ -1,7 +1,6 @@
 package file
 
 import (
-	"bytes"
 	"context"
 	"os"
 	"path/filepath"
@@ -20,79 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
-
-func createTempFileWithContent(t *testing.T, content []byte) string {
-	t.Helper()
-	tmpfile, err := os.CreateTemp(t.TempDir(), "testfile")
-	if err != nil {
-		t.Fatalf("Failed to create temp file: %v", err)
-	}
-
-	_, err = tmpfile.Write(content)
-	if err != nil {
-		tmpfile.Close()
-		t.Fatalf("Failed to write to temp file: %v", err)
-	}
-
-	tmpfile.Close()
-	return tmpfile.Name()
-}
-
-func TestGetLastLinePosition(t *testing.T) {
-	tests := []struct {
-		name     string
-		content  []byte
-		expected int64
-	}{
-		{
-			name:     "File ending with newline",
-			content:  []byte("Hello, World!\n"),
-			expected: 14, // Position after last '\n'
-		},
-		{
-			name:     "Newline in the middle",
-			content:  []byte("Hello\nWorld"),
-			expected: 6, // Position after the '\n' in "Hello\n"
-		},
-		{
-			name:     "File not ending with newline",
-			content:  []byte("Hello, World!"),
-			expected: 0,
-		},
-		{
-			name:     "File bigger than chunkSize without newline",
-			content:  bytes.Repeat([]byte("A"), 1025),
-			expected: 0,
-		},
-		{
-			name:     "File bigger than chunkSize with newline in between",
-			content:  append([]byte("Hello\n"), bytes.Repeat([]byte("A"), 1025)...),
-			expected: 6, // Position after the "Hello\n"
-		},
-		{
-			name:     "Empty file",
-			content:  []byte(""),
-			expected: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			filename := createTempFileWithContent(t, tt.content)
-			defer os.Remove(filename)
-
-			got, err := getLastLinePosition(filename)
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				return
-			}
-
-			if got != tt.expected {
-				t.Errorf("for content %q, expected position %d but got %d", tt.content, tt.expected, got)
-			}
-		})
-	}
-}
 
 func TestTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
@@ -309,6 +235,80 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 	}
 }
 
+func TestTailerCancelWhileSendBlocked(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
+	l := logging.NewNop()
+	recv := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+
+	file, err := os.CreateTemp(tempDir, "example")
+	require.NoError(t, err)
+	_, err = file.Write([]byte("1\n"))
+	require.NoError(t, err)
+	_, err = file.Write([]byte("2\n"))
+	require.NoError(t, err)
+	file.Close()
+
+	positionsFile, err := positions.New(l, positions.Config{
+		SyncPeriod:        50 * time.Millisecond,
+		PositionsFile:     filepath.Join(tempDir, "positions.yaml"),
+		IgnoreInvalidYaml: false,
+		ReadOnly:          false,
+	})
+	require.NoError(t, err)
+	defer positionsFile.Stop()
+
+	var (
+		path   = file.Name()
+		labels = model.LabelSet{
+			"filename": model.LabelValue(file.Name()),
+			"foo":      "bar",
+		}
+	)
+
+	tailer := newTailer(
+		newMetrics(nil),
+		l,
+		recv,
+		positionsFile,
+		func() bool { return true },
+		sourceOptions{
+			path:   path,
+			labels: labels,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+		},
+	)
+
+	ctx, cancel := context.WithCancel(t.Context())
+
+	done := make(chan struct{})
+	go func() {
+		tailer.Run(ctx)
+		close(done)
+	}()
+
+	// Read first line.
+	entry := <-recv.Chan()
+	require.Equal(t, "1", entry.Line)
+
+	// Stop tailer without reading from recv.
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("tailer deadlocked while send was blocked")
+	}
+	pos, err := positionsFile.Get(path, labels.String())
+	require.NoError(t, err)
+	require.Equal(t, int64(2), pos)
+}
+
 func TestTailerCorruptedPositions(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 	l := util.TestLogger(t)
@@ -435,7 +435,8 @@ func TestTailer_Compressions(t *testing.T) {
 		logger,
 		handler.Receiver(),
 		positionsFile,
-		func() bool { return true },
+		// We return false here to verify that position is kept and we don't re-ingest the file.
+		func() bool { return false },
 		sourceOptions{
 			path:                 filename,
 			labels:               labels,

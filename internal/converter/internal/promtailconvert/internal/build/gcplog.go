@@ -21,13 +21,13 @@ func (s *ScrapeConfigBuilder) AppendGCPLog() {
 	cfg := s.cfg.GcplogConfig
 	switch cfg.SubscriptionType {
 	case "", "pull":
-		pullConfig = &gcptypes.PullConfig{
-			ProjectID:            cfg.ProjectID,
-			Subscription:         cfg.Subscription,
-			Labels:               convertPromLabels(cfg.Labels),
-			UseIncomingTimestamp: cfg.UseIncomingTimestamp,
-			UseFullLine:          cfg.UseFullLine,
-		}
+		pullConfig = &gcptypes.PullConfig{}
+		pullConfig.SetToDefault()
+		pullConfig.ProjectID = cfg.ProjectID
+		pullConfig.Subscription = cfg.Subscription
+		pullConfig.Labels = convertPromLabels(cfg.Labels)
+		pullConfig.UseIncomingTimestamp = cfg.UseIncomingTimestamp
+		pullConfig.UseFullLine = cfg.UseFullLine
 	case "push":
 		s.diags.AddAll(common.ValidateWeaveWorksServerCfg(cfg.Server))
 		alloyServer := common.WeaveworksServerToAlloyServer(cfg.Server)

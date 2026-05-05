@@ -15,6 +15,12 @@ title: prometheus.write.queue
 `prometheus.write.queue` collects metrics sent from other components into a Write-Ahead Log (WAL) and forwards them over the network to a series of user-supplied endpoints.
 Metrics are sent over the network using the [Prometheus Remote Write protocol][remote_write-spec].
 
+{{< admonition type="note" >}}
+Starting with {{< param "PRODUCT_NAME" >}} v1.14, `prometheus.write.queue` is deprecated.
+It will be removed in a future release.
+Use `prometheus.remote_write` instead.
+{{< /admonition >}}
+
 You can specify multiple `prometheus.write.queue` components by giving them different labels.
 
 [remote_write-spec]: https://prometheus.io/docs/specs/remote_write_spec/
@@ -45,6 +51,8 @@ You can use the following argument with `prometheus.write.queue`:
 
 You can use the following blocks with `prometheus.write.queue`:
 
+{{< docs/alloy-config >}}
+
 | Block                                     | Description                                                | Required |
 | ----------------------------------------- | ---------------------------------------------------------- | -------- |
 | [`endpoint`][endpoint]                    | Location to send metrics to.                               | no       |
@@ -53,14 +61,13 @@ You can use the following blocks with `prometheus.write.queue`:
 | `endpoint` > [`parallelism`][parallelism] | Configure parallelism for the endpoint.                    | no       |
 | [`persistence`][persistence]              | Configuration for persistence                              | no       |
 
-The > symbol indicates deeper levels of nesting.
-For example, `endpoint` > `basic_auth` refers to a `basic_auth` block defined inside an `endpoint` block.
-
 [endpoint]: #endpoint
 [basic_auth]: #basic_auth
 [persistence]: #persistence
 [tls_config]: #tls_config
 [parallelism]: #parallelism
+
+{{< /docs/alloy-config >}}
 
 ### `endpoint`
 

@@ -8,8 +8,7 @@ import (
 
 	"github.com/go-kit/log"
 	yace "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg"
-	yaceClientsV1 "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/v1"
-	yaceClientsV2 "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients/v2"
+	yaceClients "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients"
 	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -34,23 +33,20 @@ type asyncExporter struct {
 // NewDecoupledCloudwatchExporter creates a new YACE wrapper, that implements Integration. The decouple feature spawns a
 // background go-routine to perform YACE metric collection allowing for a decoupled collection of AWS metrics from the
 // ServerHandler.
-func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, labelsSnakeCase, debug, useAWSSDKVersionV2 bool) (*asyncExporter, error) {
+func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, labelsSnakeCase, debug bool) (*asyncExporter, error) {
 	var factory cachingFactory
 	var err error
 
-	if useAWSSDKVersionV2 {
-		factory, err = yaceClientsV2.NewFactory(slog.New(logging.NewSlogGoKitHandler(logger)), conf, fipsEnabled)
-	} else {
-		factory = yaceClientsV1.NewFactory(slog.New(logging.NewSlogGoKitHandler(logger)), conf, fipsEnabled)
-	}
+	l := slog.New(newSlogHandler(logging.NewSlogGoKitHandler(logger), debug))
 
+	factory, err = yaceClients.NewFactory(l, conf, fipsEnabled)
 	if err != nil {
 		return nil, err
 	}
 
 	return &asyncExporter{
 		name:                 name,
-		logger:               slog.New(logging.NewSlogGoKitHandler(logger)),
+		logger:               l,
 		cachingClientFactory: factory,
 		scrapeConf:           conf,
 		registry:             atomic.Pointer[prometheus.Registry]{},

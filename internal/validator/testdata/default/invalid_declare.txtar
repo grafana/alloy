@@ -15,7 +15,7 @@ declare "module" {
 	}
 
 	export "invalid_expr" {
-		value = ""			
+		value = ""
 		test = ""
 	}
 	

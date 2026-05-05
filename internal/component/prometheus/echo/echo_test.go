@@ -75,7 +75,7 @@ func TestAppender_BasicMetrics(t *testing.T) {
 
 	ref, err := appender.Append(0, lbls, time.Now().Unix(), 42.0)
 	require.NoError(t, err)
-	require.NotEqual(t, storage.SeriesRef(0), ref)
+	require.Equal(t, storage.SeriesRef(0), ref)
 
 	err = appender.Commit()
 	require.NoError(t, err)

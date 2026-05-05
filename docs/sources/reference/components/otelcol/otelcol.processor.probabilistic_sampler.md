@@ -103,11 +103,15 @@ The `probabilistic_sampler` supports sampling logs according to their trace ID, 
 
 You can use the following block with `otelcol.processor.probabilistic_sampler`:
 
+{{< docs/alloy-config >}}
+
 | Block                            | Description                                                                | Required |
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
 
 [debug_metrics]: #debug_metrics
+
+{{< /docs/alloy-config >}}
 
 ### `debug_metrics`
 
@@ -144,7 +148,7 @@ otelcol.processor.probabilistic_sampler "default" {
   sampling_percentage = 15.3
 
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -156,7 +160,7 @@ otelcol.processor.probabilistic_sampler "default" {
   sampling_percentage = 15
 
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -170,7 +174,7 @@ otelcol.processor.probabilistic_sampler "default" {
   from_attribute      = "logID"
 
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```
@@ -183,7 +187,7 @@ otelcol.processor.probabilistic_sampler "default" {
   sampling_priority   = "priority"
 
   output {
-    logs = [otelcol.exporter.otlp.default.input]
+    logs = [otelcol.exporter.otlphttp.default.input]
   }
 }
 ```

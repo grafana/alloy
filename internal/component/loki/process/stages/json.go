@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
@@ -13,32 +14,33 @@ import (
 
 // Config Errors
 const (
-	ErrExpressionsRequired  = "JMES expression is required"
-	ErrCouldNotCompileJMES  = "could not compile JMES expression"
-	ErrEmptyJSONStageConfig = "empty json stage configuration"
-	ErrEmptyJSONStageSource = "empty source"
-	ErrMalformedJSON        = "malformed json"
+	ErrExpressionsOrRegexRequired = "JMES expressions or regex is required"
+	ErrCouldNotCompileJMES        = "could not compile JMES expression"
+	ErrEmptyJSONStageConfig       = "empty json stage configuration"
+	ErrEmptyJSONStageSource       = "empty source"
+	ErrMalformedJSON              = "malformed json"
 )
 
 // JSONConfig represents a JSON Stage configuration
 type JSONConfig struct {
-	Expressions   map[string]string `alloy:"expressions,attr"`
+	Expressions   map[string]string `alloy:"expressions,attr,optional"`
+	Regex         string            `alloy:"regex,attr,optional"`
 	Source        *string           `alloy:"source,attr,optional"`
 	DropMalformed bool              `alloy:"drop_malformed,attr,optional"`
 }
 
 // validateJSONConfig validates a json config and returns a map of necessary jmespath expressions.
-func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, error) {
+func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, *regexp.Regexp, error) {
 	if c == nil {
-		return nil, errors.New(ErrEmptyJSONStageConfig)
+		return nil, nil, errors.New(ErrEmptyJSONStageConfig)
 	}
 
-	if len(c.Expressions) == 0 {
-		return nil, errors.New(ErrExpressionsRequired)
+	if len(c.Expressions) == 0 && len(c.Regex) == 0 {
+		return nil, nil, errors.New(ErrExpressionsOrRegexRequired)
 	}
 
 	if c.Source != nil && *c.Source == "" {
-		return nil, errors.New(ErrEmptyJSONStageSource)
+		return nil, nil, errors.New(ErrEmptyJSONStageSource)
 	}
 
 	expressions := map[string]jmespath.JMESPath{}
@@ -52,28 +54,36 @@ func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, error) {
 		}
 		expressions[n], err = jmespath.Compile(jmes)
 		if err != nil {
-			return nil, fmt.Errorf("%s: %w", ErrCouldNotCompileJMES, err)
+			return nil, nil, fmt.Errorf("%s: %w", ErrCouldNotCompileJMES, err)
 		}
 	}
-	return expressions, nil
+
+	re, err := regexp.Compile(c.Regex)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return expressions, re, nil
 }
 
 // jsonStage sets extracted data using JMESPath expressions
 type jsonStage struct {
 	cfg         *JSONConfig
 	expressions map[string]jmespath.JMESPath
+	regex       regexp.Regexp
 	logger      log.Logger
 }
 
 // newJSONStage creates a new json pipeline stage from a config.
 func newJSONStage(logger log.Logger, cfg JSONConfig) (Stage, error) {
-	expressions, err := validateJSONConfig(&cfg)
+	expressions, regex, err := validateJSONConfig(&cfg)
 	if err != nil {
 		return nil, err
 	}
 	return &jsonStage{
 		cfg:         &cfg,
 		expressions: expressions,
+		regex:       *regex,
 		logger:      log.With(logger, "component", "stage", "type", "json"),
 	}, nil
 }
@@ -133,35 +143,27 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 		return errors.New(ErrMalformedJSON)
 	}
 
-	for n, e := range j.expressions {
-		r, err := e.Search(data)
+	for name, expr := range j.expressions {
+		rawResult, err := expr.Search(data)
 		if err != nil {
 			if Debug {
 				level.Debug(j.logger).Log("msg", "failed to search JMES expression", "err", err)
 			}
 			continue
 		}
-
-		switch r.(type) {
-		case float64:
-			// All numbers in JSON are unmarshaled to float64.
-			extracted[n] = r
-		case string:
-			extracted[n] = r
-		case bool:
-			extracted[n] = r
-		case nil:
-			extracted[n] = nil
-		default:
-			// If the value wasn't a string or a number, marshal it back to json
-			jm, err := json.Marshal(r)
-			if err != nil {
-				if Debug {
-					level.Debug(j.logger).Log("msg", "failed to marshal complex type back to string", "err", err)
+		value, ok := j.simplifyType(rawResult)
+		if ok {
+			extracted[name] = value
+		}
+	}
+	if j.regex.String() != "" {
+		for key, rawValue := range data {
+			if j.regex.MatchString(key) {
+				value, ok := j.simplifyType(rawValue)
+				if ok {
+					extracted[key] = value
 				}
-				continue
 			}
-			extracted[n] = string(jm)
 		}
 	}
 	if Debug {
@@ -170,9 +172,29 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	return nil
 }
 
-// Name implements Stage
-func (j *jsonStage) Name() string {
-	return StageTypeJSON
+// simplifyType returns the value if it's a simple type (string, number, bool),
+// otherwise, it returns it as a JSON string. If unsuccessful, the second return value is false.
+func (j *jsonStage) simplifyType(value any) (any, bool) {
+	switch value.(type) {
+	case float64:
+		return value, true
+	case string:
+		return value, true
+	case bool:
+		return value, true
+	case nil:
+		return nil, true
+	default:
+		// If the value wasn't a string or a number, marshal it back to json
+		jm, err := json.Marshal(value)
+		if err != nil {
+			if Debug {
+				level.Debug(j.logger).Log("msg", "failed to marshal complex type back to string", "err", err)
+				return nil, false
+			}
+		}
+		return string(jm), true
+	}
 }
 
 // Cleanup implements Stage.

@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
-func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string) (*builder.Block, loki.LogsReceiver) {
+func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string, maxStreams int) (*builder.Block, loki.LogsReceiver) {
 	label := "default"
 	if labelPrefix != "" {
 		label = labelPrefix
@@ -22,14 +22,14 @@ func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, lab
 
 	lokiWriteLabel := common.LabelWithIndex(index, label)
 
-	lokiWriteArgs := toLokiWriteArguments(client, diags)
+	lokiWriteArgs := toLokiWriteArguments(client, diags, maxStreams)
 	block := common.NewBlockWithOverride([]string{"loki", "write"}, lokiWriteLabel, lokiWriteArgs)
 	return block, common.ConvertLogsReceiver{
 		Expr: fmt.Sprintf("loki.write.%s.receiver", lokiWriteLabel),
 	}
 }
 
-func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics) *lokiwrite.Arguments {
+func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics, maxStreams int) *lokiwrite.Arguments {
 	batchSize, err := units.ParseBase2Bytes(fmt.Sprintf("%dB", config.BatchSize))
 	if err != nil {
 		diags.Add(
@@ -57,6 +57,7 @@ func toLokiWriteArguments(config *client.Config, diags *diag.Diagnostics) *lokiw
 			},
 		},
 		ExternalLabels: convertFlagLabels(config.ExternalLabels),
+		MaxStreams:     maxStreams,
 	}
 }
 

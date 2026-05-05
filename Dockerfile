@@ -1,10 +1,10 @@
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.23@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
 
 # NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.26 AS ui-build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60 AS ui-build
 ARG BUILDPLATFORM
 COPY ./internal/web/ui /ui
 WORKDIR /ui
@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/ui/node_modules,sharing=locked \
     npm install                                               \
     && npm run build
 
-FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.26 AS build
+FROM --platform=$BUILDPLATFORM grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60 AS build
 
 ARG BUILDPLATFORM
 ARG TARGETPLATFORM
@@ -32,13 +32,14 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     --mount=type=cache,target=/go/pkg/mod \
     GOOS="$TARGETOS" GOARCH="$TARGETARCH" GOARM=${TARGETVARIANT#v} \
     RELEASE_BUILD=${RELEASE_BUILD} VERSION=${VERSION} \
-    GO_TAGS="netgo builtinassets promtail_journal_enabled" \
+    GO_TAGS="netgo embedalloyui promtail_journal_enabled" \
     GOEXPERIMENT=${GOEXPERIMENT} \
+    SKIP_UI_BUILD=1 \
     make alloy
 
 ###
 
-FROM public.ecr.aws/ubuntu/ubuntu:noble
+FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:748740465d0aadaa69ab6e6c295892f17d7a8f44a85090dbb571ec0bb8c5674f
 
 # Username and uid for alloy user
 ARG UID="473"
@@ -60,6 +61,11 @@ RUN apt-get update \
 
 COPY --from=build --chown=${UID}:${UID} /src/alloy/build/alloy /bin/alloy
 COPY --chown=${UID}:${UID} example-config.alloy /etc/alloy/config.alloy
+
+# Provide /bin/otelcol compatibility entrypoint. Useful when using Alloy's OTel Engine with
+# OpenTelemetry Collector helm chart and other ecosystem tools that expect otelcol binary.
+COPY packaging/docker/otelcol.sh /bin/otelcol
+RUN chmod 755 /bin/otelcol
 
 # Create alloy user in container, but do not set it as default
 #

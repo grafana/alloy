@@ -65,6 +65,8 @@ The following formats are supported:
 
 You can use the following blocks with `beyla.ebpf`:
 
+{{< docs/alloy-config >}}
+
 | Block                                                                  | Description                                                                                        | Required |
 |------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------|----------|
 | [`output`][output]                                                     | Configures where to send received telemetry data.                                                  | yes      |
@@ -77,12 +79,16 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `instrument` > [`kubernetes`][kubernetes services]       | Configures the Kubernetes services to discover and instrument for the component.                   | no       |
 | `discovery` > `instrument` > [`sampler`][sampler]                      | Configures trace sampling for the service.                                                         | no       |
 | `discovery` > [`exclude_instrument`][services]                         | Configures the services to exclude from instrumentation for the component.                         | no       |
-| `discovery` > `exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude from instrumentation for the component.             | no       |
+| `discovery` > `exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude from instrumentation for the component.            | no       |
 | `discovery` > [`default_exclude_instrument`][services]                 | Configures the default services to exclude from instrumentation for the component.                 | no       |
 | `discovery` > `default_exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the default Kubernetes services to exclude from instrumentation for the component.     | no       |
 | `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
 | `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
+| `ebpf` > [`payload_extraction`][payload extraction]                    | Configures HTTP payload extraction for protocol-aware parsing.                                     | no       |
+| `ebpf` > `payload_extraction` > `http` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > [`anthropic`][anthropic payload extraction] | Configures Anthropic payload extraction.                                             | no       |
+| `ebpf` > [`maps_config`][maps config]                                  | Configures eBPF map sizing.                                                                        | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
@@ -91,9 +97,13 @@ You can use the following blocks with `beyla.ebpf`:
 | [`traces`][traces]                                                     | Configures trace collection and sampling options for all services instrumented by the component.   | no       |
 | `traces` > [`sampler`][sampler]                                        | Configures global trace sampling settings                                                          | no       |
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
-
-The > symbol indicates deeper levels of nesting.
-For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined inside an `attributes` block.
+| [`injector`][injector]                                                 | Configures the SDK injection feature for automatic instrumentation without eBPF.                   | no       |
+| `injector` > [`instrument`][services]                                  | Configures the services to instrument with SDK injection.                                          | no       |
+| `injector` > [`webhook`][injector webhook]                             | Configures the webhook for SDK injection.                                                          | no       |
+| `injector` > [`export`][injector export]                               | Configures which telemetry signals the injected SDK exports.                                       | no       |
+| `injector` > [`resources`][injector resources]                         | Configures resource attributes for the injected SDK.                                               | no       |
+| `injector` > [`sampler`][sampler]                                      | Configures default trace sampling for injected SDKs.                                               | no       |
+| [`stats`][stats]                                                       | Configures stats observability options for Beyla.                                                  | no       |
 
 [routes]: #routes
 [traces]: #traces
@@ -106,12 +116,23 @@ For example, `attributes` > `kubernetes` refers to a `kubernetes` block defined 
 [instance_id]: #instance_id
 [select]: #select
 [ebpf]: #ebpf
+[payload extraction]: #payload_extraction
+[openai payload extraction]: #openai
+[maps config]: #maps_config
+[anthropic payload extraction]: #anthropic
 [filters]: #filters
 [application filters]: #application
 [metrics]: #metrics
 [network metrics]: #network-metrics
 [network filters]: #network-filters
 [output]: #output
+[injector]: #injector
+[injector webhook]: #webhook
+[injector export]: #export
+[injector resources]: #resources
+[stats]: #stats
+
+{{< /docs/alloy-config >}}
 
 ### `output`
 
@@ -141,13 +162,14 @@ This `kubernetes` block configures the decorating of the metrics and traces with
 
 | Name                       | Type           | Description                                            | Default | Required |
 |----------------------------|----------------|--------------------------------------------------------|---------|----------|
-| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`    | no       |
-| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`    | no       |
-| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `autodetect` | no       |
-| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"` | no       |
-| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"` | no       |
-| `meta_cache_address`       | `string`       | Address of the Kubernetes metadata cache service.      | `""`    | no       |
-| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
+| `cluster_name`                | `string`       | The name of the Kubernetes cluster.                                              | `""`    | no       |
+| `disable_informers`           | `list(string)` | List of Kubernetes informers to disable.                                         | `[]`    | no       |
+| `enable`                      | `string`       | Enable the Kubernetes metadata decoration.                                       | `autodetect` | no  |
+| `informers_resync_period`     | `duration`     | Period for Kubernetes informers resynchronization.                               | `"30m"` | no       |
+| `informers_sync_timeout`      | `duration`     | Timeout for Kubernetes informers synchronization.                                | `"30s"` | no       |
+| `meta_cache_address`          | `string`       | Address of the Kubernetes metadata cache service.                                | `""`    | no       |
+| `meta_restrict_local_node`    | `bool`         | Restrict Kubernetes metadata collection to local node.                           | `false` | no       |
+| `reconnect_initial_interval`  | `duration`     | Initial interval for reconnecting to the Kubernetes API after a connection loss. | `"0s"`  | no       |
 
 If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kubernetes API.
 
@@ -252,16 +274,19 @@ The `instrument` block configures the services to discover and instrument using 
 | `namespace`       | `string`       | The namespace of the service to match.                                          | `""`    | no       |
 | `open_ports`      | `string`       | The port of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
 | `exe_path`        | `string`       | The path of the running service for Beyla automatically instrumented with eBPF. | `""`    | no       |
+| `cmd_args`        | `string`       | Glob pattern to match the process command-line arguments.                        | `""`    | no       |
 | `containers_only` | `bool`         | Restrict the discovery to processes which are running inside a container.       | `false` | no       |
 | `exports`         | `list(string)` | Export modes for the service. Valid values: `"metrics"`, `"traces"`.            | `[]`    | no       |
 
 `exe_path` accepts a glob pattern to be matched against the full executable command line, including the directory where the executable resides on the file system.
 Common glob patterns include `*` (matches any sequence of characters) and `?` (matches any single character).
 
+`cmd_args` accepts a glob pattern to be matched against the process command-line arguments, excluding the executable name.
+
 `name` defines a name for the matching instrumented service.
 It's used to populate the `service.name` OTel property or the `service_name` Prometheus property in the exported metrics/traces.
 
-`open_port` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
+`open_ports` accepts a comma-separated list of ports (for example, `80,443`), and port ranges (for example, `8000-8999`).
 If the executable matches only one of the ports in the list, it's considered to match the selection criteria.
 
 `exports` specifies what types of telemetry data to export for the matching service.
@@ -350,10 +375,12 @@ Without an output configuration, traces are collected but not exported.
 The supported values for `instrumentations` are:
 
 * `*`: Enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `genai`: Enables the collection of GenAI (LLM) traces.
 * `grpc`: Enables the collection of gRPC traces.
 * `gpu`: Enables the collection of GPU performance traces.
 * `http`: Enables the collection of HTTP/HTTPS/HTTP2 traces.
 * `kafka`: Enables the collection of Kafka client/server traces.
+* `memcached`: Enables the collection of Memcached client/server traces.
 * `mongo`: Enables the collection of MongoDB database traces.
 * `redis`: Enables the collection of Redis client/server database traces.
 * `sql`: Enables the collection of SQL database client call traces.
@@ -375,13 +402,13 @@ beyla.ebpf "default" {
 }
 ```
 
-For per-service sampling configuration, use the `sampler` block within the `discovery` > `services` section instead.
+For per-service sampling configuration, use the `sampler` block within the `discovery` > `instrument` section instead.
 
 ### `sampler`
 
 The `sampler` block configures trace sampling settings. This block can be used in two contexts:
 
-1. **Per-service sampling** - as a sub-block of `discovery` > `services` to configure sampling for individual discovered services
+1. **Per-service sampling** - as a sub-block of `discovery` > `instrument` to configure sampling for individual discovered services
 1. **Global sampling** - as a sub-block of `traces` to configure sampling for all traces collected by the component
 
 The following arguments are supported: 
@@ -454,22 +481,55 @@ The `ebpf` block configures eBPF-specific settings.
 `context_propagation` allows Beyla to propagate any incoming context to downstream services. 
 This context propagation support works for any programming language.
 
-For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP/IP packet level, 
+For TLS encrypted HTTP requests (HTTPS), the Traceparent header value is encoded at TCP packet level, 
 and requires that Beyla is present on both sides of the communication.
 
-The TCP/IP packet level encoding uses Linux Traffic Control (TC). 
+The TCP packet level encoding uses Linux Traffic Control (TC). 
 eBPF programs that also use TC need to chain correctly with Beyla. 
 For more information about chaining programs, refer to the [Cilium compatibility][cilium] documentation.
 
-You can disable the TCP/IP level encoding and TC programs by setting `context_propagation` to `"headers"`. 
+You can disable the TCP-level encoding and TC programs by setting `context_propagation` to `"headers"`. 
 This context propagation support is fully compatible with any OpenTelemetry distributed tracing library.
 
 `context_propagation` can be set to either one of the following values:
 
-* `all`: Enable both HTTP and IP options context propagation.
+* `all`: Enable both HTTP headers and TCP context propagation.
 * `headers`: Enable context propagation via the HTTP headers only.
-* `ip`: Enable context propagation via the IP options field only.
+* `tcp`: Enable context propagation via TCP only.
 * `disabled`: Disable trace context propagation.
+
+The deprecated value `ip` is still accepted by upstream Beyla for compatibility, but it has no effect.
+
+#### `payload_extraction`
+
+The `payload_extraction` block configures protocol-aware HTTP payload parsing.
+
+##### `http`
+
+###### `openai`
+
+| Name      | Type   | Description                               | Default | Required |
+|-----------|--------|-------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable OpenAI payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported OpenAI HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `anthropic`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable Anthropic payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported Anthropic HTTP payloads and can enrich traces with GenAI-related attributes.
+
+#### `maps_config`
+
+The `maps_config` block configures eBPF map sizing.
+
+| Name                  | Type  | Description                                                                | Default | Required |
+|-----------------------|-------|----------------------------------------------------------------------------|---------|----------|
+| `global_scale_factor` | `int` | Scales all eBPF map sizes in powers of two. Range: -3 to 3; 0 = no change. | `0`     | no       |
+
 
 [cilium]: https://grafana.com/docs/beyla/latest/cilium-compatibility/
 
@@ -533,13 +593,19 @@ The `metrics` block configures which metrics Beyla collects.
 | Name                                  | Type           | Description                                                | Default           | Required |
 |---------------------------------------|----------------|------------------------------------------------------------|-------------------|----------|
 | `allow_service_graph_self_references` | `bool`         | Allow service graph metrics to reference the same service. | `false`           | no       |
-| `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
-| `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
+| `exemplar_filter`                     | `string`       | Controls when exemplars are attached to metrics.           | `"always_off"`    | no       |
 | `extra_resource_labels`               | `list(string)` | List of OTEL resource labels to include on `target_info`.  | `[]`              | no       |
 | `extra_span_resource_labels`          | `list(string)` | List of OTEL resource labels to include on span metrics.   | `["k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"]`           | no       |
+| `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
+| `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
+| `native_histograms`                   | `bool`         | Use Prometheus native histograms.                          | `false` | no |
+
+`exemplar_filter` controls when exemplars are attached to Prometheus metrics, mirroring the `OTEL_METRICS_EXEMPLAR_FILTER` specification.
+The accepted values are `always_on`, `always_off`, and `trace_based`.
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
+* `*` or `all` enables all features.
 * `application` exports application-level metrics.
 * `application_process` exports metrics about the processes that run the instrumented application.
 * `application_service_graph` exports application-level service graph metrics.
@@ -549,14 +615,17 @@ The `metrics` block configures which metrics Beyla collects.
 * `application_host` exports application-level host metrics for host-based pricing.
 * `network` exports network-level metrics.
 * `network_inter_zone` exports network-level inter-zone metrics.
+* `stats` exports kernel-level connection statistics per service.
 
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
 * `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `genai` enables the collection of GenAI (LLM) application metrics.
 * `grpc` enables the collection of gRPC application metrics.
 * `gpu` enables the collection of GPU performance metrics.
 * `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
 * `kafka` enables the collection of Kafka client/server message queue metrics.
+* `memcached` enables the collection of Memcached client/server metrics.
 * `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
@@ -677,6 +746,77 @@ The matcher tags can be in the `:name` or `{name}` format.
   {{< /admonition >}}
 * `unset` leaves the `http.route` property as unset.
 * `wildcard` sets the `http.route` field property to a generic asterisk-based `/**` value.
+
+### `injector`
+
+The `injector` block configures Beyla's SDK injection feature, which automatically instruments services by injecting OpenTelemetry SDKs without requiring eBPF.
+
+| Name                  | Type           | Description                                                                    | Default | Required |
+|-----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
+| `debug`               | `bool`         | Enable debug mode for the SDK injector.                                        | `false` | no       |
+| `disable_auto_restart`| `bool`         | Disable automatic restart of instrumented services after SDK injection.        | `false` | no       |
+| `enabled_sdks`        | `list(string)` | List of SDK languages to enable for injection (e.g. `["java", "dotnet"]`).     | `[]`    | no       |
+| `host_mount_path`     | `string`       | Path where the host filesystem is mounted inside the injector container.       | `""`    | no       |
+| `host_path_volume`    | `string`       | Path on the host where SDK packages are stored.                                | `""`    | no       |
+| `image_volume_path`   | `string`       | OCI image volume mount path for SDK injection. Requires Kubernetes 1.31+. Mutually exclusive with `host_mount_path` and `sdk_package_version`. | `""`    | no       |
+| `manage_sdk_versions` | `bool`         | Automatically manage and update SDK versions.                                  | `false` | no       |
+| `otel_endpoint`       | `string`       | OTLP endpoint URL used by injected SDKs to export telemetry.                   | `""`    | no       |
+| `propagators`         | `list(string)` | List of context propagation formats (e.g. `["tracecontext", "baggage"]`).      | `[]`    | no       |
+| `sdk_package_version` | `string`       | Version of the SDK package to inject.                                          | `""`    | no       |
+
+`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`, `ruby`, `php`.
+
+`otel_endpoint` configures the OTLP endpoint that injected SDKs use to export telemetry. When set, it overrides the global OTLP endpoint for SDK-injected services.
+
+It contains the following blocks:
+
+#### `webhook`
+
+The `webhook` block configures the Kubernetes admission webhook used to inject SDKs into Pods at creation time.
+
+| Name        | Type       | Description                                               | Default | Required |
+|-------------|------------|-----------------------------------------------------------|---------|----------|
+| `cert_path` | `string`   | Path to the TLS certificate file for the webhook server.  | `""`    | no       |
+| `enable`    | `bool`     | Enable the admission webhook server.                      | `false` | no       |
+| `key_path`  | `string`   | Path to the TLS private key file for the webhook server.  | `""`    | no       |
+| `port`      | `number`   | Port on which the webhook server listens.                 | `8443`  | no       |
+| `timeout`   | `duration` | Timeout for webhook requests.                             | `"10s"` | no       |
+
+#### `export`
+
+The `export` block configures which telemetry signals the injected SDK exports.
+
+| Name      | Type   | Description                            | Default | Required |
+|-----------|--------|----------------------------------------|---------|----------|
+| `logs`    | `bool` | Enable log export from injected SDKs.  | `false` | no       |
+| `metrics` | `bool` | Enable metric export from injected SDKs.| `false` | no       |
+| `traces`  | `bool` | Enable trace export from injected SDKs. | `true`  | no       |
+
+#### `resources`
+
+The `resources` block configures resource attributes attached to telemetry emitted by injected SDKs.
+
+| Name                | Type               | Description                                                                        | Default | Required |
+|---------------------|--------------------|------------------------------------------------------------------------------------|---------|----------|
+| `add_k8s_attributes`| `bool`             | Add Kubernetes UID attributes (e.g. `k8s.deployment.uid`) to the resource.         | `false` | no       |
+| `attributes`        | `map(string)`      | Map of additional resource attributes to add (e.g. `{environment = "production"}`). | `{}`    | no       |
+| `use_labels`        | `bool`             | Use common Kubernetes labels as resource attributes (e.g. `app.kubernetes.io/name` as `service.name`). | `false` | no       |
+
+### `stats`
+
+The `stats` block configures stats observability options for Beyla. You must append `stats` to the `features` list in the `metrics` block to enable stats collection.
+
+| Name             | Type           | Description                                                                       | Default      | Required |
+|------------------|----------------|-----------------------------------------------------------------------------------|--------------|----------|
+| `agent_ip`       | `string`       | Overrides the reported agent IP address in stats records.                         | `""`         | no       |
+| `agent_ip_iface` | `string`       | Network interface to obtain the agent IP from.                                    | `"external"` | no       |
+| `agent_ip_type`  | `string`       | Type of IP address to use.                                                        | `"any"`      | no       |
+| `cidrs`          | `list(string)` | List of CIDR ranges used to decorate `src.cidr` and `dst.cidr` attributes.        | `[]`         | no       |
+| `print_stats`    | `bool`         | Print stats records to stdout for debugging.                                      | `false`      | no       |
+
+You can set `agent_ip_iface` to `external` (default), `local`, or `name:<interface name>`, for example `name:eth0`.
+
+You can set `agent_ip_type` to `ipv4`, `ipv6`, or `any` (default).
 
 ## Exported fields
 
@@ -805,11 +945,11 @@ beyla.ebpf "default" {
 
 otelcol.processor.batch "default" {
   output {
-    traces  = [otelcol.exporter.otlp.default.input]
+    traces  = [otelcol.exporter.otlphttp.default.input]
   }
 }
 
-otelcol.exporter.otlp "default" {
+otelcol.exporter.otlphttp "default" {
   client {
     endpoint = sys.env("<OTLP_ENDPOINT>")
   }

@@ -161,8 +161,3 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 		level.Debug(r.logger).Log("msg", "extracted data debug in pattern stage", "extracted data", fmt.Sprintf("%v", extracted))
 	}
 }
-
-// Name implements Stage
-func (r *patternStage) Name() string {
-	return StageTypePattern
-}

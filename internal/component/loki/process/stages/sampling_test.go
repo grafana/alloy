@@ -21,7 +21,7 @@ stage.sampling {
 
 func TestSamplingPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testSamplingAlloy), &plName, registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testSamplingAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	entries := make([]Entry, 0)

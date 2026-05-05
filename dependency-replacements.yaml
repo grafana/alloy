@@ -37,12 +37,6 @@ modules:
     file_type: ocb
 
 replaces:
-  - comment: >
-      TODO: remove this replace directive once the upstream issue is fixed:
-      https://github.com/prometheus/prometheus/issues/13842
-    dependency: go.opentelemetry.io/collector/featuregate
-    replacement: github.com/grafana/opentelemetry-collector/featuregate v0.0.0-20240325174506-2fd1623b2ca0
-
   - comment: Replace yaml.v2 with fork
     dependency: gopkg.in/yaml.v2
     replacement: github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
@@ -75,17 +69,19 @@ replaces:
     dependency: github.com/thanos-io/objstore
     replacement: github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
-  - comment: TODO - remove forks when changes are merged upstream — non-singleton cadvisor
+  - comment: >
+      TODO - remove forks when changes are merged upstream — non-singleton cadvisor
+      Fork branch: https://github.com/grafana/cadvisor/tree/grafana-v0.54.1-noglobals
     dependency: github.com/google/cadvisor
-    replacement: github.com/grafana/cadvisor v0.0.0-20240729082359-1f04a91701e2
+    replacement: github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
 
-  - comment: TODO - track exporter-package-v0.18.1 branch of grafana fork; remove once merged upstream
+  - comment: TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
     dependency: github.com/prometheus-community/postgres_exporter
-    replacement: github.com/grafana/postgres_exporter v0.0.0-20250930111128-c8f6a9f4d363
+    replacement: github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
-  - comment: TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
+  - comment: TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
     dependency: github.com/prometheus/mysqld_exporter
-    replacement: github.com/grafana/mysqld_exporter v0.17.2-0.20250226152553-be612e3fdedd
+    replacement: github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16
 
   - comment: >
       TODO: replace node_exporter with custom fork for multi usage.
@@ -99,11 +95,11 @@ replaces:
 
   - comment: Replace OpenTelemetry OBI with Grafana fork
     dependency: go.opentelemetry.io/obi
-    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.4.11
+    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.18.2
 
   - comment: Replace OpenTelemetry eBPF profiler with Grafana fork
     dependency: go.opentelemetry.io/ebpf-profiler
-    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260123050037-c33a6e86a2f5
+    replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31a19190b9
 
   - comment: Update openshift/client-go to version compatible with structured-merge-diff v6
     dependency: github.com/openshift/client-go
@@ -128,3 +124,23 @@ replaces:
       This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
     dependency: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver
     replacement: github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
+
+  - comment: >
+      Fix sent_batch_duration_seconds measuring before the request was sent.
+      Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-c7bc56cf6c8f
+      Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
+    dependency: github.com/prometheus/prometheus
+    replacement: github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57
+
+  - comment: >
+      Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936).
+      Fork branch: https://github.com/DataDog/vault/tree/master.
+      Remove when https://github.com/hashicorp/vault/issues/29884 is resolved.
+    dependency: github.com/hashicorp/vault/api/auth/aws
+    replacement: github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
+
+  - comment: >
+      Work around DataDog split module ambiguity for pkg/util/system/socket by pinning util/system to the same rc stream used by current datadogexporter deps.
+      Remove when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/45955 (and follow-up releases) fully align DataDog modules.
+    dependency: github.com/DataDog/datadog-agent/pkg/util/system
+    replacement: github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
