@@ -76,9 +76,10 @@ func TestShardingConsumer_Consume(t *testing.T) {
 
 		batches := c.Batches()
 		require.Len(t, batches, 1)
-		require.Equal(t, 1, batch.StreamLen())
-		require.Equal(t, 2, batch.EntryLen())
-		batch.ConsumeStreams(func(stream Stream, _ int64) {
+		got := batches[0]
+		require.Equal(t, 1, got.StreamLen())
+		require.Equal(t, 2, got.EntryLen())
+		got.ConsumeStreams(func(stream Stream, _ int64) {
 			require.Equal(t, labels, stream.Labels)
 			require.Equal(t, "1", stream.Entries[0].Line)
 			require.Equal(t, "2", stream.Entries[1].Line)
