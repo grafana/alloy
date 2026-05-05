@@ -29,6 +29,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.142.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.142.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.142.0
@@ -656,6 +657,7 @@ require (
 	github.com/mdlayher/wifi v0.1.0 // indirect
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a // indirect
 	github.com/mholt/archives v0.1.2 // indirect
+	github.com/michel-laterman/proxy-connect-dialer-go v0.1.0 // indirect
 	github.com/microsoft/go-mssqldb v1.9.2 // indirect
 	github.com/miekg/dns v1.1.69 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
@@ -1076,6 +1078,8 @@ replace github.com/grafana/alloy => ../
 replace github.com/grafana/alloy/syntax => ../syntax
 
 replace github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
+
+replace github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension => ../extension/opampextension
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 
