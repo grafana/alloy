@@ -41,7 +41,7 @@ require (
 	github.com/docker/go-connections v0.7.0 // indirect
 	github.com/drone/envsubst/v2 v2.0.0-20210730161058-179042472c46
 	github.com/elastic/go-freelru v0.16.0
-	github.com/fatih/color v1.18.0
+	github.com/fatih/color v1.19.0
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/github/smimesign v0.2.0
@@ -721,7 +721,7 @@ require (
 	github.com/magiconair/properties v1.8.10 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mattn/go-xmlrpc v0.0.3 // indirect
 	github.com/mdlayher/ethtool v0.1.0 // indirect
@@ -987,11 +987,11 @@ require (
 require (
 	github.com/apache/arrow/go/v12 v12.0.1 // indirect
 	github.com/bitfield/gotestdox v0.2.2 // indirect
-	github.com/coreos/go-oidc/v3 v3.17.0 // indirect
-	github.com/databricks/databricks-sql-go v1.9.0 // indirect
+	github.com/coreos/go-oidc/v3 v3.18.0 // indirect
+	github.com/databricks/databricks-sql-go v1.11.0 // indirect
 	github.com/dnephin/pflag v1.0.7 // indirect
-	github.com/grafana/databricks-prometheus-exporter v0.0.0-20251219150331-5730cb38c831
-	github.com/rs/zerolog v1.34.0 // indirect
+	github.com/grafana/databricks-prometheus-exporter v0.0.0-20260428132210-9d662a9256ff
+	github.com/rs/zerolog v1.35.1 // indirect
 	gotest.tools/gotestsum v1.13.0 // indirect
 )
 
