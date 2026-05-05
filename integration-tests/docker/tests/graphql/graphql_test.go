@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const graphqlEndpoint = "http://localhost:12365/graphql"
+const graphqlEndpoint = "http://localhost:12344/graphql"
 
 func TestGraphQLAlloyInfo(t *testing.T) {
 	body := postGraphQL(t, `{"query": "{ alloy { version isReady } }"}`)
