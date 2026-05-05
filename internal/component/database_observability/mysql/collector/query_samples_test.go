@@ -3691,14 +3691,14 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 
 		rows := [][]driver.Value{
 			// (digest_A, schema_X): two rows, 0.1ms + 0.2ms = 0.3ms
-			{"schema_X", "1", "10", "11", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "100", "101", "wait/io/file/x", "obj", "typ", "100000000", "u", "h", "1000", "1", "1"},
-			{"schema_X", "1", "20", "21", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "200", "201", "wait/io/file/y", "obj", "typ", "200000000", "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "10", "11", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "100", "101", "wait/io/file/x", "obj", "typ", "100000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "20", "21", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "200", "201", "wait/io/file/y", "obj", "typ", "200000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 			// (digest_B, schema_X): 0.05ms
-			{"schema_X", "1", "30", "31", "digest_B", "sql2", "70000000", "20000000", "5", "5", "0", "0", "300", "301", "wait/lock/metadata", "obj", "typ", "50000000", "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "30", "31", "digest_B", "sql2", "70000000", "20000000", "5", "5", "0", "0", "300", "301", "wait/lock/metadata", "obj", "typ", "50000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 			// (digest_A, schema_Y): 0.075ms — same digest, different schema
-			{"schema_Y", "1", "40", "41", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "400", "401", "wait/synch/mutex", "obj", "typ", "75000000", "u", "h", "1000", "1", "1"},
+			{"schema_Y", "1", "40", "41", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "400", "401", "wait/synch/mutex", "obj", "typ", "75000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 			// digest_C: no wait event (nil wait fields) — must not increment any counter
-			{"schema_X", "1", "50", "51", "digest_C", "sql3", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "50", "51", "digest_C", "sql3", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 		}
 
 		mockRows := sqlmock.NewRows([]string{
@@ -3708,6 +3708,8 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 			"statements.ROWS_AFFECTED", "statements.ERRORS",
 			"waits.event_id", "waits.end_event_id", "waits.event_name",
 			"waits.object_name", "waits.object_type", "waits.timer_wait",
+			"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
+			"nested_waits.object_name", "nested_waits.object_type", "nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
 			"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
 		})
