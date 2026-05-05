@@ -309,7 +309,7 @@ func TestQuerySamples(t *testing.T) {
 					1,
 				))
 
-			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 				1e12, // initial timerBookmark
 				1e12,
 			).RowsWillBeClosed().
@@ -402,7 +402,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -515,7 +515,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -628,7 +628,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -840,7 +840,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1003,7 +1003,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			1e12,
 		).RowsWillBeClosed().
@@ -1115,7 +1115,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", "AND nested_waits.timer_wait >= 1000000000", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1227,7 +1227,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", "AND nested_waits.timer_wait >= 1000000000", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1320,6 +1320,8 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"1.000000ms\"", lokiEntries[1].Line)
 	})
 
+	// No wait_event_min_duration is set, so the nested atom passes through
+	// unfiltered and the Go-side override surfaces it instead of the molecule.
 	t.Run("wait/io/table/sql/handler with nested event uses nested event data", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
@@ -1339,7 +1341,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1450,7 +1452,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1542,6 +1544,122 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		// not the outer wrapper.
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_event_type=\"IO Wait\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
 	})
+
+	// When the outer molecule wait passes wait_event_min_duration but the nested
+	// atom is below the threshold, the SQL nested_waits.timer_wait predicate
+	// nullifies the nested columns. The Go-side override is then skipped and the
+	// outer molecule (wait/io/table/sql/handler) is emitted, ensuring every
+	// wait_event has wait_time >= wait_event_min_duration.
+	t.Run("wait/io/table/sql/handler falls back to molecule when nested atom is below threshold", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                   db,
+			EngineVersion:        latestCompatibleVersion,
+			CollectInterval:      time.Second,
+			EntryHandler:         lokiClient,
+			Logger:               log.NewLogfmtLogger(os.Stderr),
+			WaitEventMinDuration: 1 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", "AND nested_waits.timer_wait >= 1000000000", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.SQL_TEXT",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"select * from books where id = ?",
+					"70000000",
+					"20000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"200",                       // WAIT_EVENT_ID (outer table handler)
+					"201",                       // WAIT_END_EVENT_ID
+					"wait/io/table/sql/handler", // WAIT_EVENT_NAME (the handler wrapper)
+					"books",                     // WAIT_OBJECT_NAME
+					"TABLE",                     // WAIT_OBJECT_TYPE
+					"50000000000",               // WAIT_TIMER_WAIT (50ms, qualifies)
+					nil,                         // NESTED_WAIT_EVENT_ID (filtered by SQL)
+					nil,                         // NESTED_WAIT_END_EVENT_ID
+					nil,                         // NESTED_WAIT_EVENT_NAME
+					nil,                         // NESTED_WAIT_OBJECT_NAME
+					nil,                         // NESTED_WAIT_OBJECT_TYPE
+					nil,                         // NESTED_WAIT_TIMER_WAIT
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"200\" wait_end_event_id=\"201\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"50.000000ms\"", lokiEntries[1].Line)
+	})
 }
 
 func TestQuerySamples_SampleMinDuration(t *testing.T) {
@@ -1565,7 +1683,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1642,7 +1760,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1772,7 +1890,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -1896,7 +2014,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -2229,7 +2347,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 					1,
 				))
 
-			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, tc.expectedFields, "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, tc.expectedFields, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows(tc.expectedColumns).AddRow(tc.scanValues...),
 				)
@@ -2297,7 +2415,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -2317,7 +2435,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -2443,7 +2561,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 2e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 2e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -2596,7 +2714,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			2e12,
 		).WillReturnError(fmt.Errorf("connection error"))
@@ -2610,7 +2728,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			2e12,
 		).RowsWillBeClosed().
@@ -2756,7 +2874,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				5,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2868,7 +2986,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				5,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2928,7 +3046,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
 			3e12,
 			10e12, // uptimeLimit is calculated as uptime "modulo" overflows: (uptime - 1 overflow) in picoseconds
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2987,7 +3105,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", beginningAndEndOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", beginningAndEndOfTimeline)).WithArgs(
 			3e12,
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -3037,7 +3155,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+13,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
 			10e12, // asserts timerBookmark has been updated to the previous uptimeLimit
 			13e12, // asserts uptimeLimit is now updated to the current uptime "modulo" overflows
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -3088,7 +3206,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			float64(0),
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -3141,7 +3259,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			float64(0),
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -3208,7 +3326,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", "", exclusionClause, "", endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", "", "", exclusionClause, "", endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
 
 		c := &QuerySamples{
 			dbConnection:  db,
@@ -3225,7 +3343,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			2e12,
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -3487,7 +3605,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -3652,7 +3770,7 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 
 	// Verify the query uses the custom exclusion clause
 	customClause := buildExcludedSchemasClause([]string{"excluded_schema"})
-	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", customClause, "", endOfTimeline)).
+	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", customClause, "", endOfTimeline)).
 		WithArgs(1e12, 1e12).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"current_schema", "thread_id", "event_id", "end_event_id", "digest",
 		"timer_end", "timer_wait", "rows_examined", "rows_sent", "rows_affected",
@@ -3719,7 +3837,7 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, 1e12,
 		).RowsWillBeClosed().WillReturnRows(mockRows)
 
@@ -3795,7 +3913,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, 1e12,
 		).RowsWillBeClosed().WillReturnRows(
 			sqlmock.NewRows([]string{
@@ -3862,7 +3980,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, 1e12,
 		).RowsWillBeClosed().WillReturnRows(
 			sqlmock.NewRows([]string{

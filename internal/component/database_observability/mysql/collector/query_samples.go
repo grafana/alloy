@@ -81,6 +81,7 @@ LEFT JOIN
 	ON waits.thread_id = nested_waits.thread_id
 	AND waits.event_id = nested_waits.nesting_event_id
 	AND waits.event_name = 'wait/io/table/sql/handler'
+	%s
 LEFT JOIN
 	performance_schema.threads threads
 	ON statements.THREAD_ID = threads.THREAD_ID
@@ -276,9 +277,11 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	excludedSchemasClause := buildExcludedSchemasClause(c.excludeSchemas)
 
-	var waitDurationClause string
+	var waitDurationClause, nestedWaitDurationClause string
 	if c.waitEventMinDuration > 0 {
-		waitDurationClause = fmt.Sprintf("AND waits.timer_wait >= %.0f", secondsToPicoseconds(c.waitEventMinDuration.Seconds()))
+		minPs := secondsToPicoseconds(c.waitEventMinDuration.Seconds())
+		waitDurationClause = fmt.Sprintf("AND waits.timer_wait >= %.0f", minPs)
+		nestedWaitDurationClause = fmt.Sprintf("AND nested_waits.timer_wait >= %.0f", minPs)
 	}
 
 	var sampleDurationClause string
@@ -288,12 +291,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 	query := ""
 	if semver.MustParseRange("<8.0.28")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, "", waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
 	} else if semver.MustParseRange("<8.0.31")(c.engineVersion) {
-		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, cpuTimeField, waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
 	} else {
 		additionalFields := cpuTimeField + maxControlledMemoryField + maxTotalMemoryField
-		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
+		query = fmt.Sprintf(selectQuerySamples, additionalFields, waitDurationClause, nestedWaitDurationClause, excludedSchemasClause, sampleDurationClause, timerClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, query, c.timerBookmark, limit)
