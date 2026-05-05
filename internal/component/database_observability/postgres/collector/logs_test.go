@@ -10,10 +10,12 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 )
 
 func TestLogsCollector_ParseRDSFormat(t *testing.T) {
@@ -765,4 +767,127 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 		}
 	}
 	require.Equal(t, float64(1), totalCount, "only the non-excluded user log should be counted")
+}
+
+func TestLogsCollector_IncrementsErrorsByFingerprint_OnErrorPlusStatement(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// ERROR row.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[12345]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  relation \"missing\" does not exist",
+	}}
+	// STATEMENT continuation.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      "STATEMENT:  SELECT * FROM missing WHERE id = $1",
+	}}
+
+	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1", fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+
+	require.Eventually(t, func() bool {
+		return testutil.CollectAndCount(c.errorsByFingerprint, "database_observability_pg_errors_by_fingerprint_total") >= 1
+	}, 2*time.Second, 50*time.Millisecond)
+
+	got := testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP))
+	require.Equal(t, float64(1), got)
+}
+
+func TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond
+
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// ERROR with no following STATEMENT.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[99999]:1:53300:" + ts2 + ":1/0:0:c1::psqlFATAL:  too many connections",
+	}}
+
+	// pg_errors_total increments immediately (existing behavior).
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "books_store", "user")) == 1
+	}, 1*time.Second, 50*time.Millisecond)
+
+	// Wait past the pending timeout window plus a tick.
+	time.Sleep(300 * time.Millisecond)
+
+	// pg_errors_by_fingerprint_total stays at 0 — there was no STATEMENT.
+	require.Equal(t, 0, testutil.CollectAndCount(c.errorsByFingerprint, "database_observability_pg_errors_by_fingerprint_total"))
+}
+
+func TestLogsCollector_DisplacedPendingDoesNotDoubleCount(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	pid := "55555"
+	// ERROR #1 (no STATEMENT yet).
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  err one",
+	}}
+	// ERROR #2 from same PID (displaces #1).
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P02:" + ts2 + ":1/0:0:c1::psqlERROR:  err two",
+	}}
+	// STATEMENT for #2.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      "STATEMENT:  SELECT 2",
+	}}
+
+	expectedFP, _, _ := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog, 0)
+
+	// Exactly one increment, with err two's labels and SELECT 2's fingerprint.
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P02", "42", "books_store", expectedFP)) == 1
+	}, 2*time.Second, 50*time.Millisecond)
+	// And nothing under err one's labels.
+	require.Equal(t, float64(0), testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP)))
 }

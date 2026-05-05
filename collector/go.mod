@@ -783,6 +783,7 @@ require (
 	github.com/percona/mongodb_exporter v0.47.2 // indirect
 	github.com/percona/percona-backup-mongodb v1.8.1-0.20250429102026-063dab6cc946 // indirect
 	github.com/peterbourgon/ff/v3 v3.4.0 // indirect
+	github.com/pganalyze/pg_query_go/v6 v6.1.0 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/pierrec/lz4 v2.6.1+incompatible // indirect
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect
