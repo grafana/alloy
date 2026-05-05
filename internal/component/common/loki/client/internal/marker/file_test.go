@@ -1,4 +1,4 @@
-package internal
+package marker
 
 import (
 	"os"
@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMarkerFileHandler(t *testing.T) {
+func TestFile(t *testing.T) {
 	logger := log.NewLogfmtLogger(os.Stdout)
 	getTempDir := func(t *testing.T) string {
 		dir := t.TempDir()
@@ -19,7 +19,7 @@ func TestMarkerFileHandler(t *testing.T) {
 
 	t.Run("invalid last marked segment when there's no marker file", func(t *testing.T) {
 		dir := getTempDir(t)
-		fh, err := NewMarkerFileHandler(logger, dir)
+		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
 		require.Equal(t, -1, fh.LastMarkedSegment())
@@ -27,14 +27,13 @@ func TestMarkerFileHandler(t *testing.T) {
 
 	t.Run("reads the last segment from existing marker file", func(t *testing.T) {
 		dir := getTempDir(t)
-		fh, err := NewMarkerFileHandler(logger, dir)
+		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
 		// write first something to marker
-		markerFile := filepath.Join(dir, MarkerFolderName, MarkerFileName)
-		bs, err := EncodeMarkerV1(10)
-		require.NoError(t, err)
-		err = os.WriteFile(markerFile, bs, MarkerFileMode)
+		markerFile := filepath.Join(dir, markerFolderName, markerFileName)
+		bs := encodeV1(10)
+		err = os.WriteFile(markerFile, bs, markerFileMode)
 		require.NoError(t, err)
 
 		require.Equal(t, 10, fh.LastMarkedSegment())
@@ -42,7 +41,7 @@ func TestMarkerFileHandler(t *testing.T) {
 
 	t.Run("marks segment, and then reads value from it", func(t *testing.T) {
 		dir := getTempDir(t)
-		fh, err := NewMarkerFileHandler(logger, dir)
+		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
 		fh.MarkSegment(12)
@@ -51,25 +50,25 @@ func TestMarkerFileHandler(t *testing.T) {
 
 	t.Run("marker file and directory is created with correct permissions", func(t *testing.T) {
 		dir := getTempDir(t)
-		fh, err := NewMarkerFileHandler(logger, dir)
+		fh, err := NewFile(logger, dir)
 		require.NoError(t, err)
 
 		fh.MarkSegment(12)
 		// check folder first
-		stats, err := os.Stat(filepath.Join(dir, MarkerFolderName))
+		stats, err := os.Stat(filepath.Join(dir, markerFolderName))
 		require.NoError(t, err)
 		if runtime.GOOS == "windows" {
-			require.Equal(t, MarkerWindowsFolderMode, stats.Mode().Perm())
+			require.Equal(t, markerWindowsFolderMode, stats.Mode().Perm())
 		} else {
-			require.Equal(t, MarkerFolderMode, stats.Mode().Perm())
+			require.Equal(t, markerFolderMode, stats.Mode().Perm())
 		}
 		// then file
-		stats, err = os.Stat(filepath.Join(dir, MarkerFolderName, MarkerFileName))
+		stats, err = os.Stat(filepath.Join(dir, markerFolderName, markerFileName))
 		require.NoError(t, err)
 		if runtime.GOOS == "windows" {
-			require.Equal(t, MarkerWindowsFileMode, stats.Mode().Perm())
+			require.Equal(t, markerWindowsFileMode, stats.Mode().Perm())
 		} else {
-			require.Equal(t, MarkerFileMode, stats.Mode().Perm())
+			require.Equal(t, markerFileMode, stats.Mode().Perm())
 		}
 	})
 }
