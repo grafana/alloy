@@ -423,24 +423,24 @@ func TestExtractSeverity(t *testing.T) {
 	}
 }
 
-func TestIsContinuationLine(t *testing.T) {
+func TestIsBareContinuationLine(t *testing.T) {
 	tests := []struct {
 		line     string
 		expected bool
 	}{
-		{"\tIndented line", true},
 		{"DETAIL:  some detail", true},
 		{"HINT:  some hint", true},
 		{"CONTEXT:  some context", true},
 		{"STATEMENT:  SELECT 1", true},
 		{"  DETAIL:  with whitespace", true},
+		{"\tIndented line", false}, // TAB-continuation handled by appendToStatement, not this fn
 		{"2025-01-12 10:30:45 UTC:app-user@db:[123]:ERROR:  normal log", false},
 		{"", false},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.line, func(t *testing.T) {
-			require.Equal(t, tt.expected, isContinuationLine(tt.line))
+			require.Equal(t, tt.expected, isBareContinuationLine(tt.line))
 		})
 	}
 }
@@ -890,4 +890,65 @@ func TestLogsCollector_DisplacedPendingDoesNotDoubleCount(t *testing.T) {
 	}, 2*time.Second, 50*time.Millisecond)
 	// And nothing under err one's labels.
 	require.Equal(t, float64(0), testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP)))
+}
+
+// TestLogsCollector_PrefixedStatement_MultiLine exercises the production
+// shape of a STATEMENT continuation: it carries the full log_line_prefix and
+// is followed by TAB-prefixed lines for the rest of the multi-line SQL. The
+// next prefix-formatted log line flushes the buffer.
+func TestLogsCollector_PrefixedStatement_MultiLine(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	pid := "38"
+
+	// ERROR with the trailing-colon log_line_prefix (`...:[unknown]:ERROR:`).
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(50904):app-user@books_store:[" + pid + "]:4:40001:" + ts2 + ":3/27:0:69fa3de3.26:[unknown]:ERROR:  could not serialize access due to concurrent update",
+	}}
+	// STATEMENT keyword line carries the prefix and first SQL fragment.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(50904):app-user@books_store:[" + pid + "]:5:40001:" + ts2 + ":3/27:0:69fa3de3.26:[unknown]:STATEMENT:  WITH target_books AS (",
+	}}
+	// TAB-continuation lines hold the rest of the SQL.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      "\tSELECT id FROM books WHERE id = $1",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      "\t)",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      "\tUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id",
+	}}
+	// A subsequent prefix line flushes the STATEMENT buffer.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(50904):app-user@books_store:[" + pid + "]:6:00000:" + ts2 + ":3/27:0:69fa3de3.26:[unknown]:LOG:  duration: 1.234 ms",
+	}}
+
+	expectedSQL := "WITH target_books AS (\nSELECT id FROM books WHERE id = $1\n)\nUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
+	expectedFP, _, fpErr := fingerprint.Fingerprint(expectedSQL, fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "40001", "40", "books_store", expectedFP)) == 1
+	}, 2*time.Second, 50*time.Millisecond)
 }

@@ -20,7 +20,7 @@ import (
 
 const (
 	LogsCollector         = "logs"
-	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
+	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a:"
 )
 
 // Postgres log format regex
@@ -45,6 +45,16 @@ type pendingError struct {
 	sqlstate      string
 	sqlstateClass string
 	datname       string
+}
+
+// statementBuffer holds a STATEMENT continuation as it accumulates across
+// multiple log lines. PostgreSQL emits the SQL text of an error's statement
+// over a keyword line (`<prefix>STATEMENT:  <first line of SQL>`) plus zero
+// or more TAB-prefixed continuation lines for the rest of the SQL.
+type statementBuffer struct {
+	pid        string
+	receivedAt time.Time
+	sql        strings.Builder
 }
 
 type LogsArguments struct {
@@ -82,6 +92,9 @@ type Logs struct {
 	pendingErrors       map[string]*pendingError
 	pendingMu           sync.Mutex
 	pendingErrorTimeout time.Duration
+
+	currentStatement *statementBuffer
+	statementMu      sync.Mutex
 
 	startTime time.Time
 }
@@ -207,12 +220,32 @@ func (l *Logs) run() {
 func (l *Logs) parseTextLog(entry loki.Entry) error {
 	line := entry.Entry.Line
 
-	if isContinuationLine(line) {
-		l.processContinuation(line)
+	// TAB-prefixed lines continue the current STATEMENT body's SQL text.
+	if strings.HasPrefix(line, "\t") {
+		l.appendToStatement(line)
 		return nil
 	}
 
-	if !strings.Contains(line, "ERROR:") && !strings.Contains(line, "FATAL:") && !strings.Contains(line, "PANIC:") {
+	// Bare-keyword continuation (no log_line_prefix) — used in tests and in
+	// configurations without a log_line_prefix. Production lines carry the
+	// prefix and are handled below by the prefixed-keyword path.
+	if isBareContinuationLine(line) {
+		l.processBareContinuation(line)
+		return nil
+	}
+
+	// A new prefix-formatted line ends any in-progress STATEMENT accumulation.
+	// Detect prefix-shaped lines via the format regex so we don't flush on
+	// arbitrary unrelated input.
+	prefixed := logFormatRegex.MatchString(line)
+	if prefixed {
+		l.flushStatement()
+	}
+
+	if !strings.Contains(line, "ERROR:") &&
+		!strings.Contains(line, "FATAL:") &&
+		!strings.Contains(line, "PANIC:") &&
+		!strings.Contains(line, ":STATEMENT:") {
 		return nil
 	}
 
@@ -277,6 +310,23 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
+	// Extract PID for STATEMENT/error correlation.
+	pidStart := strings.Index(afterAt, "[")
+	pidEnd := strings.Index(afterAt, "]")
+	pid := ""
+	if pidStart != -1 && pidEnd > pidStart {
+		pid = afterAt[pidStart+1 : pidEnd]
+	}
+
+	// Detect STATEMENT continuation that arrived with a log_line_prefix.
+	// The `:STATEMENT:` substring is unambiguous because the prefix ends
+	// with `:` followed by the message keyword.
+	if statementIdx := strings.Index(line, ":STATEMENT:"); statementIdx != -1 {
+		stmt := strings.TrimSpace(line[statementIdx+len(":STATEMENT:"):])
+		l.startStatement(pid, stmt)
+		return nil
+	}
+
 	// Find severity keyword (ERROR:, FATAL:, PANIC:)
 	messageStart := -1
 	severity := ""
@@ -304,16 +354,9 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		user,
 	).Inc()
 
-	// Buffer the error so a matching STATEMENT continuation can stitch the
-	// SQL text and we can record per-fingerprint cardinality.
-	pidStart := strings.Index(afterAt, "[")
-	pidEnd := strings.Index(afterAt, "]")
-	pid := ""
-	if pidStart != -1 && pidEnd > pidStart {
-		pid = afterAt[pidStart+1 : pidEnd]
-	}
-
 	if pid != "" {
+		// Buffer the error so a matching STATEMENT continuation can stitch the
+		// SQL text and we can record per-fingerprint cardinality.
 		l.pendingMu.Lock()
 		// If a previous error from this PID is still pending (no STATEMENT
 		// arrived within the timeout window), the new error displaces it.
@@ -333,12 +376,10 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	return nil
 }
 
-// isContinuationLine checks if a line is part of a multi-line PostgreSQL error
-func isContinuationLine(line string) bool {
-	if strings.HasPrefix(line, "\t") {
-		return true
-	}
-
+// isBareContinuationLine reports whether a line is a continuation message that
+// arrives without a log_line_prefix — only emitted by PostgreSQL when
+// log_line_prefix is empty, but also useful for tests.
+func isBareContinuationLine(line string) bool {
 	continuationKeywords := []string{
 		"DETAIL:",
 		"HINT:",
@@ -358,16 +399,13 @@ func isContinuationLine(line string) bool {
 	return false
 }
 
-// processContinuation handles continuation lines (DETAIL/HINT/STATEMENT/...).
-// We only act on STATEMENT lines today: the SQL text is fingerprinted and
-// the matching pending error increments database_observability_pg_errors_by_fingerprint_total.
+// processBareContinuation handles a STATEMENT continuation line that has no
+// log_line_prefix. It matches the most recently buffered pending error.
 //
-// PostgreSQL does not include the log_line_prefix on continuation lines, so
-// we cannot extract the originating PID from the line itself. We match the
-// most recently buffered pending error instead — PG's ereport mutex emits
-// ERROR + STATEMENT contiguously per backend, so per-PID interleaving in
-// the upstream tailer is the only failure mode (rare in practice).
-func (l *Logs) processContinuation(line string) {
+// In a non-prefixed configuration we cannot extract the originating PID from
+// the continuation line, so we rely on PostgreSQL's ereport mutex emitting
+// ERROR + STATEMENT contiguously per backend.
+func (l *Logs) processBareContinuation(line string) {
 	trimmed := strings.TrimSpace(line)
 	if !strings.HasPrefix(trimmed, "STATEMENT:") {
 		return
@@ -388,31 +426,99 @@ func (l *Logs) processContinuation(line string) {
 	}
 	l.pendingMu.Unlock()
 
-	if bestEntry == nil {
+	l.incrementByFingerprint(bestEntry, stmt)
+}
+
+// startStatement begins a new STATEMENT accumulation, flushing any prior
+// in-progress buffer first.
+func (l *Logs) startStatement(pid, initialSQL string) {
+	l.statementMu.Lock()
+	defer l.statementMu.Unlock()
+
+	l.flushStatementLocked()
+	l.currentStatement = &statementBuffer{
+		pid:        pid,
+		receivedAt: time.Now(),
+	}
+	l.currentStatement.sql.WriteString(initialSQL)
+}
+
+// appendToStatement appends a TAB-prefixed continuation line's SQL text to the
+// in-progress STATEMENT buffer. Lines that arrive without an active buffer are
+// silently dropped (they may be continuations of non-STATEMENT messages).
+func (l *Logs) appendToStatement(line string) {
+	l.statementMu.Lock()
+	defer l.statementMu.Unlock()
+
+	if l.currentStatement == nil {
+		return
+	}
+	if l.currentStatement.sql.Len() > 0 {
+		l.currentStatement.sql.WriteByte('\n')
+	}
+	l.currentStatement.sql.WriteString(strings.TrimLeft(line, "\t"))
+}
+
+// flushStatement consumes the in-progress STATEMENT buffer and matches it to
+// the buffered pending error sharing its PID, incrementing the fingerprint
+// counter. Safe to call when no statement is in progress.
+func (l *Logs) flushStatement() {
+	l.statementMu.Lock()
+	defer l.statementMu.Unlock()
+	l.flushStatementLocked()
+}
+
+func (l *Logs) flushStatementLocked() {
+	if l.currentStatement == nil {
+		return
+	}
+	sb := l.currentStatement
+	l.currentStatement = nil
+
+	stmt := strings.TrimSpace(sb.sql.String())
+	if stmt == "" {
 		return
 	}
 
+	var entry *pendingError
+	l.pendingMu.Lock()
+	if e, ok := l.pendingErrors[sb.pid]; ok {
+		entry = e
+		delete(l.pendingErrors, sb.pid)
+	}
+	l.pendingMu.Unlock()
+
+	l.incrementByFingerprint(entry, stmt)
+}
+
+// incrementByFingerprint fingerprints stmt and increments the fingerprint
+// counter against the pending error's labels. No-op if entry is nil or if
+// the SQL fingerprints to ErrEmpty.
+func (l *Logs) incrementByFingerprint(entry *pendingError, stmt string) {
+	if entry == nil {
+		return
+	}
 	fp, _, err := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
 	if err != nil {
-		// fingerprint.ErrEmpty — caller should skip; do not increment.
 		return
 	}
-
 	l.errorsByFingerprint.WithLabelValues(
-		bestEntry.severity,
-		bestEntry.sqlstate,
-		bestEntry.sqlstateClass,
-		bestEntry.datname,
+		entry.severity,
+		entry.sqlstate,
+		entry.sqlstateClass,
+		entry.datname,
 		fp,
 	).Inc()
 }
 
-// flushExpiredPending drops pending entries older than pendingErrorTimeout.
-// Errors without a matching STATEMENT continuation never increment the
-// pg_errors_by_fingerprint_total counter — they remain counted only on
+// flushExpiredPending drops pending entries older than pendingErrorTimeout
+// and flushes any in-progress STATEMENT buffer that has aged past the same
+// window. Errors without a matching STATEMENT continuation never increment
+// the pg_errors_by_fingerprint_total counter — they remain counted only on
 // pg_errors_total.
 func (l *Logs) flushExpiredPending() {
 	deadline := time.Now().Add(-l.pendingErrorTimeout)
+
 	l.pendingMu.Lock()
 	for pid, p := range l.pendingErrors {
 		if p.receivedAt.Before(deadline) {
@@ -420,6 +526,12 @@ func (l *Logs) flushExpiredPending() {
 		}
 	}
 	l.pendingMu.Unlock()
+
+	l.statementMu.Lock()
+	if l.currentStatement != nil && l.currentStatement.receivedAt.Before(deadline) {
+		l.flushStatementLocked()
+	}
+	l.statementMu.Unlock()
 }
 
 func extractSeverity(message string) string {
