@@ -516,8 +516,22 @@ func (l *Logs) incrementByFingerprint(entry *pendingError, stmt string) {
 // window. Errors without a matching STATEMENT continuation never increment
 // the pg_errors_by_fingerprint_total counter — they remain counted only on
 // pg_errors_total.
+//
+// Order matters: an in-progress STATEMENT buffer is flushed first so it can
+// consume its matching pending error before that pending is expired. The
+// statement and its pending share a `receivedAt` of approximately the same
+// instant (PG emits ERROR + STATEMENT contiguously per backend), so without
+// this ordering both would expire on the same ticker fire and the statement
+// would lose its pending — under-counting the fingerprint metric for any
+// error whose STATEMENT precedes a long log gap.
 func (l *Logs) flushExpiredPending() {
 	deadline := time.Now().Add(-l.pendingErrorTimeout)
+
+	l.statementMu.Lock()
+	if l.currentStatement != nil && l.currentStatement.receivedAt.Before(deadline) {
+		l.flushStatementLocked()
+	}
+	l.statementMu.Unlock()
 
 	l.pendingMu.Lock()
 	for pid, p := range l.pendingErrors {
@@ -526,12 +540,6 @@ func (l *Logs) flushExpiredPending() {
 		}
 	}
 	l.pendingMu.Unlock()
-
-	l.statementMu.Lock()
-	if l.currentStatement != nil && l.currentStatement.receivedAt.Before(deadline) {
-		l.flushStatementLocked()
-	}
-	l.statementMu.Unlock()
 }
 
 func extractSeverity(message string) string {

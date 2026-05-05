@@ -952,3 +952,49 @@ func TestLogsCollector_PrefixedStatement_MultiLine(t *testing.T) {
 		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "40001", "40", "books_store", expectedFP)) == 1
 	}, 2*time.Second, 50*time.Millisecond)
 }
+
+// TestLogsCollector_StatementSurvivesTimeoutFlush exercises the case where
+// an ERROR + STATEMENT pair is followed by a long quiet period that exceeds
+// pendingErrorTimeout. The expiration ticker must flush the in-progress
+// STATEMENT (consuming its pending) before pending expiration deletes it,
+// otherwise the fingerprint counter under-counts the parent counter.
+func TestLogsCollector_StatementSurvivesTimeoutFlush(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	receiver := loki.NewLogsReceiver()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond
+
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	pid := "310"
+
+	// ERROR + STATEMENT arrive nearly simultaneously, then nothing.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(60228):app-user@books_store:[" + pid + "]:4:40001:" + ts2 + ":1/1:0:c1:[unknown]:ERROR:  could not serialize access due to concurrent update",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(60228):app-user@books_store:[" + pid + "]:5:40001:" + ts2 + ":1/1:0:c1:[unknown]:STATEMENT:  INSERT INTO t (a) VALUES ($1)",
+	}}
+
+	expectedFP, _, fpErr := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+
+	// Wait past the timeout window — the ticker must flush the buffered
+	// STATEMENT and increment the fingerprint counter, not silently drop.
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "40001", "40", "books_store", expectedFP)) == 1
+	}, 2*time.Second, 50*time.Millisecond)
+}
