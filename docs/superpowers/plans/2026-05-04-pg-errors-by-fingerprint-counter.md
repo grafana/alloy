@@ -1,917 +1,688 @@
-# PostgreSQL Errors-by-Fingerprint Counter Implementation Plan
+# PostgreSQL Error → Loki `op="error"` Op Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship a `database_observability_pg_errors_by_fingerprint_total{severity, sqlstate, sqlstate_class, datname, query_fingerprint}` Prometheus counter populated by parsing PostgreSQL ERROR + STATEMENT log line pairs, so users can compute error rate per logical query (`sum by (query_fingerprint, datname) (rate(...[5m]))`).
+**Goal:** Emit one structured Loki entry per PostgreSQL ERROR+STATEMENT pair, labelled `op="error"`, carrying the SQL text in the body and rich correlation metadata (`query_fingerprint`, `pid`, `xid`, `application_name`, `error_message`, etc.) as Loki structured metadata. This replaces the previously planned high-cardinality `database_observability_pg_errors_by_fingerprint_total` counter — `query_fingerprint` is unbounded and unsafe as a Prometheus label.
+
+**Cardinality model:**
+- **Stable Loki labels** (low cardinality): `op="error"`, `severity`, `sqlstate_class`, `datname`.
+- **Structured metadata** (high cardinality fine in Loki): `query_fingerprint`, `pid`, `backend_start`, `application_name`, `sqlstate`, `xid`, `client_addr`, `client_port`, `session_id`, `error_message`, `user`.
+- **Log line body**: the assembled SQL text from the STATEMENT continuation.
+
+**LogQL replacement for the dropped metric:**
+```
+sum by (datname, query_fingerprint)
+  (count_over_time({op="error"} | logfmt [5m]))
+```
 
 **Architecture:**
-1. Add `pg_query_go/v6` as a dependency.
-2. Add a freestanding `fingerprint` package (3-stage pipeline: parse-as-is → repair → sentinel) — same package the larger semantic-fingerprint design proposes for use in `query_details`/`query_samples`/Loki later, but introduced here as the minimum surface needed.
-3. Extend the existing logs collector to buffer ERROR/FATAL/PANIC log rows by PID, stitch the matching `STATEMENT:` continuation, fingerprint the SQL text, and increment a new counter. Keep the existing `pg_errors_total` counter untouched.
-4. **No Loki entries are emitted in this plan.** That deliberately keeps scope tiny and avoids the `EntryHandler`/fanout wiring concerns that come up later.
+1. **Keep** the freestanding `fingerprint` package (already shipped on this branch — three-stage parse/repair/sentinel pipeline using `pg_query_go/v6`).
+2. **Keep** all the log-parsing state machine in the logs collector (already shipped on this branch): TAB-continuation accumulation, prefixed-STATEMENT detection, statement-flush-before-pending-expiration ordering. None of that changes.
+3. **Drop** the `database_observability_pg_errors_by_fingerprint_total` counter — its registration, its increment paths, its tests, its docs entry.
+4. **Add** a Loki entry emission path. When a STATEMENT flushes (via `flushStatementLocked` or `processBareContinuation`), build a `loki.Entry` with stable labels + structured metadata + body, and forward via the existing `entryHandler` field on `Logs` (currently wired but unused).
+5. **Keep** `database_observability_pg_errors_total` exactly as-is — low-cardinality parent counter, useful as a denominator and as a "did we see the error at all" indicator.
 
-**Tech Stack:** Go (CGo via `pg_query_go/v6` for libpg_query), `prometheus/client_golang`, the existing `loki.LogsReceiver` plumbing already used by the logs collector.
+**Tech stack unchanged:** Go (CGo via `pg_query_go/v6` for libpg_query); `prometheus/client_golang`; the existing `loki.LogsReceiver` plumbing already used by the logs collector; `loki.EntryHandler` for fanout.
 
-**Recommendation followed:** This is the first deliverable from the broader semantic-query-fingerprint design (`docs/design/XXXX-semantic-query-fingerprint.md`). It implements only the error-rate-per-fingerprint surface so dashboards can answer "errors per logical query" without waiting on the full join-metric / Loki integration.
+**Recommendation followed:** This is the deliverable the broader semantic-query-fingerprint design pointed at — an op-shaped Loki entry that downstream LogQL/dashboards can group by `query_fingerprint`, and that joins to `pg_stat_activity` samples on `(pid, query_fingerprint, time-window)` (or on `(pid, xid)` when a write transaction was in flight).
+
+---
+
+## Branch state going into this plan
+
+This plan executes on top of branch `gaantunes/pg-errors-by-fingerprint-counter`, which already has the following commits:
+
+| Commit | What landed |
+|---|---|
+| `feat(deps): add pg_query_go for postgres semantic query fingerprinting` | `go.mod`/`go.sum` for pg_query_go in root + collector module |
+| `feat(database_observability/postgres): add semantic query fingerprint package` | `internal/component/database_observability/postgres/fingerprint/{fingerprint.go,fingerprint_test.go}` |
+| `feat(database_observability/postgres): register pg_errors_by_fingerprint_total counter` | **TO BE REVERTED** — adds CounterVec field |
+| `feat(database_observability/postgres): increment pg_errors_by_fingerprint_total on ERROR+STATEMENT pairs` | mixes parser state machine (KEEP) with counter increments (REPLACE) |
+| `test(database_observability/postgres): pin no-statement→no-fingerprint-counter behavior` | **TO BE REPLACED** — counter assertion → entry assertion |
+| `test(database_observability/postgres): pin displaced-pending semantics for fingerprint counter` | **TO BE REPLACED** |
+| `docs(database_observability/postgres): document pg_errors_by_fingerprint_total` | **TO BE REPLACED** with op docs |
+| `feat(database_observability/postgres): handle prefixed STATEMENT continuations` | KEEP — this is the production-format support |
+| `fix(database_observability/postgres): flush STATEMENT before pending expiration` | KEEP — race fix |
+
+> Worker note: do **not** rebase or rewrite history; instead make the changes as new commits and let reviewers see the evolution. The fingerprint package + the parser state machine + the timeout fix are all still load-bearing for this plan.
 
 ---
 
 ## File Structure
 
-**New files:**
-- `internal/component/database_observability/postgres/fingerprint/fingerprint.go` — three-stage `Fingerprint` function, sentinel constants, `Source` enum.
-- `internal/component/database_observability/postgres/fingerprint/fingerprint_test.go` — table-driven unit tests.
+**Modified:**
+- `internal/component/database_observability/postgres/collector/logs.go` — extend metadata captured into `pendingError`, replace counter increment with Loki entry emission, drop the CounterVec lifecycle.
+- `internal/component/database_observability/postgres/collector/logs_test.go` — replace counter assertions with `EntryHandler.Chan()` assertions; add metadata-field assertions; keep all the structural tests (timeout, displacement, multi-line, statement-flush ordering) but updated to inspect emitted entries instead of counter values.
+- `docs/sources/reference/components/database_observability/database_observability.postgres.md` — drop the metric block, add an "Emitted Loki entries" section describing the `op="error"` shape and showing the LogQL replacement.
 
-**Modified files:**
-- `go.mod`, `go.sum`, `collector/go.mod`, `collector/go.sum`, `extension/alloyengine/go.mod`, `extension/alloyengine/go.sum` — add `github.com/pganalyze/pg_query_go/v6`.
-- `internal/component/database_observability/postgres/collector/logs.go` — add `pendingError` buffering keyed by PID, a timeout ticker that flushes stale pendings, a `processContinuation` helper that fingerprints `STATEMENT:` lines and increments the new counter, and the new counter itself.
-- `internal/component/database_observability/postgres/collector/logs_test.go` — happy-path, timeout, and displaced-pending coverage.
-- `docs/sources/reference/components/database_observability/database_observability.postgres.md` — document the new metric.
+**Unchanged (keep):**
+- `internal/component/database_observability/postgres/fingerprint/*` — already shipped.
+- The `pg_errors_total` counter and its tests.
+- Existing TAB-continuation accumulation, prefixed-STATEMENT detection, and the `flushExpiredPending` ordering fix.
 
 **File responsibilities:**
-- `fingerprint/` is *only* about turning text into a stable identifier; it must not import anything from `database_observability` so it can be reused for other surfaces (samples, query_details, slow-query logs) without dragging in component dependencies.
-- `logs.go` already houses `parseTextLog` and `isContinuationLine`; the new buffering and fingerprint-emission logic goes alongside them. The file grows by ~100 lines but stays single-purpose.
+- `fingerprint/` keeps its single concern: text → stable identifier. No changes.
+- `logs.go` grows by ~80 lines net: new metadata fields on `pendingError`, ~50 lines of `loki.Entry` build + send, minus the counter wiring it removes (~30 lines).
+- The reference doc's metric block is replaced by an op block. Net length similar.
 
 ---
 
-## Phase 0 — Dependency and fingerprint package
+## Phase 0 — Pre-flight
 
-### Task 1: Add `pg_query_go/v6` dependency
-
-**Files:**
-- Modify: `go.mod`, `collector/go.mod`, `extension/alloyengine/go.mod`
-- Modify: `go.sum`, `collector/go.sum`, `extension/alloyengine/go.sum`
-
-- [ ] **Step 1: Add the require entry to the top-level `go.mod`**
-
-In `go.mod`, locate the `require ( ... )` block that already contains `github.com/percona/mongodb_exporter` (around line 184), and add a new entry in alphabetical order between `mongodb_exporter` and `phayes/freeport`:
-
-```go
-github.com/pganalyze/pg_query_go/v6 v6.1.0
-```
-
-- [ ] **Step 2: Run `go mod tidy` from the repo root**
-
-Run: `go mod tidy`
-Expected: `go.sum` is updated with `github.com/pganalyze/pg_query_go/v6 v6.1.0` lines and one transitive `google.golang.org/protobuf v1.31.0/go.mod` hash.
-
-- [ ] **Step 3: Tidy the sub-modules**
-
-Run:
-```bash
-(cd collector && go mod tidy)
-(cd extension/alloyengine && go mod tidy)
-```
-Expected: nothing changes in those go.mod/go.sum files. Nothing in those sub-modules imports `pg_query_go` yet, so tidy correctly leaves them alone — that's fine. **Do not** manually add a `require` if tidy doesn't.
-
-- [ ] **Step 4: Verify the binary still builds (CGo path)**
-
-Run: `CGO_ENABLED=1 go build ./internal/component/...`
-Expected: Build succeeds. If a CGo toolchain is missing, install `build-essential` (Linux) and re-run. (`./...` would also work but the root has a pre-existing alloy-service Linux build issue that's unrelated to this change.)
-
-- [ ] **Step 5: Smoke-check that `pg_query.Fingerprint` is usable**
-
-Add a temporary `cmd/_smoke/fingerprint_smoke/main.go`:
-
-```go
-package main
-
-import (
-	"fmt"
-
-	pg_query "github.com/pganalyze/pg_query_go/v6"
-)
-
-func main() {
-	fp, err := pg_query.Fingerprint("SELECT 1")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(fp)
-}
-```
-
-Run: `go run ./cmd/_smoke/fingerprint_smoke`
-Expected: a 16-character hex fingerprint is printed.
-
-- [ ] **Step 6: Delete the smoke binary and commit**
-
-```bash
-rm -rf cmd/_smoke
-git add go.mod go.sum collector/go.mod collector/go.sum extension/alloyengine/go.mod extension/alloyengine/go.sum
-git commit -m "feat(deps): add pg_query_go for postgres semantic query fingerprinting"
-```
-
----
-
-### Task 2: Create the `fingerprint` package
-
-**Files:**
-- Create: `internal/component/database_observability/postgres/fingerprint/fingerprint.go`
-- Create: `internal/component/database_observability/postgres/fingerprint/fingerprint_test.go`
-
-- [ ] **Step 1: Write the failing test file**
-
-Create `internal/component/database_observability/postgres/fingerprint/fingerprint_test.go`:
-
-```go
-package fingerprint
-
-import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-)
-
-func TestFingerprint_StableAcrossCommentsAndWhitespace(t *testing.T) {
-	a, _, errA := Fingerprint("SELECT * FROM users WHERE id = $1 -- foo", SourceLog, 0)
-	require.NoError(t, errA)
-	b, _, errB := Fingerprint("SELECT *\nFROM users\nWHERE id = $1 /* bar */", SourceLog, 0)
-	require.NoError(t, errB)
-	assert.Equal(t, a, b)
-}
-
-func TestFingerprint_DifferentForDifferentQueries(t *testing.T) {
-	a, _, _ := Fingerprint("SELECT * FROM users", SourceLog, 0)
-	b, _, _ := Fingerprint("SELECT * FROM products", SourceLog, 0)
-	assert.NotEqual(t, a, b)
-}
-
-func TestFingerprint_RepairUnclosedQuotes(t *testing.T) {
-	want, _, errWant := Fingerprint("SELECT * FROM t WHERE name = 'oh no'", SourceLog, 0)
-	require.NoError(t, errWant)
-
-	fp, repaired, err := Fingerprint("SELECT * FROM t WHERE name = 'oh no", SourceLog, 0)
-	require.NoError(t, err)
-	assert.True(t, repaired, "should report that repair was used")
-	assert.Equal(t, want, fp, "repaired fingerprint must match the closed-quote form")
-}
-
-func TestFingerprint_RepairUnclosedParens(t *testing.T) {
-	want, _, errWant := Fingerprint("SELECT * FROM t WHERE id IN (1, 2, 3)", SourceLog, 0)
-	require.NoError(t, errWant)
-
-	fp, repaired, err := Fingerprint("SELECT * FROM t WHERE id IN (1, 2, 3", SourceLog, 0)
-	require.NoError(t, err)
-	assert.True(t, repaired)
-	assert.Equal(t, want, fp, "repaired fingerprint must match the closed-paren form")
-}
-
-func TestFingerprint_TruncatedSentinelOnPgStatActivity(t *testing.T) {
-	const trackSize = 1024
-	bad := makeUnparsableOfLen(trackSize - 1)
-
-	fp, _, err := Fingerprint(bad, SourcePgStatActivity, trackSize)
-	require.NoError(t, err)
-	assert.Equal(t, FingerprintOf(SentinelTruncated), fp)
-}
-
-func TestFingerprint_UnparsableSentinel(t *testing.T) {
-	fp, _, err := Fingerprint("$$$ not sql at all $$$", SourceLog, 0)
-	require.NoError(t, err)
-	assert.Equal(t, FingerprintOf(SentinelUnparsable), fp)
-}
-
-func TestFingerprint_EmptyAndNullInputs(t *testing.T) {
-	_, _, err := Fingerprint("", SourceLog, 0)
-	assert.Error(t, err, "empty input should error so callers can skip emitting")
-}
-
-func TestFingerprint_SentinelStability(t *testing.T) {
-	t.Run("truncated sentinel is stable", func(t *testing.T) {
-		const trackSize = 1024
-		bad := makeUnparsableOfLen(trackSize - 1)
-
-		first, _, err1 := Fingerprint(bad, SourcePgStatActivity, trackSize)
-		require.NoError(t, err1)
-		second, _, err2 := Fingerprint(bad, SourcePgStatActivity, trackSize)
-		require.NoError(t, err2)
-		assert.Equal(t, first, second)
-		assert.Equal(t, FingerprintOf(SentinelTruncated), first)
-	})
-
-	t.Run("unparsable sentinel is stable", func(t *testing.T) {
-		first, _, _ := Fingerprint("$$$ not sql at all $$$", SourceLog, 0)
-		second, _, _ := Fingerprint("$$$ not sql at all $$$", SourceLog, 0)
-		assert.Equal(t, first, second)
-		assert.Equal(t, FingerprintOf(SentinelUnparsable), first)
-	})
-}
-
-// makeUnparsableOfLen returns a string of exactly n bytes that is unparsable
-// even after `repair()` runs (no quotes or parens to balance).
-func makeUnparsableOfLen(n int) string {
-	const seed = "NOT VALID SQL !!! "
-	out := seed
-	for len(out) < n {
-		out += "x "
-	}
-	return out[:n]
-}
-```
-
-- [ ] **Step 2: Run tests to verify they fail**
-
-Run: `go test ./internal/component/database_observability/postgres/fingerprint/...`
-Expected: FAIL — package has no implementation yet.
-
-- [ ] **Step 3: Implement the fingerprint package**
-
-Create `internal/component/database_observability/postgres/fingerprint/fingerprint.go`:
-
-```go
-// Package fingerprint computes stable, semantic SQL fingerprints for PostgreSQL
-// query text using the libpg_query parser (via pg_query_go).
-//
-// The same fingerprint is produced regardless of comments, whitespace, or
-// literal-vs-placeholder differences, allowing pg_stat_statements metrics,
-// pg_stat_activity samples, and server-log query text to be correlated by a
-// single client-side identifier — including on managed services (RDS, Aurora)
-// that do not expose pg_stat_statements.queryid in log_line_prefix.
-package fingerprint
-
-import (
-	"errors"
-	"strings"
-
-	pg_query "github.com/pganalyze/pg_query_go/v6"
-)
-
-// Source describes which PostgreSQL surface the query text was read from.
-// It only affects the sentinel chosen when both parse and repair fail.
-type Source int
-
-const (
-	SourcePgStatStatements Source = iota
-	SourcePgStatActivity
-	SourceLog
-)
-
-// Sentinel strings used when query text cannot be parsed even after repair.
-// These match the sentinels used by pganalyze's collector so existing
-// dashboards built around their values port over without changes.
-const (
-	SentinelTruncated  = "<truncated query>"
-	SentinelUnparsable = "<unparsable query>"
-)
-
-// ErrEmpty is returned when the input is empty or whitespace-only. Callers
-// should skip emitting fingerprints for these (don't even use a sentinel).
-var ErrEmpty = errors.New("fingerprint: empty query text")
-
-var (
-	sentinelTruncatedFp  = FingerprintOf(SentinelTruncated)
-	sentinelUnparsableFp = FingerprintOf(SentinelUnparsable)
-)
-
-// Fingerprint runs the three-stage pipeline:
-//  1. Parse the input as-is.
-//  2. If parsing fails, balance unclosed quotes and parentheses and retry.
-//  3. If parsing still fails, return a sentinel fingerprint.
-//
-// trackActivityQuerySize is the value of the postgres setting
-// `track_activity_query_size` and is only consulted when source ==
-// SourcePgStatActivity. Pass 0 for other sources.
-//
-// The returned `repaired` flag is true when the input did NOT parse as-is
-// (i.e. either stage 2 succeeded, or both stage 2 and stage 3 ran). To
-// distinguish a successful repair from a sentinel fallback, compare the
-// returned fingerprint against FingerprintOf(SentinelTruncated) /
-// FingerprintOf(SentinelUnparsable).
-func Fingerprint(query string, source Source, trackActivityQuerySize int) (fp string, repaired bool, err error) {
-	if strings.TrimSpace(query) == "" {
-		return "", false, ErrEmpty
-	}
-
-	if fp, perr := pg_query.Fingerprint(query); perr == nil {
-		return fp, false, nil
-	}
-
-	fixed := repair(query)
-	if fp, perr := pg_query.Fingerprint(fixed); perr == nil {
-		return fp, true, nil
-	}
-
-	return sentinelFingerprint(query, source, trackActivityQuerySize), true, nil
-}
-
-// FingerprintOf hashes a known sentinel string deterministically. Exported so
-// tests and callers can compare against the values produced for sentinels.
-func FingerprintOf(text string) string {
-	if fp, err := pg_query.Fingerprint(text); err == nil && fp != "" {
-		return fp
-	}
-	// pg_query.Fingerprint may not parse a non-SQL sentinel; fall back to a
-	// deterministic hash of the text (matches pganalyze's util/fingerprint.go).
-	return formatHash(pg_query.HashXXH3_64([]byte(text), 0xee))
-}
-
-func sentinelFingerprint(query string, source Source, trackActivityQuerySize int) string {
-	if source == SourcePgStatActivity && trackActivityQuerySize > 0 && len(query) == trackActivityQuerySize-1 {
-		return sentinelTruncatedFp
-	}
-	return sentinelUnparsableFp
-}
-
-// repair closes unclosed single/double quotes and balances unclosed
-// parentheses, mirroring pganalyze's `fixTruncatedQuery`. The repaired text
-// is only used for fingerprint computation — it is not emitted anywhere.
-//
-// This is a heuristic and has known false positives:
-//   - Doubled-apostrophe escapes inside string literals (`'O''Brien'`) are
-//     counted as four separate `'` characters.
-//   - Dollar-quoted strings (`$body$ ... $body$`) are not understood at all.
-//   - Backslash-escaped quotes (with `standard_conforming_strings = off`) are
-//     similarly miscounted.
-//
-// Quote-balancing must run before paren-balancing — a string ending in
-// `'(` should have the quote closed first.
-func repair(query string) string {
-	if strings.Count(query, "'")%2 == 1 {
-		query += "'"
-	}
-	if strings.Count(query, "\"")%2 == 1 {
-		query += "\""
-	}
-	open := strings.Count(query, "(") - strings.Count(query, ")")
-	for i := 0; i < open; i++ {
-		query += ")"
-	}
-	return query
-}
-
-func formatHash(h uint64) string {
-	const hexChars = "0123456789abcdef"
-	out := make([]byte, 16)
-	for i := 15; i >= 0; i-- {
-		out[i] = hexChars[h&0xF]
-		h >>= 4
-	}
-	return string(out)
-}
-```
-
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `go test -v ./internal/component/database_observability/postgres/fingerprint/...`
-Expected: PASS for all 8 tests (the 7 directly named plus the `SentinelStability` umbrella with 2 subtests).
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add internal/component/database_observability/postgres/fingerprint/
-git commit -m "feat(database_observability/postgres): add semantic query fingerprint package"
-```
-
----
-
-## Phase 1 — Logs collector: errors-by-fingerprint counter
-
-### Task 3: Register the new counter
+### Task 1: Confirm shipped state and clean up the deprecated metric
 
 **Files:**
 - Modify: `internal/component/database_observability/postgres/collector/logs.go`
 
-This task introduces the metric and its lifecycle without any incrementing logic yet. Splitting it off makes the diff easy to review.
+This task removes the metric without disturbing the parser state machine that the next phase will reuse.
 
-- [ ] **Step 1: Read the existing struct and `initMetrics`**
+- [ ] **Step 1: Verify branch state**
 
-Open `internal/component/database_observability/postgres/collector/logs.go` and locate:
-- `Logs` struct around line 50 (has `errorsBySQLState *prometheus.CounterVec` field).
-- `initMetrics` around line 96 (constructs and registers existing metrics).
-- `Stop` around line 137 (unregisters existing metrics).
+Run:
+```bash
+git log --oneline main..HEAD | head -10
+git diff --stat main -- internal/component/database_observability/postgres/collector/logs.go
+```
+Expected: see all the commits listed in *Branch state* above, and `logs.go` shows the buffering / state-machine / fingerprint-counter additions.
 
-These are your anchors.
+- [ ] **Step 2: Remove the `errorsByFingerprint` field**
 
-- [ ] **Step 2: Add the field to `Logs`**
-
-Add a field next to the existing `errorsBySQLState`:
-
+In `logs.go`, in the `Logs` struct, delete the line:
 ```go
 errorsByFingerprint *prometheus.CounterVec
 ```
 
-- [ ] **Step 3: Construct it in `initMetrics`**
+- [ ] **Step 3: Remove the CounterVec construction in `initMetrics`**
 
-After the existing `l.errorsBySQLState = prometheus.NewCounterVec(...)` block (and before `l.parseErrors = ...`), add:
-
+Delete the block:
 ```go
 l.errorsByFingerprint = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Namespace: "database_observability",
-		Name:      "pg_errors_by_fingerprint_total",
-		Help:      "Number of PostgreSQL log errors with a captured query fingerprint, partitioned by severity, SQL state, and the originating query's fingerprint. Counts a subset of pg_errors_total (only errors for which Alloy successfully observed the matching STATEMENT continuation).",
-	},
-	[]string{"severity", "sqlstate", "sqlstate_class", "datname", "query_fingerprint"},
+    prometheus.CounterOpts{
+        Namespace: "database_observability",
+        Name:      "pg_errors_by_fingerprint_total",
+        Help:      "...",
+    },
+    []string{"severity", "sqlstate", "sqlstate_class", "datname", "query_fingerprint"},
 )
 ```
-
-In the existing `l.registry.MustRegister(...)` call below, add `l.errorsByFingerprint` to the argument list. The block becomes:
-
+And remove `l.errorsByFingerprint,` from the `l.registry.MustRegister(...)` argument list. The block becomes:
 ```go
 l.registry.MustRegister(
-	l.errorsBySQLState,
-	l.errorsByFingerprint,
-	l.parseErrors,
+    l.errorsBySQLState,
+    l.parseErrors,
 )
 ```
 
-- [ ] **Step 4: Unregister it in `Stop`**
+- [ ] **Step 4: Remove the unregister call in `Stop`**
 
-In `Stop`, alongside the existing `l.registry.Unregister(l.errorsBySQLState)`, add:
-
+Delete the line:
 ```go
 l.registry.Unregister(l.errorsByFingerprint)
 ```
 
-- [ ] **Step 5: Run all logs tests to confirm no regression**
+- [ ] **Step 5: Remove `incrementByFingerprint` and its callers (preserving the parser state machine)**
 
-Run: `go test -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector`
-Expected: All existing tests still pass (the metric exists but never increments yet, so no test cares).
+`incrementByFingerprint` is only meaningful when the counter exists. Replace it with a stub that keeps the call sites compiling — they will be re-pointed at the Loki emission path in Task 3. For now, make it a no-op that drops the entry but logs at debug:
+```go
+func (l *Logs) incrementByFingerprint(entry *pendingError, stmt string) {
+    // Replaced in a follow-up task with Loki op emission.
+    // This stub keeps the call sites in flushStatementLocked and
+    // processBareContinuation building while Task 3 wires in the entry path.
+    _ = entry
+    _ = stmt
+}
+```
 
-- [ ] **Step 6: Commit**
+> Worker note: do not delete the call sites — `flushStatementLocked` and `processBareContinuation` already drive into `incrementByFingerprint` at the right moment. Reusing those call sites is what keeps the multi-line accumulation, displacement, and timeout-flush fixes load-bearing.
 
+- [ ] **Step 6: Run all postgres tests; expect counter-assertion failures**
+
+Run:
 ```bash
-git add internal/component/database_observability/postgres/collector/logs.go
-git commit -m "feat(database_observability/postgres): register pg_errors_by_fingerprint_total counter"
+go test -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector
 ```
+Expected: tests that assert on `c.errorsByFingerprint` no longer compile. Capture the failing test names — Task 6 will replace them.
 
----
+- [ ] **Step 7: Comment out (do not delete yet) the failing assertions**
 
-### Task 4: Buffer pending errors, fingerprint STATEMENT continuations, increment the counter
+In `logs_test.go`, mark each affected test with `t.Skip("Replaced by Loki entry emission in Task 6")` at the top. Tests to skip (exhaustive list — derived from the shipped state):
+- `TestLogsCollector_IncrementsErrorsByFingerprint_OnErrorPlusStatement`
+- `TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter`
+- `TestLogsCollector_DisplacedPendingDoesNotDoubleCount`
+- `TestLogsCollector_PrefixedStatement_MultiLine`
+- `TestLogsCollector_StatementSurvivesTimeoutFlush`
 
-**Files:**
-- Modify: `internal/component/database_observability/postgres/collector/logs.go`
-- Modify: `internal/component/database_observability/postgres/collector/logs_test.go`
+> Worker note: this `t.Skip` is short-lived. Task 6 deletes the skip and rewrites each test against the entry handler.
 
-This is the single biggest task — but it's still bite-sized in steps. It introduces the buffering map, the timeout ticker, and the STATEMENT-arrives → fingerprint → increment path. Errors with no STATEMENT are not counted by the new metric (they remain counted by the existing `pg_errors_total`).
+- [ ] **Step 8: Verify build and runs cleanly**
 
-- [ ] **Step 1: Write the failing test (happy path)**
-
-Append to `internal/component/database_observability/postgres/collector/logs_test.go`:
-
-```go
-func TestLogsCollector_IncrementsErrorsByFingerprint_OnErrorPlusStatement(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	receiver := loki.NewLogsReceiver()
-
-	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
-	})
-	require.NoError(t, err)
-	require.NoError(t, c.Start(context.Background()))
-	t.Cleanup(c.Stop)
-
-	ts := c.startTime.Add(10 * time.Second).UTC()
-	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
-	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
-
-	// ERROR row.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[12345]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  relation \"missing\" does not exist",
-	}}
-	// STATEMENT continuation.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      "STATEMENT:  SELECT * FROM missing WHERE id = $1",
-	}}
-
-	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1", fingerprint.SourceLog, 0)
-	require.NoError(t, fpErr)
-
-	require.Eventually(t, func() bool {
-		return testutil.CollectAndCount(c.errorsByFingerprint, "database_observability_pg_errors_by_fingerprint_total") >= 1
-	}, 2*time.Second, 50*time.Millisecond)
-
-	got := testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP))
-	require.Equal(t, float64(1), got)
-}
+Run:
+```bash
+go test -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector
+go vet ./internal/component/database_observability/postgres/...
+CGO_ENABLED=1 go build ./internal/component/...
 ```
+Expected: pass / clean.
 
-Add necessary imports to the test file (most are already present — verify by reading the existing import block):
-- `"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"`
-- `"github.com/prometheus/client_golang/prometheus/testutil"`
-
-- [ ] **Step 2: Run the test to verify it fails**
-
-Run: `go test -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector_IncrementsErrorsByFingerprint_OnErrorPlusStatement`
-Expected: FAIL — `c.errorsByFingerprint.WithLabelValues(...)` returns 0; nothing increments yet. (The test compiles because the field was added in Task 3.)
-
-- [ ] **Step 3: Add the `pendingError` struct and the buffering fields on `Logs`**
-
-In `logs.go`, near the existing `Logs` struct (around line 50), add:
-
-```go
-type pendingError struct {
-	receivedAt    time.Time
-	severity      string
-	sqlstate      string
-	sqlstateClass string
-	datname       string
-}
-```
-
-Inside the `Logs` struct, add three new fields (next to the existing `errorsByFingerprint`):
-
-```go
-pendingErrors       map[string]*pendingError
-pendingMu           sync.Mutex
-pendingErrorTimeout time.Duration
-```
-
-In `NewLogs`, after the `Logs{...}` literal, initialize them:
-
-```go
-l.pendingErrors = make(map[string]*pendingError)
-l.pendingErrorTimeout = 5 * time.Second
-```
-
-(Defaulting to 5s mirrors the buffer window pganalyze uses for the same shape of stitching. Tests can override this field directly.)
-
-- [ ] **Step 4: Add a timeout ticker to `run`**
-
-Locate `run` (around line 150). Replace its body with:
-
-```go
-func (l *Logs) run() {
-	level.Debug(l.logger).Log("msg", "collector running, waiting for log entries")
-
-	tickPeriod := l.pendingErrorTimeout / 2
-	if tickPeriod < 50*time.Millisecond {
-		tickPeriod = 50 * time.Millisecond
-	}
-	timeoutTicker := time.NewTicker(tickPeriod)
-	defer timeoutTicker.Stop()
-
-	for {
-		select {
-		case <-l.ctx.Done():
-			level.Debug(l.logger).Log("msg", "collector stopping")
-			return
-		case entry := <-l.receiver.Chan():
-			if err := l.parseTextLog(entry); err != nil {
-				level.Warn(l.logger).Log(
-					"msg", "failed to process log line",
-					"error", err,
-					"line_preview", truncateString(entry.Entry.Line, 100),
-				)
-			}
-		case <-timeoutTicker.C:
-			l.flushExpiredPending()
-		}
-	}
-}
-```
-
-- [ ] **Step 5: Refactor the continuation-routing in `parseTextLog`**
-
-Locate the existing guard (around line 173):
-
-```go
-if isContinuationLine(line) {
-	return nil
-}
-```
-
-Replace it with:
-
-```go
-if isContinuationLine(line) {
-	l.processContinuation(line)
-	return nil
-}
-```
-
-- [ ] **Step 6: Capture pending errors in `parseTextLog`**
-
-In `parseTextLog`, after the existing `l.errorsBySQLState.WithLabelValues(...).Inc()` call (around line 261-267), add the buffering write:
-
-```go
-// Buffer the error so a matching STATEMENT continuation can stitch the
-// SQL text and we can record per-fingerprint cardinality.
-pidStart := strings.Index(afterAt, "[")
-pidEnd := strings.Index(afterAt, "]")
-pid := ""
-if pidStart != -1 && pidEnd > pidStart {
-	pid = afterAt[pidStart+1 : pidEnd]
-}
-
-if pid != "" {
-	l.pendingMu.Lock()
-	l.pendingErrors[pid] = &pendingError{
-		receivedAt:    time.Now(),
-		severity:      severity,
-		sqlstate:      sqlstateCode,
-		sqlstateClass: sqlstateClass,
-		datname:       database,
-	}
-	l.pendingMu.Unlock()
-}
-```
-
-- [ ] **Step 7: Implement `processContinuation`, `flushExpiredPending`, and the increment path**
-
-Add three new methods, e.g. just after the existing `isContinuationLine` function:
-
-```go
-// processContinuation handles continuation lines (DETAIL/HINT/STATEMENT/...).
-// We only act on STATEMENT lines today: the SQL text is fingerprinted and
-// the matching pending error increments database_observability_pg_errors_by_fingerprint_total.
-//
-// PostgreSQL does not include the log_line_prefix on continuation lines, so
-// we cannot extract the originating PID from the line itself. We match the
-// most recently buffered pending error instead — PG's ereport mutex emits
-// ERROR + STATEMENT contiguously per backend, so per-PID interleaving in
-// the upstream tailer is the only failure mode (rare in practice).
-func (l *Logs) processContinuation(line string) {
-	trimmed := strings.TrimSpace(line)
-	if !strings.HasPrefix(trimmed, "STATEMENT:") {
-		return
-	}
-	stmt := strings.TrimSpace(strings.TrimPrefix(trimmed, "STATEMENT:"))
-
-	l.pendingMu.Lock()
-	var bestPID string
-	var bestEntry *pendingError
-	for pid, p := range l.pendingErrors {
-		if bestEntry == nil || p.receivedAt.After(bestEntry.receivedAt) {
-			bestPID = pid
-			bestEntry = p
-		}
-	}
-	if bestEntry != nil {
-		delete(l.pendingErrors, bestPID)
-	}
-	l.pendingMu.Unlock()
-
-	if bestEntry == nil {
-		return
-	}
-
-	fp, _, err := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
-	if err != nil {
-		// fingerprint.ErrEmpty — caller should skip; do not increment.
-		return
-	}
-
-	l.errorsByFingerprint.WithLabelValues(
-		bestEntry.severity,
-		bestEntry.sqlstate,
-		bestEntry.sqlstateClass,
-		bestEntry.datname,
-		fp,
-	).Inc()
-}
-
-// flushExpiredPending drops pending entries older than pendingErrorTimeout.
-// Errors without a matching STATEMENT continuation never increment the
-// pg_errors_by_fingerprint_total counter — they remain counted only on
-// pg_errors_total.
-func (l *Logs) flushExpiredPending() {
-	deadline := time.Now().Add(-l.pendingErrorTimeout)
-	l.pendingMu.Lock()
-	for pid, p := range l.pendingErrors {
-		if p.receivedAt.Before(deadline) {
-			delete(l.pendingErrors, pid)
-		}
-	}
-	l.pendingMu.Unlock()
-}
-```
-
-Add these imports to the top of `logs.go` (group with the existing `grafana/alloy` imports):
-
-```go
-"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
-```
-
-- [ ] **Step 8: Run the new test to verify it passes**
-
-Run: `go test -v -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector_IncrementsErrorsByFingerprint_OnErrorPlusStatement`
-Expected: PASS.
-
-- [ ] **Step 9: Run all logs tests**
-
-Run: `go test -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector`
-Expected: All pass. The pre-existing tests don't pass a STATEMENT continuation, so the new metric stays at zero for them; no expectations need updating.
-
-- [ ] **Step 10: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add internal/component/database_observability/postgres/collector/logs.go internal/component/database_observability/postgres/collector/logs_test.go
-git commit -m "feat(database_observability/postgres): increment pg_errors_by_fingerprint_total on ERROR+STATEMENT pairs"
+git commit -m "refactor(database_observability/postgres): drop pg_errors_by_fingerprint counter (preparing for Loki op)"
 ```
 
 ---
 
-### Task 5: Confirm timeout-without-STATEMENT does not increment
+## Phase 1 — Capture richer metadata
 
-**Files:**
-- Modify: `internal/component/database_observability/postgres/collector/logs_test.go`
-
-This is a small test-only task that pins the documented behavior: errors without a STATEMENT continuation are NOT counted on the new metric.
-
-- [ ] **Step 1: Write the test**
-
-Append to `logs_test.go`:
-
-```go
-func TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	receiver := loki.NewLogsReceiver()
-
-	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
-	})
-	require.NoError(t, err)
-	c.pendingErrorTimeout = 100 * time.Millisecond
-
-	require.NoError(t, c.Start(context.Background()))
-	t.Cleanup(c.Stop)
-
-	ts := c.startTime.Add(10 * time.Second).UTC()
-	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
-	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
-
-	// ERROR with no following STATEMENT.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[99999]:1:53300:" + ts2 + ":1/0:0:c1::psqlFATAL:  too many connections",
-	}}
-
-	// pg_errors_total increments immediately (existing behavior).
-	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "books_store", "user")) == 1
-	}, 1*time.Second, 50*time.Millisecond)
-
-	// Wait past the pending timeout window plus a tick.
-	time.Sleep(300 * time.Millisecond)
-
-	// pg_errors_by_fingerprint_total stays at 0 — there was no STATEMENT.
-	require.Equal(t, 0, testutil.CollectAndCount(c.errorsByFingerprint, "database_observability_pg_errors_by_fingerprint_total"))
-}
-```
-
-- [ ] **Step 2: Run the test**
-
-Run: `go test -v -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter`
-Expected: PASS (no implementation change required; this test pins existing behavior).
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add internal/component/database_observability/postgres/collector/logs_test.go
-git commit -m "test(database_observability/postgres): pin no-statement→no-fingerprint-counter behavior"
-```
-
----
-
-### Task 6: Handle displaced pending entries cleanly
+### Task 2: Extend `pendingError` with all fields needed for the Loki entry
 
 **Files:**
 - Modify: `internal/component/database_observability/postgres/collector/logs.go`
-- Modify: `internal/component/database_observability/postgres/collector/logs_test.go`
 
-When the same backend (PID) issues a second ERROR before the first's STATEMENT arrives, the buffer's `pendingErrors[pid] = ...` overwrites the first. The first error's `pg_errors_total` was already incremented, but the new fingerprint counter would silently skip it — making the new counter under-count compared to its parent counter. Fix: drop the displaced entry like a timeout (no fingerprint counter increment), but make the dropping explicit and tested.
+This task only widens the data captured at ERROR-line time. The downstream emission path is added in Task 3.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Add fields to `pendingError`**
 
-Append to `logs_test.go`:
-
+The new struct shape:
 ```go
-func TestLogsCollector_DisplacedPendingDoesNotDoubleCount(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	receiver := loki.NewLogsReceiver()
+type pendingError struct {
+    receivedAt    time.Time
 
-	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 8), func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
-	})
-	require.NoError(t, err)
-	require.NoError(t, c.Start(context.Background()))
-	t.Cleanup(c.Stop)
+    // Existing label-shaped fields.
+    severity      string
+    sqlstate      string
+    sqlstateClass string
+    datname       string
 
-	ts := c.startTime.Add(10 * time.Second).UTC()
-	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
-	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+    // Existing user field (already kept on errors_total label).
+    user          string
 
-	pid := "55555"
-	// ERROR #1 (no STATEMENT yet).
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  err one",
-	}}
-	// ERROR #2 from same PID (displaces #1).
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P02:" + ts2 + ":1/0:0:c1::psqlERROR:  err two",
-	}}
-	// STATEMENT for #2.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      "STATEMENT:  SELECT 2",
-	}}
-
-	expectedFP, _, _ := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog, 0)
-
-	// Exactly one increment, with err two's labels and SELECT 2's fingerprint.
-	require.Eventually(t, func() bool {
-		return testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P02", "42", "books_store", expectedFP)) == 1
-	}, 2*time.Second, 50*time.Millisecond)
-	// And nothing under err one's labels.
-	require.Equal(t, float64(0), testutil.ToFloat64(c.errorsByFingerprint.WithLabelValues("ERROR", "42P01", "42", "books_store", expectedFP)))
+    // New fields populated from the prefix and message tail. All are
+    // strings; emit "" when the source field is absent or empty.
+    timestamp        time.Time // from %m, used as the Loki entry timestamp
+    clientAddr       string    // host portion of %r
+    clientPort       string    // port portion of %r
+    pid              string    // %p
+    backendStart     string    // %s, kept as the original RFC-ish text
+    xid              string    // %x; emit "" when "0"
+    sessionID        string    // %c
+    applicationName  string    // %a; "[unknown]" pass-through
+    errorMessage     string    // text after "<severity>:  " on the ERROR line
 }
 ```
 
-- [ ] **Step 2: Run the test**
+- [ ] **Step 2: Parse `%r` host and port**
 
-Run: `go test -v -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector_DisplacedPendingDoesNotDoubleCount`
-Expected: PASS already. The current implementation overwrites silently, which is the desired behavior for *this* metric — the displaced entry simply doesn't contribute. The test pins that behavior.
+`%r` formats:
+- TCP: `host(port)` e.g. `172.18.0.3(34492)`
+- Unix domain: `[local]`
 
-(If you preferred to *attribute* the displaced entry to the second error's STATEMENT, you'd see a `2` instead of `1` and the test would fail. The current single-increment behavior is correct.)
-
-- [ ] **Step 3: Add a documentation comment to `parseTextLog`'s buffering write**
-
-Find the `if pid != "" {` block added in Task 4, Step 6. Add a comment explaining the displacement semantics:
-
+Add a helper in `logs.go`:
 ```go
-if pid != "" {
-	l.pendingMu.Lock()
-	// If a previous error from this PID is still pending (no STATEMENT
-	// arrived within the timeout window), the new error displaces it.
-	// The displaced error is NOT credited to the fingerprint counter —
-	// only pg_errors_total counts it. This keeps the new metric strictly
-	// equal to "errors with successfully captured SQL".
-	l.pendingErrors[pid] = &pendingError{...}
-	l.pendingMu.Unlock()
+// parseRemote extracts the host and port from a %r value. Returns
+// ("[local]", "") for unix-domain connections and ("", "") if the value
+// can't be parsed.
+func parseRemote(s string) (host, port string) {
+    if s == "[local]" || s == "" {
+        return s, ""
+    }
+    open := strings.LastIndex(s, "(")
+    close := strings.LastIndex(s, ")")
+    if open == -1 || close == -1 || close <= open {
+        return s, ""
+    }
+    return s[:open], s[open+1 : close]
 }
 ```
 
-(Reuse the existing `pendingError{...}` literal from Task 4; only the comment is new.)
+- [ ] **Step 3: Parse the application name from the prefix tail**
 
-- [ ] **Step 4: Run all logs tests**
+The line up through `%c` is delimited by `:`. After `%c` the literal sequence is `:%q%a:` — `%q` produces nothing for session-bound logs and `%a` is the application name (often `[unknown]`). The keyword (`ERROR:` / `STATEMENT:` / etc.) immediately follows the trailing `:` of `%a`.
 
-Run: `go test -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector`
-Expected: All pass.
+So in `parseTextLog`, after the existing `pidEndIdx` extraction:
+```go
+// %s:%v:%x:%c:%q%a:KEYWORD body
+parts := strings.SplitN(afterPid, ":", 8)
+// parts[0] = "" (leading colon after "[<pid>]")
+// parts[1] = %l
+// parts[2] = %e (sqlstate)
+// parts[3] = first half of %s (date portion before its inner ':')
+// parts[4] = rest of %s + %v + %x + %c + %a, joined by remaining colons
+//
+// %s contains its own ':' (timestamps), so SplitN on a small N is fragile.
+// Use the keyword position as the right anchor instead.
+```
+
+Better approach: anchor from the *right*. Find the FIRST `:KEYWORD:` in the line (where `KEYWORD` ∈ {`ERROR`, `FATAL`, `PANIC`, `STATEMENT`, `DETAIL`, `HINT`, `CONTEXT`, `QUERY`, `LOCATION`}). The byte slice immediately to the left of that match, minus the leading `:`, is `%a`. The slice to the left of `%a:` is `…:%c`.
+
+Add helper:
+```go
+// findKeywordPos returns the index in line where the keyword (preceded by
+// `:` and followed by `:`) begins, or -1.
+func findKeywordPos(line string) (kwStart int, keyword string) {
+    keywords := []string{"ERROR", "FATAL", "PANIC", "STATEMENT", "DETAIL", "HINT", "CONTEXT", "QUERY", "LOCATION"}
+    best := -1
+    bestKw := ""
+    for _, kw := range keywords {
+        if idx := strings.Index(line, ":"+kw+":"); idx != -1 {
+            if best == -1 || idx < best {
+                best = idx
+                bestKw = kw
+            }
+        }
+    }
+    return best, bestKw
+}
+```
+
+Then in `parseTextLog` (after the existing prefix parsing):
+```go
+kwStart, _ := findKeywordPos(line)
+if kwStart != -1 {
+    // The %a field is what sits between the last `:` before kwStart and the
+    // colon at kwStart. Walk backwards from kwStart to find that colon.
+    appStart := strings.LastIndex(line[:kwStart], ":") + 1
+    applicationName := line[appStart:kwStart]
+    // …
+}
+```
+
+- [ ] **Step 4: Parse `%s`, `%v`, `%x`, `%c` from the segment between `[%p]:` and the keyword**
+
+The segment after `]:` and before `:%a:KEYWORD:` looks like:
+```
+4:40001:2026-05-05 20:55:11 GMT:191/347:11054:69fa592f.136
+```
+that is: `%l:%e:%s:%v:%x:%c`. Split on `:` from the right (since `%s` contains internal `:` separators in its time-of-day component). Use a custom backwards splitter:
+
+```go
+// splitFromRight splits s on sep into n fields, taking the rightmost n-1
+// separators. The first field is whatever remains and may itself contain
+// separators.
+func splitFromRight(s, sep string, n int) []string {
+    if n <= 1 {
+        return []string{s}
+    }
+    out := make([]string, n)
+    for i := n - 1; i > 0; i-- {
+        idx := strings.LastIndex(s, sep)
+        if idx == -1 {
+            return nil
+        }
+        out[i] = s[idx+len(sep):]
+        s = s[:idx]
+    }
+    out[0] = s
+    return out
+}
+```
+
+Then with the `%l:%e:%s:%v:%x:%c` segment:
+```go
+fields := splitFromRight(prefixSeg, ":", 6) // [%l, %e, %s, %v, %x, %c]
+if len(fields) == 6 {
+    backendStart := fields[2] // contains internal spaces, no internal ':'
+                              // wait — %s does contain ':' in HH:MM:SS.
+                              // splitFromRight collapses those into fields[0].
+}
+```
+
+> **Worker note:** The naive `splitFromRight(seg, ":", 6)` will fail because `%s` (`2026-05-05 20:55:11 GMT`) contains `:` characters. Instead, anchor on stable shapes from the right:
+> - `%c` is `XXXXXXXX.XXXX` (hex.hex), no colons.
+> - `%x` is `\d+`, no colons.
+> - `%v` is `\d+/\d+`, no colons.
+> - `%e` is `[A-Z0-9]{5}`, no colons.
+> - `%l` is `\d+`, no colons.
+>
+> So splitting from the right by `:` six times consumes six tokens that have no internal `:` — except that `%s` is **inside** the segment between `%e` and `%v` and contains `:`. The reliable form is to splitFromRight by 5 (giving you `%c, %x, %v, %s, %e`) and let the leftmost remainder be `%l`. **Also note:** because `%s` contains `:`, we must accept its raw form (with the colons) as the backend_start string and not try to split it further.
+
+A safer recipe:
+
+```go
+// segment looks like:  %l:%e:%s:%v:%x:%c
+//
+// Right-anchored extraction:
+sessionID, segNoSession := popRight(segment, ":")    // %c
+xid, segNoXid           := popRight(segNoSession, ":")
+vxid, segNoVxid         := popRight(segNoXid, ":")
+// What remains is "%l:%e:%s". %s has ':' inside, so split by the next ':'
+// from the LEFT to get %l, then by the next ':' to get %e, and the rest
+// is %s.
+ll, rest := popLeft(segNoVxid, ":")                  // %l
+sqlstate, backendStart := popLeft(rest, ":")
+```
+
+Add `popLeft` and `popRight` helpers (or inline them). Document that `backendStart` is the raw `%s` value (e.g., `"2026-05-05 20:55:11 GMT"`) and is forwarded to Loki metadata verbatim.
+
+- [ ] **Step 5: Capture the error message body**
+
+After the existing severity detection:
+```go
+// messageStart is the index of the severity token (e.g. "ERROR")
+errorMessage := strings.TrimSpace(line[messageStart+len(severity)+1:]) // skip "<sev>:"
+// Trim the leading "  " left by `<sev>:  message`.
+errorMessage = strings.TrimLeft(errorMessage, " ")
+```
+
+- [ ] **Step 6: Populate all the new fields when writing into `pendingErrors`**
+
+Replace the current `&pendingError{...}` literal with the full-fields version:
+```go
+l.pendingErrors[pid] = &pendingError{
+    receivedAt:      time.Now(),
+    severity:        severity,
+    sqlstate:        sqlstateCode,
+    sqlstateClass:   sqlstateClass,
+    datname:         database,
+    user:            user,
+    timestamp:       parsedTimestamp,            // from the existing timestamp parse
+    clientAddr:      clientAddr,                 // parseRemote(...)
+    clientPort:      clientPort,
+    pid:             pid,
+    backendStart:    backendStart,
+    xid:             normalizedXid(xidRaw),      // helper that returns "" if "0"
+    sessionID:       sessionID,
+    applicationName: applicationName,
+    errorMessage:    errorMessage,
+}
+```
+
+Add `normalizedXid`:
+```go
+func normalizedXid(s string) string {
+    if s == "0" {
+        return ""
+    }
+    return s
+}
+```
+
+- [ ] **Step 7: Tests for parsing helpers**
+
+Add `TestParseRemote`, `TestSplitFromRight`/`TestPopRight`, and `TestNormalizedXid` to `logs_test.go`. Table-driven, exhaustive over the input shapes:
+
+```go
+func TestParseRemote(t *testing.T) {
+    cases := []struct {
+        in           string
+        wantHost     string
+        wantPort     string
+    }{
+        {"172.18.0.3(34492)", "172.18.0.3", "34492"},
+        {"[local]", "[local]", ""},
+        {"", "", ""},
+        {"weird-no-parens", "weird-no-parens", ""},
+        {"::1(5432)", "::1", "5432"},
+    }
+    for _, c := range cases {
+        gotH, gotP := parseRemote(c.in)
+        require.Equal(t, c.wantHost, gotH)
+        require.Equal(t, c.wantPort, gotP)
+    }
+}
+```
+
+- [ ] **Step 8: Run helper tests**
+
+Run:
+```bash
+go test -count=1 -v ./internal/component/database_observability/postgres/collector/ -run "TestParseRemote|TestPopRight|TestNormalizedXid"
+```
+Expected: PASS.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add internal/component/database_observability/postgres/collector/logs.go internal/component/database_observability/postgres/collector/logs_test.go
+git commit -m "feat(database_observability/postgres): capture full prefix + error_message metadata"
+```
+
+---
+
+## Phase 2 — Emit the `op="error"` Loki entry
+
+### Task 3: Wire the `entryHandler` to emit on every successful flush
+
+**Files:**
+- Modify: `internal/component/database_observability/postgres/collector/logs.go`
+
+- [ ] **Step 1: Replace the `incrementByFingerprint` stub with the entry-emitting body**
+
+The function name stays for compatibility with the call sites (or rename to `emitErrorEntry` and update both `flushStatementLocked` and `processBareContinuation` — preferred). Final shape:
+
+```go
+func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
+    if entry == nil {
+        return
+    }
+    fp, _, err := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
+    if err != nil {
+        // fingerprint.ErrEmpty — skip; the SQL was empty whitespace.
+        return
+    }
+
+    // Stable labels: low cardinality. These ride on the Loki stream.
+    labels := model.LabelSet{
+        "op":             "error",
+        "severity":       model.LabelValue(entry.severity),
+        "sqlstate_class": model.LabelValue(entry.sqlstateClass),
+        "datname":        model.LabelValue(entry.datname),
+    }
+
+    // Structured metadata: high cardinality fields. Emitted as a Loki
+    // `push.LabelsAdapter` (Loki structured metadata).
+    metadata := push.LabelsAdapter{
+        push.LabelAdapter{Name: "query_fingerprint",  Value: fp},
+        push.LabelAdapter{Name: "pid",                Value: entry.pid},
+        push.LabelAdapter{Name: "backend_start",      Value: entry.backendStart},
+        push.LabelAdapter{Name: "application_name",   Value: entry.applicationName},
+        push.LabelAdapter{Name: "sqlstate",           Value: entry.sqlstate},
+        push.LabelAdapter{Name: "client_addr",        Value: entry.clientAddr},
+        push.LabelAdapter{Name: "client_port",        Value: entry.clientPort},
+        push.LabelAdapter{Name: "session_id",         Value: entry.sessionID},
+        push.LabelAdapter{Name: "user",               Value: entry.user},
+        push.LabelAdapter{Name: "error_message",      Value: entry.errorMessage},
+    }
+    if entry.xid != "" {
+        metadata = append(metadata, push.LabelAdapter{Name: "xid", Value: entry.xid})
+    }
+
+    ts := entry.timestamp
+    if ts.IsZero() {
+        ts = time.Now()
+    }
+
+    l.entryHandler.Chan() <- loki.Entry{
+        Labels: labels,
+        Entry: push.Entry{
+            Timestamp:          ts,
+            Line:               stmt,
+            StructuredMetadata: metadata,
+        },
+    }
+}
+```
+
+Imports to add at the top:
+```go
+"github.com/grafana/loki/pkg/push"
+"github.com/prometheus/common/model"
+```
+
+- [ ] **Step 2: Update the call sites**
+
+Rename the calls in `flushStatementLocked` and `processBareContinuation` from `l.incrementByFingerprint(entry, stmt)` to `l.emitErrorEntry(entry, stmt)`. Behavioural semantics are identical — the function only differs in what it does after looking up `entry`.
+
+- [ ] **Step 3: Refactor — remove `incrementByFingerprint` if you renamed**
+
+If the rename happened in Step 1, ensure no leftovers. Keep the new helper alongside `flushExpiredPending` for locality.
+
+- [ ] **Step 4: Compile**
+
+Run:
+```bash
+CGO_ENABLED=1 go build ./internal/component/...
+go vet ./internal/component/database_observability/postgres/...
+```
+Expected: clean.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add internal/component/database_observability/postgres/collector/logs.go internal/component/database_observability/postgres/collector/logs_test.go
-git commit -m "test(database_observability/postgres): pin displaced-pending semantics for fingerprint counter"
+git add internal/component/database_observability/postgres/collector/logs.go
+git commit -m "feat(database_observability/postgres): emit op=error Loki entry on each ERROR+STATEMENT pair"
 ```
 
 ---
 
-## Phase 2 — Documentation
+### Task 4: Replace counter tests with entry assertions
 
-### Task 7: Document the new metric
+**Files:**
+- Modify: `internal/component/database_observability/postgres/collector/logs_test.go`
+
+This task is repetitive but mechanical. For each test that was `t.Skip`-ped in Task 1 Step 7, drop the skip and rewrite the assertion against `entryHandler.Chan()` instead of the counter.
+
+A reusable helper at the top of the test file:
+```go
+// drainEntries reads all currently-buffered Loki entries from the handler,
+// up to a deadline. Returns them in arrival order.
+func drainEntries(t *testing.T, handler loki.EntryHandler, want int, timeout time.Duration) []loki.Entry {
+    t.Helper()
+    out := make([]loki.Entry, 0, want)
+    deadline := time.Now().Add(timeout)
+    for len(out) < want && time.Now().Before(deadline) {
+        select {
+        case e := <-handler.Chan():
+            out = append(out, e)
+        case <-time.After(25 * time.Millisecond):
+        }
+    }
+    return out
+}
+```
+
+> Worker note: when constructing `LogsArguments` in tests, you must pass an `EntryHandler` with a real channel that you control, e.g.:
+> ```go
+> entryCh := make(chan loki.Entry, 16)
+> handler := loki.NewEntryHandler(entryCh, func() {})
+> // ... pass `handler` as EntryHandler in LogsArguments ...
+> // assert via drainEntries(t, handler, ...)
+> ```
+
+- [ ] **Step 1: Rewrite `TestLogsCollector_IncrementsErrorsByFingerprint_OnErrorPlusStatement` → `TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement`**
+
+Assert:
+- exactly 1 entry arrived,
+- Labels: `op=error severity=ERROR sqlstate_class=42 datname=books_store`,
+- Line body equals the SQL,
+- StructuredMetadata contains `query_fingerprint` (matching what `fingerprint.Fingerprint` returns), `pid`, `application_name`, `sqlstate=42P01`, `error_message` containing `relation "missing" does not exist`,
+- `xid` is absent (input had `xid=0`),
+- `Timestamp` matches the parsed `%m`.
+
+- [ ] **Step 2: Rewrite `TestLogsCollector_TimedOutPendingDoesNotIncrementFingerprintCounter` → `TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry`**
+
+Assert: zero entries in `entryHandler.Chan()` after `2 × pendingErrorTimeout` has elapsed.
+
+- [ ] **Step 3: Rewrite `TestLogsCollector_DisplacedPendingDoesNotDoubleCount` → `TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry`**
+
+Same scenario as before: same PID, two ERROR lines, then one STATEMENT. Assert exactly one entry, with the *second* error's labels/metadata and the STATEMENT body's fingerprint.
+
+- [ ] **Step 4: Rewrite `TestLogsCollector_PrefixedStatement_MultiLine` → `TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement`**
+
+Same scenario; assert the entry's body equals the assembled multi-line SQL (newline-joined), and `query_fingerprint` matches `fingerprint.Fingerprint(assembledSQL, ...)`.
+
+- [ ] **Step 5: Rewrite `TestLogsCollector_StatementSurvivesTimeoutFlush` → `TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry`**
+
+Same scenario; assert the entry arrives within `2 × pendingErrorTimeout` from a quiet log channel.
+
+- [ ] **Step 6: Add a new test asserting `xid` presence/absence**
+
+```go
+func TestLogsCollector_OmitsXidMetadataWhenZero(t *testing.T) { ... }
+func TestLogsCollector_IncludesXidMetadataWhenNonZero(t *testing.T) { ... }
+```
+
+- [ ] **Step 7: Add a new test asserting `application_name` round-trips**
+
+Use `[unknown]` (the default) and a real value (e.g. `psql`); assert the metadata reflects each.
+
+- [ ] **Step 8: Run all logs tests**
+
+Run:
+```bash
+go test -count=1 ./internal/component/database_observability/postgres/collector/ -run TestLogsCollector
+```
+Expected: green.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add internal/component/database_observability/postgres/collector/logs_test.go
+git commit -m "test(database_observability/postgres): replace fingerprint-counter tests with op=error entry assertions"
+```
+
+---
+
+## Phase 3 — Documentation
+
+### Task 5: Replace metric docs with op docs
 
 **Files:**
 - Modify: `docs/sources/reference/components/database_observability/database_observability.postgres.md`
 
-- [ ] **Step 1: Locate the existing exported-metrics section**
+- [ ] **Step 1: Remove the `database_observability_pg_errors_by_fingerprint_total` block**
 
-Open `docs/sources/reference/components/database_observability/database_observability.postgres.md` and find the section that documents `database_observability_pg_errors_total` (search for `pg_errors_total` — if there's no dedicated metrics section, add one between `## Exports` and `## logs collector` following the pattern of other Grafana Alloy component docs).
+Delete the table block introduced in the previous shipping; the parent metric `pg_errors_total` stays.
 
-- [ ] **Step 2: Add a row for the new metric**
+- [ ] **Step 2: Add a "Emitted Loki entries" subsection under `## logs collector`**
 
-Add this entry (or a fresh table row, depending on how the section is currently structured):
+Section copy:
 
 ```markdown
-### `database_observability_pg_errors_by_fingerprint_total`
+### Emitted Loki entries
 
-| Property    | Value                                                                                                                                                                                                                                                                                          |
-|-------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Type**    | counter                                                                                                                                                                                                                                                                                        |
-| **Labels**  | `severity`, `sqlstate`, `sqlstate_class`, `datname`, `query_fingerprint`                                                                                                                                                                                                                       |
-| **Subset of** | `database_observability_pg_errors_total` — increments only when Alloy successfully observes the matching `STATEMENT:` continuation line and computes a fingerprint from the SQL text.                                                                                                       |
-| **Use**     | Compute error rate per logical query: `sum by (datname, query_fingerprint) (rate(database_observability_pg_errors_by_fingerprint_total[5m]))`                                                                                                                                                  |
+The `logs` collector forwards a structured Loki entry to its `forward_to`
+target for every PostgreSQL `ERROR`/`FATAL`/`PANIC` for which the matching
+`STATEMENT:` continuation was successfully observed.
 
-The `query_fingerprint` value is computed client-side by Alloy from the parsed AST (libpg_query). Two queries that differ only in comments, whitespace, or literal values produce the same fingerprint — so an error rate keyed by fingerprint groups every variant of one logical query together. Errors without a captured `STATEMENT:` continuation (e.g. connection failures, internal server errors) contribute only to `pg_errors_total`, not to this metric.
+| Field                          | Source                  | Notes                                                                 |
+|--------------------------------|-------------------------|-----------------------------------------------------------------------|
+| Label `op`                     | constant                | `error`                                                               |
+| Label `severity`               | log keyword             | `ERROR`, `FATAL`, or `PANIC`                                          |
+| Label `sqlstate_class`         | first 2 chars of `%e`   | `40`, `42`, `53`, `23`, ...                                           |
+| Label `datname`                | `%d`                    | database name                                                         |
+| Body                           | STATEMENT continuation  | the assembled SQL text (multi-line preserved with `\n`)               |
+| Metadata `query_fingerprint`   | computed                | `libpg_query` fingerprint of the SQL text (16-char hex)               |
+| Metadata `pid`                 | `%p`                    | backend PID                                                           |
+| Metadata `backend_start`       | `%s`                    | session start timestamp, raw text                                     |
+| Metadata `application_name`    | `%a`                    | typically `[unknown]` unless set client-side                          |
+| Metadata `sqlstate`            | `%e`                    | full 5-character SQLSTATE                                             |
+| Metadata `xid`                 | `%x`                    | omitted when 0 (read-only / not yet assigned)                         |
+| Metadata `client_addr`         | host portion of `%r`    | `[local]` for unix-domain                                             |
+| Metadata `client_port`         | port portion of `%r`    | empty for unix-domain                                                 |
+| Metadata `session_id`          | `%c`                    | unique per backend connection                                         |
+| Metadata `user`                | `%u`                    | also present on `pg_errors_total` as a label                          |
+| Metadata `error_message`       | text after `<sev>:`     | the human-readable message body                                       |
+
+Compute error rate per logical query in LogQL:
+
+\`\`\`logql
+sum by (datname, query_fingerprint)
+  (count_over_time({op="error"} | logfmt [5m]))
+\`\`\`
+
+Correlate to `pg_stat_activity` samples emitted by the `query_samples`
+collector by joining on `query_fingerprint` AND `pid` AND a small time window
+around the entry's timestamp. If the failed query was inside a write
+transaction, `xid` is also a deterministic key against `pg_stat_activity.backend_xid`.
 ```
 
-(Match the existing doc's table style. If the existing metric is rendered as a single bulleted list rather than a table, mirror that.)
-
-- [ ] **Step 3: Verify rendering**
-
-If the repo has a docs preview workflow (e.g. `make generate-docs`), run it and skim the output. Otherwise rely on a Markdown preview (VS Code, GitHub).
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add docs/sources/reference/components/database_observability/database_observability.postgres.md
-git commit -m "docs(database_observability/postgres): document pg_errors_by_fingerprint_total"
+git commit -m "docs(database_observability/postgres): document op=error Loki entries (replace fingerprint metric docs)"
 ```
 
 ---
@@ -919,24 +690,28 @@ git commit -m "docs(database_observability/postgres): document pg_errors_by_fing
 ## Self-Review Checklist
 
 **Spec coverage:**
-- ✅ User's ask ("error rate metric that contains the fingerprint") → Tasks 3 + 4 register and populate `pg_errors_by_fingerprint_total{severity, sqlstate, sqlstate_class, datname, query_fingerprint}`.
-- ✅ Cardinality boundedness → Task 4 only increments on successful STATEMENT match; Task 5 pins the "no-statement → no-increment" behavior; Task 6 pins the displacement semantics.
-- ✅ Existing `pg_errors_total` unchanged → no task modifies its label set or its increment site.
-- ✅ Documentation → Task 7.
+- ✅ Drop the high-cardinality counter (`pg_errors_by_fingerprint_total`) — Task 1.
+- ✅ Capture all fields the user asked for, including `error_message` — Task 2.
+- ✅ Emit `op="error"` (no `pg_` prefix) Loki entries — Task 3.
+- ✅ `xid` only when `≠ 0` — Task 3 Step 1.
+- ✅ Tests cover entry presence, content, displacement, timeout flush, multi-line, and xid presence/absence — Task 4.
+- ✅ Documentation updated — Task 5.
+- ✅ `pg_errors_total` unchanged — no task touches it.
+- ✅ The fingerprint package and the parser state machine (TAB-continuation, prefixed-STATEMENT, flush ordering) are reused, not re-implemented.
 
-**Placeholder scan:** No "TBD", "implement later", or "appropriate error handling" placeholders. Every code step has the exact code; every command step has the exact command and expected output.
+**Placeholder scan:** No "TBD", "implement later", or "appropriate error handling" placeholders. Every code step has the exact code or a precise prescription; every command step has the exact command and expected output.
 
 **Type consistency:**
-- `Fingerprint(text, source, trackActivityQuerySize) (string, bool, error)` — defined in Task 2, used in Task 4 (via `fingerprint.Fingerprint(...)` in `processContinuation`).
-- `pendingError` struct fields (`receivedAt, severity, sqlstate, sqlstateClass, datname`) — defined in Task 4 Step 3, read in Task 4 Step 7's `processContinuation` and `flushExpiredPending`.
-- `errorsByFingerprint *prometheus.CounterVec` field — defined in Task 3 Step 2, written in Task 4 Step 7, read in Tasks 4–6 tests via `testutil.ToFloat64` / `testutil.CollectAndCount`.
-- Metric label order on the CounterVec definition (`severity, sqlstate, sqlstate_class, datname, query_fingerprint`) matches the order passed to `WithLabelValues` in `processContinuation` and in every test assertion. **Get this right; positional label arguments are easy to swap by accident.**
+- `pendingError` field set in Task 2 is read by `emitErrorEntry` in Task 3.
+- `loki.Entry` shape matches `loki.EntryHandler.Chan()` consumer side already used elsewhere in alloy.
+- Stable label keys are quoted as `model.LabelValue`; metadata keys are `push.LabelAdapter`.
 
 **Open follow-ups (out of scope of this plan):**
-- Adding `query_fingerprint` Loki structured metadata to a future `pg_error` op.
+- Adding `virtualtransaction` to `query_samples` (one extra column joined from `pg_locks`) for deterministic `(pid, vxid)` correlation regardless of read/write.
 - The full join metric `database_observability_query_hash_info` populated by `query_details` — separate plan/PR.
 - `pg_slow_query` log entries — separate plan/PR.
 - Surfacing `repaired=true` and sentinel hits as their own observability counters — useful for detecting upstream truncation but not required for this deliverable.
+- Switching `log_line_prefix` to include `%Q` (`query_id`) where the customer's PG version + parameter group allow it — would make the correlation key exact.
 
 ---
 
@@ -948,4 +723,4 @@ After saving this plan, two execution options:
 
 **2. Inline Execution** — Execute tasks sequentially in the same session using `superpowers:executing-plans`, with checkpoints between phases.
 
-The TDD discipline is identical either way: every behavior task starts with a failing test, then minimal implementation, then green run, then commit.
+The TDD discipline is identical either way: every behavior task starts with a failing test (entry-handler-shaped, not counter-shaped), then minimal implementation, then green run, then commit.
