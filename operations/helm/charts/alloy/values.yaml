@@ -489,6 +489,12 @@ service:
   internalTrafficPolicy: Cluster
   annotations: {}
     # cloud.google.com/load-balancer-type: Internal
+  # -- Additional ports the service exposes. Useful to expose ports from extraContainers.
+  extraPorts: []
+  # - name: oauth-proxy
+  #   port: 9091
+  #   targetPort: 9091
+  #   protocol: TCP
 
 serviceMonitor:
   enabled: false
