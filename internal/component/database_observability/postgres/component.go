@@ -107,7 +107,7 @@ type GCPCloudProviderInfo struct {
 type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
-	// Note: `query_samples.exclude_current_user` is deprecated if favour of the top-level setting.
+	// Note: `query_samples.exclude_current_user` is deprecated in favour of the top-level setting.
 	// When set (non-nil), it takes precedence over the top-level setting for the
 	// query_samples collector only and preserves the legacy behaviour.
 	ExcludeCurrentUser            *bool `alloy:"exclude_current_user,attr,optional"`
