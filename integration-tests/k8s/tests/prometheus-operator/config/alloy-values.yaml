@@ -1,0 +1,4 @@
+controller:
+  type: daemonset
+alloy:
+  stabilityLevel: experimental

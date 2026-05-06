@@ -1,23 +1,31 @@
-Use this command to run the tests:
+# Kubernetes Integration Tests
 
-```
+Run the Kubernetes integration tests with:
+
+```sh
 make integration-test-k8s
 ```
 
-To debug the test you can also set two environment variables:
-* `ALLOY_STATEFUL_K8S_TEST=true` will retain the k8s clusters after the test terminates.
-* `ALLOY_K8S_TEST_LOGGING=debug` will get the test to print log messages.
+`integration-tests/k8s/runner` is the canonical entrypoint. It always uses a
+runner-managed kind cluster and kubeconfig (never your default kube context),
+then executes `go test` for `integration-tests/k8s/tests/...`.
 
+Useful options (forwarded with `RUN_ARGS`):
 
-For example:
-
+```sh
+make integration-test-k8s RUN_ARGS='--reuse-cluster'
+make integration-test-k8s RUN_ARGS='--skip-alloy-image'
+# Split test packages across 2 shards and run shard index 0.
+make integration-test-k8s RUN_ARGS='--shard 0/2'
+make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/prometheus-operator'
 ```
-ALLOY_STATEFUL_K8S_TEST=true ALLOY_K8S_TEST_LOGGING=debug make integration-test-k8s
-```
 
-After you have finished debugging you can delete the clusters like this:
+Per-test Alloy chart options (controller type, replicas, stability level, etc.)
+are set via a helm values file in the test's `config/alloy-values.yaml` and
+passed to `deps.NewAlloy(deps.AlloyOptions{ValuesPath: ...})`.
 
-```
-minikube delete -p alloy-int-test-prometheus-operator
-minikube delete -p alloy-int-test-mimir-alerts-kubernetes
+If reuse mode leaves a broken cluster behind:
+
+```sh
+kind delete cluster --name alloy-k8s-integration
 ```

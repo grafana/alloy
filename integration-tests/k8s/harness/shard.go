@@ -1,0 +1,70 @@
+package harness
+
+import (
+	"flag"
+	"fmt"
+	"hash/fnv"
+	"strconv"
+	"strings"
+	"testing"
+)
+
+var shardFlag = flag.String("shard", "", "run only tests for shard i/n")
+
+type shardConfig struct {
+	index int
+	total int
+}
+
+func parseShard() (shardConfig, error) {
+	if *shardFlag == "" {
+		return shardConfig{}, nil
+	}
+
+	parts := strings.Split(*shardFlag, "/")
+	if len(parts) != 2 {
+		return shardConfig{}, fmt.Errorf("invalid shard %q, expected i/n", *shardFlag)
+	}
+
+	index, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return shardConfig{}, fmt.Errorf("invalid shard index in %q: %w", *shardFlag, err)
+	}
+	total, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return shardConfig{}, fmt.Errorf("invalid shard total in %q: %w", *shardFlag, err)
+	}
+	if total <= 0 {
+		return shardConfig{}, fmt.Errorf("invalid shard total %d", total)
+	}
+	if index < 0 || index >= total {
+		return shardConfig{}, fmt.Errorf("invalid shard index %d for total %d", index, total)
+	}
+
+	return shardConfig{index: index, total: total}, nil
+}
+
+func (s shardConfig) shouldRun(key string) bool {
+	if s.total == 0 {
+		return true
+	}
+	// Sharding is done at the test-package level.
+	// The package key is hashed so each shard gets a stable subset.
+	hasher := fnv.New32a()
+	_, _ = hasher.Write([]byte(key))
+	return int(hasher.Sum32()%uint32(s.total)) == s.index
+}
+
+func shardCheck(t *testing.T, name string) {
+	t.Helper()
+	shard, err := parseShard()
+	if err != nil {
+		t.Fatalf("invalid shard flag: %v", err)
+	}
+	if shard.total == 0 {
+		return
+	}
+	if !shard.shouldRun(name) {
+		t.Skipf("skipping %s for shard %d/%d", name, shard.index, shard.total)
+	}
+}
