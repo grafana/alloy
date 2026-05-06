@@ -50,3 +50,34 @@ func discard(ctx context.Context, recv LogsReceiver) {
 		}
 	}
 }
+
+// FIXME: Rename Drain2 to Drain and remove the old Drain once all components
+// have migrated to Consumer.
+// Drain2 forwards log entries from recv to fanout in a background goroutine while
+// fn executes. It will continue to forward up to the timeout and then falls back
+// to discarding entries from recv until fn returns. This prevents deadlocks in
+// shutdown paths where component may still send to recv while fn is stopping them.
+//
+// This is typically used during component shutdown to drain any remaining entries
+// from a receiver channel while performing cleanup operations.
+func Drain2(recv LogsReceiver, fanout *FanoutConsumer, timeout time.Duration, fn func()) {
+	ctx, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+
+	defer func() {
+		cancel()
+		wg.Wait()
+	}()
+
+	wg.Go(func() {
+		consumeCtx, consumeCancel := context.WithTimeout(ctx, timeout)
+		defer consumeCancel()
+		Consume2(consumeCtx, recv, fanout)
+
+		// NOTE: If we could not forward entries during the configured timeout we discard entries.
+		// This is just to guard against deadlock. When fn finishes successfully this will stop.
+		discard(ctx, recv)
+	})
+
+	fn()
+}
