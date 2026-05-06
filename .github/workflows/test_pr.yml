@@ -9,31 +9,13 @@ jobs:
   lint:
     uses: ./.github/workflows/lint.yml
 
-  discover_modules:
-    name: Discover test modules
-    runs-on: ubuntu-latest
-    outputs:
-      modules: ${{ steps.find.outputs.modules }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        persist-credentials: false
-    - name: Find go.mod modules
-      id: find
-      run: |
-        modules=$(find . -name go.mod -type f -not -path '*/testdata/*' -exec sh -c 'dirname "$1"' _ {} \; | jq -R -s -c 'split("\n") | map(select(length > 0))')
-        echo "modules=$modules" >> $GITHUB_OUTPUT
-        echo "Discovered: $modules"
-
   test_linux:
-    name: Test Linux (${{ matrix.module }})
-    needs: discover_modules
+    name: Test Linux (shard ${{ matrix.shard }}/8)
     runs-on: ubuntu-latest-8-cores
     strategy:
       fail-fast: false
       matrix:
-        module: ${{ fromJson(needs.discover_modules.outputs.modules) }}
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -46,4 +28,4 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - run: make GO_TAGS="nodocker" MODULE=${{ matrix.module }} test
+    - run: make GO_TAGS="nodocker" SHARD=${{ matrix.shard }}/8 test
