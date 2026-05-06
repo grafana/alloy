@@ -10,7 +10,7 @@ Represents build and runtime information for an Alloy instance.
 Contains version control and build environment details.
 """
 type Alloy {
-  "The git branch from which this build was created"
+  "The Git branch from which this build was created"
   branch: String!
 
   "The timestamp of when this build was created"
@@ -22,7 +22,7 @@ type Alloy {
   "Whether the Alloy instance is up and running"
   isReady: Boolean!
 
-  "The git commit hash from which this build was created"
+  "The Git commit hash from which this build was created"
   revision: String!
 
   "The semantic version of this Alloy build"

@@ -2,7 +2,6 @@ package loki
 
 import (
 	"context"
-	"reflect"
 	"sync"
 )
 
@@ -78,7 +77,7 @@ func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
 // UpdateChildren updates the list of receivers that will receive log entries.
 func (f *Fanout) UpdateChildren(children []LogsReceiver) {
 	f.mut.RLock()
-	if receiversChanged(f.children, children) {
+	if requireUpdate(f.children, children) {
 		// Upgrade lock to write.
 		f.mut.RUnlock()
 		f.mut.Lock()
@@ -87,16 +86,4 @@ func (f *Fanout) UpdateChildren(children []LogsReceiver) {
 	} else {
 		f.mut.RUnlock()
 	}
-}
-
-func receiversChanged(prev, next []LogsReceiver) bool {
-	if len(prev) != len(next) {
-		return true
-	}
-	for i := range prev {
-		if !reflect.DeepEqual(prev[i], next[i]) {
-			return true
-		}
-	}
-	return false
 }

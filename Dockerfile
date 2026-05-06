@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.21@sha256:27f9262d43452075f3c410287a2c43f5ef1bf7ec2bb06e8c9eeb1b8d453087bc
+# syntax=docker/dockerfile:1.23@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
 
 # NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 ###
 
-FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:b1940c8ecf8ff591053cc5db0303fb882f9fafec50f26892a870bcbe1b30d25a
+FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:748740465d0aadaa69ab6e6c295892f17d7a8f44a85090dbb571ec0bb8c5674f
 
 # Username and uid for alloy user
 ARG UID="473"

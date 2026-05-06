@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -3094,6 +3097,114 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 
 	c.fetchQuerySamples(t.Context())
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestQuerySamples_WaitEventCounter_MatchesLogLines pins the invariant that
+// the counter delta for (digest, schema) equals the sum of wait_time on
+// every emitted wait_event_v2 line for that key.
+func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
+	waitOp := OP_WAIT_EVENT_V2
+	t.Run("wait_event_v2", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		registry := prometheus.NewRegistry()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			EngineVersion:                 latestCompatibleVersion,
+			CollectInterval:               time.Second,
+			EntryHandler:                  lokiClient,
+			Registry:                      registry,
+			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			EnablePreClassifiedWaitEvents: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector.waitEventCounter)
+
+		rows := [][]driver.Value{
+			// (digest_A, schema_X): two rows, 0.1ms + 0.2ms = 0.3ms
+			{"schema_X", "1", "10", "11", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "100", "101", "wait/io/file/x", "obj", "typ", "100000000", "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "20", "21", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "200", "201", "wait/io/file/y", "obj", "typ", "200000000", "u", "h", "1000", "1", "1"},
+			// (digest_B, schema_X): 0.05ms
+			{"schema_X", "1", "30", "31", "digest_B", "sql2", "70000000", "20000000", "5", "5", "0", "0", "300", "301", "wait/lock/metadata", "obj", "typ", "50000000", "u", "h", "1000", "1", "1"},
+			// (digest_A, schema_Y): 0.075ms — same digest, different schema
+			{"schema_Y", "1", "40", "41", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "400", "401", "wait/synch/mutex", "obj", "typ", "75000000", "u", "h", "1000", "1", "1"},
+			// digest_C: no wait event (nil wait fields) — must not increment any counter
+			{"schema_X", "1", "50", "51", "digest_C", "sql3", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+		}
+
+		mockRows := sqlmock.NewRows([]string{
+			"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
+			"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
+			"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
+			"statements.ROWS_AFFECTED", "statements.ERRORS",
+			"waits.event_id", "waits.end_event_id", "waits.event_name",
+			"waits.object_name", "waits.object_type", "waits.timer_wait",
+			"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
+			"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
+		})
+		for _, r := range rows {
+			mockRows = mockRows.AddRow(r...)
+		}
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12, 1e12,
+		).RowsWillBeClosed().WillReturnRows(mockRows)
+
+		require.NoError(t, collector.Start(t.Context()))
+
+		// 5 query samples + 4 wait events = 9 entries.
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 9
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+		require.Eventually(t, collector.Stopped, 5*time.Second, 100*time.Millisecond)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		// Build expected counter values by parsing the emitted log lines so
+		// the assertion drifts with the emitter rather than with hard-coded sums.
+		digestRe := regexp.MustCompile(`digest="([^"]+)"`)
+		schemaRe := regexp.MustCompile(`schema="([^"]+)"`)
+		waitTimeRe := regexp.MustCompile(`wait_time="([^"]+)"`)
+		expected := map[[2]string]float64{}
+		waitEventEntries := 0
+		for _, e := range lokiClient.Received() {
+			if e.Labels["op"] != model.LabelValue(waitOp) {
+				continue
+			}
+			waitEventEntries++
+			d := digestRe.FindStringSubmatch(e.Line)
+			s := schemaRe.FindStringSubmatch(e.Line)
+			w := waitTimeRe.FindStringSubmatch(e.Line)
+			require.Len(t, d, 2, "digest not found in line: %s", e.Line)
+			require.Len(t, s, 2, "schema not found in line: %s", e.Line)
+			require.Len(t, w, 2, "wait_time not found in line: %s", e.Line)
+			dur, err := time.ParseDuration(w[1])
+			require.NoError(t, err)
+			expected[[2]string{d[1], s[1]}] += dur.Seconds()
+		}
+		require.Equal(t, 4, waitEventEntries, "should emit one wait-event log per row with a valid wait event")
+		require.Len(t, expected, 3, "digest_C has no wait event, so only 3 (digest, schema) groups should be seen")
+
+		for key, expSec := range expected {
+			counter, err := collector.waitEventCounter.GetMetricWith(prometheus.Labels{
+				"digest": key[0],
+				"schema": key[1],
+			})
+			require.NoError(t, err)
+			var m dto.Metric
+			require.NoError(t, counter.Write(&m))
+			assert.InDelta(t, expSec, m.Counter.GetValue(), 1e-9,
+				"counter for digest=%s schema=%s does not match sum of logged wait_time", key[0], key[1])
+		}
+	})
 }
 
 func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
