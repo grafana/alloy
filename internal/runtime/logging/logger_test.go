@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,6 +19,23 @@ import (
 	alloylevel "github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/stretchr/testify/require"
 )
+
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
 
 /* Most recent performance results on M2 Macbook Air:
 $ go test -count=1 -benchmem ./internal/alloy/logging -run ^$ -bench BenchmarkLogging_
@@ -229,7 +247,7 @@ func TestUpdateConcurrentHandle(t *testing.T) {
 // Update is called are not lost even when concurrent Handle calls are in-flight
 // during the window between bufferMut being released and buildHandlers completing.
 func TestUpdateNoLostBufferedMessages(t *testing.T) {
-	var buf bytes.Buffer
+	var buf safeBuffer
 	l, err := logging.NewDeferred(&buf)
 	require.NoError(t, err)
 
