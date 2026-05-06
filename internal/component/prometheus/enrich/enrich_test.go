@@ -2,6 +2,7 @@ package enrich
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -258,6 +259,55 @@ func TestValidate(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestEnrichConcurrentUpdate exercises Append/Update concurrently to surface
+// data races.
+func TestEnrichConcurrentUpdate(t *testing.T) {
+	fanout := prometheus.NewInterceptor(nil,
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+			return ref, nil
+		}))
+
+	args := Arguments{
+		Targets: []discovery.Target{
+			discovery.NewTargetFromMap(map[string]string{"service": "svc", "env": "prod"}),
+		},
+		TargetMatchLabel: "service",
+		LabelsToCopy:     []string{"env"},
+		ForwardTo:        []storage.Appendable{fanout},
+	}
+
+	c, err := New(component.Options{
+		ID:             "1",
+		Logger:         util.TestAlloyLogger(t),
+		OnStateChange:  func(component.Exports) {},
+		Registerer:     prom.NewRegistry(),
+		GetServiceData: getServiceData,
+	}, args)
+	require.NoError(t, err)
+
+	const iterations = 1000
+	lbls := labels.FromStrings("service", "svc")
+
+	var wg sync.WaitGroup
+
+	// append samples
+	wg.Go(func() {
+		for range iterations {
+			app := c.receiver.Appender(t.Context())
+			_, _ = app.Append(0, lbls, 0, 0)
+			_ = app.Commit()
+		}
+	})
+
+	// continuously rotate Targets and LabelsToCopy.
+	wg.Go(func() {
+		for range iterations {
+			require.NoError(t, c.Update(args))
+		}
+	})
+	wg.Wait()
 }
 
 func getServiceData(name string) (any, error) {

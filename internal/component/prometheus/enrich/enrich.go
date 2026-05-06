@@ -41,16 +41,14 @@ type Arguments struct {
 	Targets []discovery.Target `alloy:"targets,attr"`
 
 	// Multi-label matching: a map of target_label -> metric_label.
-	// Mutually exclusive with target_match_label / metrics_match_label.
+	// Takes precedence over target_match_label / metrics_match_label.
 	TargetToMetricMatch map[string]string `alloy:"target_to_metric_match,attr,optional"`
 
 	// Legacy: which label from targets to use for matching (e.g. "hostname", "ip").
-	// Mutually exclusive with target_to_metric_match.
 	TargetMatchLabel string `alloy:"target_match_label,attr,optional"`
 
 	// Legacy: which label from metrics to match against (e.g. "hostname", "ip").
 	// If not specified, TargetMatchLabel will be used.
-	// Mutually exclusive with target_to_metric_match.
 	MetricsMatchLabel string `alloy:"metrics_match_label,attr,optional"`
 
 	// List of labels to copy from discovered targets to metrics. If empty, all labels will be copied.
@@ -82,8 +80,12 @@ type Exports struct {
 var sep = []byte{0xff} // separator to prevent hash collisions across value boundaries
 
 // hashValuesFromLabelSet hashes the values of the given label names (in order)
-// from a model.LabelSet. Returns (0, false) if any label is missing or empty.
+// from a model.LabelSet. Returns (0, false) if names is empty or any label is
+// missing or empty.
 func hashValuesFromLabelSet(ls model.LabelSet, names []string) (uint64, bool) {
+	if len(names) == 0 {
+		return 0, false
+	}
 	h := xxhash.New()
 	for _, name := range names {
 		v := string(ls[model.LabelName(name)])
@@ -97,8 +99,12 @@ func hashValuesFromLabelSet(ls model.LabelSet, names []string) (uint64, bool) {
 }
 
 // hashValuesFromLabels hashes the values of the given label names (in order)
-// from a labels.Labels. Returns (0, false) if any label is missing or empty.
+// from a labels.Labels. Returns (0, false) if names is empty or any label is
+// missing or empty.
 func hashValuesFromLabels(lbls labels.Labels, names []string) (uint64, bool) {
+	if len(names) == 0 {
+		return 0, false
+	}
 	h := xxhash.New()
 	for _, name := range names {
 		v := lbls.Get(name)
@@ -115,6 +121,7 @@ func hashValuesFromLabels(lbls labels.Labels, names []string) (uint64, bool) {
 type matchCache struct {
 	sortedMetricLabels []string                  // metric label names to hash, sorted by corresponding target label name
 	cache              map[uint64]model.LabelSet // hash of values -> target label set
+	labelsToCopy       []string                  // snapshot of which target labels to copy (empty means copy all)
 }
 
 type Component struct {
@@ -263,12 +270,12 @@ func (c *Component) enrich(lbls labels.Labels) labels.Labels {
 	}
 
 	newLabels := labels.NewBuilder(lbls.Copy())
-	if len(c.args.LabelsToCopy) == 0 {
+	if len(mc.labelsToCopy) == 0 {
 		for k, v := range targetSet {
 			newLabels.Set(string(k), string(v))
 		}
 	} else {
-		for _, label := range c.args.LabelsToCopy {
+		for _, label := range mc.labelsToCopy {
 			if value, ok := targetSet[model.LabelName(label)]; ok {
 				newLabels.Set(label, string(value))
 			}
@@ -324,6 +331,7 @@ func (c *Component) refreshCacheFromTargets(args Arguments) {
 	c.mc = &matchCache{
 		sortedMetricLabels: sortedMetricLabels,
 		cache:              cache,
+		labelsToCopy:       args.LabelsToCopy,
 	}
 	c.cacheMutex.Unlock()
 
