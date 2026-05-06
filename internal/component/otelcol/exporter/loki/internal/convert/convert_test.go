@@ -17,8 +17,6 @@ import (
 )
 
 func TestConsumeLogs(t *testing.T) {
-	maxTestedLogEntries := 2
-
 	tests := []struct {
 		testName        string
 		inputLogJson    string
@@ -314,9 +312,11 @@ func TestConsumeLogs(t *testing.T) {
 		t.Run(tc.testName, func(t *testing.T) {
 			logger := util.TestAlloyLogger(t)
 			promReg := prometheus.NewRegistry()
-			receiver := loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry, maxTestedLogEntries)))
 
-			converter := convert.New(logger.Slog(), promReg, []loki.LogsReceiver{receiver})
+			collector := loki.NewCollectingConsumer()
+			fanout := loki.NewFanoutConsumer([]loki.Consumer{collector})
+
+			converter := convert.New(logger.Slog(), promReg, fanout)
 
 			ctx := t.Context()
 
@@ -324,17 +324,14 @@ func TestConsumeLogs(t *testing.T) {
 
 			require.NoError(t, converter.ConsumeLogs(ctx, log))
 			ctx.Done()
-			close(receiver.Chan())
 
-			receivedEntries := 0
-			for _, expectedEntry := range tc.expectedEntries {
-				for entry := range receiver.Chan() {
-					compareLokiEntries(t, &expectedEntry, &entry)
-					receivedEntries += 1
-					break
-				}
+			got := collector.Entries()
+			require.Len(t, got, len(tc.expectedEntries))
+
+			for i, expected := range tc.expectedEntries {
+				compareLokiEntries(t, &expected, &got[i])
+
 			}
-			require.Equal(t, receivedEntries, len(tc.expectedEntries))
 		})
 	}
 }

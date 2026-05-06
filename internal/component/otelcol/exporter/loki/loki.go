@@ -27,7 +27,7 @@ func init() {
 
 // Arguments configures the otelcol.exporter.loki component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo []loki.Consumer `alloy:"forward_to,attr"`
 }
 
 // Component is the otelcol.exporter.loki component.
@@ -40,15 +40,15 @@ type Component struct {
 var _ component.Component = (*Component)(nil)
 
 // New creates a new otelcol.exporter.loki component.
-func New(o component.Options, c Arguments) (*Component, error) {
-	converter := convert.New(o.Logger, o.Registerer, c.ForwardTo)
+func New(o component.Options, args Arguments) (*Component, error) {
+	converter := convert.New(o.Logger, o.Registerer, loki.NewFanoutConsumer(args.ForwardTo))
 
 	res := &Component{
 		opts: o,
 
 		converter: converter,
 	}
-	if err := res.Update(c); err != nil {
+	if err := res.Update(args); err != nil {
 		return nil, err
 	}
 
