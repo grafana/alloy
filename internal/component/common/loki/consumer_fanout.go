@@ -68,15 +68,7 @@ func (f *FanoutConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 	defer f.mut.RUnlock()
 
 	var errs []error
-
-	for i, consumer := range f.consumers {
-		if i == len(f.consumers)-1 {
-			if err := consumer.ConsumeEntry(ctx, entry); err != nil {
-				errs = append(errs, err)
-			}
-			continue
-		}
-
+	for _, consumer := range f.consumers {
 		if err := consumer.ConsumeEntry(ctx, entry.Clone()); err != nil {
 			errs = append(errs, err)
 		}
