@@ -184,7 +184,7 @@ func getManagedOptions(globals ComponentGlobals, cn *BuiltinComponentNode) compo
 	parent, id := splitPath(cn.globalID)
 	return component.Options{
 		ID:     cn.globalID,
-		Logger: log.With(globals.Logger, "component_path", parent, "component_id", id),
+		Logger: logging.NewLevelAwareLogger(log.With(globals.Logger, "component_path", parent, "component_id", id), globals.Logger),
 		Registerer: prometheus.WrapRegistererWith(prometheus.Labels{
 			"component_path": parent,
 			"component_id":   id,

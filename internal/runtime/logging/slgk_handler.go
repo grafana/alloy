@@ -26,18 +26,32 @@ func NewSlogGoKitHandler(logger log.Logger) *SlogGoKitHandler {
 }
 
 func (h SlogGoKitHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	// Sometimes libraries will use this to check if certain logs should be emitted
-	// and then write logs using other methods such as fmt package.
-	// See https://github.com/percona/mongodb_exporter/blob/8290ba50eeb73d6380885d2546619afc878a6016/exporter/debug.go#L26-L42.
-	// We try to assert the concrete type so we can delegate the check.
-	// As a fallback we keep the old behavior.
-	l, ok := h.logger.(*Logger)
-	if !ok {
-		// return always true, we expect the underlying logger to handle the level
-		return true
+	// Some libraries check Enabled() to decide whether to emit output via
+	// non-slog paths (e.g. fmt.Fprintln to stderr). See:
+	// https://github.com/percona/mongodb_exporter/blob/8290ba50eeb73d6380885d2546619afc878a6016/exporter/debug.go#L26-L42
+	if ea, ok := h.logger.(EnabledAware); ok {
+		return ea.Enabled(ctx, level)
 	}
+	return true
+}
 
-	return l.Enabled(ctx, level)
+// levelAwareLogger wraps a go-kit logger and implements EnabledAware by
+// delegating to a separate EnabledAware instance. This preserves level
+// awareness through go-kit's log.With() wrapping.
+type levelAwareLogger struct {
+	log.Logger
+	ea EnabledAware
+}
+
+func (l *levelAwareLogger) Enabled(ctx context.Context, level slog.Level) bool {
+	return l.ea.Enabled(ctx, level)
+}
+
+// NewLevelAwareLogger returns a go-kit logger that also implements EnabledAware,
+// delegating level checks to ea. Use this when wrapping a logger with log.With()
+// to preserve the ability to check log levels via the EnabledAware interface.
+func NewLevelAwareLogger(logger log.Logger, ea EnabledAware) log.Logger {
+	return &levelAwareLogger{Logger: logger, ea: ea}
 }
 
 func (h SlogGoKitHandler) Handle(ctx context.Context, record slog.Record) error {
