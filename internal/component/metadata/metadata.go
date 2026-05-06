@@ -44,7 +44,8 @@ var (
 	TypeLokiLogs = Type{
 		Name: "Loki `LogsReceiver`",
 		existsInArgsFn: func(args component.Arguments) bool {
-			return hasFieldOfType(args, reflect.TypeOf([]loki.LogsReceiver{}))
+			return (hasFieldOfType(args, reflect.TypeOf([]loki.LogsReceiver{})) ||
+				hasFieldOfType(args, reflect.TypeOf(loki.NewLogsReceiver())))
 		},
 		existsInExportsFn: func(exports component.Exports) bool {
 			return hasFieldOfType(exports, reflect.TypeOf(loki.NewLogsReceiver()))
