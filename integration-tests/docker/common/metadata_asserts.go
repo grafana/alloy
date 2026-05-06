@@ -56,7 +56,7 @@ func MimirMetadataTest(t *testing.T, expectedMetadata map[string]Metadata) {
 		metricMetadata, err = GetMetadata()
 		assert.NoError(c, err)
 		assert.Subset(c, maps.Keys(metricMetadata.Data), expectedMetricsWithMetadata, "did not find metadata for the expected metrics")
-	}, TestTimeoutEnv(t), DefaultRetryInterval)
+	}, TestTimeout(t), DefaultRetryInterval)
 
 	for metricName, expectedMeta := range expectedMetadata {
 		actualMetas := metricMetadata.Data[metricName]
