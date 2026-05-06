@@ -2,9 +2,9 @@ package stages
 
 import (
 	"errors"
+	"log/slog"
 	"slices"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -16,20 +16,20 @@ type StructuredMetadataDropConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
-func newStructuredMetadataDropStage(logger log.Logger, config StructuredMetadataDropConfig) (Stage, error) {
+func newStructuredMetadataDropStage(logger *slog.Logger, config StructuredMetadataDropConfig) (Stage, error) {
 	if len(config.Values) < 1 {
 		return nil, ErrEmptyStructuredMetadataDropStageConfig
 	}
 
 	return &structuredMetadataDropStage{
 		config: &config,
-		logger: logger,
+		logger: logger.With("stage", "structured_metadata_drop"),
 	}, nil
 }
 
 type structuredMetadataDropStage struct {
 	config *StructuredMetadataDropConfig
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // Cleanup implements Stage.

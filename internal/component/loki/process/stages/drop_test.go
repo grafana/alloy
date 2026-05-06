@@ -45,10 +45,8 @@ stage.drop {
 `
 
 func Test_dropStage_Process(t *testing.T) {
-	// Enable debug logging
 	cfg := &dskit.Config{}
 	require.Nil(t, cfg.LogLevel.Set("debug"))
-	Debug = true
 
 	tenBytes, _ := units.ParseBase2Bytes("10B")
 	oneHour := 1 * time.Hour
@@ -418,7 +416,7 @@ func Test_dropStage_Process(t *testing.T) {
 				t.Error(err)
 			}
 			logger := util.TestAlloyLogger(t)
-			m, err := newDropStage(logger, *tt.config, prometheus.DefaultRegisterer)
+			m, err := newDropStage(logger.Slog(), *tt.config, prometheus.DefaultRegisterer)
 			require.NoError(t, err)
 			out := processEntries(m, newEntry(tt.extracted, tt.labels, tt.entry, tt.t))
 			if tt.shouldDrop {
@@ -433,7 +431,7 @@ func Test_dropStage_Process(t *testing.T) {
 func TestDropPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testDropAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 	out := processEntries(pl,
 		newEntry(nil, nil, testMatchLogLineApp1, time.Now()),

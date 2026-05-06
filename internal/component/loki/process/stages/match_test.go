@@ -67,7 +67,7 @@ var testMatchLogLineApp2 = `
 func TestMatchStage(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testMatchAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestMatcher(t *testing.T) {
 				"",
 			}
 			logger := util.TestAlloyLogger(t)
-			s, err := newMatcherStage(logger, matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			s, err := newMatcherStage(logger.Slog(), matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("withMatcher() error = %v, wantErr %v", err, tt.wantErr)
 				return

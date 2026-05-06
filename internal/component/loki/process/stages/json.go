@@ -3,11 +3,10 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"regexp"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/jmespath-community/go-jmespath"
 	json "github.com/json-iterator/go"
 )
@@ -69,22 +68,24 @@ func validateJSONConfig(c *JSONConfig) (map[string]jmespath.JMESPath, *regexp.Re
 // jsonStage sets extracted data using JMESPath expressions
 type jsonStage struct {
 	cfg         *JSONConfig
-	expressions map[string]jmespath.JMESPath
 	regex       regexp.Regexp
-	logger      log.Logger
+	expressions map[string]jmespath.JMESPath
+	logger      *slog.Logger
 }
 
 // newJSONStage creates a new json pipeline stage from a config.
-func newJSONStage(logger log.Logger, cfg JSONConfig) (Stage, error) {
+func newJSONStage(logger *slog.Logger, cfg JSONConfig) (Stage, error) {
 	expressions, regex, err := validateJSONConfig(&cfg)
+
 	if err != nil {
 		return nil, err
 	}
+
 	return &jsonStage{
 		cfg:         &cfg,
-		expressions: expressions,
 		regex:       *regex,
-		logger:      log.With(logger, "component", "stage", "type", "json"),
+		expressions: expressions,
+		logger:      logger.With("stage", "json"),
 	}, nil
 }
 
@@ -110,16 +111,16 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 
 	if j.cfg.Source != nil {
 		if _, ok := extracted[*j.cfg.Source]; !ok {
-			if Debug {
-				level.Debug(j.logger).Log("msg", "source does not exist in the set of extracted values", "source", *j.cfg.Source)
+			if debugEnabled(j.logger) {
+				j.logger.Debug("source does not exist in the set of extracted values", "source", *j.cfg.Source)
 			}
 			return nil
 		}
 
 		value, err := getString(extracted[*j.cfg.Source])
 		if err != nil {
-			if Debug {
-				level.Debug(j.logger).Log("msg", "failed to convert source value to string", "source", *j.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[*j.cfg.Source]))
+			if debugEnabled(j.logger) {
+				j.logger.Debug("failed to convert source value to string", "source", *j.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[*j.cfg.Source]))
 			}
 			return nil
 		}
@@ -128,8 +129,8 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	}
 
 	if input == nil {
-		if Debug {
-			level.Debug(j.logger).Log("msg", "cannot parse a nil entry")
+		if debugEnabled(j.logger) {
+			j.logger.Debug("cannot parse a nil entry")
 		}
 		return nil
 	}
@@ -137,8 +138,8 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	var data map[string]any
 
 	if err := json.Unmarshal([]byte(*input), &data); err != nil {
-		if Debug {
-			level.Debug(j.logger).Log("msg", "failed to unmarshal log line", "err", err)
+		if debugEnabled(j.logger) {
+			j.logger.Debug("failed to unmarshal log line", "err", err)
 		}
 		return errors.New(ErrMalformedJSON)
 	}
@@ -146,8 +147,8 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 	for name, expr := range j.expressions {
 		rawResult, err := expr.Search(data)
 		if err != nil {
-			if Debug {
-				level.Debug(j.logger).Log("msg", "failed to search JMES expression", "err", err)
+			if debugEnabled(j.logger) {
+				j.logger.Debug("failed to search JMES expression", "err", err)
 			}
 			continue
 		}
@@ -166,8 +167,8 @@ func (j *jsonStage) processEntry(extracted map[string]any, entry *string) error 
 			}
 		}
 	}
-	if Debug {
-		level.Debug(j.logger).Log("msg", "extracted data debug in json stage", "extracted_data", fmt.Sprintf("%v", extracted))
+	if debugEnabled(j.logger) {
+		j.logger.Debug("extracted data debug in json stage", "extracted_data", extracted)
 	}
 	return nil
 }
@@ -188,8 +189,8 @@ func (j *jsonStage) simplifyType(value any) (any, bool) {
 		// If the value wasn't a string or a number, marshal it back to json
 		jm, err := json.Marshal(value)
 		if err != nil {
-			if Debug {
-				level.Debug(j.logger).Log("msg", "failed to marshal complex type back to string", "err", err)
+			if debugEnabled(j.logger) {
+				j.logger.Debug("failed to marshal complex type back to string", "err", err)
 				return nil, false
 			}
 		}

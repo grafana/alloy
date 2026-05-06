@@ -3,11 +3,10 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/v3/pkg/logql/log/pattern"
 	"github.com/mitchellh/mapstructure"
 	"github.com/prometheus/common/model"
@@ -57,11 +56,11 @@ func validatePatternConfig(c PatternConfig) (*pattern.Matcher, error) {
 type patternStage struct {
 	config  *PatternConfig
 	matcher *pattern.Matcher
-	logger  log.Logger
+	logger  *slog.Logger
 }
 
 // newPatternStage creates a newPatternStage
-func newPatternStage(logger log.Logger, config PatternConfig) (Stage, error) {
+func newPatternStage(logger *slog.Logger, config PatternConfig) (Stage, error) {
 	matcher, err := validatePatternConfig(config)
 	if err != nil {
 		return nil, err
@@ -69,7 +68,7 @@ func newPatternStage(logger log.Logger, config PatternConfig) (Stage, error) {
 	return toStage(&patternStage{
 		config:  &config,
 		matcher: matcher,
-		logger:  log.With(logger, "component", "stage", "type", "pattern"),
+		logger:  logger.With("stage", "pattern"),
 	}), nil
 }
 
@@ -91,16 +90,16 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 
 	if r.config.Source != nil {
 		if _, ok := extracted[*r.config.Source]; !ok {
-			if Debug {
-				level.Debug(r.logger).Log("msg", "source does not exist in the set of extracted values", "source", *r.config.Source)
+			if debugEnabled(r.logger) {
+				r.logger.Debug("source does not exist in the set of extracted values", "source", *r.config.Source)
 			}
 			return
 		}
 
 		value, err := getString(extracted[*r.config.Source])
 		if err != nil {
-			if Debug {
-				level.Debug(r.logger).Log("msg", "failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
+			if debugEnabled(r.logger) {
+				r.logger.Debug("failed to convert source value to string", "source", *r.config.Source, "err", err, "type", reflect.TypeOf(extracted[*r.config.Source]))
 			}
 			return
 		}
@@ -109,16 +108,16 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 	}
 
 	if input == nil {
-		if Debug {
-			level.Debug(r.logger).Log("msg", "cannot parse a nil entry")
+		if debugEnabled(r.logger) {
+			r.logger.Debug("cannot parse a nil entry")
 		}
 		return
 	}
 
 	matches := r.matcher.Matches([]byte(*input))
 	if matches == nil {
-		if Debug {
-			level.Debug(r.logger).Log("msg", "pattern did not match", "input", *input, "pattern", r.config.Pattern)
+		if debugEnabled(r.logger) {
+			r.logger.Debug("pattern did not match", "input", *input, "pattern", r.config.Pattern)
 		}
 		return
 	}
@@ -133,31 +132,31 @@ func (r *patternStage) Process(labels model.LabelSet, extracted map[string]any, 
 
 			// TODO - support UTF8 when loki does
 			if !model.LegacyValidation.IsValidLabelName(name) {
-				if Debug {
-					level.Debug(r.logger).Log("msg", "invalid label name from pattern capture", "labelName", labelName)
+				if debugEnabled(r.logger) {
+					r.logger.Debug("invalid label name from pattern capture", "labelName", labelName)
 				}
 				continue
 			}
 
 			if !labelValue.IsValid() {
-				if Debug {
-					level.Debug(r.logger).Log("msg", "invalid label value from pattern capture", "labelName", labelName, "labelValue", labelValue)
+				if debugEnabled(r.logger) {
+					r.logger.Debug("invalid label value from pattern capture", "labelName", labelName, "labelValue", labelValue)
 				}
 				continue
 			}
 
 			// Label from capture will override existing label with same name
-			if Debug {
+			if debugEnabled(r.logger) {
 				oldLabelValue, ok := labels[labelName]
 				if ok {
-					level.Debug(r.logger).Log("msg", "label from pattern capture is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
+					r.logger.Debug("label from pattern capture is overriding existing label", "label", labelName, "oldValue", oldLabelValue, "newValue", labelValue)
 				}
 			}
 
 			labels[labelName] = labelValue
 		}
 	}
-	if Debug {
-		level.Debug(r.logger).Log("msg", "extracted data debug in pattern stage", "extracted data", fmt.Sprintf("%v", extracted))
+	if debugEnabled(r.logger) {
+		r.logger.Debug("extracted data debug in pattern stage", "extracted_data", extracted)
 	}
 }

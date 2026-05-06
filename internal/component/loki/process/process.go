@@ -11,7 +11,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
@@ -112,7 +111,7 @@ func (c *Component) Run(ctx context.Context) error {
 				func() string {
 					structured_metadata, err := e.StructuredMetadata.MarshalJSON()
 					if err != nil {
-						level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
+						c.opts.SLogger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
 						structured_metadata = []byte("{}")
 					}
 					return fmt.Sprintf(
@@ -148,7 +147,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// first load. This will allow a component with no stages to function
 	// properly.
 	if stagesChanged(c.stages, newArgs.Stages) || c.stages == nil {
-		pipeline, err := stages.NewPipeline(c.opts.Logger, newArgs.Stages, c.opts.Registerer, c.opts.MinStability)
+		pipeline, err := stages.NewPipeline(c.opts.SLogger, newArgs.Stages, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {
 			return err
 		}
@@ -178,7 +177,7 @@ func (c *Component) handleIn(ctx context.Context) {
 				func() string {
 					structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
 					if err != nil {
-						level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
+						c.opts.SLogger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
 						structured_metadata = []byte("{}")
 					}
 					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))

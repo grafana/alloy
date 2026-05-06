@@ -2,9 +2,9 @@ package stages
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/prometheus/client_golang/prometheus"
@@ -47,29 +47,29 @@ func toStage(p Processor) Stage {
 }
 
 // New creates a new stage for the given type and configuration.
-func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func New(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	var (
 		s   Stage
 		err error
 	)
 	switch {
 	case cfg.DockerConfig != nil:
-		s, err = NewDocker(logger, registerer, minStability)
+		s, err = NewDocker(slogger, registerer, minStability)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.CRIConfig != nil:
-		s, err = NewCRI(logger, *cfg.CRIConfig, registerer, minStability)
+		s, err = NewCRI(slogger, *cfg.CRIConfig, registerer, minStability)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.JSONConfig != nil:
-		s, err = newJSONStage(logger, *cfg.JSONConfig)
+		s, err = newJSONStage(slogger, *cfg.JSONConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LogfmtConfig != nil:
-		s, err = newLogfmtStage(logger, *cfg.LogfmtConfig)
+		s, err = newLogfmtStage(slogger, *cfg.LogfmtConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -79,77 +79,77 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.MetricsConfig != nil:
-		s, err = newMetricStage(logger, *cfg.MetricsConfig, registerer)
+		s, err = newMetricStage(slogger, *cfg.MetricsConfig, registerer)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LabelsConfig != nil:
-		s, err = newLabelStage(logger, *cfg.LabelsConfig)
+		s, err = newLabelStage(slogger, *cfg.LabelsConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StructuredMetadata != nil:
-		s, err = newStructuredMetadataStage(logger, *cfg.StructuredMetadata)
+		s, err = newStructuredMetadataStage(slogger, *cfg.StructuredMetadata)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.StructuredMetadataDropConfig != nil:
-		s, err = newStructuredMetadataDropStage(logger, *cfg.StructuredMetadataDropConfig)
+		s, err = newStructuredMetadataDropStage(slogger, *cfg.StructuredMetadataDropConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.RegexConfig != nil:
-		s, err = newRegexStage(logger, *cfg.RegexConfig)
+		s, err = newRegexStage(slogger, *cfg.RegexConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.TimestampConfig != nil:
-		s, err = newTimestampStage(logger, *cfg.TimestampConfig)
+		s, err = newTimestampStage(slogger, *cfg.TimestampConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.OutputConfig != nil:
-		s, err = newOutputStage(logger, *cfg.OutputConfig)
+		s, err = newOutputStage(slogger, *cfg.OutputConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.MatchConfig != nil:
-		s, err = newMatcherStage(logger, *cfg.MatchConfig, registerer, minStability)
+		s, err = newMatcherStage(slogger, *cfg.MatchConfig, registerer, minStability)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.TemplateConfig != nil:
-		s, err = newTemplateStage(logger, *cfg.TemplateConfig)
+		s, err = newTemplateStage(slogger, *cfg.TemplateConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.TenantConfig != nil:
-		s, err = newTenantStage(logger, *cfg.TenantConfig)
+		s, err = newTenantStage(slogger, *cfg.TenantConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.ReplaceConfig != nil:
-		s, err = newReplaceStage(logger, *cfg.ReplaceConfig)
+		s, err = newReplaceStage(slogger, *cfg.ReplaceConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.LimitConfig != nil:
-		s, err = newLimitStage(logger, *cfg.LimitConfig, registerer)
+		s, err = newLimitStage(slogger, *cfg.LimitConfig, registerer)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.DropConfig != nil:
-		s, err = newDropStage(logger, *cfg.DropConfig, registerer)
+		s, err = newDropStage(slogger, *cfg.DropConfig, registerer)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.MultilineConfig != nil:
-		s, err = newMultilineStage(logger, *cfg.MultilineConfig)
+		s, err = newMultilineStage(slogger, *cfg.MultilineConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.PackConfig != nil:
-		s = newPackStage(logger, *cfg.PackConfig, registerer)
+		s = newPackStage(slogger, *cfg.PackConfig, registerer)
 	case cfg.LabelAllowConfig != nil:
 		s, err = newLabelAllowStage(*cfg.LabelAllowConfig)
 		if err != nil {
@@ -161,12 +161,12 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.StaticLabelsConfig != nil:
-		s, err = newStaticLabelsStage(logger, *cfg.StaticLabelsConfig)
+		s, err = newStaticLabelsStage(*cfg.StaticLabelsConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.GeoIPConfig != nil:
-		s, err = newGeoIPStage(logger, *cfg.GeoIPConfig)
+		s, err = newGeoIPStage(slogger, *cfg.GeoIPConfig)
 		if err != nil {
 			return nil, err
 		}
@@ -176,18 +176,18 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.SamplingConfig != nil:
-		s = newSamplingStage(logger, *cfg.SamplingConfig, registerer)
+		s = newSamplingStage(slogger, *cfg.SamplingConfig, registerer)
 	case cfg.EventLogMessageConfig != nil:
-		s = newEventLogMessageStage(logger, cfg.EventLogMessageConfig)
+		s = newEventLogMessageStage(slogger, cfg.EventLogMessageConfig)
 	case cfg.WindowsEventConfig != nil:
-		s = newWindowsEventStage(logger, cfg.WindowsEventConfig)
+		s = newWindowsEventStage(slogger, cfg.WindowsEventConfig)
 	case cfg.PatternConfig != nil:
-		s, err = newPatternStage(logger, *cfg.PatternConfig)
+		s, err = newPatternStage(slogger, *cfg.PatternConfig)
 		if err != nil {
 			return nil, err
 		}
 	case cfg.TruncateConfig != nil:
-		s, err = newTruncateStage(logger, *cfg.TruncateConfig, registerer)
+		s, err = newTruncateStage(slogger, *cfg.TruncateConfig, registerer)
 		if err != nil {
 			return nil, err
 		}

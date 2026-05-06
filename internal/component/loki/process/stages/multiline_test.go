@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestMultilineStageProcess(t *testing.T) {
@@ -24,7 +24,7 @@ func TestMultilineStageProcess(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	out := processEntries(stage,
@@ -51,7 +51,7 @@ func TestMultilineStageMultiStreams(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	out := processEntries(stage,
@@ -91,7 +91,7 @@ func TestMultilineStageProcessLeaveNewlines(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	out := processEntries(stage,
@@ -118,7 +118,7 @@ func TestMultilineStageMaxWaitTime(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	in := make(chan Entry, 2)
@@ -167,7 +167,7 @@ func TestMultilineStageStartLineFlushedBeforeNew(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	startTs := time.Now()
@@ -214,7 +214,7 @@ func TestMultilineStageMultipleMaxLinesFlushes(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	startTs := time.Now()
@@ -260,7 +260,7 @@ func TestMultilineStageKeepingStructuredMetadata(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	line1 := Entry{
@@ -330,7 +330,7 @@ func TestMultilineStageMaxWaitTimeMultiStream(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	in := make(chan Entry, 4)
@@ -394,7 +394,7 @@ func TestMultilineStagePostTimeoutContinuation(t *testing.T) {
 	stage := &multilineStage{
 		cfg:    mcfg,
 		regex:  regex,
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 	}
 
 	in := make(chan Entry, 4)
@@ -450,7 +450,7 @@ func TestMultilineStageStreamsMapCleanedUpOnClose(t *testing.T) {
 	stage := &multilineStage{
 		cfg:     mcfg,
 		regex:   regex,
-		logger:  log.NewNopLogger(),
+		logger:  logging.NewSlogNop(),
 		streams: make(map[model.Fingerprint]*multilineState),
 	}
 
@@ -473,7 +473,7 @@ func TestMultilineStageStreamsMapCleanedUpAfterTimeout(t *testing.T) {
 	stage := &multilineStage{
 		cfg:     mcfg,
 		regex:   regex,
-		logger:  log.NewNopLogger(),
+		logger:  logging.NewSlogNop(),
 		streams: make(map[model.Fingerprint]*multilineState),
 	}
 
@@ -523,7 +523,7 @@ func TestMultilineStagePassThroughNoLabelRace(t *testing.T) {
 	regex, err := validateMultilineConfig(mcfg)
 	require.NoError(t, err)
 
-	stage := &multilineStage{cfg: mcfg, regex: regex, logger: log.NewNopLogger()}
+	stage := &multilineStage{cfg: mcfg, regex: regex, logger: logging.NewSlogNop()}
 
 	in := make(chan Entry)
 	out := stage.Run(in)
@@ -555,17 +555,12 @@ var mlBenchTime = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 // stack-trace pattern: 1 firstline ("Date:") followed by 9 continuation lines,
 // cycling continuously. Each input line amortises one-tenth of the flush cost.
 func BenchmarkMultilineStage(b *testing.B) {
-	origDebug := Debug
-	b.Cleanup(func() { Debug = origDebug })
-
 	for _, debugEnabled := range []bool{false, true} {
 		name := "debug=false"
 		if debugEnabled {
 			name = "debug=true"
 		}
 		b.Run(name, func(b *testing.B) {
-			Debug = debugEnabled
-
 			stages := []StageConfig{
 				{
 					MultilineConfig: &MultilineConfig{
@@ -578,7 +573,7 @@ func BenchmarkMultilineStage(b *testing.B) {
 			}
 
 			pl, err := NewPipeline(
-				log.NewNopLogger(),
+				logging.NewSlogNop(),
 				stages,
 				prometheus.NewRegistry(),
 				featuregate.StabilityGenerallyAvailable,
