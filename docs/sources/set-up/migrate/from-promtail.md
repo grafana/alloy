@@ -162,6 +162,64 @@ loki.write "default" {
 }
 ```
 
+### Convert a systemd journal scrape configuration
+
+Promtail deployments scraping the systemd journal are a common pattern for Linux host log collection.
+The following Promtail configuration is typical for servers, containers, and VMs using `systemd-journald`:
+
+```yaml
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+positions:
+  filename: /tmp/positions.yaml
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+scrape_configs:
+  - job_name: systemd-journal
+    journal:
+      max_age: 12h
+      labels:
+        job: systemd-journal
+        host: my-hostname
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        target_label: unit
+```
+
+The equivalent {{< param "PRODUCT_NAME" >}} configuration uses the [`loki.source.journal`][loki.source.journal] component paired with [`loki.relabel`][loki.relabel] for the `__journal__systemd_unit` → `unit` mapping:
+
+```alloy
+loki.relabel "journal" {
+  forward_to = []
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
+loki.source.journal "read" {
+  max_age       = "12h"
+  relabel_rules = loki.relabel.journal.rules
+  forward_to    = [loki.write.default.receiver]
+  labels        = {
+    job  = "systemd-journal",
+    host = "my-hostname",
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
+```
+
+{{< admonition type="note" >}}
+Make sure the `alloy` user is a member of the `adm` and `systemd-journal` groups so that it can read the journal.
+{{< /admonition >}}
+
 ## Limitations
 
 Configuration conversion is done on a best-effort basis. {{< param "PRODUCT_NAME" >}} issues warnings or errors where the conversion can't be performed.
@@ -186,6 +244,8 @@ The following list is specific to the convert command and not {{< param "PRODUCT
 [expanded in the configuration file]: https://www.grafana.com/docs/loki/latest/clients/promtail/configuration/#use-environment-variables-in-the-configuration
 [local.file_match]: ../../../reference/components/local/local.file_match/
 [loki.source.file]: ../../../reference/components/loki/loki.source.file/
+[loki.source.journal]: ../../../reference/components/loki/loki.source.journal/
+[loki.relabel]: ../../../reference/components/loki/loki.relabel/
 [loki.write]: ../../../reference/components/loki/loki.write/
 [Components]: ../../../get-started/components/
 [convert]: ../../../reference/cli/convert/
