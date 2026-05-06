@@ -256,6 +256,38 @@ the fingerprint emitted here matches the fingerprint computed from the raw
 `STATEMENT:` continuations (`op="error"`). The same value is the join key
 across all three surfaces.
 
+### `op="query_sample"`, `op="wait_event"`, and `op="wait_event_v2"` entries from `query_samples`
+
+The `query_samples` collector polls `pg_stat_activity` and emits one
+`op="query_sample"` line per finalized sample (when the backend goes idle
+or disappears between scrapes), plus one `op="wait_event"` (or
+`op="wait_event_v2"` when `enable_pre_classified_wait_events` is set) line
+per coalesced wait-event occurrence observed for that sample.
+
+Every line carries `query_fingerprint` — the libpg_query fingerprint of
+the `pg_stat_activity.query` text observed for the sample. The fingerprint
+is computed unconditionally; only the raw `query=` text on
+`op="query_sample"` lines is gated by `disable_query_redaction`.
+
+| Field                          | Source                  | Notes                                                                                       |
+|--------------------------------|-------------------------|---------------------------------------------------------------------------------------------|
+| Label `op`                     | constant                | `query_sample`, `wait_event`, or `wait_event_v2`                                            |
+| Body field `query_fingerprint` | computed                | `libpg_query` fingerprint of the `pg_stat_activity.query` text (16-char hex); always emitted when computable |
+| Body field `query`             | `s.query`               | only on `op="query_sample"`, only when `disable_query_redaction = true`                     |
+| Body field `queryid`           | `s.query_id`            | PostgreSQL's `pg_stat_statements` queryid for the running statement                         |
+| Body field `datname`, `pid`, `user`, ...  | `pg_stat_activity` | sample identity and context (see source for the full set)                                |
+
+The fingerprint is computed once per sample (cached on the in-memory
+`SampleState`) and reused for every wait-event line emitted under that
+same sample, so all entries belonging to one logical query execution
+share the same `query_fingerprint`.
+
+Because the fingerprint identity matches `op="query_association"` (from
+`query_details`) and `op="error"` (from `logs`), downstream consumers can
+join all four surfaces by `query_fingerprint` as a single source-of-truth
+identifier for one logical query — even on managed services where
+`pg_stat_statements.queryid` is not exposed in `log_line_prefix`.
+
 ## Example
 
 ```alloy
