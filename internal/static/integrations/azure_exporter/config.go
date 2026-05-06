@@ -12,7 +12,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	duration "github.com/channelmeter/iso8601duration"
 	"github.com/go-kit/log"
-	azure_config "github.com/webdevops/azure-metrics-exporter/config"
 	"github.com/webdevops/azure-metrics-exporter/metrics"
 	"github.com/webdevops/go-common/azuresdk/cloudconfig"
 	"gopkg.in/yaml.v3"
@@ -40,6 +39,9 @@ var DefaultConfig = Config{
 	//  to fully monitor a service which is tedious. Turning off validation eliminates this complexity. The underlying
 	//  sdk will only give back the dimensions which are valid for particular metrics.
 	ValidateDimensions: false,
+	// Concurrency default values taken from OSS exporter
+	ConcurrencySubscription:         5,
+	ConcurrencySubscriptionResource: 10,
 }
 
 type Config struct {
@@ -82,6 +84,9 @@ type Config struct {
 	ValidateDimensions bool   `yaml:"validate_dimensions"`
 
 	AzureCloudEnvironment string `yaml:"azure_cloud_environment"`
+
+	ConcurrencySubscription         int  `yaml:"concurrency_subscription"`
+	ConcurrencySubscriptionResource int  `yaml:"concurrency_subscription_resource"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
@@ -99,21 +104,9 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
-	concurrencyConfig := azure_config.Opts{
-		// Necessary to match OSS definition
-		Prober: struct {
-			// Limits the number of subscriptions which can concurrently be sending metric requests - value taken from OSS exporter
-			ConcurrencySubscription int `long:"concurrency.subscription"          env:"CONCURRENCY_SUBSCRIPTION"           description:"Concurrent subscription fetches"                                  default:"5"`
-			// Limits the number of concurrent metric requests for a single subscription  - value taken from OSS exporter
-			ConcurrencySubscriptionResource int  `long:"concurrency.subscription.resource" env:"CONCURRENCY_SUBSCRIPTION_RESOURCE"  description:"Concurrent requests per resource (inside subscription requests)"  default:"10"`
-			Cache                           bool `long:"enable-caching"                    env:"ENABLE_CACHING"                     description:"Enable internal caching"`
-		}{5, 10, false},
-	}
-
 	return Exporter{
-		cfg:               *c,
-		logger:            zapadapter.New(l).Sugar(),
-		ConcurrencyConfig: concurrencyConfig,
+		cfg:    *c,
+		logger: zapadapter.New(l).Sugar(),
 	}, nil
 }
 
@@ -168,6 +161,14 @@ func (c *Config) Validate() error {
 
 	if tErr == nil && iErr == nil && timespan.ToDuration() < interval.ToDuration() {
 		configErrors = append(configErrors, fmt.Sprintf("timespan %s must be greater than or equal to interval %s", c.Timespan, c.Interval))
+	}
+
+	if c.ConcurrencySubscription <= 0 {
+		configErrors = append(configErrors, fmt.Sprintf("concurrency_subscription must be greater than 0, got %d", c.ConcurrencySubscription))
+	}
+
+	if c.ConcurrencySubscriptionResource <= 0 {
+		configErrors = append(configErrors, fmt.Sprintf("concurrency_subscription_resource must be greater than 0, got %d", c.ConcurrencySubscriptionResource))
 	}
 
 	if len(configErrors) != 0 {
@@ -309,6 +310,24 @@ func MergeConfigWithQueryParams(cfg Config, params url.Values) (Config, error) {
 			return Config{}, fmt.Errorf("invalid boolean value %s for validate_dimensions", validateDimensions)
 		}
 		cfg.ValidateDimensions = v
+	}
+
+	concurrencySubscription := params.Get("concurrency_subscription")
+	if len(concurrencySubscription) != 0 {
+		v, err := strconv.Atoi(concurrencySubscription)
+		if err != nil {
+			return Config{}, fmt.Errorf("invalid integer value %s for concurrency_subscription", concurrencySubscription)
+		}
+		cfg.ConcurrencySubscription = v
+	}
+
+	concurrencySubscriptionResource := params.Get("concurrency_subscription_resource")
+	if len(concurrencySubscriptionResource) != 0 {
+		v, err := strconv.Atoi(concurrencySubscriptionResource)
+		if err != nil {
+			return Config{}, fmt.Errorf("invalid integer value %s for concurrency_subscription_resource", concurrencySubscriptionResource)
+		}
+		cfg.ConcurrencySubscriptionResource = v
 	}
 
 	return cfg, nil
