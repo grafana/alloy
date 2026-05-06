@@ -504,7 +504,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 
 		args := Arguments{
 			DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db?timeout=100ms"),
-			ForwardTo:      []loki.LogsReceiver{},
+			ForwardTo:      []loki.Consumer{},
 			Targets:        []discovery.Target{},
 		}
 
@@ -530,7 +530,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 
 		args := Arguments{
 			DataSourceName:    alloytypes.Secret("user:pass@tcp(127.0.0.1:3306)/db"),
-			ForwardTo:         []loki.LogsReceiver{},
+			ForwardTo:         []loki.Consumer{},
 			Targets:           []discovery.Target{},
 			DisableCollectors: []string{"query_details", "schema_details", "query_samples", "setup_consumers", "setup_actors", "explain_plans", "locks"},
 			HealthCheckArguments: HealthCheckArguments{
@@ -548,7 +548,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 		c := &Component{
 			opts:      opts,
 			args:      args,
-			fanout:    loki.NewFanout(args.ForwardTo),
+			fanout:    loki.NewFanoutConsumer(args.ForwardTo),
 			handler:   loki.NewLogsReceiver(),
 			registry:  prometheus.NewRegistry(),
 			healthErr: atomic.NewString(""),
@@ -596,7 +596,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 
 		args := Arguments{
 			DataSourceName: alloytypes.Secret("user:pass@tcp(127.0.0.1:1)/db?timeout=100ms"),
-			ForwardTo:      []loki.LogsReceiver{},
+			ForwardTo:      []loki.Consumer{},
 			Targets:        []discovery.Target{},
 		}
 
