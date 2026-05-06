@@ -64,7 +64,7 @@ func TestDefaultRate_Unmarshalled(t *testing.T) {
 func TestGitleaksConfig_InvalidPath(t *testing.T) {
 	opts := newTestOptions(t, nil)
 	args := Arguments{
-		ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:      []loki.Consumer{},
 		GitleaksConfig: filepath.Join(t.TempDir(), "nonexistent.gitleaks.toml"),
 	}
 	_, err := New(opts, args)
@@ -88,19 +88,16 @@ func TestRate_ValidateInvalid(t *testing.T) {
 
 // TestRate_ZeroBypassesAll verifies that with rate=0 all entries are forwarded unchanged and bypass counter increases.
 func TestRate_ZeroBypassesAll(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	downstream := loki.NewLogsReceiver()
+	downstream := loki.NewCollectingConsumer()
 	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{downstream},
+		ForwardTo: []loki.Consumer{downstream},
 		Rate:      0,
 	}
-	opts := newTestOptions(t, registry)
+	opts := newTestOptions(t, prometheus.NewRegistry())
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { _ = c.Run(ctx) }()
+	go func() { _ = c.Run(t.Context()) }()
 
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	line := "log with secret " + secret + " end"
@@ -108,9 +105,12 @@ func TestRate_ZeroBypassesAll(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 	}
-	c.receiver.Chan() <- entry
-	received := <-downstream.Chan()
-	require.Equal(t, line, received.Line, "entry should be forwarded unchanged when rate=0")
+
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
+
+	got := downstream.Entries()
+	require.Len(t, got, 1)
+	require.Equal(t, line, got[0].Line, "entry should be forwarded unchanged when rate=0")
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.entriesBypassedTotal))
 }
 
@@ -119,20 +119,17 @@ func TestRate_ZeroBypassesAll(t *testing.T) {
 // This guards against bugs where the Run loop assigns to a shadowed variable and forwards
 // the wrong value.
 func TestRate_OneForwardsProcessedEntry(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	downstream := loki.NewLogsReceiver()
+	downstream := loki.NewCollectingConsumer()
 	args := Arguments{
-		ForwardTo:     []loki.LogsReceiver{downstream},
+		ForwardTo:     []loki.Consumer{downstream},
 		Rate:          1,
 		RedactPercent: 100,
 	}
-	opts := newTestOptions(t, registry)
+	opts := newTestOptions(t, prometheus.NewRegistry())
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { _ = c.Run(ctx) }()
+	go func() { _ = c.Run(t.Context()) }()
 
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	lineWithSecret := "log with secret " + secret + " end"
@@ -140,30 +137,31 @@ func TestRate_OneForwardsProcessedEntry(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: lineWithSecret},
 	}
-	c.receiver.Chan() <- entry
-	received := <-downstream.Chan()
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
 
-	require.NotEmpty(t, received.Line, "processed entry must not be empty when forwarded")
-	require.NotContains(t, received.Line, secret, "forwarded entry must contain redacted content, not the raw secret")
-	require.Contains(t, received.Line, "REDACTED", "forwarded entry should contain redaction placeholder")
+	got := downstream.Entries()
+	require.Len(t, got, 1)
+
+	require.NotEmpty(t, got[0].Line, "processed entry must not be empty when forwarded")
+	require.NotContains(t, got[0].Line, secret, "forwarded entry must contain redacted content, not the raw secret")
+	require.Contains(t, got[0].Line, "REDACTED", "forwarded entry should contain redaction placeholder")
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.entriesBypassedTotal), "no entries should be bypassed when rate=1")
 }
 
 // TestRate_Half approximates that with rate=0.5 about half of entries are processed and half bypassed.
 func TestRate_Half(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	downstream := loki.NewLogsReceiver()
+	downstream := loki.NewCollectingConsumer()
+
 	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{downstream},
+		ForwardTo: []loki.Consumer{downstream},
 		Rate:      0.5,
 	}
-	opts := newTestOptions(t, registry)
+
+	opts := newTestOptions(t, prometheus.NewRegistry())
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() { _ = c.Run(ctx) }()
+	go func() { _ = c.Run(t.Context()) }()
 
 	n := 400
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
@@ -173,8 +171,7 @@ func TestRate_Half(t *testing.T) {
 			Labels: model.LabelSet{},
 			Entry:  push.Entry{Timestamp: time.Now(), Line: lineWithSecret},
 		}
-		c.receiver.Chan() <- entry
-		<-downstream.Chan()
+		require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
 	}
 
 	bypassed := testutil.ToFloat64(c.metrics.entriesBypassedTotal)
@@ -184,10 +181,11 @@ func TestRate_Half(t *testing.T) {
 }
 
 func TestRedactPercent_FullRedaction(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	opts := newTestOptions(t, registry)
+	downstream := loki.NewCollectingConsumer()
+	opts := newTestOptions(t, prometheus.NewRegistry())
 	args := Arguments{
-		ForwardTo:     []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:     []loki.Consumer{downstream},
+		Rate:          1,
 		RedactPercent: 100,
 	}
 	c, err := New(opts, args)
@@ -197,16 +195,20 @@ func TestRedactPercent_FullRedaction(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: testhelper.TestLogs["grafana_api_key"].Log},
 	}
-	processed, _ := c.processEntry(context.Background(), entry)
-	require.Contains(t, processed.Entry.Line, "REDACTED", "expected full redaction to produce REDACTED placeholder")
-	require.NotContains(t, processed.Entry.Line, testhelper.FakeSecrets["grafana-api-key"].Value)
+
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
+	got := downstream.Entries()
+	require.Len(t, got, 1)
+	require.Contains(t, got[0].Entry.Line, "REDACTED", "expected full redaction to produce REDACTED placeholder")
+	require.NotContains(t, got[0].Entry.Line, testhelper.FakeSecrets["grafana-api-key"].Value)
 }
 
 func TestRedactPercent_Partial(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	opts := newTestOptions(t, registry)
+	downstream := loki.NewCollectingConsumer()
+	opts := newTestOptions(t, prometheus.NewRegistry())
 	args := Arguments{
-		ForwardTo:     []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:     []loki.Consumer{downstream},
+		Rate:          1,
 		RedactPercent: 80,
 	}
 	c, err := New(opts, args)
@@ -217,22 +219,26 @@ func TestRedactPercent_Partial(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: "log with secret " + secret + " end"},
 	}
-	processed, _ := c.processEntry(context.Background(), entry)
-	require.Contains(t, processed.Entry.Line, "...", "expected partial redaction to append ...")
-	require.NotContains(t, processed.Entry.Line, secret, "original secret should not appear in full")
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
+
+	got := downstream.Entries()
+	require.Len(t, got, 1)
+	require.Contains(t, got[0].Entry.Line, "...", "expected partial redaction to append ...")
+	require.NotContains(t, got[0].Entry.Line, secret, "original secret should not appear in full")
 	// First 20% of secret should be present (gitleaks Redact(80) keeps leading 20% + "...")
 	leadingLen := len(secret) * 20 / 100
 	if leadingLen > 0 {
-		require.Contains(t, processed.Entry.Line, secret[:leadingLen], "expected leading portion of secret to remain")
+		require.Contains(t, got[0].Entry.Line, secret[:leadingLen], "expected leading portion of secret to remain")
 	}
 }
 
 func TestRedactWith_CustomPlaceholder(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	opts := newTestOptions(t, registry)
+	downstream := loki.NewCollectingConsumer()
+	opts := newTestOptions(t, prometheus.NewRegistry())
 	args := Arguments{
-		ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:  []loki.Consumer{downstream},
 		RedactWith: "***REDACTED***",
+		Rate:       1,
 	}
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -241,18 +247,21 @@ func TestRedactWith_CustomPlaceholder(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: testhelper.TestLogs["gcp_api_key"].Log},
 	}
-	processed, _ := c.processEntry(context.Background(), entry)
-	require.Contains(t, processed.Entry.Line, "***REDACTED***")
-	require.NotContains(t, processed.Entry.Line, testhelper.FakeSecrets["gcp-api-key"].Value)
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
+
+	got := downstream.Entries()
+	require.Len(t, got, 1)
+	require.Contains(t, got[0].Entry.Line, "***REDACTED***")
+	require.NotContains(t, got[0].Entry.Line, testhelper.FakeSecrets["gcp-api-key"].Value)
 }
 
 // TestDefaultRedactPercent_usesEighty verifies that with no redact_with and no redact_percent,
 // the component defaults to 80% redaction (gitleaks-style: leading 20% + "...").
 func TestDefaultRedactPercent_usesEighty(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	opts := newTestOptions(t, registry)
+	downstream := loki.NewCollectingConsumer()
+	opts := newTestOptions(t, prometheus.NewRegistry())
 	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo: []loki.Consumer{downstream},
 		// RedactWith and RedactPercent left at zero values => effective 80%
 	}
 	c, err := New(opts, args)
@@ -284,10 +293,9 @@ func BenchmarkAllTypesWithLotsOfSecrets(b *testing.B) {
 }
 
 func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretName string) {
-	ch1 := loki.NewLogsReceiver()
 	var args Arguments
 	require.NoError(b, syntax.Unmarshal([]byte(config), &args))
-	args.ForwardTo = []loki.LogsReceiver{ch1}
+	args.ForwardTo = []loki.Consumer{loki.NewCollectingConsumer()}
 
 	opts := component.Options{
 		Logger:         logging.NewSlogNop(),
@@ -344,18 +352,17 @@ func FuzzProcessEntry(f *testing.F) {
 	}
 
 	opts := newTestOptions(f, nil)
-	ch1 := loki.NewLogsReceiver()
 
 	// Create component with default config
 	var args Arguments
 	require.NoError(f, syntax.Unmarshal([]byte(testhelper.TestConfigs["default"]), &args))
-	args.ForwardTo = []loki.LogsReceiver{ch1}
+	args.ForwardTo = []loki.Consumer{loki.NewCollectingConsumer()}
 	c, err := New(opts, args)
 	require.NoError(f, err)
 
 	f.Fuzz(func(t *testing.T, log string) {
 		entry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Now(), Line: log}}
-		c.processEntry(context.Background(), entry)
+		require.NoError(t, c.receiver.ConsumeEntry(context.Background(), entry))
 	})
 }
 
@@ -399,8 +406,9 @@ func TestMetrics(t *testing.T) {
 
 			// Initialize Arguments
 			args := Arguments{
-				ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+				ForwardTo:   []loki.Consumer{loki.NewCollectingConsumer()},
 				OriginLabel: "job",
+				Rate:        1,
 			}
 
 			// Create options with the test registry
@@ -424,7 +432,7 @@ func TestMetrics(t *testing.T) {
 			}
 
 			// Process the entry
-			c.processEntry(context.Background(), entry)
+			require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
 
 			// Verify the metrics
 
@@ -486,8 +494,9 @@ func TestMetrics_NoOriginLabel(t *testing.T) {
 	registry := prometheus.NewRegistry()
 
 	args := Arguments{
-		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:   []loki.Consumer{loki.NewCollectingConsumer()},
 		OriginLabel: "",
+		Rate:        1,
 	}
 	opts := newTestOptions(t, registry)
 
@@ -501,7 +510,7 @@ func TestMetrics_NoOriginLabel(t *testing.T) {
 			Line:      testhelper.TestLogs["grafana_api_key"].Log,
 		},
 	}
-	c.processEntry(context.Background(), entry)
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
 
 	// secrets_redacted_by_category_total must increment with origin=""
 	expected := strings.NewReader(
@@ -522,7 +531,7 @@ func TestMetricsRegistration(t *testing.T) {
 
 	// Create component with empty arguments
 	args := Arguments{
-		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:   []loki.Consumer{},
 		OriginLabel: "job",
 	}
 
@@ -561,15 +570,16 @@ func TestMetricsRegistration(t *testing.T) {
 
 // Test metrics for secrets across multiple log lines
 func TestMetricsMultipleEntries(t *testing.T) {
-	registry := prometheus.NewRegistry()
+	downstream := loki.NewCollectingConsumer()
 
 	args := Arguments{
-		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:   []loki.Consumer{downstream},
 		OriginLabel: "job",
+		Rate:        1,
 	}
 
+	registry := prometheus.NewRegistry()
 	opts := newTestOptions(t, registry)
-
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
@@ -606,7 +616,7 @@ func TestMetricsMultipleEntries(t *testing.T) {
 	}
 
 	for _, entry := range entries {
-		c.processEntry(context.Background(), entry)
+		require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
 	}
 
 	// Verify the metrics
@@ -622,12 +632,13 @@ func TestArgumentsUpdate(t *testing.T) {
 	registry := prometheus.NewRegistry()
 
 	// Create a receiver to collect filtered logs
-	ch1 := loki.NewLogsReceiver()
+	downstream := loki.NewCollectingConsumer()
 
 	// Initial arguments with basic configuration
 	initialArgs := Arguments{
-		ForwardTo:   []loki.LogsReceiver{ch1},
+		ForwardTo:   []loki.Consumer{downstream},
 		OriginLabel: "",
+		Rate:        1,
 	}
 
 	// Create options with the test registry
@@ -651,16 +662,18 @@ func TestArgumentsUpdate(t *testing.T) {
 		{
 			description: "Update 1 - Add origin label tracking",
 			args: Arguments{
-				ForwardTo:   []loki.LogsReceiver{ch1},
+				ForwardTo:   []loki.Consumer{downstream},
 				OriginLabel: "job",
+				Rate:        1,
 			},
 			inputLog: testhelper.TestLogs["gcp_api_key"].Log,
 		},
 		{
 			description: "Update 2 - Change origin label",
 			args: Arguments{
-				ForwardTo:   []loki.LogsReceiver{ch1},
+				ForwardTo:   []loki.Consumer{downstream},
 				OriginLabel: "instance",
+				Rate:        1,
 			},
 			inputLog: testhelper.TestLogs["stripe_key"].Log,
 		},
@@ -668,6 +681,8 @@ func TestArgumentsUpdate(t *testing.T) {
 
 	for _, td := range testData {
 		t.Run(td.description, func(t *testing.T) {
+			defer downstream.Reset()
+
 			// Update the component with new arguments
 			err := c.Update(td.args)
 			require.NoError(t, err)
@@ -686,22 +701,27 @@ func TestArgumentsUpdate(t *testing.T) {
 			}
 
 			// Process the entry
-			processedEntry, _ := c.processEntry(context.Background(), entry)
+			require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
+
+			got := downstream.Entries()
+			require.Len(t, got, 1)
 
 			// Verify that redaction occurred
-			require.NotEqual(t, entry.Line, processedEntry.Line, "Expected redaction to occur")
+			require.NotEqual(t, entry.Line, got[0].Entry.Line, "Expected redaction to occur")
 		})
 	}
 }
 
 func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
+	downstream := loki.NewCollectingConsumer()
 	registry := prometheus.NewRegistry()
 	opts := newTestOptions(t, registry)
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
-		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:         []loki.Consumer{downstream},
 		ProcessingTimeout: 10 * time.Millisecond,
+		Rate:              1,
 	})
 	require.NoError(t, err)
 	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
@@ -714,23 +734,25 @@ func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 	}
-	processed, dropped := c.processEntry(context.Background(), entry)
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
 
-	require.False(t, dropped, "entry should not be dropped when drop_on_timeout is false")
-	require.Equal(t, line, processed.Entry.Line, "original unredacted line should be forwarded on timeout")
+	got := downstream.Entries()
+	require.Len(t, got, 1)
+	require.Equal(t, line, got[0].Entry.Line, "original unredacted line should be forwarded on timeout")
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
 }
 
 func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	opts := newTestOptions(t, registry)
+	downstream := loki.NewCollectingConsumer()
+	opts := newTestOptions(t, prometheus.NewRegistry())
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
-		ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo:         []loki.Consumer{downstream},
 		ProcessingTimeout: 10 * time.Millisecond,
 		DropOnTimeout:     true,
+		Rate:              1,
 	})
 	require.NoError(t, err)
 	//nolint:staticcheck // DetectContext still requires detect.Fragment in gitleaks v8
@@ -743,20 +765,23 @@ func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 	}
-	_, dropped := c.processEntry(context.Background(), entry)
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
 
-	require.True(t, dropped, "entry should be dropped when drop_on_timeout is true")
+	require.Len(t, downstream.Entries(), 0)
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(1), testutil.ToFloat64(c.metrics.linesDroppedTotal))
 }
 
 func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
+	downstream := loki.NewCollectingConsumer()
 	registry := prometheus.NewRegistry()
 	opts := newTestOptions(t, registry)
+
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
-		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
+		ForwardTo: []loki.Consumer{downstream},
+		Rate:      1,
 		// ProcessingTimeout left at zero: disabled
 	})
 	require.NoError(t, err)
@@ -765,10 +790,12 @@ func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
 		Labels: model.LabelSet{},
 		Entry:  push.Entry{Timestamp: time.Now(), Line: line},
 	}
-	processed, dropped := c.processEntry(context.Background(), entry)
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), entry))
 
-	require.False(t, dropped)
-	require.NotEqual(t, line, processed.Entry.Line, "secret should be redacted when no timeout is set")
+	got := downstream.Entries()
+	require.Len(t, got, 1)
+
+	require.NotEqual(t, line, got[0].Entry.Line, "secret should be redacted when no timeout is set")
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesTimedOutTotal))
 	require.Equal(t, float64(0), testutil.ToFloat64(c.metrics.linesDroppedTotal))
 }
@@ -817,10 +844,11 @@ func TestTimeoutLabel(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			line := "log line with secret " + secret + " end"
 			c, err := New(newTestOptions(t, prometheus.NewRegistry()), Arguments{
-				ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
+				ForwardTo:         []loki.Consumer{loki.NewCollectingConsumer()},
 				ProcessingTimeout: 10 * time.Millisecond,
 				LabelTimedOut:     tc.labelTimedOut,
 				DropOnTimeout:     tc.dropOnTimeout,
+				Rate:              1,
 			})
 			require.NoError(t, err)
 			findings := tc.findings
