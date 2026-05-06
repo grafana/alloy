@@ -3,19 +3,11 @@
 package main
 
 import (
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/connector"
-	"go.opentelemetry.io/collector/exporter"
-	"go.opentelemetry.io/collector/extension"
-	"go.opentelemetry.io/collector/otelcol"
-	"go.opentelemetry.io/collector/processor"
-	"go.opentelemetry.io/collector/receiver"
-	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
+	alloyengine "github.com/grafana/alloy/extension/alloyengine"
 	countconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector"
 	grafanacloudconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector"
 	servicegraphconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
 	spanmetricsconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
-	forwardconnector "go.opentelemetry.io/collector/connector/forwardconnector"
 	awss3exporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter"
 	faroexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter"
 	fileexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter"
@@ -28,11 +20,6 @@ import (
 	splunkhecexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter"
 	syslogexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter"
 	zipkinexporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/zipkinexporter"
-	debugexporter "go.opentelemetry.io/collector/exporter/debugexporter"
-	nopexporter "go.opentelemetry.io/collector/exporter/nopexporter"
-	otlpexporter "go.opentelemetry.io/collector/exporter/otlpexporter"
-	otlphttpexporter "go.opentelemetry.io/collector/exporter/otlphttpexporter"
-	alloyengine "github.com/grafana/alloy/extension/alloyengine"
 	basicauthextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension"
 	bearertokenauthextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension"
 	headerssetterextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension"
@@ -42,7 +29,6 @@ import (
 	pprofextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension"
 	sigv4authextension "github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension"
 	filestorage "github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage"
-	zpagesextension "go.opentelemetry.io/collector/extension/zpagesextension"
 	attributesprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor"
 	cumulativetodeltaprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/cumulativetodeltaprocessor"
 	deltatocumulativeprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/deltatocumulativeprocessor"
@@ -52,13 +38,11 @@ import (
 	k8sattributesprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/k8sattributesprocessor"
 	metricstarttimeprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/metricstarttimeprocessor"
 	probabilisticsamplerprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/probabilisticsamplerprocessor"
-	resourceprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor"
 	resourcedetectionprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourcedetectionprocessor"
+	resourceprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/resourceprocessor"
 	spanprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/spanprocessor"
 	tailsamplingprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 	transformprocessor "github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
-	batchprocessor "go.opentelemetry.io/collector/processor/batchprocessor"
-	memorylimiterprocessor "go.opentelemetry.io/collector/processor/memorylimiterprocessor"
 	awscloudwatchreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver"
 	awsecscontainermetricsreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver"
 	awss3receiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver"
@@ -68,6 +52,7 @@ import (
 	filelogreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filelogreceiver"
 	filestatsreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver"
 	fluentforwardreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/fluentforwardreceiver"
+	githubreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver"
 	googlecloudpubsubreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/googlecloudpubsubreceiver"
 	hostmetricsreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver"
 	influxdbreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver"
@@ -83,7 +68,9 @@ import (
 	tcplogreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver"
 	vcenterreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver"
 	zipkinreceiver "github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver"
+	"go.opentelemetry.io/collector/receiver"
 	otlpreceiver "go.opentelemetry.io/collector/receiver/otlpreceiver"
+	"go.opentelemetry.io/collector/service/telemetry/otelconftelemetry"
 )
 
 func components() (otelcol.Factories, error) {
@@ -131,6 +118,7 @@ func components() (otelcol.Factories, error) {
 		filelogreceiver.NewFactory(),
 		filestatsreceiver.NewFactory(),
 		fluentforwardreceiver.NewFactory(),
+		githubreceiver.NewFactory(),
 		googlecloudpubsubreceiver.NewFactory(),
 		hostmetricsreceiver.NewFactory(),
 		influxdbreceiver.NewFactory(),

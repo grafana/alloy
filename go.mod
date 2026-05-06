@@ -1003,6 +1003,7 @@ require (
 	github.com/moby/moby/client v0.4.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/githubreceiver v0.145.0
 	github.com/spf13/viper v1.21.0
 	github.com/vektah/gqlparser/v2 v2.5.32
 	github.com/zricethezav/gitleaks/v8 v8.30.0
@@ -1024,6 +1025,7 @@ require (
 	github.com/DataDog/datadog-agent/pkg/trace/traceutil v0.77.0-devel.0.20260213154712-e02b9359151a // indirect
 	github.com/DeRuina/timberjack v1.3.9 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/metric v0.54.0 // indirect
+	github.com/Khan/genqlient v0.8.1 // indirect
 	github.com/STARRY-S/zip v0.2.3 // indirect
 	github.com/VictoriaMetrics/easyproto v1.1.3 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
@@ -1057,6 +1059,7 @@ require (
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/google/gnostic v0.7.1 // indirect
 	github.com/google/go-github/v62 v62.0.0 // indirect
+	github.com/google/go-github/v81 v81.0.0 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/klauspost/crc32 v1.3.0 // indirect
