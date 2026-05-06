@@ -14,6 +14,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -154,6 +155,19 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		// Fingerprint the raw pg_stat_statements.query text BEFORE comment
+		// stripping, so the fingerprint is stable across comment differences.
+		// pg_query.Fingerprint canonicalizes literals at the AST level, so
+		// the value matches the fingerprint computed from the raw text in
+		// pg_stat_activity (op=query_sample) or from STATEMENT continuations
+		// in server logs (op=error).
+		fp, _, fpErr := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
+		if fpErr != nil {
+			// fingerprint.ErrEmpty — the row's query text was empty/whitespace.
+			// Skip emitting; an empty fingerprint isn't useful as a join key.
+			level.Debug(c.logger).Log("msg", "skip fingerprint", "queryid", queryID, "err", fpErr)
+		}
+
 		queryText, err = removeComments(c.normalizer, queryText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
@@ -163,7 +177,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
+			fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
 		)
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)

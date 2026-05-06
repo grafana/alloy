@@ -226,6 +226,36 @@ window around the entry's timestamp. If the failed query was inside a write
 transaction, `xid` is also a deterministic key against
 `pg_stat_activity.backend_xid`.
 
+### `op="query_association"` entries from `query_details`
+
+The `query_details` collector emits one Loki entry per `pg_stat_statements`
+row on each scrape. The line carries the row's `queryid`, the computed
+`query_fingerprint`, and the partially-normalized SQL text from the view.
+Use it as a queryid → fingerprint lookup table to translate aggregate
+metrics in `pg_stat_statements_*` into per-fingerprint rollups.
+
+| Field                          | Source                          | Notes                                                                |
+|--------------------------------|---------------------------------|----------------------------------------------------------------------|
+| Label `op`                     | constant                        | `query_association`                                                  |
+| Body field `level`             | constant                        | `info`                                                               |
+| Body field `queryid`           | `pg_stat_statements.queryid`    | PostgreSQL's native, version-dependent identifier                    |
+| Body field `query_fingerprint` | computed                        | `libpg_query` fingerprint of the SQL text (16-char hex)              |
+| Body field `querytext`         | `pg_stat_statements.query`      | partially-normalized SQL with comments stripped                      |
+| Body field `datname`           | from `pg_database`              | database name                                                        |
+
+Look up the queryids belonging to a fingerprint via LogQL, then aggregate
+`pg_stat_statements_*` counters by those queryids in PromQL:
+
+```logql
+{op="query_association"} | logfmt | query_fingerprint="<fp>"
+```
+
+Because `pg_query.Fingerprint` canonicalizes constants at the AST level,
+the fingerprint emitted here matches the fingerprint computed from the raw
+`pg_stat_activity.query` text (`op="query_sample"`) and from server-log
+`STATEMENT:` continuations (`op="error"`). The same value is the join key
+across all three surfaces.
+
 ## Example
 
 ```alloy
