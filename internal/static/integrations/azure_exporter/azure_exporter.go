@@ -77,11 +77,21 @@ func (e Exporter) MetricsHandler() (http.Handler, error) {
 		prober.SetPrometheusRegistry(reg)
 		prober.SetAzureResourceTagManager(tagManager)
 
+		// When use_batch_api is enabled, use the Azure Monitor Batch API (metrics:getBatch) which
+		// queries up to 50 resources per request using the Azure Monitor data plane. This has
+		// separate rate limits from the ARM management plane, avoiding 429 throttling.
+		//
 		// When regions has values then the request is for all resources in the subscription.
 		//  "RunOnSubscriptionScope" uses a different API, https://github.com/Azure/azure-rest-api-specs/blob/main/specification/monitor/resource-manager/Microsoft.Insights/stable/2021-05-01/metrics_API.json#L40,
 		//  which can get metric data for all resources in a single API call reducing overhead/likelihood of being rate limited.
 		// Limiting to specific resources requires 1 API call per resource to get metrics which can easily lead to rate limiting
-		if len(settings.Regions) > 0 {
+		if mergedConfig.UseBatchAPI {
+			if err := e.collectBatchMetrics(ctx, reg, mergedConfig, settings, client); err != nil {
+				e.logger.Error(fmt.Errorf("batch metrics collection failed, %v", err))
+				http.Error(resp, "Failed to collect batch metrics", http.StatusInternalServerError)
+				return
+			}
+		} else if len(settings.Regions) > 0 {
 			prober.RunOnSubscriptionScope()
 		} else {
 			err = prober.ServiceDiscovery.FindResourceGraph(ctx, settings.Subscriptions, settings.ResourceType, settings.Filter)
