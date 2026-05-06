@@ -34,7 +34,6 @@ jobs:
       uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: GO_TAGS="embedalloyui promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= make alloy
 
@@ -60,7 +59,6 @@ jobs:
       uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: GO_TAGS="embedalloyui promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
 
@@ -76,7 +74,6 @@ jobs:
       uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: GO_TAGS="embedalloyui" GOOS=darwin GOARCH=amd64 GOARM= make alloy
 
@@ -92,7 +89,6 @@ jobs:
       uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" GO_TAGS="embedalloyui" GOOS=darwin GOARCH=arm64 GOARM= make alloy
 
@@ -108,8 +104,10 @@ jobs:
       uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
-        cache: false
+        # cache: true is only net-positive on Windows (~9 min savings on warm runs).
+        # Other runners either suffer cache restore overhead exceeding savings, or
+        # are subject to LRU eviction in the repo's contested cache storage.
+        cache: true
     - run: echo "GO_TAGS=embedalloyui" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOOS=windows" | Out-File -FilePath $env:GITHUB_ENV -Append
     - run: echo "GOARCH=amd64" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -133,6 +131,5 @@ jobs:
       uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
       with:
         go-version-file: go.mod
-        # TODO: Try enabling caching later. It might use up too much disk space on runners so needs extra testing.
         cache: false
     - run: GO_TAGS="embedalloyui" GOOS=freebsd GOARCH=amd64 GOARM= make alloy
