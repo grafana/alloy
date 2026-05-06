@@ -5,3 +5,10 @@ loki.source.file "test" {
 	targets = [10]
 	encoding = true
 }
+
+otelcol.auth.headers "headers" {
+	header {
+		key = "test"
+		action = "random"
+	}
+}
