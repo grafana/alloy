@@ -1,6 +1,6 @@
 image:
   repository: grafana/alloy-dev
-  tag: v1.13.2-devel-5bf4dcf # TODO: update to v1.14 once it's released
+  tag: v1.13.2-devel-5bf4dcf@sha256:cc8edd3e86e0dde2c2cc69c7826628d81a1813811d8889bce36a5f311e4c0de8 # TODO: update to v1.14 once it's released
 
 command:
   name: "bin/otelcol"
