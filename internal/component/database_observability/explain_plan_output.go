@@ -48,10 +48,8 @@ type ExplainReservedWordMetadata struct {
 }
 
 // ExplainReservedWordDenyList contains SQL reserved words that indicate write operations
-// to the database. These are primarily DML (Data Manipulation Language) and DDL
-// (Data Definition Language) commands that modify database state.
-// This was extracted from the MySQL and PostgreSQL documentation by Claude Sonnet 4 on Oct 28, 2025
-// and audited by @rgeyer and others in the dbo11y team.
+// to the database. These are primarily DML and DDL commands that modify database state,
+// as well as some common operations that are not relevant to the explain plan output.
 var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	// Data Manipulation Language (DML) - Write operations
 	"INSERT": {},
@@ -76,6 +74,8 @@ var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	"ROLLBACK":    {},
 	"SAVEPOINT":   {},
 	"TRANSACTION": {},
+	"CALL":        {},
+	"DO":          {},
 
 	// Database/Schema management
 	"USE":      {},
@@ -98,6 +98,8 @@ var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	"LOW_PRIORITY":  {},
 	"HIGH_PRIORITY": {},
 	"QUICK":         {},
+	"SHOW":          {},
+	"KILL":          {},
 
 	// PostgreSQL specific write operations
 	"COPY":       {},
@@ -115,7 +117,7 @@ var ExplainReservedWordDenyList = map[string]ExplainReservedWordMetadata{
 	"DECLARE":    {},
 	"CLOSE":      {},
 
-	// dbo11 specific operations we'd like to exclude
+	// DBo11y-specific operations we'd like to exclude
 	"EXPLAIN": {},
 }
 

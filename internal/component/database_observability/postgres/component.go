@@ -668,10 +668,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// HealthCheck collector is always enabled
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
-		DB:              c.dbConnection,
-		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
-		EntryHandler:    entryHandler,
-		Logger:          c.opts.Logger,
+		DB:               c.dbConnection,
+		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeUsers:     c.args.ExcludeUsers,
+		EntryHandler:     entryHandler,
+		Logger:           c.opts.Logger,
 	})
 	if err != nil {
 		logStartError(collector.HealthCheckCollector, "create", err)

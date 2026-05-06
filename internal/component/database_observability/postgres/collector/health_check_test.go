@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -46,7 +47,7 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) >= 4
+			return len(lokiClient.Received()) == 6
 		}, 5*time.Second, 10*time.Millisecond)
 
 		collector.Stop()
@@ -61,9 +62,9 @@ func TestHealthCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.GreaterOrEqual(t, len(lokiEntries), 4)
+		require.GreaterOrEqual(t, len(lokiEntries), 6)
 
-		for _, entry := range lokiEntries[:4] {
+		for _, entry := range lokiEntries[:6] {
 			require.Equal(t, model.LabelSet{"op": OP_HEALTH_STATUS}, entry.Labels)
 			require.Contains(t, entry.Line, `result="true"`)
 		}
@@ -95,6 +96,71 @@ func TestHealthCheck(t *testing.T) {
 				},
 				expectedResult: `result="false"`,
 			},
+			{
+				name:             "compute_query_id is off",
+				failingCheckName: "ComputeQueryIdEnabled",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(`SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`).
+						WillReturnRows(sqlmock.NewRows([]string{"setting"}).
+							AddRow("off"))
+				},
+				expectedResult: `result="false" value="off"`,
+			},
+			{
+				name:             "pg_stat_statements has no usable rows",
+				failingCheckName: "PgStatStatementsHasRows",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(pgStatStatementsHasRowsQuery(nil, nil)).
+						WillReturnRows(sqlmock.NewRows([]string{"exists"}).
+							AddRow(false))
+				},
+				expectedResult: `result="false"`,
+			},
+			{
+				name:             "monitoring user lacks SELECT on pg_stat_statements",
+				failingCheckName: "MonitoringUserPrivileges",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(monitoringUserPrivilegesQuery).
+						WillReturnRows(sqlmock.NewRows([]string{
+							"has_pg_monitor_role",
+							"has_pg_read_all_stats_role",
+							"can_select_pg_stat_statements",
+							"sees_insufficient_privilege",
+						}).AddRow(false, false, false, false))
+				},
+				expectedResult: `result="false" value="can_select_view=false,has_pg_monitor_role=false,has_pg_read_all_stats_role=false,sees_insufficient_privilege=false"`,
+			},
+			{
+				name:             "monitoring user sees insufficient privilege rows",
+				failingCheckName: "MonitoringUserPrivileges",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(monitoringUserPrivilegesQuery).
+						WillReturnRows(sqlmock.NewRows([]string{
+							"has_pg_monitor_role",
+							"has_pg_read_all_stats_role",
+							"can_select_pg_stat_statements",
+							"sees_insufficient_privilege",
+						}).AddRow(false, false, true, true))
+				},
+				expectedResult: `result="false" value="can_select_view=true,has_pg_monitor_role=false,has_pg_read_all_stats_role=false,sees_insufficient_privilege=true"`,
+			},
+			{
+				// Informational: lacking pg_read_all_stats role membership alone
+				// must NOT fail the check when SELECT works and no masking is
+				// observed (e.g. direct GRANT SELECT on pg_stat_statements).
+				name:             "monitoring user lacks role membership but no masking observed",
+				failingCheckName: "MonitoringUserPrivileges",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(monitoringUserPrivilegesQuery).
+						WillReturnRows(sqlmock.NewRows([]string{
+							"has_pg_monitor_role",
+							"has_pg_read_all_stats_role",
+							"can_select_pg_stat_statements",
+							"sees_insufficient_privilege",
+						}).AddRow(false, false, true, false))
+				},
+				expectedResult: `result="true" value="can_select_view=true,has_pg_monitor_role=false,has_pg_read_all_stats_role=false,sees_insufficient_privilege=false"`,
+			},
 		}
 
 		for _, tc := range testCases {
@@ -124,7 +190,7 @@ func TestHealthCheck(t *testing.T) {
 				require.NoError(t, err)
 
 				require.Eventually(t, func() bool {
-					return len(lokiClient.Received()) >= 4
+					return len(lokiClient.Received()) == 6
 				}, 5*time.Second, 10*time.Millisecond)
 
 				collector.Stop()
@@ -153,6 +219,63 @@ func TestHealthCheck(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("PgStatStatementsHasRows renders excludes into SQL", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(`SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements'`).
+			WillReturnRows(sqlmock.NewRows([]string{"oid", "extname", "extowner", "extnamespace", "extrelocatable", "extversion"}).
+				AddRow(1, "pg_stat_statements", 10, 11, false, "1.9"))
+		mock.ExpectQuery(`SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'`).
+			WillReturnRows(sqlmock.NewRows([]string{"setting"}).AddRow("4096"))
+		mock.ExpectQuery(`SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`).
+			WillReturnRows(sqlmock.NewRows([]string{"setting"}).AddRow("on"))
+		mock.ExpectQuery(monitoringUserPrivilegesQuery).
+			WillReturnRows(sqlmock.NewRows([]string{
+				"has_pg_monitor_role",
+				"has_pg_read_all_stats_role",
+				"can_select_pg_stat_statements",
+				"sees_insufficient_privilege",
+			}).AddRow(true, true, true, false))
+		mock.ExpectQuery(pgStatStatementsHasRowsQuery([]string{"my_db"}, []string{"my_user"})).
+			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewHealthCheck(HealthCheckArguments{
+			DB:               db,
+			CollectInterval:  100 * time.Millisecond,
+			ExcludeDatabases: []string{"my_db"},
+			ExcludeUsers:     []string{"my_user"},
+			EntryHandler:     lokiClient,
+			Logger:           log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 6
+		}, 5*time.Second, 10*time.Millisecond)
+
+		collector.Stop()
+		require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 10*time.Millisecond)
+		lokiClient.Stop()
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		// Sanity check: the helper used to build the matcher above produces the
+		// same fragments we just asserted via the regex.
+		rendered := pgStatStatementsHasRowsQuery([]string{"my_db"}, []string{"my_user"})
+		require.Contains(t, rendered, "NOT IN ('azure_maintenance', 'my_db')")
+		require.Contains(t, rendered, "AND pg_get_userbyid(pg_stat_statements.userid) NOT IN ('my_user')")
+		require.Contains(t, rendered, "pg_stat_statements.queryid <> 0")
+	})
 }
 
 func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSetup func(mock sqlmock.Sqlmock)) {
@@ -179,11 +302,31 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 			},
 		},
 		{
+			name: "ComputeQueryIdEnabled",
+			setup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(`SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`).
+					WillReturnRows(sqlmock.NewRows([]string{"setting"}).
+						AddRow("on"))
+			},
+		},
+		{
 			name: "MonitoringUserPrivileges",
 			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SELECT * FROM pg_stat_statements LIMIT 1`).
-					WillReturnRows(sqlmock.NewRows([]string{"userid", "dbid", "queryid"}).
-						AddRow(1, 1, 123))
+				mock.ExpectQuery(monitoringUserPrivilegesQuery).
+					WillReturnRows(sqlmock.NewRows([]string{
+						"has_pg_monitor_role",
+						"has_pg_read_all_stats_role",
+						"can_select_pg_stat_statements",
+						"sees_insufficient_privilege",
+					}).AddRow(true, true, true, false))
+			},
+		},
+		{
+			name: "PgStatStatementsHasRows",
+			setup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery(pgStatStatementsHasRowsQuery(nil, nil)).
+					WillReturnRows(sqlmock.NewRows([]string{"exists"}).
+						AddRow(true))
 			},
 		},
 	}
@@ -195,4 +338,19 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 		}
 		check.setup(mock)
 	}
+}
+
+func pgStatStatementsHasRowsQuery(excludeDatabases, excludeUsers []string) string {
+	return fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_stat_statements
+			JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
+			WHERE pg_database.datname NOT IN %s
+			  AND pg_stat_statements.queryid <> 0
+			  %s
+		)`,
+		buildExcludedDatabasesClause(excludeDatabases),
+		buildExcludedUsersClause(excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)"),
+	)
 }

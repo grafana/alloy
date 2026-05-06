@@ -10,7 +10,6 @@ import (
 
 	vaultapi "github.com/hashicorp/vault/api"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
@@ -195,7 +194,7 @@ func getTestVaultServer(t *testing.T) *vaultapi.Client {
 		require.NoError(t, err)
 	})
 
-	ep, err := container.PortEndpoint(ctx, nat.Port("80/tcp"), "http")
+	ep, err := container.PortEndpoint(ctx, "80/tcp", "http")
 	require.NoError(t, err)
 
 	cli, err := vaultapi.NewClient(&vaultapi.Config{Address: ep})

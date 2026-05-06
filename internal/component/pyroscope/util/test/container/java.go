@@ -7,9 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/go-connections/nat"
 	"github.com/go-kit/log"
+	"github.com/moby/moby/api/types/container"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -40,7 +39,7 @@ func StartJavaApplicationContainer(t *testing.T, ctx context.Context, l log.Logg
 		require.NoError(t, err)
 	})
 
-	mappedPort, err := c.MappedPort(ctx, nat.Port("8080/tcp"))
+	mappedPort, err := c.MappedPort(ctx, "8080/tcp")
 	require.NoError(t, err)
 
 	host, err := c.Host(ctx)
