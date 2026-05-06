@@ -69,7 +69,9 @@ func (f *FanoutConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 
 	var errs []error
 	for _, consumer := range f.consumers {
-		if err := consumer.ConsumeEntry(ctx, entry.Clone()); err != nil {
+		// ConsumeEntry does not clone entries. Components that mutate an entry must
+		// clone it first. Batching will own cloning at the batch/pipeline boundary.
+		if err := consumer.ConsumeEntry(ctx, entry); err != nil {
 			errs = append(errs, err)
 		}
 	}

@@ -152,21 +152,23 @@ func (c *Component) processLog(ctx context.Context, entry loki.Entry) (loki.Entr
 		return entry, nil
 	}
 
+	// Copy entry in case it was forwarded to several components.
+	newEntry := entry.Clone()
 	if len(labelsToCopy) == 0 {
 		// If no specific labels are requested, copy all labels
 		for k, v := range targetLabels {
-			entry.Labels[k] = v
+			newEntry.Labels[k] = v
 		}
 	} else {
 		// Copy only requested labels
 		for _, label := range labelsToCopy {
 			if value := targetLabels[model.LabelName(label)]; value != "" {
-				entry.Labels[model.LabelName(label)] = value
+				newEntry.Labels[model.LabelName(label)] = value
 			}
 		}
 	}
 
-	return entry, nil
+	return newEntry, nil
 }
 
 func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
