@@ -14,6 +14,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -46,26 +47,28 @@ var selectQueriesFromActivity = `
 `
 
 type QueryDetailsArguments struct {
-	DB               *sql.DB
-	CollectInterval  time.Duration
-	StatementsLimit  int
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EntryHandler     loki.EntryHandler
-	TableRegistry    *TableRegistry
+	DB                *sql.DB
+	CollectInterval   time.Duration
+	StatementsLimit   int
+	ExcludeDatabases  []string
+	ExcludeUsers      []string
+	EntryHandler      loki.EntryHandler
+	TableRegistry     *TableRegistry
+	QueryHashRegistry *QueryHashRegistry
 
 	Logger log.Logger
 }
 
 type QueryDetails struct {
-	dbConnection     *sql.DB
-	collectInterval  time.Duration
-	statementsLimit  int
-	excludeDatabases []string
-	excludeUsers     []string
-	entryHandler     loki.EntryHandler
-	tableRegistry    *TableRegistry
-	normalizer       *sqllexer.Normalizer
+	dbConnection      *sql.DB
+	collectInterval   time.Duration
+	statementsLimit   int
+	excludeDatabases  []string
+	excludeUsers      []string
+	entryHandler      loki.EntryHandler
+	tableRegistry     *TableRegistry
+	queryHashRegistry *QueryHashRegistry
+	normalizer        *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -76,16 +79,17 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:     args.DB,
-		collectInterval:  args.CollectInterval,
-		statementsLimit:  args.StatementsLimit,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		entryHandler:     args.EntryHandler,
-		tableRegistry:    args.TableRegistry,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
-		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:          &atomic.Bool{},
+		dbConnection:      args.DB,
+		collectInterval:   args.CollectInterval,
+		statementsLimit:   args.StatementsLimit,
+		excludeDatabases:  args.ExcludeDatabases,
+		excludeUsers:      args.ExcludeUsers,
+		entryHandler:      args.EntryHandler,
+		tableRegistry:     args.TableRegistry,
+		queryHashRegistry: args.QueryHashRegistry,
+		normalizer:        sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
+		logger:            log.With(args.Logger, "collector", QueryDetailsCollector),
+		running:           &atomic.Bool{},
 	}, nil
 }
 
@@ -154,6 +158,15 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		fp, _, fpErr := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
+		if fpErr != nil {
+			level.Debug(c.logger).Log("msg", "skip fingerprint", "queryid", queryID, "err", fpErr)
+		}
+
+		if fp != "" && c.queryHashRegistry != nil {
+			c.queryHashRegistry.Set(queryID, fp, string(databaseName))
+		}
+
 		queryText, err = removeComments(c.normalizer, queryText)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
@@ -163,7 +176,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
 			OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
+			fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
 		)
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)

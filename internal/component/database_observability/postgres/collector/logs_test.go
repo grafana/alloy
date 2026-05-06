@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 )
 
 func TestLogsCollector_ParseRDSFormat(t *testing.T) {
@@ -720,6 +721,150 @@ func TestLogsCollector_ExcludeDatabases(t *testing.T) {
 	require.Equal(t, float64(1), totalCount, "only the non-excluded database log should be counted")
 }
 
+func TestLogsCollector_AttachesQueryFingerprintToError(t *testing.T) {
+	cases := []struct {
+		name                  string
+		disableQueryRedaction bool
+	}{
+		{name: "redaction_on_default", disableQueryRedaction: false},
+		{name: "redaction_off", disableQueryRedaction: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			entryHandler := loki.NewCollectingHandler()
+			defer entryHandler.Stop()
+			registry := prometheus.NewRegistry()
+
+			receiver := loki.NewLogsReceiver()
+			c, err := NewLogs(LogsArguments{
+				Receiver:              receiver,
+				EntryHandler:          entryHandler,
+				Logger:                log.NewNopLogger(),
+				Registry:              registry,
+				DisableQueryRedaction: tc.disableQueryRedaction,
+			})
+			require.NoError(t, err)
+			require.NoError(t, c.Start(context.Background()))
+			t.Cleanup(c.Stop)
+
+			ts := c.startTime.Add(10 * time.Second).UTC()
+			ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+			ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+			pid := "12345"
+
+			// ERROR line — capture its timestamp so we can assert it is preserved on the emitted entry.
+			errorEntryTs := time.Now()
+			receiver.Chan() <- loki.Entry{Entry: push.Entry{
+				Timestamp: errorEntryTs,
+				Line:      ts1 + ":127.0.0.1:5432:user@books_store:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  relation \"missing\" does not exist",
+			}}
+			// STATEMENT continuation
+			receiver.Chan() <- loki.Entry{Entry: push.Entry{
+				Timestamp: time.Now(),
+				Line:      "STATEMENT:  SELECT * FROM missing WHERE id = $1",
+			}}
+
+			require.Eventually(t, func() bool {
+				for _, e := range entryHandler.Received() {
+					if string(e.Labels["op"]) == "pg_error" {
+						return true
+					}
+				}
+				return false
+			}, 2*time.Second, 50*time.Millisecond, "expected a pg_error entry")
+
+			var errEntry loki.Entry
+			for _, e := range entryHandler.Received() {
+				if string(e.Labels["op"]) == "pg_error" {
+					errEntry = e
+					break
+				}
+			}
+
+			// Assert structured metadata carries the fingerprint regardless of redaction.
+			var gotFP string
+			for _, m := range errEntry.Entry.StructuredMetadata {
+				if m.Name == "query_fingerprint" {
+					gotFP = m.Value
+				}
+			}
+			require.NotEmpty(t, gotFP, "fingerprint should be set when STATEMENT is present")
+
+			// Timestamp must match the ERROR entry's timestamp, not the time the entry was emitted.
+			require.True(t, errEntry.Entry.Timestamp.Equal(errorEntryTs), "pg_error entry should preserve the source timestamp")
+
+			// And the line carries the structured fields
+			require.Contains(t, errEntry.Entry.Line, `severity="ERROR"`)
+			require.Contains(t, errEntry.Entry.Line, `sqlstate="42P01"`)
+			require.Contains(t, errEntry.Entry.Line, `datname="books_store"`)
+			require.Contains(t, errEntry.Entry.Line, `user="user"`)
+
+			if tc.disableQueryRedaction {
+				require.Contains(t, errEntry.Entry.Line, `statement_preview="SELECT * FROM missing WHERE id = $1"`)
+			} else {
+				require.NotContains(t, errEntry.Entry.Line, `statement_preview=`,
+					"statement_preview must be omitted when query redaction is on")
+			}
+		})
+	}
+}
+
+func TestLogsCollector_EmitsErrorWithEmptyFingerprintAfterTimeout(t *testing.T) {
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
+	registry := prometheus.NewRegistry()
+
+	receiver := loki.NewLogsReceiver()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond // tighten for the test
+
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// ERROR line with no following STATEMENT
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@books_store:[99999]:1:53300:" + ts2 + ":1/0:0:c1::psqlFATAL:  too many connections",
+	}}
+
+	require.Eventually(t, func() bool {
+		for _, e := range entryHandler.Received() {
+			if string(e.Labels["op"]) == "pg_error" {
+				return true
+			}
+		}
+		return false
+	}, 2*time.Second, 50*time.Millisecond, "timeout-emitted entry should appear")
+
+	var errEntry loki.Entry
+	for _, e := range entryHandler.Received() {
+		if string(e.Labels["op"]) == "pg_error" {
+			errEntry = e
+			break
+		}
+	}
+	for _, m := range errEntry.Entry.StructuredMetadata {
+		if m.Name == "query_fingerprint" {
+			require.Equal(t, "", m.Value, "fingerprint should be empty when no STATEMENT arrived")
+		}
+	}
+	require.Contains(t, errEntry.Entry.Line, `severity="FATAL"`)
+	// statement_preview is gated behind disable_query_redaction; with the
+	// default (redaction on) the field is omitted entirely.
+	require.NotContains(t, errEntry.Entry.Line, `statement_preview=`)
+}
+
 func TestLogsCollector_ExcludeUsers(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
@@ -765,4 +910,189 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 		}
 	}
 	require.Equal(t, float64(1), totalCount, "only the non-excluded user log should be counted")
+}
+
+func TestLogsCollector_EmitsSlowQueryWithFingerprint(t *testing.T) {
+	cases := []struct {
+		name                  string
+		disableQueryRedaction bool
+	}{
+		{name: "redaction_on_default", disableQueryRedaction: false},
+		{name: "redaction_off", disableQueryRedaction: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			entryHandler := loki.NewCollectingHandler()
+			defer entryHandler.Stop()
+			registry := prometheus.NewRegistry()
+
+			receiver := loki.NewLogsReceiver()
+			c, err := NewLogs(LogsArguments{
+				Receiver:              receiver,
+				EntryHandler:          entryHandler,
+				Logger:                log.NewNopLogger(),
+				Registry:              registry,
+				DisableQueryRedaction: tc.disableQueryRedaction,
+			})
+			require.NoError(t, err)
+			require.NoError(t, c.Start(context.Background()))
+			t.Cleanup(c.Stop)
+
+			ts := c.startTime.Add(10 * time.Second).UTC()
+			ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+			ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+			const sqlText = "SELECT pg_sleep(1)"
+			// Capture the inbound timestamp so we can assert it is preserved on the emitted entry.
+			inboundTs := time.Now()
+			receiver.Chan() <- loki.Entry{Entry: push.Entry{
+				Timestamp: inboundTs,
+				Line:      ts1 + ":127.0.0.1:5432:user@books_store:[12345]:1:00000:" + ts2 + ":1/0:0:c1::psqlLOG:  duration: 1234.567 ms  statement: " + sqlText,
+			}}
+
+			require.Eventually(t, func() bool {
+				for _, e := range entryHandler.Received() {
+					if string(e.Labels["op"]) == "pg_slow_query" {
+						return true
+					}
+				}
+				return false
+			}, 2*time.Second, 50*time.Millisecond, "expected a pg_slow_query entry")
+
+			var slowEntry loki.Entry
+			for _, e := range entryHandler.Received() {
+				if string(e.Labels["op"]) == "pg_slow_query" {
+					slowEntry = e
+					break
+				}
+			}
+
+			expectedFP, _, fpErr := fingerprint.Fingerprint(sqlText, fingerprint.SourceLog, 0)
+			require.NoError(t, fpErr)
+			require.NotEmpty(t, expectedFP)
+
+			var gotFP string
+			for _, m := range slowEntry.Entry.StructuredMetadata {
+				if m.Name == "query_fingerprint" {
+					gotFP = m.Value
+				}
+			}
+			require.Equal(t, expectedFP, gotFP)
+
+			// Timestamp must match the inbound entry's timestamp, not the time the entry was emitted.
+			require.True(t, slowEntry.Entry.Timestamp.Equal(inboundTs), "pg_slow_query entry should preserve the source timestamp")
+
+			require.Contains(t, slowEntry.Entry.Line, `datname="books_store"`)
+			require.Contains(t, slowEntry.Entry.Line, `user="user"`)
+			require.Contains(t, slowEntry.Entry.Line, `duration_ms="1234.567"`)
+
+			if tc.disableQueryRedaction {
+				require.Contains(t, slowEntry.Entry.Line, `statement_preview="SELECT pg_sleep(1)"`)
+			} else {
+				require.NotContains(t, slowEntry.Entry.Line, `statement_preview=`,
+					"statement_preview must be omitted when query redaction is on")
+			}
+		})
+	}
+}
+
+// TestLogsCollector_DisplacedPendingErrorIsEmittedNotDropped asserts that when
+// a PID issues a new ERROR before its predecessor's STATEMENT continuation
+// arrives, the predecessor is emitted (with empty fingerprint) rather than
+// being silently overwritten in the pendingErrors map.
+func TestLogsCollector_DisplacedPendingErrorIsEmittedNotDropped(t *testing.T) {
+	entryHandler := loki.NewCollectingHandler()
+	defer entryHandler.Stop()
+	registry := prometheus.NewRegistry()
+
+	receiver := loki.NewLogsReceiver()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	c.pendingErrorTimeout = 100 * time.Millisecond // tighten so the second pending entry flushes within the test
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	pid := "12345"
+
+	// Two ERRORs from the same PID with no STATEMENT between them. The first
+	// is displaced when the second arrives; the second flushes via timeout.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@d:[" + pid + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  first",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1:5432:user@d:[" + pid + "]:1:42P02:" + ts2 + ":1/0:0:c1::psqlERROR:  second",
+	}}
+
+	// Both should produce a pg_error Loki entry; the first must not be silently dropped.
+	require.Eventually(t, func() bool {
+		count := 0
+		for _, e := range entryHandler.Received() {
+			if string(e.Labels["op"]) == "pg_error" {
+				count++
+			}
+		}
+		return count == 2
+	}, 2*time.Second, 50*time.Millisecond, "expected both pg_error entries to be emitted")
+}
+
+// TestLogsCollector_DoesNotDeadlockWhenEmittingPgError is a regression test for
+// the production deadlock where EntryHandler was wired to the input receiver's
+// channel. Production now uses a separate fanout channel for emitted entries;
+// this test asserts the collector tolerates a modest backlog without
+// deadlocking.
+func TestLogsCollector_DoesNotDeadlockWhenEmittingPgError(t *testing.T) {
+	receiver := loki.NewLogsReceiver()
+	// EntryHandler wired to a buffered channel separate from receiver, mirroring
+	// how production wires it to the component's fanout.
+	out := make(chan loki.Entry, 4)
+	entryHandler := loki.NewEntryHandler(out, func() {})
+	registry := prometheus.NewRegistry()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// Send 3 ERROR + STATEMENT pairs back-to-back. Without the fix, the first
+	// emission would block because EntryHandler.Chan() == receiver.Chan().
+	for i := 0; i < 3; i++ {
+		receiver.Chan() <- loki.Entry{Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      ts1 + ":127.0.0.1:5432:user@d:[" + fmt.Sprintf("%d", 1000+i) + "]:1:42P01:" + ts2 + ":1/0:0:c1::psqlERROR:  err",
+		}}
+		receiver.Chan() <- loki.Entry{Entry: push.Entry{
+			Timestamp: time.Now(),
+			Line:      "STATEMENT:  SELECT " + fmt.Sprintf("%d", i),
+		}}
+	}
+
+	// 3 pg_error entries should be readable from the output channel.
+	for i := 0; i < 3; i++ {
+		select {
+		case e := <-out:
+			require.Equal(t, "pg_error", string(e.Labels["op"]))
+		case <-time.After(2 * time.Second):
+			t.Fatalf("collector deadlocked at entry %d", i+1)
+		}
+	}
 }
