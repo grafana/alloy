@@ -123,7 +123,7 @@ func createBookmark(args Arguments) error {
 	_, err := os.Stat(args.BookmarkPath)
 	// If the bookmark path does not exist then we should check to see if
 	if os.IsNotExist(err) {
-		err = os.MkdirAll(path.Dir(args.BookmarkPath), 644)
+		err = os.MkdirAll(path.Dir(args.BookmarkPath), 0755)
 		if err != nil {
 			return err
 		}
@@ -133,7 +133,7 @@ func createBookmark(args Arguments) error {
 		if legacyErr == nil {
 			bb, readErr := os.ReadFile(args.LegacyBookmarkPath)
 			if readErr == nil {
-				_ = os.WriteFile(args.BookmarkPath, bb, 644)
+				_ = os.WriteFile(args.BookmarkPath, bb, 0644)
 			}
 		} else {
 			f, err := os.Create(args.BookmarkPath)
