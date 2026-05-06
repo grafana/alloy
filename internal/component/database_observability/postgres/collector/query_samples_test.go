@@ -1374,21 +1374,72 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 
 func TestClassifyPostgresWaitEventType(t *testing.T) {
 	testCases := []struct {
+		name     string
 		rawType  string
+		event    string
 		expected string
 	}{
-		{"IO", "IO Wait"},
-		{"Lock", "Lock Wait"},
-		{"LWLock", "Lock Wait"},
-		{"Activity", "Lock Wait"},
-		{"Client", "Network Wait"},
-		{"unknown_type", "Other Wait"},
-		{"", "Other Wait"},
+		// IO
+		{"IO_DataFileRead", "IO", "DataFileRead", "IO Wait"},
+		{"IO_AuroraStorageLogAllocate", "IO", "AuroraStorageLogAllocate", "IO Wait"},
+		{"IO_SnapbuildSync", "IO", "SnapbuildSync", "IO Wait"},
+
+		// Network
+		{"Client_ClientRead", "Client", "ClientRead", "Network Wait"},
+		{"Client_ClientWrite", "Client", "ClientWrite", "Network Wait"},
+
+		// Lock (cascade)
+		{"Lock_relation", "Lock", "relation", "Lock Wait"},
+		{"Lock_transactionid", "Lock", "transactionid", "Lock Wait"},
+		{"Lock_extend", "Lock", "extend", "Lock Wait"},
+
+		// Engine
+		{"LWLock_BufferMapping", "LWLock", "BufferMapping", "Engine Wait"},
+		{"LWLock_BufferContent", "LWLock", "BufferContent", "Engine Wait"},
+		{"LWLock_WALInsert", "LWLock", "WALInsert", "Engine Wait"},
+		{"LWLock_LockManager", "LWLock", "LockManager", "Engine Wait"},
+		{"LWLock_pg_stat_statements", "LWLock", "pg_stat_statements", "Engine Wait"},
+		{"BufferPin", "BufferPin", "BufferPin", "Engine Wait"},
+		{"IPC_BufferIO", "IPC", "BufferIO", "Engine Wait"},
+		{"IPC_MessageQueueSend", "IPC", "MessageQueueSend", "Engine Wait"},
+		{"IPC_ParallelFinish", "IPC", "ParallelFinish", "Engine Wait"},
+
+		// Replication: name-rule wins over the raw type (Client/Activity/IPC/Timeout
+		// all route here when the event name matches the replication prefix list).
+		{"Client_WalSenderWaitForWAL", "Client", "WalSenderWaitForWAL", "Replication Wait"},
+		{"Activity_WalSenderMain", "Activity", "WalSenderMain", "Replication Wait"},
+		{"IPC_SyncRep", "IPC", "SyncRep", "Replication Wait"},
+		{"Timeout_RecoveryApplyDelay", "Timeout", "RecoveryApplyDelay", "Replication Wait"},
+		{"LogicalApplyOffsetUpdate", "IPC", "LogicalApplyOffsetUpdate", "Replication Wait"},
+		{"LogicalApplySendData", "IPC", "LogicalApplySendData", "Replication Wait"},
+		{"WalReceiverMain", "Activity", "WalReceiverMain", "Replication Wait"},
+		{"WalReceiverWaitStart", "IPC", "WalReceiverWaitStart", "Replication Wait"},
+		{"ReplicationSlotDrop", "IPC", "ReplicationSlotDrop", "Replication Wait"},
+		{"ReplicationOriginDrop", "IPC", "ReplicationOriginDrop", "Replication Wait"},
+		// PG 17+ replication-slot sync between primary and standby.
+		{"ReplicationSlotsyncMain", "Activity", "ReplicationSlotsyncMain", "Replication Wait"},
+		// Standby recovery conflicts.
+		{"RecoveryConflictSnapshot", "IPC", "RecoveryConflictSnapshot", "Replication Wait"},
+		{"RecoveryConflictBufferpin", "IPC", "RecoveryConflictBufferpin", "Replication Wait"},
+
+		// Other
+		{"Activity_AutoVacuumMain", "Activity", "AutoVacuumMain", "Other Wait"},
+		{"Timeout_SpinDelay", "Timeout", "SpinDelay", "Other Wait"},
+		{"Timeout_PgSleep", "Timeout", "PgSleep", "Other Wait"},
+		{"Extension", "Extension", "Extension", "Other Wait"},
+		{"InjectionPoint", "InjectionPoint", "InjectionPoint", "Other Wait"},
+		// PG 17+ WAL summarizer is for incremental backup, not replication.
+		{"WalSummarizerWal", "Activity", "WalSummarizerWal", "Other Wait"},
+
+		// idle row appears with empty type and event name "idle"
+		{"idle_event", "", "idle", "Other Wait"},
+		{"unknown_type", "unknown_type", "Whatever", "Other Wait"},
+		{"empty", "", "", "Other Wait"},
 	}
 
 	for _, tc := range testCases {
-		t.Run(tc.rawType, func(t *testing.T) {
-			result := classifyPostgresWaitEventType(tc.rawType)
+		t.Run(tc.name, func(t *testing.T) {
+			result := classifyPostgresWaitEventType(tc.rawType, tc.event)
 			require.Equal(t, tc.expected, result)
 		})
 	}
