@@ -2,9 +2,14 @@ package loki
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"sync"
 )
+
+// ErrConsumerStopped is returned by Consumer implementations when an entry is
+// submitted after the consumer has been stopped.
+var ErrConsumerStopped = errors.New("consumer stopped")
 
 type Consumer interface {
 	Consume(ctx context.Context, batch Batch) error
