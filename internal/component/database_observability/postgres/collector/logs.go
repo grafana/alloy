@@ -665,7 +665,7 @@ func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
 		return
 	}
 
-	body := buildErrorLine(entry, fp, stmt)
+	body := buildErrorLine(entry, fp)
 	ts := entry.timestamp
 	if ts.IsZero() {
 		ts = time.Now()
@@ -680,10 +680,11 @@ func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
 }
 
 // buildErrorLine assembles a logfmt line containing every high-cardinality
-// field for one ERROR + STATEMENT pair. The `statement` field carries the
-// assembled SQL with all interior whitespace collapsed to single spaces so
-// the whole entry stays a single logfmt line.
-func buildErrorLine(entry *pendingError, fp, stmt string) string {
+// field for one ERROR + STATEMENT pair. The SQL itself is not emitted on the
+// op=error entry — its fingerprint stands in for it; consumers can join to
+// the query_samples / query_details entries by `(query_fingerprint, pid)`
+// to recover the SQL text when needed.
+func buildErrorLine(entry *pendingError, fp string) string {
 	type kv struct{ k, v string }
 	fields := []kv{
 		{"severity", entry.severity},
@@ -699,7 +700,6 @@ func buildErrorLine(entry *pendingError, fp, stmt string) string {
 		{"session_id", entry.sessionID},
 		{"user", entry.user},
 		{"error_message", entry.errorMessage},
-		{"statement", collapseWhitespace(stmt)},
 	}
 	if entry.xid != "" {
 		// Place xid right after sqlstate to keep ordering predictable.
@@ -711,9 +711,9 @@ func buildErrorLine(entry *pendingError, fp, stmt string) string {
 
 	var b strings.Builder
 	for _, f := range fields {
-		// Skip empty optional fields, but keep error_message and statement
-		// even when empty so consumers always see them.
-		if f.v == "" && f.k != "error_message" && f.k != "statement" {
+		// Skip empty optional fields, but keep error_message even when
+		// empty so consumers always see the field.
+		if f.v == "" && f.k != "error_message" {
 			continue
 		}
 		if b.Len() > 0 {
@@ -724,27 +724,6 @@ func buildErrorLine(entry *pendingError, fp, stmt string) string {
 		b.WriteString(logfmtQuote(f.v))
 	}
 	return b.String()
-}
-
-// collapseWhitespace reduces all runs of whitespace (including tabs and
-// newlines) to a single space, then trims. Used so multi-line SQL fits in a
-// single-line logfmt body.
-func collapseWhitespace(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	inSpace := false
-	for _, r := range s {
-		if r == ' ' || r == '\t' || r == '\n' || r == '\r' {
-			if !inSpace {
-				b.WriteByte(' ')
-				inSpace = true
-			}
-			continue
-		}
-		b.WriteRune(r)
-		inSpace = false
-	}
-	return strings.TrimSpace(b.String())
 }
 
 // logfmtQuote returns v as a logfmt value: bare if safe, otherwise wrapped
