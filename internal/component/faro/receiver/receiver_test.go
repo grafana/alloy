@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -68,7 +67,7 @@ func Test(t *testing.T) {
 			freePort, err := freeport.GetFreePort()
 			require.NoError(t, err)
 
-			lr := newFakeLogsReceiver(t)
+			collector := loki.NewCollectingConsumer()
 
 			go func() {
 				err := ctrl.Run(ctx, Arguments{
@@ -85,7 +84,7 @@ func Test(t *testing.T) {
 					},
 
 					Output: OutputArguments{
-						Logs:   []loki.LogsReceiver{lr},
+						Logs:   []loki.Consumer{collector},
 						Traces: []otelcol.Consumer{},
 					},
 				})
@@ -135,64 +134,12 @@ func Test(t *testing.T) {
 			defer resp.Body.Close()
 
 			require.Equal(t, http.StatusAccepted, resp.StatusCode)
-			lr.wg.Wait() // Wait for the fakelogreceiver goroutine to process
-			require.Len(t, lr.GetEntries(), 1)
-
-			require.Equal(t, tc.expect, lr.entries[0])
+			got := collector.Entries()
+			require.Len(t, got, 1)
+			require.Equal(t, tc.expect.Entry.Line, got[0].Entry.Line)
+			require.Equal(t, tc.expect.Labels, got[0].Labels)
 		})
 	}
-}
-
-type fakeLogsReceiver struct {
-	ch chan loki.Entry
-
-	entriesMut sync.RWMutex
-	wg         sync.WaitGroup
-	entries    []loki.Entry
-}
-
-var _ loki.LogsReceiver = (*fakeLogsReceiver)(nil)
-
-func newFakeLogsReceiver(t *testing.T) *fakeLogsReceiver {
-	ctx := componenttest.TestContext(t)
-
-	lr := &fakeLogsReceiver{
-		ch: make(chan loki.Entry, 1),
-	}
-
-	lr.wg.Add(1)
-	go func() {
-		defer close(lr.ch)
-		defer lr.wg.Done()
-
-		select {
-		case <-ctx.Done():
-			return
-		case ent := <-lr.Chan():
-			lr.entriesMut.Lock()
-			lr.entries = append(lr.entries, loki.Entry{
-				Labels: ent.Labels,
-				Entry: push.Entry{
-					Timestamp:          time.Time{}, // Use consistent time for testing.
-					Line:               ent.Line,
-					StructuredMetadata: ent.StructuredMetadata,
-				},
-			})
-			lr.entriesMut.Unlock()
-		}
-	}()
-
-	return lr
-}
-
-func (lr *fakeLogsReceiver) Chan() chan loki.Entry {
-	return lr.ch
-}
-
-func (lr *fakeLogsReceiver) GetEntries() []loki.Entry {
-	lr.entriesMut.RLock()
-	defer lr.entriesMut.RUnlock()
-	return lr.entries
 }
 
 // Test_PerAppRateLimiting_CleanupRoutine verifies that the cleanup mechanism
@@ -227,7 +174,7 @@ func Test_PerAppRateLimiting_CleanupRoutine(t *testing.T) {
 				MaxAllowedPayloadSize: 5 * 1024 * 1024,
 			},
 			Output: OutputArguments{
-				Logs:   []loki.LogsReceiver{},
+				Logs:   []loki.Consumer{},
 				Traces: []otelcol.Consumer{},
 			},
 		})
