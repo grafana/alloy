@@ -4,6 +4,7 @@
 package opamp
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/tls"
@@ -31,6 +32,12 @@ import (
 )
 
 const defaultInitialRemoteConfigWait = 2 * time.Minute
+
+const defaultRemoteConfigApplyConfirmTimeout = 45 * time.Second
+
+// remoteConfigApplyConfirmTimeout is elapsed time waiting for the local OpAMP extension
+// to report effective config after a merged YAML reload. Override in tests only.
+var remoteConfigApplyConfirmTimeout = defaultRemoteConfigApplyConfirmTimeout
 
 func initialRemoteWaitContext(parent context.Context) (context.Context, context.CancelFunc) {
 	deadline := time.Now().Add(defaultInitialRemoteConfigWait)
@@ -75,6 +82,11 @@ type Bridge struct {
 
 	initialRemoteWait     chan error
 	initialRemoteWaitOnce sync.Once
+
+	// pending remote config acknowledgement: APPLIED only after collector applies (EffectiveConfig).
+	applyConfirmTimer       *time.Timer
+	awaitingApply           bool
+	pendingRemoteConfigHash []byte // hash Clone of protobuf AgentRemoteConfig.ConfigHash
 }
 
 func newBridge(bootstrapPath string, logger *zap.Logger) *Bridge {
@@ -400,6 +412,7 @@ func (b *Bridge) handleOpAmpExtensionMessage(conn serverTypes.Connection, messag
 	if message.EffectiveConfig != nil {
 		if cfg, ok := message.EffectiveConfig.GetConfigMap().GetConfigMap()[""]; ok {
 			b.effectiveFromAgent.Store(string(cfg.Body))
+			b.tryCompletePendingApply()
 			if err := b.opampRemote.UpdateEffectiveConfig(msgCtx); err != nil {
 				b.logger.Debug("update effective config on remote", zap.Error(err))
 			}
@@ -449,6 +462,8 @@ func (b *Bridge) handleUpstreamOpAmpServerMessage(ctx context.Context, msg *type
 }
 
 func (b *Bridge) processRemoteConfig(ctx context.Context, rc *protobufs.AgentRemoteConfig) {
+	b.supersedePendingApply()
+
 	cloned := proto.Clone(rc).(*protobufs.AgentRemoteConfig)
 	if err := b.opampRemote.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
 		LastRemoteConfigHash: rc.ConfigHash,
@@ -479,21 +494,22 @@ func (b *Bridge) processRemoteConfig(ctx context.Context, rc *protobufs.AgentRem
 	b.mergedYAML.Store(newStr)
 	b.persistMergedEffectiveConfigDebug(yamlBytes)
 
-	if err := b.opampRemote.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
-		LastRemoteConfigHash: rc.ConfigHash,
-		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
-	}); err != nil {
-		b.logger.Debug("report applied remote config", zap.Error(err))
+	if old == newStr {
+		if err := b.opampRemote.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+			LastRemoteConfigHash: rc.ConfigHash,
+			Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+		}); err != nil {
+			b.logger.Debug("report applied remote config", zap.Error(err))
+		}
+		if err := b.opampRemote.UpdateEffectiveConfig(ctx); err != nil {
+			b.logger.Debug("remote UpdateEffectiveConfig after noop apply", zap.Error(err))
+		}
+		b.signalInitialRemoteWaitDone(nil)
+		return
 	}
 
-	if err := b.opampRemote.UpdateEffectiveConfig(ctx); err != nil {
-		b.logger.Debug("remote UpdateEffectiveConfig after apply", zap.Error(err))
-	}
-
-	if old != newStr {
-		b.fireWatcher()
-	}
-
+	b.armPendingApplyConfirm(rc.ConfigHash)
+	b.fireWatcher()
 	b.signalInitialRemoteWaitDone(nil)
 }
 
@@ -516,7 +532,96 @@ func (b *Bridge) setBasicAuthHeader(h http.Header, username, password string) {
 	h.Set("Authorization", "Basic "+token)
 }
 
+func (b *Bridge) supersedePendingApply() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.stopApplyConfirmTimerLocked()
+	b.awaitingApply = false
+	b.pendingRemoteConfigHash = nil
+}
+
+func (b *Bridge) stopApplyConfirmTimerLocked() {
+	if b.applyConfirmTimer == nil {
+		return
+	}
+	if !b.applyConfirmTimer.Stop() {
+		select {
+		case <-b.applyConfirmTimer.C:
+		default:
+		}
+	}
+	b.applyConfirmTimer = nil
+}
+
+func (b *Bridge) armPendingApplyConfirm(remoteHash []byte) {
+	if len(remoteHash) == 0 {
+		b.logger.Warn("opamp arm pending apply: remote config hash is empty; using timeout fallback may still run")
+	}
+	hashCopy := append([]byte(nil), remoteHash...)
+
+	b.mu.Lock()
+	b.stopApplyConfirmTimerLocked()
+	b.awaitingApply = true
+	b.pendingRemoteConfigHash = append([]byte(nil), remoteHash...)
+
+	timeout := remoteConfigApplyConfirmTimeout
+	timer := time.AfterFunc(timeout, func() {
+		b.handleApplyConfirmTimeout(hashCopy)
+	})
+	b.applyConfirmTimer = timer
+	b.mu.Unlock()
+}
+
+func (b *Bridge) handleApplyConfirmTimeout(expectedHash []byte) {
+	b.mu.Lock()
+	if !b.awaitingApply || len(b.pendingRemoteConfigHash) == 0 || !bytes.Equal(b.pendingRemoteConfigHash, expectedHash) {
+		b.mu.Unlock()
+		return
+	}
+	hash := append([]byte(nil), b.pendingRemoteConfigHash...)
+	b.awaitingApply = false
+	b.pendingRemoteConfigHash = nil
+	b.applyConfirmTimer = nil // callback runs after expiry; Stop is unnecessary
+	remote := b.opampRemote
+	b.mu.Unlock()
+
+	if remote == nil {
+		return
+	}
+	_ = remote.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+		LastRemoteConfigHash: hash,
+		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
+		ErrorMessage:         "timed out waiting for collector to apply remote configuration",
+	})
+}
+
+func (b *Bridge) tryCompletePendingApply() {
+	var hash []byte
+	var remote client.OpAMPClient
+
+	b.mu.Lock()
+	if !b.awaitingApply || len(b.pendingRemoteConfigHash) == 0 || b.opampRemote == nil {
+		b.mu.Unlock()
+		return
+	}
+	hash = append([]byte(nil), b.pendingRemoteConfigHash...)
+	b.stopApplyConfirmTimerLocked()
+	b.awaitingApply = false
+	b.pendingRemoteConfigHash = nil
+	remote = b.opampRemote
+	b.mu.Unlock()
+
+	if err := remote.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+		LastRemoteConfigHash: hash,
+		Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_APPLIED,
+	}); err != nil {
+		b.logger.Debug("report applied remote config", zap.Error(err))
+	}
+}
+
 func (b *Bridge) shutdown(ctx context.Context) error {
+	b.logger.Info("beep boop i'm shutting down")
+	b.supersedePendingApply()
 	if b.runCancel != nil {
 		b.runCancel()
 	}
