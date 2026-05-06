@@ -7,13 +7,13 @@ replace github.com/grafana/alloy => ../..
 replace github.com/grafana/alloy/syntax => ../../syntax
 
 require (
-	github.com/grafana/alloy v1.15.0 // x-release-please-version
+	github.com/grafana/alloy v1.16.0 // x-release-please-version
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.53.0
 	go.opentelemetry.io/collector/component/componenttest v0.147.0
 	go.opentelemetry.io/collector/extension v1.53.0
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 )
 
 require (
@@ -1075,7 +1075,7 @@ replace github.com/grafana/regexp => github.com/grafana/regexp v0.0.0-2024051813
 replace github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
 
 // Use forked syslog implementation by leodido for continued support
-replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.3.0
+replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.5.0
 
 // Replace thanos-io/objstore with Grafana fork
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
@@ -1105,7 +1105,7 @@ replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-eb
 replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235
 
 // Do not remove until bug in walqueue backwards compatibility is resolved: https://github.com/deneonet/benc/issues/13
-replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
+replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.8
 
 // Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
@@ -1123,6 +1123,6 @@ replace github.com/prometheus/prometheus => github.com/grafana/prometheus v1.8.2
 replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
 
 // Work around DataDog split module ambiguity for pkg/util/system/socket by pinning util/system to the same rc stream used by current datadogexporter deps. Remove when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/45955 (and follow-up releases) fully align DataDog modules.
-replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
+replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.78.2
 
 // END GENERATED REPLACES
