@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 )
 
 // Arguments are the arguments for the component.
@@ -17,6 +18,7 @@ type Arguments struct {
 	ForwardTo      []loki.LogsReceiver `alloy:"forward_to,attr"`
 	Labels         map[string]string   `alloy:"labels,attr,optional"`
 	LegacyPosition *LegacyPosition     `alloy:"legacy_position,block,optional"`
+	Position       positions.Config    `alloy:"position,block,optional"`
 }
 
 type LegacyPosition struct {
@@ -24,15 +26,8 @@ type LegacyPosition struct {
 	Name string `alloy:"name,attr"`
 }
 
-func defaultArgs() Arguments {
-	return Arguments{
-		FormatAsJson: false,
-		MaxAge:       7 * time.Hour,
-		Path:         "",
-	}
-}
-
 // SetToDefault implements syntax.Defaulter.
-func (r *Arguments) SetToDefault() {
-	*r = defaultArgs()
+func (a *Arguments) SetToDefault() {
+	a.MaxAge = 7 * time.Hour
+	a.Position.SetToDefault()
 }

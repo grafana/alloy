@@ -126,8 +126,10 @@ You can use the following blocks with `loki.source.journal`:
 | Name                                 | Description                                      | Required |
 | ------------------------------------ | ------------------------------------------------ | -------- |
 | [`legacy_position`][legacy_position] | Configure conversion from legacy positions file. | no       |
+| [`position`][position]               | Configure how positions are keyed and synced to disk. | no  |
 
 [legacy_position]: #legacy_position
+[position]: #position
 
 {{< /docs/alloy-config >}}
 
@@ -139,6 +141,10 @@ You can use the following blocks with `loki.source.journal`:
 | `name` | `string` | Job name used for journal (agent static or promtail) | yes       |
 
 The translation of legacy position file will happens if there is no position file already and is a valid yaml file to convert.
+
+### `position`
+
+{{< docs/shared lookup="reference/components/loki-source-position-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Component health
 

@@ -44,10 +44,13 @@ func TestTailer(t *testing.T) {
 	client, err := client.New(client.WithHost(server.URL))
 	require.NoError(t, err)
 
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
-	})
+	ps, err := positions.New(
+		logger,
+		t.TempDir()+"/positions.yml",
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	require.NoError(t, err)
 
 	tailer, err := newTailer(
@@ -111,10 +114,13 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	logger := log.NewNopLogger()
 	entryHandler := loki.NewCollectingHandler()
 
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
-	})
+	ps, err := positions.New(
+		logger,
+		t.TempDir()+"/positions.yml",
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	require.NoError(t, err)
 
 	client, err := client.New(client.WithHost(server.URL))
@@ -441,10 +447,13 @@ func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHand
 	logger := log.NewNopLogger()
 	entryHandler := loki.NewCollectingHandler()
 
-	ps, err := positions.New(logger, positions.Config{
-		SyncPeriod:    10 * time.Second,
-		PositionsFile: t.TempDir() + "/positions.yml",
-	})
+	ps, err := positions.New(
+		logger,
+		t.TempDir()+"/positions.yml",
+		positions.Config{
+			SyncPeriod: 10 * time.Second,
+		},
+	)
 	require.NoError(t, err)
 
 	tailer, err := newTailer(
