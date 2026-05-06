@@ -12,6 +12,7 @@ import (
 	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/vcs"
@@ -45,11 +46,13 @@ var (
 )
 
 type GitArguments struct {
-	Repository    string            `alloy:"repository,attr"`
-	Revision      string            `alloy:"revision,attr,optional"`
-	Path          string            `alloy:"path,attr"`
-	PullFrequency time.Duration     `alloy:"pull_frequency,attr,optional"`
-	GitAuthConfig vcs.GitAuthConfig `alloy:",squash"`
+	Repository    string              `alloy:"repository,attr"`
+	Revision      string              `alloy:"revision,attr,optional"`
+	Path          string              `alloy:"path,attr"`
+	PullFrequency time.Duration       `alloy:"pull_frequency,attr,optional"`
+	GitAuthConfig vcs.GitAuthConfig   `alloy:",squash"`
+	ProxyConfig   *config.ProxyConfig `alloy:",squash"`
+	TLSConfig     config.TLSConfig    `alloy:"tls_config,block,optional"`
 }
 
 var DefaultGitArguments = GitArguments{
@@ -67,6 +70,12 @@ func (args *GitArguments) Validate() error {
 	switch args.Revision {
 	case "HEAD", "FETCH_HEAD", "ORIG_HEAD", "MERGE_HEAD", "CHERRY_PICK_HEAD":
 		return fmt.Errorf("revision cannot be a special git reference such as HEAD, FETCH_HEAD, ORIG_HEAD, MERGE_HEAD, or CHERRY_PICK_HEAD")
+	}
+	if err := args.ProxyConfig.Validate(); err != nil {
+		return err
+	}
+	if err := args.TLSConfig.Validate(); err != nil {
+		return err
 	}
 
 	return nil
@@ -204,6 +213,8 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 		Repository: newArgs.Repository,
 		Revision:   newArgs.Revision,
 		Auth:       newArgs.GitAuthConfig,
+		TLS:        *newArgs.TLSConfig.Convert(),
+		Proxy:      newArgs.ProxyConfig.Convert(),
 	}
 
 	// Create or update the repo field.
