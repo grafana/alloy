@@ -686,8 +686,11 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver:         c.logsReceiver,
-		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		Receiver: c.logsReceiver,
+		// Forward emitted ops (e.g. op="error") to the same fanout the other
+		// collectors use, NOT back into the receiver — the receiver is the
+		// inbound queue we tail postgres log files from.
+		EntryHandler:     entryHandler,
 		Logger:           c.opts.Logger,
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
