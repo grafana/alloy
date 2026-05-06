@@ -63,7 +63,7 @@ The following strings are recognized as valid log destinations:
 The default value of `destination` is set to `"windows_event_log"` when {{< param "PRODUCT_NAME" >}} runs as a Windows service.
 Otherwise, `destination` defaults to `"stderr"`.
 
-Alloy will fail to start if `destination` is set to `"windows_event_log"` and Alloy is not running on Windows.
+{{< param "PRODUCT_NAME" >}} fails to start if `destination` is set to `"windows_event_log"` and {{< param "PRODUCT_NAME" >}} is not running on Windows.
 
 ## Retrieve logs
 
