@@ -1,29 +1,42 @@
 package deps
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
 )
 
+// alloyImageEnv is the env var the test runner sets to the Alloy image
+// (in "repo:tag" form) that tests should install via the helm chart.
+const alloyImageEnv = "ALLOY_TESTS_IMAGE"
+
 type AlloyOptions struct {
-	Namespace  string
+	// Namespace is the namespace to install the alloy helm chart into. Required.
+	// The namespace must already exist; pair this dependency with a Namespace
+	// dependency listed earlier in the test setup.
+	Namespace string
+	// Release is the name of the helm release. Required.
+	Release string
+	// ConfigPath is an optional path to a .alloy config file. When set, the
+	// framework creates a ConfigMap named "alloy-config" from this file and
+	// configures the chart (alloy.configMap.create/name/key) to consume it.
+	// When empty, no ConfigMap is created and Alloy configuration is left to
+	// the chart values (e.g. an inline config in ValuesPath).
 	ConfigPath string
-	Controller string
-	Release    string
+	// ValuesPath is an optional path to a helm values file applied to the
+	// Alloy chart. Use it to set chart options like controller.type, replicas,
+	// stabilityLevel, or alloy.configMap.content for an inline config.
+	ValuesPath string
 }
 
 type Alloy struct {
-	opts AlloyOptions
+	opts      AlloyOptions
+	installed bool
 }
-
-const defaultAlloyController = "deployment"
 
 func NewAlloy(opts AlloyOptions) *Alloy {
 	return &Alloy{opts: opts}
@@ -34,129 +47,109 @@ func (a *Alloy) Name() string {
 }
 
 func (a *Alloy) Install(ctx *harness.TestContext) error {
-	namespace := a.opts.Namespace
-	if namespace == "" {
-		namespace = ctx.Namespace()
-	}
-	if namespace == "" {
+	if a.opts.Namespace == "" {
 		return fmt.Errorf("alloy namespace is required")
 	}
-
-	configPath := a.opts.ConfigPath
-	if configPath == "" {
-		return fmt.Errorf("alloy config path is required")
+	if a.opts.Release == "" {
+		return fmt.Errorf("alloy release name is required")
 	}
 
-	controller := a.opts.Controller
-	if controller == "" {
-		controller = defaultAlloyController
-	}
-	if controller != "deployment" && controller != "daemonset" && controller != "statefulset" {
-		return fmt.Errorf("invalid alloy controller type %q (expected deployment|daemonset|statefulset)", controller)
-	}
-
-	release := a.opts.Release
-	if release == "" {
-		release = "alloy-" + ctx.Name()
-	}
-
-	if err := runCommand("kubectl", "get", "namespace", namespace); err != nil {
-		if createErr := runCommand("kubectl", "create", "namespace", namespace); createErr != nil && !strings.Contains(createErr.Error(), "already exists") {
-			return fmt.Errorf("ensure namespace %q: %w", namespace, createErr)
+	if a.opts.ConfigPath != "" {
+		if err := createAlloyConfigMap(a.opts.Namespace, a.opts.ConfigPath); err != nil {
+			return err
 		}
 	}
 
-	absConfigPath, err := filepath.Abs(configPath)
-	if err != nil {
-		return fmt.Errorf("resolve alloy config path: %w", err)
+	image := os.Getenv(alloyImageEnv)
+	imageRepo, imageTag, ok := strings.Cut(image, ":")
+	if !ok {
+		return fmt.Errorf("%s must be in repo:tag format (the test runner sets this), got %q", alloyImageEnv, image)
 	}
-	manifest, err := runCommandOutput(
-		"kubectl",
-		"create",
-		"configmap",
-		"alloy-config",
-		"--namespace", namespace,
-		"--from-file=config.alloy="+absConfigPath,
-		"--dry-run=client",
-		"-o", "yaml",
-	)
-	if err != nil {
-		return err
-	}
-	cmd := exec.Command("kubectl", "apply", "-f", "-")
-	cmd.Stdin = strings.NewReader(manifest)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Env = commandEnv()
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("apply alloy configmap: %w", err)
-	}
-
-	imageRepo, imageTag := parseAlloyImage(os.Getenv("ALLOY_IMAGE"))
 	repoRoot, err := repoRootFromCwd()
 	if err != nil {
 		return err
 	}
 
 	args := []string{
-		"helm",
-		"upgrade",
-		"--install",
-		release,
+		"helm", "upgrade", "--install",
+		a.opts.Release,
 		filepath.Join(repoRoot, "operations/helm/charts/alloy"),
-		"--namespace", namespace,
-		"--create-namespace",
+		"--namespace", a.opts.Namespace,
 		"--wait",
-		"--set", "fullnameOverride=" + release,
-		"--set", "image.repository=" + imageRepo,
-		"--set", "image.tag=" + imageTag,
-		"--set", "controller.type=" + controller,
-		"--set", "alloy.stabilityLevel=experimental",
-		"--set", "alloy.configMap.create=false",
-		"--set", "alloy.configMap.name=alloy-config",
-		"--set", "alloy.configMap.key=config.alloy",
 	}
-	if controller == defaultAlloyController {
-		args = append(args, "--set", "controller.replicas=1")
+	if a.opts.ValuesPath != "" {
+		absValuesPath, valuesErr := filepath.Abs(a.opts.ValuesPath)
+		if valuesErr != nil {
+			return fmt.Errorf("resolve alloy values path: %w", valuesErr)
+		}
+		args = append(args, "--values", absValuesPath)
+	}
+	args = append(args,
+		// Framework-managed values: keep last so they override values.yaml.
+		"--set", "fullnameOverride="+a.opts.Release,
+		"--set", "image.repository="+imageRepo,
+		"--set", "image.tag="+imageTag,
+	)
+	if a.opts.ConfigPath != "" {
+		// Wire the chart to the ConfigMap we just created from ConfigPath.
+		args = append(args,
+			"--set", "alloy.configMap.create=false",
+			"--set", "alloy.configMap.name=alloy-config",
+			"--set", "alloy.configMap.key=config.alloy",
+		)
 	}
 	if err := runCommand(args[0], args[1:]...); err != nil {
 		return err
 	}
+	a.installed = true
 
 	ctx.AddDiagnosticHook("alloy logs", func(c context.Context) error {
 		return runDiagnosticCommands(c, [][]string{
-			{"kubectl", "--namespace", namespace, "logs", "-l", "app.kubernetes.io/name=alloy", "--all-containers=true", "--tail", "200"},
+			{"kubectl", "--namespace", a.opts.Namespace, "logs", "-l", "app.kubernetes.io/name=alloy", "--all-containers=true", "--tail", "200"},
 		})
 	})
 	return nil
 }
 
 func (a *Alloy) Cleanup() {
-	// Namespace/workloads cleanup is managed by other dependencies.
+	if !a.installed {
+		return
+	}
+	_ = step("uninstall alloy helm release", func() error {
+		return runCommand(
+			"helm", "uninstall", a.opts.Release,
+			"--namespace", a.opts.Namespace,
+			"--ignore-not-found",
+			"--wait",
+		)
+	})
+	if a.opts.ConfigPath != "" {
+		_ = step("delete alloy configmap", func() error {
+			return runCommand(
+				"kubectl", "delete", "configmap", "alloy-config",
+				"--namespace", a.opts.Namespace,
+				"--ignore-not-found=true",
+			)
+		})
+	}
 }
 
-func parseAlloyImage(image string) (string, string) {
-	if image == "" {
-		return "grafana/alloy", "latest"
-	}
-	if idx := strings.LastIndex(image, ":"); idx > 0 {
-		return image[:idx], image[idx+1:]
-	}
-	return image, "latest"
-}
-
-func runCommandOutput(name string, args ...string) (string, error) {
-	cmd := exec.Command(name, args...)
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Env = commandEnv()
-	err := cmd.Run()
+// createAlloyConfigMap creates the "alloy-config" ConfigMap in the given
+// namespace using the contents of the .alloy file at configPath under the
+// "config.alloy" key. It expects a fresh namespace and fails if the ConfigMap
+// already exists.
+func createAlloyConfigMap(namespace, configPath string) error {
+	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
-		return "", fmt.Errorf("%s %v failed: %w: %s", name, args, err, strings.TrimSpace(stderr.String()))
+		return fmt.Errorf("resolve alloy config path: %w", err)
 	}
-	return strings.TrimSpace(stdout.String()), nil
+	if err := runCommand("kubectl", "create", "configmap", "alloy-config",
+		"--namespace", namespace,
+		"--from-file=config.alloy="+absConfigPath,
+	); err != nil {
+		return fmt.Errorf("create alloy configmap: %w", err)
+	}
+	return nil
 }
 
 func repoRootFromCwd() (string, error) {

@@ -3,15 +3,16 @@ package deps
 import (
 	"fmt"
 	"path/filepath"
-	"slices"
-	"strings"
 
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
 )
 
 type CustomWorkloadsOptions struct {
-	Path              string
-	ManagedNamespaces []string
+	// Path is the path to a YAML manifest applied with `kubectl apply -f` on
+	// Install and removed with `kubectl delete -f` on Cleanup. Any namespaces
+	// the test needs (including the test namespace) should be declared in this
+	// file so they are created on Install and deleted on Cleanup.
+	Path string
 }
 
 type CustomWorkloads struct {
@@ -36,16 +37,6 @@ func (w *CustomWorkloads) Install(_ *harness.TestContext) error {
 		return fmt.Errorf("resolve custom workloads path: %w", err)
 	}
 	w.absPath = absPath
-	for _, ns := range w.opts.ManagedNamespaces {
-		if ns == "" {
-			continue
-		}
-		if err := runCommand("kubectl", "get", "namespace", ns); err != nil {
-			if createErr := runCommand("kubectl", "create", "namespace", ns); createErr != nil && !strings.Contains(createErr.Error(), "already exists") {
-				return fmt.Errorf("ensure namespace %q for custom workloads: %w", ns, createErr)
-			}
-		}
-	}
 	return runCommand("kubectl", "apply", "-f", w.absPath)
 }
 
@@ -53,14 +44,5 @@ func (w *CustomWorkloads) Cleanup() {
 	if w.absPath == "" {
 		return
 	}
-	_ = runCommand("kubectl", "delete", "-f", w.absPath, "--ignore-not-found=true")
-
-	seen := make([]string, 0, len(w.opts.ManagedNamespaces))
-	for _, ns := range w.opts.ManagedNamespaces {
-		if ns == "" || slices.Contains(seen, ns) {
-			continue
-		}
-		seen = append(seen, ns)
-		_ = runCommand("kubectl", "delete", "namespace", ns, "--ignore-not-found=true", "--wait=true", "--timeout=10m")
-	}
+	_ = runCommand("kubectl", "delete", "-f", w.absPath, "--ignore-not-found=true", "--wait=true", "--timeout=10m")
 }

@@ -53,10 +53,16 @@ type ExpectedMetadata struct {
 	Help string
 }
 
+// mimirHelmRelease is the helm release name used by Mimir.Install. Kept as a
+// constant so Cleanup can uninstall the release without depending on Install
+// having succeeded fully.
+const mimirHelmRelease = "mimir"
+
 type Mimir struct {
 	namespace       string
 	localPort       string
 	stopPortForward func()
+	installed       bool
 }
 
 type MimirOptions struct {
@@ -73,15 +79,13 @@ func (m *Mimir) Name() string {
 
 func (m *Mimir) Install(ctx *harness.TestContext) error {
 	if m.namespace == "" {
-		m.namespace = ctx.Namespace()
-	}
-	if m.namespace == "" {
 		return fmt.Errorf("mimir namespace is required")
 	}
 
 	if err := installMimir(m.namespace); err != nil {
 		return err
 	}
+	m.installed = true
 	ctx.AddDiagnosticHook("mimir logs", m.diagnosticsHook())
 
 	localPort, stop, err := startPortForwardWithRetries(m.namespace, 5)
@@ -97,6 +101,18 @@ func (m *Mimir) Cleanup() {
 	if m.stopPortForward != nil {
 		m.stopPortForward()
 	}
+	if !m.installed || m.namespace == "" {
+		// Install never reached helm install; nothing to uninstall.
+		return
+	}
+	_ = step("uninstall mimir helm release", func() error {
+		return runCommand(
+			"helm", "uninstall", mimirHelmRelease,
+			"--namespace", m.namespace,
+			"--ignore-not-found",
+			"--wait",
+		)
+	})
 }
 
 func (m *Mimir) QueryMetrics(t *testing.T, alloyIntTest string, expectedMetrics []string) {
@@ -213,8 +229,16 @@ func installMimir(namespace string) error {
 			"grafana/mimir-distributed",
 			"--version", "5.8.0",
 			"--namespace", namespace,
-			"--create-namespace",
 			"--wait",
+			// Compact profile for integration tests: keep only components
+			// required for write/read and alertmanager config checks.
+			"--set", "ingester.replicas=1",
+			"--set", "querier.replicas=1",
+			"--set", "query_scheduler.enabled=false",
+			"--set", "store_gateway.enabled=false",
+			"--set", "compactor.enabled=false",
+			"--set", "admin_api.enabled=false",
+			"--set", "gateway.enabled=false",
 		)
 	})
 }

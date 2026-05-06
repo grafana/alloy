@@ -11,7 +11,7 @@ prometheus.operator.servicemonitors "default" {
   namespaces = ["test-prometheus-operator"]
   selector {
     match_labels = {
-      alloy = "yes",
+      "alloy-integration-test" = "true",
     }
   }
 }
@@ -37,7 +37,7 @@ prometheus.operator.podmonitors "default" {
   namespaces = ["test-prometheus-operator"]
   selector {
     match_labels = {
-      alloy = "yes",
+      "alloy-integration-test" = "true",
     }
   }
 }
@@ -63,7 +63,7 @@ prometheus.operator.probes "default" {
   namespaces = ["test-prometheus-operator"]
   selector {
     match_labels = {
-      alloy = "yes",
+      "alloy-integration-test" = "true",
     }
   }
 }
@@ -89,7 +89,7 @@ prometheus.operator.scrapeconfigs "default" {
   namespaces = ["test-prometheus-operator"]
   selector {
     match_labels = {
-      alloy = "yes",
+      "alloy-integration-test" = "true",
     }
   }
 }

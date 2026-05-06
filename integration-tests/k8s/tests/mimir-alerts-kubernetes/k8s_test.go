@@ -9,34 +9,35 @@ import (
 )
 
 func TestMimirAlerts(t *testing.T) {
-	testNamespace := "test-mimir-alerts-kubernetes"
-	mimir := deps.NewMimir(deps.MimirOptions{Namespace: testNamespace})
+	ns := deps.NewNamespace(deps.NamespaceOptions{
+		Name:   "test-mimir-alerts-kubernetes",
+		Labels: map[string]string{"alloy-integration-test": "true"},
+	})
+	mimir := deps.NewMimir(deps.MimirOptions{Namespace: ns.Name()})
 	alloy := deps.NewAlloy(deps.AlloyOptions{
-		Namespace:  testNamespace,
-		ConfigPath: "./config/config.alloy",
-		Controller: "deployment",
+		Namespace:  ns.Name(),
 		Release:    "alloy-mimir-alerts-kubernetes",
+		ConfigPath: "./config/config.alloy",
+		ValuesPath: "./config/alloy-values.yaml",
 	})
 	workloads := deps.NewCustomWorkloads(deps.CustomWorkloadsOptions{
-		Path:              "./config/workloads.yaml",
-		ManagedNamespaces: []string{testNamespace, "othernamespace"},
+		Path: "./config/workloads.yaml",
 	})
 	kt := harness.Setup(t, harness.Options{
-		Name:         "mimir-alerts-kubernetes",
-		Dependencies: []harness.Dependency{mimir, workloads, alloy},
-		Namespace:    testNamespace,
+		Name: "mimir-alerts-kubernetes",
+		Dependencies: []harness.Dependency{ns, workloads, mimir, alloy},
 	})
 	defer kt.Cleanup(t)
 
-	kt.WaitForAllPodsRunning(t, testNamespace, "app.kubernetes.io/name=alloy")
-	kt.WaitForAllPodsRunning(t, testNamespace, "app.kubernetes.io/component=alertmanager")
+	kt.WaitForAllPodsRunning(t, ns.Name(), "app.kubernetes.io/name=alloy")
+	kt.WaitForAllPodsRunning(t, ns.Name(), "app.kubernetes.io/component=alertmanager")
 
 	t.Run("Initial Config loaded", func(t *testing.T) {
 		mimir.CheckConfig(t, "./expected/expected_1.yml")
 	})
 
 	t.Run("Deleted Config works", func(t *testing.T) {
-		require.NoError(t, harness.Kubectl("delete", "alertmanagerconfig", "alertmgr-config2", "--namespace", testNamespace))
+		require.NoError(t, harness.Kubectl("delete", "alertmanagerconfig", "alertmgr-config2", "--namespace", ns.Name()))
 
 		// Mimir's config should now omit the deleted Alertmanagerconfig CRD.
 		mimir.CheckConfig(t, "./expected/expected_2.yml")

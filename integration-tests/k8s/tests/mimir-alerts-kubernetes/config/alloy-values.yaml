@@ -1,0 +1,5 @@
+controller:
+  type: deployment
+  replicas: 1
+alloy:
+  stabilityLevel: experimental

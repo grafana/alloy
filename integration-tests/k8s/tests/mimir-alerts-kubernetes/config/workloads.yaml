@@ -26,7 +26,7 @@ metadata:
   name: alertmgr-config1
   namespace: test-mimir-alerts-kubernetes
   labels:
-    alloy: "yes"
+    alloy-integration-test: "true"
 spec:
   route:
     receiver: "null"
@@ -47,7 +47,7 @@ metadata:
   name: alertmgr-config2
   namespace: test-mimir-alerts-kubernetes
   labels:
-    alloy: "yes"
+    alloy-integration-test: "true"
 spec:
   route:
     receiver: "null"
@@ -83,6 +83,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: othernamespace
+  labels:
+    alloy-integration-test: "true"
 ---
 apiVersion: monitoring.coreos.com/v1alpha1
 kind: AlertmanagerConfig
@@ -90,7 +92,7 @@ metadata:
   name: alertmgr-config3
   namespace: othernamespace
   labels:
-    alloy: "yes"
+    alloy-integration-test: "true"
 spec:
   route:
     receiver: "null"

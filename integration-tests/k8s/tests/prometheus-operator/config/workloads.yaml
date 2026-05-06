@@ -106,7 +106,7 @@ metadata:
   name: prom-gen-service-monitor
   namespace: test-prometheus-operator
   labels:
-    alloy: "yes"
+    alloy-integration-test: "true"
 spec:
   selector:
     matchLabels:
@@ -125,7 +125,7 @@ metadata:
   name: prom-gen-pod-monitor
   namespace: test-prometheus-operator
   labels:
-    alloy: "yes"
+    alloy-integration-test: "true"
 spec:
   selector:
     matchLabels:
@@ -144,7 +144,7 @@ metadata:
   name: http-probe
   namespace: test-prometheus-operator
   labels:
-    alloy: "yes"
+    alloy-integration-test: "true"
 spec:
   interval: 5s
   scrapeTimeout: 3s
@@ -163,7 +163,7 @@ metadata:
   name: prom-gen-scrape-config
   namespace: test-prometheus-operator
   labels:
-    alloy: "yes"
+    alloy-integration-test: "true"
 spec:
   staticConfigs:
     - targets:

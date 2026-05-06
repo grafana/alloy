@@ -8,29 +8,34 @@ import (
 )
 
 func TestPrometheusOperator(t *testing.T) {
-	testNamespace := "test-prometheus-operator"
-	mimir := deps.NewMimir(deps.MimirOptions{Namespace: testNamespace})
+	ns := deps.NewNamespace(deps.NamespaceOptions{
+		Name:   "test-prometheus-operator",
+		Labels: map[string]string{"alloy-integration-test": "true"},
+	})
+	mimir := deps.NewMimir(deps.MimirOptions{Namespace: ns.Name()})
 	alloy := deps.NewAlloy(deps.AlloyOptions{
-		Namespace:  testNamespace,
-		ConfigPath: "./config/config.alloy",
-		Controller: "daemonset",
+		Namespace:  ns.Name(),
 		Release:    "alloy-prometheus-operator",
+		ConfigPath: "./config/config.alloy",
+		ValuesPath: "./config/alloy-values.yaml",
 	})
 	workloads := deps.NewCustomWorkloads(deps.CustomWorkloadsOptions{
-		Path:              "./config/workloads.yaml",
-		ManagedNamespaces: []string{testNamespace},
+		Path: "./config/workloads.yaml",
 	})
 	kt := harness.Setup(t, harness.Options{
-		Name:         "prometheus-operator",
-		Dependencies: []harness.Dependency{mimir, workloads, alloy},
-		Namespace:    testNamespace,
+		Name: "prometheus-operator",
+		// Order: namespace first, then workloads (defines extra resources
+		// inside the namespace), then mimir, then alloy. Cleanup runs in
+		// reverse, so helm releases are uninstalled before workloads are
+		// deleted and the namespace is finally torn down.
+		Dependencies: []harness.Dependency{ns, workloads, mimir, alloy},
 	})
 	defer kt.Cleanup(t)
 
-	kt.WaitForAllPodsRunning(t, kt.Namespace(), "app.kubernetes.io/name=alloy")
-	kt.WaitForAllPodsRunning(t, kt.Namespace(), "app=prom-gen")
-	kt.WaitForAllPodsRunning(t, kt.Namespace(), "app=blackbox-exporter")
-	kt.WaitForAllPodsRunning(t, kt.Namespace(), "app.kubernetes.io/component=distributor")
+	kt.WaitForAllPodsRunning(t, ns.Name(), "app.kubernetes.io/name=alloy")
+	kt.WaitForAllPodsRunning(t, ns.Name(), "app=prom-gen")
+	kt.WaitForAllPodsRunning(t, ns.Name(), "app=blackbox-exporter")
+	kt.WaitForAllPodsRunning(t, ns.Name(), "app.kubernetes.io/component=distributor")
 
 	t.Run("ServiceMonitors", func(t *testing.T) {
 		// Check that Mimir received metrics from the ServiceMonitor target.

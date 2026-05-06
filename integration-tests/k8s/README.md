@@ -20,8 +20,9 @@ make integration-test-k8s RUN_ARGS='--shard 0/2'
 make integration-test-k8s RUN_ARGS='--package ./integration-tests/k8s/tests/prometheus-operator'
 ```
 
-Controller type is chosen per test package via
-`deps.NewAlloy(deps.AlloyOptions{Controller: ...})`.
+Per-test Alloy chart options (controller type, replicas, stability level, etc.)
+are set via a helm values file in the test's `config/alloy-values.yaml` and
+passed to `deps.NewAlloy(deps.AlloyOptions{ValuesPath: ...})`.
 
 If reuse mode leaves a broken cluster behind:
 

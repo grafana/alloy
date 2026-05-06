@@ -40,6 +40,7 @@ collector/otel_engine.exe
 # local testing files
 /targets.yaml
 /config.alloy
+/.tmp/
 
 # claude
 CLAUDE.local.md

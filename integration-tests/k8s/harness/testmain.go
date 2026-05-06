@@ -2,27 +2,28 @@ package harness
 
 import (
 	"context"
-	"os"
-	"strings"
 	"testing"
 
 	"k8s.io/client-go/kubernetes"
 )
 
 type Options struct {
+	// Name is a short identifier for the test, used in shard selection and
+	// failure-diagnostics output.
 	Name         string
+	// Dependencies is a list of dependencies to install in order. They are
+	// cleaned up in reverse order.
 	Dependencies []Dependency
-	Namespace    string
 }
 
+// TestContext is the runtime context for a test. It holds the kubernetes
+// client and registered diagnostic hooks. Namespace ownership lives in
+// dependencies (e.g. deps.Namespace), not here.
 type TestContext struct {
-	name                 string
-	namespace            string
-	alloyImageRepository string
-	alloyImageTag        string
-	client               *kubernetes.Clientset
-	dependencies         []Dependency
-	diagnosticHooks      []diagnosticHook
+	name            string
+	client          *kubernetes.Clientset
+	dependencies    []Dependency
+	diagnosticHooks []diagnosticHook
 }
 
 func Setup(t *testing.T, opts Options) *TestContext {
@@ -41,31 +42,9 @@ func Setup(t *testing.T, opts Options) *TestContext {
 		t.Fatalf("create kubernetes client: %v", err)
 	}
 
-	namespace := opts.Namespace
-	if namespace == "" { // If no namespace is provided, generate a default namespace.
-		namespace = "test-" + sanitizeName(opts.Name)
-	}
-
-	image := os.Getenv("ALLOY_IMAGE")
-	imageRepo := "grafana/alloy"
-	imageTag := "latest"
-	if image != "" {
-		if idx := strings.LastIndex(image, ":"); idx > 0 {
-			imageRepo = image[:idx]
-			imageTag = image[idx+1:]
-		}
-	}
-
 	ctx := &TestContext{
-		name:                 opts.Name,
-		namespace:            namespace,
-		alloyImageRepository: imageRepo,
-		alloyImageTag:        imageTag,
-		client:               client,
-	}
-	ctx.AddDiagnosticHook("namespace state", namespaceDiagnosticsHook(ctx.namespace))
-	if err := ensureCleanNamespace(ctx); err != nil {
-		t.Fatalf("prepare namespace: %v", err)
+		name:   opts.Name,
+		client: client,
 	}
 
 	for _, dep := range opts.Dependencies {
@@ -89,18 +68,6 @@ func (ctx *TestContext) Cleanup(t *testing.T) {
 	}
 }
 
-func (ctx *TestContext) Namespace() string {
-	return ctx.namespace
-}
-
-func (ctx *TestContext) Name() string {
-	return ctx.name
-}
-
 func (ctx *TestContext) AddDiagnosticHook(name string, fn func(context.Context) error) {
 	ctx.diagnosticHooks = append(ctx.diagnosticHooks, diagnosticHook{name: name, fn: fn})
-}
-
-func sanitizeName(name string) string {
-	return strings.ReplaceAll(name, "_", "-")
 }

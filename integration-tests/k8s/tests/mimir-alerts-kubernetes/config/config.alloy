@@ -13,12 +13,12 @@ mimir.alerts.kubernetes "default" {
   }
   alertmanagerconfig_namespace_selector {
     match_labels = {
-      alloy = "yes",
+      "alloy-integration-test" = "true",
     }
   }
   alertmanagerconfig_selector {
     match_labels = {
-      alloy = "yes",
+      "alloy-integration-test" = "true",
     }
   }
 }
