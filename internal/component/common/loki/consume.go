@@ -76,3 +76,60 @@ func ConsumeBatch(ctx context.Context, recv LogsBatchReceiver, f *Fanout) {
 		}
 	}
 }
+
+// FIXME: Rename Consume2 to Consume and remove the old Consume once all
+// components have migrated to Consumer.
+// Consume2 continuously reads log entries from recv and forwards them to the fanout f.
+// It runs until ctx is cancelled.
+//
+// This function is typically used in component Run methods to handle the forwarding
+// of log entries from a component's internal handler to downstream receivers.
+// The fanout allows entries to be sent to multiple receivers concurrently.
+func Consume2(ctx context.Context, recv LogsReceiver, f *FanoutConsumer) {
+	consume2(ctx, recv, f, func(e Entry) (Entry, bool) { return e, true })
+}
+
+// FIXME: Rename ConsumeAndProcess2 to ConsumeAndProcess and remove the old
+// ConsumeAndProcess once all components have migrated to Consumer.
+// ConsumeAndProcess2 continuously reads log entries from recv, processes them using processFn,
+// and forwards the processed entries to the fanout f. It runs until ctx is cancelled.
+//
+// This function is typically used in component Run methods to handle the forwarding
+// of log entries from a component's internal handler to downstream receivers.
+// The fanout allows entries to be sent to multiple receivers concurrently.
+// The processFn is applied to each entry before forwarding, allowing for transformation
+// or enrichment of log entries. If processFn returns false, the entry is dropped.
+func ConsumeAndProcess2(
+	ctx context.Context,
+	recv LogsReceiver,
+	f *FanoutConsumer,
+	processFn func(e Entry) (Entry, bool),
+) {
+
+	consume2(ctx, recv, f, processFn)
+}
+
+func consume2(
+	ctx context.Context,
+	recv LogsReceiver,
+	f *FanoutConsumer,
+	processFn func(e Entry) (Entry, bool),
+) {
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case entry := <-recv.Chan():
+			entry, ok := processFn(entry)
+			if !ok {
+				continue
+			}
+
+			// For now we ignore errors here.
+			if err := f.ConsumeEntry(ctx, entry); err != nil {
+				continue
+			}
+		}
+	}
+}

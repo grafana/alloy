@@ -3,6 +3,7 @@ package loki
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 )
 
@@ -81,7 +82,7 @@ func (f *FanoutConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 
 func (f *FanoutConsumer) Update(consumers []Consumer) {
 	f.mut.RLock()
-	if requireUpdate(f.consumers, consumers) {
+	if !slices.Equal(f.consumers, consumers) {
 		// Upgrade lock to write.
 		f.mut.RUnlock()
 		f.mut.Lock()
