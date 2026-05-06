@@ -183,11 +183,15 @@ run-alloylint: alloylint
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
+ifdef MODULE
+	@cd $(MODULE) && $(GO_ENV) go test $(GO_FLAGS) -race ./...
+else
 	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
 		if echo "$$dir" | grep -qv testdata; then \
 			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
 		fi;\
 	done
+endif
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
