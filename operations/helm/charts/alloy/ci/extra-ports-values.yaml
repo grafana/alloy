@@ -5,3 +5,8 @@ alloy:
       port: 14268
       targetPort: 14268
       protocol: TCP
+service:
+  extraPorts:
+    - name: oauth-proxy
+      port: 9091
+      targetPort: 9091
