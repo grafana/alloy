@@ -15,6 +15,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -161,12 +162,36 @@ type SampleState struct {
 	// EndAt is the time we determined the sample ended (idle transition
 	// or when it was only observed idle), used to compute durations/timestamps.
 	EndAt sql.NullTime
+	// QueryFingerprint caches the libpg_query fingerprint of LastRow.Query
+	// so we resolve at most once per active sample. Subsequent waits and
+	// the final emission for the same SampleKey reuse this cached value.
+	QueryFingerprint string
 }
 
 func (s *SampleState) updateCpuTime(sample QuerySamplesInfo) {
 	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
 		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
 	}
+}
+
+// resolveQueryFingerprint computes a stable fingerprint from the sample's
+// pg_stat_activity.query text. The text is always available (the SELECT now
+// always includes s.query) regardless of disableQueryRedaction — only the
+// emission of raw SQL on log lines is gated by that flag. Returns "" when
+// the row carried no query (e.g. background workers with state="idle"
+// before any query has run) or when fingerprinting fails entirely.
+func (c *QuerySamples) resolveQueryFingerprint(sample QuerySamplesInfo) string {
+	if !sample.Query.Valid {
+		return ""
+	}
+	// trackActivityQuerySize=0 disables the truncation sentinel for now —
+	// future work could plumb pg_settings.track_activity_query_size from
+	// the component into this collector to enable the sentinel.
+	fp, _, err := fingerprint.Fingerprint(sample.Query.String, fingerprint.SourcePgStatActivity, 0)
+	if err != nil {
+		return ""
+	}
+	return fp
 }
 
 // setEndedAt sets EndAt and LastSeenAt based on the sample's state change or clock_timestamp if not available
@@ -290,10 +315,10 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	queryTextField := ""
-	if c.disableQueryRedaction {
-		queryTextField = queryTextClause
-	}
+	// We always select s.query so we can compute query_fingerprint inline.
+	// Whether the raw text is *emitted* on the log line is still gated by
+	// c.disableQueryRedaction below.
+	queryTextField := queryTextClause
 
 	excludeCurrentUserClauseField := ""
 	if c.excludeCurrentUser {
@@ -334,6 +359,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			} else if _, already := c.idleEmitted.Get(key); !already {
 				// new idle sample not yet seen -> create a new sample state to track and emit it
 				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+				newIdleState.QueryFingerprint = c.resolveQueryFingerprint(sample)
 				newIdleState.setEndedAt(sample)
 				newIdleState.LastRow.State = sample.State
 				c.samples[key] = newIdleState
@@ -386,9 +412,10 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
-	}
-	if c.disableQueryRedaction {
-		scanArgs = append(scanArgs, &sample.Query)
+		// Always scan s.query so we can compute query_fingerprint
+		// regardless of disableQueryRedaction. The raw text is only
+		// emitted on the line when disableQueryRedaction is true.
+		&sample.Query,
 	}
 	err := rows.Scan(scanArgs...)
 	return sample, err
@@ -426,6 +453,9 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	state.LastSeenAt = sample.Now
 	state.updateCpuTime(sample)
 	state.LastRow.State = sample.State
+	if state.QueryFingerprint == "" {
+		state.QueryFingerprint = c.resolveQueryFingerprint(sample)
+	}
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
@@ -551,6 +581,9 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
 		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
 	}
+	if state.QueryFingerprint != "" {
+		labels = fmt.Sprintf(`%s query_fingerprint="%s"`, labels, state.QueryFingerprint)
+	}
 	return labels
 }
 
@@ -560,7 +593,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	return fmt.Sprintf(
+	labels := fmt.Sprintf(
 		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
@@ -577,6 +610,10 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
+	if state.QueryFingerprint != "" {
+		labels = fmt.Sprintf(`%s query_fingerprint="%s"`, labels, state.QueryFingerprint)
+	}
+	return labels
 }
 
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
@@ -625,7 +662,7 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	return fmt.Sprintf(
+	labels := fmt.Sprintf(
 		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
@@ -642,6 +679,10 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
+	if state.QueryFingerprint != "" {
+		labels = fmt.Sprintf(`%s query_fingerprint="%s"`, labels, state.QueryFingerprint)
+	}
+	return labels
 }
 
 // classifyPostgresWaitEventType maps a raw PostgreSQL wait event type to a standardized category.
