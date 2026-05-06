@@ -1853,6 +1853,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2client
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.142.0/go.mod h1:n4QAObJb6Jm9RVNp55ctM3IxEiODJGwCd5R+W4J1ehg=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.142.0 h1:xFOR39iAmMz1qoClCNFZtOrAbdelZnaW1qcdcl1cpFE=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.142.0/go.mod h1:fd4BmG/alnGTP5jbYwyRAegWFkvqYjgXU4EXYUXPUyA=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.142.0 h1:ZictsvRwuVJ0u2okFE0WPuzoDyINiD+biDl0j4NPVuo=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.142.0/go.mod h1:BtrQ997wZTMCUrKyqBzpfGnnfgeEl7aZ7dnbTCNZ1KI=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.142.0 h1:ALJuFnSl/psitnJZepyNvh3vvaBSzYVZR68mG6M4+XQ=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.142.0/go.mod h1:lTf1V8Bw5+zJZRDJpu88XIJvLjCFU4jZXiTc4lT0Nyc=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.142.0 h1:WHmtbcnh1Gtw/VYFOlqi7Lh51tj/XVSVMQCwKuycEes=

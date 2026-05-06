@@ -23,7 +23,10 @@ import (
 //go:embed extension_template.yaml
 var extensionTemplate string
 
-const lastRecvRemoteConfigFile = "last_recv_remote_config.dat"
+const (
+	lastRecvRemoteConfigFile     = "last_recv_remote_config.dat"
+	effectiveConfigDebugFileName = "effective_config.yaml"
+)
 
 // BootstrapOpamp is the top-level `opamp` block from the user's bootstrap YAML.
 type BootstrapOpamp struct {
@@ -35,7 +38,6 @@ type BootstrapOpamp struct {
 // RemoteServer configures the outbound OpAMP connection to the management server.
 type RemoteServer struct {
 	Endpoint   string                 `yaml:"endpoint" mapstructure:"endpoint"`
-	Headers    map[string]any         `yaml:"headers,omitempty" mapstructure:"headers"`
 	ClientAuth *ClientAuthSettings    `yaml:"client_auth,omitempty" mapstructure:"client_auth,omitempty"`
 	TLS        configtls.ClientConfig `yaml:"tls,omitempty" mapstructure:"tls"`
 }
@@ -227,6 +229,16 @@ func sortedRemoteConfigNames(cfg *protobufs.AgentConfigMap) []string {
 	sort.Strings(names)
 	names = append(names, "")
 	return names
+}
+
+// writeMergedEffectiveConfigYAML writes the merged collector YAML (bootstrap + extension +
+// remote layers) to effective_config.yaml under storageDir whenever the bridge updates merged config.
+func writeMergedEffectiveConfigYAML(storageDir string, yaml []byte) error {
+	if strings.TrimSpace(storageDir) == "" {
+		return fmt.Errorf("opamp storage directory is empty")
+	}
+	path := filepath.Join(storageDir, effectiveConfigDebugFileName)
+	return os.WriteFile(path, yaml, 0o600)
 }
 
 // SaveLastReceivedRemoteConfig persists protobuf AgentRemoteConfig like the supervisor.

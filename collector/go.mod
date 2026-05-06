@@ -1080,8 +1080,6 @@ replace github.com/grafana/alloy/syntax => ../syntax
 
 replace github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
 
-replace github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension => ../extension/opampextension
-
 replace github.com/grafana/alloy/configprovider/opamp => ../configprovider/opamp
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc

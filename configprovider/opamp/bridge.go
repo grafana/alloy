@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -149,6 +150,7 @@ func (b *Bridge) start(ctx context.Context) error {
 		return err
 	}
 	b.mergedYAML.Store(string(yamlBytes))
+	b.persistMergedEffectiveConfigDebug(yamlBytes)
 
 	b.runCtx, b.runCancel = context.WithCancel(context.Background())
 
@@ -163,7 +165,7 @@ func (b *Bridge) start(ctx context.Context) error {
 			}
 			return true, http.StatusOK
 		},
-		onMessage:         b.handleAgentOpAMPMessage,
+		onMessage:         b.handleOpAmpExtensionMessage,
 		onConnectionClose: func(serverTypes.Connection) { connected.Store(false) },
 	}).toServerSettings()); err != nil {
 		return fmt.Errorf("start local opamp server: %w", err)
@@ -267,7 +269,7 @@ func (b *Bridge) startRemoteClient() error {
 	}
 	b.opampRemote = c
 
-	headers := headersFromMap(mgmt.Server.Headers)
+	headers := make(http.Header)
 	if ca := mgmt.Server.ClientAuth; ca != nil {
 		b.setBasicAuthHeader(headers, ca.Username, ca.Password)
 	}
@@ -291,7 +293,7 @@ func (b *Bridge) startRemoteClient() error {
 			OnError: func(_ context.Context, err *protobufs.ServerErrorResponse) {
 				b.logger.Error("remote opamp server error", zap.String("message", err.ErrorMessage))
 			},
-			OnMessage:          b.onRemoteMessage,
+			OnMessage:          b.handleUpstreamOpAmpServerMessage,
 			GetEffectiveConfig: func(context.Context) (*protobufs.EffectiveConfig, error) { return b.createEffectiveConfigMsg(), nil },
 			SaveRemoteConfigStatus: func(_ context.Context, rcs *protobufs.RemoteConfigStatus) {
 				if rcs == nil || b.persistentState == nil {
@@ -381,7 +383,7 @@ func (b *Bridge) createEffectiveConfigMsg() *protobufs.EffectiveConfig {
 	}
 }
 
-func (b *Bridge) handleAgentOpAMPMessage(conn serverTypes.Connection, message *protobufs.AgentToServer) *protobufs.ServerToAgent {
+func (b *Bridge) handleOpAmpExtensionMessage(conn serverTypes.Connection, message *protobufs.AgentToServer) *protobufs.ServerToAgent {
 	b.agentConn.Store(conn)
 	if b.opampRemote == nil {
 		return &protobufs.ServerToAgent{}
@@ -421,7 +423,7 @@ func (b *Bridge) handleAgentOpAMPMessage(conn serverTypes.Connection, message *p
 	return &protobufs.ServerToAgent{}
 }
 
-func (b *Bridge) onRemoteMessage(ctx context.Context, msg *types.MessageData) {
+func (b *Bridge) handleUpstreamOpAmpServerMessage(ctx context.Context, msg *types.MessageData) {
 	if msg == nil {
 		return
 	}
@@ -475,6 +477,7 @@ func (b *Bridge) processRemoteConfig(ctx context.Context, rc *protobufs.AgentRem
 	old := b.getMergedYAML()
 	newStr := string(yamlBytes)
 	b.mergedYAML.Store(newStr)
+	b.persistMergedEffectiveConfigDebug(yamlBytes)
 
 	if err := b.opampRemote.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
 		LastRemoteConfigHash: rc.ConfigHash,
@@ -494,30 +497,23 @@ func (b *Bridge) processRemoteConfig(ctx context.Context, rc *protobufs.AgentRem
 	b.signalInitialRemoteWaitDone(nil)
 }
 
+func (b *Bridge) persistMergedEffectiveConfigDebug(yaml []byte) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if b.mgmt == nil {
+		return
+	}
+	dir := b.mgmt.Storage.Directory
+	if err := writeMergedEffectiveConfigYAML(dir, yaml); err != nil {
+		b.logger.Warn("opamp: write effective_config.yaml",
+			zap.String("path", filepath.Join(dir, effectiveConfigDebugFileName)),
+			zap.Error(err))
+	}
+}
+
 func (b *Bridge) setBasicAuthHeader(h http.Header, username, password string) {
 	token := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 	h.Set("Authorization", "Basic "+token)
-}
-
-func headersFromMap(m map[string]any) http.Header {
-	h := make(http.Header)
-	for k, v := range m {
-		switch t := v.(type) {
-		case string:
-			h.Set(k, t)
-		case []any:
-			for _, item := range t {
-				if s, ok := item.(string); ok {
-					h.Add(k, s)
-				}
-			}
-		case []string:
-			for _, s := range t {
-				h.Add(k, s)
-			}
-		}
-	}
-	return h
 }
 
 func (b *Bridge) shutdown(ctx context.Context) error {
