@@ -159,9 +159,15 @@ rbac:
   # -- Whether to create RBAC resources for Alloy.
   create: true
 
+  # -- When set to true, creates namespace-scoped Roles and RoleBindings instead of ClusterRoles and
+  # ClusterRoleBindings, using the release namespace by default. This is a convenient alternative to setting
+  # `rbac.namespaces` explicitly when you only need access within the install namespace.
+  # Bear in mind that Alloy will not be able to discover cluster-scoped resources such as Nodes.
+  namespaced: false
+
   # -- If set, only create Roles and RoleBindings in the given list of namespaces, rather than ClusterRoles and
-  # ClusterRoleBindings. If not using ClusterRoles, bear in mind that Alloy will not be able to discover cluster-scoped
-  # resources such as Nodes.
+  # ClusterRoleBindings. Overrides `rbac.namespaced` when non-empty. If not using ClusterRoles, bear in mind that
+  # Alloy will not be able to discover cluster-scoped resources such as Nodes.
   namespaces: []
 
   # -- The rules to create for the ClusterRole or Role objects.
