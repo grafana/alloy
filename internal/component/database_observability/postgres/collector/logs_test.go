@@ -894,8 +894,9 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	require.Equal(t, "54321", fields["client_port"])
 	require.Equal(t, "69fa58c6.30", fields["session_id"])
 	require.Equal(t, "user", fields["user"])
-	require.Equal(t, "SELECT * FROM missing WHERE id = $1", fields["statement"])
 	require.Contains(t, fields["error_message"], `relation "missing" does not exist`)
+	_, hasStatement := fields["statement"]
+	require.False(t, hasStatement, "statement field must not be emitted on error entries")
 	_, hasXid := fields["xid"]
 	require.False(t, hasXid, "xid must be omitted when %x = 0")
 }
@@ -1029,11 +1030,11 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 	expectedFP, _, fpErr := fingerprint.Fingerprint(expectedSQL, fingerprint.SourceLog, 0)
 	require.NoError(t, fpErr)
 
-	collapsed := "WITH target_books AS ( SELECT id FROM books WHERE id = $1 ) UPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
 	require.Equal(t, "ERROR", fields["severity"])
 	require.Equal(t, "40001", fields["sqlstate"])
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
-	require.Equal(t, collapsed, fields["statement"])
+	_, hasStatement := fields["statement"]
+	require.False(t, hasStatement, "statement field must not be emitted on error entries")
 }
 
 // TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an
@@ -1075,7 +1076,6 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 	fields := parseLogfmt(t, body)
 	expectedFP, _, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog, 0)
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
-	require.Equal(t, "INSERT INTO t (a) VALUES ($1)", fields["statement"])
 }
 
 func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {

@@ -212,7 +212,6 @@ versions and downstream tooling.
 | Body field `session_id`        | `%c`                    | unique per backend connection                                        |
 | Body field `user`              | `%u`                    | also present on `pg_errors_total` as a label                         |
 | Body field `error_message`     | text after `<sev>:`     | human-readable error message                                         |
-| Body field `statement`         | STATEMENT body          | assembled SQL with whitespace collapsed to single spaces             |
 
 Compute error rate per logical query in LogQL:
 
