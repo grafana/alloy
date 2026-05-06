@@ -3,6 +3,7 @@ package loki
 
 import (
 	"context"
+	"errors"
 	"path"
 	"strings"
 	"sync"
@@ -45,7 +46,7 @@ type Arguments struct {
 // Exports holds the receiver that is used to send log entries to the
 // loki.write component.
 type Exports struct {
-	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
+	Receiver loki.Consumer `alloy:"receiver,attr"`
 }
 
 // Component is the otelcol.receiver.loki component.
@@ -53,7 +54,7 @@ type Component struct {
 	opts component.Options
 
 	mut      sync.RWMutex
-	receiver loki.LogsReceiver
+	stopped  bool
 	logsSink consumer.Logs
 
 	debugDataPublisher livedebugging.DebugDataPublisher
@@ -64,10 +65,11 @@ type Component struct {
 var (
 	_ component.Component     = (*Component)(nil)
 	_ component.LiveDebugging = (*Component)(nil)
+	_ loki.Consumer           = (*Component)(nil)
 )
 
 // New creates a new otelcol.receiver.loki component.
-func New(o component.Options, c Arguments) (*Component, error) {
+func New(o component.Options, args Arguments) (*Component, error) {
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
 	if err != nil {
 		return nil, err
@@ -75,42 +77,33 @@ func New(o component.Options, c Arguments) (*Component, error) {
 
 	// TODO(@tpaschalis) Create a metrics struct to count
 	// total/successful/errored log entries?
-	res := &Component{
+	c := &Component{
 		opts:               o,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
-	res.receiver = loki.NewLogsReceiver()
-	o.OnStateChange(Exports{Receiver: res.receiver})
+	o.OnStateChange(Exports{Receiver: c})
 
-	if err := res.Update(c); err != nil {
+	if err := c.Update(args); err != nil {
 		return nil, err
 	}
-	return res, nil
+	return c, nil
 }
 
 // Run implements Component.
 func (c *Component) Run(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case entry := <-c.receiver.Chan():
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
 
-			logs := convertLokiEntryToPlog(entry)
-
-			// TODO(@tpaschalis) Is there any more handling to be done here?
-			err := c.logsSink.ConsumeLogs(ctx, logs)
-			if err != nil {
-				c.opts.Logger.Error("failed to consume log entries", "err", err)
-			}
-		}
-	}
+	<-ctx.Done()
+	return nil
 }
 
-// Update implements Component.
 func (c *Component) Update(newConfig component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
@@ -127,6 +120,26 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	c.logsSink = logsInterceptor
 
 	return nil
+}
+
+func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
+	return errors.New("consume is not implemented")
+}
+
+func (c *Component) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	c.mut.RLock()
+	defer c.mut.RUnlock()
+
+	if c.stopped {
+		return loki.ErrConsumerStopped
+	}
+
+	logs := convertLokiEntryToPlog(entry)
+	return c.logsSink.ConsumeLogs(ctx, logs)
+}
+
+func (c *Component) String() string {
+	return c.opts.ID + ".receiver"
 }
 
 // Create a new Otlp Logs entry from a Promtail entry
