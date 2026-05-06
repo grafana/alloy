@@ -317,10 +317,10 @@ func Test_LogsExporter_Export(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			t.Parallel()
 			var (
-				lr  = newFakeLogsReceiver(t)
-				exp = newLogsExporter(util.TestAlloyLogger(t).Slog(), &varSourceMapsStore{}, tc.format)
+				collector = loki.NewCollectingConsumer()
+				exp       = newLogsExporter(util.TestLogger(t), &varSourceMapsStore{}, tc.format)
 			)
-			exp.SetReceivers([]loki.LogsReceiver{lr})
+			exp.SetReceivers([]loki.Consumer{collector})
 			exp.SetLabels(map[string]string{
 				"foo":  "bar",
 				"kind": "",
@@ -328,9 +328,10 @@ func Test_LogsExporter_Export(t *testing.T) {
 			ctx := componenttest.TestContext(t)
 			require.NoError(t, exp.Export(ctx, tc.payload))
 
-			lr.wg.Wait() // Wait for the fakelogreceiver goroutine to process
-			require.Len(t, lr.GetEntries(), 1)
-			require.Equal(t, tc.expect, lr.entries[0])
+			got := collector.Entries()
+			require.Len(t, got, 1)
+			require.Equal(t, tc.expect.Entry.Line, got[0].Entry.Line)
+			require.Equal(t, tc.expect.Labels, got[0].Labels)
 		})
 	}
 }
