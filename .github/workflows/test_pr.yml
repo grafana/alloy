@@ -10,8 +10,12 @@ jobs:
     uses: ./.github/workflows/lint.yml
 
   test_linux:
-    name: Test Linux
+    name: Test Linux (shard ${{ matrix.shard }}/8)
     runs-on: ubuntu-latest-8-cores
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -24,4 +28,4 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - run: make GO_TAGS="nodocker" test
+    - run: make GO_TAGS="nodocker" SHARD=${{ matrix.shard }}/8 test

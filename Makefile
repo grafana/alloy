@@ -184,11 +184,27 @@ run-alloylint: alloylint
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The
 # final command runs tests for syntax module.
 test:
+ifdef MODULE
+	@cd $(MODULE) && $(GO_ENV) go test $(GO_FLAGS) -race ./...
+else ifdef SHARD
+	@idx=$$(echo $(SHARD) | cut -d/ -f1); \
+	total=$$(echo $(SHARD) | cut -d/ -f2); \
+	packages=$$(go list ./... | awk -v idx=$$idx -v total=$$total 'NR % total == idx'); \
+	echo "Shard $$idx/$$total: $$(echo $$packages | wc -w) root packages"; \
+	$(GO_ENV) go test $(GO_FLAGS) -race $$packages || exit 1; \
+	if [ "$$idx" = "0" ]; then \
+		for dir in $$(find . -mindepth 2 -name go.mod -type f -not -path '*/testdata/*' -exec sh -c 'dirname "$$1"' _ {} \;); do \
+			echo "Non-root module: $$dir"; \
+			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1; \
+		done; \
+	fi
+else
 	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
 		if echo "$$dir" | grep -qv testdata; then \
 			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
 		fi;\
 	done
+endif
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
