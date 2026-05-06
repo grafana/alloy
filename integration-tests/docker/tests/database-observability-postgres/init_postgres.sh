@@ -13,6 +13,14 @@ PGPASSWORD=rootpassword psql -h postgres -U root -d testdb <<EOF
 -- Enable pg_stat_statements extension
 CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
 
+-- Create dedicated monitoring user for Alloy
+CREATE ROLE monitoring_user LOGIN PASSWORD 'monitoring_password';
+GRANT pg_monitor TO monitoring_user;
+GRANT pg_read_all_stats TO monitoring_user;
+ALTER ROLE monitoring_user SET pg_stat_statements.track = 'none';
+GRANT USAGE ON SCHEMA public TO monitoring_user;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO monitoring_user;
+
 -- Create products table
 CREATE TABLE IF NOT EXISTS products (
     id SERIAL PRIMARY KEY,
