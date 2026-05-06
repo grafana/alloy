@@ -43,20 +43,20 @@ func init() {
 
 // Arguments holds values which are used to configure the secretfilter component.
 type Arguments struct {
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	OriginLabel       string              `alloy:"origin_label,attr,optional"`       // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
-	RedactWith        string              `alloy:"redact_with,attr,optional"`        // Template for redaction placeholder; $SECRET_NAME and $SECRET_HASH are replaced. When set, percentage-based redaction is not used.
-	RedactPercent     uint                `alloy:"redact_percent,attr,optional"`     // When redact_with is not set: percent of the secret to redact (1-100; gitleaks-style: show leading (100-N)% + "...", 100 = "REDACTED"). 0 or unset defaults to 80.
-	GitleaksConfig    string              `alloy:"gitleaks_config,attr,optional"`    // Path to a gitleaks TOML config file; if empty, the default gitleaks config is used
-	Rate              float64             `alloy:"rate,attr,optional"`               // Sampling rate in [0.0, 1.0]: fraction of entries to process through the secret filter; rest are forwarded unchanged. 1.0 = process all (default).
-	ProcessingTimeout time.Duration       `alloy:"processing_timeout,attr,optional"` // Maximum time allowed to process a single log entry. 0 (default) disables the timeout.
-	DropOnTimeout     bool                `alloy:"drop_on_timeout,attr,optional"`    // When true, entries that exceed processing_timeout are dropped instead of forwarded unredacted. Requires processing_timeout to be set.
-	LabelTimedOut     bool                `alloy:"label_timed_out,attr,optional"`    // When true, adds the label secretfilter="timed-out" to entries forwarded after a processing timeout. False (default) disables the label.
+	ForwardTo         []loki.Consumer `alloy:"forward_to,attr"`
+	OriginLabel       string          `alloy:"origin_label,attr,optional"`       // The label name to use for tracking metrics by origin (if empty, no origin metrics are collected)
+	RedactWith        string          `alloy:"redact_with,attr,optional"`        // Template for redaction placeholder; $SECRET_NAME and $SECRET_HASH are replaced. When set, percentage-based redaction is not used.
+	RedactPercent     uint            `alloy:"redact_percent,attr,optional"`     // When redact_with is not set: percent of the secret to redact (1-100; gitleaks-style: show leading (100-N)% + "...", 100 = "REDACTED"). 0 or unset defaults to 80.
+	GitleaksConfig    string          `alloy:"gitleaks_config,attr,optional"`    // Path to a gitleaks TOML config file; if empty, the default gitleaks config is used
+	Rate              float64         `alloy:"rate,attr,optional"`               // Sampling rate in [0.0, 1.0]: fraction of entries to process through the secret filter; rest are forwarded unchanged. 1.0 = process all (default).
+	ProcessingTimeout time.Duration   `alloy:"processing_timeout,attr,optional"` // Maximum time allowed to process a single log entry. 0 (default) disables the timeout.
+	DropOnTimeout     bool            `alloy:"drop_on_timeout,attr,optional"`    // When true, entries that exceed processing_timeout are dropped instead of forwarded unredacted. Requires processing_timeout to be set.
+	LabelTimedOut     bool            `alloy:"label_timed_out,attr,optional"`    // When true, adds the label secretfilter="timed-out" to entries forwarded after a processing timeout. False (default) disables the label.
 }
 
 // Exports holds the values exported by the loki.secretfilter component.
 type Exports struct {
-	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
+	Receiver loki.Consumer `alloy:"receiver,attr"`
 }
 
 // defaultRate is the default sampling rate (1.0 = process all entries).
@@ -96,10 +96,12 @@ type Component struct {
 	opts component.Options
 	log  *slog.Logger
 
+	fanout   *loki.FanoutConsumer
+	receiver *loki.InterceptorConsumer
+
 	mut      sync.RWMutex
+	stopped  bool
 	args     Arguments
-	receiver loki.LogsReceiver
-	fanout   *loki.Fanout
 	detector secretDetector
 
 	// redactPercent is the effective percentage (1-100) for gitleaks-style redaction when redact_with is not set. Set at build/update.
@@ -248,11 +250,47 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               o,
 		log:                o.Logger,
-		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
-		fanout:             loki.NewFanout(args.ForwardTo),
+		fanout:             loki.NewFanoutConsumer(args.ForwardTo),
 		metrics:            newMetrics(o.Registerer),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
+
+	c.receiver = loki.NewInterceptorConsumer(
+		c.opts.ID,
+		c.fanout,
+		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
+			c.mut.RLock()
+			defer c.mut.RUnlock()
+
+			if c.stopped {
+				return entry, false, loki.ErrConsumerStopped
+			}
+
+			if c.shouldProcessEntry() {
+				newEntry, dropped := c.processEntry(ctx, entry)
+
+				if dropped {
+					c.log.Debug("entry dropped", "reason", "processing_timeout")
+					return loki.Entry{}, false, nil
+				}
+
+				c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+					livedebugging.ComponentID(c.opts.ID),
+					livedebugging.LokiLog,
+					1,
+					func() string {
+						return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
+					},
+				))
+
+				return newEntry, true, nil
+			}
+
+			c.metrics.entriesBypassedTotal.Inc()
+			c.log.Debug("entry bypassed by sampling", "rate", c.args.Rate)
+			return entry, true, nil
+		}),
+	)
 
 	// Call to Update() once at the start.
 	if err := c.Update(args); err != nil {
@@ -280,32 +318,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	componentID := livedebugging.ComponentID(c.opts.ID)
-	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(entry loki.Entry) (loki.Entry, bool) {
-		c.mut.RLock()
-		defer c.mut.RUnlock()
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
 
-		if c.shouldProcessEntry() {
-			newEntry, dropped := c.processEntry(ctx, entry)
-			if dropped {
-				c.log.Debug("entry dropped", "reason", "processing_timeout")
-				return loki.Entry{}, false
-			}
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				componentID,
-				livedebugging.LokiLog,
-				1,
-				func() string {
-					return fmt.Sprintf("%s => %s", entry.Line, newEntry.Line)
-				},
-			))
-			return newEntry, true
-		}
-
-		c.metrics.entriesBypassedTotal.Inc()
-		c.log.Debug("entry bypassed by sampling", "rate", c.args.Rate)
-		return entry, true
-	})
+	<-ctx.Done()
 	return nil
 }
 
@@ -427,7 +446,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = newArgs
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 	c.detector = detector
 	if newArgs.RedactPercent >= 1 && newArgs.RedactPercent <= 100 {
 		c.redactPercent = newArgs.RedactPercent
