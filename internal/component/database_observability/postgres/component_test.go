@@ -40,7 +40,7 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	}
 	args := Arguments{
 		DataSourceName:    alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
-		ForwardTo:         []loki.LogsReceiver{},
+		ForwardTo:         []loki.Consumer{},
 		Targets:           []discovery.Target{},
 		DisableCollectors: []string{"query_details", "schema_details", "query_samples", "explain_plans"},
 		HealthCheckArguments: HealthCheckArguments{
@@ -50,7 +50,7 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	c := &Component{
 		opts:         opts,
 		args:         args,
-		fanout:       loki.NewFanout(args.ForwardTo),
+		fanout:       loki.NewFanoutConsumer(args.ForwardTo),
 		handler:      loki.NewLogsReceiver(),
 		registry:     prometheus.NewRegistry(),
 		healthErr:    atomic.NewString(""),
@@ -845,7 +845,7 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 
 	args := Arguments{
 		DataSourceName: alloytypes.Secret("postgres://user:pass@localhost:5432/testdb"),
-		ForwardTo:      []loki.LogsReceiver{},
+		ForwardTo:      []loki.Consumer{},
 		Targets:        []discovery.Target{},
 	}
 
@@ -876,7 +876,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 
 		args := Arguments{
 			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/unreachable?sslmode=disable&connect_timeout=1"),
-			ForwardTo:      []loki.LogsReceiver{},
+			ForwardTo:      []loki.Consumer{},
 			Targets:        []discovery.Target{},
 		}
 
@@ -909,7 +909,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 
 		args := Arguments{
 			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:1/db?sslmode=disable&connect_timeout=1"),
-			ForwardTo:      []loki.LogsReceiver{},
+			ForwardTo:      []loki.Consumer{},
 			Targets:        []discovery.Target{},
 		}
 
@@ -994,7 +994,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 
 		args := Arguments{
 			DataSourceName: alloytypes.Secret("postgres://user:pass@127.0.0.1:5432/db?sslmode=disable"),
-			ForwardTo:      []loki.LogsReceiver{},
+			ForwardTo:      []loki.Consumer{},
 			Targets:        []discovery.Target{},
 		}
 
