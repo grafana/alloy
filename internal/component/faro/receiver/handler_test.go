@@ -1,6 +1,8 @@
 package receiver
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"errors"
 	"net/http"
@@ -813,6 +815,101 @@ func TestHandler_Update_PreservesAppRateLimiterState(t *testing.T) {
 	})
 
 	require.Nil(t, h.appRateLimiter, "AppRateLimitingConfig should be nil when rate limiting is disabled")
+}
+
+func gzipPayload(t *testing.T, payload string) *bytes.Buffer {
+	t.Helper()
+	var buf bytes.Buffer
+	w := gzip.NewWriter(&buf)
+	_, err := w.Write([]byte(payload))
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+	return &buf
+}
+
+func TestGzipCompressedPayload(t *testing.T) {
+	var (
+		exporter1 = &testExporter{"exporter1", false, nil}
+
+		h = newHandler(
+			util.TestLogger(t),
+			prometheus.NewRegistry(),
+			[]exporter{exporter1},
+		)
+	)
+
+	req, err := http.NewRequest(http.MethodPost, "/collect", gzipPayload(t, emptyPayload))
+	require.NoError(t, err)
+	req.Header.Set("Content-Encoding", "gzip")
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusAccepted, rr.Result().StatusCode)
+	require.Len(t, exporter1.payloads, 1)
+}
+
+func TestGzipInvalidBody(t *testing.T) {
+	h := newHandler(
+		util.TestLogger(t),
+		prometheus.NewRegistry(),
+		[]exporter{},
+	)
+
+	req, err := http.NewRequest(http.MethodPost, "/collect", strings.NewReader("not gzip data"))
+	require.NoError(t, err)
+	req.Header.Set("Content-Encoding", "gzip")
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusBadRequest, rr.Result().StatusCode)
+}
+
+func TestUncompressedPayloadStillWorks(t *testing.T) {
+	var (
+		exporter1 = &testExporter{"exporter1", false, nil}
+
+		h = newHandler(
+			util.TestLogger(t),
+			prometheus.NewRegistry(),
+			[]exporter{exporter1},
+		)
+	)
+
+	req, err := http.NewRequest(http.MethodPost, "/collect", strings.NewReader(emptyPayload))
+	require.NoError(t, err)
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusAccepted, rr.Result().StatusCode)
+	require.Len(t, exporter1.payloads, 1)
+}
+
+func TestCORSPreflightWithContentEncoding(t *testing.T) {
+	h := newHandler(
+		util.TestLogger(t),
+		prometheus.NewRegistry(),
+		[]exporter{},
+	)
+
+	h.Update(ServerArguments{
+		CORSAllowedOrigins: []string{"https://example.com"},
+	})
+
+	req, err := http.NewRequest(http.MethodOptions, "/collect", nil)
+	require.NoError(t, err)
+	req.Header.Set("Origin", "https://example.com")
+	req.Header.Set("Access-Control-Request-Method", "POST")
+	req.Header.Set("Access-Control-Request-Headers", "content-encoding,content-type")
+
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	require.Equal(t, http.StatusNoContent, rr.Result().StatusCode)
+	allowedHeaders := rr.Header().Get("Access-Control-Allow-Headers")
+	require.Contains(t, strings.ToLower(allowedHeaders), "content-encoding")
 }
 
 type testExporter struct {
