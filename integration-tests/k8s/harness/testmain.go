@@ -10,7 +10,7 @@ import (
 type Options struct {
 	// Name is a short identifier for the test, used in shard selection and
 	// failure-diagnostics output.
-	Name         string
+	Name string
 	// Dependencies is a list of dependencies to install in order. They are
 	// cleaned up in reverse order.
 	Dependencies []Dependency

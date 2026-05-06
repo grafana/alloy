@@ -24,7 +24,7 @@ func TestMimirAlerts(t *testing.T) {
 		Path: "./config/workloads.yaml",
 	})
 	kt := harness.Setup(t, harness.Options{
-		Name: "mimir-alerts-kubernetes",
+		Name:         "mimir-alerts-kubernetes",
 		Dependencies: []harness.Dependency{ns, workloads, mimir, alloy},
 	})
 	defer kt.Cleanup(t)
