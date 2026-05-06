@@ -4,9 +4,9 @@ go 1.26.2
 
 require (
 	github.com/google/go-github/v57 v57.0.0
-	github.com/openai/openai-go/v3 v3.21.0
-	golang.org/x/mod v0.33.0
-	golang.org/x/oauth2 v0.35.0
+	github.com/openai/openai-go/v3 v3.33.0
+	golang.org/x/mod v0.35.0
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (
