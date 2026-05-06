@@ -8,7 +8,7 @@ import (
 
 type databaseConnectionFactory func(dsn string) (*sql.DB, error)
 
-var dsnParseRegex = regexp.MustCompile(`^(\w+:\/\/.+\/)(?<dbname>[\w\-_\$]+)(\??.*$)`)
+var dsnParseRegex = regexp.MustCompile(`^(\w+:\/\/[\w:@.\-_]*\/)(?<dbname>[\w\-_\$]+)((?:\?\S*)?)`)
 var defaultDbConnectionFactory = func(dsn string) (*sql.DB, error) {
 	return sql.Open("postgres", dsn)
 }
