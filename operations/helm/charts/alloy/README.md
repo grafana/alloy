@@ -36,6 +36,8 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.clustering.enabled | bool | `false` | Deploy Alloy in a cluster to allow for load distribution. |
 | alloy.clustering.name | string | `""` | Name for the Alloy cluster. Used for differentiating between clusters. |
 | alloy.clustering.portName | string | `"http"` | Name for the port used for clustering, useful if running inside an Istio Mesh |
+| alloy.clustering.waitForSize | int | `0` | Wait for the cluster to reach the number of instances before allowing clustered components to begin processing. |
+| alloy.clustering.waitTimeout | int | `0` | Maximum duration to wait for minimum cluster size before proceeding with available nodes |
 | alloy.configMap.content | string | `""` | Content to assign to the new ConfigMap.  This is passed into `tpl` allowing for templating from values. |
 | alloy.configMap.create | bool | `true` | Create a new ConfigMap for the config file. |
 | alloy.configMap.key | string | `nil` | Key in ConfigMap to get config from. |
