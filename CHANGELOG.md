@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.2](https://github.com/grafana/alloy/compare/v1.16.1...v1.16.2) (2026-05-06)
+
+
+### Bug Fixes 🐛
+
+* **otelcol.exporter.awss3:** Add missing `unique_key_func_name` attribute [backport] ([#6193](https://github.com/grafana/alloy/issues/6193)) ([928bb50](https://github.com/grafana/alloy/commit/928bb5052e3aaedc6a03a7c99bdbdf88562c4454))
+
 ## [1.16.1](https://github.com/grafana/alloy/compare/v1.16.0...v1.16.1) (2026-05-05)
 
 
