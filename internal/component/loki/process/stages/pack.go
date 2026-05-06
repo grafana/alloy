@@ -119,13 +119,18 @@ func (p *PackConfig) SetToDefault() {
 	*p = DefaultPackConfig
 }
 
-// newPackStage creates a DropStage from config
-func newPackStage(logger log.Logger, config PackConfig, registerer prometheus.Registerer) Stage {
+// newPackStage creates a PackStage from config
+func newPackStage(logger log.Logger, config PackConfig, registerer prometheus.Registerer) (Stage, error) {
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to register drop count metric: %w", err)
+	}
+
 	return &packStage{
 		logger:    log.With(logger, "component", "stage", "type", "pack"),
 		cfg:       &config,
-		dropCount: getDropCountMetric(registerer),
-	}
+		dropCount: dropCount,
+	}, nil
 }
 
 // packStage applies Label matchers to determine if the include stages should be run

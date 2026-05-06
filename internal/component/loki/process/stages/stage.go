@@ -149,7 +149,10 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.PackConfig != nil:
-		s = newPackStage(logger, *cfg.PackConfig, registerer)
+		s, err = newPackStage(logger, *cfg.PackConfig, registerer)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.LabelAllowConfig != nil:
 		s, err = newLabelAllowStage(*cfg.LabelAllowConfig)
 		if err != nil {
@@ -176,7 +179,10 @@ func New(logger log.Logger, cfg StageConfig, registerer prometheus.Registerer, m
 			return nil, err
 		}
 	case cfg.SamplingConfig != nil:
-		s = newSamplingStage(logger, *cfg.SamplingConfig, registerer)
+		s, err = newSamplingStage(logger, *cfg.SamplingConfig, registerer)
+		if err != nil {
+			return nil, err
+		}
 	case cfg.EventLogMessageConfig != nil:
 		s = newEventLogMessageStage(logger, cfg.EventLogMessageConfig)
 	case cfg.WindowsEventConfig != nil:
