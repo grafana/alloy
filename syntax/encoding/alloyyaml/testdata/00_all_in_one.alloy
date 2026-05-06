@@ -1,0 +1,35 @@
+// Example Alloy input file.
+some_block "label_name" {
+	this_is_array = [
+		{foo = "bar"},
+		{baz = "qux"},
+	]
+	this_is_object = {
+		foo = "bar",
+		baz = "boop",
+	}
+	this_uses_expr = env("MY_VAR")
+	this_is_anon_block {
+		foo = "bar"
+		pos = "first"
+	}
+	this_is_anon_block {
+		foo = "fab"
+		pos = "second"
+	}
+	this_is_anon_block {
+		foo = "bop"
+		pos = "third"
+	}
+	these_are_named_blocks "block_1" {
+		foo = "bar"
+	}
+	these_are_named_blocks "block_2" {
+		foo = "fab"
+	}
+	these_are_named_blocks "block_3" {
+		foo = "bop"
+	}
+}
+
+another_block {}
