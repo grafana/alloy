@@ -61,6 +61,13 @@ func (c *CollectingConsumer) Entries() []Entry {
 	return c.entries
 }
 
+func (c *CollectingConsumer) Reset() {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	c.entries = nil
+	c.batches = nil
+}
+
 func requireUpdate[T any](prev, next []T) bool {
 	if len(prev) != len(next) {
 		return true
