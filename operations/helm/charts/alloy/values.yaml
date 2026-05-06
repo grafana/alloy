@@ -515,6 +515,40 @@ serviceMonitor:
   #   targetLabel: nodename
   #   replacement: $1
   #   action: replace
+
+## -- Custom recording or alerting rules to be deployed into the cluster.
+## Each key creates a separate PrometheusRule resource, allowing rules to be
+## composed across multiple values files.
+prometheusRules:
+  # -- Namespace to deploy PrometheusRule resources into. Defaults to the release namespace.
+  namespace: ""
+  # -- Additional labels to add to all PrometheusRule resources.
+  additionalLabels: {}
+  # -- Map of PrometheusRule resources to create. Each key becomes part of the resource name.
+  # ref: https://prometheus.io/docs/prometheus/latest/configuration/alerting_rules/
+  rules: {}
+  # controller:
+  #   groups:
+  #     controller:
+  #       rules:
+  #         - alert: UnhealthyComponents
+  #           expr: sum by (cluster, namespace, job) (alloy_component_controller_running_components{health_type!="healthy"}) > 0
+  #           for: 15m
+  #           labels:
+  #             severity: warning
+  #           annotations:
+  #             summary: Unhealthy components detected.
+  #             description: "Unhealthy components detected under job {{ $labels.job }}"
+  #         - alert: SlowComponentEvaluations
+  #           expr: sum by (cluster, namespace, job, component_path, component_id) (rate(alloy_component_evaluation_slow_seconds[10m])) > 0
+  #           for: 15m
+  #           labels:
+  #             severity: warning
+  #           annotations:
+  #             summary: Component evaluations are taking too long.
+  #             description: "Component evaluations are taking too long under job {{ $labels.job }}, component_path {{ $labels.component_path }}, component_id {{ $labels.component_id }}."
+
+
 ingress:
   # -- Enables ingress for Alloy (Faro port)
   enabled: false
