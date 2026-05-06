@@ -4,6 +4,7 @@ package zapadapter
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -15,26 +16,48 @@ import (
 )
 
 // New returns a new zap.Logger instance which will forward logs to the
-// provided log.Logger. The github.com/go-kit/log/level package will be used
-// for specifying log levels.
-func New(l log.Logger) *zap.Logger {
-	return zap.New(&loggerCore{inner: l})
+// provided log.Logger. leveler is consulted on every log call so that
+// zap's early-exit optimisation fires correctly when a level is disabled,
+// preventing unnecessary field encoding and allocation. Because leveler is
+// read on every call (not snapshotted), dynamic level changes — such as
+// Alloy's hot-reload — are reflected immediately. leveler may be nil, in
+// which case all levels are reported as enabled.
+func New(l log.Logger, leveler slog.Leveler) *zap.Logger {
+	return zap.New(&loggerCore{inner: l, leveler: leveler})
 }
 
 // loggerCore is a zap.Core implementation which forwards logs to a log.Logger
 // instance.
 type loggerCore struct {
-	inner log.Logger
+	inner   log.Logger
+	leveler slog.Leveler // optional; nil means always enabled
 }
 
 var _ zapcore.Core = (*loggerCore)(nil)
 
 // Enabled implements zapcore.Core and returns whether logs at a specific level
 // should be reported.
-func (lc *loggerCore) Enabled(zapcore.Level) bool {
-	// An instance of log.Logger has no way of knowing if logs will be filtered
-	// out, so we always have to return true here.
+func (lc *loggerCore) Enabled(level zapcore.Level) bool {
+	if lc.leveler != nil {
+		return zapToSlogLevel(level) >= lc.leveler.Level()
+	}
+	// No leveler available: always report enabled so that the underlying
+	// go-kit logger can apply its own filtering.
 	return true
+}
+
+// zapToSlogLevel converts a zapcore.Level to the nearest slog.Level.
+func zapToSlogLevel(level zapcore.Level) slog.Level {
+	switch level {
+	case zapcore.DebugLevel:
+		return slog.LevelDebug
+	case zapcore.InfoLevel:
+		return slog.LevelInfo
+	case zapcore.WarnLevel:
+		return slog.LevelWarn
+	default: // Error, DPanic, Panic, Fatal
+		return slog.LevelError
+	}
 }
 
 // With implements zapcore.Core, returning a new logger core with ff appended
@@ -50,7 +73,8 @@ func (lc *loggerCore) With(ff []zapcore.Field) zapcore.Core {
 	}
 
 	return &loggerCore{
-		inner: log.With(lc.inner, enc.fields...),
+		inner:   log.With(lc.inner, enc.fields...),
+		leveler: lc.leveler,
 	}
 }
 
@@ -132,34 +156,32 @@ func (fe *fieldEncoder) Close() error {
 }
 
 func (fe *fieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
-	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
-		enc := newArrayFieldEncoder()
-		err := marshaler.MarshalLogArray(enc)
-		if err != nil {
-			return err.Error()
-		}
-		b, err := enc.jsonMarshal()
-		if err != nil {
-			return err.Error()
-		}
-		return string(b)
-	}})
+	enc := newArrayFieldEncoder()
+	if err := marshaler.MarshalLogArray(enc); err != nil {
+		fe.fields = append(fe.fields, fe.keyName(key), err.Error())
+		return nil
+	}
+	b, err := enc.jsonMarshal()
+	if err != nil {
+		fe.fields = append(fe.fields, fe.keyName(key), err.Error())
+		return nil
+	}
+	fe.fields = append(fe.fields, fe.keyName(key), string(b))
 	return nil
 }
 
 func (fe *fieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
-	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
-		enc := newObjectFieldEncoder()
-		err := marshaler.MarshalLogObject(enc)
-		if err != nil {
-			return err.Error()
-		}
-		b, err := enc.jsonMarshal()
-		if err != nil {
-			return err.Error()
-		}
-		return string(b)
-	}})
+	enc := newObjectFieldEncoder()
+	if err := marshaler.MarshalLogObject(enc); err != nil {
+		fe.fields = append(fe.fields, fe.keyName(key), err.Error())
+		return nil
+	}
+	b, err := enc.jsonMarshal()
+	if err != nil {
+		fe.fields = append(fe.fields, fe.keyName(key), err.Error())
+		return nil
+	}
+	fe.fields = append(fe.fields, fe.keyName(key), string(b))
 	return nil
 }
 
@@ -493,10 +515,3 @@ func (fe *arrayFieldEncoder) AppendReflected(value any) error {
 	return nil
 }
 
-type lazyStringer struct {
-	f func() string
-}
-
-func (l lazyStringer) String() string {
-	return l.f()
-}

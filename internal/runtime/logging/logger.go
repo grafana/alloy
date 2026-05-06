@@ -42,6 +42,12 @@ func (l *Logger) Enabled(ctx context.Context, level slog.Level) bool {
 	return l.handler.Enabled(ctx, level)
 }
 
+// Level implements slog.Leveler, returning the currently configured minimum log level.
+// The returned value is live: it reflects any subsequent calls to Update.
+func (l *Logger) Level() slog.Level {
+	return l.level.Level()
+}
+
 // New creates a New logger with the default log level and format.
 func New(w io.Writer, o Options) (*Logger, error) {
 	l, err := NewDeferred(w)
