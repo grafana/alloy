@@ -205,6 +205,16 @@ else
 	done
 endif
 
+# prebuild-tests compiles all test binaries (root + non-root modules) without
+# running tests. Used in CI to populate GOCACHE before the sharded test matrix.
+# Flags must match the `test` target so the build cache hits.
+prebuild-tests:
+	@$(GO_ENV) go test -count=0 $(GO_FLAGS) -race ./...
+	@for dir in $$(find . -mindepth 2 -name go.mod -type f -not -path '*/testdata/*' -exec sh -c 'dirname "$$1"' _ {} \;); do \
+		echo "Prebuilding tests in $$dir"; \
+		(cd $$dir && $(GO_ENV) go test -count=0 $(GO_FLAGS) -race ./...) || exit 1; \
+	done
+
 test-packages:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
