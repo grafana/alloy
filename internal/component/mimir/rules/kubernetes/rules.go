@@ -457,6 +457,7 @@ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface
 		namespaceSelector:  c.namespaceSelector,
 		ruleSelector:       c.ruleSelector,
 		namespacePrefix:    c.args.MimirNameSpacePrefix,
+		namespaceSeparator: c.args.MimirNamespaceSeparator,
 		metrics:            c.metrics,
 		logger:             c.log,
 		externalLabels:     externalLabels,
