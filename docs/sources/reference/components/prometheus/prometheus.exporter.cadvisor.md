@@ -80,7 +80,7 @@ For Docker, grant permissions using one of these approaches:
 
 For more information about running {{< param "PRODUCT_NAME" >}} without root privileges, refer to [Configure {{< param "PRODUCT_NAME" >}} to run as a nonroot user][nonroot].
 
-[nonroot]: ../../../configure/nonroot/
+[nonroot]: ../../../../configure/nonroot/
 
 {{< /tab-content >}}
 {{< tab-content name="Kubernetes" >}}
