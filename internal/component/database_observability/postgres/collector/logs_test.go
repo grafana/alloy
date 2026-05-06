@@ -853,7 +853,9 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 		Registry:     registry,
 	})
 	require.NoError(t, err)
-	c.pendingErrorTimeout = 100 * time.Millisecond
+	// Use the default pendingErrorTimeout (5s) — this is a happy-path test, the
+	// tight 100ms window is only needed by the explicit timeout/race tests below
+	// and will flake here under parallel test contention.
 	require.NoError(t, c.Start(context.Background()))
 	t.Cleanup(c.Stop)
 
@@ -870,6 +872,12 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
 		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:2:42P01:" + ts2 + ":1/0:0:69fa58c6.30:[unknown]:STATEMENT:  SELECT * FROM missing WHERE id = $1",
+	}}
+	// Next prefix line flushes the buffered STATEMENT deterministically — without
+	// it the test would depend on the timeout ticker firing within the drain window.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:3:00000:" + ts2 + ":1/0:0:69fa58c6.30:[unknown]:LOG:  duration: 0.001 ms",
 	}}
 
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
@@ -949,7 +957,9 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 		Registry:     registry,
 	})
 	require.NoError(t, err)
-	c.pendingErrorTimeout = 100 * time.Millisecond
+	// Default pendingErrorTimeout — the displaced-pending semantics here are
+	// independent of the timeout (overwrite happens in-band), so a tight
+	// timeout would only add flakiness without testing additional behavior.
 	require.NoError(t, c.Start(context.Background()))
 	t.Cleanup(c.Stop)
 
@@ -970,6 +980,11 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
 		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:3:42P02:" + ts2 + ":1/0:0:c1:[unknown]:STATEMENT:  SELECT 2",
+	}}
+	// Next prefix line flushes the buffered STATEMENT deterministically.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[" + pid + "]:4:00000:" + ts2 + ":1/0:0:c1:[unknown]:LOG:  duration: 0.001 ms",
 	}}
 
 	got := drainEntries(t, entryCh, 2, 1*time.Second)
@@ -1090,7 +1105,7 @@ func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
 		Registry:     registry,
 	})
 	require.NoError(t, err)
-	c.pendingErrorTimeout = 100 * time.Millisecond
+	// Default pendingErrorTimeout — happy-path test, no timeout-race coverage here.
 	require.NoError(t, c.Start(context.Background()))
 	t.Cleanup(c.Stop)
 
@@ -1107,6 +1122,11 @@ func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
 	receiver.Chan() <- loki.Entry{Entry: push.Entry{
 		Timestamp: time.Now(),
 		Line:      ts1 + ":127.0.0.1(11111):user@books_store:[" + pid + "]:2:23505:" + ts2 + ":2/9:12345:69fa58c6.4d:[unknown]:STATEMENT:  INSERT INTO t (a) VALUES (1)",
+	}}
+	// Next prefix line flushes the buffered STATEMENT deterministically.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(11111):user@books_store:[" + pid + "]:3:00000:" + ts2 + ":2/9:12345:69fa58c6.4d:[unknown]:LOG:  duration: 0.001 ms",
 	}}
 
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
