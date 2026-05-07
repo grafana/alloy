@@ -847,10 +847,11 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
+		Receiver:               receiver,
+		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                 log.NewNopLogger(),
+		Registry:               registry,
+		EnableQueryFingerprint: true,
 	})
 	require.NoError(t, err)
 	// Use the default pendingErrorTimeout (5s) — this is a happy-path test, the
@@ -915,10 +916,11 @@ func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
+		Receiver:               receiver,
+		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                 log.NewNopLogger(),
+		Registry:               registry,
+		EnableQueryFingerprint: true,
 	})
 	require.NoError(t, err)
 	c.pendingErrorTimeout = 100 * time.Millisecond
@@ -951,10 +953,11 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
+		Receiver:               receiver,
+		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                 log.NewNopLogger(),
+		Registry:               registry,
+		EnableQueryFingerprint: true,
 	})
 	require.NoError(t, err)
 	// Default pendingErrorTimeout — the displaced-pending semantics here are
@@ -1005,10 +1008,11 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
+		Receiver:               receiver,
+		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                 log.NewNopLogger(),
+		Registry:               registry,
+		EnableQueryFingerprint: true,
 	})
 	require.NoError(t, err)
 	require.NoError(t, c.Start(context.Background()))
@@ -1061,10 +1065,11 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
+		Receiver:               receiver,
+		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                 log.NewNopLogger(),
+		Registry:               registry,
+		EnableQueryFingerprint: true,
 	})
 	require.NoError(t, err)
 	c.pendingErrorTimeout = 100 * time.Millisecond
@@ -1099,10 +1104,11 @@ func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:     receiver,
-		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
-		Logger:       log.NewNopLogger(),
-		Registry:     registry,
+		Receiver:               receiver,
+		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                 log.NewNopLogger(),
+		Registry:               registry,
+		EnableQueryFingerprint: true,
 	})
 	require.NoError(t, err)
 	// Default pendingErrorTimeout — happy-path test, no timeout-race coverage here.
@@ -1134,4 +1140,97 @@ func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
 	body := strings.TrimPrefix(got[0].Line, `level="info" `)
 	fields := parseLogfmt(t, body)
 	require.Equal(t, "12345", fields["xid"])
+}
+
+// TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled confirms that
+// with EnableQueryFingerprint explicitly false the component still increments
+// pg_errors_total but never forwards an op="error" Loki entry.
+func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T) {
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+	registry := prometheus.NewRegistry()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:               receiver,
+		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
+		Logger:                 log.NewNopLogger(),
+		Registry:               registry,
+		EnableQueryFingerprint: false, // explicitly off
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[12345]:1:42P01:" + ts2 + ":1/0:0:69fa58c6.30:[unknown]:ERROR:  relation \"missing\" does not exist",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[12345]:2:42P01:" + ts2 + ":1/0:0:69fa58c6.30:[unknown]:STATEMENT:  SELECT * FROM missing WHERE id = $1",
+	}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[12345]:3:00000:" + ts2 + ":1/0:0:69fa58c6.30:[unknown]:LOG:  duration: 0.001 ms",
+	}}
+
+	// Wait for the buffering / flush logic to settle. pg_errors_total should
+	// have incremented (gating doesn't touch it).
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "books_store", "user")) >= 1
+	}, 2*time.Second, 50*time.Millisecond)
+
+	// No Loki entries should have flowed.
+	select {
+	case e := <-entryCh:
+		t.Fatalf("expected no op=error entry; got one: %s", e.Line)
+	case <-time.After(300 * time.Millisecond):
+		// good — silence
+	}
+}
+
+// TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled pins that omitting
+// EnableQueryFingerprint from LogsArguments yields the disabled behavior:
+// pg_errors_total still increments, but no op="error" Loki entry appears.
+func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+	registry := prometheus.NewRegistry()
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+		// EnableQueryFingerprint intentionally omitted — defaults to false
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{
+		Timestamp: time.Now(),
+		Line:      ts1 + ":127.0.0.1(54321):user@books_store:[12345]:1:42P01:" + ts2 + ":1/0:0:69fa58c6.30:[unknown]:ERROR:  relation \"missing\" does not exist",
+	}}
+
+	// Counter should still increment.
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "books_store", "user")) >= 1
+	}, 2*time.Second, 50*time.Millisecond)
+
+	// And no Loki entry should appear.
+	select {
+	case e := <-entryCh:
+		t.Fatalf("expected no op=error entry; got one: %s", e.Line)
+	case <-time.After(300 * time.Millisecond):
+		// good
+	}
 }
