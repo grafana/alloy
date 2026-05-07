@@ -120,7 +120,7 @@ func newDeferredTest(w io.Writer) (*Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.handler.replacer = testReplace
+	l.replacer = testReplace
 
 	return l, nil
 }
