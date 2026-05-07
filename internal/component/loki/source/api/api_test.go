@@ -452,7 +452,6 @@ func startTestComponent(
 }
 
 func TestShutdown(t *testing.T) {
-
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.GracefulShutdownTimeout = 5 * time.Second
 		a.ForwardTo = []loki.Consumer{newBlockingConsumer()}
