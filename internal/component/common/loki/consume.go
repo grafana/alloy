@@ -77,6 +77,36 @@ func ConsumeBatch(ctx context.Context, recv LogsBatchReceiver, f *Fanout) {
 	}
 }
 
+// FIXME: Rename ConsumeBatch2 to ConsumeBatch and remove the old ConsumeBatch once all
+// components have migrated to Consumer.
+// ConsumeBatch2 continuously reads batches of log entries from recv and forwards them to the fanout f.
+// It runs until ctx is cancelled or an error occurs while sending to the fanout.
+//
+// This function is typically used in component Run methods to handle the forwarding
+// of log entries from a component's internal handler to downstream receivers.
+// The fanout allows entries to be sent to multiple receivers concurrently.
+func ConsumeBatch2(ctx context.Context, recv LogsBatchReceiver, f *FanoutConsumer) {
+	for {
+		// NOTE: Select is not deterministic so we should check if context was canceled
+		// before we start waiting on channel again.
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case batch := <-recv.Chan():
+			for _, e := range batch {
+				// NOTE: For now we ignore errors here.
+				_ = f.ConsumeEntry(ctx, e)
+			}
+		}
+	}
+}
+
 // FIXME: Rename Consume2 to Consume and remove the old Consume once all
 // components have migrated to Consumer.
 // Consume2 continuously reads log entries from recv and forwards them to the fanout f.
@@ -126,7 +156,7 @@ func consume2(
 				continue
 			}
 
-			// For now we ignore errors here.
+			// NOTE: For now we ignore errors here.
 			if err := f.ConsumeEntry(ctx, entry); err != nil {
 				continue
 			}

@@ -95,12 +95,11 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	handler := loki.NewCollectingHandler()
-	defer handler.Stop()
+	collector := loki.NewCollectingConsumer()
 
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.ListenPort = 8532
-		a.ForwardTo = []loki.LogsReceiver{handler.Receiver()}
+		a.ForwardTo = []loki.Consumer{collector}
 		a.UseIncomingTimestamp = true
 	})
 	opts := defaultOptions()
@@ -119,14 +118,11 @@ func TestLokiSourceAPI_Simple(t *testing.T) {
 		t.Fatalf("timed out while sending test entries via loki client")
 	}
 
-	require.Eventually(
-		t,
-		func() bool { return len(handler.Received()) == 1 },
-		5*time.Second,
-		10*time.Millisecond,
-		"did not receive the forwarded message within the timeout",
-	)
-	received := handler.Received()[0]
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector.Entries(), 1)
+	}, 5*time.Second, 50*time.Millisecond)
+
+	received := collector.Entries()[0]
 	assert.Equal(t, received.Line, "hello world!")
 	assert.Equal(t, received.Timestamp.Unix(), now.Unix())
 	assert.Equal(t, received.Labels, model.LabelSet{
@@ -140,12 +136,11 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	receiver := loki.NewCollectingHandler()
-	defer receiver.Stop()
+	collector := loki.NewCollectingConsumer()
 
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.ListenPort = 8583
-		a.ForwardTo = []loki.LogsReceiver{receiver.Receiver()}
+		a.ForwardTo = []loki.Consumer{collector}
 		a.UseIncomingTimestamp = true
 		a.Labels = map[string]string{"test_label": "before"}
 	})
@@ -165,14 +160,11 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 		t.Fatalf("timed out while sending test entries via loki client")
 	}
 
-	require.Eventually(
-		t,
-		func() bool { return len(receiver.Received()) == 1 },
-		5*time.Second,
-		10*time.Millisecond,
-		"did not receive the forwarded message within the timeout",
-	)
-	received := receiver.Received()[0]
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector.Entries(), 1)
+	}, 5*time.Second, 50*time.Millisecond)
+
+	received := collector.Entries()[0]
 	assert.Equal(t, received.Line, "hello world!")
 	assert.Equal(t, received.Timestamp.Unix(), now.Unix())
 	assert.Equal(t, received.Labels, model.LabelSet{
@@ -184,7 +176,7 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	err := c.Update(args)
 	require.NoError(t, err)
 
-	receiver.Clear()
+	collector.Reset()
 
 	select {
 	case lokiClient.Chan() <- loki.Entry{
@@ -194,14 +186,12 @@ func TestLokiSourceAPI_Update(t *testing.T) {
 	case <-ctx.Done():
 		t.Fatalf("timed out while sending test entries via loki client")
 	}
-	require.Eventually(
-		t,
-		func() bool { return len(receiver.Received()) == 1 },
-		5*time.Second,
-		10*time.Millisecond,
-		"did not receive the forwarded message within the timeout",
-	)
-	received = receiver.Received()[0]
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector.Entries(), 1)
+	}, 5*time.Second, 50*time.Millisecond)
+
+	received = collector.Entries()[0]
 	assert.Equal(t, received.Line, "hello brave new world!")
 	assert.Equal(t, received.Timestamp.Unix(), now.Unix())
 	assert.Equal(t, received.Labels, model.LabelSet{
@@ -214,15 +204,15 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	const receiversCount = 10
-	var receivers = make([]*loki.CollectingHandler, receiversCount)
-	for i := range receiversCount {
-		receivers[i] = loki.NewCollectingHandler()
+	const numCollectors = 10
+	var collectors = make([]*loki.CollectingConsumer, numCollectors)
+	for i := range numCollectors {
+		collectors[i] = loki.NewCollectingConsumer()
 	}
 
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.ListenPort = 8537
-		a.ForwardTo = mapToChannels(receivers)
+		a.ForwardTo = mapToConsumers(collectors)
 	})
 	opts := defaultOptions()
 
@@ -249,20 +239,11 @@ func TestLokiSourceAPI_FanOut(t *testing.T) {
 		}
 	}
 
-	require.Eventually(
-		t,
-		func() bool {
-			for i := range receiversCount {
-				if len(receivers[i].Received()) != messagesCount {
-					return false
-				}
-			}
-			return true
-		},
-		5*time.Second,
-		10*time.Millisecond,
-		"did not receive all the expected messages within the timeout",
-	)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		for i := range numCollectors {
+			require.Len(c, collectors[i].Entries(), messagesCount)
+		}
+	}, 5*time.Second, 50*time.Millisecond)
 }
 
 func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
@@ -298,7 +279,7 @@ func TestComponent_detectsWhenUpdateRequiresARestart(t *testing.T) {
 			name: "change in forwardTo does not require server restart",
 			args: testArgs(),
 			newArgs: testArgsWith(func(args *Arguments) {
-				args.ForwardTo = []loki.LogsReceiver{}
+				args.ForwardTo = []loki.Consumer{}
 			}),
 			restartRequired: false,
 		},
@@ -361,15 +342,14 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 	testCert, testKey, err := generateTestCertAndKey()
 	require.NoError(t, err)
 
-	handler := loki.NewCollectingHandler()
-	defer handler.Stop()
+	collector := loki.NewCollectingConsumer()
 
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.HTTP.TLSConfig = &fnet.TLSConfig{
 			Cert: testCert,
 			Key:  alloytypes.Secret(testKey),
 		}
-		a.ForwardTo = []loki.LogsReceiver{handler.Receiver()}
+		a.ForwardTo = []loki.Consumer{collector}
 		a.UseIncomingTimestamp = true
 	})
 	opts := defaultOptions()
@@ -389,16 +369,11 @@ func TestLokiSourceAPI_TLS(t *testing.T) {
 		t.Fatalf("timed out while sending test entries via TLS loki client")
 	}
 
-	require.Eventually(
-		t,
-		func() bool {
-			return len(handler.Received()) == 1
-		},
-		10*time.Second,
-		10*time.Millisecond,
-		"did not receive the forwarded message within the timeout",
-	)
-	received := handler.Received()[0]
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector.Entries(), 1)
+	}, 10*time.Second, 100*time.Millisecond, "did not receive the forwarded message within the timeout")
+
+	received := collector.Entries()[0]
 	assert.Equal(t, received.Line, "hello world over TLS!")
 	assert.Equal(t, received.Timestamp.Unix(), now.Unix())
 	assert.Equal(t, received.Labels, model.LabelSet{
@@ -477,9 +452,10 @@ func startTestComponent(
 }
 
 func TestShutdown(t *testing.T) {
+
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.GracefulShutdownTimeout = 5 * time.Second
-		a.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
+		a.ForwardTo = []loki.Consumer{newBlockingConsumer()}
 	})
 
 	opts := defaultOptions()
@@ -488,6 +464,7 @@ func TestShutdown(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(context.Background())
+
 	go func() {
 		err := comp.Run(ctx)
 		require.NoError(t, err)
@@ -532,7 +509,7 @@ func TestShutdown(t *testing.T) {
 func TestCancelRequest(t *testing.T) {
 	args := testArgsWith(func(a *Arguments) {
 		a.Server.GracefulShutdownTimeout = 5 * time.Second
-		a.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
+		a.ForwardTo = []loki.Consumer{newBlockingConsumer()}
 	})
 
 	opts := defaultOptions()
@@ -564,6 +541,22 @@ func TestCancelRequest(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func newBlockingConsumer() *blockingConsumer {
+	return &blockingConsumer{}
+}
+
+type blockingConsumer struct{}
+
+func (blockingConsumer) Consume(ctx context.Context, _ loki.Batch) error {
+	<-ctx.Done()
+	return nil
+}
+
+func (blockingConsumer) ConsumeEntry(ctx context.Context, _ loki.Entry) error {
+	<-ctx.Done()
+	return nil
 }
 
 func newRequest(t *testing.T, ctx context.Context, httpListendAddress string) *http.Request {
@@ -620,6 +613,14 @@ func mapToChannels(clients []*loki.CollectingHandler) []loki.LogsReceiver {
 	return channels
 }
 
+func mapToConsumers(collectors []*loki.CollectingConsumer) []loki.Consumer {
+	consumers := make([]loki.Consumer, len(collectors))
+	for i := range collectors {
+		consumers[i] = collectors[i]
+	}
+	return consumers
+}
+
 func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) client.Consumer {
 	url := flagext.URLValue{}
 	err := url.Set(fmt.Sprintf(
@@ -674,7 +675,7 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 				ListenPort:    grpcPort,
 			},
 		},
-		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver(), loki.NewLogsReceiver()},
+		ForwardTo: []loki.Consumer{loki.NewCollectingConsumer(), loki.NewCollectingConsumer()},
 		Labels:    map[string]string{"foo": "bar", "fizz": "buzz"},
 		RelabelRules: relabel.Rules{
 			{
