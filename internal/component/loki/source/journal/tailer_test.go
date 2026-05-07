@@ -229,7 +229,6 @@ func TestTailer_JSON(t *testing.T) {
 	}
 
 	handler := loki.NewCollectingHandler()
-	defer handler.Stop()
 
 	relabelCfg := `
 - source_labels: ['__journal_code_file']
@@ -259,8 +258,9 @@ func TestTailer_JSON(t *testing.T) {
 	expectMsg := `{"CODE_FILE":"journaltarget_test.go","MESSAGE":"ping","OTHER_FIELD":"foobar"}`
 	require.NoError(t, jt.Stop())
 
+	handler.Stop()
 	entries := handler.Received()
-	assert.Len(t, entries, 10)
+	require.Len(t, entries, 10)
 	for i := range 10 {
 		require.Equal(t, expectMsg, entries[i].Line)
 	}
