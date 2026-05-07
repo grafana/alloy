@@ -42,7 +42,7 @@ func init() {
 // Arguments holds values which are used to configure the
 // loki.source.kubernetes_events component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo []loki.Consumer `alloy:"forward_to,attr"`
 
 	JobName    string   `alloy:"job_name,attr,optional"`
 	Namespaces []string `alloy:"namespaces,attr,optional"`
@@ -85,14 +85,13 @@ type Component struct {
 	opts      component.Options
 	positions positions.Positions
 	handler   loki.LogsReceiver
+	fanout    *loki.FanoutConsumer
 	cluster   cluster.Cluster
 
 	mut        sync.RWMutex
 	args       Arguments
 	restConfig *rest.Config
 	scheduler  *source.Scheduler[string]
-
-	fanout *loki.Fanout
 }
 
 var (
@@ -126,7 +125,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		cluster:   data.(cluster.Cluster),
 		scheduler: source.NewScheduler[string](),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanoutConsumer(args.ForwardTo),
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -138,14 +137,14 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		defer c.positions.Stop()
-		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain2(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			c.scheduler.Stop()
 		})
 	}()
 
-	loki.Consume(ctx, c.handler, c.fanout)
+	loki.Consume2(ctx, c.handler, c.fanout)
 	return nil
 }
 
@@ -156,7 +155,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	// Create a new restConfig if we don't have one or if our arguments changed.
 	if c.restConfig == nil || !reflect.DeepEqual(c.args.Client, newArgs.Client) {
