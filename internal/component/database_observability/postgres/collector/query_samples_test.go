@@ -13,6 +13,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-kit/log"
 	"github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -86,7 +88,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows(columns))
 			},
 			expectedLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": OP_QUERY_SAMPLE_V2},
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="500" xmin="400" xact_time="2m0s" query_time="30s" queryid="123" cpu_time="10s" query_fingerprint="<fp:SELECT * FROM testtable WHERE id = $1>"`,
@@ -109,7 +111,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows(columns))
 			},
 			expectedLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": OP_QUERY_SAMPLE_V2},
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" state="active" xid="0" xmin="0" xact_time="0s" query_time="0s" queryid="123" cpu_time="0s" query_fingerprint="<fp:SELECT * FROM testtable WHERE id = $1>"`,
@@ -132,8 +134,8 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 					WillReturnRows(sqlmock.NewRows(columns))
 			},
 			expectedLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
-				{"op": OP_WAIT_EVENT},
+				{"op": OP_QUERY_SAMPLE_V2},
+				{"op": OP_WAIT_EVENT_V3},
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="124" query_fingerprint="<fp:SELECT * FROM testtable WHERE id = $1>"`,
@@ -158,7 +160,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			},
 			disableQueryRedaction: true,
 			expectedLabels: []model.LabelSet{
-				{"op": OP_QUERY_SAMPLE},
+				{"op": OP_QUERY_SAMPLE_V2},
 			},
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" cpu_time="10s" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'" query_fingerprint="<fp:SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'>"`,
@@ -179,12 +181,13 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			defer lokiClient.Stop()
 
 			sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-				DB:                    db,
-				CollectInterval:       time.Millisecond,
-				EntryHandler:          lokiClient,
-				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-				DisableQueryRedaction: tc.disableQueryRedaction,
-				ExcludeCurrentUser:    true,
+				DB:                     db,
+				CollectInterval:        time.Millisecond,
+				EntryHandler:           lokiClient,
+				Logger:                 log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				DisableQueryRedaction:  tc.disableQueryRedaction,
+				ExcludeCurrentUser:     true,
+				EnableQueryFingerprint: true,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, sampleCollector)
@@ -370,12 +373,13 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                     db,
+			CollectInterval:        time.Millisecond,
+			EntryHandler:           lokiClient,
+			Logger:                 log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:  true,
+			ExcludeCurrentUser:     true,
+			EnableQueryFingerprint: true,
 		})
 		require.NoError(t, err)
 
@@ -401,7 +405,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 1)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE_V2}, entries[0].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" cpu_time="10s" query="SELECT * FROM t" query_fingerprint="<fp:SELECT * FROM t>"`), entries[0].Line)
 		expectedTimestamp := time.Unix(0, now.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTimestamp))
@@ -428,12 +432,13 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                     db,
+			CollectInterval:        time.Millisecond,
+			EntryHandler:           lokiClient,
+			Logger:                 log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:  true,
+			ExcludeCurrentUser:     true,
+			EnableQueryFingerprint: true,
 		})
 
 		require.NoError(t, err)
@@ -469,8 +474,8 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE_V2}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V3}, entries[1].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="300" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="12s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124" query_fingerprint="<fp:UPDATE users SET status = 'active'>"`), entries[1].Line)
 
 		sampleCollector.Stop()
@@ -495,12 +500,13 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                     db,
+			CollectInterval:        time.Millisecond,
+			EntryHandler:           lokiClient,
+			Logger:                 log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:  true,
+			ExcludeCurrentUser:     true,
+			EnableQueryFingerprint: true,
 		})
 		require.NoError(t, err)
 
@@ -536,9 +542,9 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE_V2}, entries[0].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="555" cpu_time="0s" query="UPDATE users SET status = 'active'" query_fingerprint="<fp:UPDATE users SET status = 'active'>"`), entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V3}, entries[1].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="active" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555" query_fingerprint="<fp:UPDATE users SET status = 'active'>"`), entries[1].Line)
 
 		sampleCollector.Stop()
@@ -563,12 +569,13 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                     db,
+			CollectInterval:        time.Millisecond,
+			EntryHandler:           lokiClient,
+			Logger:                 log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:  true,
+			ExcludeCurrentUser:     true,
+			EnableQueryFingerprint: true,
 		})
 		require.NoError(t, err)
 
@@ -604,9 +611,9 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE_V2}, entries[0].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9002" cpu_time="10s" query="SELECT * FROM t" query_fingerprint="<fp:SELECT * FROM t>"`), entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V3}, entries[1].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="7s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[501]" queryid="9002" query_fingerprint="<fp:SELECT * FROM t>"`), entries[1].Line)
 
 		sampleCollector.Stop()
@@ -631,12 +638,13 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer lokiClient.Stop()
 
 		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
-			DB:                    db,
-			CollectInterval:       time.Millisecond,
-			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
-			DisableQueryRedaction: true,
-			ExcludeCurrentUser:    true,
+			DB:                     db,
+			CollectInterval:        time.Millisecond,
+			EntryHandler:           lokiClient,
+			Logger:                 log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			DisableQueryRedaction:  true,
+			ExcludeCurrentUser:     true,
+			EnableQueryFingerprint: true,
 		})
 		require.NoError(t, err)
 
@@ -672,11 +680,11 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 3)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE_V2}, entries[0].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="9003" query="UPDATE t SET c=1" query_fingerprint="<fp:UPDATE t SET c=1>"`), entries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V3}, entries[1].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103]" queryid="9003" query_fingerprint="<fp:UPDATE t SET c=1>"`), entries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V3}, entries[2].Labels)
 		require.Equal(t, substituteFp(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="8s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="9003" query_fingerprint="<fp:UPDATE t SET c=1>"`), entries[2].Line)
 
 		sampleCollector.Stop()
@@ -1429,4 +1437,320 @@ func TestClassifyPostgresWaitEventType(t *testing.T) {
 			require.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+// TestQuerySamples_NoFingerprintFieldWhenDisabled exercises the off-flag query
+// sample path. With EnableQueryFingerprint=false the collector must emit op=
+// query_sample (the legacy op) and the line must NOT contain a query_fingerprint
+// field, since the fingerprint package is never invoked.
+func TestQuerySamples_NoFingerprintFieldWhenDisabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	now := time.Now()
+	stateChangeTime := now.Add(-10 * time.Second)
+	queryStartTime := now.Add(-30 * time.Second)
+	xactStartTime := now.Add(-2 * time.Minute)
+	backendStartTime := now.Add(-1 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"query",
+	}
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                     db,
+		CollectInterval:        time.Millisecond,
+		EntryHandler:           lokiClient,
+		Logger:                 log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		ExcludeCurrentUser:     true,
+		EnableQueryFingerprint: false,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			now, "testdb", 700, sql.NullInt64{},
+			"testuser", "testapp", "127.0.0.1", 5432,
+			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+			xactStartTime, "active", stateChangeTime, sql.NullString{},
+			sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 7000, Valid: true},
+			"SELECT 1",
+		))
+	// Second scrape: empty to trigger finalization
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns))
+
+	require.NoError(t, sampleCollector.Start(t.Context()))
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 1
+	}, 5*time.Second, 100*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Len(t, entries, 1)
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.NotContains(t, entries[0].Line, "query_fingerprint=",
+		"line must not carry a query_fingerprint when EnableQueryFingerprint=false")
+
+	sampleCollector.Stop()
+	require.Eventually(t, func() bool {
+		return sampleCollector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+	require.Eventually(t, func() bool {
+		return mock.ExpectationsWereMet() == nil
+	}, 5*time.Second, 100*time.Millisecond)
+}
+
+// TestQuerySamples_NoWaitEventV3WhenDisabled covers the wait-event off-flag
+// path. With EnableQueryFingerprint=false and EnablePreClassifiedWaitEvents=
+// false the wait_event op stays at the legacy "wait_event" value (not v3) and
+// the wait line does NOT contain query_fingerprint=.
+func TestQuerySamples_NoWaitEventV3WhenDisabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	now := time.Now()
+	xactStartTime := now.Add(-2 * time.Minute)
+	backendStartTime := now.Add(-1 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"query",
+	}
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                            db,
+		CollectInterval:               time.Millisecond,
+		EntryHandler:                  lokiClient,
+		Logger:                        log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		ExcludeCurrentUser:            true,
+		EnablePreClassifiedWaitEvents: false,
+		EnableQueryFingerprint:        false,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			now, "testdb", 710, sql.NullInt64{},
+			"testuser", "testapp", "127.0.0.1", 5432,
+			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+			xactStartTime, "waiting", now.Add(-5*time.Second), sql.NullString{String: "Lock", Valid: true},
+			sql.NullString{String: "relation", Valid: true}, pq.Int64Array{}, now, sql.NullInt64{Int64: 7100, Valid: true},
+			"SELECT 1",
+		))
+	// Second scrape: empty to trigger finalization
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns))
+
+	require.NoError(t, sampleCollector.Start(t.Context()))
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Len(t, entries, 2)
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+	for _, e := range entries {
+		require.NotContains(t, e.Line, "query_fingerprint=")
+	}
+
+	sampleCollector.Stop()
+	require.Eventually(t, func() bool {
+		return sampleCollector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+	require.Eventually(t, func() bool {
+		return mock.ExpectationsWereMet() == nil
+	}, 5*time.Second, 100*time.Millisecond)
+}
+
+// TestQuerySamples_WaitEventV4WhenBothFlagsEnabled covers the bottom-right
+// cell of the op matrix: enable_query_fingerprint=true AND
+// enable_pre_classified_wait_events=true. The query_sample line uses
+// op=query_sample_v2 and the wait line uses op=wait_event_v4 with the
+// classified wait_event_type and a trailing query_fingerprint field.
+func TestQuerySamples_WaitEventV4WhenBothFlagsEnabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	now := time.Now()
+	xactStartTime := now.Add(-2 * time.Minute)
+	backendStartTime := now.Add(-1 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"query",
+	}
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                            db,
+		CollectInterval:               time.Millisecond,
+		EntryHandler:                  lokiClient,
+		Logger:                        log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		ExcludeCurrentUser:            true,
+		EnablePreClassifiedWaitEvents: true,
+		EnableQueryFingerprint:        true,
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			now, "testdb", 720, sql.NullInt64{},
+			"testuser", "testapp", "127.0.0.1", 5432,
+			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+			xactStartTime, "waiting", now.Add(-5*time.Second), sql.NullString{String: "IO", Valid: true},
+			sql.NullString{String: "DataFileRead", Valid: true}, pq.Int64Array{}, now, sql.NullInt64{Int64: 7200, Valid: true},
+			"SELECT 1",
+		))
+	// Second scrape: empty to trigger finalization
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns))
+
+	require.NoError(t, sampleCollector.Start(t.Context()))
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Len(t, entries, 2)
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE_V2}, entries[0].Labels)
+	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V4}, entries[1].Labels)
+	require.Contains(t, entries[0].Line, "query_fingerprint=")
+	require.Contains(t, entries[1].Line, "query_fingerprint=")
+	// The classified type proves the v4 builder path was used (not v3).
+	require.Contains(t, entries[1].Line, `wait_event_type="IO Wait"`)
+
+	sampleCollector.Stop()
+	require.Eventually(t, func() bool {
+		return sampleCollector.Stopped()
+	}, 5*time.Second, 100*time.Millisecond)
+	require.Eventually(t, func() bool {
+		return mock.ExpectationsWereMet() == nil
+	}, 5*time.Second, 100*time.Millisecond)
+}
+
+// TestQuerySamples_FingerprintTruncationSentinelFires exercises the truncation
+// branch of the fingerprint pipeline: when pg_stat_activity returns a query
+// text whose length matches track_activity_query_size - 1 AND the parser
+// can't accept it (with or without the repair heuristic), the fingerprint
+// pipeline returns the truncated sentinel and increments the
+// sentinel{truncated} counter. The repaired counter also fires here because
+// the unparsable input forces the repair path to run before the sentinel
+// fallback.
+func TestQuerySamples_FingerprintTruncationSentinelFires(t *testing.T) {
+	const size = 1024
+	bad := "NOT VALID SQL !!! "
+	for len(bad) < size {
+		bad += "x "
+	}
+	bad = bad[:size-1]
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+	registry := prometheus.NewRegistry()
+	qs, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                     nil,
+		CollectInterval:        time.Second,
+		EntryHandler:           lokiClient,
+		Logger:                 log.NewNopLogger(),
+		EnableQueryFingerprint: true,
+		TrackActivityQuerySize: size,
+		Registry:               registry,
+	})
+	require.NoError(t, err)
+
+	got := qs.resolveQueryFingerprint(QuerySamplesInfo{Query: sql.NullString{String: bad, Valid: true}})
+	require.Equal(t, fingerprint.FingerprintOf(fingerprint.SentinelTruncated), got)
+	require.Equal(t, float64(1), testutil.ToFloat64(qs.fingerprintSentinel.WithLabelValues("truncated")))
+	require.Equal(t, float64(0), testutil.ToFloat64(qs.fingerprintSentinel.WithLabelValues("unparsable")))
+	require.Equal(t, float64(1), testutil.ToFloat64(qs.fingerprintRepaired))
+}
+
+// TestQuerySamples_FingerprintUnparsableSentinelFires exercises the
+// unparsable branch of the fingerprint pipeline: a query that is short
+// enough to skip the truncation sentinel but cannot be parsed even after
+// repair. The pipeline returns the unparsable sentinel and increments the
+// sentinel{unparsable} counter.
+func TestQuerySamples_FingerprintUnparsableSentinelFires(t *testing.T) {
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+	registry := prometheus.NewRegistry()
+	qs, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                     nil,
+		CollectInterval:        time.Second,
+		EntryHandler:           lokiClient,
+		Logger:                 log.NewNopLogger(),
+		EnableQueryFingerprint: true,
+		TrackActivityQuerySize: 1024,
+		Registry:               registry,
+	})
+	require.NoError(t, err)
+
+	got := qs.resolveQueryFingerprint(QuerySamplesInfo{Query: sql.NullString{String: "$$$ not sql at all $$$", Valid: true}})
+	require.Equal(t, fingerprint.FingerprintOf(fingerprint.SentinelUnparsable), got)
+	require.Equal(t, float64(1), testutil.ToFloat64(qs.fingerprintSentinel.WithLabelValues("unparsable")))
+	require.Equal(t, float64(0), testutil.ToFloat64(qs.fingerprintSentinel.WithLabelValues("truncated")))
+}
+
+// TestQuerySamples_FingerprintCountersSilentOnSuccess ensures that a
+// well-formed query produces a real fingerprint, doesn't classify as a
+// sentinel, and doesn't touch the repaired counter (the parser accepted the
+// SQL on the first attempt).
+func TestQuerySamples_FingerprintCountersSilentOnSuccess(t *testing.T) {
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+	registry := prometheus.NewRegistry()
+	qs, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                     nil,
+		CollectInterval:        time.Second,
+		EntryHandler:           lokiClient,
+		Logger:                 log.NewNopLogger(),
+		EnableQueryFingerprint: true,
+		TrackActivityQuerySize: 1024,
+		Registry:               registry,
+	})
+	require.NoError(t, err)
+
+	got := qs.resolveQueryFingerprint(QuerySamplesInfo{Query: sql.NullString{String: "SELECT 1", Valid: true}})
+	require.NotEmpty(t, got)
+	require.Equal(t, "", fingerprint.SentinelKind(got))
+	require.Equal(t, float64(0), testutil.ToFloat64(qs.fingerprintRepaired))
+	require.Equal(t, float64(0), testutil.ToFloat64(qs.fingerprintSentinel.WithLabelValues("truncated")))
+	require.Equal(t, float64(0), testutil.ToFloat64(qs.fingerprintSentinel.WithLabelValues("unparsable")))
 }

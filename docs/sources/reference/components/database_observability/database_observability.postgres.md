@@ -271,37 +271,69 @@ the fingerprint emitted here matches the fingerprint computed from the raw
 `STATEMENT:` continuations (`op="error"`). The same value is the join key
 across all three surfaces.
 
-### `op="query_sample"`, `op="wait_event"`, and `op="wait_event_v2"` entries from `query_samples`
+### `op="query_sample"` and `op="wait_event"` family entries from `query_samples`
 
 The `query_samples` collector polls `pg_stat_activity` and emits one
-`op="query_sample"` line per finalized sample (when the backend goes idle
-or disappears between scrapes), plus one `op="wait_event"` (or
-`op="wait_event_v2"` when `enable_pre_classified_wait_events` is set) line
-per coalesced wait-event occurrence observed for that sample.
+sample line per finalized sample (when the backend goes idle or
+disappears between scrapes), plus one wait-event line per coalesced
+wait-event occurrence observed for that sample. The exact `op` label
+depends on two flags on the parent block:
 
-Every line carries `query_fingerprint` — the libpg_query fingerprint of
-the `pg_stat_activity.query` text observed for the sample. The fingerprint
-is computed unconditionally; only the raw `query=` text on
-`op="query_sample"` lines is gated by `disable_query_redaction`.
+| `enable_query_fingerprint` | `enable_pre_classified_wait_events` | sample `op`        | wait-event `op`   |
+|----------------------------|-------------------------------------|--------------------|-------------------|
+| `false` (default)          | `false` (default)                   | `query_sample`     | `wait_event`      |
+| `false`                    | `true`                              | `query_sample`     | `wait_event_v2`   |
+| `true`                     | `false`                             | `query_sample_v2`  | `wait_event_v3`   |
+| `true`                     | `true`                              | `query_sample_v2`  | `wait_event_v4`   |
+
+The v1 ops (`query_sample`, `wait_event`) preserve the pre-fingerprint
+shape exactly and never carry a `query_fingerprint` field. The v2 sample
+op and the v3/v4 wait-event ops add a trailing `query_fingerprint` field
+— the `libpg_query` fingerprint of the `pg_stat_activity.query` text
+observed for the sample. The `_v2` and `_v4` wait-event ops also use the
+pre-classified `wait_event_type` (Lock Wait / IO Wait / Network Wait /
+Other Wait) instead of the raw PostgreSQL category. Only the raw
+`query=` text on the sample line is gated by `disable_query_redaction`.
 
 | Field                          | Source                  | Notes                                                                                       |
 |--------------------------------|-------------------------|---------------------------------------------------------------------------------------------|
-| Label `op`                     | constant                | `query_sample`, `wait_event`, or `wait_event_v2`                                            |
-| Body field `query_fingerprint` | computed                | `libpg_query` fingerprint of the `pg_stat_activity.query` text (16-char hex); always emitted when computable |
-| Body field `query`             | `s.query`               | only on `op="query_sample"`, only when `disable_query_redaction = true`                     |
+| Label `op`                     | constant                | one of the four sample/wait-event ops above                                                 |
+| Body field `query_fingerprint` | computed                | only on the v2/v3/v4 ops; `libpg_query` fingerprint of the `pg_stat_activity.query` text (16-char hex) |
+| Body field `query`             | `s.query`               | only on `op="query_sample"`/`query_sample_v2`, only when `disable_query_redaction = true`   |
 | Body field `queryid`           | `s.query_id`            | PostgreSQL's `pg_stat_statements` queryid for the running statement                         |
 | Body field `datname`, `pid`, `user`, ...  | `pg_stat_activity` | sample identity and context (see source for the full set)                                |
 
-The fingerprint is computed once per sample (cached on the in-memory
-`SampleState`) and reused for every wait-event line emitted under that
-same sample, so all entries belonging to one logical query execution
-share the same `query_fingerprint`.
+When `enable_query_fingerprint = true`, the fingerprint is computed once
+per sample (cached on the in-memory `SampleState`) and reused for every
+wait-event line emitted under that same sample, so all entries belonging
+to one logical query execution share the same `query_fingerprint`.
 
-Because the fingerprint identity matches `op="query_association"` (from
-`query_details`) and `op="error"` (from `logs`), downstream consumers can
-join all four surfaces by `query_fingerprint` as a single source-of-truth
-identifier for one logical query — even on managed services where
-`pg_stat_statements.queryid` is not exposed in `log_line_prefix`.
+Because the fingerprint identity matches `op="query_association_v2"`
+(from `query_details`) and `op="error"` (from `logs`), downstream
+consumers can join all four surfaces by `query_fingerprint` as a single
+source-of-truth identifier for one logical query — even on managed
+services where `pg_stat_statements.queryid` is not exposed in
+`log_line_prefix`.
+
+#### Fingerprint pipeline observability
+
+When `enable_query_fingerprint = true`, the component additionally
+exports two Prometheus counters on its `targets` endpoint that surface
+the health of the fingerprint pipeline:
+
+- `database_observability_query_fingerprint_repaired_total` (counter):
+  Number of query texts whose fingerprint required the quote/paren
+  repair heuristic. A non-zero rate indicates upstream truncation or
+  unusual SQL the parser couldn't accept as-is.
+- `database_observability_query_fingerprint_sentinel_total{sentinel="truncated|unparsable"}` (counter):
+  Number of query texts that fell through the fingerprint pipeline to a
+  sentinel hash. `truncated` indicates `pg_stat_activity.query` hit the
+  server's `track_activity_query_size` boundary; `unparsable` indicates
+  the parser (and the repair heuristic) could not produce a valid AST.
+
+Both counters stay at zero when `enable_query_fingerprint = false`,
+because the fingerprint pipeline is not invoked at all in that
+configuration.
 
 ## Example
 

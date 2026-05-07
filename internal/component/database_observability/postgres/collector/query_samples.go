@@ -11,6 +11,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -23,8 +24,11 @@ import (
 const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
+	OP_QUERY_SAMPLE_V2    = "query_sample_v2"
 	OP_WAIT_EVENT         = "wait_event"
 	OP_WAIT_EVENT_V2      = "wait_event_v2"
+	OP_WAIT_EVENT_V3      = "wait_event_v3"
+	OP_WAIT_EVENT_V4      = "wait_event_v4"
 )
 
 const (
@@ -112,6 +116,9 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction         bool
 	ExcludeCurrentUser            bool
 	EnablePreClassifiedWaitEvents bool
+	EnableQueryFingerprint        bool
+	TrackActivityQuerySize        int
+	Registry                      *prometheus.Registry
 }
 
 type QuerySamples struct {
@@ -123,6 +130,8 @@ type QuerySamples struct {
 	disableQueryRedaction         bool
 	excludeCurrentUser            bool
 	enablePreClassifiedWaitEvents bool
+	enableQueryFingerprint        bool
+	trackActivityQuerySize        int
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -134,6 +143,11 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 	// keep track of idle keys that were already emitted to avoid duplicates
 	idleEmitted *expirable.LRU[SampleKey, struct{}]
+
+	// fingerprint pipeline observability
+	registry            *prometheus.Registry
+	fingerprintRepaired prometheus.Counter
+	fingerprintSentinel *prometheus.CounterVec
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -184,12 +198,17 @@ func (c *QuerySamples) resolveQueryFingerprint(sample QuerySamplesInfo) string {
 	if !sample.Query.Valid {
 		return ""
 	}
-	// trackActivityQuerySize=0 disables the truncation sentinel for now —
-	// future work could plumb pg_settings.track_activity_query_size from
-	// the component into this collector to enable the sentinel.
-	fp, _, err := fingerprint.Fingerprint(sample.Query.String, fingerprint.SourcePgStatActivity, 0)
+	fp, repaired, err := fingerprint.Fingerprint(sample.Query.String, fingerprint.SourcePgStatActivity, c.trackActivityQuerySize)
 	if err != nil {
 		return ""
+	}
+	if repaired && c.fingerprintRepaired != nil {
+		c.fingerprintRepaired.Inc()
+	}
+	if c.fingerprintSentinel != nil {
+		if kind := fingerprint.SentinelKind(fp); kind != "" {
+			c.fingerprintSentinel.WithLabelValues(kind).Inc()
+		}
 	}
 	return fp
 }
@@ -248,7 +267,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	const emittedCacheSize = 1000 // pg_stat_statements default max number of statements to track
 	const emittedCacheTTL = 10 * time.Minute
 
-	return &QuerySamples{
+	qs := &QuerySamples{
 		dbConnection:                  args.DB,
 		collectInterval:               args.CollectInterval,
 		excludeDatabases:              args.ExcludeDatabases,
@@ -257,11 +276,31 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		excludeCurrentUser:            args.ExcludeCurrentUser,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
+		enableQueryFingerprint:        args.EnableQueryFingerprint,
+		trackActivityQuerySize:        args.TrackActivityQuerySize,
 		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 		samples:                       map[SampleKey]*SampleState{},
 		idleEmitted:                   expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
-	}, nil
+		registry:                      args.Registry,
+	}
+
+	qs.fingerprintRepaired = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "database_observability",
+		Name:      "query_fingerprint_repaired_total",
+		Help:      "Number of query texts whose fingerprint required the quote/paren repair heuristic. A non-zero rate indicates upstream truncation or unusual SQL the parser couldn't accept as-is.",
+	})
+	qs.fingerprintSentinel = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "database_observability",
+		Name:      "query_fingerprint_sentinel_total",
+		Help:      "Number of query texts that fell through the fingerprint pipeline to a sentinel hash. \"truncated\" indicates pg_stat_activity hit track_activity_query_size; \"unparsable\" indicates the parser (and the repair heuristic) could not produce a valid AST.",
+	}, []string{"sentinel"})
+
+	if args.Registry != nil {
+		args.Registry.MustRegister(qs.fingerprintRepaired, qs.fingerprintSentinel)
+	}
+
+	return qs, nil
 }
 
 func (c *QuerySamples) Name() string {
@@ -312,6 +351,11 @@ func (c *QuerySamples) Stop() {
 		c.cancel()
 	}
 	c.wg.Wait()
+
+	if c.registry != nil {
+		c.registry.Unregister(c.fingerprintRepaired)
+		c.registry.Unregister(c.fingerprintSentinel)
+	}
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
@@ -359,7 +403,9 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			} else if _, already := c.idleEmitted.Get(key); !already {
 				// new idle sample not yet seen -> create a new sample state to track and emit it
 				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
-				newIdleState.QueryFingerprint = c.resolveQueryFingerprint(sample)
+				if c.enableQueryFingerprint {
+					newIdleState.QueryFingerprint = c.resolveQueryFingerprint(sample)
+				}
 				newIdleState.setEndedAt(sample)
 				newIdleState.LastRow.State = sample.State
 				c.samples[key] = newIdleState
@@ -453,7 +499,7 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	state.LastSeenAt = sample.Now
 	state.updateCpuTime(sample)
 	state.LastRow.State = sample.State
-	if state.QueryFingerprint == "" {
+	if c.enableQueryFingerprint && state.QueryFingerprint == "" {
 		state.QueryFingerprint = c.resolveQueryFingerprint(sample)
 	}
 	state.tracker.upsertWaitEvent(sample, sample.Now)
@@ -509,7 +555,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
+		c.querySampleOp(),
 		sampleLabels,
 		ts,
 	)
@@ -518,24 +564,57 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
 			continue
 		}
-		if c.enablePreClassifiedWaitEvents {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT_V2,
-				c.buildWaitEventV2Labels(state, we),
-				we.LastTimestamp.UnixNano(),
-			)
-		} else {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT,
-				c.buildWaitEventLabels(state, we),
-				we.LastTimestamp.UnixNano(),
-			)
-		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+			logging.LevelInfo,
+			c.waitEventOp(),
+			c.waitEventLabels(state, we),
+			we.LastTimestamp.UnixNano(),
+		)
 	}
 
 	delete(c.samples, key)
+}
+
+// querySampleOp picks the op label for query_sample lines. The v2 variant
+// carries the trailing query_fingerprint= field; the v1 variant predates the
+// fingerprint pipeline.
+func (c *QuerySamples) querySampleOp() string {
+	if c.enableQueryFingerprint {
+		return OP_QUERY_SAMPLE_V2
+	}
+	return OP_QUERY_SAMPLE
+}
+
+// waitEventOp picks the op label for wait_event lines based on the matrix of
+// (enableQueryFingerprint, enablePreClassifiedWaitEvents). Cells:
+//
+//	off / off -> wait_event       (raw event_type, no fingerprint)
+//	off / on  -> wait_event_v2    (pre-classified event_type, no fingerprint)
+//	on  / off -> wait_event_v3    (raw event_type + fingerprint)
+//	on  / on  -> wait_event_v4    (pre-classified event_type + fingerprint)
+func (c *QuerySamples) waitEventOp() string {
+	switch {
+	case c.enableQueryFingerprint && c.enablePreClassifiedWaitEvents:
+		return OP_WAIT_EVENT_V4
+	case c.enableQueryFingerprint:
+		return OP_WAIT_EVENT_V3
+	case c.enablePreClassifiedWaitEvents:
+		return OP_WAIT_EVENT_V2
+	default:
+		return OP_WAIT_EVENT
+	}
+}
+
+// waitEventLabels picks the label-builder that matches the wait_event op
+// shape. Pre-classified variants (v2, v4) go through buildWaitEventV2Labels;
+// raw variants (v1, v3) go through buildWaitEventLabels. The fingerprint
+// field is appended unconditionally by both builders when state.QueryFingerprint
+// is non-empty, so no separate fingerprint-aware builder is needed.
+func (c *QuerySamples) waitEventLabels(state *SampleState, we WaitEventOccurrence) string {
+	if c.enablePreClassifiedWaitEvents {
+		return c.buildWaitEventV2Labels(state, we)
+	}
+	return c.buildWaitEventLabels(state, we)
 }
 
 func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt sql.NullTime) string {
