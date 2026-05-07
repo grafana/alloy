@@ -17,8 +17,6 @@ func WithComponentID(id string) LogReceiverOption {
 	}
 }
 
-// LogsReceiver is an interface providing `chan Entry` which is used for component
-// communication.
 type LogsReceiver interface {
 	Chan() chan Entry
 }
