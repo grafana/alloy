@@ -599,14 +599,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:               c.dbConnection,
-			CollectInterval:  c.args.QueryDetailsArguments.CollectInterval,
-			StatementsLimit:  c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     c.args.ExcludeUsers,
-			EntryHandler:     entryHandler,
-			TableRegistry:    tableRegistry,
-			Logger:           c.opts.Logger,
+			DB:                     c.dbConnection,
+			CollectInterval:        c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit:        c.args.QueryDetailsArguments.StatementsLimit,
+			ExcludeDatabases:       c.args.ExcludeDatabases,
+			ExcludeUsers:           c.args.ExcludeUsers,
+			EntryHandler:           entryHandler,
+			TableRegistry:          tableRegistry,
+			EnableQueryFingerprint: c.args.EnableQueryFingerprint,
+			Logger:                 c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)

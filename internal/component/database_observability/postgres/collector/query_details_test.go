@@ -20,12 +20,12 @@ import (
 )
 
 // substituteFingerprints fills in the literal `<fp>` placeholders that test
-// fixtures use for query_association lines. The fingerprint comes from the
-// matching pg_stat_statements row's query text, computed via the same
+// fixtures use for query_association_v2 lines. The fingerprint comes from
+// the matching pg_stat_statements row's query text, computed via the same
 // fingerprint package that the collector uses, so the test stays correct
 // across pg_query_go version bumps.
 //
-// Rows are consumed in-order; each query_association entry advances the
+// Rows are consumed in-order; each query_association_v2 entry advances the
 // row cursor by one. Non-association entries (table-name parses, etc.)
 // pass through unchanged.
 func substituteFingerprints(t *testing.T, logsLabels []model.LabelSet, logsLines []string, rows [][]driver.Value) []string {
@@ -33,7 +33,7 @@ func substituteFingerprints(t *testing.T, logsLabels []model.LabelSet, logsLines
 	out := make([]string, len(logsLines))
 	rowIdx := 0
 	for i, line := range logsLines {
-		if logsLabels[i]["op"] == OP_QUERY_ASSOCIATION {
+		if logsLabels[i]["op"] == OP_QUERY_ASSOCIATION_V2 {
 			require.Less(t, rowIdx, len(rows), "more association lines than rows")
 			queryText, ok := rows[rowIdx][1].(string)
 			require.True(t, ok, "row %d query text not a string", rowIdx)
@@ -68,7 +68,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -93,7 +93,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -118,7 +118,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -143,7 +143,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -168,7 +168,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -193,7 +193,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -209,7 +209,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -225,7 +225,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
@@ -243,7 +243,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -259,7 +259,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -275,7 +275,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
@@ -293,7 +293,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
@@ -315,9 +315,9 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -335,7 +335,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -351,7 +351,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="START TRANSACTION" datname="some_database"`,
@@ -369,8 +369,8 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -391,9 +391,9 @@ func TestQueryDetails(t *testing.T) {
 				"other_schema",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -411,7 +411,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
@@ -431,7 +431,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -447,7 +447,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 			},
 			logsLines: []string{
 				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SHOW VARIABLES LIKE $1" datname="some_database"`,
@@ -461,7 +461,7 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -494,14 +494,14 @@ func TestQueryDetails(t *testing.T) {
 				},
 			},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
@@ -529,12 +529,13 @@ func TestQueryDetails(t *testing.T) {
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
-				DB:              db,
-				CollectInterval: time.Second,
-				StatementsLimit: 100,
-				EntryHandler:    lokiClient,
-				TableRegistry:   tc.tableRegistry,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				DB:                     db,
+				CollectInterval:        time.Second,
+				StatementsLimit:        100,
+				EntryHandler:           lokiClient,
+				TableRegistry:          tc.tableRegistry,
+				EnableQueryFingerprint: true,
+				Logger:                 log.NewLogfmtLogger(os.Stderr),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -578,6 +579,103 @@ func TestQueryDetails(t *testing.T) {
 	}
 }
 
+func TestQueryDetails_NoFingerprintWhenDisabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 100,
+		EntryHandler:    lokiClient,
+		TableRegistry: &TableRegistry{
+			tables: map[database]map[schema]map[table]struct{}{
+				"some_database": {"public": {"some_table": struct{}{}}},
+			},
+		},
+		Logger: log.NewLogfmtLogger(os.Stderr),
+		// EnableQueryFingerprint omitted — defaults to false
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).
+		WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("abc123", "SELECT * FROM some_table WHERE id = $1", "some_database"))
+
+	require.NoError(t, collector.Start(t.Context()))
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 5*time.Second, 100*time.Millisecond)
+	collector.Stop()
+	lokiClient.Stop()
+	require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.GreaterOrEqual(t, len(entries), 2)
+
+	// First entry: op="query_association", NO query_fingerprint field.
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, entries[0].Labels)
+	require.Equal(t,
+		`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
+		entries[0].Line)
+	require.NotContains(t, entries[0].Line, "query_fingerprint=")
+
+	// Second entry: parsed-table-name path is unchanged regardless of flag.
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
+}
+
+func TestQueryDetails_FingerprintEmittedAsV2WhenEnabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 100,
+		EntryHandler:    lokiClient,
+		TableRegistry: &TableRegistry{
+			tables: map[database]map[schema]map[table]struct{}{
+				"some_database": {"public": {"some_table": struct{}{}}},
+			},
+		},
+		Logger:                 log.NewLogfmtLogger(os.Stderr),
+		EnableQueryFingerprint: true,
+	})
+	require.NoError(t, err)
+
+	const sqlText = "SELECT * FROM some_table WHERE id = $1"
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).
+		WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("abc123", sqlText, "some_database"))
+
+	require.NoError(t, collector.Start(t.Context()))
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 5*time.Second, 100*time.Millisecond)
+	collector.Stop()
+	lokiClient.Stop()
+	require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+
+	expectedFP, _, fpErr := fingerprint.Fingerprint(sqlText, fingerprint.SourcePgStatStatements, 0)
+	require.NoError(t, fpErr)
+
+	entries := lokiClient.Received()
+	require.GreaterOrEqual(t, len(entries), 2)
+
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `queryid="abc123"`)
+	require.Contains(t, entries[0].Line, fmt.Sprintf(`query_fingerprint="%s"`, expectedFP))
+	require.Contains(t, entries[0].Line, `querytext="SELECT * FROM some_table WHERE id = $1"`)
+}
+
 func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 	// The goroutine which deletes expired entries runs indefinitely,
 	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
@@ -593,11 +691,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 100,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                     db,
+			CollectInterval:        time.Second,
+			StatementsLimit:        100,
+			EntryHandler:           lokiClient,
+			EnableQueryFingerprint: true,
+			Logger:                 log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -643,7 +742,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		fp, _, err := fingerprint.Fingerprint("SELECT * FROM some_table WHERE id = ?", fingerprint.SourcePgStatStatements, 0)
 		require.NoError(t, err)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2}, lokiEntries[0].Labels)
 		require.Equal(t, strings.Replace(`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, "<fp>", fp, 1), lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
@@ -659,11 +758,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 100,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                     db,
+			CollectInterval:        time.Second,
+			StatementsLimit:        100,
+			EntryHandler:           lokiClient,
+			EnableQueryFingerprint: true,
+			Logger:                 log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -705,7 +805,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		fp, _, err := fingerprint.Fingerprint("SELECT * FROM some_table WHERE id = ?", fingerprint.SourcePgStatStatements, 0)
 		require.NoError(t, err)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2}, lokiEntries[0].Labels)
 		require.Equal(t, strings.Replace(`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, "<fp>", fp, 1), lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
@@ -721,11 +821,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 100,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                     db,
+			CollectInterval:        time.Second,
+			StatementsLimit:        100,
+			EntryHandler:           lokiClient,
+			EnableQueryFingerprint: true,
+			Logger:                 log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -765,7 +866,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		fp, _, err := fingerprint.Fingerprint("SELECT * FROM some_table WHERE id = ?", fingerprint.SourcePgStatStatements, 0)
 		require.NoError(t, err)
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2}, lokiEntries[0].Labels)
 		require.Equal(t, strings.Replace(`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, "<fp>", fp, 1), lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
