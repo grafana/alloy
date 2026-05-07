@@ -111,7 +111,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 				// first stage that needs to modify the entry's labels.
 
 				// FIXME(kalleep): This is a temporary hack, we "disconnect" entry from call. This lets us refactor
-				// pipelines to be syncronous in followup pr. See https://github.com/grafana/alloy/issues/4953.
+				// pipelines to be synchronous in followup pr. See https://github.com/grafana/alloy/issues/4953.
 				return entry, false, nil
 			}
 		}),

@@ -74,7 +74,6 @@ func consume(
 		case <-ctx.Done():
 			return
 		default:
-
 		}
 
 		select {
