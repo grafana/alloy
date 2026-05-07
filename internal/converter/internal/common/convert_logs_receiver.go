@@ -10,12 +10,12 @@ import (
 // ConvertLogsReceiver allows us to override how the loki.LogsReceiver is tokenized.
 // See ConvertAppendable as another example with more details in comments.
 type ConvertLogsReceiver struct {
-	loki.LogsReceiver
+	loki.Consumer
 
 	Expr string
 }
 
-var _ loki.LogsReceiver = (*ConvertLogsReceiver)(nil)
+var _ loki.Consumer = (*ConvertLogsReceiver)(nil)
 var _ builder.Tokenizer = ConvertLogsReceiver{}
 var _ syntax.Capsule = ConvertLogsReceiver{}
 

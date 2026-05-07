@@ -67,7 +67,7 @@ func toAppAgentReceiverV2(config *app_agent_receiver_v2.Config) *receiver.Argume
 			Locations:           toLocationArguments(config.SourceMaps.FileSystem),
 		},
 		Output: receiver.OutputArguments{
-			Logs:   []loki.LogsReceiver{logsReceiver},
+			Logs:   []loki.Consumer{logsReceiver},
 			Traces: []otelcol.Consumer{},
 		},
 	}

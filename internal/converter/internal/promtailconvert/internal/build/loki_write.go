@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
-func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string, maxStreams int) (*builder.Block, loki.LogsReceiver) {
+func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string, maxStreams int) (*builder.Block, loki.Consumer) {
 	label := "default"
 	if labelPrefix != "" {
 		label = labelPrefix

@@ -21,7 +21,7 @@ func (s *ScrapeConfigBuilder) AppendWindowsEventsConfig() {
 		ExcludeUserdata:      winCfg.ExcludeUserData,
 		ExcludeEventMessage:  winCfg.ExcludeEventMessage,
 		UseIncomingTimestamp: winCfg.UseIncomingTimestamp,
-		ForwardTo:            make([]loki.LogsReceiver, 0),
+		ForwardTo:            make([]loki.Consumer, 0),
 		Labels:               convertPromLabels(winCfg.Labels),
 	}
 

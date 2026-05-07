@@ -51,7 +51,7 @@ func (s *ScrapeConfigBuilder) AppendDockerPipeline() {
 	}
 }
 
-func toLokiSourceDocker(sd *moby.DockerSDConfig, forwardTo []loki.LogsReceiver) *loki_docker.Arguments {
+func toLokiSourceDocker(sd *moby.DockerSDConfig, forwardTo []loki.Consumer) *loki_docker.Arguments {
 	return &loki_docker.Arguments{
 		Host:             sd.Host,
 		Targets:          nil,
