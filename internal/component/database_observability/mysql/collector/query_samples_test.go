@@ -2859,6 +2859,107 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 	})
 }
 
+func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+		sqlmock.NewRows([]string{
+			"now",
+			"uptime",
+		}).AddRow(
+			10,
+			10,
+		),
+	)
+	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+		float64(0), // initial timerBookmark
+		10e12,      // uptime of 10 seconds in picoseconds (modulo 0 overflows)
+	).WillReturnRows(sqlmock.NewRows([]string{
+		"statements.CURRENT_SCHEMA",
+		"statements.THREAD_ID",
+		"statements.EVENT_ID",
+		"statements.END_EVENT_ID",
+		"statements.DIGEST",
+		"statements.SQL_TEXT",
+		"statements.TIMER_END",
+		"statements.TIMER_WAIT",
+		"statements.ROWS_EXAMINED",
+		"statements.ROWS_SENT",
+		"statements.ROWS_AFFECTED",
+		"statements.ERRORS",
+		"waits.event_id",
+		"waits.end_event_id",
+		"waits.event_name",
+		"waits.object_name",
+		"waits.object_type",
+		"waits.timer_wait",
+		"nested_waits.event_id",
+		"nested_waits.end_event_id",
+		"nested_waits.event_name",
+		"nested_waits.object_name",
+		"nested_waits.object_type",
+		"nested_waits.timer_wait",
+		"threads.PROCESSLIST_USER",
+		"threads.PROCESSLIST_HOST",
+		"statements.CPU_TIME",
+		"statements.MAX_CONTROLLED_MEMORY",
+		"statements.MAX_TOTAL_MEMORY",
+	}).
+		AddRow(
+			"test_schema",
+			890,
+			123,
+			234,
+			"some digest",
+			nil,
+			4e12, // timer_end
+			1e12, // elapsed time
+			1000,
+			100,
+			0,
+			0,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			"some_user",
+			"some_host",
+			555555,
+			1048576,
+			2097152,
+		),
+	)
+
+	lokiClient := loki.NewCollectingHandler()
+	c := &QuerySamples{
+		dbConnection:  db,
+		engineVersion: latestCompatibleVersion,
+		entryHandler:  lokiClient,
+		logger:        log.NewLogfmtLogger(os.Stderr),
+	}
+
+	require.NoError(t, c.fetchQuerySamples(t.Context()))
+
+	lokiClient.Stop()
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 1
+	}, 5*time.Second, 100*time.Millisecond)
+	require.Len(t, lokiClient.Received(), 1)
+
+	assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[0].Timestamp) // timer_end - elapsed time
+}
+
 func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 	t.Run("selects query sample summary: first run uses initialized timerBookmark and uptime limit", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))

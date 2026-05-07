@@ -46,6 +46,9 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		disableQueryRedaction bool
 		expectedLabels        []model.LabelSet
 		expectedLines         []string
+		// expectedTimestamps mirrors expectedLines: OP_QUERY_SAMPLE entries are
+		// stamped at query_start, OP_WAIT_EVENT entries at the wait observation time.
+		expectedTimestamps []time.Time
 	}{
 		{
 			name: "active query without wait event",
@@ -68,6 +71,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="100" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="500" xmin="400" xact_time="2m0s" query_time="30s" queryid="123" cpu_time="10s"`,
 			},
+			expectedTimestamps: []time.Time{queryStartTime},
 		},
 		{
 			name: "parallel query with leader PID",
@@ -90,6 +94,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="101" leader_pid="100" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="parallel worker" state="active" xid="0" xmin="0" xact_time="0s" query_time="0s" queryid="123" cpu_time="0s"`,
 			},
+			expectedTimestamps: []time.Time{now},
 		},
 		{
 			name: "query with wait event",
@@ -114,6 +119,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="124"`,
 				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`,
 			},
+			expectedTimestamps: []time.Time{now, now},
 		},
 		{
 			name: "query with redaction disabled",
@@ -138,6 +144,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			expectedLines: []string{
 				`level="info" datname="testdb" pid="106" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="128" cpu_time="10s" query="SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'"`,
 			},
+			expectedTimestamps: []time.Time{queryStartTime},
 		},
 	}
 
@@ -179,7 +186,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				}
 				require.Equal(t, entry.Line, tc.expectedLines[i])
 				// Verify that BuildLokiEntryWithTimestamp is setting the timestamp correctly
-				expectedTimestamp := time.Unix(0, now.UnixNano())
+				expectedTimestamp := time.Unix(0, tc.expectedTimestamps[i].UnixNano())
 				require.True(t, entry.Timestamp.Equal(expectedTimestamp))
 			}
 
@@ -375,7 +382,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		require.Len(t, entries, 1)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="1000" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="active" xid="10" xmin="20" xact_time="2m0s" query_time="30s" queryid="999" cpu_time="10s" query="SELECT * FROM t"`, entries[0].Line)
-		expectedTimestamp := time.Unix(0, now.UnixNano())
+		expectedTimestamp := time.Unix(0, queryStartTime.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTimestamp))
 
 		sampleCollector.Stop()
@@ -733,7 +740,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Contains(t, entries[0].Line, `query_time="20s"`)
 		require.Contains(t, entries[0].Line, `cpu_time="10s"`)
-		expectedTs := time.Unix(0, stateChangeTime.UnixNano())
+		expectedTs := time.Unix(0, queryStartTime.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTs))
 
 		sampleCollector.Stop()
@@ -806,7 +813,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		require.Len(t, entries, 1)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.Contains(t, entries[0].Line, `query_time="20s"`)
-		expectedTs := time.Unix(0, stateChangeTime.UnixNano())
+		expectedTs := time.Unix(0, queryStartTime.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTs))
 
 		sampleCollector.Stop()
@@ -879,7 +886,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		require.Len(t, entries, 1)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 		// End timestamp should match state_change
-		expectedTs := time.Unix(0, stateChangeTime.UnixNano())
+		expectedTs := time.Unix(0, queryStartTime.UnixNano())
 		require.True(t, entries[0].Timestamp.Equal(expectedTs))
 
 		sampleCollector.Stop()
