@@ -140,7 +140,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 |---------------------------|------------|---------------------------------------------------------------|---------|----------|
 | `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
-| `exclude_current_user`    | `bool`     | Deprecated. Use the top-level `exclude_current_user` argument instead. When set (`true` or `false`), this setting takes precedence over the top-level setting for the `query_samples` collector. When unset, the `query_samples` collector inherits the top-level setting. | (unset) | no       |
+| `exclude_current_user`    | `bool`     | Deprecated. Use the top-level `exclude_current_user` argument instead. This setting takes precedence over the top-level setting. | (unset) | no       |
 | `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |
 
 ### `schema_details`
