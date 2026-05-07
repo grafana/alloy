@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
@@ -24,9 +26,9 @@ import (
 func TestPush(t *testing.T) {
 	opts := defaultOptions()
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 	args := testArgsWith(t, func(args *Arguments) {
-		args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
+		args.ForwardTo = []loki.Consumer{collector1, collector2}
 		args.RelabelRules = rulesExport
 		args.Labels = map[string]string{"foo": "bar"}
 	})
@@ -49,20 +51,20 @@ func TestPush(t *testing.T) {
 	wantLabelSet := model.LabelSet{"foo": "bar", "host": "host", "app": "heroku", "proc": "router", "log_id": "-"}
 	wantLogLine := "at=info method=GET path=\"/\" host=cryptic-cliffs-27764.herokuapp.com request_id=59da6323-2bc4-4143-8677-cc66ccfb115f fwd=\"181.167.87.140\" dyno=web.1 connect=0ms service=3ms status=200 bytes=6979 protocol=https\n" // trufflehog:ignore
 
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, wantLogLine, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, wantLogLine, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
+		require.Len(c, collector2.Entries(), 1)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	got := collector1.Entries()[0]
+	require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+	require.Equal(t, wantLogLine, got.Line)
+	require.Equal(t, wantLabelSet, got.Labels)
+
+	got = collector2.Entries()[0]
+	require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+	require.Equal(t, wantLogLine, got.Line)
+	require.Equal(t, wantLabelSet, got.Labels)
 }
 
 func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
@@ -93,7 +95,7 @@ func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
 		{
 			name: "change in forwardTo does not require server restart",
 			mutateNewArgs: func(_ *testing.T, args *Arguments) {
-				args.ForwardTo = []loki.LogsReceiver{}
+				args.ForwardTo = []loki.Consumer{}
 			},
 			restartRequired: false,
 		},
@@ -203,7 +205,7 @@ func testArgsWithPorts(httpPort int, grpcPort int) Arguments {
 				ListenPort:    grpcPort,
 			},
 		},
-		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver(), loki.NewLogsReceiver()},
+		ForwardTo: []loki.Consumer{loki.NewCollectingConsumer(), loki.NewCollectingConsumer()},
 		Labels:    map[string]string{"foo": "bar", "fizz": "buzz"},
 		RelabelRules: alloy_relabel.Rules{
 			{
@@ -239,7 +241,7 @@ func cloneArguments(args Arguments) Arguments {
 		cloned.Server = &serverCopy
 	}
 
-	cloned.ForwardTo = append([]loki.LogsReceiver(nil), args.ForwardTo...)
+	cloned.ForwardTo = slices.Clone(args.ForwardTo)
 	if args.Labels != nil {
 		cloned.Labels = make(map[string]string, len(args.Labels))
 		for k, v := range args.Labels {
