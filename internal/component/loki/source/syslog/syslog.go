@@ -35,7 +35,7 @@ func init() {
 // component.
 type Arguments struct {
 	SyslogListeners []ListenerConfig    `alloy:"listener,block"`
-	ForwardTo       []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo       []loki.Consumer     `alloy:"forward_to,attr"`
 	RelabelRules    alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
@@ -43,7 +43,7 @@ type Arguments struct {
 type Component struct {
 	opts    component.Options
 	metrics *st.Metrics
-	fanout  *loki.Fanout
+	fanout  *loki.FanoutConsumer
 	handler loki.LogsReceiver
 
 	mut             sync.RWMutex
@@ -63,7 +63,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:            o,
 		metrics:         st.NewMetrics(o.Registerer),
 		handler:         loki.NewLogsReceiver(),
-		fanout:          loki.NewFanout(args.ForwardTo),
+		fanout:          loki.NewFanoutConsumer(args.ForwardTo),
 		targetsUpdated:  make(chan struct{}, 1),
 		targets:         []*st.SyslogTarget{},
 		liveDbgListener: newLiveDebuggingListener(o),
@@ -82,7 +82,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.opts.Logger.Info("loki.source.syslog component shutting down, stopping listeners")
 
-		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain2(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			for _, l := range c.targets {
@@ -98,7 +98,7 @@ func (c *Component) Run(ctx context.Context) error {
 		consumeCtx, cancel = context.WithCancel(context.Background())
 	)
 
-	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
+	wg.Go(func() { loki.Consume2(consumeCtx, c.handler, c.fanout) })
 
 	wg.Go(func() {
 		for {
@@ -125,7 +125,7 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	prevArgs := c.args
 	c.args = newArgs

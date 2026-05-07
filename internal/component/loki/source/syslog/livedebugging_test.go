@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
@@ -78,7 +79,7 @@ func TestLiveDebugging(t *testing.T) {
 		},
 	}
 
-	ch1 := loki.NewLogsReceiver()
+	collector := loki.NewCollectingConsumer()
 	args := Arguments{}
 	tcpListenerAddr := componenttest.GetFreeAddr(t)
 
@@ -87,7 +88,7 @@ func TestLiveDebugging(t *testing.T) {
 	l.Labels = map[string]string{"protocol": syslogtarget.ProtocolTCP}
 
 	args.SyslogListeners = []ListenerConfig{l}
-	args.ForwardTo = []loki.LogsReceiver{ch1}
+	args.ForwardTo = []loki.Consumer{collector}
 
 	// Create a handler which will be used to retrieve relabeling rules.
 	args.RelabelRules = []*alloy_relabel.Config{
@@ -144,19 +145,12 @@ func TestLiveDebugging(t *testing.T) {
 	err = con.Close()
 	require.NoError(t, err)
 
-	receivedCount := 0
-	for gotCount := 0; gotCount < len(lines); gotCount++ {
-		select {
-		case <-ch1.Chan():
-			receivedCount++
-		case <-ctx.Done():
-			return
-		}
-	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector.Entries(), sendCount)
+	}, 5*time.Second, 100*time.Millisecond)
 
-	require.Equal(t, sendCount, receivedCount, "send and received message count mismatch")
 	if !isDbgDisabled {
-		require.Equal(t, receivedCount, int(debugMsgCount.Load()), "invalid number of log messages")
+		require.Equal(t, sendCount, int(debugMsgCount.Load()), "invalid number of log messages")
 	}
 
 	finalize(origStats)
