@@ -115,7 +115,7 @@ func (c *Component) Run(ctx context.Context) error {
 		})
 	}()
 
-	loki.Consume2(ctx, c.handler, c.fanout)
+	loki.Consume(ctx, c.handler, c.fanout)
 	return nil
 }
 

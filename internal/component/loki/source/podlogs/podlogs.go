@@ -164,7 +164,7 @@ func (c *Component) Run(ctx context.Context) error {
 		consumeCtx, cancel = context.WithCancel(context.Background())
 	)
 
-	wg.Go(func() { loki.Consume2(consumeCtx, c.handler, c.fanout) })
+	wg.Go(func() { loki.Consume(consumeCtx, c.handler, c.fanout) })
 
 	wg.Go(func() {
 		// We cancel consume loop after controller exit.

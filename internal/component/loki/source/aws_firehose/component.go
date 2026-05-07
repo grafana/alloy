@@ -87,7 +87,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	loki.ConsumeBatch2(ctx, c.handler, c.fanout)
+	loki.ConsumeBatch(ctx, c.handler, c.fanout)
 	return nil
 }
 

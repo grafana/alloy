@@ -104,7 +104,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	var wg sync.WaitGroup
-	wg.Go(func() { loki.Consume2(ctx, c.recv, c.fanout) })
+	wg.Go(func() { loki.Consume(ctx, c.recv, c.fanout) })
 	wg.Go(func() {
 		for {
 			select {
