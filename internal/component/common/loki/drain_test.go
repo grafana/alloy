@@ -18,8 +18,7 @@ func TestDrain(t *testing.T) {
 
 	t.Run("forwards while fn runs", func(t *testing.T) {
 		recv := NewLogsReceiver()
-		collector := NewCollectingHandler()
-		defer collector.Stop()
+		consumer := NewCollectingConsumer()
 
 		var producer sync.WaitGroup
 		producer.Go(func() {
@@ -32,20 +31,19 @@ func TestDrain(t *testing.T) {
 			}
 		})
 
-		Drain(recv, NewFanout([]LogsReceiver{collector.Receiver()}), time.Second, func() {
+		Drain(recv, NewFanoutConsumer([]Consumer{consumer}), time.Second, func() {
 			require.Eventually(t, func() bool {
-				return len(collector.Received()) == 1
+				return len(consumer.Entries()) == 1
 			}, time.Second, 10*time.Millisecond)
 		})
 
 		producer.Wait()
-		require.Len(t, collector.Received(), 1)
-		require.Equal(t, "forwarded", collector.Received()[0].Line)
+		require.Equal(t, "forwarded", consumer.Entries()[0].Line)
 	})
 
 	t.Run("falls back to discard when forwarding blocks", func(t *testing.T) {
 		recv := NewLogsReceiver()
-		blockedRecv := NewLogsReceiver()
+		blockedConsumer := newBlockedConsumer(0)
 
 		var producer sync.WaitGroup
 		producer.Go(func() {
@@ -60,7 +58,7 @@ func TestDrain(t *testing.T) {
 			}
 		})
 
-		Drain(recv, NewFanout([]LogsReceiver{blockedRecv}), 20*time.Millisecond, func() {
+		Drain(recv, NewFanoutConsumer([]Consumer{blockedConsumer}), 20*time.Millisecond, func() {
 			time.Sleep(100 * time.Millisecond)
 		})
 
@@ -70,8 +68,7 @@ func TestDrain(t *testing.T) {
 	t.Run("forwards one entry and discard rest", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			recv := NewLogsReceiver()
-			// Use a buffered channel so the first entry can always be forwarded to the fanout.
-			consumer := NewLogsReceiver(WithChannel(make(chan Entry, 1)))
+			consumer := newBlockedConsumer(1)
 
 			var producerWG sync.WaitGroup
 			producerWG.Go(func() {
@@ -87,7 +84,7 @@ func TestDrain(t *testing.T) {
 
 			var wg sync.WaitGroup
 			wg.Go(func() {
-				Drain(recv, NewFanout([]LogsReceiver{consumer}), 100*time.Millisecond, func() {
+				Drain(recv, NewFanoutConsumer([]Consumer{consumer}), 100*time.Millisecond, func() {
 					// Wait until the producer has finished sending all entries.
 					producerWG.Wait()
 				})
