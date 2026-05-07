@@ -13,6 +13,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -27,40 +28,11 @@ const singleRecordRequest = `{"requestId":"a1af4300-6c09-4916-ba8f-12f336176246"
 
 const expectedRecord = "{\"CHANGE\":-0.23,\"PRICE\":4.8,\"TICKER_SYMBOL\":\"NGC\",\"SECTOR\":\"HEALTHCARE\"}"
 
-// receiver implements a simple routine that receives loki.Entry from a channel and
-// stores them in a slice for later assertion.
-type receiver struct {
-	ch       chan loki.Entry
-	received []loki.Entry
-	mux      sync.RWMutex
-}
-
-// newReceiver creates a new receiver.
-func newReceiver(ch chan loki.Entry) *receiver {
-	return &receiver{
-		ch:       ch,
-		received: make([]loki.Entry, 0),
-	}
-}
-
-// run runs the main receiver routine, until the passed context is canceled.
-func (r *receiver) run(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case e := <-r.ch:
-			r.mux.Lock()
-			r.received = append(r.received, e)
-			r.mux.Unlock()
-		}
-	}
-}
-
-func TestComponentFromNestedController(t *testing.T) {
+func TestComponent(t *testing.T) {
 	goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	opts := component.Options{
+<<<<<<< HEAD
 		ID:            "foo/loki.source.awsfirehose.default",
 		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
@@ -98,19 +70,15 @@ func TestComponentFromNestedController(t *testing.T) {
 
 func TestComponent(t *testing.T) {
 	opts := component.Options{
+=======
+>>>>>>> c68ccef72 (loki.source.aws_firehose: Migrate to Consumer)
 		ID:            "loki.source.awsfirehose",
 		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
-
-	// call cancelReceivers to terminate them
-	receiverContext, cancelReceivers := context.WithCancel(t.Context())
-	go r1.run(receiverContext)
-	go r2.run(receiverContext)
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 
 	args := Arguments{}
 
@@ -124,15 +92,18 @@ func TestComponent(t *testing.T) {
 		// assign random grpc port
 		GRPC: &fnet.GRPCConfig{ListenPort: 0},
 	}
-	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
+	args.ForwardTo = []loki.Consumer{collector1, collector2}
 
 	// Create and run the component.
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	componentCtx, cancelComponent := context.WithCancel(t.Context())
-	go c.Run(componentCtx)
-	defer cancelComponent()
+	ctx, cancel := context.WithCancel(t.Context())
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		_ = c.Run(ctx)
+	})
 
 	// small wait for server start
 	time.Sleep(200 * time.Millisecond)
@@ -147,34 +118,23 @@ func TestComponent(t *testing.T) {
 
 	res, err := client.Do(req)
 	require.NoError(t, err)
+	require.NoError(t, res.Body.Close())
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	require.Eventually(t, func() bool {
-		r1.mux.RLock()
-		r2.mux.RLock()
-		defer func() {
-			r1.mux.RUnlock()
-			r2.mux.RUnlock()
-		}()
-		return len(r1.received) == 1 && len(r2.received) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
+		require.Len(c, collector2.Entries(), 1)
 	}, time.Second*10, time.Second, "timed out waiting for receivers to get all messages")
 
-	cancelReceivers()
-
-	// r1 and r2 should have received one entry each
-	r1.mux.RLock()
-	r2.mux.RLock()
-	defer func() {
-		r1.mux.RUnlock()
-		r2.mux.RUnlock()
-	}()
-	require.Len(t, r1.received, 1)
-	require.Len(t, r2.received, 1)
-	require.JSONEq(t, expectedRecord, r1.received[0].Line)
-	require.JSONEq(t, expectedRecord, r2.received[0].Line)
+	require.JSONEq(t, expectedRecord, collector1.Entries()[0].Entry.Line)
+	require.JSONEq(t, expectedRecord, collector2.Entries()[0].Entry.Line)
+	cancel()
+	wg.Wait()
 }
 
 func TestComponent_UpdateWithNewArguments(t *testing.T) {
+	goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
+
 	opts := component.Options{
 		ID:            "loki.source.awsfirehose",
 		Logger:        logging.NewSlogNop(),
@@ -182,14 +142,7 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 		OnStateChange: func(e component.Exports) {},
 	}
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
-
-	// call cancelReceivers to terminate them
-	receiverContext, cancelReceivers := context.WithCancel(t.Context())
-	go r1.run(receiverContext)
-	go r2.run(receiverContext)
-	defer cancelReceivers()
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 
 	args := Arguments{}
 
@@ -208,7 +161,7 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 		// assign random grpc port
 		GRPC: &fnet.GRPCConfig{ListenPort: 0},
 	}
-	args.ForwardTo = []loki.LogsReceiver{ch1}
+	args.ForwardTo = []loki.Consumer{collector1}
 	args.RelabelRules = alloy_config.Rules{
 		{
 			SourceLabels: []string{"__aws_firehose_source_arn"},
@@ -223,9 +176,11 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	componentCtx, cancelComponent := context.WithCancel(t.Context())
-	go c.Run(componentCtx)
-	defer cancelComponent()
+	var wg sync.WaitGroup
+	ctx, cancel := context.WithCancel(t.Context())
+	wg.Go(func() {
+		_ = c.Run(ctx)
+	})
 
 	// small wait for server start
 	time.Sleep(200 * time.Millisecond)
@@ -243,26 +198,21 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 
 	res, err := client.Do(req)
 	require.NoError(t, err)
+	require.NoError(t, res.Body.Close())
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	require.Eventually(t, func() bool {
-		r1.mux.RLock()
-		defer r1.mux.RUnlock()
-		return len(r1.received) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
 	}, time.Second*10, time.Second, "timed out waiting for receivers to get all messages")
 
-	r1.mux.RLock()
-	require.Len(t, r1.received, 1)
-	require.JSONEq(t, expectedRecord, r1.received[0].Line)
-	require.Equal(t, "testarn", string(r1.received[0].Labels["source_arn"]))
-	r1.mux.RUnlock()
+	require.JSONEq(t, expectedRecord, collector1.Entries()[0].Entry.Line)
+	require.Equal(t, "testarn", string(collector1.Entries()[0].Labels["source_arn"]))
 
-	//
+	collector1.Reset()
+
 	// create new config without relabels, and adding a new forward
-	//
-
 	args2 := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch1, ch2},
+		ForwardTo: []loki.Consumer{collector1, collector2},
 	}
 	args2.Server = &fnet.ServerConfig{
 		HTTP: &fnet.HTTPConfig{
@@ -274,9 +224,6 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 	require.NoError(t, c.Update(args2))
 	time.Sleep(200 * time.Millisecond)
 
-	// clear received entries
-	r1.received = nil
-
 	_, err = client.Do(req)
 	require.Error(t, err, "now that the port change, the first request should have errored")
 
@@ -286,28 +233,19 @@ func TestComponent_UpdateWithNewArguments(t *testing.T) {
 
 	res, err = client.Do(req2)
 	require.NoError(t, err)
+	require.NoError(t, res.Body.Close())
 	require.Equal(t, http.StatusOK, res.StatusCode)
 
-	require.Eventually(t, func() bool {
-		r1.mux.RLock()
-		r2.mux.RLock()
-		defer func() {
-			r1.mux.RUnlock()
-			r2.mux.RUnlock()
-		}()
-		return len(r1.received) == 1 && len(r2.received) == 1
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
+		require.Len(c, collector2.Entries(), 1)
 	}, time.Second*10, time.Second, "timed out waiting for receivers to get all messages")
 
-	r1.mux.RLock()
-	r2.mux.RLock()
-	defer func() {
-		r1.mux.RUnlock()
-		r2.mux.RUnlock()
-	}()
-	require.Len(t, r1.received, 1)
-	require.Len(t, r2.received, 1)
-	require.JSONEq(t, expectedRecord, r1.received[0].Line)
-	require.NotContains(t, r1.received[0].Labels, model.LabelName("source_arn"), "expected received entry to not contain label")
-	require.JSONEq(t, expectedRecord, r2.received[0].Line)
-	require.NotContains(t, r2.received[0].Labels, model.LabelName("source_arn"), "expected received entry to not contain label")
+	require.JSONEq(t, expectedRecord, collector1.Entries()[0].Entry.Line)
+	require.NotContains(t, collector1.Entries()[0].Labels, model.LabelName("source_arn"), "expected received entry to not contain label")
+	require.JSONEq(t, expectedRecord, collector2.Entries()[0].Entry.Line)
+	require.NotContains(t, collector2.Entries()[0].Labels, model.LabelName("source_arn"), "expected received entry to not contain label")
+
+	cancel()
+	wg.Wait()
 }
