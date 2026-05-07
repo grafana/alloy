@@ -3,6 +3,7 @@ package loki
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 )
 
@@ -50,14 +51,13 @@ func (c *CollectingConsumer) ConsumeEntry(_ context.Context, entry Entry) error 
 func (c *CollectingConsumer) Batches() []Batch {
 	c.mut.Lock()
 	defer c.mut.Unlock()
-
-	return c.batches
+	return slices.Clone(c.batches)
 }
 
 func (c *CollectingConsumer) Entries() []Entry {
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	return c.entries
+	return slices.Clone(c.entries)
 }
 
 func (c *CollectingConsumer) Reset() {
