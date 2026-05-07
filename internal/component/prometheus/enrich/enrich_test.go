@@ -14,6 +14,7 @@ import (
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -304,7 +305,7 @@ func TestEnrichConcurrentUpdate(t *testing.T) {
 	// continuously rotate Targets and LabelsToCopy.
 	wg.Go(func() {
 		for range iterations {
-			require.NoError(t, c.Update(args))
+			assert.NoError(t, c.Update(args))
 		}
 	})
 	wg.Wait()

@@ -126,7 +126,6 @@ type matchCache struct {
 
 type Component struct {
 	opts component.Options
-	args Arguments
 
 	mut      sync.RWMutex
 	receiver *prometheus.Interceptor
@@ -148,7 +147,6 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts: opts,
-		args: args,
 	}
 
 	c.cacheSize = prometheus_client.NewGauge(prometheus_client.GaugeOpts{
@@ -241,7 +239,6 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.args = newArgs
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
 	c.refreshCacheFromTargets(newArgs)
