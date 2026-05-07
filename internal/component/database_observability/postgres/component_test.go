@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"regexp"
 	"testing"
 	"time"
 
@@ -443,6 +445,123 @@ func TestPostgres_ExcludeCurrentUser_Runtime(t *testing.T) {
 		err = c.connectAndStartCollectors(context.Background())
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to query current_user")
+	})
+}
+
+func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
+	ptrBool := func(b bool) *bool { return &b }
+
+	serverInfoRows := func() *sqlmock.Rows {
+		return sqlmock.NewRows([]string{"system_identifier", "inet_server_addr", "inet_server_port", "version"}).
+			AddRow("1234567890", "127.0.0.1", "5432", "14.0")
+	}
+	currentUserRows := func() *sqlmock.Rows {
+		return sqlmock.NewRows([]string{"current_user"}).AddRow("alloy_monitor")
+	}
+	emptyActivityRows := func() *sqlmock.Rows {
+		return sqlmock.NewRows([]string{
+			"now", "datname", "pid", "leader_pid",
+			"usename", "application_name", "client_addr", "client_port",
+			"backend_type", "backend_start", "backend_xid", "backend_xmin",
+			"xact_start", "state", "state_change", "wait_event_type",
+			"wait_event", "blocked_by_pids", "query_start", "query_id",
+		})
+	}
+
+	setup := func(t *testing.T) (*Component, sqlmock.Sqlmock, *sql.DB) {
+		t.Helper()
+		db, mock, err := sqlmock.New(
+			sqlmock.MonitorPingsOption(true),
+			sqlmock.QueryMatcherOption(sqlmock.QueryMatcherRegexp),
+		)
+		require.NoError(t, err)
+		mock.MatchExpectationsInOrder(false)
+
+		c := newTestComponent(t, func(_, _ string) (*sql.DB, error) { return db, nil })
+		c.args.EnableCollectors = []string{"query_samples"}
+		c.args.DisableCollectors = []string{"query_details", "schema_details", "explain_plans"}
+		// Avoid scraping more than once during the test.
+		c.args.QuerySampleArguments.CollectInterval = time.Hour
+		return c, mock, db
+	}
+
+	expectPrelude := func(mock sqlmock.Sqlmock, mockSelectCurrentUser bool) {
+		mock.ExpectPing()
+		mock.ExpectQuery(regexp.QuoteMeta(selectServerInfo)).WillReturnRows(serverInfoRows())
+		if mockSelectCurrentUser {
+			mock.ExpectQuery(regexp.QuoteMeta("SELECT current_user")).WillReturnRows(currentUserRows())
+		}
+	}
+
+	// regexes for the query_samples collector to verify users clause
+	const (
+		regexNoCurrentUser   = `AND d\.datname NOT IN \('azure_maintenance'\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
+		regexWithCurrentUser = `AND d\.datname NOT IN \('azure_maintenance'\)\s*AND s\.usesysid != \(select oid from pg_roles where rolname = current_user\)\s*AND s\.usename NOT IN \(%s\)\s*\z`
+	)
+
+	t.Run("local override unset inherits top-level cascade", func(t *testing.T) {
+		c, mock, db := setup(t)
+		defer db.Close()
+		c.args.ExcludeCurrentUser = true
+		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.QuerySampleArguments.ExcludeCurrentUser = nil
+
+		expectPrelude(mock, true)
+		// effectiveExcludeUsers = ['rdsadmin', 'alloy_monitor'], no current_user clause.
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin', 'alloy_monitor'`)).
+			WillReturnRows(emptyActivityRows())
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+	})
+
+	t.Run("local override true forces deprecated SQL-side path", func(t *testing.T) {
+		c, mock, db := setup(t)
+		defer db.Close()
+		c.args.ExcludeCurrentUser = true
+		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(true)
+
+		expectPrelude(mock, true)
+		// SQL contains the current_user clause, and uses raw c.args.ExcludeUsers
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'rdsadmin'`)).
+			WillReturnRows(emptyActivityRows())
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+	})
+
+	t.Run("local override false opts out and bypasses cascade", func(t *testing.T) {
+		c, mock, db := setup(t)
+		defer db.Close()
+		c.args.ExcludeCurrentUser = true
+		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(false)
+
+		expectPrelude(mock, true)
+		// No current_user clause, uses raw c.args.ExcludeUsers (no alloy_monitor appended).
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
+			WillReturnRows(emptyActivityRows())
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+	})
+
+	t.Run("top-level false with local override true engages SQL clause without lookup", func(t *testing.T) {
+		c, mock, db := setup(t)
+		defer db.Close()
+		c.args.ExcludeCurrentUser = false
+		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(true)
+
+		// Top-level is false, so SELECT current_user is NOT issued.
+		expectPrelude(mock, false)
+		// SQL still contains the current_user clause via the local override.
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexWithCurrentUser, `'rdsadmin'`)).
+			WillReturnRows(emptyActivityRows())
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
 }
 
