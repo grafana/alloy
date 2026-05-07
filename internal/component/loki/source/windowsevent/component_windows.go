@@ -37,7 +37,7 @@ type Component struct {
 	opts component.Options
 
 	handle loki.LogsReceiver
-	fanout *loki.Fanout
+	fanout *loki.FanoutConsumer
 
 	mut    sync.Mutex
 	args   Arguments
@@ -48,7 +48,7 @@ type Component struct {
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:   o,
-		fanout: loki.NewFanout(args.ForwardTo),
+		fanout: loki.NewFanoutConsumer(args.ForwardTo),
 		handle: loki.NewLogsReceiver(),
 		args:   args,
 	}
@@ -63,7 +63,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		loki.Drain(c.handle, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain2(c.handle, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			if c.target != nil {
@@ -73,7 +73,7 @@ func (c *Component) Run(ctx context.Context) error {
 		})
 	}()
 
-	loki.Consume(ctx, c.handle, c.fanout)
+	loki.Consume2(ctx, c.handle, c.fanout)
 	return nil
 }
 
@@ -84,7 +84,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	// If no bookmark specified create one in the datapath.
 	if newArgs.BookmarkPath == "" {

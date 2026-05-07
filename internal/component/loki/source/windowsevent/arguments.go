@@ -13,18 +13,18 @@ import (
 // Arguments holds values which are used to configure the loki.source.windowsevent
 // component.
 type Arguments struct {
-	Locale               int                 `alloy:"locale,attr,optional"`
-	EventLogName         string              `alloy:"eventlog_name,attr,optional"`
-	XPathQuery           string              `alloy:"xpath_query,attr,optional"`
-	BookmarkPath         string              `alloy:"bookmark_path,attr,optional"`
-	PollInterval         time.Duration       `alloy:"poll_interval,attr,optional"`
-	ExcludeEventData     bool                `alloy:"exclude_event_data,attr,optional"`
-	ExcludeUserdata      bool                `alloy:"exclude_user_data,attr,optional"`
-	ExcludeEventMessage  bool                `alloy:"exclude_event_message,attr,optional"`
-	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
-	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Labels               map[string]string   `alloy:"labels,attr,optional"`
-	LegacyBookmarkPath   string              `alloy:"legacy_bookmark_path,attr,optional"`
+	Locale               int               `alloy:"locale,attr,optional"`
+	EventLogName         string            `alloy:"eventlog_name,attr,optional"`
+	XPathQuery           string            `alloy:"xpath_query,attr,optional"`
+	BookmarkPath         string            `alloy:"bookmark_path,attr,optional"`
+	PollInterval         time.Duration     `alloy:"poll_interval,attr,optional"`
+	ExcludeEventData     bool              `alloy:"exclude_event_data,attr,optional"`
+	ExcludeUserdata      bool              `alloy:"exclude_user_data,attr,optional"`
+	ExcludeEventMessage  bool              `alloy:"exclude_event_message,attr,optional"`
+	UseIncomingTimestamp bool              `alloy:"use_incoming_timestamp,attr,optional"`
+	ForwardTo            []loki.Consumer   `alloy:"forward_to,attr"`
+	Labels               map[string]string `alloy:"labels,attr,optional"`
+	LegacyBookmarkPath   string            `alloy:"legacy_bookmark_path,attr,optional"`
 }
 
 func defaultArgs() Arguments {
