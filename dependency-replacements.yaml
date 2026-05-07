@@ -144,3 +144,8 @@ replaces:
       Remove when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/45955 (and follow-up releases) fully align DataDog modules.
     dependency: github.com/DataDog/datadog-agent/pkg/util/system
     replacement: github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
+
+  - comment: >
+      Update sql_exporter to the version using pgx v5. Fixes CVE-2026-4427.
+    dependency: github.com/burningalchemist/sql_exporter
+    replacement: github.com/burningalchemist/sql_exporter 0.14.4
