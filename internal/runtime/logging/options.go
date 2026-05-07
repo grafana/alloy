@@ -16,7 +16,7 @@ type Options struct {
 	Format      Format         `alloy:"format,attr,optional"`
 	Destination LogDestination `alloy:"destination,attr,optional"`
 
-	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
+	WriteTo []loki.Consumer `alloy:"write_to,attr,optional"`
 }
 
 // LogDestination is where to send the primary log output.
