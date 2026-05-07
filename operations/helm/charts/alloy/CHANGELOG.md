@@ -10,6 +10,14 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.8.1 (2026-05-05)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.16.1 (@x1unix)
+
+
 1.8.0 (2026-04-23)
 ----------
 
