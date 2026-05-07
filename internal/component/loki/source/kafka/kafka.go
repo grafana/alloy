@@ -41,7 +41,7 @@ type Arguments struct {
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
 	Labels               map[string]string   `alloy:"labels,attr,optional"`
 
-	ForwardTo    []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo    []loki.Consumer     `alloy:"forward_to,attr"`
 	RelabelRules alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
@@ -92,7 +92,7 @@ type Component struct {
 	opts component.Options
 
 	handler loki.LogsReceiver
-	fanout  *loki.Fanout
+	fanout  *loki.FanoutConsumer
 
 	mut    sync.Mutex
 	target *kt.TargetSyncer
@@ -103,7 +103,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:    o,
 		handler: loki.NewLogsReceiver(),
-		fanout:  loki.NewFanout(args.ForwardTo),
+		fanout:  loki.NewFanoutConsumer(args.ForwardTo),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -117,7 +117,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain2(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 
@@ -130,7 +130,7 @@ func (c *Component) Run(ctx context.Context) error {
 		})
 	}()
 
-	loki.Consume(ctx, c.handler, c.fanout)
+	loki.Consume2(ctx, c.handler, c.fanout)
 	return nil
 }
 
@@ -140,7 +140,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	if c.target != nil {
 		err := c.target.Stop()
