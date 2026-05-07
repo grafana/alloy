@@ -26,7 +26,7 @@ type SourceArguments struct {
 }
 
 type ForwardTo struct {
-	Logs []loki.LogsReceiver `alloy:"logs,attr"`
+	Logs []loki.Consumer `alloy:"logs,attr"`
 }
 
 type SourceExports struct{}
@@ -34,14 +34,13 @@ type SourceExports struct{}
 type Source struct {
 	opts component.Options
 
-	lokiFanout *loki.Fanout
+	lokiFanout *loki.FanoutConsumer
 }
 
 func NewSource(opts component.Options, args SourceArguments) (*Source, error) {
 	s := &Source{
-		opts: opts,
-
-		lokiFanout: loki.NewFanout(args.ForwardTo.Logs),
+		opts:       opts,
+		lokiFanout: loki.NewFanoutConsumer(args.ForwardTo.Logs),
 	}
 
 	s.opts.OnStateChange(SourceExports{})
@@ -58,13 +57,13 @@ func (s *Source) Run(ctx context.Context) error {
 
 func (s *Source) Update(args component.Arguments) error {
 	newArgs := args.(SourceArguments)
-	s.lokiFanout.UpdateChildren(newArgs.ForwardTo.Logs)
+	s.lokiFanout.Update(newArgs.ForwardTo.Logs)
 	return nil
 }
 
 func (s *Source) SendEntries(ctx context.Context, entries ...loki.Entry) error {
 	for _, e := range entries {
-		if err := s.lokiFanout.Send(ctx, e); err != nil {
+		if err := s.lokiFanout.ConsumeEntry(ctx, e); err != nil {
 			return err
 		}
 	}
