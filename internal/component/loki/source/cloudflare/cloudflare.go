@@ -132,7 +132,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 		// NOTE: We need to stop posFile first so we don't record entries we are draining.
 		c.posFile.Stop()
-		loki.Drain2(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			c.tailer.stop()

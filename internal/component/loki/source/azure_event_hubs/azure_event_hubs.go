@@ -105,7 +105,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.opts.Logger.Info("loki.source.azure_event_hubs component shutting down, stopping the targets")
 
-		loki.Drain2(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 

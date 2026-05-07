@@ -130,7 +130,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		loki.Drain2(c.processOut, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain(c.processOut, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			c.stopped = true
