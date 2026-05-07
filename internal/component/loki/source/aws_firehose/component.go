@@ -29,11 +29,11 @@ func init() {
 }
 
 type Arguments struct {
-	Server               *fnet.ServerConfig  `alloy:",squash"`
-	AccessKey            alloytypes.Secret   `alloy:"access_key,attr,optional"`
-	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
-	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
-	RelabelRules         relabel.Rules       `alloy:"relabel_rules,attr,optional"`
+	Server               *fnet.ServerConfig `alloy:",squash"`
+	AccessKey            alloytypes.Secret  `alloy:"access_key,attr,optional"`
+	UseIncomingTimestamp bool               `alloy:"use_incoming_timestamp,attr,optional"`
+	ForwardTo            []loki.Consumer    `alloy:"forward_to,attr"`
+	RelabelRules         relabel.Rules      `alloy:"relabel_rules,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -50,7 +50,7 @@ type Component struct {
 	metrics       *metrics
 	serverMetrics *util.UncheckedCollector
 
-	fanout  *loki.Fanout
+	fanout  *loki.FanoutConsumer
 	handler loki.LogsBatchReceiver
 
 	mut    sync.Mutex
@@ -64,7 +64,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		metrics:       newMetrics(o.Registerer),
 		opts:          o,
 		handler:       loki.NewLogsBatchReceiver(),
-		fanout:        loki.NewFanout(args.ForwardTo),
+		fanout:        loki.NewFanoutConsumer(args.ForwardTo),
 		serverMetrics: util.NewUncheckedCollector(nil),
 	}
 
@@ -87,7 +87,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	loki.ConsumeBatch(ctx, c.handler, c.fanout)
+	loki.ConsumeBatch2(ctx, c.handler, c.fanout)
 	return nil
 }
 
@@ -99,7 +99,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	if newArgs.Server == nil {
 		newArgs.Server = &fnet.ServerConfig{}
