@@ -59,7 +59,7 @@ const (
 type Arguments struct {
 	Host             string                  `alloy:"host,attr"`
 	Targets          []discovery.Target      `alloy:"targets,attr"`
-	ForwardTo        []loki.LogsReceiver     `alloy:"forward_to,attr"`
+	ForwardTo        []loki.Consumer         `alloy:"forward_to,attr"`
 	Labels           map[string]string       `alloy:"labels,attr,optional"`
 	RelabelRules     alloy_relabel.Rules     `alloy:"relabel_rules,attr,optional"`
 	HTTPClientConfig *types.HTTPClientConfig `alloy:"http_client_config,block,optional"`
@@ -107,15 +107,15 @@ type Component struct {
 	metrics *metrics
 	exited  *atomic.Bool
 
+	fanout  *loki.FanoutConsumer
+	handler loki.LogsReceiver
+
 	mut       sync.RWMutex
 	args      Arguments
 	scheduler *source.Scheduler[string]
 	client    client.APIClient
-	handler   loki.LogsReceiver
 	posFile   positions.Positions
 	rcs       []*relabel.Config
-
-	fanout *loki.Fanout
 }
 
 // New creates a new loki.source.file component.
@@ -140,7 +140,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		exited:    atomic.NewBool(false),
 		handler:   loki.NewLogsReceiver(),
 		scheduler: source.NewScheduler[string](),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanoutConsumer(args.ForwardTo),
 		posFile:   positionsFile,
 	}
 
@@ -158,7 +158,7 @@ func (c *Component) Run(ctx context.Context) error {
 		c.exited.Store(true)
 		c.posFile.Stop()
 
-		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain2(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 			c.scheduler.Stop()
@@ -166,7 +166,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	// Start consume and fanout loop
-	loki.Consume(ctx, c.handler, c.fanout)
+	loki.Consume2(ctx, c.handler, c.fanout)
 	return nil
 }
 
@@ -182,7 +182,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	client, err := c.getClient(newArgs)
 	if err != nil {
