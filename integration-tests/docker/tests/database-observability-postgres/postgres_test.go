@@ -13,7 +13,7 @@ import (
 const testName = "database_observability_postgres"
 
 func TestDatabaseObservabilityPostgresMetrics(t *testing.T) {
-	var metrics = []string{
+	metrics := []string{
 		"database_observability_connection_info",
 	}
 	common.MimirMetricsTest(t, metrics, []string{}, testName)
