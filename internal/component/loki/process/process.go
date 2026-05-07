@@ -141,7 +141,7 @@ func (c *Component) Run(ctx context.Context) error {
 		})
 	}()
 
-	loki.ConsumeAndProcess2(ctx, c.processOut, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
+	loki.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
 		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
 			livedebugging.ComponentID(c.opts.ID),
 			livedebugging.LokiLog,
