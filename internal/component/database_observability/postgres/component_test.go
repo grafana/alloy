@@ -852,9 +852,8 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
-	require.NotNil(t, exports.LogsReceiver, "LogsReceiver should be exported immediately")
-	require.NotNil(t, c.logsReceiver, "component should have logsReceiver initialized")
-	assert.Equal(t, c.logsReceiver, exports.LogsReceiver)
+	require.NotNil(t, exports.LogsReceiver, "Consumer should be exported immediately")
+	assert.Equal(t, c, exports.LogsReceiver)
 }
 
 func Test_connectAndStartCollectors(t *testing.T) {
