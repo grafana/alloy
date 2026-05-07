@@ -3,7 +3,6 @@ package loki
 import (
 	"context"
 	"errors"
-	"reflect"
 	"sync"
 )
 
@@ -66,16 +65,4 @@ func (c *CollectingConsumer) Reset() {
 	defer c.mut.Unlock()
 	c.entries = nil
 	c.batches = nil
-}
-
-func requireUpdate[T any](prev, next []T) bool {
-	if len(prev) != len(next) {
-		return true
-	}
-	for i := range prev {
-		if !reflect.DeepEqual(prev[i], next[i]) {
-			return true
-		}
-	}
-	return false
 }
