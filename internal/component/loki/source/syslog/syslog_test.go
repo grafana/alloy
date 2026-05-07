@@ -33,7 +33,7 @@ func Test(t *testing.T) {
 		OnStateChange: func(e component.Exports) {},
 	}
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 	args := Arguments{}
 	tcpListenerAddr, udpListenerAddr := componenttest.GetFreeAddr(t), componenttest.GetFreeAddr(t)
 
@@ -48,7 +48,7 @@ func Test(t *testing.T) {
 	l2.Labels = map[string]string{"protocol": syslogtarget.ProtocolUDP}
 
 	args.SyslogListeners = []ListenerConfig{l1, l2}
-	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
+	args.ForwardTo = []loki.Consumer{collector1, collector2}
 
 	// Create and run the component.
 	c, err := New(opts, args)
@@ -68,20 +68,22 @@ func Test(t *testing.T) {
 
 	wantLabelSet := model.LabelSet{"protocol": model.LabelValue(syslogtarget.ProtocolTCP)}
 
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "An application event log entry...", logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "An application event log entry...", logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
+		require.Len(c, collector2.Entries(), 1)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	verify := func(t *testing.T, entry loki.Entry) {
+		require.WithinDuration(t, time.Now(), entry.Timestamp, 1*time.Second)
+		require.Equal(t, "An application event log entry...", entry.Line)
+		require.Equal(t, wantLabelSet, entry.Labels)
 	}
+
+	verify(t, collector1.Entries()[0])
+	verify(t, collector2.Entries()[0])
+
+	collector1.Reset()
+	collector2.Reset()
 
 	// Send a Syslog message over UDP to the second listener.
 	con, err = net.Dial(syslogtarget.ProtocolUDP, udpListenerAddr)
@@ -93,20 +95,13 @@ func Test(t *testing.T) {
 
 	wantLabelSet = model.LabelSet{"protocol": "udp"}
 
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "An application event log entry...", logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "An application event log entry...", logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
+		require.Len(c, collector2.Entries(), 1)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	verify(t, collector1.Entries()[0])
+	verify(t, collector2.Entries()[0])
 }
 
 func TestWithRelabelRules(t *testing.T) {
@@ -116,7 +111,7 @@ func TestWithRelabelRules(t *testing.T) {
 		OnStateChange: func(e component.Exports) {},
 	}
 
-	ch1 := loki.NewLogsReceiver()
+	collector := loki.NewCollectingConsumer()
 	args := Arguments{}
 	tcpListenerAddr := componenttest.GetFreeAddr(t)
 
@@ -125,7 +120,7 @@ func TestWithRelabelRules(t *testing.T) {
 	l.Labels = map[string]string{"protocol": syslogtarget.ProtocolTCP}
 
 	args.SyslogListeners = []ListenerConfig{l}
-	args.ForwardTo = []loki.LogsReceiver{ch1}
+	args.ForwardTo = []loki.Consumer{collector}
 
 	// Create a handler which will be used to retrieve relabeling rules.
 	args.RelabelRules = []*alloy_relabel.Config{
@@ -168,14 +163,14 @@ func TestWithRelabelRules(t *testing.T) {
 		"syslog_message_severity":      "notice",
 	}
 
-	select {
-	case logEntry := <-ch1.Chan():
-		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-		require.Equal(t, "An application event log entry...", logEntry.Line)
-		require.Equal(t, wantLabelSet, logEntry.Labels)
-	case <-time.After(5 * time.Second):
-		require.FailNow(t, "failed waiting for log line")
-	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector.Entries(), 1)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	got := collector.Entries()[0]
+	require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+	require.Equal(t, "An application event log entry...", got.Line)
+	require.Equal(t, wantLabelSet, got.Labels)
 }
 
 func writeMessageToStream(w io.Writer, msg string, formatter formatFunc) error {
@@ -211,14 +206,14 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	addr := componenttest.GetFreeAddr(t)
 
 	// Create and start the first component listening on addr over TCP.
-	ch1 := loki.NewLogsReceiver()
+	collector1 := loki.NewCollectingConsumer()
 	args1 := Arguments{}
 	l1 := DefaultListenerConfig
 	l1.ListenAddress = addr
 	l1.ListenProtocol = syslogtarget.ProtocolTCP
 	l1.Labels = map[string]string{"phase": "first"}
 	args1.SyslogListeners = []ListenerConfig{l1}
-	args1.ForwardTo = []loki.LogsReceiver{ch1}
+	args1.ForwardTo = []loki.Consumer{collector1}
 
 	c1, err := New(opts, args1)
 	require.NoError(t, err)
@@ -229,14 +224,14 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 
 	// Create the second component on the same addr, don't start yet.
-	ch2 := loki.NewLogsReceiver()
+	collector2 := loki.NewCollectingConsumer()
 	args2 := Arguments{}
 	l2 := DefaultListenerConfig
 	l2.ListenAddress = addr
 	l2.ListenProtocol = syslogtarget.ProtocolTCP
 	l2.Labels = map[string]string{"phase": "second"}
 	args2.SyslogListeners = []ListenerConfig{l2}
-	args2.ForwardTo = []loki.LogsReceiver{ch2}
+	args2.ForwardTo = []loki.Consumer{collector2}
 
 	c2, err := New(opts, args2)
 	require.NoError(t, err)
@@ -265,13 +260,13 @@ func TestShutdownAndRebindOnSamePort(t *testing.T) {
 		require.NoError(collect, conn.Close())
 	}, 5*time.Second, 10*time.Millisecond, "failed to dial and write message to stream")
 
-	select {
-	case logEntry := <-ch2.Chan():
-		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-		require.Equal(t, "Rebind successful", logEntry.Line)
-	case <-time.After(5 * time.Second):
-		require.FailNow(t, "did not receive log from second component; port may not have been released")
-	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector2.Entries(), 1)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	got := collector2.Entries()[0]
+	require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+	require.Equal(t, "Rebind successful", got.Line)
 
 	// Cleanup second component.
 	cancel2()
@@ -320,10 +315,10 @@ func TestExperimentalFeaturesStabilityLevel(t *testing.T) {
 			lc.ListenProtocol = syslogtarget.ProtocolTCP
 			tc.setCfg(&lc)
 
-			rcv := loki.NewLogsReceiver()
+			collector := loki.NewCollectingConsumer()
 			args := Arguments{
 				SyslogListeners: []ListenerConfig{lc},
-				ForwardTo:       []loki.LogsReceiver{rcv},
+				ForwardTo:       []loki.Consumer{collector},
 			}
 
 			// Check if requires experimental level
