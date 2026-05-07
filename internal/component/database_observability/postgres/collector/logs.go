@@ -76,12 +76,13 @@ type statementBuffer struct {
 }
 
 type LogsArguments struct {
-	Receiver         loki.LogsReceiver
-	EntryHandler     loki.EntryHandler
-	Logger           log.Logger
-	Registry         *prometheus.Registry
-	ExcludeDatabases []string
-	ExcludeUsers     []string
+	Receiver               loki.LogsReceiver
+	EntryHandler           loki.EntryHandler
+	Logger                 log.Logger
+	Registry               *prometheus.Registry
+	ExcludeDatabases       []string
+	ExcludeUsers           []string
+	EnableQueryFingerprint bool
 }
 
 type Logs struct {
@@ -89,9 +90,10 @@ type Logs struct {
 	entryHandler loki.EntryHandler
 	registry     *prometheus.Registry
 
-	receiver         loki.LogsReceiver
-	excludeDatabases []string
-	excludeUsers     []string
+	receiver               loki.LogsReceiver
+	excludeDatabases       []string
+	excludeUsers           []string
+	enableQueryFingerprint bool
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -120,16 +122,17 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:           log.With(args.Logger, "collector", LogsCollector),
-		entryHandler:     args.EntryHandler,
-		registry:         args.Registry,
-		receiver:         args.Receiver,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		ctx:              ctx,
-		cancel:           cancel,
-		stopped:          atomic.NewBool(false),
-		startTime:        time.Now(),
+		logger:                 log.With(args.Logger, "collector", LogsCollector),
+		entryHandler:           args.EntryHandler,
+		registry:               args.Registry,
+		receiver:               args.Receiver,
+		excludeDatabases:       args.ExcludeDatabases,
+		excludeUsers:           args.ExcludeUsers,
+		enableQueryFingerprint: args.EnableQueryFingerprint,
+		ctx:                    ctx,
+		cancel:                 cancel,
+		stopped:                atomic.NewBool(false),
+		startTime:              time.Now(),
 	}
 
 	l.pendingErrors = make(map[string]*pendingError)
@@ -657,6 +660,9 @@ func (l *Logs) flushStatementLocked() {
 // key/value pairs in the line body so downstream LogQL can extract them via
 // `| logfmt`. No-op if entry is nil or if the SQL fingerprints to ErrEmpty.
 func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
+	if !l.enableQueryFingerprint {
+		return
+	}
 	if entry == nil {
 		return
 	}

@@ -27,15 +27,16 @@ database_observability.postgres "<LABEL>" {
 
 You can use the following arguments with `database_observability.postgres`:
 
-| Name                 | Type                 | Description                                                 | Default | Required |
-|----------------------|----------------------|-------------------------------------------------------------|---------|----------|
-| `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
-| `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
-| `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
-| `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
-| `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| Name                       | Type                 | Description                                                 | Default | Required |
+|----------------------------|----------------------|-------------------------------------------------------------|---------|----------|
+| `data_source_name`         | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
+| `forward_to`               | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
+| `targets`                  | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
+| `disable_collectors`       | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
+| `enable_collectors`        | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
+| `exclude_databases`        | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`            | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `enable_query_fingerprint` | `bool`               | Compute a stable semantic `query_fingerprint` for every observed query and emit it on Loki entries via versioned ops, and unlock the `op="error"` Loki entries that pair PostgreSQL `ERROR` + `STATEMENT` log lines. When `false`, the component preserves the pre-fingerprint op shapes exactly. | `false` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
 
@@ -185,6 +186,8 @@ Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-appl
 {{< /admonition >}}
 
 ### Emitted Loki entries
+
+Emitted only when `enable_query_fingerprint = true` on the parent `database_observability.postgres` block. With the default value, the component preserves all pre-fingerprint op shapes exactly.
 
 Alongside `database_observability_pg_errors_total`, the `logs` collector
 forwards a Loki entry on its `forward_to` target for every PostgreSQL
