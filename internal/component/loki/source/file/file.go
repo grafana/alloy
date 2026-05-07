@@ -47,7 +47,7 @@ const (
 // component.
 type Arguments struct {
 	Targets              []discovery.Target   `alloy:"targets,attr"`
-	ForwardTo            []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	ForwardTo            []loki.Consumer      `alloy:"forward_to,attr"`
 	Encoding             string               `alloy:"encoding,attr,optional"`
 	DecompressionConfig  DecompressionConfig  `alloy:"decompression,block,optional"`
 	FileWatch            FileWatch            `alloy:"file_watch,block,optional"`
@@ -202,8 +202,7 @@ type Component struct {
 
 	handler loki.LogsReceiver
 	posFile positions.Positions
-
-	fanout *loki.Fanout
+	fanout  *loki.FanoutConsumer
 
 	stopping atomic.Bool
 }
@@ -233,7 +232,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:      o,
 		metrics:   newMetrics(o.Registerer),
 		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanoutConsumer(args.ForwardTo),
 		posFile:   positionsFile,
 		scheduler: source.NewScheduler[positions.Entry](),
 		watcher:   time.NewTicker(args.FileMatch.SyncPeriod),
@@ -263,7 +262,7 @@ func (c *Component) Run(ctx context.Context) error {
 	var wg sync.WaitGroup
 
 	// Start consume and fanout loop
-	wg.Go(func() { loki.Consume(ctx, c.handler, c.fanout) })
+	wg.Go(func() { loki.Consume2(ctx, c.handler, c.fanout) })
 
 	wg.Go(func() {
 		for {
@@ -295,7 +294,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
