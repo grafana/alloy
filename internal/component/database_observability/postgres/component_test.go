@@ -563,6 +563,41 @@ func TestQuerySamples_ExcludeCurrentUser_LocalPrecedence(t *testing.T) {
 		require.NoError(t, c.connectAndStartCollectors(context.Background()))
 		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
 	})
+
+	t.Run("top-level false with local override unset is a no-op baseline", func(t *testing.T) {
+		c, mock, db := setup(t)
+		defer db.Close()
+		c.args.ExcludeCurrentUser = false
+		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.QuerySampleArguments.ExcludeCurrentUser = nil
+
+		// Top-level is false, so SELECT current_user is NOT issued.
+		expectPrelude(mock, false)
+		// Neither knob is on: no current_user clause, raw c.args.ExcludeUsers.
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
+			WillReturnRows(emptyActivityRows())
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+	})
+
+	t.Run("top-level false with local override false renders identically to baseline", func(t *testing.T) {
+		c, mock, db := setup(t)
+		defer db.Close()
+		c.args.ExcludeCurrentUser = false
+		c.args.ExcludeUsers = []string{"rdsadmin"}
+		c.args.QuerySampleArguments.ExcludeCurrentUser = ptrBool(false)
+
+		// Top-level is false, so SELECT current_user is NOT issued.
+		expectPrelude(mock, false)
+		// Same observable SQL as the local=nil baseline above; the deprecated
+		// branch is taken (warning logged) but the rendered query is unchanged.
+		mock.ExpectQuery(`(?s)` + fmt.Sprintf(regexNoCurrentUser, `'rdsadmin'`)).
+			WillReturnRows(emptyActivityRows())
+
+		require.NoError(t, c.connectAndStartCollectors(context.Background()))
+		require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 50*time.Millisecond)
+	})
 }
 
 func TestCollectionIntervals(t *testing.T) {
