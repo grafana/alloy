@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -124,32 +125,13 @@ func TestLevels(t *testing.T) {
 	}
 }
 
-// Test_lokiWriter_nil ensures that writing to a lokiWriter doesn't panic when
-// given a nil receiver.
-func Test_lokiWriter_nil(t *testing.T) {
-	logger, err := logging.New(io.Discard, debugLevel())
-	require.NoError(t, err)
-
-	err = logger.Update(logging.Options{
-		Level:  logging.LevelDebug,
-		Format: logging.FormatLogfmt,
-
-		WriteTo: []loki.LogsReceiver{nil},
-	})
-	require.NoError(t, err)
-
-	require.NotPanics(t, func() {
-		logger.Slog().Info("test message")
-	})
-}
-
 // TestWriteToDisabledViaUpdate verifies that logs go to both stderr and the
 // configured write_to receiver while write_to is set, and that calling Update
 // with an empty WriteTo stops sending logs to the receiver while still emitting
 // to stderr.
 func TestWriteToDisabledViaUpdate(t *testing.T) {
 	var buf safeBuffer
-	receiver := loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry, 16)))
+	receiver := loki.NewCollectingConsumer()
 
 	logger, err := logging.New(&buf, debugLevel())
 	require.NoError(t, err)
@@ -157,22 +139,16 @@ func TestWriteToDisabledViaUpdate(t *testing.T) {
 	require.NoError(t, logger.Update(logging.Options{
 		Level:   logging.LevelDebug,
 		Format:  logging.FormatLogfmt,
-		WriteTo: []loki.LogsReceiver{receiver},
+		WriteTo: []loki.Consumer{receiver},
 	}))
 
 	slogger := logger.Slog()
 	slogger.Info("with-write-to")
 
-	require.Eventually(t, func() bool {
-		return strings.Contains(buf.String(), "with-write-to")
-	}, time.Second, 10*time.Millisecond, "stderr did not receive log while write_to was enabled")
-
-	select {
-	case entry := <-receiver.Chan():
-		require.Contains(t, entry.Line, "with-write-to")
-	case <-time.After(time.Second):
-		t.Fatal("write_to receiver did not receive log while write_to was enabled")
-	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Contains(c, buf.String(), "with-write-to")
+		require.Len(c, receiver.Entries(), 1)
+	}, time.Second, 10*time.Millisecond)
 
 	require.NoError(t, logger.Update(logging.Options{
 		Level:  logging.LevelDebug,
@@ -182,16 +158,12 @@ func TestWriteToDisabledViaUpdate(t *testing.T) {
 	beforeLen := buf.String()
 	slogger.Info("without-write-to")
 
-	require.Eventually(t, func() bool {
-		return strings.Contains(buf.String(), "without-write-to")
-	}, time.Second, 10*time.Millisecond, "stderr did not receive log after write_to was disabled")
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Contains(c, buf.String(), "without-write-to")
+		require.Len(c, receiver.Entries(), 1)
+	}, time.Second, 10*time.Millisecond)
 	require.Greater(t, len(buf.String()), len(beforeLen))
 
-	select {
-	case entry := <-receiver.Chan():
-		t.Fatalf("write_to receiver got log %q after write_to was disabled", entry.Line)
-	case <-time.After(100 * time.Millisecond):
-	}
 }
 
 // TestUpdateConcurrentHandle verifies that Logger.Update completes successfully
