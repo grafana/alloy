@@ -2,6 +2,7 @@ package harness
 
 import (
 	"context"
+	"errors"
 	"math"
 	"net/http"
 	"net/http/httptest"
@@ -36,16 +37,15 @@ func init() {
 type SinkArguments struct{}
 
 type SinkExports struct {
-	LokiPushUrl  string            `alloy:"loki_push_url,attr"`
-	LokiReceiver loki.LogsReceiver `alloy:"loki_receiver,attr"`
+	LokiPushUrl  string        `alloy:"loki_push_url,attr"`
+	LokiReceiver loki.Consumer `alloy:"loki_receiver,attr"`
 }
 
 type Sink struct {
 	opts component.Options
 	args SinkArguments
 
-	server   *httptest.Server
-	lokirecv loki.LogsReceiver
+	server *httptest.Server
 
 	mux         sync.Mutex
 	lokiEntries []loki.Entry
@@ -53,9 +53,8 @@ type Sink struct {
 
 func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 	s := &Sink{
-		opts:     opts,
-		args:     args,
-		lokirecv: loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
+		opts: opts,
+		args: args,
 	}
 
 	router := mux.NewRouter()
@@ -89,31 +88,38 @@ func NewSink(opts component.Options, args SinkArguments) (*Sink, error) {
 
 	s.opts.OnStateChange(SinkExports{
 		LokiPushUrl:  s.server.URL + lokiPushPath,
-		LokiReceiver: s.lokirecv,
+		LokiReceiver: s,
 	})
 
 	return s, nil
 }
 
-var _ component.Component = (*Sink)(nil)
+var (
+	_ component.Component = (*Sink)(nil)
+	_ loki.Consumer       = (*Sink)(nil)
+)
 
 func (s *Sink) Run(ctx context.Context) error {
 	defer s.server.Close()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case e := <-s.lokirecv.Chan():
-			s.mux.Lock()
-			s.lokiEntries = append(s.lokiEntries, e)
-			s.mux.Unlock()
-		}
-	}
+	<-ctx.Done()
+	return nil
 }
 
 func (s *Sink) Update(args component.Arguments) error {
 	s.args = args.(SinkArguments)
+	return nil
+}
+
+// Consume implements loki.Consumer.
+func (s *Sink) Consume(ctx context.Context, batch loki.Batch) error {
+	return errors.New("unimplemented")
+}
+
+// ConsumeEntry implements loki.Consumer.
+func (s *Sink) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	s.mux.Lock()
+	s.lokiEntries = append(s.lokiEntries, entry)
+	s.mux.Unlock()
 	return nil
 }
 
