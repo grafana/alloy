@@ -58,7 +58,7 @@ func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiv
 	})
 
 	relabelArgs := relabel.Arguments{
-		ForwardTo:      []loki.LogsReceiver{receiver},
+		ForwardTo:      []loki.Consumer{receiver},
 		RelabelConfigs: relabelConfigs,
 		MaxCacheSize:   relabel.DefaultArguments.MaxCacheSize,
 	}
@@ -96,7 +96,7 @@ func toEventHandlerV2(config *eventhandler_v2.Config, receiver common.ConvertLog
 	}
 
 	return &kubernetes_events.Arguments{
-		ForwardTo:  []loki.LogsReceiver{receiver},
+		ForwardTo:  []loki.Consumer{receiver},
 		JobName:    kubernetes_events.DefaultArguments.JobName,
 		Namespaces: defaultOverrides.Namespaces,
 		LogFormat:  config.LogFormat,
