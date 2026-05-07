@@ -27,7 +27,7 @@ func (s *ScrapeConfigBuilder) AppendWindowsEventsConfig() {
 
 	override := func(val any) any {
 		switch val.(type) {
-		case []loki.LogsReceiver:
+		case []loki.Consumer:
 			return common.CustomTokenizer{Expr: s.getOrNewLokiRelabel()}
 		default:
 			return val
