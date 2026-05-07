@@ -34,7 +34,7 @@ type Arguments struct {
 	Server               *fnet.ServerConfig  `alloy:",squash"`
 	Labels               map[string]string   `alloy:"labels,attr,optional"`
 	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
-	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo            []loki.Consumer     `alloy:"forward_to,attr"`
 	RelabelRules         alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
@@ -54,7 +54,7 @@ type Component struct {
 	mut  sync.RWMutex
 	args Arguments
 
-	fanout *loki.Fanout
+	fanout *loki.FanoutConsumer
 	server *source.Server
 
 	handler loki.LogsBatchReceiver
@@ -67,7 +67,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		metrics:       newMetrics(o.Registerer),
 		mut:           sync.RWMutex{},
 		args:          Arguments{},
-		fanout:        loki.NewFanout(args.ForwardTo),
+		fanout:        loki.NewFanoutConsumer(args.ForwardTo),
 		handler:       loki.NewLogsBatchReceiver(),
 		serverMetrics: util.NewUncheckedCollector(nil),
 	}
@@ -93,7 +93,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
-	loki.ConsumeBatch(ctx, c.handler, c.fanout)
+	loki.ConsumeBatch2(ctx, c.handler, c.fanout)
 	return nil
 }
 
@@ -104,7 +104,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	if newArgs.Server == nil {
 		newArgs.Server = &fnet.ServerConfig{}
