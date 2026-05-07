@@ -45,7 +45,7 @@ type Arguments struct {
 	Labels                 map[string]string   `alloy:"labels,attr,optional"`
 	Assignor               string              `alloy:"assignor,attr,optional"`
 
-	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo []loki.Consumer `alloy:"forward_to,attr"`
 }
 
 // AzureEventHubsAuthentication describe the configuration for authentication with Azure Event Hub
@@ -78,7 +78,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:    o,
 		handler: loki.NewLogsReceiver(),
-		fanout:  loki.NewFanout(args.ForwardTo),
+		fanout:  loki.NewFanoutConsumer(args.ForwardTo),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.
@@ -93,7 +93,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 type Component struct {
 	opts component.Options
 
-	fanout  *loki.Fanout
+	fanout  *loki.FanoutConsumer
 	handler loki.LogsReceiver
 
 	mut    sync.Mutex
@@ -105,7 +105,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.opts.Logger.Info("loki.source.azure_event_hubs component shutting down, stopping the targets")
 
-		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
+		loki.Drain2(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 
@@ -115,7 +115,7 @@ func (c *Component) Run(ctx context.Context) error {
 		})
 	}()
 
-	loki.Consume(ctx, c.handler, c.fanout)
+	loki.Consume2(ctx, c.handler, c.fanout)
 	return nil
 }
 
@@ -130,7 +130,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	cfg, err := newArgs.Convert()
 	if err != nil {
