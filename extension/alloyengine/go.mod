@@ -1126,4 +1126,7 @@ replace github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/
 // Work around DataDog split module ambiguity for pkg/util/system/socket by pinning util/system to the same rc stream used by current datadogexporter deps. Remove when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/45955 (and follow-up releases) fully align DataDog modules.
 replace github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
 
+// Update sql_exporter to the version using pgx v5. Fixes CVE-2026-4427.
+replace github.com/burningalchemist/sql_exporter => github.com/burningalchemist/sql_exporter v0.0.0-20240611125632-feab5612526d
+
 // END GENERATED REPLACES
