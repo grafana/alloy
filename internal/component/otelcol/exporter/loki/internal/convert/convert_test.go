@@ -330,7 +330,6 @@ func TestConsumeLogs(t *testing.T) {
 
 			for i, expected := range tc.expectedEntries {
 				compareLokiEntries(t, &expected, &got[i])
-
 			}
 		})
 	}

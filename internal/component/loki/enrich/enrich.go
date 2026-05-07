@@ -76,7 +76,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		opts.ID,
 		c.fanout,
 		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
-			entry, err := c.processLog(ctx, entry)
+			entry, err := c.processLog(entry)
 			return entry, true, err
 		}),
 	)
@@ -116,7 +116,7 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
-func (c *Component) processLog(ctx context.Context, entry loki.Entry) (loki.Entry, error) {
+func (c *Component) processLog(entry loki.Entry) (loki.Entry, error) {
 	c.mut.RLock()
 	if c.stopped {
 		c.mut.RUnlock()

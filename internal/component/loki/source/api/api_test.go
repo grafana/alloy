@@ -604,14 +604,6 @@ func waitForServerToBeReady(t *testing.T, comp *Component, useTls bool) {
 	}, 5*time.Second, 20*time.Millisecond, "server failed to start before timeout")
 }
 
-func mapToChannels(clients []*loki.CollectingHandler) []loki.LogsReceiver {
-	channels := make([]loki.LogsReceiver, len(clients))
-	for i := range clients {
-		channels[i] = clients[i].Receiver()
-	}
-	return channels
-}
-
 func mapToConsumers(collectors []*loki.CollectingConsumer) []loki.Consumer {
 	consumers := make([]loki.Consumer, len(collectors))
 	for i := range collectors {

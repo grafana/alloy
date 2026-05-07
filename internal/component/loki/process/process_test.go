@@ -1265,7 +1265,6 @@ func (r *testFrequentUpdate) sendLogs() {
 				},
 			}
 			_ = r.c.receiver.ConsumeEntry(context.Background(), logEntry)
-
 		}
 	})
 }

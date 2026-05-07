@@ -402,10 +402,13 @@ func TestTwoTargets(t *testing.T) {
 
 		foundF1, foundF2 := false, false
 		for _, e := range got {
-			if e.Line == "text" {
+			switch e.Line {
+			case "text":
 				foundF1 = true
-			} else if e.Line == "text2" {
+			case "text2":
 				foundF2 = true
+			default:
+				t.Fatalf("unknown entry: %s", e.Line)
 			}
 		}
 		require.True(t, foundF1)
