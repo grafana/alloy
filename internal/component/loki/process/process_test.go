@@ -1021,7 +1021,7 @@ func TestJSONLabelsStage(t *testing.T) {
 			}`
 
 	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
-	// an easy way to refer to a loki.LogsReceiver value for the forward_to
+	// an easy way to refer to a loki.Consumer value for the forward_to
 	// argument.
 	type cfg struct {
 		Stages []stages.StageConfig `alloy:"stage,enum"`
