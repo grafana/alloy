@@ -17,14 +17,12 @@ import (
 )
 
 func TestLogsCollector_ParseRDSFormat(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -119,14 +117,12 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 }
 
 func TestLogsCollector_SkipsNonErrors(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -158,14 +154,12 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 }
 
 func TestLogsCollector_MetricSumming(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 100), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -260,14 +254,12 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 }
 
 func TestLogsCollector_InvalidFormat(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -295,14 +287,12 @@ func TestLogsCollector_InvalidFormat(t *testing.T) {
 }
 
 func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -368,13 +358,10 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 }
 
 func TestLogsCollector_StartStop(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
-
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     prometheus.NewRegistry(),
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector.Receiver(), "receiver should be exported")
@@ -431,14 +418,12 @@ func TestIsContinuationLine(t *testing.T) {
 }
 
 func TestLogsCollector_SQLStateExtraction(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -541,14 +526,12 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 }
 
 func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -586,14 +569,12 @@ func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 
 func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 	// Explicitly validates that logs with timestamps before collector start produce 0 metrics
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -787,12 +768,10 @@ func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
 }
 
 func TestLogsCollector_ExcludeDatabases(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
 		Receiver:         loki.NewLogsReceiver(),
-		EntryHandler:     entryHandler,
 		Logger:           logging.NewSlogNop(),
 		Registry:         registry,
 		ExcludeDatabases: []string{"excluded_db"},
@@ -827,12 +806,10 @@ func TestLogsCollector_ExcludeDatabases(t *testing.T) {
 }
 
 func TestLogsCollector_ExcludeUsers(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
 		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 		ExcludeUsers: []string{"excluded_user"},
