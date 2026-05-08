@@ -29,6 +29,8 @@ Example features include:
 - {{< param "PRODUCT_NAME" >}}-owned integration points around the {{< param "OTEL_ENGINE" >}}, such as the `alloyengine` extension.
 - Features based on Grafana open-source projects integrated with {{< param "PRODUCT_NAME" >}}, such as Mimir, Loki, Beyla, Tempo, Faro, Pyroscope, and Database Observability.
 
+For maintained features, the {{< param "PRODUCT_NAME" >}} maintainers can implement fixes and new features as needed with minimal friction and coordination overhead.
+
 ## Maintained with upstream dependency
 
 Example features include:
@@ -46,6 +48,8 @@ Example features include:
 
 - [Community components][].
 - Custom or non-standard components added to custom {{< param "PRODUCT_NAME" >}} builds via OCB or otherwise.
+
+The {{< param "PRODUCT_NAME" >}} maintainers may still contribute to fixing issues or implementing new features, but this isn't guaranteed and is done on a best-effort basis.
 
 ## Extending {{< param "PRODUCT_NAME" >}} with OCB and custom builds
 
