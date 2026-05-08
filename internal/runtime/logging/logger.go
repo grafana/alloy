@@ -31,9 +31,15 @@ type Logger struct {
 	level  *slog.LevelVar // Current configured level.
 	format *formatVar     // Current configured format.
 
-	// handler is the unified dispatch point: a multiSlogHandler that fans out
-	// to the primary destination handler and the aux fan-out handler.
-	// Constructed in NewDeferred and rebuilt by Update.
+	// primary writes the primary log output to l.inner (stderr).
+	// aux writes the auxiliary fan-out (write_to + tmp) to auxWriter.
+	// Both are constructed in NewDeferred and not replaced afterward, so
+	// l.handler can be read concurrently without a lock.
+	primary *handler
+	aux     *handler
+
+	// handler is the unified dispatch point: a multiSlogHandler over
+	// {primary, aux}. Set once in NewDeferred and never reassigned.
 	handler slog.Handler
 
 	// auxWriter holds the dynamic write_to (loki) and temporary writer (used
@@ -46,11 +52,6 @@ type Logger struct {
 	// destination, then delegates to handler. Stable across Updates so
 	// callers holding a slog.Handler reference don't need to re-acquire it.
 	deferredSlog *deferredSlogHandler
-
-	// replacer is the slog attribute replacer used by both the primary and
-	// aux handlers. NewDeferred sets it to the package default; tests may
-	// override it before Update is called.
-	replacer func(groups []string, a slog.Attr) slog.Attr
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -101,38 +102,26 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		level:     &leveler,
 		format:    &format,
 		auxWriter: &auxWriter,
-		replacer:  replace,
 	}
-	// Install a default primary stderr + aux pair so Logger.handler is never
-	// nil. Update rebuilds them on each call.
-	l.handler = multiSlogHandler{handlers: []slog.Handler{
-		l.newStderrHandler(),
-		l.newAuxHandler(),
-	}}
-	l.deferredSlog = newDeferredHandler(l)
-
-	return l, nil
-}
-
-// newStderrHandler builds a format-aware handler that writes to l.inner.
-func (l *Logger) newStderrHandler() *handler {
-	return &handler{
+	// Construct primary + aux handlers and the unified dispatch once. They
+	// are not replaced afterward; level/format/write_to changes flow through
+	// shared variables, and l.handler is read by Log without a lock.
+	l.primary = &handler{
 		w:         l.inner,
 		leveler:   l.level,
 		formatter: l.format,
-		replacer:  l.replacer,
+		replacer:  replace,
 	}
-}
-
-// newAuxHandler builds the aux fan-out handler. It writes to l.auxWriter,
-// which forwards bytes to write_to (loki) and the optional temporary writer.
-func (l *Logger) newAuxHandler() *handler {
-	return &handler{
+	l.aux = &handler{
 		w:         l.auxWriter,
 		leveler:   l.level,
 		formatter: l.format,
-		replacer:  l.replacer,
+		replacer:  replace,
 	}
+	l.handler = multiSlogHandler{handlers: []slog.Handler{l.primary, l.aux}}
+	l.deferredSlog = newDeferredHandler(l)
+
+	return l, nil
 }
 
 // Handler returns a [slog.Handler]. The returned Handler remains valid if l is
@@ -164,13 +153,6 @@ func (l *Logger) Update(o Options) error {
 	l.bufferMut.Lock()
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
-
-	// Rebuild the unified dispatch handler. Necessary so any replacer
-	// override (used by tests) installed since the last build is picked up.
-	l.handler = multiSlogHandler{handlers: []slog.Handler{
-		l.newStderrHandler(),
-		l.newAuxHandler(),
-	}}
 
 	// Configure aux fan-out outputs. Always active, independent of destination.
 	if len(o.WriteTo) > 0 {

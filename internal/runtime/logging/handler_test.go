@@ -120,7 +120,11 @@ func newDeferredTest(w io.Writer) (*Logger, error) {
 	if err != nil {
 		return nil, err
 	}
-	l.replacer = testReplace
+	// Mutating the inner handlers' replacer is safe in test setup: it runs
+	// before any concurrent Handle dispatch, and l.primary/l.aux are stable
+	// pointers set once in NewDeferred.
+	l.primary.replacer = testReplace
+	l.aux.replacer = testReplace
 
 	return l, nil
 }
