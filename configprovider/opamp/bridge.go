@@ -491,6 +491,18 @@ func (b *Bridge) processRemoteConfig(ctx context.Context, rc *protobufs.AgentRem
 
 	old := b.getMergedYAML()
 	newStr := string(yamlBytes)
+	if old != newStr && ValidateMergedYAML != nil {
+		if err := ValidateMergedYAML(ctx, yamlBytes); err != nil {
+			b.logger.Error("validate merged config before reload", zap.Error(err))
+			_ = b.opampRemote.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
+				LastRemoteConfigHash: rc.ConfigHash,
+				Status:               protobufs.RemoteConfigStatuses_RemoteConfigStatuses_FAILED,
+				ErrorMessage:         err.Error(),
+			})
+			b.signalInitialRemoteWaitDone(err)
+			return
+		}
+	}
 	b.mergedYAML.Store(newStr)
 	b.persistMergedEffectiveConfigDebug(yamlBytes)
 
