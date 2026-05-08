@@ -35,8 +35,8 @@ const defaultInitialRemoteConfigWait = 2 * time.Minute
 
 const defaultRemoteConfigApplyConfirmTimeout = 45 * time.Second
 
-// remoteConfigApplyConfirmTimeout is elapsed time waiting for the local OpAMP extension
-// to report effective config after a merged YAML reload. Override in tests only.
+const defaultLocalOpAMPServerPort = 45127
+
 var remoteConfigApplyConfirmTimeout = defaultRemoteConfigApplyConfirmTimeout
 
 func initialRemoteWaitContext(parent context.Context) (context.Context, context.CancelFunc) {
@@ -149,11 +149,7 @@ func (b *Bridge) start(ctx context.Context) error {
 
 	port := mgmt.Agent.OpAMPServerPort
 	if port == 0 {
-		var perr error
-		port, perr = findRandomPort()
-		if perr != nil {
-			return fmt.Errorf("local opamp port: %w", perr)
-		}
+		port = defaultLocalOpAMPServerPort
 	}
 	b.localPort = port
 
@@ -260,7 +256,7 @@ func (b *Bridge) startRemoteClient() error {
 	}
 
 	var tlsCfg *tls.Config
-	if parsedURL.Scheme == "wss" || parsedURL.Scheme == "https" {
+	if parsedURL.Scheme == "https" {
 		tlsCfg, err = mgmt.Server.TLS.LoadTLSConfig(context.Background())
 		if err != nil {
 			return fmt.Errorf("remote tls: %w", err)
@@ -270,14 +266,12 @@ func (b *Bridge) startRemoteClient() error {
 	log := newOpAMPLogger(b.logger.With(zap.String("component", "opamp-remote-client")))
 	var c client.OpAMPClient
 	switch parsedURL.Scheme {
-	case "ws", "wss":
-		c = client.NewWebSocket(log)
 	case "http", "https":
 		hc := client.NewHTTP(log)
 		hc.SetPollingInterval(500 * time.Millisecond)
 		c = hc
 	default:
-		return fmt.Errorf("unsupported remote opamp scheme %q", parsedURL.Scheme)
+		return fmt.Errorf("unsupported remote opamp scheme %q (only http and https are supported)", parsedURL.Scheme)
 	}
 	b.opampRemote = c
 

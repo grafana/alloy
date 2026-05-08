@@ -1,3 +1,9 @@
+receivers:
+  nop:
+
+exporters:
+  nop:
+
 extensions:
   opamp:
     instance_uid: "{{.InstanceUid}}"
@@ -10,6 +16,10 @@ extensions:
       reports_available_components: true
 service:
   extensions: [opamp]
+  pipelines:
+    metrics:
+      receivers: [nop]
+      exporters: [nop]
   telemetry:
     resource:
       "service.instance.id": "{{.InstanceUid}}"
