@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/loki/pkg/push"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestEnricher(t *testing.T) {
@@ -171,6 +172,7 @@ func TestEnricher(t *testing.T) {
 
 			opts := component.Options{
 				Logger:        log.NewNopLogger(),
+				SLogger:       logging.NewSlogNop(),
 				OnStateChange: func(e component.Exports) {},
 			}
 			opts.OnStateChange = func(e component.Exports) {
@@ -205,6 +207,7 @@ func TestEnricher(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	comp, err := New(component.Options{
 		Logger:        log.NewNopLogger(),
+		SLogger:       logging.NewSlogNop(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{})
 	require.NoError(t, err)

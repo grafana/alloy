@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -45,7 +45,7 @@ var testTimestampLogLineWithMissingKey = `
 
 func TestTimestampPipeline(t *testing.T) {
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testTimestampAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	out := processEntries(pl, newEntry(nil, nil, testTimestampLogLine, time.Now()))[0]
@@ -60,13 +60,13 @@ var (
 
 func TestPipelineWithMissingKey_Timestamp(t *testing.T) {
 	var buf bytes.Buffer
-	w := log.NewSyncWriter(&buf)
-	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testTimestampAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	logger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+	require.NoError(t, err)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testTimestampAlloy), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	_ = processEntries(pl, newEntry(nil, nil, testTimestampLogLineWithMissingKey, time.Now()))
-	expectedLog := fmt.Sprintf("level=debug msg=\"%s\" err=\"can't convert <nil> to string\" type=null", ErrTimestampConversionFailed)
+	expectedLog := fmt.Sprintf("level=debug msg=\"%s\" stage=timestamp err=\"can't convert <nil> to string\" type=<nil>", ErrTimestampConversionFailed)
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
@@ -306,7 +306,7 @@ func TestTimestampStage_Process(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 			logger := util.TestAlloyLogger(t)
-			st, err := newTimestampStage(logger, test.config)
+			st, err := newTimestampStage(logger.Slog(), test.config)
 			require.NoError(t, err)
 
 			out := processEntries(st, newEntry(test.extracted, nil, "hello world", time.Now()))[0]
@@ -444,7 +444,7 @@ func TestTimestampStage_ProcessActionOnFailure(t *testing.T) {
 			require.Equal(t, len(testData.inputEntries), len(testData.expectedTimestamps))
 
 			logger := util.TestAlloyLogger(t)
-			s, err := newTimestampStage(logger, testData.config)
+			s, err := newTimestampStage(logger.Slog(), testData.config)
 			require.NoError(t, err)
 
 			for i, inputEntry := range testData.inputEntries {

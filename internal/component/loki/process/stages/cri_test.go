@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
@@ -14,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 var (
@@ -77,7 +77,7 @@ func TestCRI(t *testing.T) {
 		t.Run(tName, func(t *testing.T) {
 			t.Parallel()
 
-			p, err := NewCRI(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewCRI(logging.NewSlogNop(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			out := processEntries(p, newEntry(nil, model.LabelSet{}, tt.entry, tt.ts))[0]
@@ -203,7 +203,7 @@ func TestCRI_tags(t *testing.T) {
 				MaxPartialLineSize:         tt.maxPartialLineSize,
 				MaxPartialLineSizeTruncate: tt.maxPartialLineSizeTruncate,
 			}
-			p, err := NewCRI(log.NewNopLogger(), cfg, registry, featuregate.StabilityGenerallyAvailable)
+			p, err := NewCRI(logging.NewSlogNop(), cfg, registry, featuregate.StabilityGenerallyAvailable)
 			require.NoError(t, err)
 
 			got := make([]string, 0)
@@ -250,7 +250,7 @@ var (
 )
 
 func BenchmarkCRI(b *testing.B) {
-	p, _ := NewCRI(log.NewNopLogger(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p, _ := NewCRI(logging.NewSlogNop(), DefaultCRIConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	e := newEntry(nil, model.LabelSet{}, benchCRILine, benchCRITime)
 	in := make(chan Entry)
 	out := p.Run(in)

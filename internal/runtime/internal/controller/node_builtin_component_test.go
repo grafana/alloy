@@ -5,11 +5,13 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGlobalID(t *testing.T) {
 	mo := getManagedOptions(ComponentGlobals{
+		Logger:       logging.NewNop(),
 		DataPath:     "/data/",
 		MinStability: featuregate.StabilityPublicPreview,
 		ControllerID: "module.file",
@@ -25,6 +27,7 @@ func TestGlobalID(t *testing.T) {
 
 func TestLocalID(t *testing.T) {
 	mo := getManagedOptions(ComponentGlobals{
+		Logger:       logging.NewNop(),
 		DataPath:     "/data/",
 		MinStability: featuregate.StabilityPublicPreview,
 		ControllerID: "",

@@ -3,16 +3,14 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"slices"
 	"time"
 	_ "time/tzdata" // embed timezone data
 
-	"github.com/go-kit/log"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Config errors.
@@ -99,7 +97,7 @@ func validateTimestampConfig(cfg *TimestampConfig) (parser, error) {
 }
 
 // newTimestampStage creates a new timestamp extraction pipeline stage.
-func newTimestampStage(logger log.Logger, config TimestampConfig) (Stage, error) {
+func newTimestampStage(logger *slog.Logger, config TimestampConfig) (Stage, error) {
 	parser, err := validateTimestampConfig(&config)
 	if err != nil {
 		return nil, err
@@ -115,7 +113,7 @@ func newTimestampStage(logger log.Logger, config TimestampConfig) (Stage, error)
 
 	return toStage(&timestampStage{
 		config:              &config,
-		logger:              logger,
+		logger:              logger.With("stage", "timestamp"),
 		parser:              parser,
 		lastKnownTimestamps: lastKnownTimestamps,
 	}), nil
@@ -123,7 +121,7 @@ func newTimestampStage(logger log.Logger, config TimestampConfig) (Stage, error)
 
 type timestampStage struct {
 	config *TimestampConfig
-	logger log.Logger
+	logger *slog.Logger
 	parser parser
 
 	// Stores the last known timestamp for a given "stream id" (guessed, since at this stage
@@ -157,21 +155,21 @@ func (ts *timestampStage) parseTimestampFromSource(extracted map[string]any) (*t
 	// Ensure the extracted data contains the timestamp source.
 	v, ok := extracted[ts.config.Source]
 	if !ok {
-		level.Debug(ts.logger).Log("msg", ErrTimestampSourceMissing)
+		ts.logger.Debug(ErrTimestampSourceMissing.Error())
 		return nil, ErrTimestampSourceMissing
 	}
 
 	// Convert the timestamp source to string (if it's not a string yet).
 	s, err := getString(v)
 	if err != nil {
-		level.Debug(ts.logger).Log("msg", ErrTimestampConversionFailed, "err", err, "type", reflect.TypeOf(v))
+		ts.logger.Debug(ErrTimestampConversionFailed.Error(), "err", err, "type", reflect.TypeOf(v))
 		return nil, ErrTimestampConversionFailed
 	}
 
 	// Parse the timestamp source according to the configured format
 	parsedTs, err := ts.parser(s)
 	if err != nil {
-		level.Debug(ts.logger).Log("msg", ErrTimestampParsingFailed, "err", err, "format", ts.config.Format, "value", s)
+		ts.logger.Debug(ErrTimestampParsingFailed.Error(), "err", err, "format", ts.config.Format, "value", s)
 
 		return nil, ErrTimestampParsingFailed
 	}
