@@ -9,14 +9,14 @@ weight: 300
 # {{% param "FULL_PRODUCT_NAME" %}} maintenance scope
 
 This page defines maintenance scope for {{< param "PRODUCT_NAME" >}}, including both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}}.
-{{< param "PRODUCT_NAME" >}} includes code maintained by the {{< param "PRODUCT_NAME" >}} maintainers and upstream dependencies maintained by open-source communities.
+{{< param "PRODUCT_NAME" >}} includes code maintained by the {{< param "PRODUCT_NAME" >}} maintainers and upstream dependencies maintained by open source communities.
 
 For full context, read this page together with [{{< param "PRODUCT_NAME" >}} backward compatibility](../backward-compatibility/) and the [Grafana release life cycle](https://grafana.com/docs/release-life-cycle/).
 
 ## Maintenance levels
 
 - **Maintained:** The feature is maintained by {{< param "PRODUCT_NAME" >}} maintainers or within Grafana open-source projects integrated with {{< param "PRODUCT_NAME" >}}.
-- **Maintained with upstream dependency:** The feature depends on upstream projects outside the Grafana open-source ecosystem. Final resolution may depend on the upstream community's review and release processes.
+- **Maintained with upstream dependency:** The feature depends on upstream projects outside the Grafana open source ecosystem. Final resolution may depend on the upstream community's review and release processes.
 - **Not maintained by {{< param "PRODUCT_NAME" >}} maintainers:** The feature is outside the standard maintenance scope of {{< param "PRODUCT_NAME" >}} maintainers.
 
 ## Maintained
@@ -27,7 +27,7 @@ Example features include:
 - {{< param "PRODUCT_NAME" >}} platform capabilities such as {{< param "PRODUCT_NAME" >}} configuration syntax, clustering, Fleet Management, and the built-in debugging UI.
 - {{< param "PRODUCT_NAME" >}} installation scripts, Helm chart deployment, and bundled Grafana dashboards.
 - {{< param "PRODUCT_NAME" >}}-owned integration points around the {{< param "OTEL_ENGINE" >}}, such as the `alloyengine` extension.
-- Features based on Grafana open-source projects integrated with {{< param "PRODUCT_NAME" >}}, such as Mimir, Loki, Beyla, Tempo, Faro, Pyroscope, and Database Observability.
+- Features based on Grafana open source projects integrated with {{< param "PRODUCT_NAME" >}}, such as Mimir, Loki, Beyla, Tempo, Faro, Pyroscope, and Database Observability.
 
 For maintained features, the {{< param "PRODUCT_NAME" >}} maintainers can implement fixes and new features as needed with minimal friction and coordination overhead.
 
