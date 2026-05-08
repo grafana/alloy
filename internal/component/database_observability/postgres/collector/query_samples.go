@@ -148,6 +148,9 @@ type QuerySamples struct {
 	registry            *prometheus.Registry
 	fingerprintRepaired prometheus.Counter
 	fingerprintSentinel *prometheus.CounterVec
+
+	// per-fingerprint wait-event time accounting
+	waitEventSeconds *prometheus.CounterVec
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -300,6 +303,15 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		args.Registry.MustRegister(qs.fingerprintRepaired, qs.fingerprintSentinel)
 	}
 
+	if args.Registry != nil && args.EnableQueryFingerprint {
+		qs.waitEventSeconds = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "database_observability",
+			Name:      "wait_event_seconds_total",
+			Help:      "Total observed duration of PostgreSQL wait events, in seconds, aggregated by the semantic query fingerprint and database. Mirrors database_observability_wait_event_seconds_total on the MySQL collector but keyed by query_fingerprint instead of digest.",
+		}, []string{"query_fingerprint", "datname"})
+		args.Registry.MustRegister(qs.waitEventSeconds)
+	}
+
 	return qs, nil
 }
 
@@ -355,6 +367,9 @@ func (c *QuerySamples) Stop() {
 	if c.registry != nil {
 		c.registry.Unregister(c.fingerprintRepaired)
 		c.registry.Unregister(c.fingerprintSentinel)
+	}
+	if c.registry != nil && c.waitEventSeconds != nil {
+		c.registry.Unregister(c.waitEventSeconds)
 	}
 }
 
@@ -570,6 +585,13 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			c.waitEventLabels(state, we),
 			we.LastTimestamp.UnixNano(),
 		)
+		if c.waitEventSeconds != nil && state.QueryFingerprint != "" {
+			if d, perr := time.ParseDuration(we.LastWaitTime); perr == nil {
+				c.waitEventSeconds.
+					WithLabelValues(state.QueryFingerprint, state.LastRow.DatabaseName.String).
+					Add(d.Seconds())
+			}
+		}
 	}
 
 	delete(c.samples, key)

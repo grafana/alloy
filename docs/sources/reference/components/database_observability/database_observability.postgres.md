@@ -330,6 +330,8 @@ the health of the fingerprint pipeline:
   sentinel hash. `truncated` indicates `pg_stat_activity.query` hit the
   server's `track_activity_query_size` boundary; `unparsable` indicates
   the parser (and the repair heuristic) could not produce a valid AST.
+- `database_observability_wait_event_seconds_total{query_fingerprint, datname}` (counter):
+  Total observed duration of PostgreSQL wait events in seconds, aggregated by semantic query fingerprint and database. Each emitted wait event entry adds its observed duration to the counter. Use `rate(...)` to compute time-spent-waiting per logical query: `sum by (query_fingerprint) (rate(database_observability_wait_event_seconds_total{datname="books_store"}[5m]))`. Mirrors the MySQL `database_observability_wait_event_seconds_total` metric but uses `query_fingerprint` as the query-identity label rather than `digest`. Emitted only when `enable_query_fingerprint = true` on the parent block.
 
 Both counters stay at zero when `enable_query_fingerprint = false`,
 because the fingerprint pipeline is not invoked at all in that
