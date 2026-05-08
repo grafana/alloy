@@ -275,6 +275,7 @@ func (w *writerVar) SetLokiConsumers(consumers []loki.Consumer) {
 	// If this is never configured we don't start the consume loop.
 	if w.lokiWriter == nil && len(consumers) > 0 {
 		w.lokiWriter = newLokiWriter(loki.NewFanoutConsumer(consumers))
+		return
 	}
 
 	if w.lokiWriter != nil {
