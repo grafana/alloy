@@ -25,6 +25,13 @@ const (
 
 const showGrantsQuery = `SHOW GRANTS`
 
+func performanceSchemaHasRowsQuery(excludeSchemas []string) string {
+	return fmt.Sprintf(
+		`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN %s`,
+		buildExcludedSchemasClause(excludeSchemas),
+	)
+}
+
 type HealthCheckArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
@@ -241,11 +248,4 @@ func (c *HealthCheck) checkEventsStatementsDigestHasRows(ctx context.Context, db
 	}
 	r.result = true
 	return r
-}
-
-func performanceSchemaHasRowsQuery(excludeSchemas []string) string {
-	return fmt.Sprintf(
-		`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN %s`,
-		buildExcludedSchemasClause(excludeSchemas),
-	)
 }

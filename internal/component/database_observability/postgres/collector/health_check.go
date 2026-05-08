@@ -41,6 +41,21 @@ const (
 		) AS sees_insufficient_privilege`
 )
 
+func pgStatStatementsHasRowsQuery(excludeDatabases, excludeUsers []string) string {
+	return fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_stat_statements
+			JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
+			WHERE pg_database.datname NOT IN %s
+			  AND pg_stat_statements.queryid <> 0
+			  %s
+		)`,
+		buildExcludedDatabasesClause(excludeDatabases),
+		buildExcludedUsersClause(excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)"),
+	)
+}
+
 type HealthCheckArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
@@ -278,19 +293,4 @@ func (c *HealthCheck) checkPgStatStatementsHasRows(ctx context.Context, db *sql.
 	}
 	r.result = hasRows
 	return r
-}
-
-func pgStatStatementsHasRowsQuery(excludeDatabases, excludeUsers []string) string {
-	return fmt.Sprintf(`
-		SELECT EXISTS (
-			SELECT 1
-			FROM pg_stat_statements
-			JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
-			WHERE pg_database.datname NOT IN %s
-			  AND pg_stat_statements.queryid <> 0
-			  %s
-		)`,
-		buildExcludedDatabasesClause(excludeDatabases),
-		buildExcludedUsersClause(excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)"),
-	)
 }
