@@ -23,9 +23,14 @@ const (
 	OP_HEALTH_STATUS     = "health_status"
 )
 
-// monitoringUserPrivilegesQuery probes whether the connected user can usefully
-// read data from pg_stat_statements.
-const monitoringUserPrivilegesQuery = `
+const (
+	pgStatStatementsEnabledQuery = `SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements'`
+	trackActivityQuerySizeQuery  = `SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'`
+	computeQueryIdQuery          = `SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`
+
+	// monitoringUserPrivilegesQuery probes whether the connected user can usefully
+	// read data from pg_stat_statements.
+	monitoringUserPrivilegesQuery = `
 	SELECT
 		pg_has_role(current_user, 'pg_monitor',        'MEMBER') AS has_pg_monitor_role,
 		pg_has_role(current_user, 'pg_read_all_stats', 'MEMBER') AS has_pg_read_all_stats_role,
@@ -34,6 +39,22 @@ const monitoringUserPrivilegesQuery = `
 			SELECT 1 FROM pg_stat_statements
 			WHERE query = '<insufficient privilege>'
 		) AS sees_insufficient_privilege`
+)
+
+func pgStatStatementsHasRowsQuery(excludeDatabases, excludeUsers []string) string {
+	return fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_stat_statements
+			JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
+			WHERE pg_database.datname NOT IN %s
+			  AND pg_stat_statements.queryid <> 0
+			  %s
+		)`,
+		buildExcludedDatabasesClause(excludeDatabases),
+		buildExcludedUsersClause(excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)"),
+	)
+}
 
 type HealthCheckArguments struct {
 	DB               *sql.DB
@@ -159,9 +180,8 @@ func checkAlloyVersion(ctx context.Context, db *sql.DB) healthCheckResult {
 // checkPgStatStatementsEnabled verifies that the pg_stat_statements extension is enabled.
 func checkPgStatStatementsEnabled(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PgStatStatementsEnabled"}
-	const q = `SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements'`
 
-	rows, err := db.QueryContext(ctx, q)
+	rows, err := db.QueryContext(ctx, pgStatStatementsEnabledQuery)
 	if err != nil {
 		r.err = fmt.Errorf("query pg_extension: %w", err)
 		return r
@@ -181,11 +201,10 @@ func checkPgStatStatementsEnabled(ctx context.Context, db *sql.DB) healthCheckRe
 
 func checkTrackActivityQuerySize(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "TrackActivityQuerySize"}
-	const q = `SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'`
 	const expectedSize = 4096
 
 	var sizeString string
-	if err := db.QueryRowContext(ctx, q).Scan(&sizeString); err != nil {
+	if err := db.QueryRowContext(ctx, trackActivityQuerySizeQuery).Scan(&sizeString); err != nil {
 		r.err = fmt.Errorf("query track_activity_query_size: %w", err)
 		return r
 	}
@@ -249,10 +268,9 @@ func checkMonitoringUserPrivileges(ctx context.Context, db *sql.DB) healthCheckR
 // checkComputeQueryIdEnabled verifies the compute_query_id is not disabled
 func checkComputeQueryIdEnabled(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "ComputeQueryIdEnabled"}
-	const q = `SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`
 
 	var setting string
-	if err := db.QueryRowContext(ctx, q).Scan(&setting); err != nil {
+	if err := db.QueryRowContext(ctx, computeQueryIdQuery).Scan(&setting); err != nil {
 		r.err = fmt.Errorf("query compute_query_id: %w", err)
 		return r
 	}
@@ -266,17 +284,7 @@ func checkComputeQueryIdEnabled(ctx context.Context, db *sql.DB) healthCheckResu
 // ingest after applying the exclude_databases / exclude_users filters.
 func (c *HealthCheck) checkPgStatStatementsHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PgStatStatementsHasRows"}
-	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
-	q := fmt.Sprintf(`
-		SELECT EXISTS (
-			SELECT 1
-			FROM pg_stat_statements
-			JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
-			WHERE pg_database.datname NOT IN %s
-			  AND pg_stat_statements.queryid <> 0
-			  %s
-		)`, excludedDatabasesClause, excludedUsersClause)
+	q := pgStatStatementsHasRowsQuery(c.excludeDatabases, c.excludeUsers)
 
 	var hasRows bool
 	if err := db.QueryRowContext(ctx, q).Scan(&hasRows); err != nil {
