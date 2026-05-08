@@ -22,36 +22,17 @@ type EnabledAware interface {
 // Logger is the logging subsystem of Alloy. It supports being dynamically
 // updated at runtime.
 type Logger struct {
-	inner io.Writer // Writer passed to New (typically os.Stderr).
+	inner io.Writer // Writer passed to New.
 
 	bufferMut    sync.RWMutex
 	buffer       []*bufferedItem // Store logs before correctly determine the log format
 	hasLogFormat bool            // Confirmation whether log format has been determined
 
-	level  *slog.LevelVar // Current configured level.
-	format *formatVar     // Current configured format.
-
-	// primary writes the primary log output to l.inner (stderr).
-	// aux writes the auxiliary fan-out (write_to + tmp) to auxWriter.
-	// Both are constructed in NewDeferred and not replaced afterward, so
-	// l.handler can be read concurrently without a lock.
-	primary *handler
-	aux     *handler
-
-	// handler is the unified dispatch point: a multiSlogHandler over
-	// {primary, aux}. Set once in NewDeferred and never reassigned.
-	handler slog.Handler
-
-	// auxWriter holds the dynamic write_to (loki) and temporary writer (used
-	// by the support bundle endpoint) for the aux handler. These are
-	// independent of the primary destination, so they receive logs whichever
-	// primary is in use.
-	auxWriter *auxWriterVar
-
-	// deferredSlog buffers slog records until Update establishes the
-	// destination, then delegates to handler. Stable across Updates so
-	// callers holding a slog.Handler reference don't need to re-acquire it.
-	deferredSlog *deferredSlogHandler
+	level        *slog.LevelVar       // Current configured level.
+	format       *formatVar           // Current configured format.
+	writer       *writerVar           // Current configured multiwriter (inner + write_to).
+	handler      *handler             // Handler which handles logs.
+	deferredSlog *deferredSlogHandler // This handles deferred logging for slog.
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -89,9 +70,9 @@ func NewSlogNop() *slog.Logger {
 // The logger is not updated during initialization.
 func NewDeferred(w io.Writer) (*Logger, error) {
 	var (
-		leveler   slog.LevelVar
-		format    formatVar
-		auxWriter auxWriterVar
+		leveler slog.LevelVar
+		format  formatVar
+		writer  writerVar
 	)
 	l := &Logger{
 		inner: w,
@@ -99,26 +80,16 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		buffer:       []*bufferedItem{},
 		hasLogFormat: false,
 
-		level:     &leveler,
-		format:    &format,
-		auxWriter: &auxWriter,
+		level:  &leveler,
+		format: &format,
+		writer: &writer,
+		handler: &handler{
+			w:         &writer,
+			leveler:   &leveler,
+			formatter: &format,
+			replacer:  replace,
+		},
 	}
-	// Construct primary + aux handlers and the unified dispatch once. They
-	// are not replaced afterward; level/format/write_to changes flow through
-	// shared variables, and l.handler is read by Log without a lock.
-	l.primary = &handler{
-		w:         l.inner,
-		leveler:   l.level,
-		formatter: l.format,
-		replacer:  replace,
-	}
-	l.aux = &handler{
-		w:         l.auxWriter,
-		leveler:   l.level,
-		formatter: l.format,
-		replacer:  replace,
-	}
-	l.handler = multiSlogHandler{handlers: []slog.Handler{l.primary, l.aux}}
 	l.deferredSlog = newDeferredHandler(l)
 
 	return l, nil
@@ -154,11 +125,9 @@ func (l *Logger) Update(o Options) error {
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
 
-	// Configure aux fan-out outputs. Always active, independent of destination.
+	l.writer.SetInnerWriter(l.inner)
 	if len(o.WriteTo) > 0 {
-		l.auxWriter.SetLokiWriter(&lokiWriter{o.WriteTo})
-	} else {
-		l.auxWriter.SetLokiWriter(nil)
+		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
 	}
 	l.bufferMut.Unlock()
 
@@ -179,16 +148,16 @@ func (l *Logger) Update(o Options) error {
 	buffer := l.buffer
 	l.buffer = nil
 
-	// Replay buffered logs through the unified handler, which fans out to
-	// primary + aux.
-	for _, item := range buffer {
-		if len(item.kvps) > 0 {
-			_ = slogadapter.GoKit(l.handler).Log(item.kvps...)
-		} else if item.handler != nil {
-			// item.handler is a deferredSlogHandler whose handle has just been
-			// rebuilt by buildHandlers above.
-			if item.handler.Enabled(context.Background(), item.record.Level) {
-				_ = item.handler.Handle(context.Background(), item.record)
+	for _, bufferedLogChunk := range buffer {
+		if len(bufferedLogChunk.kvps) > 0 {
+			// the buffered logs are currently only sent to the standard output
+			// because the components with the receivers are not running yet
+			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
+		} else {
+			// We can now check whether our buffered log is at the right level.
+			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
+				// These will always be valid due to the build handlers call above.
+				_ = bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
 			}
 		}
 	}
@@ -197,11 +166,11 @@ func (l *Logger) Update(o Options) error {
 }
 
 func (l *Logger) SetTemporaryWriter(w io.Writer) {
-	l.auxWriter.SetTemporaryWriter(w)
+	l.writer.SetTemporaryWriter(w)
 }
 
 func (l *Logger) RemoveTemporaryWriter() {
-	l.auxWriter.RemoveTemporaryWriter()
+	l.writer.RemoveTemporaryWriter()
 }
 
 // Log implements log.Logger.
@@ -284,38 +253,51 @@ func (f *formatVar) Set(format Format) {
 	f.f = format
 }
 
-// auxWriterVar is the io.Writer used by the aux handler. It fans out writes to
-// an optional loki writer (write_to receivers) and an optional temporary
-// writer (used by the support bundle endpoint at GET /-/support to capture
-// per-request logs into the bundle archive).
-type auxWriterVar struct {
+type writerVar struct {
 	mut sync.RWMutex
 
-	lokiWriter *lokiWriter
-	tmpWriter  io.Writer
+	lokiWriter  *lokiWriter
+	innerWriter io.Writer
+	tmpWriter   io.Writer
 }
 
-func (w *auxWriterVar) SetTemporaryWriter(writer io.Writer) {
+func (w *writerVar) SetTemporaryWriter(writer io.Writer) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 	w.tmpWriter = writer
 }
 
-func (w *auxWriterVar) RemoveTemporaryWriter() {
+func (w *writerVar) RemoveTemporaryWriter() {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 	w.tmpWriter = nil
 }
 
-func (w *auxWriterVar) SetLokiWriter(writer *lokiWriter) {
+func (w *writerVar) SetInnerWriter(writer io.Writer) {
+	w.mut.Lock()
+	defer w.mut.Unlock()
+	w.innerWriter = writer
+}
+
+func (w *writerVar) SetLokiWriter(writer *lokiWriter) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 	w.lokiWriter = writer
 }
 
-func (w *auxWriterVar) Write(p []byte) (int, error) {
+func (w *writerVar) Write(p []byte) (int, error) {
 	w.mut.RLock()
 	defer w.mut.RUnlock()
+
+	if w.innerWriter == nil {
+		return 0, fmt.Errorf("no writer available")
+	}
+
+	// The following is effectively an io.Multiwriter, but without updating
+	// the Multiwriter each time tmpWriter is added or removed.
+	if _, err := w.innerWriter.Write(p); err != nil {
+		return 0, err
+	}
 
 	if w.lokiWriter != nil {
 		if _, err := w.lokiWriter.Write(p); err != nil {
