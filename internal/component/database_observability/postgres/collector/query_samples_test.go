@@ -2,6 +2,7 @@ package collector
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"reflect"
@@ -1756,20 +1757,25 @@ func TestQuerySamples_FingerprintCountersSilentOnSuccess(t *testing.T) {
 }
 
 // TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration drives
-// the collector through a full scrape cycle in which a backend is observed
-// waiting on a Lock:relation event for 10 seconds (state_change is 10s before
-// the row's clock_timestamp()). On the second scrape the row disappears,
-// triggering finalize -> emitAndDeleteSample. The wait_event_seconds_total
-// counter must record exactly 10 seconds against
-// {query_fingerprint=<fp(query)>, datname=<datname>}.
+// the collector through three scrapes: scrape 1 sees a Lock:relation wait,
+// scrape 2 sees the SAME wait 5s later (same identity, so the tracker
+// extends the open occurrence), scrape 3 returns no rows — triggering
+// finalize -> emitAndDeleteSample.
+//
+// The counter must record the ALLOY-OBSERVED interval (5s = the gap between
+// the two scrapes that saw the wait), NOT the cumulative `now - state_change`
+// duration on the last scrape. state_change is 10 minutes before the first
+// scrape, simulating a wait that was already in progress when the collector
+// started; the counter must NOT attribute that pre-collector time.
 func TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
-	now := time.Now()
-	stateChangeTime := now.Add(-10 * time.Second) // wait has been active for 10s
-	queryStartTime := now.Add(-30 * time.Second)
-	xactStartTime := now.Add(-2 * time.Minute)
-	backendStartTime := now.Add(-1 * time.Hour)
+	t0 := time.Now()
+	t1 := t0.Add(5 * time.Second)                  // second scrape, 5s later
+	stateChangeTime := t0.Add(-10 * time.Minute)   // wait has been "active" for 10min before the collector saw it
+	queryStartTime := t0.Add(-30 * time.Second)
+	xactStartTime := t0.Add(-2 * time.Minute)
+	backendStartTime := t0.Add(-1 * time.Hour)
 
 	columns := []string{
 		"now", "datname", "pid", "leader_pid",
@@ -1780,14 +1786,8 @@ func TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration(t *tes
 		"query",
 	}
 
-	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
-	require.NoError(t, err)
-	defer db.Close()
-
-	// Two scrapes: row 1 has the wait active, row 2 is empty (triggers finalize -> emit).
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).
-		RowsWillBeClosed().
-		WillReturnRows(sqlmock.NewRows(columns).AddRow(
+	rowAt := func(now time.Time) []driver.Value {
+		return []driver.Value{
 			now, "books", 200, sql.NullInt64{},
 			"user1", "app1", "127.0.0.1", 5432,
 			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
@@ -1795,7 +1795,20 @@ func TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration(t *tes
 			sql.NullString{String: "relation", Valid: true}, pq.Int64Array{201}, queryStartTime,
 			sql.NullInt64{Int64: 9876, Valid: true},
 			"SELECT * FROM books WHERE id = 5",
-		))
+		}
+	}
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Three scrapes: same wait at t0 and t1, then empty at the third (triggers emit).
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).
+		RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(rowAt(t0)...))
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).
+		RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(rowAt(t1)...))
 	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).
 		RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(columns))
@@ -1809,9 +1822,9 @@ func TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration(t *tes
 		CollectInterval:               time.Millisecond,
 		EntryHandler:                  lokiClient,
 		Logger:                        log.NewNopLogger(),
-		DisableQueryRedaction:         true,  // so the row's query column is selected on output too
+		DisableQueryRedaction:         true,
 		EnableQueryFingerprint:        true,
-		EnablePreClassifiedWaitEvents: false, // wait_event_v3 path (raw type)
+		EnablePreClassifiedWaitEvents: false,
 		Registry:                      registry,
 		ExcludeCurrentUser:            true,
 	})
@@ -1819,8 +1832,8 @@ func TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration(t *tes
 
 	require.NoError(t, qs.Start(t.Context()))
 
+	// Wait until both Loki entries (sample + wait_event) have flowed.
 	require.Eventually(t, func() bool {
-		// Wait until both Loki entries (sample + wait_event) have flowed.
 		return len(lokiClient.Received()) >= 2
 	}, 5*time.Second, 100*time.Millisecond)
 
@@ -1831,10 +1844,15 @@ func TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration(t *tes
 	require.NoError(t, fpErr)
 
 	got := testutil.ToFloat64(qs.waitEventSeconds.WithLabelValues(expectedFP, "books"))
-	// stateChangeTime is exactly 10s before the row's clock_timestamp (now),
-	// and the tracker uses sample.Now as its "now" for calculateDuration, so
-	// the recorded LastWaitTime is deterministically "10s".
-	require.InDelta(t, 10.0, got, 0.001, "expected counter ~= 10s; got %.3f", got)
+	// FirstObservedAt = t0 (scrape 1's clock_timestamp), LastTimestamp = t1
+	// (scrape 2's clock_timestamp), so the counter receives exactly 5s.
+	// The 10-minute pre-collector duration measured by state_change is NOT
+	// attributed to the counter — that's the bug fix this test pins.
+	require.InDelta(t, 5.0, got, 0.001,
+		"expected counter == 5s (alloy-observed interval); got %.3f. "+
+			"If got is ~600 (10min), the counter is using state_change-based duration "+
+			"and overcounting pre-collector wait time.",
+		got)
 }
 
 // TestQuerySamples_WaitEventSecondsCounterAbsentWhenFingerprintDisabled

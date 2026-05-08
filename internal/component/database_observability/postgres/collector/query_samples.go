@@ -244,12 +244,13 @@ func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEve
 // WaitEventOccurrence tracks a continuous occurrence of the same wait event
 // with the same blocked_by_pids set.
 type WaitEventOccurrence struct {
-	WaitEventType string
-	WaitEvent     string
-	BlockedByPIDs []int64 // normalized set (sorted, unique)
-	LastWaitTime  string  // last stateDuration seen for this wait event
-	LastState     string
-	LastTimestamp time.Time
+	WaitEventType   string
+	WaitEvent       string
+	BlockedByPIDs   []int64 // normalized set (sorted, unique)
+	LastWaitTime    string  // last stateDuration seen for this wait event (computed from pg_stat_activity.state_change)
+	LastState       string
+	FirstObservedAt time.Time // first scrape that saw this occurrence; used as the lower bound for the wait_event_seconds_total counter
+	LastTimestamp   time.Time
 }
 
 // WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
@@ -541,12 +542,13 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 		}
 
 		newOcc := WaitEventOccurrence{
-			WaitEventType: current.eventType,
-			WaitEvent:     current.event,
-			BlockedByPIDs: current.blockedBy,
-			LastWaitTime:  calculateDuration(sample.StateChange, now),
-			LastState:     sample.State.String,
-			LastTimestamp: now,
+			WaitEventType:   current.eventType,
+			WaitEvent:       current.event,
+			BlockedByPIDs:   current.blockedBy,
+			LastWaitTime:    calculateDuration(sample.StateChange, now),
+			LastState:       sample.State.String,
+			FirstObservedAt: now,
+			LastTimestamp:   now,
 		}
 		t.waitEvents = append(t.waitEvents, newOcc)
 		t.openIdx = len(t.waitEvents) - 1
@@ -586,10 +588,18 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			we.LastTimestamp.UnixNano(),
 		)
 		if c.waitEventSeconds != nil && state.QueryFingerprint != "" {
-			if d, perr := time.ParseDuration(we.LastWaitTime); perr == nil {
+			// Counter measures wait time as observed by Alloy across the
+			// scrapes that saw this occurrence. Using LastTimestamp -
+			// FirstObservedAt (rather than now - state_change) avoids
+			// attributing pre-existing wait time to the counter when Alloy
+			// starts mid-wait — a 30-minute lock that began before the
+			// collector launched would otherwise dump 1800s into the
+			// counter on the first emit.
+			observed := we.LastTimestamp.Sub(we.FirstObservedAt).Seconds()
+			if observed > 0 {
 				c.waitEventSeconds.
 					WithLabelValues(state.QueryFingerprint, state.LastRow.DatabaseName.String).
-					Add(d.Seconds())
+					Add(observed)
 			}
 		}
 	}
