@@ -464,6 +464,8 @@ func (b *Bridge) handleUpstreamOpAmpServerMessage(ctx context.Context, msg *type
 func (b *Bridge) processRemoteConfig(ctx context.Context, rc *protobufs.AgentRemoteConfig) {
 	b.supersedePendingApply()
 
+	b.logger.Info("new config received from OpAMP backend", zap.Binary("remote_config_hash", rc.ConfigHash))
+
 	cloned := proto.Clone(rc).(*protobufs.AgentRemoteConfig)
 	if err := b.opampRemote.SetRemoteConfigStatus(&protobufs.RemoteConfigStatus{
 		LastRemoteConfigHash: rc.ConfigHash,
