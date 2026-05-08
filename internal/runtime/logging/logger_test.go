@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -131,24 +130,33 @@ func TestLevels(t *testing.T) {
 // to stderr.
 func TestWriteToDisabledViaUpdate(t *testing.T) {
 	var buf safeBuffer
-	receiver := loki.NewCollectingConsumer()
+	collector := loki.NewCollectingConsumer()
 
 	logger, err := logging.New(&buf, debugLevel())
 	require.NoError(t, err)
+	slogger := logger.Slog()
 
 	require.NoError(t, logger.Update(logging.Options{
 		Level:   logging.LevelDebug,
 		Format:  logging.FormatLogfmt,
-		WriteTo: []loki.Consumer{receiver},
+		WriteTo: []loki.Consumer{collector},
 	}))
 
-	slogger := logger.Slog()
+	// We need some time to make sure that lokiWriter have started
+	// it's read loop
+	time.Sleep(100 * time.Millisecond)
+
 	slogger.Info("with-write-to")
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.Contains(c, buf.String(), "with-write-to")
-		require.Len(c, receiver.Entries(), 1)
-	}, time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool {
+		return strings.Contains(buf.String(), "with-write-to")
+	}, time.Second, 10*time.Millisecond, "stderr did not receive log while write_to was enabled")
+
+	require.Eventually(t, func() bool {
+		return len(collector.Entries()) == 1
+	}, time.Second, 10*time.Millisecond, "consumer did not receive log entry")
+
+	collector.Reset()
 
 	require.NoError(t, logger.Update(logging.Options{
 		Level:  logging.LevelDebug,
@@ -158,12 +166,15 @@ func TestWriteToDisabledViaUpdate(t *testing.T) {
 	beforeLen := buf.String()
 	slogger.Info("without-write-to")
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.Contains(c, buf.String(), "without-write-to")
-		require.Len(c, receiver.Entries(), 1)
-	}, time.Second, 10*time.Millisecond)
+	require.Eventually(t, func() bool {
+		return strings.Contains(buf.String(), "without-write-to")
+	}, time.Second, 10*time.Millisecond, "stderr did not receive log after write_to was disabled")
+
 	require.Greater(t, len(buf.String()), len(beforeLen))
 
+	require.Never(t, func() bool {
+		return len(collector.Entries()) > 0
+	}, time.Second, 10*time.Millisecond, "consumer received log after it was disabled")
 }
 
 // TestUpdateConcurrentHandle verifies that Logger.Update completes successfully
