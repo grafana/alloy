@@ -40,23 +40,16 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -182,23 +175,16 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -327,23 +313,16 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -492,23 +471,16 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -637,23 +609,16 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -805,23 +770,16 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -950,23 +908,16 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -1037,23 +988,16 @@ func TestSchemaDetails(t *testing.T) {
 
 		// second loop, table info will be read from cache
 		// and no further queries will be executed
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"BASE TABLE",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -1113,23 +1057,16 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow(
-					"some_schema",
-				),
-			)
-
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
+					"table_schema",
 					"table_name",
 					"table_type",
 					"create_time",
 					"update_time",
 				}).AddRow(
+					"some_schema",
 					"some_table",
 					"VIEW",
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -1227,7 +1164,7 @@ func TestSchemaDetails(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
-	t.Run("schemas result set iteration error", func(t *testing.T) {
+	t.Run("detect tables across multiple schemas in one bulk query", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -1246,14 +1183,118 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
-			sqlmock.NewRows(
-				[]string{"schema_name"},
-			).AddRow(
-				"some_schema",
-			).AddRow(
-				"another_schema",
-			).RowError(1, fmt.Errorf("rs error"))) // error on the second row
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_schema",
+					"table_name",
+					"table_type",
+					"create_time",
+					"update_time",
+				}).AddRow(
+					"schema_a",
+					"table_a",
+					"BASE TABLE",
+					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				).AddRow(
+					"schema_b",
+					"table_b",
+					"BASE TABLE",
+					time.Date(2024, 3, 3, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 4, 4, 0, 0, 0, 0, time.UTC),
+				),
+			)
+
+		// Per-table follow-ups for both schemas.
+		for _, tc := range []struct{ schema, table, ddl string }{
+			{"schema_a", "table_a", "CREATE TABLE table_a (id INT)"},
+			{"schema_b", "table_b", "CREATE TABLE table_b (id INT)"},
+		} {
+			mock.ExpectQuery(fmt.Sprintf("SHOW CREATE TABLE `%s`.`%s`", tc.schema, tc.table)).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{"table_name", "create_statement"}).
+						AddRow(tc.schema+"."+tc.table, tc.ddl),
+				)
+
+			mock.ExpectQuery(selectColumnNames).WithArgs(tc.schema, tc.table).RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"COLUMN_NAME", "COLUMN_DEFAULT", "IS_NULLABLE",
+						"COLUMN_TYPE", "COLUMN_KEY", "EXTRA",
+					}).AddRow("id", "null", "NO", "int", "PRI", "auto_increment"),
+				)
+
+			mock.ExpectQuery(selectIndexNames).WithArgs(tc.schema, tc.table).RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{
+						"index_name", "seq_in_index", "column_name", "expression",
+						"nullable", "non_unique", "index_type",
+					}).AddRow("PRIMARY", 1, "id", nil, "", 0, "BTREE"),
+				)
+
+			mock.ExpectQuery(selectForeignKeys).WithArgs(tc.schema, tc.table).RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"constraint_name", "column_name",
+					"referenced_table_name", "referenced_column_name",
+				}))
+		}
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 4
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="schema_a" table="table_a"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="schema_b" table="table_b"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		require.Contains(t, lokiEntries[2].Line, `schema="schema_a" table="table_a"`)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
+		require.Contains(t, lokiEntries[3].Line, `schema="schema_b" table="table_b"`)
+	})
+	t.Run("no tables detected", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			CacheEnabled:    false,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"table_schema",
+				"table_name",
+				"table_type",
+				"create_time",
+				"update_time",
+			}),
+		)
 
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
@@ -1290,25 +1331,21 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
-				"schema_name",
-			}).AddRow(
-				"some_schema",
-			),
-		)
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").WillReturnRows(
-			sqlmock.NewRows([]string{
+				"table_schema",
 				"table_name",
 				"table_type",
 				"create_time",
 				"update_time",
 			}).AddRow(
+				"some_schema",
 				"some_table",
 				"BASE TABLE",
 				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
 			).AddRow(
+				"some_schema",
 				"another_table",
 				"BASE TABLE",
 				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -1356,22 +1393,17 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
-		mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
-				"schema_name",
-			}).AddRow(
-				"some_schema",
-			),
-		)
-		mock.ExpectQuery(selectTableName).WithArgs("some_schema").WillReturnRows(
-			sqlmock.NewRows([]string{
+				"table_schema",
 				"table_name",
 				"table_type",
 				"create_time",
 				"update_time",
 			}).AddRow(
+				"some_schema",
 				"some_table",
 				"BASE TABLE",
 				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
@@ -1484,8 +1516,14 @@ func TestSchemaDetailsExcludeSchemas(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the query uses the custom exclusion clause
-	mock.ExpectQuery(fmt.Sprintf(selectSchemaNameTemplate, buildExcludedSchemasClause([]string{"excluded_schema"}))).
-		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"schema_name"}))
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause([]string{"excluded_schema"}))).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
+		"table_schema",
+		"table_name",
+		"table_type",
+		"create_time",
+		"update_time",
+	}))
 
 	c.extractSchema(t.Context())
 	require.NoError(t, mock.ExpectationsWereMet())

@@ -26,25 +26,19 @@ const (
 	OP_CREATE_STATEMENT    = "create_statement"
 )
 
-const selectSchemaNameTemplate = `
-	SELECT
-		SCHEMA_NAME
-	FROM
-		information_schema.schemata
-	WHERE
-		SCHEMA_NAME NOT IN %s`
-
 const (
-	selectTableName = `
+	selectTablesTemplate = `
 	SELECT
+		TABLE_SCHEMA,
 		TABLE_NAME,
 		TABLE_TYPE,
 		CREATE_TIME,
-		ifnull(UPDATE_TIME, CREATE_TIME) AS UPDATE_TIME
+		IFNULL(UPDATE_TIME, CREATE_TIME) AS UPDATE_TIME
 	FROM
 		information_schema.tables
 	WHERE
-		TABLE_SCHEMA = ?`
+		TABLE_SCHEMA NOT IN %s
+	ORDER BY TABLE_SCHEMA, TABLE_NAME`
 
 	// Note that the fully qualified table name is appendend to the query,
 	// we can't use placeholders with this statement.
@@ -231,71 +225,40 @@ func (c *SchemaDetails) Stop() {
 }
 
 func (c *SchemaDetails) extractSchema(ctx context.Context) error {
-	query := fmt.Sprintf(selectSchemaNameTemplate, buildExcludedSchemasClause(c.excludeSchemas))
+	query := fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause(c.excludeSchemas))
 	rs, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to query schemata: %w", err)
+		return fmt.Errorf("failed to query tables: %w", err)
 	}
 	defer rs.Close()
 
-	var schemas []string
+	tables := []*tableInfo{}
 	for rs.Next() {
-		var schema string
-		if err := rs.Scan(&schema); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan schemata", "err", err)
+		var schema, tableName, tableType string
+		var createTime, updateTime time.Time
+		if err := rs.Scan(&schema, &tableName, &tableType, &createTime, &updateTime); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
 			break
 		}
-		schemas = append(schemas, schema)
+		tables = append(tables, &tableInfo{
+			schema:        schema,
+			tableName:     tableName,
+			tableType:     tableType,
+			createTime:    createTime,
+			updateTime:    updateTime,
+			b64CreateStmt: "",
+			b64TableSpec:  "",
+		})
+
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+			logging.LevelInfo,
+			OP_TABLE_DETECTION,
+			fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
+		)
 	}
 
 	if err := rs.Err(); err != nil {
-		return fmt.Errorf("failed to iterate over schemas result set: %w", err)
-	}
-
-	if len(schemas) == 0 {
-		level.Info(c.logger).Log("msg", "no schema detected from information_schema.schemata")
-		return nil
-	}
-
-	tables := []*tableInfo{}
-
-	for _, schema := range schemas {
-		rs, err := c.dbConnection.QueryContext(ctx, selectTableName, schema)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to query tables", "err", err)
-			break
-		}
-
-		for rs.Next() {
-			var tableName, tableType string
-			var createTime, updateTime time.Time
-			if err := rs.Scan(&tableName, &tableType, &createTime, &updateTime); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
-				break
-			}
-			tables = append(tables, &tableInfo{
-				schema:        schema,
-				tableName:     tableName,
-				tableType:     tableType,
-				createTime:    createTime,
-				updateTime:    updateTime,
-				b64CreateStmt: "",
-				b64TableSpec:  "",
-			})
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_TABLE_DETECTION,
-				fmt.Sprintf(`schema="%s" table="%s"`, schema, tableName),
-			)
-		}
-
-		iterErr := rs.Err()
-		rs.Close()
-
-		if iterErr != nil {
-			return fmt.Errorf("failed to iterate over tables result set: %w", iterErr)
-		}
+		return fmt.Errorf("failed to iterate over tables result set: %w", err)
 	}
 
 	if len(tables) == 0 {
@@ -303,7 +266,6 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		return nil
 	}
 
-	// TODO(cristian): consider moving this into the loop above
 	for _, table := range tables {
 		fullyQualifiedTable := fmt.Sprintf("`%s`.`%s`", table.schema, table.tableName)
 		cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
