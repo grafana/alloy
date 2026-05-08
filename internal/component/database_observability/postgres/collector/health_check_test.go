@@ -116,6 +116,51 @@ func TestHealthCheck(t *testing.T) {
 				},
 				expectedResult: `result="false"`,
 			},
+			{
+				name:             "monitoring user lacks SELECT on pg_stat_statements",
+				failingCheckName: "MonitoringUserPrivileges",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(monitoringUserPrivilegesQuery).
+						WillReturnRows(sqlmock.NewRows([]string{
+							"has_pg_monitor_role",
+							"has_pg_read_all_stats_role",
+							"can_select_pg_stat_statements",
+							"sees_insufficient_privilege",
+						}).AddRow(false, false, false, false))
+				},
+				expectedResult: `result="false" value="can_select_view=false,has_pg_monitor_role=false,has_pg_read_all_stats_role=false,sees_insufficient_privilege=false"`,
+			},
+			{
+				name:             "monitoring user sees insufficient privilege rows",
+				failingCheckName: "MonitoringUserPrivileges",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(monitoringUserPrivilegesQuery).
+						WillReturnRows(sqlmock.NewRows([]string{
+							"has_pg_monitor_role",
+							"has_pg_read_all_stats_role",
+							"can_select_pg_stat_statements",
+							"sees_insufficient_privilege",
+						}).AddRow(false, false, true, true))
+				},
+				expectedResult: `result="false" value="can_select_view=true,has_pg_monitor_role=false,has_pg_read_all_stats_role=false,sees_insufficient_privilege=true"`,
+			},
+			{
+				// Informational: lacking pg_read_all_stats role membership alone
+				// must NOT fail the check when SELECT works and no masking is
+				// observed (e.g. direct GRANT SELECT on pg_stat_statements).
+				name:             "monitoring user lacks role membership but no masking observed",
+				failingCheckName: "MonitoringUserPrivileges",
+				customSetup: func(mock sqlmock.Sqlmock) {
+					mock.ExpectQuery(monitoringUserPrivilegesQuery).
+						WillReturnRows(sqlmock.NewRows([]string{
+							"has_pg_monitor_role",
+							"has_pg_read_all_stats_role",
+							"can_select_pg_stat_statements",
+							"sees_insufficient_privilege",
+						}).AddRow(false, false, true, false))
+				},
+				expectedResult: `result="true" value="can_select_view=true,has_pg_monitor_role=false,has_pg_read_all_stats_role=false,sees_insufficient_privilege=false"`,
+			},
 		}
 
 		for _, tc := range testCases {
@@ -189,8 +234,13 @@ func TestHealthCheck(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"setting"}).AddRow("4096"))
 		mock.ExpectQuery(`SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`).
 			WillReturnRows(sqlmock.NewRows([]string{"setting"}).AddRow("on"))
-		mock.ExpectQuery(`SELECT * FROM pg_stat_statements LIMIT 1`).
-			WillReturnRows(sqlmock.NewRows([]string{"userid", "dbid", "queryid"}).AddRow(1, 1, 123))
+		mock.ExpectQuery(monitoringUserPrivilegesQuery).
+			WillReturnRows(sqlmock.NewRows([]string{
+				"has_pg_monitor_role",
+				"has_pg_read_all_stats_role",
+				"can_select_pg_stat_statements",
+				"sees_insufficient_privilege",
+			}).AddRow(true, true, true, false))
 		mock.ExpectQuery(pgStatStatementsHasRowsQuery([]string{"my_db"}, []string{"my_user"})).
 			WillReturnRows(sqlmock.NewRows([]string{"exists"}).AddRow(true))
 
@@ -262,9 +312,13 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 		{
 			name: "MonitoringUserPrivileges",
 			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SELECT * FROM pg_stat_statements LIMIT 1`).
-					WillReturnRows(sqlmock.NewRows([]string{"userid", "dbid", "queryid"}).
-						AddRow(1, 1, 123))
+				mock.ExpectQuery(monitoringUserPrivilegesQuery).
+					WillReturnRows(sqlmock.NewRows([]string{
+						"has_pg_monitor_role",
+						"has_pg_read_all_stats_role",
+						"can_select_pg_stat_statements",
+						"sees_insufficient_privilege",
+					}).AddRow(true, true, true, false))
 			},
 		},
 		{

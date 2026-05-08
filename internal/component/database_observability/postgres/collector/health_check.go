@@ -23,6 +23,18 @@ const (
 	OP_HEALTH_STATUS     = "health_status"
 )
 
+// monitoringUserPrivilegesQuery probes whether the connected user can usefully
+// read data from pg_stat_statements.
+const monitoringUserPrivilegesQuery = `
+	SELECT
+		pg_has_role(current_user, 'pg_monitor',        'MEMBER') AS has_pg_monitor_role,
+		pg_has_role(current_user, 'pg_read_all_stats', 'MEMBER') AS has_pg_read_all_stats_role,
+		has_table_privilege(current_user, 'pg_stat_statements', 'SELECT') AS can_select_pg_stat_statements,
+		EXISTS (
+			SELECT 1 FROM pg_stat_statements
+			WHERE query = '<insufficient privilege>'
+		) AS sees_insufficient_privilege`
+
 type HealthCheckArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
@@ -192,23 +204,45 @@ func checkTrackActivityQuerySize(ctx context.Context, db *sql.DB) healthCheckRes
 
 func checkMonitoringUserPrivileges(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "MonitoringUserPrivileges"}
-	const q = `SELECT * FROM pg_stat_statements LIMIT 1`
 
-	rows, err := db.QueryContext(ctx, q)
-	if err != nil {
-		r.err = fmt.Errorf("query pg_stat_statements: %w", err)
+	var hasMonitorRole, hasReadStatsRole, canSelectView, seesInsufficientPrivilege bool
+	if err := db.QueryRowContext(ctx, monitoringUserPrivilegesQuery).Scan(
+		&hasMonitorRole, &hasReadStatsRole, &canSelectView, &seesInsufficientPrivilege,
+	); err != nil {
+		r.err = fmt.Errorf("query monitoring user privileges: %w", err)
 		return r
 	}
-	defer rows.Close()
 
-	if rows.Next() {
-		r.result = true
-	}
-
-	if err := rows.Err(); err != nil {
-		r.err = fmt.Errorf("iterate pg_stat_statements: %w", err)
-	}
-
+	// The 'result' doesn't take role membership into account, but we report the
+	// role checks in 'value' for diagnostics:
+	// checks in 'value' for diagnostics:
+	//
+	// - canSelectView (i.e. can read the view) and !seesInsufficientPrivilege (i.e.
+	//   no '<insufficient privilege>' rows visible) gate result, because
+	//   together they prove the user can actually read real data
+	//   regardless of how that access was granted.
+	//
+	// - hasMonitorRole / hasReadStatsRole are reported in value for diagnostics only.
+	//   pg_has_role(_, _, 'MEMBER') resolves transitive membership, so
+	//   granting pg_monitor implies has_pg_read_all_stats_role=true (pg_monitor is
+	//   its parent role); the reverse does not hold. Role membership is also
+	//   not the only path: a direct GRANT SELECT on pg_stat_statements lets a
+	//   user read the view without either role - they show can_select_view=true but
+	//   will see '<insufficient privilege>' for queries from other users,
+	//   which sees_insufficient_privilege catches. Treating the role columns as gating
+	//   would produce false negatives on perfectly valid setups.
+	//
+	// Example: a user with only `GRANT SELECT ON pg_stat_statements TO ...`
+	// reports can_select_view=true, has_pg_monitor_role=false, has_pg_read_all_stats_role=false,
+	// sees_insufficient_privilege=true once any other user has executed a
+	// statement; result is correctly false because the collector won't get
+	// useful data, even though the role checks alone wouldn't have told us
+	// whether SELECT was reachable.
+	r.result = canSelectView && !seesInsufficientPrivilege
+	r.value = fmt.Sprintf(
+		"can_select_view=%v,has_pg_monitor_role=%v,has_pg_read_all_stats_role=%v,sees_insufficient_privilege=%v",
+		canSelectView, hasMonitorRole, hasReadStatsRole, seesInsufficientPrivilege,
+	)
 	return r
 }
 

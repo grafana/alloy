@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
 )
 
 func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, cfgs ...Config) (*FanoutConsumer, error) {
@@ -34,7 +34,7 @@ func NewFanoutConsumer(logger log.Logger, reg prometheus.Registerer, cfgs ...Con
 		}
 
 		endpointsCheck[name] = struct{}{}
-		endpoint, err := newEndpoint(metrics, cfg, logger, internal.NewNopMarkerHandler())
+		endpoint, err := newEndpoint(metrics, cfg, logger, marker.NewNopTracker())
 		if err != nil {
 			return nil, fmt.Errorf("error starting endpoint: %w", err)
 		}
