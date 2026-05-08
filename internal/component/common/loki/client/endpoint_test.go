@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
 	"github.com/grafana/alloy/internal/loki/util"
 )
 
@@ -336,7 +336,7 @@ func TestEndpoint(t *testing.T) {
 			tt.endpointConfig.QueueConfig.DrainTimeout = 30 * time.Second
 
 			m := newMetrics(reg)
-			c, err := newEndpoint(m, tt.endpointConfig, log.NewNopLogger(), internal.NewNopMarkerHandler())
+			c, err := newEndpoint(m, tt.endpointConfig, log.NewNopLogger(), marker.NewNopTracker())
 			require.NoError(t, err)
 
 			// Send all the input log entries
@@ -393,7 +393,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 				MinShards:       1,
 				BlockOnOverflow: false,
 			},
-		}, log.NewNopLogger(), internal.NewNopMarkerHandler())
+		}, log.NewNopLogger(), marker.NewNopTracker())
 		require.NoError(t, err)
 		defer e.stop()
 
@@ -433,7 +433,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 				MinShards:       1,
 				BlockOnOverflow: true,
 			},
-		}, log.NewNopLogger(), internal.NewNopMarkerHandler())
+		}, log.NewNopLogger(), marker.NewNopTracker())
 		require.NoError(t, err)
 		defer e.stop()
 

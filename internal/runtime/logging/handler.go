@@ -76,7 +76,7 @@ func (h *handler) buildHandler() slog.Handler {
 	var newHandler slog.Handler
 
 	handlerOpts := slog.HandlerOptions{
-		AddSource: true,
+		AddSource: false,
 		Level:     h.leveler,
 
 		// Replace attributes with how they were represented in go-kit/log for
