@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -226,4 +227,43 @@ func TestValidateMatcherConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestMatchStage_NewPipelineErrorIsWrapped verifies that when newMatcherStage's
+// NewPipeline call fails, the returned error wraps the original error from
+// NewPipeline so callers can use errors.Unwrap / errors.Is / errors.As to
+// inspect the underlying cause.
+//
+// Regression test for the reversed %w wrap that was previously at match.go:76,
+// where the %w slot held a fresh fmt.Errorf instead of the actual err from
+// NewPipeline. With the bug, errors.Unwrap returned the dummy fmt.Errorf
+// ("match stage failed to create pipeline...") and lost the original error
+// context. With the fix, errors.Unwrap returns NewPipeline's error.
+func TestMatchStage_NewPipelineErrorIsWrapped(t *testing.T) {
+	// Build a match config whose inner pipeline fails to construct: the
+	// regex stage gets an unclosed character class, which regexp.Compile
+	// rejects.
+	cfg := StageConfig{
+		MatchConfig: &MatchConfig{
+			Selector: `{app="loki"}`,
+			Action:   MatchActionKeep,
+			Stages: []StageConfig{
+				{RegexConfig: &RegexConfig{Expression: "[unclosed"}},
+			},
+		},
+	}
+
+	logger := util.TestAlloyLogger(t)
+	_, err := New(logger.Slog(), cfg, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	require.Error(t, err)
+	require.ErrorContains(t, err, "match stage failed to create pipeline")
+
+	// The returned error must unwrap to NewPipeline's error. Without the
+	// fix, errors.Unwrap returns a fresh fmt.Errorf("match stage failed to
+	// create pipeline from config: ...") which has no further unwrap chain
+	// and does not contain "invalid stage config".
+	unwrapped := errors.Unwrap(err)
+	require.NotNil(t, unwrapped, "match stage error should unwrap to NewPipeline's error")
+	require.ErrorContains(t, unwrapped, "invalid stage config",
+		"errors.Unwrap should reach NewPipeline's wrap, not a dummy fmt.Errorf")
 }
