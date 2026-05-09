@@ -438,87 +438,63 @@ func (t *UDPTransport) Close() error {
 
 func (t *UDPTransport) acceptPackets() {
 	defer t.openConnections.Done()
-
-	var (
-		n    int
-		addr net.Addr
-		err  error
-	)
-	streams := make(map[string]*ConnPipe)
-	buf := make([]byte, t.maxMessageLength())
+	defer func() {
+		level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
+	}()
 
 	for {
 		if !t.Ready() {
-			level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
-			for _, stream := range streams {
-				if err = stream.Close(); err != nil {
-					level.Error(t.logger).Log("msg", "failed to close pipe", "err", err)
-				}
-			}
 			return
 		}
-		n, addr, err = t.udpConn.ReadFrom(buf)
+
+		buf := make([]byte, t.maxMessageLength())
+
+		// Unlike TCP, if datagram is larger than a buf - unread bytes are discarded.
+		n, addr, err := t.udpConn.ReadFrom(buf)
 		if n <= 0 && err != nil {
+			if !t.Ready() {
+				return
+			}
+
 			level.Warn(t.logger).Log("msg", "failed to read packets", "addr", addr, "err", err)
 			continue
 		}
 
-		stream, ok := streams[addr.String()]
-		if !ok {
-			stream = NewConnPipe(addr)
-			streams[addr.String()] = stream
-			t.openConnections.Add(1)
-			go t.handleRcv(stream)
-		}
-		if _, err := stream.Write(buf[:n]); err != nil {
-			level.Warn(t.logger).Log("msg", "failed to write to stream", "addr", addr, "err", err)
-		}
+		buf = buf[:n]
+		t.handleDatagram(addr, buf)
 	}
 }
 
-func (t *UDPTransport) handleRcv(c *ConnPipe) {
+func (t *UDPTransport) handleDatagram(src net.Addr, buf []byte) {
 	defer t.openConnections.Done()
 
-	udpAddr, _ := net.ResolveUDPAddr("udp", c.addr.String())
-	lbs := t.connectionLabels(udpAddr.IP.String())
+	srcIP := hostFromAddr(src)
+	lbs := t.connectionLabels(srcIP)
+	r := bytes.NewReader(buf)
 
-	for {
-		datagram := make([]byte, t.maxMessageLength())
-		n, err := c.Read(datagram)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-
-			level.Warn(t.logger).Log("msg", "error reading from pipe", "err", err)
-			continue
+	cb := func(result *syslog.Result) {
+		if err := result.Error; err != nil {
+			t.handleMessageError(err)
+		} else {
+			t.handleMessage(lbs.Copy(), result.Message)
 		}
+	}
 
-		r := bytes.NewReader(datagram[:n])
-		cb := func(result *syslog.Result) {
-			if err := result.Error; err != nil {
-				t.handleMessageError(err)
-			} else {
-				t.handleMessage(lbs.Copy(), result.Message)
-			}
+	if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+		delim := t.config.RawFormatOptions.Delimiter()
+		for msg, err := range syslogparser.IterStreamRaw(r, delim) {
+			cb(&syslog.Result{
+				Message: msg,
+				Error:   err,
+			})
 		}
+		return
+	}
 
-		if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
-			delim := t.config.RawFormatOptions.Delimiter()
-			for msg, err := range syslogparser.IterStreamRaw(r, delim) {
-				cb(&syslog.Result{
-					Message: msg,
-					Error:   err,
-				})
-			}
-			continue
-		}
-
-		parseCfg := t.streamParseConfig()
-		err = syslogparser.ParseStream(parseCfg, r, cb)
-		if err != nil {
-			level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
-		}
+	parseCfg := t.streamParseConfig()
+	err := syslogparser.ParseStream(parseCfg, r, cb)
+	if err != nil {
+		level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
 	}
 }
 
@@ -530,4 +506,23 @@ func (t *UDPTransport) Wait() {
 // Addr implements SyslogTransport
 func (t *UDPTransport) Addr() net.Addr {
 	return t.udpConn.LocalAddr()
+}
+
+func hostFromAddr(addr net.Addr) string {
+	switch v := addr.(type) {
+	case *net.TCPAddr:
+		return v.IP.String()
+	case *net.UDPAddr:
+		return v.IP.String()
+	case *net.IPAddr:
+		return v.IP.String()
+	default:
+		// Fallback: parse from the string representation
+		strAddr := addr.String()
+		host, _, err := net.SplitHostPort(strAddr)
+		if err != nil {
+			return strAddr
+		}
+		return host
+	}
 }
