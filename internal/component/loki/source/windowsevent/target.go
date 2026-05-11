@@ -104,7 +104,7 @@ func (t *Target) loop() {
 			if err != nil {
 				if err != win_eventlog.ERROR_NO_MORE_ITEMS {
 					t.err = err
-					t.logger.Error("msg", "error fetching events", "err", err)
+					t.logger.Error("error fetching events", "err", err)
 				}
 				break loop
 			}

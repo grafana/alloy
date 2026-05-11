@@ -123,7 +123,7 @@ func (t *tailer) Run(ctx context.Context) {
 						t.log.Info("should stop tailing job container, stopping tailer")
 						return
 					} else if err != nil {
-						t.log.Warn("msg", "could not determine if should stop tailing job container; will retry tailing", "err", err)
+						t.log.Warn("could not determine if should stop tailing job container; will retry tailing", "err", err)
 					}
 				} else {
 					// For regular pods, use standard termination logic

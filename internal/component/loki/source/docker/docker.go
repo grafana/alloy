@@ -29,7 +29,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 )
 
@@ -284,7 +283,7 @@ func (c *Component) getClient(args Arguments) (client.APIClient, error) {
 
 	client, err := client.New(opts...)
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "could not create new Docker client", "err", err)
+		c.opts.SLogger.Error("could not create new Docker client", "err", err)
 		return c.client, fmt.Errorf("failed to build docker client: %w", err)
 	}
 
