@@ -33,6 +33,7 @@ type config struct {
 	shard           string
 	packages        []string
 	interactive     bool
+	testTags        string
 }
 
 func main() {
@@ -113,6 +114,7 @@ func parseFlags() (config, error) {
 	fs.StringVar(&pkgFlag, "package", "", "Restrict tests to one package path or pattern (default: "+defaultTestPackages+")")
 	fs.StringVar(&cfg.alloyImage, "alloy-image", "grafana/alloy:latest", "Alloy image (repo:tag) used by tests; must exist locally or in the kind cluster")
 	fs.BoolVar(&cfg.interactive, "interactive", false, "Pick run options (reuse-cluster, skip-image-builds, shard/packages) via an interactive menu before running")
+	fs.StringVar(&cfg.testTags, "test-tags", "", "Build tags (space- or comma-separated) forwarded to `go test -tags=...`. Empty means no -tags flag is passed")
 	fs.Usage = func() {
 		fmt.Println("Usage: go run ./integration-tests/k8s/runner [flags]")
 		fmt.Println()
@@ -231,6 +233,19 @@ func loadImages(cfg config) error {
 	return nil
 }
 
+// normalizeTestTags converts a user-supplied space- or comma-separated tag
+// list into the comma-separated form `go test -tags=` expects. Empty input
+// yields the empty string so callers can omit the flag entirely.
+func normalizeTestTags(raw string) string {
+	var tags []string
+	for _, t := range strings.Fields(strings.ReplaceAll(raw, ",", " ")) {
+		if t != "" {
+			tags = append(tags, t)
+		}
+	}
+	return strings.Join(tags, ",")
+}
+
 // runGoTests runs `go test` for the configured patterns. We intentionally
 // leave package-level parallelism on (no `-p 1`): each test package owns a
 // distinct namespace, so concurrent packages don't conflict on the shared
@@ -242,6 +257,9 @@ func runGoTests(cfg config) error {
 		patterns = []string{defaultTestPackages}
 	}
 	args := []string{"test", "-v", "-count=1", "-timeout", "30m"}
+	if tags := normalizeTestTags(cfg.testTags); tags != "" {
+		args = append(args, "-tags="+tags)
+	}
 	args = append(args, patterns...)
 	if cfg.shard != "" {
 		args = append(args, "-args", "-shard="+cfg.shard)

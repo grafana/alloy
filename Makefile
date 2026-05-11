@@ -205,13 +205,13 @@ integration-test-docker:
 
 .PHONY: integration-test-k8s
 integration-test-k8s:
-	$(GO_ENV) go run ./integration-tests/k8s/runner $(RUN_ARGS)
+	$(GO_ENV) go run ./integration-tests/k8s/runner --test-tags='$(GO_TAGS)' $(RUN_ARGS)
 
 # Interactive mode for local development: pick reuse-cluster, skip-image-builds,
 # and shard/packages from a TUI menu before tests run.
 .PHONY: integration-test-k8s-local-dev
 integration-test-k8s-local-dev:
-	$(GO_ENV) go run ./integration-tests/k8s/runner --interactive $(RUN_ARGS)
+	$(GO_ENV) go run ./integration-tests/k8s/runner --interactive --test-tags='$(GO_TAGS)' $(RUN_ARGS)
 
 # Windows service integration test. Runs only on Windows with Administrator privileges.
 # Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
