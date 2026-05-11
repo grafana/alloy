@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +39,7 @@ func AssertLogsPresent(t *testing.T, totalCount int, expected ...ExpectedLogResu
 	t.Helper()
 	AssertStatefulTestEnv(t)
 
-	var logResponse LogResponse
+	var logResponse lokihttp.LogResponse
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		err := fetchLokiQueryRange(SanitizeTestName(t), totalCount, &logResponse)
@@ -84,7 +85,7 @@ func AssertLabelsNotIndexed(t *testing.T, labels ...string) {
 	t.Helper()
 	AssertStatefulTestEnv(t)
 
-	var resp LogSeriesResponse
+	var resp lokihttp.LogSeriesResponse
 	_, err := FetchDataFromURL(LogSeriesQuery(SanitizeTestName(t)), &resp)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.Data, "no Loki series found for test; call AssertLogsPresent before AssertLabelsNotIndexed")
@@ -109,7 +110,7 @@ func WaitForInitalLogs(testName string) error {
 	for {
 		select {
 		case <-tick.C:
-			var resp LogResponse
+			var resp lokihttp.LogResponse
 
 			err := fetchLokiQueryRange(testName, 1, &resp)
 			if err != nil {
@@ -126,7 +127,7 @@ func WaitForInitalLogs(testName string) error {
 	}
 }
 
-func fetchLokiQueryRange(testName string, totalExpected int, res *LogResponse) error {
+func fetchLokiQueryRange(testName string, totalExpected int, res *lokihttp.LogResponse) error {
 	// We need to set this header for loki to pass structured_metadata for every entry and
 	// not return it as a label in stream.
 	const (
@@ -144,8 +145,8 @@ func fetchLokiQueryRange(testName string, totalExpected int, res *LogResponse) e
 
 // matchingEntries returns all log entries across streams whose labels are a
 // superset of the provided label set.
-func matchingEntries(labels map[string]string, result []LogData) []LogEntry {
-	var entries []LogEntry
+func matchingEntries(labels map[string]string, result []lokihttp.LogData) []lokihttp.LogEntry {
+	var entries []lokihttp.LogEntry
 	for _, r := range result {
 		if streamContainsLabels(r.Stream, labels) {
 			entries = append(entries, r.Values...)
