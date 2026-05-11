@@ -156,7 +156,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.tailer.stop()
 	}
 
-	t, err := newTailer(c.metrics, c.opts.Logger, c.handler, c.posFile, newArgs.tailerConfig())
+	t, err := newTailer(c.metrics, c.opts.SLogger, c.handler, c.posFile, newArgs.tailerConfig())
 	if err != nil {
 		c.opts.SLogger.Error("failed to create cloudflare target with provided config", "err", err)
 		return err
