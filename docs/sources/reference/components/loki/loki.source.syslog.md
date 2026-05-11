@@ -129,12 +129,16 @@ Omitted fields take their default values.
 | `rfc3164_default_to_current_year` | `bool`        | Whether to default the incoming timestamp of an `rfc3164` message to the current year.                                                               | `false`     | no       |
 | `rfc5424_allow_empty_msg`         | `bool`        | Whether to forward RFC5424 messages with empty MSG content. When `false`, such messages are dropped. Only applies when `syslog_format` is `rfc5424`. | `false`     | no       |
 | `syslog_format`                   | `string`      | The format for incoming messages. See [supported formats](#supported-formats).                                                                       | `"rfc5424"` | no       |
+| `udp_queue_size`                  | `int`         | The maximum number of UDP datagrams that can wait in the internal processing queue before the listener blocks. Only applies when `protocol` is `udp`. | `10`        | no       |
 | `use_incoming_timestamp`          | `bool`        | Whether to set the timestamp to the incoming syslog record timestamp.                                                                                | `false`     | no       |
 | `use_rfc5424_message`             | `bool`        | Whether to forward the full RFC5424-formatted syslog message.                                                                                        | `false`     | no       |
 
 By default, the component uses the time it processes the log entry as the timestamp.
 
 The `labels` map is applied to every message that the component reads.
+
+When `protocol` is `udp`, `udp_queue_size` sets how many datagrams can wait for processing.
+The UDP listener waits to read more datagrams when the queue is full.
 
 All header fields from parsed RFC5424 and RFC3164 messages become internal labels, prefixed with `__syslog_`.
 
