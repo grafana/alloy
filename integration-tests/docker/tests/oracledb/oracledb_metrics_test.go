@@ -114,23 +114,25 @@ func assertSeriesLabelsForMetrics(t *testing.T, testName string, metrics []strin
 		metricNames[n] = struct{}{}
 	}
 
-	var resp SeriesResponse
-	_, err := common.FetchDataFromURL(common.MetricsQuery(testName), &resp)
-	require.NoError(t, err)
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		var resp SeriesResponse
+		_, err := common.FetchDataFromURL(common.MetricsQuery(testName), &resp)
+		assert.NoError(c, err)
 
-	found := make(map[string]struct{})
-	for _, actualLabels := range resp.Data {
-		name := actualLabels["__name__"]
-		if _, ok := metricNames[name]; !ok {
-			continue
+		found := make(map[string]struct{})
+		for _, actualLabels := range resp.Data {
+			name := actualLabels["__name__"]
+			if _, ok := metricNames[name]; !ok {
+				continue
+			}
+			if !seriesLabelsMatch(actualLabels, wantedLabels) {
+				continue
+			}
+			found[name] = struct{}{}
 		}
-		if !seriesLabelsMatch(actualLabels, wantedLabels) {
-			continue
-		}
-		found[name] = struct{}{}
-	}
 
-	for _, name := range metrics {
-		assert.Contains(t, found, name, "expected a series for metric %s with labels %v", name, wantedLabels)
-	}
+		for _, name := range metrics {
+			assert.Contains(c, found, name, "expected a series for metric %s with labels %v", name, wantedLabels)
+		}
+	}, common.TestTimeoutEnv(t), common.DefaultRetryInterval)
 }
