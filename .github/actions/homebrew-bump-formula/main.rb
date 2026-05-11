@@ -174,7 +174,7 @@ module Homebrew
       end
     end
 
-    # Die if error occured
+    # Die if error occurred
     odie err if err
   end
 end
