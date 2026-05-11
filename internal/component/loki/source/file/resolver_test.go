@@ -6,11 +6,11 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestResolver(t *testing.T) {
@@ -46,7 +46,7 @@ func TestResolver(t *testing.T) {
 		},
 		{
 			name:     "glob resolver",
-			resolver: newGlobResolver(log.NewNopLogger()),
+			resolver: newGlobResolver(logging.NewSlogNop()),
 			targets: []discovery.Target{
 				discovery.NewTargetFromLabelSet(model.LabelSet{
 					"__path__":     "./testdata/*.log",
@@ -112,7 +112,7 @@ func TestGlobResolverMultiplePatterns(t *testing.T) {
 		}
 	}
 
-	resolver := newGlobResolver(log.NewNopLogger())
+	resolver := newGlobResolver(logging.NewSlogNop())
 
 	// Use pattern matching multiple directories and extensions with exclusions
 	// This mirrors: /var/log/{nginx,apache,caddy}/*.{log,txt,json} excluding *.{gz,zip,bak,old}

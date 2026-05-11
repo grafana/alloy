@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -17,12 +16,11 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/util"
 )
 
 func TestTailer(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := logging.NewNop()
+	l := logging.NewSlogNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -118,7 +116,7 @@ func TestTailer(t *testing.T) {
 
 func TestTailerPositionFileEntryDeleted(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := logging.NewNop()
+	l := logging.NewSlogNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -183,7 +181,7 @@ func TestTailerPositionFileEntryDeleted(t *testing.T) {
 
 func TestTailerDeleteFileInstant(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := logging.NewNop()
+	l := logging.NewSlogNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -238,7 +236,7 @@ func TestTailerDeleteFileInstant(t *testing.T) {
 func TestTailerCancelWhileSendBlocked(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	l := logging.NewNop()
+	l := logging.NewSlogNop()
 	recv := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 
@@ -311,7 +309,7 @@ func TestTailerCancelWhileSendBlocked(t *testing.T) {
 
 func TestTailerCorruptedPositions(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
-	l := util.TestLogger(t)
+	l := logging.NewSlogNop()
 	ch1 := loki.NewLogsReceiver()
 	tempDir := t.TempDir()
 	logFile, err := os.CreateTemp(tempDir, "example")
@@ -416,7 +414,7 @@ func TestTailer_Compressions(t *testing.T) {
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
-	logger := log.NewNopLogger()
+	logger := logging.NewSlogNop()
 	positionsFile, err := positions.New(logger, positions.Config{
 		SyncPeriod:    50 * time.Millisecond,
 		PositionsFile: filepath.Join(t.TempDir(), "positions.yaml"),
@@ -476,7 +474,7 @@ func TestTailer_GigantiqueGunzipFile(t *testing.T) {
 
 	tailer := newTailer(
 		newMetrics(prometheus.NewRegistry()),
-		log.NewNopLogger(),
+		logging.NewSlogNop(),
 		handler.Receiver(),
 		positions.NewNop(),
 		func() bool { return false },
@@ -506,7 +504,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
-			log.NewNopLogger(),
+			logging.NewSlogNop(),
 			handler.Receiver(),
 			positions.NewNop(),
 			func() bool { return false },
@@ -535,7 +533,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
-			log.NewNopLogger(),
+			logging.NewSlogNop(),
 			handler.Receiver(),
 			positions.NewNop(),
 			func() bool { return false },
@@ -563,7 +561,7 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 
 		tailer := newTailer(
 			newMetrics(prometheus.NewRegistry()),
-			log.NewNopLogger(),
+			logging.NewSlogNop(),
 			handler.Receiver(),
 			positions.NewNop(),
 			func() bool { return false },
