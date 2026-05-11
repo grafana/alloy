@@ -331,7 +331,7 @@ func (t *TCPTransport) acceptConnections() {
 				continue
 			}
 
-			l.Error("failed to accept syslog connection. quiting", "err", err)
+			l.Error("failed to accept syslog connection. quitting", "err", err)
 			return
 		}
 		backoff.Reset()

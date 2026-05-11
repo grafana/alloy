@@ -366,7 +366,7 @@ func EvtSubscribe(logger *slog.Logger, logName, xquery string) (EvtHandle, error
 	if err != nil {
 		return 0, err
 	}
-	logger.Debug("ubcribed with handle id", "id", subsHandle)
+	logger.Debug("subscribed with handle id", "id", subsHandle)
 
 	return subsHandle, nil
 }
@@ -395,7 +395,7 @@ func EvtSubscribeWithBookmark(logger *slog.Logger, logName, xquery string, bookM
 	if err != nil {
 		return 0, err
 	}
-	logger.Debug("subcribed with handle id", "id", subsHandle)
+	logger.Debug("subscribed with handle id", "id", subsHandle)
 
 	return subsHandle, nil
 }

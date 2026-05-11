@@ -106,7 +106,7 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("translation").Inc()
-		p.logger.Warn("failed to translate gcp push request", "err", err.Error())
+		p.logger.Warn("failed to translate gcp push request", "err", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}

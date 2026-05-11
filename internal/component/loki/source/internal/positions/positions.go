@@ -113,7 +113,7 @@ func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) {
 	fi, err := os.Stat(newPath)
 	// If the newpath exists, then don't convert.
 	if err == nil && fi.Size() > 0 {
-		l.Info("will not convert the legacy positionn file as the new positions file already exists", "path", newPath)
+		l.Info("will not convert the legacy positions file as the new positions file already exists", "path", newPath)
 		return
 	}
 

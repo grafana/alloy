@@ -87,7 +87,7 @@ type LogsConfig struct {
 }
 
 func NewServer(logger *slog.Logger, reg prometheus.Registerer, recv loki.LogsBatchReceiver, cfg ServerConfig) (*Server, error) {
-	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that uses fnet.NewTargetServer
+	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use fnet.NewTargetServer
 	// to slog. Part of https://github.com/grafana/alloy/issues/4813.
 	server, err := fnet.NewTargetServer(slogadapter.GoKit(logger.Handler()), cfg.Namespace, reg, cfg.NetConfig)
 	if err != nil {

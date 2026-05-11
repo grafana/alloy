@@ -339,7 +339,7 @@ func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Messag
 	case *syslog.Base:
 		t.handleMessageRaw(connLabels, m)
 	default:
-		t.logger.Error("unsupported message type", "type", m)
+		t.logger.Error("unsupported message", "type", fmt.Sprintf("%T", m))
 	}
 }
 
