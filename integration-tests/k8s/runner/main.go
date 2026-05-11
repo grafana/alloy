@@ -114,7 +114,7 @@ func parseFlags() (config, error) {
 	fs.StringVar(&pkgFlag, "package", "", "Restrict tests to one package path or pattern (default: "+defaultTestPackages+")")
 	fs.StringVar(&cfg.alloyImage, "alloy-image", "grafana/alloy:latest", "Alloy image (repo:tag) used by tests; must exist locally or in the kind cluster")
 	fs.BoolVar(&cfg.interactive, "interactive", false, "Pick run options (reuse-cluster, skip-image-builds, shard/packages) via an interactive menu before running")
-	fs.StringVar(&cfg.testTags, "test-tags", "", "Build tags (space- or comma-separated) forwarded to `go test -tags=...`. Empty means no -tags flag is passed. Makefile targets pass $(GO_TAGS) here so the Makefile remains the single source of truth for tags like gore2regex")
+	fs.StringVar(&cfg.testTags, "test-tags", "", "Build tags (space- or comma-separated) forwarded to `go test -tags=...`. Empty means no -tags flag is passed")
 	fs.Usage = func() {
 		fmt.Println("Usage: go run ./integration-tests/k8s/runner [flags]")
 		fmt.Println()
