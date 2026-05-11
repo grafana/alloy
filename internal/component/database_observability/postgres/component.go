@@ -620,6 +620,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			EntryHandler:           entryHandler,
 			TableRegistry:          tableRegistry,
 			EnableQueryFingerprint: c.args.EnableQueryFingerprint,
+			Registry:               c.registry,
 			Logger:                 c.opts.Logger,
 		})
 		if err != nil {

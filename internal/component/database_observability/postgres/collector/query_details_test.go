@@ -11,6 +11,8 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -1139,4 +1141,84 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestQueryDetails_FingerprintInfoGaugeIsPopulated(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	const (
+		sqlText    = "SELECT * FROM some_table WHERE id = $1"
+		rowQueryID = "abc123"
+		rowDatname = "some_database"
+	)
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).
+		WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow(rowQueryID, sqlText, rowDatname))
+
+	lokiClient := loki.NewCollectingHandler()
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:                     db,
+		CollectInterval:        time.Second,
+		StatementsLimit:        100,
+		EntryHandler:           lokiClient,
+		Logger:                 log.NewLogfmtLogger(os.Stderr),
+		EnableQueryFingerprint: true,
+		Registry:               registry,
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, collector.Start(t.Context()))
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 1 }, 5*time.Second, 100*time.Millisecond)
+	collector.Stop()
+	lokiClient.Stop()
+	require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+
+	expectedFP, _, fpErr := fingerprint.Fingerprint(sqlText, fingerprint.SourcePgStatStatements, 0)
+	require.NoError(t, fpErr)
+
+	got := testutil.ToFloat64(collector.queryFingerprintInfo.WithLabelValues(rowQueryID, expectedFP, rowDatname))
+	require.Equal(t, float64(1), got, "expected the join metric to be set to 1 for the scraped row")
+
+	// Sanity: no series for a different fingerprint.
+	require.Equal(t, 0, testutil.CollectAndCount(collector.queryFingerprintInfo, "database_observability_query_fingerprint_info")-1,
+		"expected exactly one series; got extra")
+}
+
+func TestQueryDetails_FingerprintInfoGaugeAbsentWhenFingerprintDisabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	registry := prometheus.NewRegistry()
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:                     db,
+		CollectInterval:        time.Second,
+		StatementsLimit:        100,
+		EntryHandler:           lokiClient,
+		Logger:                 log.NewNopLogger(),
+		EnableQueryFingerprint: false, // explicitly off
+		Registry:               registry,
+	})
+	require.NoError(t, err)
+	require.Nil(t, collector.queryFingerprintInfo,
+		"gauge should not be constructed when EnableQueryFingerprint is false")
+
+	mfs, err := registry.Gather()
+	require.NoError(t, err)
+	for _, mf := range mfs {
+		require.NotEqual(t, "database_observability_query_fingerprint_info", mf.GetName(),
+			"metric should not be registered when EnableQueryFingerprint is false")
+	}
 }

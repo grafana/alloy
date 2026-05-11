@@ -332,6 +332,7 @@ the health of the fingerprint pipeline:
   the parser (and the repair heuristic) could not produce a valid AST.
 - `database_observability_wait_event_seconds_total{query_fingerprint, datname}` (counter):
   Total observed duration of PostgreSQL wait events in seconds, aggregated by semantic query fingerprint and database. Each emitted wait event entry adds its observed duration to the counter. Use `rate(...)` to compute time-spent-waiting per logical query: `sum by (query_fingerprint) (rate(database_observability_wait_event_seconds_total{datname="books_store"}[5m]))`. Mirrors the MySQL `database_observability_wait_event_seconds_total` metric but uses `query_fingerprint` as the query-identity label rather than `digest`. Emitted only when `enable_query_fingerprint = true` on the parent block.
+- `database_observability_query_fingerprint_info{queryid, query_fingerprint, datname}` (gauge): Value `1` per pg_stat_statements row scraped by `query_details`. Use as a join metric to attach `query_fingerprint` to other `pg_stat_statements_*` series in PromQL — e.g. `pg_stat_statements_calls_total * on(queryid, datname) group_left(query_fingerprint) database_observability_query_fingerprint_info`. The series is reset on every scrape so queryids evicted from pg_stat_statements stop being exported. Emitted only when `enable_query_fingerprint = true`.
 
 Both counters stay at zero when `enable_query_fingerprint = false`,
 because the fingerprint pipeline is not invoked at all in that
