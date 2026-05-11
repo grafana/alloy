@@ -169,7 +169,6 @@ func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath str
 	err = writePositionFile(newPath, newPositions)
 	if err != nil {
 		l.Error("error writing new positions file converted from legacy", "path", newPath, "error", err)
-
 	}
 	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
 }

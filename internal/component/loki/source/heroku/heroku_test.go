@@ -22,7 +22,7 @@ import (
 )
 
 func TestPush(t *testing.T) {
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 	args := testArgsWith(t, func(args *Arguments) {
@@ -126,7 +126,7 @@ func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
 			tc.mutateNewArgs(t, &newArgs)
 
 			comp, err := New(
-				defaultOptions(t),
+				defaultOptions(),
 				args,
 			)
 			require.NoError(t, err)
@@ -183,7 +183,7 @@ var rulesExport = alloy_relabel.Rules{
 	},
 }
 
-func defaultOptions(t *testing.T) component.Options {
+func defaultOptions() component.Options {
 	return component.Options{
 		SLogger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
