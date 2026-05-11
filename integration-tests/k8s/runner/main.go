@@ -33,6 +33,7 @@ type config struct {
 	shard           string
 	packages        []string
 	interactive     bool
+	testTags        string
 }
 
 func main() {
@@ -113,6 +114,7 @@ func parseFlags() (config, error) {
 	fs.StringVar(&pkgFlag, "package", "", "Restrict tests to one package path or pattern (default: "+defaultTestPackages+")")
 	fs.StringVar(&cfg.alloyImage, "alloy-image", "grafana/alloy:latest", "Alloy image (repo:tag) used by tests; must exist locally or in the kind cluster")
 	fs.BoolVar(&cfg.interactive, "interactive", false, "Pick run options (reuse-cluster, skip-image-builds, shard/packages) via an interactive menu before running")
+	fs.StringVar(&cfg.testTags, "test-tags", "", "Build tags (space- or comma-separated) forwarded to `go test -tags=...`. Empty means no -tags flag is passed. Makefile targets pass $(GO_TAGS) here so the Makefile remains the single source of truth for tags like gore2regex")
 	fs.Usage = func() {
 		fmt.Println("Usage: go run ./integration-tests/k8s/runner [flags]")
 		fmt.Println()
@@ -231,24 +233,16 @@ func loadImages(cfg config) error {
 	return nil
 }
 
-// goTestBuildTags returns the -tags value for `go test`, mirroring the
-// Makefile's GO_TAGS handling: gore2regex is always included unless already
-// present, so loki.secretfilter uses go-re2 instead of silently falling back
-// to stdlib regexp.
-func goTestBuildTags() string {
-	raw := strings.TrimSpace(os.Getenv("GO_TAGS"))
+// normalizeTestTags converts a user-supplied space- or comma-separated tag
+// list into the comma-separated form `go test -tags=` expects. Empty input
+// yields the empty string so callers can omit the flag entirely.
+func normalizeTestTags(raw string) string {
 	var tags []string
 	for _, t := range strings.Fields(strings.ReplaceAll(raw, ",", " ")) {
 		if t != "" {
 			tags = append(tags, t)
 		}
 	}
-	for _, t := range tags {
-		if t == "gore2regex" {
-			return strings.Join(tags, ",")
-		}
-	}
-	tags = append([]string{"gore2regex"}, tags...)
 	return strings.Join(tags, ",")
 }
 
@@ -262,7 +256,10 @@ func runGoTests(cfg config) error {
 	if len(patterns) == 0 {
 		patterns = []string{defaultTestPackages}
 	}
-	args := []string{"test", "-v", "-count=1", "-timeout", "30m", "-tags=" + goTestBuildTags()}
+	args := []string{"test", "-v", "-count=1", "-timeout", "30m"}
+	if tags := normalizeTestTags(cfg.testTags); tags != "" {
+		args = append(args, "-tags="+tags)
+	}
 	args = append(args, patterns...)
 	if cfg.shard != "" {
 		args = append(args, "-args", "-shard="+cfg.shard)
