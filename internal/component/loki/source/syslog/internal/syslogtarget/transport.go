@@ -12,13 +12,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/leodido/go-syslog/v4"
@@ -28,8 +28,6 @@ import (
 
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (
@@ -52,7 +50,7 @@ type (
 
 type baseTransport struct {
 	config *scrapeconfig.SyslogTargetConfig
-	logger log.Logger
+	logger *slog.Logger
 
 	pendingGoroutines *sync.WaitGroup
 
@@ -137,7 +135,7 @@ func lookupAddr(addr string) string {
 }
 
 type TransportConfig struct {
-	Logger         log.Logger
+	Logger         *slog.Logger
 	Target         *scrapeconfig.SyslogTargetConfig
 	MessageHandler handleMessage
 	ErrorHandler   handleMessageError
@@ -232,7 +230,7 @@ func (t *TCPTransport) Run() error {
 	}
 
 	t.listener = l
-	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolTCP, "tls", tlsEnabled)
+	t.logger.Info("syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolTCP, "tls", tlsEnabled)
 
 	t.pendingGoroutines.Add(1)
 	go t.acceptConnections()
@@ -312,7 +310,7 @@ func newTLSConfig(config config.TLSConfig) (*tls.Config, error) {
 func (t *TCPTransport) acceptConnections() {
 	defer t.pendingGoroutines.Done()
 
-	l := log.With(t.logger, "address", t.listener.Addr().String())
+	l := t.logger.With("address", t.listener.Addr().String())
 
 	backoff := backoff.New(t.ctx, backoff.Config{
 		MinBackoff: 5 * time.Millisecond,
@@ -323,17 +321,17 @@ func (t *TCPTransport) acceptConnections() {
 		c, err := t.listener.Accept()
 		if err != nil {
 			if !t.Ready() {
-				level.Info(l).Log("msg", "syslog server shutting down", "protocol", ProtocolTCP, "err", t.ctx.Err())
+				l.Info("syslog server shutting down", "protocol", ProtocolTCP, "err", t.ctx.Err())
 				return
 			}
 
 			if _, ok := err.(net.Error); ok {
-				level.Warn(l).Log("msg", "failed to accept syslog connection", "err", err, "num_retries", backoff.NumRetries())
+				l.Warn("failed to accept syslog connection", "err", err, "num_retries", backoff.NumRetries())
 				backoff.Wait()
 				continue
 			}
 
-			level.Error(l).Log("msg", "failed to accept syslog connection. quiting", "err", err)
+			l.Error("failed to accept syslog connection. quiting", "err", err)
 			return
 		}
 		backoff.Reset()
@@ -374,7 +372,7 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 			})
 		}
 
-		level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+		t.logger.Debug("syslog connection closed", "remote", c.RemoteAddr().String())
 		return
 	}
 
@@ -382,9 +380,9 @@ func (t *TCPTransport) handleConnection(cn net.Conn) {
 	err := syslogparser.ParseStream(parseCfg, c, cb)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			level.Debug(t.logger).Log("msg", "syslog connection closed", "remote", c.RemoteAddr().String())
+			t.logger.Debug("syslog connection closed", "remote", c.RemoteAddr().String())
 		} else {
-			level.Warn(t.logger).Log("msg", "error initializing syslog stream", "err", err)
+			t.logger.Warn("error initializing syslog stream", "err", err)
 		}
 	}
 }
@@ -444,7 +442,7 @@ func (t *UDPTransport) Run() error {
 		return fmt.Errorf("error setting up syslog target: %w", err)
 	}
 	_ = t.udpConn.SetReadBuffer(1024 * 1024)
-	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolUDP)
+	t.logger.Info("syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolUDP)
 
 	t.pendingGoroutines.Add(1)
 	go t.acceptPackets()
@@ -465,7 +463,7 @@ type datagram struct {
 func (t *UDPTransport) acceptPackets() {
 	defer t.pendingGoroutines.Done()
 	defer func() {
-		level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
+		t.logger.Info("syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
 	}()
 
 	chanSize := t.config.UDPQueueSize
@@ -496,7 +494,7 @@ func (t *UDPTransport) acceptPackets() {
 				return
 			}
 
-			level.Warn(t.logger).Log("msg", "failed to read packets", "addr", addr, "err", err)
+			t.logger.Warn("failed to read packets", "addr", addr, "err", err)
 			continue
 		}
 
@@ -542,7 +540,7 @@ func (t *UDPTransport) handleDatagram(msg datagram) {
 	parseCfg := t.streamParseConfig()
 	err := syslogparser.ParseStream(parseCfg, r, cb)
 	if err != nil {
-		level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
+		t.logger.Warn("error parsing syslog stream", "err", err)
 	}
 }
 
