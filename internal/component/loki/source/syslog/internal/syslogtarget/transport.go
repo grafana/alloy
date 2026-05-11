@@ -53,7 +53,7 @@ type baseTransport struct {
 	config *scrapeconfig.SyslogTargetConfig
 	logger log.Logger
 
-	openConnections *sync.WaitGroup
+	pendingGoroutines *sync.WaitGroup
 
 	handleMessage      handleMessage
 	handleMessageError handleMessageError
@@ -143,7 +143,7 @@ func newBaseTransport(cfg TransportConfig) *baseTransport {
 	return &baseTransport{
 		config:             cfg.Target,
 		logger:             cfg.Logger,
-		openConnections:    new(sync.WaitGroup),
+		pendingGoroutines:  new(sync.WaitGroup),
 		handleMessage:      cfg.MessageHandler,
 		handleMessageError: cfg.ErrorHandler,
 		ctx:                ctx,
@@ -229,7 +229,7 @@ func (t *TCPTransport) Run() error {
 	t.listener = l
 	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolTCP, "tls", tlsEnabled)
 
-	t.openConnections.Add(1)
+	t.pendingGoroutines.Add(1)
 	go t.acceptConnections()
 
 	return nil
@@ -305,7 +305,7 @@ func newTLSConfig(config config.TLSConfig) (*tls.Config, error) {
 }
 
 func (t *TCPTransport) acceptConnections() {
-	defer t.openConnections.Done()
+	defer t.pendingGoroutines.Done()
 
 	l := log.With(t.logger, "address", t.listener.Addr().String())
 
@@ -333,13 +333,13 @@ func (t *TCPTransport) acceptConnections() {
 		}
 		backoff.Reset()
 
-		t.openConnections.Add(1)
+		t.pendingGoroutines.Add(1)
 		go t.handleConnection(c)
 	}
 }
 
 func (t *TCPTransport) handleConnection(cn net.Conn) {
-	defer t.openConnections.Done()
+	defer t.pendingGoroutines.Done()
 
 	c := &idleTimeoutConn{cn, t.idleTimeout()}
 
@@ -392,7 +392,7 @@ func (t *TCPTransport) Close() error {
 
 // Wait implements SyslogTransport
 func (t *TCPTransport) Wait() {
-	t.openConnections.Wait()
+	t.pendingGoroutines.Wait()
 }
 
 // Addr implements SyslogTransport
@@ -425,7 +425,7 @@ func (t *UDPTransport) Run() error {
 	_ = t.udpConn.SetReadBuffer(1024 * 1024)
 	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolUDP)
 
-	t.openConnections.Add(1)
+	t.pendingGoroutines.Add(1)
 	go t.acceptPackets()
 	return nil
 }
@@ -436,11 +436,30 @@ func (t *UDPTransport) Close() error {
 	return t.udpConn.Close()
 }
 
+type datagram struct {
+	addr net.Addr
+	data []byte
+}
+
 func (t *UDPTransport) acceptPackets() {
-	defer t.openConnections.Done()
+	defer t.pendingGoroutines.Done()
 	defer func() {
 		level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
 	}()
+
+	chanSize := t.config.UDPQueueSize
+	if chanSize == 0 {
+		chanSize = scrapeconfig.DefaultUDPQueueSize
+	}
+
+	ch := make(chan datagram, chanSize)
+	defer close(ch)
+
+	t.pendingGoroutines.Go(func() {
+		for msg := range ch {
+			t.handleDatagram(msg.addr, msg.data)
+		}
+	})
 
 	for {
 		if !t.Ready() {
@@ -461,13 +480,20 @@ func (t *UDPTransport) acceptPackets() {
 		}
 
 		buf = buf[:n]
-		t.handleDatagram(addr, buf)
+		msg := datagram{
+			addr: addr,
+			data: buf,
+		}
+
+		select {
+		case <-t.ctx.Done():
+			return
+		case ch <- msg:
+		}
 	}
 }
 
 func (t *UDPTransport) handleDatagram(src net.Addr, buf []byte) {
-	defer t.openConnections.Done()
-
 	srcIP := hostFromAddr(src)
 	lbs := t.connectionLabels(srcIP)
 	r := bytes.NewReader(buf)
@@ -500,7 +526,7 @@ func (t *UDPTransport) handleDatagram(src net.Addr, buf []byte) {
 
 // Wait implements SyslogTransport
 func (t *UDPTransport) Wait() {
-	t.openConnections.Wait()
+	t.pendingGoroutines.Wait()
 }
 
 // Addr implements SyslogTransport
