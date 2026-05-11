@@ -18,7 +18,8 @@
 ##   test                  Run tests
 ##   lint                  Lint code
 ##   integration-test      Run integration tests
-##   integration-test-k8s  Run Kubernetes integration tests
+##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
+##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
 ##
 ## Targets for building binaries:
 ##
@@ -203,9 +204,14 @@ integration-test-docker:
 	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m
 
 .PHONY: integration-test-k8s
-integration-test-k8s: alloy-image
-	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
-	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="gore2regex alloyintegrationtests" -timeout 30m ./...
+integration-test-k8s:
+	$(GO_ENV) go run ./integration-tests/k8s/runner $(RUN_ARGS)
+
+# Interactive mode for local development: pick reuse-cluster, skip-image-builds,
+# and shard/packages from a TUI menu before tests run.
+.PHONY: integration-test-k8s-local-dev
+integration-test-k8s-local-dev:
+	$(GO_ENV) go run ./integration-tests/k8s/runner --interactive $(RUN_ARGS)
 
 # Windows service integration test. Runs only on Windows with Administrator privileges.
 # Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
@@ -264,6 +270,13 @@ images: alloy-image
 
 alloy-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
+
+# Test fixture image used by the k8s integration tests as a Prometheus scrape
+# target. The runner builds this alongside alloy-image so the tests don't have
+# to call `docker build` themselves.
+.PHONY: prom-gen-image
+prom-gen-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/docker/configs/prom-gen/Dockerfile .
 
 .PHONY: images-windows alloy-image-windows
 images: alloy-image-windows
