@@ -13,7 +13,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
@@ -24,11 +23,12 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestTailer(t *testing.T) {
 	var (
-		logger = log.NewNopLogger()
+		logger = logging.NewSlogNop()
 		cfg    = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
@@ -111,7 +111,7 @@ func TestTailer(t *testing.T) {
 
 func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 	var (
-		logger   = log.NewNopLogger()
+		logger   = logging.NewSlogNop()
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		start    = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
 		handler  = loki.NewCollectingHandler()
@@ -144,7 +144,7 @@ func TestTailer_RetryErrorLogpullReceived(t *testing.T) {
 
 func TestTailer_RetryErrorIterating(t *testing.T) {
 	var (
-		logger   = log.NewNopLogger()
+		logger   = logging.NewSlogNop()
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		start    = time.Unix(0, end.Add(-30*time.Minute).UnixNano())
 		handler  = loki.NewCollectingHandler()
@@ -194,7 +194,7 @@ func TestTailer_RetryErrorIterating(t *testing.T) {
 
 func TestTailer_CloudflareTargetError(t *testing.T) {
 	var (
-		logger = log.NewNopLogger()
+		logger = logging.NewSlogNop()
 		cfg    = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
@@ -249,7 +249,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 
 func TestTailer_CloudflareTargetError168h(t *testing.T) {
 	var (
-		logger = log.NewNopLogger()
+		logger = logging.NewSlogNop()
 		cfg    = &tailerConfig{
 			APIToken:   "foo",
 			ZoneID:     "bar",
