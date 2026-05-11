@@ -46,6 +46,7 @@ const (
 
 	selectColumnNames = `
 	SELECT
+		TABLE_NAME,
 		COLUMN_NAME,
 		COLUMN_DEFAULT,
 		IS_NULLABLE,
@@ -55,11 +56,12 @@ const (
 	FROM
 		information_schema.columns
 	WHERE
-		TABLE_SCHEMA = ? AND TABLE_NAME = ?
-	ORDER BY ORDINAL_POSITION ASC`
+		TABLE_SCHEMA = ?
+	ORDER BY TABLE_NAME, ORDINAL_POSITION ASC`
 
 	selectIndexNames = `
 		SELECT
+			table_name,
 			index_name,
 			seq_in_index,
 			column_name,
@@ -70,12 +72,13 @@ const (
 		FROM
 			information_schema.statistics
 		WHERE
-			table_schema = ? and table_name = ?
+			table_schema = ?
 		ORDER BY table_name, index_name, seq_in_index`
 
 	// Ignore 'PRIMARY' constraints, as they're already covered by the query above
 	selectForeignKeys = `
 		SELECT
+			table_name,
 			constraint_name,
 			column_name,
 			referenced_table_name,
@@ -85,7 +88,7 @@ const (
 		WHERE
 			constraint_name <> 'PRIMARY'
 			AND referenced_table_schema is not null
-			AND table_schema = ? and table_name = ?
+			AND table_schema = ?
 		ORDER BY table_name, constraint_name, ordinal_position`
 )
 
@@ -266,47 +269,82 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		return nil
 	}
 
-	for _, table := range tables {
-		fullyQualifiedTable := fmt.Sprintf("`%s`.`%s`", table.schema, table.tableName)
-		cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
+	// Group tables by schema, preserving the first-seen order so iteration is
+	// deterministic (the bulk tables query already orders by TABLE_SCHEMA).
+	tablesBySchema := map[string][]*tableInfo{}
+	seenSchemas := []string{}
+	for _, t := range tables {
+		if _, seen := tablesBySchema[t.schema]; !seen {
+			seenSchemas = append(seenSchemas, t.schema)
+		}
+		tablesBySchema[t.schema] = append(tablesBySchema[t.schema], t)
+	}
 
-		cacheHit := false
-		if c.cache != nil {
-			if cached, ok := c.cache.Get(cacheKey); ok {
-				table = cached
-				cacheHit = true
-			}
+	for _, schema := range seenSchemas {
+		specs, err := c.fetchSchemaSpecs(ctx, schema)
+		if err != nil {
+			level.Error(c.logger).Log("msg", "failed to fetch schema specs", "schema", schema, "err", err)
+			continue
 		}
 
-		if !cacheHit {
-			table, err = c.fetchTableDefinitions(ctx, fullyQualifiedTable, table)
-			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to get table definitions", "schema", table.schema, "table", table.tableName, "err", err)
-				continue
-			}
+		for _, table := range tablesBySchema[schema] {
+			fullyQualifiedTable := fmt.Sprintf("`%s`.`%s`", table.schema, table.tableName)
+			cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
+
+			cacheHit := false
 			if c.cache != nil {
-				c.cache.Add(cacheKey, table)
+				if cached, ok := c.cache.Get(cacheKey); ok {
+					table = cached
+					cacheHit = true
+				}
 			}
-		}
 
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_CREATE_STATEMENT,
-			fmt.Sprintf(
-				`schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
-				table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
-			),
-		)
+			if !cacheHit {
+				if err := c.fetchCreateStatement(ctx, fullyQualifiedTable, table); err != nil {
+					level.Error(c.logger).Log("msg", "failed to get table create statement", "schema", table.schema, "table", table.tableName, "err", err)
+					continue
+				}
+
+				spec, ok := specs[table.tableName]
+				if !ok {
+					// This might happen if a table is dropped between the tables query and the metadata queries.
+					level.Warn(c.logger).Log("msg", "no bulk metadata rows for table", "schema", table.schema, "table", table.tableName)
+					continue
+				}
+
+				b64Spec, err := encodeTableSpec(spec)
+				if err != nil {
+					level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
+					continue
+				}
+				table.b64TableSpec = b64Spec
+
+				if c.cache != nil {
+					c.cache.Add(cacheKey, table)
+				}
+			}
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				OP_CREATE_STATEMENT,
+				fmt.Sprintf(
+					`schema="%s" table="%s" create_statement="%s" table_spec="%s"`,
+					table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
+				),
+			)
+		}
 	}
 
 	return nil
 }
 
-func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, fullyQualifiedTable string, table *tableInfo) (*tableInfo, error) {
+// fetchCreateStatement runs SHOW CREATE TABLE for a single table and stores the
+// base64-encoded DDL on the provided tableInfo.
+func (c *SchemaDetails) fetchCreateStatement(ctx context.Context, fullyQualifiedTable string, table *tableInfo) error {
 	row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
 	if err := row.Err(); err != nil {
 		level.Error(c.logger).Log("msg", "failed to show create table", "schema", table.schema, "table", table.tableName, "err", err)
-		return table, err
+		return err
 	}
 
 	var tableName, createStmt, characterSetClient, collationConnection string
@@ -314,49 +352,57 @@ func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, fullyQualifie
 	case "BASE TABLE":
 		if err := row.Scan(&tableName, &createStmt); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan create table", "schema", table.schema, "table", table.tableName, "err", err)
-			return table, err
+			return err
 		}
 	case "VIEW":
 		if err := row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan create view", "schema", table.schema, "table", table.tableName, "err", err)
-			return table, err
+			return err
 		}
 	default:
 		level.Error(c.logger).Log("msg", "unknown table type", "schema", table.schema, "table", table.tableName, "table_type", table.tableType)
-		return nil, fmt.Errorf("unknown table type: %s", table.tableType)
+		return fmt.Errorf("unknown table type: %s", table.tableType)
 	}
 	table.b64CreateStmt = base64.StdEncoding.EncodeToString([]byte(createStmt))
-
-	spec, err := c.fetchColumnsDefinitions(ctx, table.schema, table.tableName)
-	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to analyze table spec", "schema", table.schema, "table", table.tableName, "err", err)
-		return table, err
-	}
-	jsonSpec, err := json.Marshal(spec)
-	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
-		return table, err
-	}
-	table.b64TableSpec = base64.StdEncoding.EncodeToString(jsonSpec)
-
-	return table, nil
+	return nil
 }
 
-func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, schemaName string, tableName string) (*tableSpec, error) {
-	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, schemaName, tableName)
+// encodeTableSpec serializes a tableSpec to base64-encoded JSON.
+func encodeTableSpec(spec *tableSpec) (string, error) {
+	jsonSpec, err := json.Marshal(spec)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query table columns", "schema", schemaName, "table", tableName, "err", err)
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(jsonSpec), nil
+}
+
+// fetchSchemaSpecs runs three separate queries for a given schema in bulk in order
+// to fetch columns, indexes and foreign keys for all tables in the schema. Then groups the rows by table name.
+// The returned map is keyed by table name; tables with no columns/indexes/FKs are
+// absent.
+func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string) (map[string]*tableSpec, error) {
+	specs := map[string]*tableSpec{}
+	specOf := func(name string) *tableSpec {
+		s, ok := specs[name]
+		if !ok {
+			s = &tableSpec{Columns: []columnSpec{}}
+			specs[name] = s
+		}
+		return s
+	}
+
+	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, schema)
+	if err != nil {
+		level.Error(c.logger).Log("msg", "failed to query schema columns", "schema", schema, "err", err)
 		return nil, err
 	}
 	defer colRS.Close()
 
-	tblSpec := &tableSpec{Columns: []columnSpec{}}
-
 	for colRS.Next() {
-		var columnName, isNullable, columnType, columnKey, extra string
+		var tableName, columnName, isNullable, columnType, columnKey, extra string
 		var columnDefault sql.NullString
-		if err := colRS.Scan(&columnName, &columnDefault, &isNullable, &columnType, &columnKey, &extra); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan table columns", "schema", schemaName, "table", tableName, "err", err)
+		if err := colRS.Scan(&tableName, &columnName, &columnDefault, &isNullable, &columnType, &columnKey, &extra); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan schema columns", "schema", schema, "err", err)
 			return nil, err
 		}
 
@@ -369,95 +415,107 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, schemaName 
 			}
 		}
 
-		colSpec := columnSpec{
+		spec := specOf(tableName)
+		spec.Columns = append(spec.Columns, columnSpec{
 			Name:          columnName,
 			Type:          columnType,
 			NotNull:       isNullable == "NO", // "YES" if NULL values can be stored in the column, "NO" if not.
 			AutoIncrement: strings.Contains(extra, "AUTO_INCREMENT"),
 			PrimaryKey:    columnKey == "PRI", // "column_key" is "PRI" if this column a (or part of) PRIMARY KEY
 			DefaultValue:  defaultValue,
-		}
-		tblSpec.Columns = append(tblSpec.Columns, colSpec)
+		})
 	}
 
 	if err := colRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over schema columns result set", "schema", schema, "err", err)
 		return nil, err
 	}
 
-	idxRS, err := c.dbConnection.QueryContext(ctx, selectIndexNames, schemaName, tableName)
+	idxRS, err := c.dbConnection.QueryContext(ctx, selectIndexNames, schema)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query table indexes", "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query schema indexes", "schema", schema, "err", err)
 		return nil, err
 	}
 	defer idxRS.Close()
 
+	// Track the table whose last appended index we may merge into. When the
+	// table changes we always treat the next index row as a new index, even if
+	// the index name happens to match.
+	var lastTable string
 	for idxRS.Next() {
-		var indexName, indexType string
+		var tableName, indexName, indexType string
 		var seqInIndex, nonUnique int
 		var columnName, expression, nullable sql.NullString
-		if err := idxRS.Scan(&indexName, &seqInIndex, &columnName, &expression, &nullable, &nonUnique, &indexType); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan table indexes", "schema", schemaName, "table", tableName, "err", err)
+		if err := idxRS.Scan(&tableName, &indexName, &seqInIndex, &columnName, &expression, &nullable, &nonUnique, &indexType); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan schema indexes", "schema", schema, "err", err)
 			return nil, err
 		}
 
 		// mysql docs describe column and expression as mutually exclusive,
 		// but at least one of them must be present.
 		if !columnName.Valid && !expression.Valid {
-			level.Error(c.logger).Log("msg", "index without a column or expression", "schema", schemaName, "table", tableName, "index", indexName)
+			level.Error(c.logger).Log("msg", "index without a column or expression", "schema", schema, "table", tableName, "index", indexName)
 			continue
 		}
 
-		// Append column to the last index if it's the same as the previous one (i.e. multi-column index)
-		if nIndexes := len(tblSpec.Indexes); nIndexes > 0 && tblSpec.Indexes[nIndexes-1].Name == indexName {
-			lastIndex := &tblSpec.Indexes[nIndexes-1]
-			if len(lastIndex.Columns)+len(lastIndex.Expressions) != seqInIndex-1 {
-				level.Error(c.logger).Log("msg", "unexpected index ordinal position", "schema", schemaName, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns), "len_expressions", len(lastIndex.Expressions))
+		spec := specOf(tableName)
+
+		// Append column to the last index if it's the same as the previous one
+		// within the same table (i.e. multi-column index).
+		if tableName == lastTable {
+			if nIndexes := len(spec.Indexes); nIndexes > 0 && spec.Indexes[nIndexes-1].Name == indexName {
+				lastIndex := &spec.Indexes[nIndexes-1]
+				if len(lastIndex.Columns)+len(lastIndex.Expressions) != seqInIndex-1 {
+					level.Error(c.logger).Log("msg", "unexpected index ordinal position", "schema", schema, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns), "len_expressions", len(lastIndex.Expressions))
+					continue
+				}
+
+				if columnName.Valid {
+					lastIndex.Columns = append(lastIndex.Columns, columnName.String)
+				} else if expression.Valid {
+					lastIndex.Expressions = append(lastIndex.Expressions, expression.String)
+				}
 				continue
 			}
-
-			if columnName.Valid {
-				lastIndex.Columns = append(lastIndex.Columns, columnName.String)
-			} else if expression.Valid {
-				lastIndex.Expressions = append(lastIndex.Expressions, expression.String)
-			}
-		} else {
-			idx := indexSpec{
-				Name:     indexName,
-				Type:     indexType,
-				Unique:   nonUnique == 0,                             // 0 if the index cannot contain duplicates, 1 if it can
-				Nullable: nullable.Valid && nullable.String == "YES", // "YES" if the column may contain NULL values
-			}
-
-			if columnName.Valid {
-				idx.Columns = append(idx.Columns, columnName.String)
-			} else if expression.Valid {
-				idx.Expressions = append(idx.Expressions, expression.String)
-			}
-			tblSpec.Indexes = append(tblSpec.Indexes, idx)
 		}
+
+		idx := indexSpec{
+			Name:     indexName,
+			Type:     indexType,
+			Unique:   nonUnique == 0,                             // 0 if the index cannot contain duplicates, 1 if it can
+			Nullable: nullable.Valid && nullable.String == "YES", // "YES" if the column may contain NULL values
+		}
+
+		if columnName.Valid {
+			idx.Columns = append(idx.Columns, columnName.String)
+		} else if expression.Valid {
+			idx.Expressions = append(idx.Expressions, expression.String)
+		}
+		spec.Indexes = append(spec.Indexes, idx)
+		lastTable = tableName
 	}
 
 	if err := idxRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over table indexes result set", "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over schema indexes result set", "schema", schema, "err", err)
 		return nil, err
 	}
 
-	fkRS, err := c.dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
+	fkRS, err := c.dbConnection.QueryContext(ctx, selectForeignKeys, schema)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query table foreign keys", "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to query schema foreign keys", "schema", schema, "err", err)
 		return nil, err
 	}
 	defer fkRS.Close()
 
 	for fkRS.Next() {
-		var constraintName, columnName, referencedTableName, referencedColumnName string
-		if err := fkRS.Scan(&constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan foreign keys", "schema", schemaName, "table", tableName, "err", err)
+		var tableName, constraintName, columnName, referencedTableName, referencedColumnName string
+		if err := fkRS.Scan(&tableName, &constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
+			level.Error(c.logger).Log("msg", "failed to scan schema foreign keys", "schema", schema, "err", err)
 			return nil, err
 		}
 
-		tblSpec.ForeignKeys = append(tblSpec.ForeignKeys, foreignKey{
+		spec := specOf(tableName)
+		spec.ForeignKeys = append(spec.ForeignKeys, foreignKey{
 			Name:                 constraintName,
 			ColumnName:           columnName,
 			ReferencedTableName:  referencedTableName,
@@ -466,9 +524,9 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, schemaName 
 	}
 
 	if err := fkRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over foreign keys result set", "schema", schemaName, "table", tableName, "err", err)
+		level.Error(c.logger).Log("msg", "failed to iterate over schema foreign keys result set", "schema", schema, "err", err)
 		return nil, err
 	}
 
-	return tblSpec, nil
+	return specs, nil
 }

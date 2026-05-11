@@ -27,6 +27,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -68,9 +69,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -78,6 +80,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -85,6 +88,7 @@ func TestSchemaDetails(t *testing.T) {
 					"PRI",
 					"auto_increment",
 				).AddRow(
+					"some_table",
 					"category",
 					"null",
 					"NO",
@@ -94,9 +98,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -105,6 +110,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"PRIMARY",
 					1,
 					"id",
@@ -115,14 +121,16 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
 					"referenced_column_name",
 				}).AddRow(
+					"some_table",
 					"fk_name",
 					"category",
 					"categories",
@@ -162,6 +170,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -203,9 +212,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -213,6 +223,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -220,6 +231,7 @@ func TestSchemaDetails(t *testing.T) {
 					"PRI",
 					"auto_increment",
 				).AddRow(
+					"some_table",
 					"category",
 					"null",
 					"NO",
@@ -229,9 +241,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -240,6 +253,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"idx_category",
 					1,
 					"category",
@@ -248,6 +262,7 @@ func TestSchemaDetails(t *testing.T) {
 					0,
 					"BTREE",
 				).AddRow(
+					"some_table",
 					"idx_category",
 					2,
 					nil,
@@ -258,9 +273,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
@@ -300,6 +316,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -341,9 +358,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -351,6 +369,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -358,6 +377,7 @@ func TestSchemaDetails(t *testing.T) {
 					"PRI",
 					"auto_increment",
 				).AddRow(
+					"some_table",
 					"category",
 					"null",
 					"NO",
@@ -365,6 +385,7 @@ func TestSchemaDetails(t *testing.T) {
 					"",
 					"",
 				).AddRow(
+					"some_table",
 					"name",
 					"null",
 					"YES",
@@ -374,9 +395,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -385,6 +407,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"PRIMARY",
 					1,
 					"id",
@@ -393,6 +416,7 @@ func TestSchemaDetails(t *testing.T) {
 					0,
 					"BTREE",
 				).AddRow(
+					"some_table",
 					"idx_name",
 					1,
 					"name",
@@ -401,6 +425,7 @@ func TestSchemaDetails(t *testing.T) {
 					0,
 					"BTREE",
 				).AddRow(
+					"some_table",
 					"idx_name",
 					2,
 					nil,
@@ -411,14 +436,16 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
 					"referenced_column_name",
 				}).AddRow(
+					"some_table",
 					"fk_name",
 					"category",
 					"categories",
@@ -458,6 +485,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -499,9 +527,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -509,6 +538,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -516,6 +546,7 @@ func TestSchemaDetails(t *testing.T) {
 					"PRI",
 					"auto_increment",
 				).AddRow(
+					"some_table",
 					"category",
 					"null",
 					"NO",
@@ -525,9 +556,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -536,6 +568,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"idx_category",
 					1,
 					"category",
@@ -544,6 +577,7 @@ func TestSchemaDetails(t *testing.T) {
 					0,
 					"BTREE",
 				).AddRow(
+					"some_table",
 					"idx_category",
 					2,
 					nil,
@@ -554,9 +588,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
@@ -596,6 +631,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -637,9 +673,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -647,6 +684,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -654,6 +692,7 @@ func TestSchemaDetails(t *testing.T) {
 					"PRI",
 					"auto_increment",
 				).AddRow(
+					"some_table",
 					"category",
 					"null",
 					"NO",
@@ -661,6 +700,7 @@ func TestSchemaDetails(t *testing.T) {
 					"",
 					"",
 				).AddRow(
+					"some_table",
 					"name",
 					"null",
 					"YES",
@@ -670,9 +710,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -681,6 +722,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"PRIMARY",
 					1,
 					"id",
@@ -689,6 +731,7 @@ func TestSchemaDetails(t *testing.T) {
 					0,
 					"BTREE",
 				).AddRow(
+					"some_table",
 					"idx_name",
 					1,
 					"name",
@@ -697,6 +740,7 @@ func TestSchemaDetails(t *testing.T) {
 					0,
 					"BTREE",
 				).AddRow(
+					"some_table",
 					"idx_name",
 					2,
 					nil,
@@ -707,14 +751,16 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
 					"referenced_column_name",
 				}).AddRow(
+					"some_table",
 					"fk_name",
 					"category",
 					"categories",
@@ -754,6 +800,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -798,9 +845,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -808,6 +856,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -815,6 +864,7 @@ func TestSchemaDetails(t *testing.T) {
 					"PRI",
 					"auto_increment",
 				).AddRow(
+					"some_table",
 					"category",
 					"null",
 					"NO",
@@ -824,9 +874,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -835,6 +886,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"PRIMARY",
 					1,
 					"id",
@@ -845,14 +897,16 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
 					"referenced_column_name",
 				}).AddRow(
+					"some_table",
 					"fk_name",
 					"category",
 					"categories",
@@ -893,6 +947,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -936,9 +991,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -946,6 +1002,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -955,9 +1012,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -966,6 +1024,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"PRIMARY",
 					1,
 					"id",
@@ -976,9 +1035,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
@@ -986,8 +1046,9 @@ func TestSchemaDetails(t *testing.T) {
 				}),
 			)
 
-		// second loop, table info will be read from cache
-		// and no further queries will be executed
+		// second loop, table info will be read from cache so SHOW CREATE TABLE
+		// is skipped. The bulk metadata queries still fire per schema regardless
+		// of cache state (Step 2 "always-bulk" design).
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -1003,6 +1064,61 @@ func TestSchemaDetails(t *testing.T) {
 					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
 					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
 				),
+			)
+
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"TABLE_NAME",
+					"COLUMN_NAME",
+					"COLUMN_DEFAULT",
+					"IS_NULLABLE",
+					"COLUMN_TYPE",
+					"COLUMN_KEY",
+					"EXTRA",
+				}).AddRow(
+					"some_table",
+					"id",
+					"null",
+					"NO",
+					"int",
+					"PRI",
+					"auto_increment",
+				),
+			)
+
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"index_name",
+					"seq_in_index",
+					"column_name",
+					"expression",
+					"nullable",
+					"non_unique",
+					"index_type",
+				}).AddRow(
+					"some_table",
+					"PRIMARY",
+					1,
+					"id",
+					nil,
+					"",
+					0,
+					"BTREE",
+				),
+			)
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_name",
+					"constraint_name",
+					"column_name",
+					"referenced_table_name",
+					"referenced_column_name",
+				}),
 			)
 
 		err = collector.Start(t.Context())
@@ -1043,6 +1159,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -1089,9 +1206,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -1099,6 +1217,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -1108,9 +1227,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -1119,6 +1239,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"PRIMARY",
 					1,
 					"id",
@@ -1129,9 +1250,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
@@ -1170,6 +1292,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -1217,25 +1340,25 @@ func TestSchemaDetails(t *testing.T) {
 						AddRow(tc.schema+"."+tc.table, tc.ddl),
 				)
 
-			mock.ExpectQuery(selectColumnNames).WithArgs(tc.schema, tc.table).RowsWillBeClosed().
+			mock.ExpectQuery(selectColumnNames).WithArgs(tc.schema).RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
-						"COLUMN_NAME", "COLUMN_DEFAULT", "IS_NULLABLE",
+						"TABLE_NAME", "COLUMN_NAME", "COLUMN_DEFAULT", "IS_NULLABLE",
 						"COLUMN_TYPE", "COLUMN_KEY", "EXTRA",
-					}).AddRow("id", "null", "NO", "int", "PRI", "auto_increment"),
+					}).AddRow(tc.table, "id", "null", "NO", "int", "PRI", "auto_increment"),
 				)
 
-			mock.ExpectQuery(selectIndexNames).WithArgs(tc.schema, tc.table).RowsWillBeClosed().
+			mock.ExpectQuery(selectIndexNames).WithArgs(tc.schema).RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows([]string{
-						"index_name", "seq_in_index", "column_name", "expression",
+						"table_name", "index_name", "seq_in_index", "column_name", "expression",
 						"nullable", "non_unique", "index_type",
-					}).AddRow("PRIMARY", 1, "id", nil, "", 0, "BTREE"),
+					}).AddRow(tc.table, "PRIMARY", 1, "id", nil, "", 0, "BTREE"),
 				)
 
-			mock.ExpectQuery(selectForeignKeys).WithArgs(tc.schema, tc.table).RowsWillBeClosed().
+			mock.ExpectQuery(selectForeignKeys).WithArgs(tc.schema).RowsWillBeClosed().
 				WillReturnRows(sqlmock.NewRows([]string{
-					"constraint_name", "column_name",
+					"table_name", "constraint_name", "column_name",
 					"referenced_table_name", "referenced_column_name",
 				}))
 		}
@@ -1273,6 +1396,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -1318,6 +1442,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -1380,6 +1505,7 @@ func TestSchemaDetails(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
 
 		lokiClient := loki.NewCollectingHandler()
 
@@ -1420,9 +1546,10 @@ func TestSchemaDetails(t *testing.T) {
 			),
 		)
 
-		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"TABLE_NAME",
 					"COLUMN_NAME",
 					"COLUMN_DEFAULT",
 					"IS_NULLABLE",
@@ -1430,6 +1557,7 @@ func TestSchemaDetails(t *testing.T) {
 					"COLUMN_KEY",
 					"EXTRA",
 				}).AddRow(
+					"some_table",
 					"id",
 					"null",
 					"NO",
@@ -1439,9 +1567,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"index_name",
 					"seq_in_index",
 					"column_name",
@@ -1450,6 +1579,7 @@ func TestSchemaDetails(t *testing.T) {
 					"non_unique",
 					"index_type",
 				}).AddRow(
+					"some_table",
 					"PRIMARY",
 					1,
 					"id",
@@ -1460,9 +1590,10 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema", "some_table").RowsWillBeClosed().
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
+					"table_name",
 					"constraint_name",
 					"column_name",
 					"referenced_table_name",
@@ -1493,6 +1624,182 @@ func TestSchemaDetails(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		require.Equal(t, fmt.Sprintf(`level="info" schema="some_schema" table="some_table" create_statement="%s" table_spec="%s"`, expectedCreateStmt, expectedTableSpec), lokiEntries[1].Line)
 	})
+	t.Run("bulk metadata returns rows for multiple tables in one schema", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			CacheEnabled:    false,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_schema", "table_name", "table_type",
+					"create_time", "update_time",
+				}).AddRow(
+					"some_schema", "table_a", "BASE TABLE",
+					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				).AddRow(
+					"some_schema", "table_b", "BASE TABLE",
+					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				),
+			)
+
+		// Single per-schema bulk fetches returning rows for both tables.
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"TABLE_NAME", "COLUMN_NAME", "COLUMN_DEFAULT", "IS_NULLABLE",
+				"COLUMN_TYPE", "COLUMN_KEY", "EXTRA",
+			}).
+				AddRow("table_a", "id", "null", "NO", "int", "PRI", "auto_increment").
+				AddRow("table_b", "id", "null", "NO", "int", "PRI", "auto_increment"))
+
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "index_name", "seq_in_index", "column_name", "expression",
+				"nullable", "non_unique", "index_type",
+			}).
+				AddRow("table_a", "PRIMARY", 1, "id", nil, "", 0, "BTREE").
+				AddRow("table_b", "PRIMARY", 1, "id", nil, "", 0, "BTREE"))
+
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "constraint_name", "column_name",
+				"referenced_table_name", "referenced_column_name",
+			}))
+
+		for _, table := range []string{"table_a", "table_b"} {
+			mock.ExpectQuery(fmt.Sprintf("SHOW CREATE TABLE `some_schema`.`%s`", table)).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(
+					sqlmock.NewRows([]string{"table_name", "create_statement"}).
+						AddRow("some_schema."+table, fmt.Sprintf("CREATE TABLE %s (id INT)", table)),
+				)
+		}
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 4
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		// Two table-detection entries plus two create-statement entries; order
+		// within entry types follows the bulk-tables result order.
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="table_a"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="table_b"`, lokiEntries[1].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		require.Contains(t, lokiEntries[2].Line, `schema="some_schema" table="table_a"`)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
+		require.Contains(t, lokiEntries[3].Line, `schema="some_schema" table="table_b"`)
+	})
+	t.Run("bulk metadata returns no rows for a table", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+		mock.MatchExpectationsInOrder(false)
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Millisecond,
+			EntryHandler:    lokiClient,
+			CacheEnabled:    false,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"table_schema", "table_name", "table_type",
+					"create_time", "update_time",
+				}).AddRow(
+					"some_schema", "some_table", "BASE TABLE",
+					time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+					time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+				),
+			)
+
+		// All three per-schema queries return empty result sets, simulating a
+		// table that was dropped between the tables query and the metadata
+		// queries. The table is skipped — only OP_TABLE_DETECTION is emitted
+		// and no OP_CREATE_STATEMENT follows.
+		mock.ExpectQuery(selectColumnNames).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"TABLE_NAME", "COLUMN_NAME", "COLUMN_DEFAULT", "IS_NULLABLE",
+				"COLUMN_TYPE", "COLUMN_KEY", "EXTRA",
+			}))
+		mock.ExpectQuery(selectIndexNames).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "index_name", "seq_in_index", "column_name", "expression",
+				"nullable", "non_unique", "index_type",
+			}))
+		mock.ExpectQuery(selectForeignKeys).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "constraint_name", "column_name",
+				"referenced_table_name", "referenced_column_name",
+			}))
+
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{"table_name", "create_statement"}).
+					AddRow("some_schema.some_table", "CREATE TABLE some_table (id INT)"),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 1)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+	})
 }
 
 func TestSchemaDetailsExcludeSchemas(t *testing.T) {
@@ -1501,6 +1808,7 @@ func TestSchemaDetailsExcludeSchemas(t *testing.T) {
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()
+	mock.MatchExpectationsInOrder(false)
 
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
