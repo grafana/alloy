@@ -231,6 +231,27 @@ func loadImages(cfg config) error {
 	return nil
 }
 
+// goTestBuildTags returns the -tags value for `go test`, mirroring the
+// Makefile's GO_TAGS handling: gore2regex is always included unless already
+// present, so loki.secretfilter uses go-re2 instead of silently falling back
+// to stdlib regexp.
+func goTestBuildTags() string {
+	raw := strings.TrimSpace(os.Getenv("GO_TAGS"))
+	var tags []string
+	for _, t := range strings.Fields(strings.ReplaceAll(raw, ",", " ")) {
+		if t != "" {
+			tags = append(tags, t)
+		}
+	}
+	for _, t := range tags {
+		if t == "gore2regex" {
+			return strings.Join(tags, ",")
+		}
+	}
+	tags = append([]string{"gore2regex"}, tags...)
+	return strings.Join(tags, ",")
+}
+
 // runGoTests runs `go test` for the configured patterns. We intentionally
 // leave package-level parallelism on (no `-p 1`): each test package owns a
 // distinct namespace, so concurrent packages don't conflict on the shared
@@ -241,7 +262,7 @@ func runGoTests(cfg config) error {
 	if len(patterns) == 0 {
 		patterns = []string{defaultTestPackages}
 	}
-	args := []string{"test", "-v", "-count=1", "-timeout", "30m"}
+	args := []string{"test", "-v", "-count=1", "-timeout", "30m", "-tags=" + goTestBuildTags()}
 	args = append(args, patterns...)
 	if cfg.shard != "" {
 		args = append(args, "-args", "-shard="+cfg.shard)
