@@ -16,7 +16,13 @@ import (
 	"github.com/grafana/alloy/integration-tests/k8s/harness"
 )
 
-func startPortForwardWithRetries(namespace string, attempts int, port string) (string, func(), error) {
+const (
+	testNameLabel = "alloy_test_name"
+	timeout       = 1 * time.Minute
+	retryInterval = 500 * time.Millisecond
+)
+
+func startPortForwardWithRetries(namespace, name string, attempts int, port string) (string, func(), error) {
 	var lastErr error
 	for i := 0; i < attempts; i++ {
 		localPort, err := pickFreeLocalPort()
@@ -24,7 +30,7 @@ func startPortForwardWithRetries(namespace string, attempts int, port string) (s
 			lastErr = err
 			continue
 		}
-		stop, err := startPortForward(namespace, localPort, port)
+		stop, err := startPortForward(namespace, name, localPort, port)
 		if err == nil {
 			return localPort, stop, nil
 		}
@@ -33,16 +39,16 @@ func startPortForwardWithRetries(namespace string, attempts int, port string) (s
 	if lastErr == nil {
 		lastErr = fmt.Errorf("unable to allocate local port for port-forward")
 	}
-	return "", nil, fmt.Errorf("failed to start mimir port-forward after %d attempts: %w", attempts, lastErr)
+	return "", nil, fmt.Errorf("failed to start port-forward after %d attempts: %w", attempts, lastErr)
 }
 
-func startPortForward(namespace, localPort, port string) (func(), error) {
+func startPortForward(namespace, name, localPort, port string) (func(), error) {
 	cmd := exec.CommandContext(
 		context.Background(),
 		"kubectl",
 		"port-forward",
 		"--namespace", namespace,
-		"service/mimir",
+		"service/"+name,
 		localPort+":"+port,
 	)
 	cmd.Stdout = os.Stdout
@@ -91,9 +97,13 @@ func pickFreeLocalPort() (string, error) {
 // block the outer EventuallyWithT past its deadline.
 const curlTimeout = 5 * time.Second
 
-func curl(c *assert.CollectT, targetURL string) string {
+func curl(c *assert.CollectT, targetURL string, header http.Header) string {
+	req, err := http.NewRequest(http.MethodGet, targetURL, nil)
+	require.NoError(c, err)
+	req.Header = header
+
 	client := http.Client{Timeout: curlTimeout}
-	resp, err := client.Get(targetURL)
+	resp, err := client.Do(req)
 	require.NoError(c, err)
 	defer resp.Body.Close()
 

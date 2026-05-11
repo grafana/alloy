@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,10 +16,6 @@ import (
 )
 
 const (
-	testNameLabel = "alloy_test_name"
-	timeout       = 1 * time.Minute
-	retryInterval = 500 * time.Millisecond
-
 	// Both must match manifests/mimir.yaml.
 	mimirSelector = "app=mimir"
 	mimirHTTPPort = "9009"
@@ -87,7 +82,7 @@ func (m *Mimir) Install(ctx *harness.TestContext) error {
 		return err
 	}
 
-	localPort, stop, err := startPortForwardWithRetries(m.namespace, 5, mimirHTTPPort)
+	localPort, stop, err := startPortForwardWithRetries(m.namespace, "mimir", 5, mimirHTTPPort)
 	if err != nil {
 		return err
 	}
@@ -118,7 +113,7 @@ func (m *Mimir) QueryMetrics(t *testing.T, testName string, expectedMetrics []st
 		values := queryURL.Query()
 		values.Add("match[]", "{"+testNameLabel+"=\""+testName+"\"}")
 		queryURL.RawQuery = values.Encode()
-		resp := curl(c, queryURL.String())
+		resp := curl(c, queryURL.String(), nil)
 
 		var parsed metricsResponse
 		err = json.Unmarshal([]byte(resp), &parsed)
@@ -148,7 +143,7 @@ func (m *Mimir) QueryMetadata(t *testing.T, expected map[string]ExpectedMetadata
 	endpoint := m.endpoint("/prometheus/api/v1/metadata")
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		resp := curl(c, endpoint)
+		resp := curl(c, endpoint, nil)
 
 		var parsed metadataResponse
 		err := json.Unmarshal([]byte(resp), &parsed)
@@ -187,7 +182,7 @@ func (m *Mimir) CheckAlertsConfig(t *testing.T, expectedFile string) {
 	expectedMimirConfig := string(expectedMimirConfigBytes)
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		actualMimirConfig := curl(c, m.endpoint("/api/v1/alerts"))
+		actualMimirConfig := curl(c, m.endpoint("/api/v1/alerts"), nil)
 		require.Equal(c, expectedMimirConfig, actualMimirConfig)
 	}, timeout, retryInterval)
 }
