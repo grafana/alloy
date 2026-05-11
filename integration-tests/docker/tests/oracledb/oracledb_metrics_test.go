@@ -20,7 +20,8 @@ func TestOracleDBMetrics(t *testing.T) {
 		"oracledb_exporter_last_scrape_error",
 		"oracledb_exporter_scrapes_total",
 	}
-	// All other metrics carry the exporter's database label (e.g. default, oracledb_1, ...).
+
+	// All other metrics carry the exporter's database label (e.g. default, oracledb_c1, ...).
 	metrics := []string{
 		"oracledb_up",
 
@@ -48,20 +49,42 @@ func TestOracleDBMetrics(t *testing.T) {
 		"oracledb_startup_time_hours_up",
 	}
 
-	// Multi-target: one set of exporter-internal series for the whole component.
-	common.MimirMetricsTest(t, exporterBuiltin, []string{}, "oracledb_multi_metrics")
-	common.MimirMetricsTest(t, metrics, []string{}, "oracledb_multi_metrics")
-
-	multiDBs := []string{"oracledb_1", "oracledb_2"}
-	for _, db := range multiDBs {
-		db := db
-		t.Run("multi_"+db, func(t *testing.T) {
+	// Each component publishes under its own test_name so we can assert that
+	// every exporter instance produced metrics independently. Components a and
+	// b use the top-level connection_string; c and d use database blocks.
+	componentTestNames := []string{
+		"oracledb_multi_component_a",
+		"oracledb_multi_component_b",
+		"oracledb_multi_component_c",
+		"oracledb_multi_component_d",
+	}
+	for _, testName := range componentTestNames {
+		testName := testName
+		t.Run(testName, func(t *testing.T) {
 			t.Parallel()
-			assertSeriesLabelsForMetrics(t, "oracledb_multi_metrics", metrics, map[string]string{
-				"test_name": "oracledb_multi_metrics",
-				"database":  db,
-			})
+			common.MimirMetricsTest(t, exporterBuiltin, []string{}, testName)
+			common.MimirMetricsTest(t, metrics, []string{}, testName)
 		})
+	}
+
+	// Multi-target components must emit metrics with the per-database label set
+	// to each `database` block's name.
+	multiTargets := map[string][]string{
+		"oracledb_multi_component_c": {"oracledb_c1", "oracledb_c2"},
+		"oracledb_multi_component_d": {"oracledb_d1", "oracledb_d2"},
+	}
+	for testName, dbs := range multiTargets {
+		testName, dbs := testName, dbs
+		for _, db := range dbs {
+			db := db
+			t.Run(testName+"/"+db, func(t *testing.T) {
+				t.Parallel()
+				assertSeriesLabelsForMetrics(t, testName, metrics, map[string]string{
+					"test_name": testName,
+					"database":  db,
+				})
+			})
+		}
 	}
 }
 
