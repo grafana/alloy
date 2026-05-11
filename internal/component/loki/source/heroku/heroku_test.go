@@ -8,16 +8,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/regexp"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/regexp"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestPush(t *testing.T) {
@@ -184,7 +185,7 @@ var rulesExport = alloy_relabel.Rules{
 
 func defaultOptions(t *testing.T) component.Options {
 	return component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		SLogger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

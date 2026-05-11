@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/prometheus/client_golang/prometheus"
@@ -46,8 +45,7 @@ func (a *Arguments) SetToDefault() {
 
 // Component is the main type for the `loki.source.awsfirehose` component.
 type Component struct {
-	opts   component.Options
-	logger log.Logger
+	opts component.Options
 
 	metrics       *metrics
 	serverMetrics *util.UncheckedCollector
@@ -68,8 +66,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		handler:       loki.NewLogsBatchReceiver(),
 		fanout:        loki.NewFanout(args.ForwardTo),
 		serverMetrics: util.NewUncheckedCollector(nil),
-
-		logger: log.With(o.Logger, "component", "aws_firehose_logs"),
 	}
 
 	o.Registerer.MustRegister(c.serverMetrics)
@@ -125,7 +121,7 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		c.server, err = source.NewServer(c.logger, registry, c.handler, source.ServerConfig{
+		c.server, err = source.NewServer(c.opts.SLogger, registry, c.handler, source.ServerConfig{
 			Namespace:      "loki_source_awsfirehose",
 			EntriesWritten: c.metrics.entriesWritten,
 			NetConfig:      newArgs.Server,
