@@ -102,7 +102,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	if args.Registry != nil && args.EnableQueryFingerprint {
 		qd.queryFingerprintInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: "database_observability",
-			Name:      "query_fingerprint_info",
+			Name:      "pg_query_fingerprint_info",
 			Help:      "Mapping of pg_stat_statements.queryid to its semantic query_fingerprint, per database. Value is always 1; the labels are the join key. Refreshed each query_details scrape -- series for queryids no longer observed are dropped.",
 		}, []string{"queryid", "query_fingerprint", "datname"})
 		args.Registry.MustRegister(qd.queryFingerprintInfo)

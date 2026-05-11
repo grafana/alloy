@@ -1187,7 +1187,7 @@ func TestQueryDetails_FingerprintInfoGaugeIsPopulated(t *testing.T) {
 	require.Equal(t, float64(1), got, "expected the join metric to be set to 1 for the scraped row")
 
 	// Sanity: no series for a different fingerprint.
-	require.Equal(t, 0, testutil.CollectAndCount(collector.queryFingerprintInfo, "database_observability_query_fingerprint_info")-1,
+	require.Equal(t, 0, testutil.CollectAndCount(collector.queryFingerprintInfo, "database_observability_pg_query_fingerprint_info")-1,
 		"expected exactly one series; got extra")
 }
 
@@ -1218,7 +1218,7 @@ func TestQueryDetails_FingerprintInfoGaugeAbsentWhenFingerprintDisabled(t *testi
 	mfs, err := registry.Gather()
 	require.NoError(t, err)
 	for _, mf := range mfs {
-		require.NotEqual(t, "database_observability_query_fingerprint_info", mf.GetName(),
+		require.NotEqual(t, "database_observability_pg_query_fingerprint_info", mf.GetName(),
 			"metric should not be registered when EnableQueryFingerprint is false")
 	}
 }
