@@ -9,12 +9,12 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/v22/journal"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestJournal(t *testing.T) {
@@ -23,7 +23,7 @@ func TestJournal(t *testing.T) {
 	lr := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:         "loki.source.journal.test",
-		Logger:     log.NewNopLogger(),
+		SLogger:    logging.NewSlogNop(),
 		DataPath:   tmp,
 		Registerer: prometheus.DefaultRegisterer,
 	}, Arguments{
