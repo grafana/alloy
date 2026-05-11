@@ -13,7 +13,7 @@ import (
 func parsePrometheusRuleGroups(t *testing.T, buf []byte) []rulefmt.RuleGroup {
 	t.Helper()
 
-	groups, errs := rulefmt.Parse(buf, true, model.LegacyValidation, parser.NewParser(parser.Options{}))
+	groups, errs := rulefmt.Parse(buf, true, model.LegacyValidation, parser.NewParser(parser.Options{}), nil)
 	require.Empty(t, errs)
 
 	return groups.Groups
