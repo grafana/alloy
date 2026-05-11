@@ -7,11 +7,11 @@ package target
 import (
 	"bytes"
 	"context"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/go-gelf/v2/gelf"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
@@ -20,7 +20,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // SeverityLevels maps severity levels to severity string levels.
@@ -38,7 +37,7 @@ var SeverityLevels = map[int32]string{
 // Target listens to gelf messages on udp.
 type Target struct {
 	metrics       *Metrics
-	logger        log.Logger
+	logger        *slog.Logger
 	handler       loki.LogsReceiver
 	config        *scrapeconfig.GelfTargetConfig
 	relabelConfig []*relabel.Config
@@ -53,7 +52,7 @@ type Target struct {
 // NewTarget configures a new Gelf Target.
 func NewTarget(
 	metrics *Metrics,
-	logger log.Logger,
+	logger *slog.Logger,
 	handler loki.LogsReceiver,
 	relabel []*relabel.Config,
 	config *scrapeconfig.GelfTargetConfig,
@@ -90,16 +89,16 @@ func (t *Target) run() {
 	t.wg.Add(1)
 	go func() {
 		defer t.wg.Done()
-		level.Info(t.logger).Log("msg", "listening for GELF UDP messages", "listen_address", t.config.ListenAddress)
+		t.logger.Info("listening for GELF UDP messages", "listen_address", t.config.ListenAddress)
 		for {
 			select {
 			case <-t.ctx.Done():
-				level.Info(t.logger).Log("msg", "GELF UDP listener shutdown", "listen_address", t.config.ListenAddress)
+				t.logger.Info("GELF UDP listener shutdown", "listen_address", t.config.ListenAddress)
 				return
 			default:
 				msg, err := t.gelfReader.ReadMessage()
 				if err != nil {
-					level.Error(t.logger).Log("msg", "error while reading gelf message", "listen_address", t.config.ListenAddress, "err", err)
+					t.logger.Error("error while reading gelf message", "listen_address", t.config.ListenAddress, "err", err)
 					t.metrics.gelfErrors.Inc()
 					continue
 				}
@@ -144,7 +143,7 @@ func (t *Target) handleMessage(msg *gelf.Message) {
 	t.encodeBuff.Reset()
 	err := msg.MarshalJSONBuf(t.encodeBuff)
 	if err != nil {
-		level.Error(t.logger).Log("msg", "error while marshalling gelf message", "listen_address", t.config.ListenAddress, "err", err)
+		t.logger.Error("error while marshalling gelf message", "listen_address", t.config.ListenAddress, "err", err)
 		t.metrics.gelfErrors.Inc()
 		return
 	}
@@ -161,10 +160,10 @@ func secondsToUnixTimestamp(seconds float64) time.Time {
 
 // Stop shuts down the GelfTarget.
 func (t *Target) Stop() {
-	level.Info(t.logger).Log("msg", "Shutting down GELF UDP listener", "listen_address", t.config.ListenAddress)
+	t.logger.Info("shutting down GELF UDP listener", "listen_address", t.config.ListenAddress)
 	t.ctxCancel()
 	if err := t.gelfReader.Close(); err != nil {
-		level.Error(t.logger).Log("msg", "error while closing gelf reader", "err", err)
+		t.logger.Error("error while closing gelf reader", "err", err)
 	}
 	t.wg.Wait()
 }
