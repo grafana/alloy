@@ -3,6 +3,7 @@ package deps
 import (
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -25,6 +26,8 @@ const (
 	// lokiQueryLimit caps how many entries Loki returns per QueryLogs call.
 	// High enough to cover any realistic test.
 	lokiQueryLimit = 1000
+
+	lokiImage = "grafana/loki:3.5.5"
 )
 
 //go:embed manifests/loki.yaml
@@ -55,7 +58,11 @@ func (l *Loki) Name() string { return "loki" }
 
 func (l *Loki) Install(ctx *harness.TestContext) error {
 	if l.namespace == "" {
-		return fmt.Errorf("loki namespace is required")
+		return errors.New("loki namespace is required")
+	}
+
+	if err := ensureKindImage(lokiImage); err != nil {
+		return fmt.Errorf("faild to load loki image: %w", err)
 	}
 
 	if err := util.Step("apply loki manifest", func() error {
