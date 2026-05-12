@@ -141,7 +141,6 @@ type SyslogTargetConfig struct {
 	UDPQueueSize int `yaml:"udp_queue_size"`
 
 	// UDPHostCacheSize sets the capacity of the LRU cache for reverse-DNS hostname lookups.
-	// 0 disables caching.
 	UDPHostCacheSize int `yaml:"udp_host_cache_size"`
 }
 
