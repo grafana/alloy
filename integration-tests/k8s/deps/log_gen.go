@@ -56,11 +56,11 @@ func (l *LogGen) Install(tc *harness.TestContext) error {
 	}
 
 	l.workloads = NewCustomWorkloads(CustomWorkloadsOptions{
-		Path: filepath.Join(dir, "manifests", "log-gen.yaml"),
+		Namespace: l.opts.Namespace,
+		Path:      filepath.Join(dir, "manifests", "log-gen.yaml"),
 		Vars: map[string]string{
-			"NAMESPACE": l.opts.Namespace,
-			"REPLICAS":  strconv.Itoa(l.opts.Replicas),
-			"CONTENT":   content,
+			"REPLICAS": strconv.Itoa(l.opts.Replicas),
+			"CONTENT":  content,
 		},
 	})
 	if err := l.workloads.Install(tc); err != nil {

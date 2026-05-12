@@ -10,6 +10,7 @@ import (
 )
 
 type CustomWorkloadsOptions struct {
+	Namespace string
 	// Path is a YAML manifest applied on Install, deleted on Cleanup.
 	Path string
 	// Vars expands ${KEY} placeholders in the manifest. See util.SubstituteVars;
@@ -48,7 +49,7 @@ func (w *CustomWorkloads) Install(_ *harness.TestContext) error {
 	if err != nil {
 		return err
 	}
-	return harness.ApplyManifest("", manifest)
+	return harness.ApplyManifest(w.opts.Namespace, manifest)
 }
 
 func (w *CustomWorkloads) Cleanup() {
@@ -61,7 +62,7 @@ func (w *CustomWorkloads) Cleanup() {
 		util.Logf("custom-workloads cleanup render failed: %v", err)
 		return
 	}
-	_ = harness.DeleteManifest("", manifest)
+	_ = harness.DeleteManifest(w.opts.Namespace, manifest)
 }
 
 func (w *CustomWorkloads) renderManifest() (string, error) {
