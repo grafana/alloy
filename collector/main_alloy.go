@@ -16,6 +16,7 @@ func newAlloyCommand(params otelcol.CollectorSettings) *cobra.Command {
 
     flowCmd := flowcmd.RootCommand()
     flowCmd.AddCommand(otelCmd)
+    registerOpAMPSupervisorCommand(flowCmd)
 
     return flowCmd
 }

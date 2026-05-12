@@ -1063,7 +1063,7 @@ replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4
 // Replace thanos-io/objstore with Grafana fork
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
-// TODO - remove forks when changes are merged upstream — non-singleton cadvisor
+// TODO - remove forks when changes are merged upstream — non-singleton cadvisor (pseudo-version for branch grafana-v0.54.1-noglobals; required for Go 1.25+ go.mod parsing)
 replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
 
 // TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream

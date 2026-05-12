@@ -5,6 +5,11 @@ dist:
   version: v1.13.2 # x-release-please-version
   output_path: .
 
+# Monolithic github.com/knadh/koanf shares package paths with modular koanf/* (maps, parsers/yaml,
+# providers/*). cmd/opampsupervisor and go.opentelemetry.io/collector/confmap need the modular form.
+excludes:
+  - github.com/knadh/koanf v1.5.0
+
 extensions:
   - gomod: github.com/grafana/alloy/extension/alloyengine v0.1.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.142.0
@@ -16,6 +21,7 @@ extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.142.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.142.0
   - gomod: go.opentelemetry.io/collector/extension/zpagesextension v0.142.0
 
 exporters:
@@ -81,6 +87,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/tcplogreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/vcenterreceiver v0.142.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/zipkinreceiver v0.142.0
+  - gomod: go.opentelemetry.io/collector/receiver/nopreceiver v0.142.0
   - gomod: go.opentelemetry.io/collector/receiver/otlpreceiver v0.142.0
 
 connectors:
@@ -102,6 +109,9 @@ replaces:
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
   - github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
+  # supervisor_command.go imports cmd/opampsupervisor but OCB does not list it; without a pin, tidy selects @latest and breaks filelogreceiver tests (pkg/stanza layout). Same train as other contrib components.
+  - github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor => github.com/open-telemetry/opentelemetry-collector-contrib/cmd/opampsupervisor v0.142.0
+  - github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza => github.com/open-telemetry/opentelemetry-collector-contrib/pkg/stanza v0.142.0
   # BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
@@ -119,8 +129,8 @@ replaces:
   - github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.3.0
   # Replace thanos-io/objstore with Grafana fork
   - github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
-  # TODO - remove forks when changes are merged upstream — non-singleton cadvisor
-  - github.com/google/cadvisor => github.com/grafana/cadvisor grafana-v0.54.1-noglobals
+  # TODO - remove forks when changes are merged upstream — non-singleton cadvisor (pseudo-version for branch grafana-v0.54.1-noglobals; required for Go 1.25+ go.mod parsing)
+  - github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
   # TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
   - github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
   # TODO - remove once PR is merged upstream - https://github.com/prometheus/mysqld_exporter/pull/774
