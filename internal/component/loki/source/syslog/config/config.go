@@ -135,7 +135,7 @@ type SyslogTargetConfig struct {
 	RFC3164CiscoComponents *RFC3164CiscoComponents `yaml:"rfc3164_cisco_components"`
 
 	// UDPQueueSize determines max number of messages which may be waiting for a processor.
-	UDPQueueSize int `yaml:"udp_queue_length"`
+	UDPQueueSize int `yaml:"udp_queue_size"`
 }
 
 func (config SyslogTargetConfig) IsRFC3164Message() bool {
