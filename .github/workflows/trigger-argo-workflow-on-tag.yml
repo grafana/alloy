@@ -63,7 +63,7 @@ jobs:
 
       - name: Trigger ArgoCD Workflow
         if: steps.validate.outputs.is_alloy == 'true'
-        uses: grafana/shared-workflows/actions/trigger-argo-workflow@a37de51f3d713a30a9e4b21bcdfbd38170020593 # v1.3.0
+        uses: grafana/shared-workflows/actions/trigger-argo-workflow@8269e9362f30c5458c2cad54510ea74fd053920c # v1.3.0
         with:
           instance: "ops"
           namespace: "alloy-cd"

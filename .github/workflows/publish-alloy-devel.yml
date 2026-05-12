@@ -47,7 +47,7 @@ jobs:
     steps:
 
     - name: Get Vault secrets
-      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+      uses: grafana/shared-workflows/actions/get-vault-secrets@a53fc80bc30b0a16a262520465db899fa3af08b7 # get-vault-secrets/v1.3.2
       with:
         common_secrets: |
           GITHUB_APP_ID=updater-app:app-id
@@ -69,7 +69,7 @@ jobs:
       # We don't want this file to end up in the repo directory.
       # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
     - name: Log in to Google Artifact Registry
-      uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
+      uses: grafana/shared-workflows/actions/login-to-gar@12c87e5aa323694c820c1ff3d8e47e8237e05136 # login-to-gar/v1.0.2
       with:
         registry: "us-docker.pkg.dev"
         environment: "prod"

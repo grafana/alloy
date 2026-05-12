@@ -74,7 +74,7 @@ jobs:
       id-token: write # Needed to generate app token
     steps:
       - id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+        uses: grafana/shared-workflows/actions/get-vault-secrets@a53fc80bc30b0a16a262520465db899fa3af08b7 # get-vault-secrets/v1.3.2
         with:
           repo_secrets: |
             ALLOYBOT_APP_ID=alloybot:app_id
@@ -171,7 +171,7 @@ jobs:
       # The tag name in grafana/helm-charts is <package>-<version>, while the
       # tag name for grafana/alloy is helm-chart/<version>.
       - name: Make github release
-        uses: softprops/action-gh-release@a06a81a03ee405af7f2048a818ed3f03bbf83c7b # v2.5.0
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           name: ${{ steps.parse-chart.outputs.packagename }}
           repository: grafana/helm-charts
