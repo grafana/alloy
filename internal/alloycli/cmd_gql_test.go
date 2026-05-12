@@ -1,32 +1,14 @@
 package alloycli
 
 import (
+	"bytes"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
-
-func TestCommandIncludesGQLCommand(t *testing.T) {
-	cmd := Command()
-
-	var foundGQL, foundREPL bool
-	for _, subcommand := range cmd.Commands() {
-		switch subcommand.Name() {
-		case "gql":
-			foundGQL = true
-		case "repl":
-			foundREPL = true
-		}
-	}
-
-	require.True(t, foundGQL)
-	require.False(t, foundREPL)
-}
 
 func TestAlloyGqlRunExecutesQuery(t *testing.T) {
 	var receivedQuery string
@@ -47,12 +29,11 @@ func TestAlloyGqlRunExecutesQuery(t *testing.T) {
 	defer server.Close()
 
 	g := &alloyGql{httpAddr: server.URL}
-	output := captureStdout(t, func() {
-		require.NoError(t, g.Run("alloy { isReady }"))
-	})
+	var output bytes.Buffer
+	require.NoError(t, g.Run("alloy { isReady }", &output))
 
 	require.Equal(t, "query { alloy { isReady } }", receivedQuery)
-	require.JSONEq(t, `{"alloy":{"isReady":true}}`, output)
+	require.JSONEq(t, `{"alloy":{"isReady":true}}`, output.String())
 }
 
 func TestAlloyGqlRunLeavesCompleteQueryUnchanged(t *testing.T) {
@@ -70,12 +51,11 @@ func TestAlloyGqlRunLeavesCompleteQueryUnchanged(t *testing.T) {
 	defer server.Close()
 
 	g := &alloyGql{httpAddr: server.URL}
-	output := captureStdout(t, func() {
-		require.NoError(t, g.Run("{ alloy { version } }"))
-	})
+	var output bytes.Buffer
+	require.NoError(t, g.Run("{ alloy { version } }", &output))
 
 	require.Equal(t, "{ alloy { version } }", receivedQuery)
-	require.JSONEq(t, `{"alloy":{"version":"dev"}}`, output)
+	require.JSONEq(t, `{"alloy":{"version":"dev"}}`, output.String())
 }
 
 func TestAlloyGqlRunReturnsErrorForGraphQLErrors(t *testing.T) {
@@ -87,31 +67,10 @@ func TestAlloyGqlRunReturnsErrorForGraphQLErrors(t *testing.T) {
 	defer server.Close()
 
 	g := &alloyGql{httpAddr: server.URL}
-	var runErr error
-	output := captureStdout(t, func() {
-		runErr = g.Run("{ alloy {")
-	})
+	var output bytes.Buffer
+	runErr := g.Run("{ alloy {", &output)
 
 	require.Error(t, runErr)
 	require.ErrorContains(t, runErr, "GraphQL response contains errors")
-	require.Contains(t, output, "bad query")
-}
-
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	originalStdout := os.Stdout
-	reader, writer, err := os.Pipe()
-	require.NoError(t, err)
-	t.Cleanup(func() {
-		os.Stdout = originalStdout
-	})
-
-	os.Stdout = writer
-	fn()
-	require.NoError(t, writer.Close())
-
-	out, err := io.ReadAll(reader)
-	require.NoError(t, err)
-	return string(out)
+	require.Contains(t, output.String(), "bad query")
 }

@@ -2,6 +2,7 @@ package alloycli
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -26,7 +27,7 @@ func gqlCommand() *cobra.Command {
 The query is provided as a single argument to the command.
 
 It requires the --feature.graphql.enabled flag on the running Alloy instance to
-be set, as well as the stability.level flag set to "experimental".
+be set, as well as --stability.level flag set to "experimental".
 
 This command is experimental and may be modified or removed in the future. Use
 with caution in production.
@@ -34,8 +35,8 @@ with caution in production.
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
 		Aliases:      []string{"graphql"},
-		RunE: func(_ *cobra.Command, args []string) error {
-			return g.Run(args[0])
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return g.Run(args[0], cmd.OutOrStdout())
 		},
 	}
 
@@ -49,7 +50,7 @@ with caution in production.
 	return cmd
 }
 
-func (g *alloyGql) Run(query string) error {
+func (g *alloyGql) Run(query string, out io.Writer) error {
 	c := client.NewGraphQLClient(g.httpAddr)
 
 	response, err := c.Execute(formatGraphQLQuery(query))
@@ -57,7 +58,9 @@ func (g *alloyGql) Run(query string) error {
 		return fmt.Errorf("execute GraphQL query: %w", err)
 	}
 
-	utils.PrintGraphQLResponse(response)
+	if err := utils.PrintGraphQLResponse(out, response); err != nil {
+		return fmt.Errorf("print GraphQL response: %w", err)
+	}
 	if len(response.Errors) > 0 {
 		return fmt.Errorf("GraphQL response contains errors")
 	}

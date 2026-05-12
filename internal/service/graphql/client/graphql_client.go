@@ -14,6 +14,8 @@ import (
 // This package allows alloy to execute GraphQL queries against the Alloy GraphQL API.
 //
 
+const maxResponseBodySize = 5 * 1024 * 1024
+
 // GraphQLClient represents a simple GraphQL client
 type GraphQLClient struct {
 	endpoint   string
@@ -74,9 +76,12 @@ func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
 
 	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize+1))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+	if len(data) > maxResponseBodySize {
+		return nil, fmt.Errorf("response body exceeds %d bytes", maxResponseBodySize)
 	}
 
 	if resp.StatusCode != http.StatusOK {
