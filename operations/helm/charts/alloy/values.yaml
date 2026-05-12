@@ -244,7 +244,7 @@ configReloader:
     # -- Repository to get config reloader image from.
     repository: prometheus-operator/prometheus-config-reloader
     # -- Tag of image to use for config reloading.
-    tag: v0.81.0
+    tag: v0.91.0
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
     # -- Config reloader image pull policy.
