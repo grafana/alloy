@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/mwitkow/go-conntrack"
 	"github.com/prometheus/common/config"
@@ -53,7 +54,7 @@ type baseTransport struct {
 	config *scrapeconfig.SyslogTargetConfig
 	logger log.Logger
 
-	openConnections *sync.WaitGroup
+	pendingGoroutines *sync.WaitGroup
 
 	handleMessage      handleMessage
 	handleMessageError handleMessageError
@@ -106,13 +107,17 @@ func (t *baseTransport) streamParseConfig() syslogparser.StreamParseConfig {
 }
 
 func (t *baseTransport) connectionLabels(ip string) labels.Labels {
+	return t.connectionLabelsWithHostname(ip, lookupAddr(ip))
+}
+
+func (t *baseTransport) connectionLabelsWithHostname(ip, hostname string) labels.Labels {
 	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.config.Labels {
 		lb.Set(string(k), string(v))
 	}
 
 	lb.Set("__syslog_connection_ip_address", ip)
-	lb.Set("__syslog_connection_hostname", lookupAddr(ip))
+	lb.Set("__syslog_connection_hostname", hostname)
 
 	return lb.Labels()
 }
@@ -143,7 +148,7 @@ func newBaseTransport(cfg TransportConfig) *baseTransport {
 	return &baseTransport{
 		config:             cfg.Target,
 		logger:             cfg.Logger,
-		openConnections:    new(sync.WaitGroup),
+		pendingGoroutines:  new(sync.WaitGroup),
 		handleMessage:      cfg.MessageHandler,
 		handleMessageError: cfg.ErrorHandler,
 		ctx:                ctx,
@@ -229,7 +234,7 @@ func (t *TCPTransport) Run() error {
 	t.listener = l
 	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolTCP, "tls", tlsEnabled)
 
-	t.openConnections.Add(1)
+	t.pendingGoroutines.Add(1)
 	go t.acceptConnections()
 
 	return nil
@@ -305,7 +310,7 @@ func newTLSConfig(config config.TLSConfig) (*tls.Config, error) {
 }
 
 func (t *TCPTransport) acceptConnections() {
-	defer t.openConnections.Done()
+	defer t.pendingGoroutines.Done()
 
 	l := log.With(t.logger, "address", t.listener.Addr().String())
 
@@ -333,13 +338,13 @@ func (t *TCPTransport) acceptConnections() {
 		}
 		backoff.Reset()
 
-		t.openConnections.Add(1)
+		t.pendingGoroutines.Add(1)
 		go t.handleConnection(c)
 	}
 }
 
 func (t *TCPTransport) handleConnection(cn net.Conn) {
-	defer t.openConnections.Done()
+	defer t.pendingGoroutines.Done()
 
 	c := &idleTimeoutConn{cn, t.idleTimeout()}
 
@@ -392,7 +397,7 @@ func (t *TCPTransport) Close() error {
 
 // Wait implements SyslogTransport
 func (t *TCPTransport) Wait() {
-	t.openConnections.Wait()
+	t.pendingGoroutines.Wait()
 }
 
 // Addr implements SyslogTransport
@@ -402,13 +407,29 @@ func (t *TCPTransport) Addr() net.Addr {
 
 type UDPTransport struct {
 	*baseTransport
-	udpConn *net.UDPConn
+	udpConn   *net.UDPConn
+	hostCache *lru.Cache[string, string]
 }
 
 func NewSyslogUDPTransport(cfg TransportConfig) Transport {
+	cacheSize := cfg.Target.UDPHostCacheSize
+	if cacheSize == 0 {
+		cacheSize = scrapeconfig.DefaultUDPHostCacheSize
+	}
+	hostCache, _ := lru.New[string, string](cacheSize)
 	return &UDPTransport{
 		baseTransport: newBaseTransport(cfg),
+		hostCache:     hostCache,
 	}
+}
+
+func (t *UDPTransport) lookupHostname(ip string) string {
+	if hostname, ok := t.hostCache.Get(ip); ok {
+		return hostname
+	}
+	hostname := lookupAddr(ip)
+	t.hostCache.Add(ip, hostname)
+	return hostname
 }
 
 // Run implements SyslogTransport
@@ -425,7 +446,7 @@ func (t *UDPTransport) Run() error {
 	_ = t.udpConn.SetReadBuffer(1024 * 1024)
 	level.Info(t.logger).Log("msg", "syslog listening on address", "address", t.Addr().String(), "protocol", ProtocolUDP)
 
-	t.openConnections.Add(1)
+	t.pendingGoroutines.Add(1)
 	go t.acceptPackets()
 	return nil
 }
@@ -436,98 +457,120 @@ func (t *UDPTransport) Close() error {
 	return t.udpConn.Close()
 }
 
-func (t *UDPTransport) acceptPackets() {
-	defer t.openConnections.Done()
+type datagram struct {
+	addr net.Addr
+	data []byte
+}
 
-	var (
-		n    int
-		addr net.Addr
-		err  error
-	)
-	streams := make(map[string]*ConnPipe)
-	buf := make([]byte, t.maxMessageLength())
+func (t *UDPTransport) acceptPackets() {
+	defer t.pendingGoroutines.Done()
+	defer func() {
+		level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
+	}()
+
+	chanSize := t.config.UDPQueueSize
+	if chanSize == 0 {
+		chanSize = scrapeconfig.DefaultUDPQueueSize
+	}
+
+	ch := make(chan datagram, chanSize)
+	defer close(ch)
+
+	t.pendingGoroutines.Go(func() {
+		for msg := range ch {
+			t.handleDatagram(msg)
+		}
+	})
 
 	for {
 		if !t.Ready() {
-			level.Info(t.logger).Log("msg", "syslog server shutting down", "protocol", ProtocolUDP, "err", t.ctx.Err())
-			for _, stream := range streams {
-				if err = stream.Close(); err != nil {
-					level.Error(t.logger).Log("msg", "failed to close pipe", "err", err)
-				}
-			}
 			return
 		}
-		n, addr, err = t.udpConn.ReadFrom(buf)
+
+		buf := make([]byte, t.maxMessageLength())
+
+		// Unlike TCP, if datagram is larger than a buf - unread bytes are discarded.
+		n, addr, err := t.udpConn.ReadFrom(buf)
 		if n <= 0 && err != nil {
+			if !t.Ready() {
+				return
+			}
+
 			level.Warn(t.logger).Log("msg", "failed to read packets", "addr", addr, "err", err)
 			continue
 		}
 
-		stream, ok := streams[addr.String()]
-		if !ok {
-			stream = NewConnPipe(addr)
-			streams[addr.String()] = stream
-			t.openConnections.Add(1)
-			go t.handleRcv(stream)
+		buf = buf[:n]
+		msg := datagram{
+			addr: addr,
+			data: buf,
 		}
-		if _, err := stream.Write(buf[:n]); err != nil {
-			level.Warn(t.logger).Log("msg", "failed to write to stream", "addr", addr, "err", err)
+
+		select {
+		case <-t.ctx.Done():
+			return
+		case ch <- msg:
 		}
 	}
 }
 
-func (t *UDPTransport) handleRcv(c *ConnPipe) {
-	defer t.openConnections.Done()
+func (t *UDPTransport) handleDatagram(msg datagram) {
+	srcIP := hostFromAddr(msg.addr)
+	hostname := t.lookupHostname(srcIP)
+	lbs := t.connectionLabelsWithHostname(srcIP, hostname)
+	r := bytes.NewReader(msg.data)
 
-	udpAddr, _ := net.ResolveUDPAddr("udp", c.addr.String())
-	lbs := t.connectionLabels(udpAddr.IP.String())
-
-	for {
-		datagram := make([]byte, t.maxMessageLength())
-		n, err := c.Read(datagram)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-
-			level.Warn(t.logger).Log("msg", "error reading from pipe", "err", err)
-			continue
+	cb := func(result *syslog.Result) {
+		if err := result.Error; err != nil {
+			t.handleMessageError(err)
+		} else {
+			t.handleMessage(lbs.Copy(), result.Message)
 		}
+	}
 
-		r := bytes.NewReader(datagram[:n])
-		cb := func(result *syslog.Result) {
-			if err := result.Error; err != nil {
-				t.handleMessageError(err)
-			} else {
-				t.handleMessage(lbs.Copy(), result.Message)
-			}
+	if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
+		delim := t.config.RawFormatOptions.Delimiter()
+		for msg, err := range syslogparser.IterStreamRaw(r, delim) {
+			cb(&syslog.Result{
+				Message: msg,
+				Error:   err,
+			})
 		}
+		return
+	}
 
-		if t.config.SyslogFormat == scrapeconfig.SyslogFormatRaw {
-			delim := t.config.RawFormatOptions.Delimiter()
-			for msg, err := range syslogparser.IterStreamRaw(r, delim) {
-				cb(&syslog.Result{
-					Message: msg,
-					Error:   err,
-				})
-			}
-			continue
-		}
-
-		parseCfg := t.streamParseConfig()
-		err = syslogparser.ParseStream(parseCfg, r, cb)
-		if err != nil {
-			level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
-		}
+	parseCfg := t.streamParseConfig()
+	err := syslogparser.ParseStream(parseCfg, r, cb)
+	if err != nil {
+		level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
 	}
 }
 
 // Wait implements SyslogTransport
 func (t *UDPTransport) Wait() {
-	t.openConnections.Wait()
+	t.pendingGoroutines.Wait()
 }
 
 // Addr implements SyslogTransport
 func (t *UDPTransport) Addr() net.Addr {
 	return t.udpConn.LocalAddr()
+}
+
+func hostFromAddr(addr net.Addr) string {
+	switch v := addr.(type) {
+	case *net.TCPAddr:
+		return v.IP.String()
+	case *net.UDPAddr:
+		return v.IP.String()
+	case *net.IPAddr:
+		return v.IP.String()
+	default:
+		// Fallback: parse from the string representation
+		strAddr := addr.String()
+		host, _, err := net.SplitHostPort(strAddr)
+		if err != nil {
+			return strAddr
+		}
+		return host
+	}
 }

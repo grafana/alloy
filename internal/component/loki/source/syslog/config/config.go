@@ -80,6 +80,11 @@ func (opts RawFormatOptions) Delimiter() byte {
 	return '\n'
 }
 
+const (
+	DefaultUDPQueueSize     = 10
+	DefaultUDPHostCacheSize = 128
+)
+
 // SyslogTargetConfig describes a scrape config that listens for log lines over syslog.
 type SyslogTargetConfig struct {
 	// ListenAddress is the address to listen on for syslog messages.
@@ -131,6 +136,12 @@ type SyslogTargetConfig struct {
 
 	// RFC3164CiscoComponents enables and configures Cisco IOS syslog parsing.
 	RFC3164CiscoComponents *RFC3164CiscoComponents `yaml:"rfc3164_cisco_components"`
+
+	// UDPQueueSize determines max number of messages which may be waiting for a processor.
+	UDPQueueSize int `yaml:"udp_queue_size"`
+
+	// UDPHostCacheSize sets the capacity of the LRU cache for reverse-DNS hostname lookups.
+	UDPHostCacheSize int `yaml:"udp_host_cache_size"`
 }
 
 func (config SyslogTargetConfig) IsRFC3164Message() bool {
