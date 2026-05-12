@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: log-producer
+  namespace: ${NAMESPACE}
+  labels:
+    app: log-producer
+    alloy-logs-test: "true"
+spec:
+  containers:
+    - name: log-producer
+      image: log-producer:test
+      imagePullPolicy: Never
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: log-producer-2
+  namespace: ${NAMESPACE}
+  labels:
+    app: log-producer
+    alloy-logs-test: "true"
+spec:
+  containers:
+    - name: log-producer
+      image: log-producer:test
+      imagePullPolicy: Never

@@ -1,0 +1,9 @@
+controller:
+  type: daemonset
+alloy:
+  stabilityLevel: experimental
+  initialDelaySeconds: 1
+  extraEnv:
+    # Must match the targetNamespace name in k8s_test.go.
+    - name: TARGET_NAMESPACE
+      value: "log-producer"
