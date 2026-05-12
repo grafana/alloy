@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -72,17 +74,19 @@ func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to execute request: %s", resp.Status)
-	}
-
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return c.parseResponse(buf.Bytes())
+	if resp.StatusCode != http.StatusOK {
+		if body := strings.TrimSpace(string(data)); body != "" {
+			return nil, fmt.Errorf("failed to execute request: %s: %s", resp.Status, body)
+		}
+		return nil, fmt.Errorf("failed to execute request: %s", resp.Status)
+	}
+
+	return c.parseResponse(data)
 }
 
 // parseResponse converts raw GraphQL response bytes into a basic GraphQLResponse struct

@@ -58,6 +58,9 @@ func (g *alloyGql) Run(query string) error {
 	}
 
 	utils.PrintGraphQLResponse(response)
+	if len(response.Errors) > 0 {
+		return fmt.Errorf("GraphQL response contains errors")
+	}
 	return nil
 }
 

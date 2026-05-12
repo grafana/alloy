@@ -78,6 +78,25 @@ func TestAlloyGqlRunLeavesCompleteQueryUnchanged(t *testing.T) {
 	require.JSONEq(t, `{"alloy":{"version":"dev"}}`, output)
 }
 
+func TestAlloyGqlRunReturnsErrorForGraphQLErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, err := w.Write([]byte(`{"errors":[{"message":"bad query"}]}`))
+		require.NoError(t, err)
+	}))
+	defer server.Close()
+
+	g := &alloyGql{httpAddr: server.URL}
+	var runErr error
+	output := captureStdout(t, func() {
+		runErr = g.Run("{ alloy {")
+	})
+
+	require.Error(t, runErr)
+	require.ErrorContains(t, runErr, "GraphQL response contains errors")
+	require.Contains(t, output, "bad query")
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
