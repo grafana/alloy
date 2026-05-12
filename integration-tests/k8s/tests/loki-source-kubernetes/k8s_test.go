@@ -22,16 +22,19 @@ func TestLokiSourceKubernetes(t *testing.T) {
 	genA := deps.NewLogGen(deps.LogGenOptions{
 		Namespace: targetA.Name(),
 		Replicas:  2,
+		FilePath:  "./config/test.log",
 	})
 
 	genB := deps.NewLogGen(deps.LogGenOptions{
 		Namespace: targetB.Name(),
 		Replicas:  2,
+		FilePath:  "./config/test.log",
 	})
 
 	genC := deps.NewLogGen(deps.LogGenOptions{
 		Namespace: targetC.Name(),
 		Replicas:  2,
+		FilePath:  "./config/test.log",
 	})
 
 	alloy := deps.NewAlloy(deps.AlloyOptions{

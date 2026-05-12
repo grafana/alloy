@@ -1,3 +1,0 @@
-FROM busybox:1.36
-
-CMD ["sh", "-c", "for i in $(seq 1 10); do printf 'line %d\\n' \"$i\"; done; tail -f /dev/null"]
