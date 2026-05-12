@@ -82,7 +82,7 @@ func (opts RawFormatOptions) Delimiter() byte {
 
 const (
 	DefaultUDPQueueSize     = 10
-	DefaultUDPHostCacheSize = 32
+	DefaultUDPHostCacheSize = 128
 )
 
 // SyslogTargetConfig describes a scrape config that listens for log lines over syslog.
