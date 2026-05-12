@@ -64,7 +64,7 @@ spec:
             - mountPath: /etc/geoip
               name: geoip
         - name: config-reloader
-          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.81.0
+          image: quay.io/prometheus-operator/prometheus-config-reloader:v0.91.0
           imagePullPolicy: IfNotPresent
           args:
             - --watched-dir=/etc/alloy

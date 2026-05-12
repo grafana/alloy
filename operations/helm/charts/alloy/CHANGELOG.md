@@ -17,6 +17,7 @@ Unreleased
 
 - Update to Grafana Alloy v1.16.1 (@x1unix)
 
+- Update config-reloader default version to v0.91.0 (@kalleep)
 
 1.8.0 (2026-04-23)
 ----------
