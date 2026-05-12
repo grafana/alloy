@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "generate:fixtures": "npx tsx src/test/fixtures/writeFixture.ts",
+    "generate:fixtures": "tsx src/test/fixtures/writeFixture.ts",
     "dev:mock": "npm run generate:fixtures && MOCK=true vite",
     "build": "tsc -b && vite build",
     "format": "prettier --check .",
@@ -52,6 +52,7 @@
     "eslint-plugin-simple-import-sort": "12.1.1",
     "globals": "16.5.0",
     "prettier": "3.8.1",
+    "tsx": "^4.21.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.1",
     "vite": "7.3.2",
