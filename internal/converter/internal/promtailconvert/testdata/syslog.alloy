@@ -26,7 +26,8 @@ loki.source.syslog "fun" {
 			cert_file = "/etc/promtail/certs/promtail.crt"
 			key_file  = "/etc/promtail/certs/promtail.key"
 		}
-		udp_queue_size = 0
+		udp_queue_size      = 0
+		udp_host_cache_size = 0
 	}
 	forward_to    = [loki.write.default.receiver]
 	relabel_rules = discovery.relabel.fun.rules
@@ -43,6 +44,7 @@ loki.source.syslog "test_rfc3164" {
 		max_message_length     = 0
 		syslog_format          = "rfc3164"
 		udp_queue_size         = 0
+		udp_host_cache_size    = 0
 	}
 	forward_to    = [loki.write.default.receiver]
 	relabel_rules = null
@@ -58,6 +60,7 @@ loki.source.syslog "test_rfc5424" {
 		use_incoming_timestamp = true
 		max_message_length     = 0
 		udp_queue_size         = 0
+		udp_host_cache_size    = 0
 	}
 	forward_to    = [loki.write.default.receiver]
 	relabel_rules = null
@@ -75,7 +78,8 @@ loki.source.syslog "test_raw" {
 		raw_format_options {
 			use_null_terminator_delimiter = true
 		}
-		udp_queue_size = 0
+		udp_queue_size      = 0
+		udp_host_cache_size = 0
 	}
 	forward_to    = [loki.write.default.receiver]
 	relabel_rules = null

@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/mwitkow/go-conntrack"
 	"github.com/prometheus/common/config"
@@ -106,13 +107,17 @@ func (t *baseTransport) streamParseConfig() syslogparser.StreamParseConfig {
 }
 
 func (t *baseTransport) connectionLabels(ip string) labels.Labels {
+	return t.connectionLabelsWithHostname(ip, lookupAddr(ip))
+}
+
+func (t *baseTransport) connectionLabelsWithHostname(ip, hostname string) labels.Labels {
 	lb := labels.NewBuilder(labels.EmptyLabels())
 	for k, v := range t.config.Labels {
 		lb.Set(string(k), string(v))
 	}
 
 	lb.Set("__syslog_connection_ip_address", ip)
-	lb.Set("__syslog_connection_hostname", lookupAddr(ip))
+	lb.Set("__syslog_connection_hostname", hostname)
 
 	return lb.Labels()
 }
@@ -402,13 +407,29 @@ func (t *TCPTransport) Addr() net.Addr {
 
 type UDPTransport struct {
 	*baseTransport
-	udpConn *net.UDPConn
+	udpConn   *net.UDPConn
+	hostCache *lru.Cache[string, string]
 }
 
 func NewSyslogUDPTransport(cfg TransportConfig) Transport {
+	cacheSize := cfg.Target.UDPHostCacheSize
+	if cacheSize == 0 {
+		cacheSize = scrapeconfig.DefaultUDPHostCacheSize
+	}
+	hostCache, _ := lru.New[string, string](cacheSize)
 	return &UDPTransport{
 		baseTransport: newBaseTransport(cfg),
+		hostCache:     hostCache,
 	}
+}
+
+func (t *UDPTransport) lookupHostname(ip string) string {
+	if hostname, ok := t.hostCache.Get(ip); ok {
+		return hostname
+	}
+	hostname := lookupAddr(ip)
+	t.hostCache.Add(ip, hostname)
+	return hostname
 }
 
 // Run implements SyslogTransport
@@ -457,7 +478,7 @@ func (t *UDPTransport) acceptPackets() {
 
 	t.pendingGoroutines.Go(func() {
 		for msg := range ch {
-			t.handleDatagram(msg.addr, msg.data)
+			t.handleDatagram(msg)
 		}
 	})
 
@@ -493,10 +514,11 @@ func (t *UDPTransport) acceptPackets() {
 	}
 }
 
-func (t *UDPTransport) handleDatagram(src net.Addr, buf []byte) {
-	srcIP := hostFromAddr(src)
-	lbs := t.connectionLabels(srcIP)
-	r := bytes.NewReader(buf)
+func (t *UDPTransport) handleDatagram(msg datagram) {
+	srcIP := hostFromAddr(msg.addr)
+	hostname := t.lookupHostname(srcIP)
+	lbs := t.connectionLabelsWithHostname(srcIP, hostname)
+	r := bytes.NewReader(msg.data)
 
 	cb := func(result *syslog.Result) {
 		if err := result.Error; err != nil {

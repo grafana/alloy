@@ -80,7 +80,10 @@ func (opts RawFormatOptions) Delimiter() byte {
 	return '\n'
 }
 
-const DefaultUDPQueueSize = 10
+const (
+	DefaultUDPQueueSize     = 10
+	DefaultUDPHostCacheSize = 32
+)
 
 // SyslogTargetConfig describes a scrape config that listens for log lines over syslog.
 type SyslogTargetConfig struct {
@@ -136,6 +139,10 @@ type SyslogTargetConfig struct {
 
 	// UDPQueueSize determines max number of messages which may be waiting for a processor.
 	UDPQueueSize int `yaml:"udp_queue_size"`
+
+	// UDPHostCacheSize sets the capacity of the LRU cache for reverse-DNS hostname lookups.
+	// 0 disables caching.
+	UDPHostCacheSize int `yaml:"udp_host_cache_size"`
 }
 
 func (config SyslogTargetConfig) IsRFC3164Message() bool {
