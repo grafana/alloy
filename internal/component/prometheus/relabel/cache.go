@@ -74,12 +74,16 @@ type ttlEntry struct {
 // Get slides the entry's expiry forward, so active series stay cached
 // while inactive entries are reaped after cache_ttl.
 //
-// Go maps don't release bucket memory on delete, so the underlying map
-// holds at the peak working set for the cache's lifetime; restart or
-// config reload to reclaim it.
+// Go maps don't release bucket memory on delete, so a transient
+// cardinality spike would otherwise pin the map at its peak footprint
+// indefinitely. The scanner rebuilds the map when live entries drop far
+// enough below the high-water mark for the reclaim to be worth the copy.
 type ttlRelabelCache struct {
 	mu      sync.RWMutex
 	entries map[uint64]*ttlEntry
+	// peak is the high-water mark of map size since the last rebuild;
+	// scan compares len(entries) against it to decide when to shrink.
+	peak int
 
 	ttl          time.Duration
 	scanInterval time.Duration
@@ -90,6 +94,21 @@ type ttlRelabelCache struct {
 	closeOnce sync.Once
 	closeCh   chan struct{}
 	scanWG    sync.WaitGroup
+}
+
+// shouldShrink applies a two-tier policy. Reclaim scales roughly linearly
+// with peak (empirically ~18MB at 1M / 50% drop, ~150MB at 10M / 33%
+// drop), so larger peaks justify shrinking at smaller drops. Below 1M
+// the absolute savings (≤2MB at 10x drop) aren't worth the rebuild.
+func shouldShrink(peak, live int) bool {
+	switch {
+	case peak >= 10_000_000:
+		return live*3 <= peak*2 // 33%+ drop, reclaims ~150MB+
+	case peak >= 1_000_000:
+		return live*2 <= peak // 50%+ drop, reclaims ~18MB+
+	default:
+		return false
+	}
 }
 
 // scanIntervalFor caps post-expiry lag at ~25% of the TTL.
@@ -131,6 +150,9 @@ func (c *ttlRelabelCache) add(hash uint64, lbls labels.Labels) {
 	e := &ttlEntry{lbls: lbls}
 	e.expires.Store(expires)
 	c.entries[hash] = e
+	if n := len(c.entries); n > c.peak {
+		c.peak = n
+	}
 	c.mu.Unlock()
 }
 
@@ -173,11 +195,13 @@ func (c *ttlRelabelCache) close() {
 	c.scanWG.Wait()
 }
 
-// scan prunes expired entries.
+// scan prunes expired entries and rebuilds the map when it has drained
+// far enough below its peak to make the reclaim worthwhile.
 func (c *ttlRelabelCache) scan(now time.Time) {
 	nowSec := now.Unix()
-	// Phase 1: collect expired keys under RLock. If there's no work,
-	// skip the write lock entirely.
+	// Phase 1: collect expired keys under RLock. Also peek at the
+	// shrink condition so a drain-only cycle (entries removed via stale
+	// markers, nothing expired) still triggers the write lock.
 	c.mu.RLock()
 	var expired []uint64
 	for h, e := range c.entries {
@@ -185,9 +209,10 @@ func (c *ttlRelabelCache) scan(now time.Time) {
 			expired = append(expired, h)
 		}
 	}
+	maybeShrink := shouldShrink(c.peak, len(c.entries)-len(expired))
 	c.mu.RUnlock()
 
-	if len(expired) == 0 {
+	if len(expired) == 0 && !maybeShrink {
 		return
 	}
 
@@ -201,5 +226,24 @@ func (c *ttlRelabelCache) scan(now time.Time) {
 			delete(c.entries, h)
 			c.evictions.Inc()
 		}
+	}
+
+	// Phase 3: shrink if the live set has drained far enough below peak
+	// that the bucket reclaim outweighs the rebuild cost. Resetting peak
+	// to the new size provides natural hysteresis — we can't rebuild
+	// again until the map grows back up and drains.
+	//
+	// The old and new maps coexist until this function returns and the
+	// old one becomes unreachable, so peak footprint briefly grows by
+	// the new map's bucket size (roughly len/peak of the existing
+	// allocation). Acceptable: we'd rather hold the spike for one scan
+	// interval than carry the bloated map indefinitely.
+	if shouldShrink(c.peak, len(c.entries)) {
+		rebuilt := make(map[uint64]*ttlEntry, len(c.entries))
+		for h, e := range c.entries {
+			rebuilt[h] = e
+		}
+		c.entries = rebuilt
+		c.peak = len(c.entries)
 	}
 }
