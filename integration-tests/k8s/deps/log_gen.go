@@ -79,11 +79,11 @@ func (l *LogGen) Cleanup() {
 func readContent(path string) (string, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		return "", fmt.Errorf("resolve log-gen lines path: %w", err)
+		return "", fmt.Errorf("resolve file path path: %w", err)
 	}
 	raw, err := os.ReadFile(absPath)
 	if err != nil {
-		return "", fmt.Errorf("read log-gen lines: %w", err)
+		return "", fmt.Errorf("read file content: %w", err)
 	}
 	return base64.StdEncoding.EncodeToString(raw), nil
 }
