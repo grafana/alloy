@@ -13,9 +13,9 @@ func TestLokiSourceKubernetes(t *testing.T) {
 		Labels: map[string]string{"alloy-integration-test": "true"},
 	})
 
-	targetNamespace := deps.NewNamespace(deps.NamespaceOptions{
-		Name: "log-producer",
-	})
+	targetA := deps.NewNamespace(deps.NamespaceOptions{Name: "log-producer-a"})
+	targetB := deps.NewNamespace(deps.NamespaceOptions{Name: "log-producer-b"})
+	targetC := deps.NewNamespace(deps.NamespaceOptions{Name: "log-producer-c"})
 
 	loki := deps.NewLoki(deps.LokiOptions{Namespace: namespace.Name()})
 
@@ -28,7 +28,9 @@ func TestLokiSourceKubernetes(t *testing.T) {
 	workloads := deps.NewCustomWorkloads(deps.CustomWorkloadsOptions{
 		Path: "./config/workloads.yaml",
 		Vars: map[string]string{
-			"NAMESPACE": targetNamespace.Name(),
+			"NAMESPACE_A": targetA.Name(),
+			"NAMESPACE_B": targetB.Name(),
+			"NAMESPACE_C": targetC.Name(),
 		},
 	})
 
@@ -40,19 +42,39 @@ func TestLokiSourceKubernetes(t *testing.T) {
 	})
 
 	harness.Setup(t, harness.Options{
-		Dependencies: []harness.Dependency{namespace, targetNamespace, logProducerImage, workloads, loki, alloy},
+		Dependencies: []harness.Dependency{namespace, targetA, targetB, targetC, logProducerImage, workloads, loki, alloy},
 	})
 
-	loki.QueryLogs(t, "log-producer",
+	loki.QueryLogs(t, "loki-source-kubernetes",
 		deps.ExpectedLogResult{
-			EntryCount:         3,
-			Labels:             map[string]string{"namespace": targetNamespace.Name()},
-			StructuredMetadata: map[string]string{"pod": "log-producer"},
+			EntryCount:         10,
+			Labels:             map[string]string{"namespace": targetA.Name()},
+			StructuredMetadata: map[string]string{"pod": "log-producer-0"},
 		},
 		deps.ExpectedLogResult{
-			EntryCount:         3,
-			Labels:             map[string]string{"namespace": targetNamespace.Name()},
-			StructuredMetadata: map[string]string{"pod": "log-producer-2"},
+			EntryCount:         10,
+			Labels:             map[string]string{"namespace": targetA.Name()},
+			StructuredMetadata: map[string]string{"pod": "log-producer-1"},
+		},
+		deps.ExpectedLogResult{
+			EntryCount:         10,
+			Labels:             map[string]string{"namespace": targetB.Name()},
+			StructuredMetadata: map[string]string{"pod": "log-producer-0"},
+		},
+		deps.ExpectedLogResult{
+			EntryCount:         10,
+			Labels:             map[string]string{"namespace": targetB.Name()},
+			StructuredMetadata: map[string]string{"pod": "log-producer-1"},
+		},
+		deps.ExpectedLogResult{
+			EntryCount:         10,
+			Labels:             map[string]string{"namespace": targetC.Name()},
+			StructuredMetadata: map[string]string{"pod": "log-producer-0"},
+		},
+		deps.ExpectedLogResult{
+			EntryCount:         10,
+			Labels:             map[string]string{"namespace": targetC.Name()},
+			StructuredMetadata: map[string]string{"pod": "log-producer-1"},
 		},
 	)
 }

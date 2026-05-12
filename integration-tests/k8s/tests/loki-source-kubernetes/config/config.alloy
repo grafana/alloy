@@ -9,7 +9,11 @@ livedebugging {
 discovery.kubernetes "pods" {
   role = "pod"
   namespaces {
-    names = [sys.env("TARGET_NAMESPACE")]
+    names = [
+      sys.env("TARGET_NAMESPACE_A"),
+      sys.env("TARGET_NAMESPACE_B"),
+      sys.env("TARGET_NAMESPACE_C"),
+    ]
   }
 }
 
@@ -51,6 +55,6 @@ loki.write "loki" {
   }
 
   external_labels = {
-      alloy_test_name = "log-producer",
+      alloy_test_name = "loki-source-kubernetes",
   }
 }
