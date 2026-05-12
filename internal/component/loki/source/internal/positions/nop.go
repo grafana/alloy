@@ -10,6 +10,8 @@ func NewNop() *Nop {
 
 type Nop struct{}
 
+func (n *Nop) Update(cfg Config) {}
+
 func (n *Nop) Get(path string, labels string) (int64, error) { return 0, nil }
 
 func (n *Nop) GetString(path string, labels string) string { return "" }

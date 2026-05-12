@@ -15,8 +15,9 @@ func (s *ScrapeConfigBuilder) AppendJournalConfig() {
 	if jc == nil {
 		return
 	}
-	//TODO(thampiotr): this default value should be imported from promtail once it's made public there.
-	var maxAge = time.Hour * 7 // use default value
+	args := journal.Arguments{}
+	args.SetToDefault()
+
 	if len(jc.MaxAge) > 0 {
 		parsedAge, err := time.ParseDuration(jc.MaxAge)
 		if err != nil {
@@ -25,17 +26,16 @@ func (s *ScrapeConfigBuilder) AppendJournalConfig() {
 				fmt.Sprintf("failed to parse max_age duration for journal config: %s, will use default", err),
 			)
 		} else {
-			maxAge = parsedAge
+			args.MaxAge = parsedAge
 		}
 	}
-	args := journal.Arguments{
-		FormatAsJson: jc.JSON,
-		MaxAge:       maxAge,
-		Path:         jc.Path,
-		ForwardTo:    s.getOrNewProcessStageReceivers(),
-		Labels:       convertPromLabels(jc.Labels),
-		RelabelRules: alloyrelabel.Rules{},
-	}
+
+	args.FormatAsJson = jc.JSON
+	args.Path = jc.Path
+	args.ForwardTo = s.getOrNewProcessStageReceivers()
+	args.Labels = convertPromLabels(jc.Labels)
+	args.RelabelRules = alloyrelabel.Rules{}
+
 	relabelRulesExpr := s.getOrNewDiscoveryRelabelRules()
 	hook := func(val any) any {
 		if _, ok := val.(alloyrelabel.Rules); ok {

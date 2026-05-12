@@ -55,11 +55,13 @@ You can use the following blocks with `loki.source.docker`:
 | `http_client_config` > [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `http_client_config` > `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
 | `http_client_config` > [`tls_config`][tls_config]            | Configure TLS settings for connecting to the endpoint.     | no       |
+| [`position`][position]                                       | Configure how positions are keyed and synced to disk.      | no       |
 
 [authorization]: #authorization
 [basic_auth]: #basic_auth
 [http_client_config]: #http_client_config
 [oauth2]: #oauth2
+[position]: #position
 [tls_config]: #tls_config
 
 {{< /docs/alloy-config >}}
@@ -95,6 +97,10 @@ The `oauth2` block configures OAuth 2.0 authorization to use for the Docker daem
 The `tls_config` block configures TLS settings for connecting to HTTPS Docker daemons.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `position`
+
+{{< docs/shared lookup="reference/components/loki-source-position-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Exported fields
 
