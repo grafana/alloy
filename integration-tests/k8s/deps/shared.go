@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -110,4 +112,12 @@ func curl(c *assert.CollectT, targetURL string, header http.Header) string {
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(c, err)
 	return string(body)
+}
+
+func pkgDir() (string, error) {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		return "", fmt.Errorf("could not determine package directory")
+	}
+	return filepath.Dir(file), nil
 }

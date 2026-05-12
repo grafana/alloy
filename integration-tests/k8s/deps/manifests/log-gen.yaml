@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: log-gen
+  namespace: ${NAMESPACE}
+spec:
+  serviceName: log-producer
+  replicas: ${REPLICAS}
+  selector:
+    matchLabels:
+      app: log-gen
+  template:
+    metadata:
+      labels:
+        app: log-gen
+        alloy-logs-test: "true"
+    spec:
+      containers:
+        - name: log-gen
+          image: log-gen:test
+          imagePullPolicy: Never
