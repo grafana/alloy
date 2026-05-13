@@ -56,7 +56,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "split-max-line-size", "abcdefghij\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename:    name,
 			MaxLineSize: 4,
 		})
@@ -72,7 +72,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "split-max-line-size-boundary", "abcdefgh\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename:    name,
 			MaxLineSize: 4,
 		})
@@ -87,7 +87,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "split-max-line-size-boundary", "abcdefgh\r\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename:    name,
 			MaxLineSize: 4,
 		})
@@ -102,7 +102,7 @@ func TestFile(t *testing.T) {
 		fileName := createCompressedFile(t, "split-max-line-size.gz", "gz", strings.NewReader("abcdefghij"))
 		defer removeFile(t, fileName)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename:    fileName,
 			Compression: "gz",
 			MaxLineSize: 4,
