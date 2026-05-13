@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -147,7 +146,7 @@ func TestDrainRoute(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			route := newDrainRoute(log.NewNopLogger(), newMetrics(prometheus.NewRegistry()))
+			route := newDrainRoute(newMetrics(prometheus.NewRegistry()))
 			req := newDrainRequest(t, tt.params, tt.body, tt.headers)
 
 			entries, status, err := route.Logs(req, tt.cfg)

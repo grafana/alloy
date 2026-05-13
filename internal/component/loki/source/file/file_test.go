@@ -23,7 +23,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -369,7 +368,7 @@ func TestTwoTargets(t *testing.T) {
 	runTests(t, func(t *testing.T, match FileMatch) {
 		// Create opts for component
 		opts := component.Options{
-			Logger:        util.TestAlloyLogger(t),
+			SLogger:       logging.NewSlogNop(),
 			Registerer:    prometheus.NewRegistry(),
 			OnStateChange: func(e component.Exports) {},
 			DataPath:      t.TempDir(),
@@ -500,7 +499,7 @@ func TestEncoding(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				opts := component.Options{
-					Logger:        util.TestAlloyLogger(t),
+					SLogger:       logging.NewSlogNop(),
 					Registerer:    prometheus.NewRegistry(),
 					OnStateChange: func(e component.Exports) {},
 					DataPath:      t.TempDir(),

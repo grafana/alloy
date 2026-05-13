@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestPullTarget(t *testing.T) {
@@ -94,7 +94,7 @@ func testPullTarget(t *testing.T, recv loki.LogsReceiver) *testContext {
 	sub := newFakeSubscription()
 	target := &PullTarget{
 		metrics:    NewMetrics(prometheus.NewRegistry()),
-		logger:     log.NewNopLogger(),
+		logger:     logging.NewSlogNop(),
 		recv:       recv,
 		ctx:        ctx,
 		cancel:     cancel,
