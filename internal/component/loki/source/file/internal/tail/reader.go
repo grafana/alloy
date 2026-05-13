@@ -63,7 +63,7 @@ func newReader(logger *slog.Logger, f *os.File, offset int64, maxLineSize int, e
 		br:          bufio.NewReader(rr),
 		pos:         offset,
 		pending:     make([]byte, 0, defaultBufSize),
-		maxLineSize: maxLineSize,
+		maxLineSize: max(0, maxLineSize),
 		decoder:     decoder,
 		nl:          nl,
 		lastNl:      nl[len(nl)-1],
