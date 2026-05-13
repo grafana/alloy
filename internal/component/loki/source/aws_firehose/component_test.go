@@ -32,46 +32,6 @@ func TestComponent(t *testing.T) {
 	goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
 	opts := component.Options{
-<<<<<<< HEAD
-		ID:            "foo/loki.source.awsfirehose.default",
-		Logger:        logging.NewSlogNop(),
-		Registerer:    prometheus.NewRegistry(),
-		OnStateChange: func(e component.Exports) {},
-	}
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
-	r1, r2 := newReceiver(ch1.Chan()), newReceiver(ch2.Chan())
-
-	// call cancelReceivers to terminate them
-	receiverContext, cancelReceivers := context.WithCancel(t.Context())
-	go r1.run(receiverContext)
-	go r2.run(receiverContext)
-
-	args := Arguments{}
-
-	port, err := freeport.GetFreePort()
-	require.NoError(t, err)
-	args.Server = &fnet.ServerConfig{
-		HTTP: &fnet.HTTPConfig{
-			ListenAddress: "localhost",
-			ListenPort:    port,
-		},
-		// assign random grpc port
-		GRPC: &fnet.GRPCConfig{ListenPort: 0},
-	}
-	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
-
-	// Create and run the component.
-	c, err := New(opts, args)
-	require.NoError(t, err)
-	require.NotNil(t, c)
-
-	cancelReceivers()
-}
-
-func TestComponent(t *testing.T) {
-	opts := component.Options{
-=======
->>>>>>> c68ccef72 (loki.source.aws_firehose: Migrate to Consumer)
 		ID:            "loki.source.awsfirehose",
 		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
