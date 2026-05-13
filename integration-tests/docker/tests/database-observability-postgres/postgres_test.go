@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
+	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +31,7 @@ func TestDatabaseObservabilityPostgresLogs(t *testing.T) {
 		"create_statement",
 	}
 
-	var logResponse common.LogResponse
+	var logResponse lokihttp.LogResponse
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		_, err := common.FetchDataFromURL(common.LogQuery(testName, 100), &logResponse)

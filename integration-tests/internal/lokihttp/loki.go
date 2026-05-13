@@ -1,4 +1,4 @@
-package common
+package lokihttp
 
 import (
 	"encoding/json"

@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
+	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 )
 
 const testName = "database_observability_mysql"
@@ -31,7 +32,7 @@ func TestDatabaseObservabilityMySQLLogs(t *testing.T) {
 		"create_statement",
 	}
 
-	var logResponse common.LogResponse
+	var logResponse lokihttp.LogResponse
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		_, err := common.FetchDataFromURL(common.LogQuery(testName, 100), &logResponse)
