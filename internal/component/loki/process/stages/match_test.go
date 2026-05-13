@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -226,4 +227,21 @@ func TestValidateMatcherConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMatchStage_NewPipelineErrorIsWrapped(t *testing.T) {
+	cfg := StageConfig{
+		MatchConfig: &MatchConfig{
+			Selector: `{app="loki"}`,
+			Action:   MatchActionKeep,
+			Stages: []StageConfig{
+				{RegexConfig: &RegexConfig{Expression: "[unclosed"}},
+			},
+		},
+	}
+
+	logger := util.TestAlloyLogger(t)
+	_, err := New(logger.Slog(), cfg, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	require.ErrorContains(t, err, "match stage failed to create pipeline")
+	require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
 }

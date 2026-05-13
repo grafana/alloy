@@ -73,7 +73,7 @@ func newMatcherStage(slogger *slog.Logger, config MatchConfig, registerer promet
 		var err error
 		pl, err = NewPipeline(slogger, config.Stages, registerer, minStability)
 		if err != nil {
-			return nil, fmt.Errorf("%v: %w", err, fmt.Errorf("match stage failed to create pipeline from config: %v", config))
+			return nil, fmt.Errorf("match stage failed to create pipeline from config %+v: %w", config, err)
 		}
 	}
 
