@@ -250,7 +250,13 @@ func (c *Component) process(e loki.Entry) model.LabelSet {
 	}
 	c.builder.Sort()
 	lbls := c.builder.Labels()
-	lbls, _ = relabel.Process(lbls, c.rcs...)
+	if len(c.rcs) > 0 {
+		lb := labels.NewBuilder(lbls)
+		if !relabel.ProcessBuilder(lb, c.rcs...) {
+			return nil
+		}
+		lbls = lb.Labels()
+	}
 
 	relabeled := make(model.LabelSet, lbls.Len())
 	lbls.Range(func(lbl labels.Label) {
