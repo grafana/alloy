@@ -956,7 +956,7 @@ func TestComponent_UpdateInvalidConfig(t *testing.T) {
 	require.NoError(t, ctrl.WaitExports(time.Minute))
 
 	recv := ctrl.Exports().(Exports).Receiver
-	fanout := loki.NewFanout([]loki.LogsReceiver{recv})
+	fanout := loki.NewFanout([]loki.LogsReceiver{recv}, prometheus.DefaultRegisterer)
 
 	wg.Go(func() {
 		for {
@@ -1489,12 +1489,12 @@ func TestLeakyUpdate(t *testing.T) {
 	metrics1 := fmt.Sprintf(metricsTemplate1, numLogsToSend)
 	metrics2 := fmt.Sprintf(metricsTemplate2, numLogsToSend)
 
-	tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
-	tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
+	tester.updateAndTest(numLogsToSend, cfg1, forwardedEntriesTotalMetric(0), metrics1+forwardedEntriesTotalMetric(numLogsToSend))
+	tester.updateAndTest(numLogsToSend, cfg2, forwardedEntriesTotalMetric(numLogsToSend), metrics2+forwardedEntriesTotalMetric(numLogsToSend*2))
 
 	for i := 0; i < 100; i++ {
-		tester.updateAndTest(numLogsToSend, cfg1, "", metrics1)
-		tester.updateAndTest(numLogsToSend, cfg2, "", metrics2)
+		tester.updateAndTest(numLogsToSend, cfg1, forwardedEntriesTotalMetric(2*(i+1)*numLogsToSend), metrics1+forwardedEntriesTotalMetric(2*(i+1)*numLogsToSend+1))
+		tester.updateAndTest(numLogsToSend, cfg2, forwardedEntriesTotalMetric(2*(i+1)*numLogsToSend+1), metrics2+forwardedEntriesTotalMetric(2*(i+2)*numLogsToSend))
 	}
 }
 
@@ -1541,8 +1541,8 @@ func TestMetricsStageRefresh(t *testing.T) {
 	// The component will be reconfigured so that it has a metric.
 	t.Run("config with a metric", func(t *testing.T) {
 		tester.updateAndTest(numLogsToSend, cfg,
-			"",
-			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend))
+			forwardedEntriesTotalMetric(0),
+			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend)+forwardedEntriesTotalMetric(numLogsToSend))
 	})
 
 	// The component will be "updated" with the same config.
@@ -1553,15 +1553,15 @@ func TestMetricsStageRefresh(t *testing.T) {
 	// Those users wouldn't expect their metrics to be reset every time the config is reloaded.
 	t.Run("config with the same metric", func(t *testing.T) {
 		tester.updateAndTest(numLogsToSend, cfg,
-			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend),
-			fmt.Sprintf(expectedMetrics, 2*numLogsToSend, 2*numLogsToSend))
+			fmt.Sprintf(expectedMetrics, numLogsToSend, numLogsToSend)+forwardedEntriesTotalMetric(numLogsToSend),
+			fmt.Sprintf(expectedMetrics, 2*numLogsToSend, 2*numLogsToSend)+forwardedEntriesTotalMetric(2*numLogsToSend))
 	})
 
 	// Use a config which has no metrics stage.
 	// This should cause the metric to disappear.
 	cfgWithNoStages := forwardArgs
 	t.Run("config with no metrics stage", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, cfgWithNoStages, "", "")
+		tester.updateAndTest(numLogsToSend, cfgWithNoStages, forwardedEntriesTotalMetric(numLogsToSend*2), forwardedEntriesTotalMetric(numLogsToSend*3))
 	})
 
 	// Use a config which has a metric with a different name,
@@ -1605,13 +1605,18 @@ func TestMetricsStageRefresh(t *testing.T) {
 	# HELP loki_process_custom_outer_counter_2
 	# TYPE loki_process_custom_outer_counter_2 counter
 	loki_process_custom_outer_counter_2{filename="/var/log/pods/agent/agent/1.log",foo="bar"} %d
-	`
+	` + forwardedEntriesTotalMetric(numLogsToSend*4)
 
 	t.Run("config with a new and old metric", func(t *testing.T) {
-		tester.updateAndTest(numLogsToSend, updatedCfg,
-			"",
-			fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend, numLogsToSend))
+		tester.updateAndTest(numLogsToSend, updatedCfg, forwardedEntriesTotalMetric(9), fmt.Sprintf(expectedMetrics3, numLogsToSend, numLogsToSend, numLogsToSend))
 	})
+}
+func forwardedEntriesTotalMetric(n int) string {
+	return fmt.Sprintf(`
+	# HELP loki_forwarded_entries_total Total number of entries sent to downstream components.
+	# TYPE loki_forwarded_entries_total counter
+	loki_forwarded_entries_total %d
+`, n)
 }
 
 type tester struct {

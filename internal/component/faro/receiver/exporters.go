@@ -94,12 +94,12 @@ type logsExporter struct {
 
 var _ exporter = (*logsExporter)(nil)
 
-func newLogsExporter(log log.Logger, sourceMaps sourceMapsStore, format LogFormat) *logsExporter {
+func newLogsExporter(log log.Logger, sourceMaps sourceMapsStore, format LogFormat, registerer prometheus.Registerer) *logsExporter {
 	return &logsExporter{
 		log:        log,
 		sourceMaps: sourceMaps,
 		format:     format,
-		fanout:     loki.NewFanout([]loki.LogsReceiver{}),
+		fanout:     loki.NewFanout([]loki.LogsReceiver{}, registerer),
 	}
 }
 

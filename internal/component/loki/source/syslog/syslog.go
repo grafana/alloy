@@ -63,7 +63,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:            o,
 		metrics:         st.NewMetrics(o.Registerer),
 		handler:         loki.NewLogsReceiver(),
-		fanout:          loki.NewFanout(args.ForwardTo),
+		fanout:          loki.NewFanout(args.ForwardTo, o.Registerer),
 		targetsUpdated:  make(chan struct{}, 1),
 		targets:         []*st.SyslogTarget{},
 		liveDbgListener: newLiveDebuggingListener(o),

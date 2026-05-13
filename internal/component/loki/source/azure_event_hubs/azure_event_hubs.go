@@ -78,7 +78,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:    o,
 		handler: loki.NewLogsReceiver(),
-		fanout:  loki.NewFanout(args.ForwardTo),
+		fanout:  loki.NewFanout(args.ForwardTo, o.Registerer),
 	}
 
 	// Call to Update() to start readers and set receivers once at the start.

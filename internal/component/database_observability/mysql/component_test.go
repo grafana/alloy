@@ -548,7 +548,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 		c := &Component{
 			opts:      opts,
 			args:      args,
-			fanout:    loki.NewFanout(args.ForwardTo),
+			fanout:    loki.NewFanout(args.ForwardTo, opts.Registerer),
 			handler:   loki.NewLogsReceiver(),
 			registry:  prometheus.NewRegistry(),
 			healthErr: atomic.NewString(""),

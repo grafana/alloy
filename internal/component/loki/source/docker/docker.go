@@ -140,7 +140,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		exited:    atomic.NewBool(false),
 		handler:   loki.NewLogsReceiver(),
 		scheduler: source.NewScheduler[string](),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanout(args.ForwardTo, o.Registerer),
 		posFile:   positionsFile,
 	}
 

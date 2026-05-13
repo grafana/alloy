@@ -137,7 +137,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 		positions: positionsFile,
 		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanout(args.ForwardTo, o.Registerer),
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err

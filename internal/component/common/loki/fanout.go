@@ -3,21 +3,31 @@ package loki
 import (
 	"context"
 	"sync"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // NewFanout creates a new Fanout that will send log entries to the provided
 // list of LogsReceivers.
-func NewFanout(children []LogsReceiver) *Fanout {
+func NewFanout(children []LogsReceiver, reg prometheus.Registerer) *Fanout {
+	counter := prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "loki_forwarded_entries_total",
+		Help: "Total number of entries sent to downstream components.",
+	})
+	_ = reg.Register(counter)
+
 	return &Fanout{
-		children: children,
+		children:     children,
+		entryCounter: counter,
 	}
 }
 
 // Fanout distributes log entries to multiple LogsReceivers.
 // It is thread-safe and allows the list of receivers to be updated dynamically
 type Fanout struct {
-	mut      sync.RWMutex
-	children []LogsReceiver
+	mut          sync.RWMutex
+	children     []LogsReceiver
+	entryCounter prometheus.Counter
 }
 
 // Send forwards a log entry to all registered receivers. It returns an error
@@ -33,6 +43,8 @@ func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 	// operation, receiver list updates (which require a write lock) will block
 	// until all in-flight Send calls complete. This prevents sending entries to
 	// receivers that have been removed by the scheduler.
+
+	f.entryCounter.Inc()
 
 	f.mut.RLock()
 	defer f.mut.RUnlock()
@@ -59,6 +71,8 @@ func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
 	// operation, receiver list updates (which require a write lock) will block
 	// until all in-flight Send calls complete. This prevents sending entries to
 	// receivers that have been removed by the scheduler.
+
+	f.entryCounter.Add(float64(len(batch)))
 
 	f.mut.RLock()
 	defer f.mut.RUnlock()

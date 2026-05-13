@@ -249,7 +249,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:               o,
 		log:                o.SLogger,
 		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
-		fanout:             loki.NewFanout(args.ForwardTo),
+		fanout:             loki.NewFanout(args.ForwardTo, o.Registerer),
 		metrics:            newMetrics(o.Registerer),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}

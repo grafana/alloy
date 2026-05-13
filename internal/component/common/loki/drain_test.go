@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/grafana/loki/pkg/push"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -32,7 +33,7 @@ func TestDrain(t *testing.T) {
 			}
 		})
 
-		Drain(recv, NewFanout([]LogsReceiver{collector.Receiver()}), time.Second, func() {
+		Drain(recv, NewFanout([]LogsReceiver{collector.Receiver()}, prometheus.DefaultRegisterer), time.Second, func() {
 			require.Eventually(t, func() bool {
 				return len(collector.Received()) == 1
 			}, time.Second, 10*time.Millisecond)
@@ -60,7 +61,7 @@ func TestDrain(t *testing.T) {
 			}
 		})
 
-		Drain(recv, NewFanout([]LogsReceiver{blockedRecv}), 20*time.Millisecond, func() {
+		Drain(recv, NewFanout([]LogsReceiver{blockedRecv}, prometheus.DefaultRegisterer), 20*time.Millisecond, func() {
 			time.Sleep(100 * time.Millisecond)
 		})
 
@@ -87,7 +88,7 @@ func TestDrain(t *testing.T) {
 
 			var wg sync.WaitGroup
 			wg.Go(func() {
-				Drain(recv, NewFanout([]LogsReceiver{consumer}), 100*time.Millisecond, func() {
+				Drain(recv, NewFanout([]LogsReceiver{consumer}, prometheus.DefaultRegisterer), 100*time.Millisecond, func() {
 					// Wait until the producer has finished sending all entries.
 					producerWG.Wait()
 				})

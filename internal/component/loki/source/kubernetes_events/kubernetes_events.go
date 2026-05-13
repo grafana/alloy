@@ -127,7 +127,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		handler:   loki.NewLogsReceiver(),
 		cluster:   data.(cluster.Cluster),
 		scheduler: source.NewScheduler[string](),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanout(args.ForwardTo, o.Registerer),
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err

@@ -318,7 +318,7 @@ func Test_LogsExporter_Export(t *testing.T) {
 			t.Parallel()
 			var (
 				lr  = newFakeLogsReceiver(t)
-				exp = newLogsExporter(util.TestLogger(t), &varSourceMapsStore{}, tc.format)
+				exp = newLogsExporter(util.TestLogger(t), &varSourceMapsStore{}, tc.format, prometheus.DefaultRegisterer)
 			)
 			exp.SetReceivers([]loki.LogsReceiver{lr})
 			exp.SetLabels(map[string]string{
