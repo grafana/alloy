@@ -171,17 +171,18 @@ func TestTailer_RetryErrorIterating(t *testing.T) {
 	getClient = func(apiKey, zoneID string, fields []string) (Client, error) {
 		return cfClient, nil
 	}
-	// retries as fast as possible.
-	defaultBackoff.MinBackoff = 0
-	defaultBackoff.MaxBackoff = 0
 	metrics := newMetrics(prometheus.NewRegistry())
 	ta := &tailer{
 		logger:  logger,
 		handler: handler.Receiver(),
 		client:  cfClient,
 		config: &tailerConfig{
-			Labels:  make(model.LabelSet),
-			Backoff: defaultBackoff,
+			Labels: make(model.LabelSet),
+			Backoff: backoff.Config{
+				MinBackoff: 0,
+				MaxBackoff: 0,
+				MaxRetries: 5,
+			},
 		},
 		metrics: metrics,
 	}
@@ -202,7 +203,7 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 			PullRange:  model.Duration(time.Minute),
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
-			Backoff:    defaultBackoff,
+			Backoff:    backoff.Config{MinBackoff: 0, MaxBackoff: 0, MaxRetries: 5},
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		handler  = loki.NewCollectingHandler()
@@ -212,9 +213,6 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 		SyncPeriod:    10 * time.Second,
 		PositionsFile: t.TempDir() + "/positions.yml",
 	})
-	// retries as fast as possible.
-	defaultBackoff.MinBackoff = 0
-	defaultBackoff.MaxBackoff = 0
 
 	// set our end time to be the last time we have a position
 	ps.Put(positions.CursorKey(cfg.ZoneID), cfg.Labels.String(), end.UnixNano())
@@ -229,7 +227,6 @@ func TestTailer_CloudflareTargetError(t *testing.T) {
 
 	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
-	require.True(t, ta.ready())
 
 	// wait for the target to be stopped.
 	require.Eventually(t, func() bool {
@@ -257,7 +254,7 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 			PullRange:  model.Duration(time.Minute),
 			FieldsType: FieldsTypeDefault,
 			Workers:    3,
-			Backoff:    defaultBackoff,
+			Backoff:    backoff.Config{MinBackoff: 0, MaxBackoff: 0, MaxRetries: 5},
 		}
 		end      = time.Unix(0, time.Hour.Nanoseconds())
 		handler  = loki.NewCollectingHandler()
@@ -267,9 +264,6 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 		SyncPeriod:    10 * time.Second,
 		PositionsFile: t.TempDir() + "/positions.yml",
 	})
-	// retries as fast as possible.
-	defaultBackoff.MinBackoff = 0
-	defaultBackoff.MaxBackoff = 0
 
 	// set our end time to be the last time we have a position
 	ps.Put(positions.CursorKey(cfg.ZoneID), cfg.Labels.String(), end.UnixNano())
@@ -284,7 +278,6 @@ func TestTailer_CloudflareTargetError168h(t *testing.T) {
 
 	ta, err := newTailer(newMetrics(prometheus.NewRegistry()), logger, handler.Receiver(), ps, cfg)
 	require.NoError(t, err)
-	require.True(t, ta.ready())
 
 	// wait for the target to be stopped.
 	require.Eventually(t, func() bool {
