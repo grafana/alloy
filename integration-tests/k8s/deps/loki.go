@@ -137,7 +137,6 @@ func (l *Loki) QueryLogs(t *testing.T, testName string, expected ...ExpectedLogR
 
 		for _, e := range expected {
 			entries := matchingEntries(e.Labels, e.StructuredMetadata, parsed.Data.Result)
-			require.NotEmptyf(c, entries, "no entries with labels %v and structured metadata %v", e.Labels, e.StructuredMetadata)
 			require.Lenf(c, entries, e.EntryCount, "unexpected entry count for labels %v and structured metadata %v", e.Labels, e.StructuredMetadata)
 		}
 	}, timeout, retryInterval)
