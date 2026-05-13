@@ -141,11 +141,6 @@ func (r *reader) decode(line []byte) (string, error) {
 // consumeLine checks pending for the delimiter; if found, it splits
 // pending into line and remainder.
 func (r *reader) consumeLine() ([]byte, bool) {
-	// If we have no pending data we need to read more.
-	if len(r.pending) == 0 {
-		return nil, false
-	}
-
 	i := bytes.Index(r.pending, r.nl)
 
 	// If we have a full line buffered within maxLineSize plus the optional carriage
