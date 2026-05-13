@@ -33,7 +33,7 @@ func TestAlloyGqlRunExecutesQuery(t *testing.T) {
 	require.NoError(t, g.Run("alloy { isReady }", &output))
 
 	require.Equal(t, "query { alloy { isReady } }", receivedQuery)
-	require.JSONEq(t, `{"alloy":{"isReady":true}}`, output.String())
+	require.JSONEq(t, `{"data":{"alloy":{"isReady":true}}}`, output.String())
 }
 
 func TestAlloyGqlRunLeavesCompleteQueryUnchanged(t *testing.T) {
@@ -55,7 +55,7 @@ func TestAlloyGqlRunLeavesCompleteQueryUnchanged(t *testing.T) {
 	require.NoError(t, g.Run("{ alloy { version } }", &output))
 
 	require.Equal(t, "{ alloy { version } }", receivedQuery)
-	require.JSONEq(t, `{"alloy":{"version":"dev"}}`, output.String())
+	require.JSONEq(t, `{"data":{"alloy":{"version":"dev"}}}`, output.String())
 }
 
 func TestAlloyGqlRunReturnsErrorForGraphQLErrors(t *testing.T) {
@@ -72,5 +72,5 @@ func TestAlloyGqlRunReturnsErrorForGraphQLErrors(t *testing.T) {
 
 	require.Error(t, runErr)
 	require.ErrorContains(t, runErr, "GraphQL response contains errors")
-	require.Contains(t, output.String(), "bad query")
+	require.JSONEq(t, `{"errors":[{"message":"bad query"}]}`, output.String())
 }

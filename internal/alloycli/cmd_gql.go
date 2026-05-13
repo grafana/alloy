@@ -42,7 +42,7 @@ with caution in production.
 
 	cmd.Flags().StringVar(
 		&g.httpAddr,
-		"server.graphql.endpoint",
+		"endpoint",
 		g.httpAddr,
 		"Address of the GraphQL endpoint",
 	)
@@ -70,7 +70,15 @@ func (g *alloyGql) Run(query string, out io.Writer) error {
 func formatGraphQLQuery(query string) string {
 	trimmedQuery := strings.TrimSpace(query)
 
-	for _, prefix := range []string{"{", "query", "mutation", "subscription"} {
+	for _, prefix := range []string{
+		"{",
+		"query ",
+		"mutation ",
+		"subscription ",
+		"query{",
+		"mutation{",
+		"subscription{",
+	} {
 		if strings.HasPrefix(trimmedQuery, prefix) {
 			return query
 		}

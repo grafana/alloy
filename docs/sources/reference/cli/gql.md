@@ -38,7 +38,7 @@ The GraphQL API is disabled by default.
 To enable it, start {{< param "PRODUCT_NAME" >}} with the `--stability.level=experimental` and `--feature.graphql.enabled` flags:
 
 ```shell
-alloy run --stability.level=experimental --feature.graphql.enabled <PATH_NAME>
+alloy run --stability.level=experimental --feature.graphql.enabled <CONFIG_PATH>
 ```
 
 Replace _`<PATH_NAME>`_ with the {{< param "PRODUCT_NAME" >}} configuration file or directory path.
@@ -71,7 +71,7 @@ query { alloy { version isReady } }
 
 The following flags are supported:
 
-* `--server.graphql.endpoint`: Address of the GraphQL endpoint (default `"http://127.0.0.1:12345/graphql"`).
+* `--endpoint`: Address of the GraphQL endpoint (default `"http://127.0.0.1:12345/graphql"`).
 
 ## Examples
 
@@ -85,17 +85,19 @@ The output resembles the following:
 
 ```json
 {
-  "alloy": {
-    "isReady": true,
-    "version": "v1.14.0"
+  "data": {
+    "alloy": {
+      "isReady": true,
+      "version": "v1.14.0"
+    }
   }
 }
 ```
 
-To query a GraphQL endpoint on a different address, use the `--server.graphql.endpoint` flag:
+To query a GraphQL endpoint on a different address, use the `--endpoint` flag:
 
 ```shell
-alloy gql --server.graphql.endpoint=http://localhost:12345/graphql 'components { id health { message } }'
+alloy gql --endpoint=http://localhost:12345/graphql 'components { id health { message } }'
 ```
 
 [GraphQL API]: ../../http/graphql/

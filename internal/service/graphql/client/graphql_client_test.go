@@ -38,12 +38,10 @@ func TestExecuteReturnsGraphQLErrorsInResponse(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Len(t, response.Errors, 1)
-	require.Contains(t, string(response.Raw), "bad query")
+	require.Equal(t, map[string]any{"message": "bad query"}, response.Errors[0])
 }
 
 func TestExecuteReturnsErrorForOversizedResponse(t *testing.T) {
-	const maxResponseBodySize = 5 * 1024 * 1024
-
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, err := w.Write([]byte(strings.Repeat("a", maxResponseBodySize+1)))
 		require.NoError(t, err)

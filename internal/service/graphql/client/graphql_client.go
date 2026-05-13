@@ -32,7 +32,6 @@ type GraphQLRequest struct {
 type GraphQLResponse struct {
 	Data   any   `json:"data,omitempty"`
 	Errors []any `json:"errors,omitempty"`
-	Raw    []byte
 }
 
 // NewGraphQLClient creates a new GraphQL client
@@ -54,7 +53,7 @@ func (c *GraphQLClient) SetHeader(key, value string) {
 	c.headers.Set(key, value)
 }
 
-// Execute sends a GraphQL query and returns the raw response bytes
+// Execute sends a GraphQL query and returns the parsed response.
 func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
 	reqBody := GraphQLRequest{Query: query}
 	jsonBody, err := json.Marshal(reqBody)
@@ -100,6 +99,5 @@ func (c *GraphQLClient) parseResponse(data []byte) (*GraphQLResponse, error) {
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return nil, fmt.Errorf("failed to parse GraphQL response: %w", err)
 	}
-	resp.Raw = data
 	return &resp, nil
 }
