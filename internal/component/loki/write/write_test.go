@@ -167,7 +167,7 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	alterConfig(&args)
 
 	// Set up and start the component.
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.write")
+	tc, err := componenttest.NewControllerFromID(util.TestAlloyLogger(t), "loki.write")
 	require.NoError(t, err)
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args)

@@ -2,6 +2,7 @@ package wal
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -9,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
@@ -18,7 +18,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/loki/util"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -44,7 +43,7 @@ type WriteEventSubscriber interface {
 // old segments.
 type Writer struct {
 	entries     chan loki.Entry
-	log         log.Logger
+	logger      *slog.Logger
 	wg          sync.WaitGroup
 	once        sync.Once
 	wal         WAL
@@ -64,7 +63,7 @@ type Writer struct {
 }
 
 // NewWriter creates a new Writer.
-func NewWriter(walCfg Config, logger log.Logger, reg prometheus.Registerer) (*Writer, error) {
+func NewWriter(walCfg Config, logger *slog.Logger, reg prometheus.Registerer) (*Writer, error) {
 	// Start WAL
 	wl, err := New(Config{
 		Dir:     walCfg.Dir,
@@ -76,7 +75,7 @@ func NewWriter(walCfg Config, logger log.Logger, reg prometheus.Registerer) (*Wr
 
 	wrt := &Writer{
 		entries:      make(chan loki.Entry),
-		log:          logger,
+		logger:       logger,
 		wg:           sync.WaitGroup{},
 		wal:          wl,
 		entryWriter:  newEntryWriter(),
@@ -116,8 +115,8 @@ func (wrt *Writer) Start(maxSegmentAge time.Duration) {
 	// main WAL writer routine
 	wrt.wg.Go(func() {
 		for e := range wrt.entries {
-			if err := wrt.entryWriter.WriteEntry(e, wrt.wal, wrt.log); err != nil {
-				level.Error(wrt.log).Log("msg", "failed to write entry", "err", err)
+			if err := wrt.entryWriter.WriteEntry(e, wrt.wal); err != nil {
+				wrt.logger.Error("failed to write entry", "err", err)
 				// if an error occurred while writing the wal, go to next entry and don't notify write subscribers
 				continue
 			}
@@ -145,9 +144,9 @@ func (wrt *Writer) Start(maxSegmentAge time.Duration) {
 		for {
 			select {
 			case <-trigger.C:
-				level.Debug(wrt.log).Log("msg", "Running wal old segments cleanup")
+				wrt.logger.Debug("Running wal old segments cleanup")
 				if err := wrt.cleanSegments(maxSegmentAge); err != nil {
-					level.Error(wrt.log).Log("msg", "Error cleaning old segments", "err", err)
+					wrt.logger.Error("Error cleaning old segments", "err", err)
 				}
 			case <-wrt.closeCleaner:
 				trigger.Stop()
@@ -200,9 +199,9 @@ func (wrt *Writer) cleanSegments(maxAge time.Duration) error {
 		if segment.lastModified.Before(maxModifiedAt) && segment.number != lastSegment {
 			// segment is older than allowed age, cleaning up
 			if err := os.Remove(filepath.Join(walDir, segment.name)); err != nil {
-				level.Error(wrt.log).Log("msg", "Error old wal segment", "err", err, "segmentNum", segment.number)
+				wrt.logger.Error("Error old wal segment", "err", err, "segmentNum", segment.number)
 			}
-			level.Debug(wrt.log).Log("msg", "Deleted old wal segment", "segmentNum", segment.number)
+			wrt.logger.Debug("Deleted old wal segment", "segmentNum", segment.number)
 			wrt.reclaimedOldSegmentsSpaceCounter.WithLabelValues().Add(float64(segment.size))
 			// keep track of the largest segment number reclaimed
 			if segment.number > maxReclaimed {
@@ -254,7 +253,7 @@ func newEntryWriter() *entryWriter {
 
 // WriteEntry writes an loki.Entry to a WAL. Note that since it's re-using the same Record object for every
 // write, it first has to be reset, and then overwritten accordingly. Therefore, WriteEntry is not thread-safe.
-func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL, _ log.Logger) error {
+func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL) error {
 	// Reset wal record slices
 	ew.reusableWALRecord.Reset()
 

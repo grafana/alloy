@@ -2,12 +2,10 @@ package wal
 
 import (
 	"fmt"
-	"os"
-	"strings"
+	"log/slog"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -17,13 +15,13 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/loki/util"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	autil "github.com/grafana/alloy/internal/util"
 )
 
 type testWriteTo struct {
 	ReadEntries         *util.SyncSlice[loki.Entry]
 	series              map[uint64]model.LabelSet
-	logger              log.Logger
+	logger              *slog.Logger
 	ReceivedSeriesReset []int
 }
 
@@ -34,7 +32,7 @@ func (t *testWriteTo) StoreSeries(series []record.RefSeries, _ int) {
 }
 
 func (t *testWriteTo) SeriesReset(segmentNum int) {
-	level.Debug(t.logger).Log("msg", fmt.Sprintf("received series reset with %d", segmentNum))
+	t.logger.Debug(fmt.Sprintf("received series reset with %d", segmentNum))
 	t.ReceivedSeriesReset = append(t.ReceivedSeriesReset, segmentNum)
 }
 
@@ -47,7 +45,7 @@ func (t *testWriteTo) AppendEntries(entries RefEntries, _ int) error {
 			t.ReadEntries.Append(entry)
 		}
 	} else {
-		level.Debug(t.logger).Log("series for entry not found")
+		t.logger.Debug("series for entry not found")
 	}
 	return nil
 }
@@ -331,7 +329,7 @@ func TestWatcher(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			// start test global resources
 			reg := prometheus.NewRegistry()
-			logger := level.NewFilter(log.NewLogfmtLogger(os.Stdout), level.AllowDebug())
+			logger := autil.TestAlloyLogger(t).Slog()
 			dir := t.TempDir()
 			metrics := NewWatcherMetrics(reg)
 			writeTo := &testWriteTo{
@@ -354,7 +352,7 @@ func TestWatcher(t *testing.T) {
 				t,
 				&watcherTestResources{
 					writeEntry: func(entry loki.Entry) {
-						_ = ew.WriteEntry(entry, wl, logger)
+						_ = ew.WriteEntry(entry, wl)
 					},
 					notifyWrite: func() {
 						watcher.NotifyWrite()
@@ -404,7 +402,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 	t.Run("replay from marked segment if marker is not invalid", func(t *testing.T) {
 		reg := prometheus.NewRegistry()
-		logger := level.NewFilter(log.NewLogfmtLogger(os.Stdout), level.AllowDebug())
+		logger := autil.TestAlloyLogger(t).Slog()
 		dir := t.TempDir()
 		metrics := NewWatcherMetrics(reg)
 		writeTo := &testWriteTo{
@@ -436,7 +434,7 @@ func TestWatcher_Replay(t *testing.T) {
 				Timestamp: time.Now(),
 				Line:      "this line should appear in received entries",
 			},
-		}, wl, logger)
+		}, wl)
 		require.NoError(t, err)
 
 		// cut segment and sync
@@ -451,7 +449,7 @@ func TestWatcher_Replay(t *testing.T) {
 					Timestamp: time.Now(),
 					Line:      line,
 				},
-			}, wl, logger)
+			}, wl)
 			require.NoError(t, err)
 		}
 
@@ -467,7 +465,7 @@ func TestWatcher_Replay(t *testing.T) {
 					Timestamp: time.Now(),
 					Line:      line,
 				},
-			}, wl, logger)
+			}, wl)
 			require.NoError(t, err)
 		}
 
@@ -486,7 +484,7 @@ func TestWatcher_Replay(t *testing.T) {
 
 	t.Run("do not replay at all if invalid marker", func(t *testing.T) {
 		reg := prometheus.NewRegistry()
-		logger := level.NewFilter(log.NewLogfmtLogger(os.Stdout), level.AllowDebug())
+		logger := autil.TestAlloyLogger(t).Slog()
 		dir := t.TempDir()
 		metrics := NewWatcherMetrics(reg)
 		writeTo := &testWriteTo{
@@ -518,7 +516,7 @@ func TestWatcher_Replay(t *testing.T) {
 				Timestamp: time.Now(),
 				Line:      "this line should appear in received entries",
 			},
-		}, wl, logger)
+		}, wl)
 		require.NoError(t, err)
 
 		// cut segment and sync
@@ -533,7 +531,7 @@ func TestWatcher_Replay(t *testing.T) {
 					Timestamp: time.Now(),
 					Line:      line,
 				},
-			}, wl, logger)
+			}, wl)
 			require.NoError(t, err)
 		}
 
@@ -555,7 +553,7 @@ func TestWatcher_Replay(t *testing.T) {
 					Timestamp: time.Now(),
 					Line:      line,
 				},
-			}, wl, logger)
+			}, wl)
 			require.NoError(t, err)
 		}
 
@@ -584,16 +582,6 @@ func (s *slowWriteTo) StoreSeries(series []record.RefSeries, segmentNum int) {
 }
 
 func (s *slowWriteTo) AppendEntries(entries RefEntries, segmentNum int) error {
-	// only log on development debug flag
-	if debug {
-		var allLines strings.Builder
-		for _, e := range entries.Entries {
-			allLines.WriteString(e.Line)
-			allLines.WriteString("/")
-		}
-		s.t.Logf("AppendEntries called from segment %d - %s", segmentNum, allLines.String())
-	}
-
 	s.entriesReceived.Add(uint64(len(entries.Entries)))
 	time.Sleep(s.sleepAfterAppendEntries)
 	return nil
@@ -603,7 +591,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 	labels := model.LabelSet{
 		"app": "test",
 	}
-	logger := level.NewFilter(log.NewLogfmtLogger(os.Stdout), level.AllowDebug())
+	logger := autil.TestAlloyLogger(t).Slog()
 
 	// newTestingResources is a helper for bootstrapping all required testing resources
 	newTestingResources := func(t *testing.T, cfg WatchConfig) (*slowWriteTo, *Watcher, WAL) {
@@ -657,7 +645,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},
-				}, wl, logger)
+				}, wl)
 				lineCounter.Add(1)
 				require.NoError(t, err)
 			}
@@ -709,7 +697,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},
-				}, wl, logger)
+				}, wl)
 				lineCounter.Add(1)
 				require.NoError(t, err)
 			}
@@ -762,7 +750,7 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 						Timestamp: time.Now(),
 						Line:      fmt.Sprintf("test line %d", lineCounter.Load()),
 					},
-				}, wl, logger)
+				}, wl)
 				lineCounter.Add(1)
 				require.NoError(t, err)
 			}

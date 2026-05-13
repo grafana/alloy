@@ -1,10 +1,8 @@
 package internal
 
 import (
+	"log/slog"
 	"sync"
-
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -26,14 +24,14 @@ type WatcherState struct {
 	current        int
 	mut            sync.RWMutex
 	stoppingSignal chan struct{}
-	logger         log.Logger
+	logger         *slog.Logger
 }
 
-func NewWatcherState(l log.Logger) *WatcherState {
+func NewWatcherState(logger *slog.Logger) *WatcherState {
 	return &WatcherState{
 		current:        StateRunning,
 		stoppingSignal: make(chan struct{}),
-		logger:         l,
+		logger:         logger,
 	}
 }
 
@@ -42,7 +40,7 @@ func (s *WatcherState) Transition(next int) {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
-	level.Debug(s.logger).Log("msg", "watcher transitioning state", "currentState", printState(s.current), "nextState", printState(next))
+	s.logger.Debug("watcher transitioning state", "currentState", printState(s.current), "nextState", printState(next))
 
 	// only perform channel close if the state is not already stopping
 	// expect s.s to be either draining ro running to perform a close
