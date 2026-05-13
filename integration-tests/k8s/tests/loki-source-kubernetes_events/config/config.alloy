@@ -7,7 +7,7 @@ livedebugging {
 }
 
 loki.source.kubernetes_events "k8sevents" {
-	namespaces = ["k8sevents.test"];
+	namespaces = ["k8sevents-test"];
 	log_format = "logfmt"
   forward_to = [loki.process.k8sevents.receiver]
 }
