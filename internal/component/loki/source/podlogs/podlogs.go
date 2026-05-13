@@ -124,8 +124,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	var (
 		tailer     = kubetail.NewManager(o.SLogger, nil)
-		reconciler = newReconciler(o.Logger, tailer, data.(cluster.Cluster))
-		controller = newController(o.Logger, reconciler)
+		reconciler = newReconciler(o.SLogger, tailer, data.(cluster.Cluster))
+		controller = newController(o.SLogger, reconciler)
 	)
 
 	c := &Component{
