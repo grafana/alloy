@@ -34,7 +34,7 @@ func TestDatabaseObservabilityMySQLLogs(t *testing.T) {
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		for _, op := range expectedOps {
-			var resp common.LogResponse
+			var resp lokihttp.LogResponse
 			_, err := common.FetchDataFromURL(
 				// fetch one log with exact match for op label
 				common.LogQuery(testName, 1, common.LabelMatcher{Name: "op", Value: op}),
