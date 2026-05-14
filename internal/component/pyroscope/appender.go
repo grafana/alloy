@@ -57,8 +57,9 @@ type Fanout struct {
 	// children is where to fan out.
 	children []Appendable
 	// ComponentID is what component this belongs to.
-	componentID  string
-	writeLatency prometheus.Histogram
+	componentID    string
+	writeLatency   prometheus.Histogram
+	samplesCounter prometheus.Counter
 }
 
 func (f *Fanout) DebugInfoClients() []*debuginfoclient.Client {
@@ -86,10 +87,18 @@ func NewFanout(children []Appendable, componentID string, register prometheus.Re
 		Help: "Write latency for sending to pyroscope profiles",
 	})
 	_ = register.Register(wl)
+
+	sc := prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "pyroscope_forwarded_entries_total",
+		Help: "Total number of samples sent to downstream components.",
+	})
+	_ = register.Register(sc)
+
 	return &Fanout{
-		children:     children,
-		componentID:  componentID,
-		writeLatency: wl,
+		children:       children,
+		componentID:    componentID,
+		writeLatency:   wl,
+		samplesCounter: sc,
 	}
 }
 
@@ -113,9 +122,10 @@ func (f *Fanout) Appender() Appender {
 	defer f.mut.RUnlock()
 
 	app := &appender{
-		children:     make([]Appender, 0),
-		componentID:  f.componentID,
-		writeLatency: f.writeLatency,
+		children:       make([]Appender, 0),
+		componentID:    f.componentID,
+		writeLatency:   f.writeLatency,
+		samplesCounter: f.samplesCounter,
 	}
 	for _, x := range f.children {
 		if x == nil {
@@ -133,9 +143,10 @@ func (f *Fanout) String() string {
 var _ Appender = (*appender)(nil)
 
 type appender struct {
-	children     []Appender
-	componentID  string
-	writeLatency prometheus.Histogram
+	children       []Appender
+	componentID    string
+	writeLatency   prometheus.Histogram
+	samplesCounter prometheus.Counter
 }
 
 // Append satisfies the Appender interface.
@@ -144,6 +155,7 @@ func (a *appender) Append(ctx context.Context, labels labels.Labels, samples []*
 	defer func() {
 		a.writeLatency.Observe(time.Since(now).Seconds())
 	}()
+
 	var multiErr error
 	for _, x := range a.children {
 		err := x.Append(ctx, labels, samples)
@@ -151,6 +163,11 @@ func (a *appender) Append(ctx context.Context, labels labels.Labels, samples []*
 			multiErr = multierror.Append(multiErr, err)
 		}
 	}
+
+	if multiErr == nil {
+		a.samplesCounter.Add(float64(len(samples)))
+	}
+
 	return multiErr
 }
 
