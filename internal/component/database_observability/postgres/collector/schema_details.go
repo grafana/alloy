@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
@@ -25,6 +24,11 @@ const (
 	OP_TABLE_DETECTION     = "table_detection"
 	OP_CREATE_STATEMENT    = "create_statement"
 )
+
+// emitInterval is the minimum amount of time that must elapse between
+// successive OP_CREATE_STATEMENT emissions for the same table, regardless of
+// the configured collect_interval.
+const emitInterval = 30 * time.Minute
 
 const (
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
@@ -312,10 +316,6 @@ type SchemaDetailsArguments struct {
 	ExcludeDatabases []string
 	EntryHandler     loki.EntryHandler
 
-	CacheEnabled bool
-	CacheSize    int
-	CacheTTL     time.Duration
-
 	Logger *slog.Logger
 
 	dbConnectionFactory databaseConnectionFactory
@@ -329,10 +329,13 @@ type SchemaDetails struct {
 	excludeDatabases    []string
 	entryHandler        loki.EntryHandler
 
-	// Cache of table definitions. Entries are removed after a configurable TTL.
-	// Key is a string of the form "database.schema.table".
-	// (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed; relying on TTL only
-	cache *expirable.LRU[string, *tableInfo]
+	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
+	// was last emitted for a "database.schema.table" key. Used to throttle
+	// logging to at most one per EmitInterval per table.
+	lastEmittedAt map[string]time.Time
+
+	// now allows overriding time.Now() in tests
+	now func() time.Time
 
 	tableRegistry *TableRegistry
 
@@ -356,13 +359,11 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		collectInterval:     args.CollectInterval,
 		excludeDatabases:    args.ExcludeDatabases,
 		entryHandler:        args.EntryHandler,
+		lastEmittedAt:       map[string]time.Time{},
+		now:                 time.Now,
 		tableRegistry:       NewTableRegistry(),
 		logger:              args.Logger.With("collector", SchemaDetailsCollector),
 		running:             &atomic.Bool{},
-	}
-
-	if args.CacheEnabled {
-		c.cache = expirable.NewLRU[string, *tableInfo](args.CacheSize, nil, args.CacheTTL)
 	}
 
 	return c, nil
@@ -445,7 +446,7 @@ func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
 	return databases, nil
 }
 
-func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbConnection *sql.DB) error {
+func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbConnection *sql.DB, now time.Time, seenTables map[string]struct{}) error {
 	schemaRs, err := dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_namespace for database %s: %w", dbName, err)
@@ -491,8 +492,9 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 				database:   database(dbName),
 				schema:     schema(schemaName),
 				tableName:  table(tableName),
-				updateTime: time.Now(),
+				updateTime: now,
 			})
+			seenTables[fullyQualifiedName(database(dbName), schema(schemaName), table(tableName))] = struct{}{}
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
@@ -514,25 +516,15 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 	}
 
 	for _, table := range tables {
-		cacheKey := fmt.Sprintf("%s.%s.%s", table.database, table.schema, table.tableName)
-
-		cacheHit := false
-		if c.cache != nil {
-			if cached, ok := c.cache.Get(cacheKey); ok {
-				table = cached
-				cacheHit = true
-			}
+		key := fullyQualifiedName(table.database, table.schema, table.tableName)
+		if last, ok := c.lastEmittedAt[key]; ok && now.Sub(last) < emitInterval {
+			continue
 		}
 
-		if !cacheHit {
-			table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
-			if err != nil {
-				c.logger.Error("failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
-				continue
-			}
-			if c.cache != nil {
-				c.cache.Add(cacheKey, table)
-			}
+		table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
+		if err != nil {
+			c.logger.Error("failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
+			continue
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
@@ -543,6 +535,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
+		c.lastEmittedAt[key] = now
 	}
 
 	return nil
@@ -554,6 +547,9 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 		c.logger.Error("failed to discover databases", "err", err)
 		return fmt.Errorf("failed to discover databases: %w", err)
 	}
+
+	now := c.now()
+	seenTables := map[string]struct{}{}
 
 	for _, dbName := range databases {
 		databaseDSN, err := replaceDatabaseNameInDSN(c.dbDSN, dbName)
@@ -568,7 +564,7 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 			continue
 		}
 
-		if err := c.extractSchemas(ctx, dbName, conn); err != nil {
+		if err := c.extractSchemas(ctx, dbName, conn, now, seenTables); err != nil {
 			c.logger.Error("failed to collect schema from database", "datname", dbName, "err", err)
 			if conn != c.initialConnection {
 				conn.Close()
@@ -580,6 +576,14 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 			if err := conn.Close(); err != nil {
 				c.logger.Warn("failed to close database connection", "datname", dbName, "err", err)
 			}
+		}
+	}
+
+	// Cleanup: drop throttle entries for tables (or whole databases) that no
+	// longer exist in any scanned database.
+	for k := range c.lastEmittedAt {
+		if _, ok := seenTables[k]; !ok {
+			delete(c.lastEmittedAt, k)
 		}
 	}
 
@@ -710,4 +714,8 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 	}
 
 	return tblSpec, nil
+}
+
+func fullyQualifiedName(db database, sch schema, tbl table) string {
+	return fmt.Sprintf("%s.%s.%s", db, sch, tbl)
 }

@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-kit/kit/log"
 	"github.com/lib/pq"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -23,8 +25,8 @@ import (
 )
 
 func Test_Postgres_SchemaDetails(t *testing.T) {
-	// The goroutine which deletes expired entries runs indefinitely,
-	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
+	// query_samples_test.go (in the same package) still uses the LRU goroutine,
+	// so we need to ignore it here when tests run in parallel.
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	t.Run("collector selects and logs schema details", func(t *testing.T) {
@@ -1044,8 +1046,10 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 	})
 }
 
-func Test_Postgres_SchemaDetails_caching(t *testing.T) {
-	t.Run("uses cache on second run when caching is enabled", func(t *testing.T) {
+func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	t.Run("second scrape within emit_interval emits OP_TABLE_DETECTION but not OP_CREATE_STATEMENT", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -1053,13 +1057,13 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			DSN:             "postgres://user:pass@localhost:5432/cache_test_db",
-			CollectInterval: time.Millisecond,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+			DSN:             "postgres://user:pass@localhost:5432/throttle_test_db",
+			CollectInterval: time.Hour, // unused; extractNames is invoked manually
 			EntryHandler:    lokiClient,
 			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
@@ -1068,114 +1072,60 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
+		collector.now = func() time.Time { return fakeNow }
 
-		// first run mock declarations
-		// selectDatabaseName, selectSchemaNames, selectTableNames always called
+		// First scrape: tables list + per-table metadata queries.
 		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"datname",
-				}).AddRow(
-					"cache_test_db",
-				),
-			)
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("throttle_test_db"))
 		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow("public"),
-			)
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"table_name",
-				}).AddRow("test_table"),
-			)
-
-		// selectColumnNames, selectIndexes, selectForeignKeys called only first run
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("test_table"))
 		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"column_name",
-					"column_type",
-					"not_nullable",
-					"column_default",
-					"identity_generation",
-					"is_primary_key",
-				}).AddRow("id", "integer", true, nil, "", true),
-			)
+			WillReturnRows(sqlmock.NewRows([]string{
+				"column_name", "column_type", "not_nullable", "column_default",
+				"identity_generation", "is_primary_key",
+			}).AddRow("id", "integer", true, nil, "", true))
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"index_name",
-					"index_type",
-					"unique",
-					"column_names",
-					"expressions",
-					"has_nullable_column",
-				}),
-			)
+			WillReturnRows(sqlmock.NewRows([]string{
+				"index_name", "index_type", "unique", "column_names",
+				"expressions", "has_nullable_column",
+			}))
 		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"constraint_name",
-					"column_name",
-					"referenced_table_name",
-					"referenced_column_name",
-				}),
-			)
+			WillReturnRows(sqlmock.NewRows([]string{
+				"constraint_name", "column_name", "referenced_table_name", "referenced_column_name",
+			}))
 
-		// first run invocation
-		require.NoError(t, collector.extractNames(context.Background()))
-		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 2*time.Second, 100*time.Millisecond)
-		firstRunEntries := lokiClient.Received()
-		require.Len(t, firstRunEntries, 2)
-
-		lokiClient.Clear()
-
-		// second run mock declarations
-		// selectDatabaseName, selectSchemaNames, selectTableNames always called
+		// Second scrape: only tables-list queries. Within EmitInterval so
+		// no metadata queries are expected.
 		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"datname",
-				}).AddRow(
-					"cache_test_db",
-				),
-			)
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("throttle_test_db"))
 		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"schema_name",
-				}).AddRow("public"),
-			)
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
 		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
-			WillReturnRows(
-				sqlmock.NewRows([]string{
-					"table_name",
-				}).AddRow("test_table"),
-			)
-		// Here, note that selectColumnNames, selectIndexes, selectForeignKeys mocks are not declared: they should not be called due to caching
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("test_table"))
 
-		// second run invocation
 		require.NoError(t, collector.extractNames(context.Background()))
-		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 2*time.Second, 100*time.Millisecond)
-		secondRunEntries := lokiClient.Received()
-		require.Len(t, secondRunEntries, 2)
+		fakeNow = fakeNow.Add(time.Minute) // well within EmitInterval
+		require.NoError(t, collector.extractNames(context.Background()))
 
-		// assert that first and second run results are identical
-		for i := range firstRunEntries {
-			assert.Equal(t, firstRunEntries[i].Labels, secondRunEntries[i].Labels)
-			assert.Equal(t, firstRunEntries[i].Line, secondRunEntries[i].Line)
-		}
+		// First scrape emits OP_TABLE_DETECTION + OP_CREATE_STATEMENT; second
+		// scrape emits only OP_TABLE_DETECTION (still emitted on every scrape).
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 3
+		}, 5*time.Second, 10*time.Millisecond)
 
-		// ensure that selectColumnNames, selectIndexes, selectForeignKeys are not called
 		require.NoError(t, mock.ExpectationsWereMet())
 
-		lokiClient.Stop()
+		entries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, `level="info" datname="throttle_test_db" schema="public" table="test_table"`, entries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
+		require.Equal(t, `level="info" datname="throttle_test_db" schema="public" table="test_table"`, entries[2].Line)
 	})
 
-	t.Run("bypasses cache when caching is disabled", func(t *testing.T) {
+	t.Run("second scrape after emit_interval re-emits OP_CREATE_STATEMENT", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
@@ -1183,12 +1133,13 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
+		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			DSN:             "postgres://user:pass@localhost:5432/no_cache_test_db",
-			CollectInterval: time.Millisecond,
-			CacheEnabled:    false,
+			DSN:             "postgres://user:pass@localhost:5432/throttle_test_db",
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
@@ -1197,84 +1148,191 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
+		collector.now = func() time.Time { return fakeNow }
 
-		// declare mocks for two runs
+		// Two scrapes' worth of expectations: tables list + per-table metadata.
 		for i := 0; i < 2; i++ {
 			mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
-				WillReturnRows(
-					sqlmock.NewRows([]string{
-						"datname",
-					}).AddRow(
-						"no_cache_test_db",
-					),
-				)
-
+				WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("throttle_test_db"))
 			mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
-				WillReturnRows(
-					sqlmock.NewRows([]string{
-						"schema_name",
-					}).AddRow("public"),
-				)
-
+				WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
 			mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
-				WillReturnRows(
-					sqlmock.NewRows([]string{
-						"table_name",
-					}).AddRow("test_table"),
-				)
-
+				WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("test_table"))
 			mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
-				WillReturnRows(
-					sqlmock.NewRows([]string{
-						"column_name",
-						"column_type",
-						"not_nullable",
-						"column_default",
-						"identity_generation",
-						"is_primary_key",
-					}).AddRow("id", "integer", true, nil, "", true),
-				)
-
+				WillReturnRows(sqlmock.NewRows([]string{
+					"column_name", "column_type", "not_nullable", "column_default",
+					"identity_generation", "is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true))
 			mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
-				WillReturnRows(
-					sqlmock.NewRows([]string{
-						"index_name",
-						"index_type",
-						"unique",
-						"column_names",
-						"expressions",
-						"has_nullable_column",
-					}),
-				)
-
+				WillReturnRows(sqlmock.NewRows([]string{
+					"index_name", "index_type", "unique", "column_names",
+					"expressions", "has_nullable_column",
+				}))
 			mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
-				WillReturnRows(
-					sqlmock.NewRows([]string{
-						"constraint_name",
-						"column_name",
-						"referenced_table_name",
-						"referenced_column_name",
-					}),
-				)
+				WillReturnRows(sqlmock.NewRows([]string{
+					"constraint_name", "column_name", "referenced_table_name", "referenced_column_name",
+				}))
 		}
 
-		// first run
 		require.NoError(t, collector.extractNames(context.Background()))
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
-		}, 2*time.Second, 100*time.Millisecond)
-		lokiClient.Clear()
-
-		// second run
+		fakeNow = fakeNow.Add(emitInterval + time.Minute) // past the throttle window
 		require.NoError(t, collector.extractNames(context.Background()))
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
-		}, 2*time.Second, 100*time.Millisecond)
 
-		// ensure that selectColumnNames, selectIndexes, selectForeignKeys are called twice
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 4
+		}, 5*time.Second, 10*time.Millisecond)
+
 		require.NoError(t, mock.ExpectationsWereMet())
 
-		lokiClient.Stop()
+		entries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[3].Labels)
+	})
+
+	t.Run("table dropped between scrapes is removed from throttle map", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/throttle_test_db",
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+		collector.now = func() time.Time { return fakeNow }
+
+		// First scrape: two tables.
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("throttle_test_db"))
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("table_a").AddRow("table_b"))
+		for _, tableName := range []string{"table_a", "table_b"} {
+			mock.ExpectQuery(selectColumnNames).WithArgs("public", tableName).RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"column_name", "column_type", "not_nullable", "column_default",
+					"identity_generation", "is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true))
+			mock.ExpectQuery(selectIndexes).WithArgs("public", tableName).RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"index_name", "index_type", "unique", "column_names",
+					"expressions", "has_nullable_column",
+				}))
+			mock.ExpectQuery(selectForeignKeys).WithArgs("public", tableName).RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"constraint_name", "column_name", "referenced_table_name", "referenced_column_name",
+				}))
+		}
+
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("throttle_test_db", "public", "table_a"))
+		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("throttle_test_db", "public", "table_b"))
+
+		// Second scrape: only table_a remains. table_b should be evicted from
+		// the throttle map by housekeeping. Since table_a was already emitted
+		// less than EmitInterval ago, no further metadata queries are expected.
+		fakeNow = fakeNow.Add(time.Minute)
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("throttle_test_db"))
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("table_a"))
+
+		require.NoError(t, collector.extractNames(context.Background()))
+
+		require.NoError(t, mock.ExpectationsWereMet())
+		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("throttle_test_db", "public", "table_a"))
+		require.NotContains(t, collector.lastEmittedAt, fullyQualifiedName("throttle_test_db", "public", "table_b"))
+	})
+
+	t.Run("same schema.table in different databases is throttled independently", func(t *testing.T) {
+		t.Parallel()
+
+		dbA, mockA, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer dbA.Close()
+
+		dbB, mockB, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer dbB.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              dbA, // initial connection
+			DSN:             "postgres://user:pass@localhost:5432/db_a",
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				if strings.Contains(dsn, "db_a") {
+					return dbA, nil
+				}
+				return dbB, nil
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+		collector.now = func() time.Time { return fakeNow }
+
+		// First scrape: getAllDatabases (on dbA) returns two databases.
+		mockA.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("db_a").AddRow("db_b"))
+
+		// Per-database expectations: each db has a single "public.test_table".
+		for _, m := range []sqlmock.Sqlmock{mockA, mockB} {
+			m.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+			m.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("test_table"))
+			m.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"column_name", "column_type", "not_nullable", "column_default",
+					"identity_generation", "is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true))
+			m.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"index_name", "index_type", "unique", "column_names",
+					"expressions", "has_nullable_column",
+				}))
+			m.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"constraint_name", "column_name", "referenced_table_name", "referenced_column_name",
+				}))
+		}
+
+		require.NoError(t, collector.extractNames(context.Background()))
+
+		// Each database produces an OP_TABLE_DETECTION + OP_CREATE_STATEMENT.
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 4
+		}, 5*time.Second, 10*time.Millisecond)
+
+		require.NoError(t, mockA.ExpectationsWereMet())
+		require.NoError(t, mockB.ExpectationsWereMet())
+
+		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("db_a", "public", "test_table"))
+		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("db_b", "public", "test_table"))
+		require.Len(t, collector.lastEmittedAt, 2)
 	})
 }
 
@@ -1318,7 +1376,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 			logger: logging.NewSlogNop(),
 		}
 
-		err = collector.extractSchemas(context.Background(), "testdb", db)
+		err = collector.extractSchemas(context.Background(), "testdb", db, time.Now(), map[string]struct{}{})
 
 		require.Error(t, err)
 		require.NoError(t, mock.ExpectationsWereMet())
@@ -1835,8 +1893,6 @@ func Test_parseSchemaQualifiedIfAny(t *testing.T) {
 }
 
 func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
-	// The goroutine which deletes expired entries runs indefinitely,
-	// see https://github.com/hashicorp/golang-lru/blob/v2.0.7/expirable/expirable_lru.go#L79-L80
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
 	t.Run("extractSchemas populates TableRegistry", func(t *testing.T) {
@@ -1974,7 +2030,6 @@ func Test_Postgres_SchemaDetails_ExcludeDatabases(t *testing.T) {
 		CollectInterval:  time.Millisecond,
 		ExcludeDatabases: []string{"excluded_database"},
 		EntryHandler:     lokiClient,
-		CacheEnabled:     false,
 		Logger:           util.TestAlloyLogger(t).Slog(),
 		dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 			return db, nil

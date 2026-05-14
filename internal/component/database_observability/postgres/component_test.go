@@ -696,47 +696,6 @@ func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testi
 	assert.Equal(t, 11*time.Second, args.SchemaDetailsArguments.CollectInterval)
 }
 
-func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *testing.T) {
-	t.Run("default cache configuration", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		targets = []
-		`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheEnabled, args.SchemaDetailsArguments.CacheEnabled)
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheSize, args.SchemaDetailsArguments.CacheSize)
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheTTL, args.SchemaDetailsArguments.CacheTTL)
-	})
-
-	t.Run("custom cache configuration", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		targets = []
-		schema_details {
-			collect_interval = "30s"
-			cache_enabled = false
-			cache_size = 512
-			cache_ttl = "5m"
-		}
-		`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-
-		assert.Equal(t, 30*time.Second, args.SchemaDetailsArguments.CollectInterval)
-		assert.False(t, args.SchemaDetailsArguments.CacheEnabled)
-		assert.Equal(t, 512, args.SchemaDetailsArguments.CacheSize)
-		assert.Equal(t, 5*time.Minute, args.SchemaDetailsArguments.CacheTTL)
-	})
-}
-
 func Test_parseCloudProvider(t *testing.T) {
 	t.Run("parse aws cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `
