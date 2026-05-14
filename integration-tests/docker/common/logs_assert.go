@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,10 +15,21 @@ import (
 
 const lokiURL = "http://localhost:3100/loki/api/v1/"
 
-// LogQuery returns a formatted Loki query with the given test_name label
-func LogQuery(testName string, limit int) string {
+// LabelMatcher is an extra Loki stream selector matcher (e.g. op="create_statement")
+// that callers can pass to LogQuery to narrow the query beyond test_name.
+type LabelMatcher struct {
+	Name, Value string
+}
+
+// LogQuery returns a formatted Loki query selecting on the given test_name
+// label and any additional label matchers.
+func LogQuery(testName string, limit int, extraLabelMatchers ...LabelMatcher) string {
 	// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-logs-within-a-range-of-time
-	queryFilter := fmt.Sprintf("{test_name=\"%s\"}", testName)
+	parts := []string{fmt.Sprintf(`test_name=%q`, testName)}
+	for _, m := range extraLabelMatchers {
+		parts = append(parts, fmt.Sprintf(`%s=%q`, m.Name, m.Value))
+	}
+	queryFilter := "{" + strings.Join(parts, ", ") + "}"
 	query := fmt.Sprintf("%squery_range?query=%s&limit=%d", lokiURL, url.QueryEscape(queryFilter), limit)
 
 	// Loki queries require a nanosecond unix timestamp for the start time.

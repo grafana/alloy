@@ -175,9 +175,11 @@ func defaultArguments() Arguments {
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
+
+			// Deprecated settings, ignored.
+			CacheEnabled: true,
+			CacheSize:    256,
+			CacheTTL:     10 * time.Minute,
 		},
 
 		SetupConsumersArguments: SetupConsumersArguments{
@@ -587,13 +589,18 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	}
 
 	if collectors[collector.SchemaDetailsCollector] {
+		if c.args.SchemaDetailsArguments.CollectInterval > collector.EmitInterval {
+			level.Warn(c.opts.Logger).Log(
+				"msg", "schema_details.collect_interval is greater than the log interval; log entries will be emitted at most once per collect_interval",
+				"collect_interval", c.args.SchemaDetailsArguments.CollectInterval,
+				"log_interval", collector.EmitInterval,
+			)
+		}
+
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
-			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
