@@ -1,6 +1,8 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -134,5 +136,22 @@ func TestDeriveDocTag(t *testing.T) {
 				t.Errorf("deriveDocTag(%q) = %q, want %q", tt.tag, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestAppendFooterSkipsComponentRelease(t *testing.T) {
+	footerPath := filepath.Join(t.TempDir(), "footer.md")
+	if err := os.WriteFile(footerPath, []byte("Docs: ${RELEASE_DOC_TAG}"), 0o644); err != nil {
+		t.Fatalf("writing footer: %v", err)
+	}
+
+	body := "release notes"
+	result, err := appendFooter(body, "syntax/v0.1.2", footerPath)
+	if err != nil {
+		t.Fatalf("appendFooter returned error: %v", err)
+	}
+
+	if result != body {
+		t.Errorf("appendFooter() = %q, want %q", result, body)
 	}
 }
