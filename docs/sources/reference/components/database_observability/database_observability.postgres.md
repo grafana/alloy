@@ -271,6 +271,36 @@ the fingerprint emitted here matches the fingerprint computed from the raw
 `STATEMENT:` continuations (`op="error"`). The same value is the join key
 across all three surfaces.
 
+### `op="query_parsed_table_name"` / `op="query_parsed_table_name_v2"` entries from `query_details`
+
+For each `pg_stat_statements` row the `query_details` collector also
+tokenizes the SQL text and emits one Loki entry per referenced table.
+The exact `op` label depends on the parent block's
+`enable_query_fingerprint` argument and matches the variant emitted for
+the parent `query_association` line:
+
+- `enable_query_fingerprint = false` (default): the component emits
+  `op="query_parsed_table_name"` with the pre-fingerprint shape
+  (`queryid`, `datname`, `table`, `validated`).
+- `enable_query_fingerprint = true`: the component emits
+  `op="query_parsed_table_name_v2"` with an additional
+  `query_fingerprint` field, positioned between `queryid` and `datname`.
+
+Both shapes are mutually exclusive -- the component only emits one
+variant per parsed table. Every parsed-table-name line for the same
+`pg_stat_statements` row carries the same `query_fingerprint` as the
+parent `query_association_v2` line.
+
+| Field                          | Source                       | Notes                                                                                                |
+|--------------------------------|------------------------------|------------------------------------------------------------------------------------------------------|
+| Label `op`                     | constant                     | `query_parsed_table_name` (flag off) or `query_parsed_table_name_v2` (flag on)                       |
+| Body field `level`             | constant                     | `info`                                                                                               |
+| Body field `queryid`           | `pg_stat_statements.queryid` | PostgreSQL's native, version-dependent identifier                                                    |
+| Body field `query_fingerprint` | computed                     | only on `op="query_parsed_table_name_v2"`; matches the parent `query_association_v2` row's fingerprint |
+| Body field `datname`           | from `pg_database`           | database name                                                                                        |
+| Body field `table`             | computed                     | parsed table reference, resolved against the table registry when available                           |
+| Body field `validated`         | computed                     | `true` when the table reference was confirmed against the table registry                             |
+
 ### `op="query_sample"` and `op="wait_event"` family entries from `query_samples`
 
 The `query_samples` collector polls `pg_stat_activity` and emits one
@@ -337,6 +367,36 @@ the health of the fingerprint pipeline:
 Both counters stay at zero when `enable_query_fingerprint = false`,
 because the fingerprint pipeline is not invoked at all in that
 configuration.
+
+### `op="explain_plan_output"` / `op="explain_plan_output_v2"` entries from `explain_plans`
+
+The `explain_plans` collector emits one Loki entry per processed
+`pg_stat_statements` row -- carrying the base64-encoded EXPLAIN plan
+output (or a skip/error reason). The exact `op` label depends on the
+parent block's `enable_query_fingerprint` argument:
+
+- `enable_query_fingerprint = false` (default): the component emits
+  `op="explain_plan_output"` with the pre-fingerprint shape (`schema`,
+  `digest`, `explain_plan_output`).
+- `enable_query_fingerprint = true`: the component emits
+  `op="explain_plan_output_v2"` with an additional `query_fingerprint`
+  field, positioned between `digest` and `explain_plan_output`.
+
+Both shapes are mutually exclusive -- the component only emits one
+variant per processed row. The fingerprint is computed once when the
+query is first cached for EXPLAIN processing and is reused for every
+emission tied to that cached query (success, skipped, denylisted, or
+error), so all entries for one logical query share the same
+`query_fingerprint` join key.
+
+| Field                            | Source                       | Notes                                                                                                |
+|----------------------------------|------------------------------|------------------------------------------------------------------------------------------------------|
+| Label `op`                       | constant                     | `explain_plan_output` (flag off) or `explain_plan_output_v2` (flag on)                               |
+| Body field `level`               | constant                     | `info`                                                                                               |
+| Body field `schema`              | `pg_database.datname`        | database name the EXPLAIN ran against                                                                |
+| Body field `digest`              | `pg_stat_statements.queryid` | PostgreSQL's native, version-dependent identifier                                                    |
+| Body field `query_fingerprint`   | computed                     | only on `op="explain_plan_output_v2"`; matches the parent `query_association_v2` row's fingerprint   |
+| Body field `explain_plan_output` | computed                     | base64-encoded JSON containing the EXPLAIN plan output, metadata, and processing result              |
 
 ## Example
 

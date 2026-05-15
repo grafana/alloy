@@ -21,10 +21,11 @@ import (
 )
 
 const (
-	QueryDetailsCollector      = "query_details"
-	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QueryDetailsCollector         = "query_details"
+	OP_QUERY_ASSOCIATION          = "query_association"
+	OP_QUERY_ASSOCIATION_V2       = "query_association_v2"
+	OP_QUERY_PARSED_TABLE_NAME    = "query_parsed_table_name"
+	OP_QUERY_PARSED_TABLE_NAME_V2 = "query_parsed_table_name_v2"
 )
 
 var selectQueriesFromActivity = `
@@ -184,6 +185,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		var fp string
 		if c.enableQueryFingerprint {
 			// Fingerprint the raw pg_stat_statements.query text BEFORE comment
 			// stripping, so the fingerprint is stable across comment differences.
@@ -191,7 +193,8 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			// the value matches the fingerprint computed from the raw text in
 			// pg_stat_activity (op=query_sample) or from STATEMENT continuations
 			// in server logs (op=error).
-			fp, _, fpErr := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
+			var fpErr error
+			fp, _, fpErr = fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
 			if fpErr != nil {
 				// fingerprint.ErrEmpty — the row's query text was empty/whitespace.
 				// Skip emitting; an empty fingerprint isn't useful as a join key.
@@ -242,11 +245,22 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 				resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
 			}
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
-			)
+			if c.enableQueryFingerprint {
+				// Reuse the fingerprint computed once for the parent
+				// query_association_v2 line; every parsed-table-name line for
+				// this row carries the same fingerprint as a join key.
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+					logging.LevelInfo,
+					OP_QUERY_PARSED_TABLE_NAME_V2,
+					fmt.Sprintf(`queryid="%s" query_fingerprint="%s" datname="%s" table="%s" validated="%t"`, queryID, fp, databaseName, resolvedTable, validated),
+				)
+			} else {
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+					logging.LevelInfo,
+					OP_QUERY_PARSED_TABLE_NAME,
+					fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
+				)
+			}
 		}
 	}
 

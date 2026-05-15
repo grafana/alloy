@@ -675,15 +675,16 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.ExplainPlanCollector] {
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlansArguments{
-			DB:               c.dbConnection,
-			DSN:              string(c.args.DataSourceName),
-			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
-			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     c.args.ExcludeUsers,
-			Logger:           c.opts.Logger,
-			DBVersion:        engineVersion,
-			EntryHandler:     entryHandler,
+			DB:                     c.dbConnection,
+			DSN:                    string(c.args.DataSourceName),
+			ScrapeInterval:         c.args.ExplainPlansArguments.CollectInterval,
+			PerScrapeRatio:         c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeDatabases:       c.args.ExcludeDatabases,
+			ExcludeUsers:           c.args.ExcludeUsers,
+			Logger:                 c.opts.Logger,
+			DBVersion:              engineVersion,
+			EntryHandler:           entryHandler,
+			EnableQueryFingerprint: c.args.EnableQueryFingerprint,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)
