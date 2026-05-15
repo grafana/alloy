@@ -1372,25 +1372,13 @@ func TestSchemaDetails(t *testing.T) {
 					AddRow("some_schema.some_table", "CREATE TABLE some_table (id INT)"),
 			)
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		// No OP_CREATE_STATEMENT means no loki-side sync point; drive
+		// extractSchema synchronously to avoid racing the collector loop
+		// against sqlmock state.
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		// Wait until every sqlmock expectation has been consumed to make sure
-		// the collector has a chance to run all bulk queries even if
-		// OP_CREATE_STATEMENT is not emitted.
-		require.Eventually(t, func() bool {
-			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
