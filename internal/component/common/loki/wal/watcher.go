@@ -264,7 +264,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 
 		// read from open segment routine
 		ok, err := w.readSegment(reader, segmentNum)
-		if err != nil {
+		if err != nil && !errors.Is(err, io.EOF) {
 			w.logger.Warn("error reading segment inside read ticker or notification", "segment", segmentNum, "read", reader.Offset(), "err", err)
 		}
 
@@ -273,7 +273,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 		// to the end of it. If error, log a warning accordingly. After, error or no error, nil is returned so that the
 		// caller can continue to the following segment.
 		if !tail {
-			if err != nil && errors.Unwrap(err) != io.EOF {
+			if err != nil && !errors.Is(err, io.EOF) {
 				w.logger.Warn("ignoring error reading to end of segment, may have dropped data", "segment", segmentNum, "err", err)
 			} else if reader.Offset() != size {
 				w.logger.Warn("expected to have read whole segment, may have dropped data", "segment", segmentNum, "read", reader.Offset(), "size", size)
@@ -282,7 +282,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 		}
 
 		// io.EOF error are non-fatal since we are tailing the wal
-		if errors.Unwrap(err) != io.EOF {
+		if !errors.Is(err, io.EOF) {
 			return err
 		}
 

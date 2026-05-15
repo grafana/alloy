@@ -418,7 +418,7 @@ func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component
 	))
 	require.NoError(t, err)
 
-	c, err := client.NewFanoutConsumer(opts.Logger, opts.Registerer, client.Config{
+	c, err := client.NewFanoutConsumer(opts.SLogger, opts.Registerer, client.Config{
 		URL:     url,
 		Timeout: 10 * time.Second,
 		Client: promCfg.HTTPClientConfig{
@@ -631,7 +631,7 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 	require.NoError(t, err)
 
 	lokiClient, err := client.NewFanoutConsumer(
-		opts.Logger,
+		opts.SLogger,
 		opts.Registerer,
 		client.Config{
 			URL:     url,

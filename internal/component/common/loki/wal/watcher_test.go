@@ -32,7 +32,7 @@ func (t *testWriteTo) StoreSeries(series []record.RefSeries, _ int) {
 }
 
 func (t *testWriteTo) SeriesReset(segmentNum int) {
-	t.logger.Debug(fmt.Sprintf("received series reset with %d", segmentNum))
+	t.logger.Debug("received series reset", "segment", segmentNum)
 	t.ReceivedSeriesReset = append(t.ReceivedSeriesReset, segmentNum)
 }
 
@@ -570,7 +570,6 @@ func TestWatcher_Replay(t *testing.T) {
 // slowWriteTo mimics the combination of a WriteTo and a slow remote write client. This will allow us to have a writer
 // that moves faster than the WAL watcher, and therefore, test the draining procedure.
 type slowWriteTo struct {
-	t                       *testing.T
 	entriesReceived         atomic.Uint64
 	sleepAfterAppendEntries time.Duration
 }
@@ -601,7 +600,6 @@ func TestWatcher_StopAndDrainWAL(t *testing.T) {
 
 		// the slow write to will take one second on each AppendEntries operation
 		writeTo := &slowWriteTo{
-			t:                       t,
 			sleepAfterAppendEntries: time.Second,
 		}
 

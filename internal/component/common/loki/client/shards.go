@@ -105,7 +105,7 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 
 		// If we could not add entry to batch that means that the configured maxStreams was reached and
 		// we should drop the entry.
-		q.logger.Error("msg", "batch add err", "tenant", tenantID, "error", err)
+		q.logger.Error("batch add err", "tenant", tenantID, "error", err)
 		reason := reasonGeneric
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
 			reason = reasonStreamLimited
