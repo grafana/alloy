@@ -373,6 +373,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = New(component.Options{
+			SLogger:       logging.NewSlogNop(),
 			MinStability:  featuregate.StabilityExperimental,
 			OnStateChange: func(e component.Exports) {},
 		}, args)
