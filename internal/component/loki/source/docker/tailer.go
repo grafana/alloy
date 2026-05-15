@@ -348,8 +348,10 @@ func (t *tailer) getStreamLabels(logStream string) model.LabelSet {
 	}
 
 	lb.Set(dockerLabelLogStream, logStream)
-	relabel.ProcessBuilder(lb, t.relabelConfig...)
-	processed := lb.Labels()
+	processed := labels.EmptyLabels()
+	if relabel.ProcessBuilder(lb, t.relabelConfig...) {
+		processed = lb.Labels()
+	}
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {

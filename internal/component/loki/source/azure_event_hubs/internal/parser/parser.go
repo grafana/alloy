@@ -201,8 +201,11 @@ func (e *AzureEventHubsTargetMessageParser) getLabels(logRecord *azureMonitorRes
 	// apply relabeling
 	if len(relabelConfig) > 0 {
 		lb := labels.NewBuilder(lbs)
-		relabel.ProcessBuilder(lb, relabelConfig...)
-		processed = lb.Labels()
+		if relabel.ProcessBuilder(lb, relabelConfig...) {
+			processed = lb.Labels()
+		} else {
+			processed = labels.EmptyLabels()
+		}
 	} else {
 		processed = lbs
 	}

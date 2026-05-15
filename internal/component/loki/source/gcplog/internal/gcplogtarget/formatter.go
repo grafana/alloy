@@ -81,9 +81,14 @@ func parseLogEntry(data []byte, builder *labels.Builder, relabelConfig []*relabe
 
 	// Apply relabeling.
 	if len(relabelConfig) > 0 {
-		relabel.ProcessBuilder(builder, relabelConfig...)
+		if relabel.ProcessBuilder(builder, relabelConfig...) {
+			processed = builder.Labels()
+		} else {
+			processed = labels.EmptyLabels()
+		}
+	} else {
+		processed = builder.Labels()
 	}
-	processed = builder.Labels()
 
 	lbls := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
