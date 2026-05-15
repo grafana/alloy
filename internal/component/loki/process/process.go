@@ -117,7 +117,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}),
 	)
 
-	// Call to Update() to start readers and set receivers once at the start.
+	// Call to Update() to create and start pipeline.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
