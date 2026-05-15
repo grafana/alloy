@@ -1059,6 +1059,16 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 // TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an
 // in-progress STATEMENT buffered just before pendingErrorTimeout still emits
 // — flushExpiredPending consumes the pending before expiring it.
+//
+// The test depends on both the ERROR and the STATEMENT being processed by
+// run() within one ticker-period of each other; otherwise the pending can
+// expire on one tick while the statement is still inflight, and the next
+// tick that flushes the statement finds no pending to consume. Under
+// parallel-test contention the scheduler can push the gap between
+// processing the two receiver-channel messages well past 100ms, so we use
+// a 500ms timeout (250ms tick period) which is generous against typical
+// goroutine starvation while still exercising the same flush-then-expire
+// ordering inside flushExpiredPending.
 func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	receiver := loki.NewLogsReceiver()
@@ -1072,7 +1082,7 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 		EnableQueryFingerprint: true,
 	})
 	require.NoError(t, err)
-	c.pendingErrorTimeout = 100 * time.Millisecond
+	c.pendingErrorTimeout = 500 * time.Millisecond
 	require.NoError(t, c.Start(context.Background()))
 	t.Cleanup(c.Stop)
 
@@ -1090,7 +1100,7 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 		Line:      ts1 + ":127.0.0.1(60228):app-user@books_store:[" + pid + "]:5:40001:" + ts2 + ":1/1:0:c1:[unknown]:STATEMENT:  INSERT INTO t (a) VALUES ($1)",
 	}}
 
-	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	got := drainEntries(t, entryCh, 1, 3*time.Second)
 	require.Len(t, got, 1)
 	body := strings.TrimPrefix(got[0].Line, `level="info" `)
 	fields := parseLogfmt(t, body)
