@@ -143,8 +143,6 @@ github.com/Azure/go-autorest/tracing v0.6.0 h1:TYi4+3m5t6K48TGI9AUdb+IzbnSxvnvUM
 github.com/Azure/go-autorest/tracing v0.6.0/go.mod h1:+vhtPC754Xsa23ID7GlGsrdKBpUA79WCAKPPZVC2DeU=
 github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1 h1:WJTmL004Abzc5wDB5VtZG2PJk5ndYDgVacGqfirKxjM=
 github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1/go.mod h1:tCcJZ0uHAmvjsVYzEFivsRTN00oz5BEsRgQHu5JZ9WE=
-github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0 h1:XRzhVemXdgvJqCH0sFfrBUTnUJSBrBf7++ypk+twtRs=
-github.com/AzureAD/microsoft-authentication-library-for-go v1.6.0/go.mod h1:HKpQxkWaGLJ+D/5H8QRpyQXA1eKjxkFlOMwck5+33Jk=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.7.1 h1:edShSHV3DV90+kt+CMaEXEzR9QF7wFrPJxVGz2blMIU=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.7.1/go.mod h1:HKpQxkWaGLJ+D/5H8QRpyQXA1eKjxkFlOMwck5+33Jk=
 github.com/BobuSumisu/aho-corasick v1.0.3 h1:uuf+JHwU9CHP2Vx+wAy6jcksJThhJS9ehR8a+4nPE9g=
@@ -462,8 +460,6 @@ github.com/Showmax/go-fqdn v1.0.0 h1:0rG5IbmVliNT5O19Mfuvna9LL7zlHyRfsSvBPZmF9tM
 github.com/Showmax/go-fqdn v1.0.0/go.mod h1:SfrFBzmDCtCGrnHhoDjuvFnKsWjEQX/Q9ARZvOrJAko=
 github.com/UNO-SOFT/zlog v0.8.1 h1:TEFkGJHtUfTRgMkLZiAjLSHALjwSBdw6/zByMC5GJt4=
 github.com/UNO-SOFT/zlog v0.8.1/go.mod h1:yqFOjn3OhvJ4j7ArJqQNA+9V+u6t9zSAyIZdWdMweWc=
-github.com/VictoriaMetrics/easyproto v1.1.3 h1:gRSA3ZQs7n4+5I+SniDWD59jde1jVq4JmgQ9HUUyvk4=
-github.com/VictoriaMetrics/easyproto v1.1.3/go.mod h1:QlGlzaJnDfFd8Lk6Ci/fuLxfTo3/GThPs2KH23mv710=
 github.com/VictoriaMetrics/easyproto v1.2.0 h1:FJT9uNXA2isppFuJErbLqD306KoFlehl7Wn2dg/6oIE=
 github.com/VictoriaMetrics/easyproto v1.2.0/go.mod h1:QlGlzaJnDfFd8Lk6Ci/fuLxfTo3/GThPs2KH23mv710=
 github.com/Workiva/go-datastructures v1.1.6 h1:e2eUkTi+YlNRw6YxH2c+DmgXENTKjCofaiVeDIv6e/U=
@@ -2057,12 +2053,8 @@ github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b h1:Ff
 github.com/opentracing/opentracing-go v1.2.1-0.20220228012449-10b1cf09e00b/go.mod h1:AC62GU6hc0BrNm+9RK9VSiwa/EUe1bkIeFORAMcHvJU=
 github.com/openzipkin/zipkin-go v0.4.3 h1:9EGwpqkgnwdEIJ+Od7QVSEIH+ocmm5nPat0G7sjsSdg=
 github.com/openzipkin/zipkin-go v0.4.3/go.mod h1:M9wCJZFWCo2RiY+o1eBCEMe0Dp2S5LDHcMZmk3RmK7c=
-github.com/oracle/oci-go-sdk/v65 v65.109.3 h1:skGlnuS7aOUEEaNDuDqeXCp7iBcFXvc697UKg25CtMI=
-github.com/oracle/oci-go-sdk/v65 v65.109.3/go.mod h1:8ZzvzuEG/cFLFZhxg/Mg1w19KqyXBKO3c17QIc5PkGs=
 github.com/oracle/oci-go-sdk/v65 v65.113.0 h1:8pLtBo+o5n4S+Bt9zk5qZITWpfyRnKYAy7VsProDJAk=
 github.com/oracle/oci-go-sdk/v65 v65.113.0/go.mod h1:8ZzvzuEG/cFLFZhxg/Mg1w19KqyXBKO3c17QIc5PkGs=
-github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20260413171504-7b49f3dca8a2 h1:90LGtsldfmejEMitPVQY+eLhv0Wv9kn0c5EzJAcWTaM=
-github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20260413171504-7b49f3dca8a2/go.mod h1:UbuT8hGiBBdrum1O+CAlyi9ySrleLNG46JWsXi2laKo=
 github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20260506142459-64fd0141c301 h1:oWYWJ2XvRm7Eu8myP12RofrLd73nDPgrKz2EsXhuzWA=
 github.com/oracle/oracle-db-appdev-monitoring v0.0.0-20260506142459-64fd0141c301/go.mod h1:LoHkNlYjYK9ZChOXD76FMg9VSbpMoA3B8sv/AtDHxsM=
 github.com/oschwald/geoip2-golang v1.13.0 h1:Q44/Ldc703pasJeP5V9+aFSZFmBN7DKHbNsSFzQATJI=
