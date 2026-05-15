@@ -139,7 +139,7 @@ GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOA
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
-BEYLA_MODULE  := $(shell go list -m all | grep "^github.com/grafana/beyla" | head -1)
+BEYLA_MODULE  := $(shell go list -m -f '{{.Path}} {{.Version}}' github.com/grafana/beyla/v3 2>/dev/null)
 BEYLA_VERSION := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f2)
 BEYLA_PKG     := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f1)/pkg/buildinfo
 VPREFIX      := github.com/grafana/alloy/internal/build
