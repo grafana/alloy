@@ -100,9 +100,12 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - name: Build
+    - name: Generate source code
       run: |
-        RELEASE_BUILD=1 make -j4 dist
+        RELEASE_BUILD=1 make generate-source-code
+
+    - name: Build
+      run: RELEASE_BUILD=1 SKIP_CODE_GENERATION=1 make -j4 dist
       env:
         VERSION: ${{ env.RELEASE_TAG }}
 

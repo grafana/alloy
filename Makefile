@@ -52,6 +52,7 @@
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
 ##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
+##   generate-source-code      Wrapper for collector distro codegen (skips when CI=true or SKIP_CODE_GENERATION=1).
 ##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
 ##
 ## Other targets:
@@ -82,6 +83,7 @@
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
+##   SKIP_CODE_GENERATION Set to 1 to skip code generation before building the alloy binary
 
 include tools/make/*.mk
 
@@ -122,6 +124,7 @@ PROPAGATE_VARS := \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
+    SKIP_CODE_GENERATION \
 
 #
 # Constants for targets
@@ -233,7 +236,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-ui
+alloy: generate-ui generate-source-code
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -288,7 +291,7 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-source-code generate-otel-collector-distro generate-graphql
 generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
 
 generate-graphql:
@@ -316,7 +319,17 @@ generate-module-dependencies:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+	# Clear GOOS/GOARCH/GOARM so go generate builds/runs for the host
+	cd ./tools/generate-module-dependencies && GOOS= GOARCH= GOARM= go generate
+endif
+
+generate-source-code:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_CODE_GENERATION),1)
+	@echo "Skipping code generation (SKIP_CODE_GENERATION=1)"
+else
+	@$(MAKE) generate-module-dependencies generate-otel-collector-distro
 endif
 
 generate-otel-collector-distro:
