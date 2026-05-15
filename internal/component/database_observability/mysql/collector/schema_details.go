@@ -25,10 +25,10 @@ const (
 	OP_CREATE_STATEMENT    = "create_statement"
 )
 
-// EmitInterval is the minimum amount of time that must elapse between
+// emitInterval is the minimum amount of time that must elapse between
 // successive OP_CREATE_STATEMENT emissions for the same table, regardless of
 // the configured collect_interval.
-const EmitInterval = 30 * time.Minute
+const emitInterval = 30 * time.Minute
 
 const (
 	selectTablesTemplate = `
@@ -116,8 +116,8 @@ type SchemaDetails struct {
 	// to at most one per EmitInterval per table.
 	lastEmittedAt map[string]time.Time
 
-	// nowFn allows overriding time.Now() in tests
-	nowFn func() time.Time
+	// now allows overriding time.Now() in tests
+	now func() time.Time
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -173,7 +173,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		excludeSchemas:  args.ExcludeSchemas,
 		entryHandler:    args.EntryHandler,
 		lastEmittedAt:   map[string]time.Time{},
-		nowFn:           time.Now,
+		now:             time.Now,
 		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
 	}
@@ -235,7 +235,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	}
 	defer rs.Close()
 
-	now := c.nowFn()
+	now := c.now()
 	tables := []*tableInfo{}
 	seenTables := map[string]struct{}{}
 	for rs.Next() {
@@ -282,13 +282,13 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	}
 
 	// Compute the due set: tables that have never emitted OP_CREATE_STATEMENT
-	// or whose last emission is older than EmitInterval.
+	// or whose last emission is older than emitInterval.
 	// Group by schema to preserve the iteration order from the tables-list query.
 	dueBySchema := map[string][]*tableInfo{}
 	dueSchemas := []string{}
 	for _, t := range tables {
 		k := fullyQualifiedName(t.schema, t.tableName)
-		if last, ok := c.lastEmittedAt[k]; ok && now.Sub(last) < EmitInterval {
+		if last, ok := c.lastEmittedAt[k]; ok && now.Sub(last) < emitInterval {
 			continue
 		}
 		if _, exists := dueBySchema[t.schema]; !exists {

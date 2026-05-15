@@ -491,7 +491,7 @@ func TestSchemaDetails(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
-		collector.nowFn = func() time.Time { return fakeNow }
+		collector.now = func() time.Time { return fakeNow }
 
 		// First scrape: tables list, bulk metadata, then SHOW CREATE TABLE.
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
@@ -580,7 +580,7 @@ func TestSchemaDetails(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
-		collector.nowFn = func() time.Time { return fakeNow }
+		collector.now = func() time.Time { return fakeNow }
 
 		// Two scrapes' worth of expectations: tables list + bulk metadata +
 		// SHOW CREATE each time.
@@ -618,7 +618,7 @@ func TestSchemaDetails(t *testing.T) {
 		}
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		fakeNow = fakeNow.Add(EmitInterval + time.Minute) // past the throttle window
+		fakeNow = fakeNow.Add(emitInterval + time.Minute) // past the throttle window
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		require.Eventually(t, func() bool {
@@ -661,7 +661,7 @@ func TestSchemaDetails(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
-		collector.nowFn = func() time.Time { return fakeNow }
+		collector.now = func() time.Time { return fakeNow }
 
 		// First scrape: two tables in the same schema.
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
