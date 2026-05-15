@@ -257,17 +257,12 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 		// https://github.com/golang/go/issues/23196#issuecomment-353169837
 		case <-readTimer.C:
 			w.metrics.segmentRead.WithLabelValues(w.id, "timer").Inc()
-			w.logger.Debug("segment read triggered by backup timer", "segment", segmentNum)
 		case <-w.readNotify:
 			w.metrics.segmentRead.WithLabelValues(w.id, "notification").Inc()
 		}
 
 		// read from open segment routine
 		ok, err := w.readSegment(reader, segmentNum)
-		if err != nil && !errors.Is(err, io.EOF) {
-			w.logger.Warn("error reading segment inside read ticker or notification", "segment", segmentNum, "read", reader.Offset(), "err", err)
-		}
-
 		// Ignore all errors reading to end of segment whilst replaying the WAL. This is because when replaying not the
 		// last segment, we assume that segment is not written anymore (closed), and the call to readSegment will read
 		// to the end of it. If error, log a warning accordingly. After, error or no error, nil is returned so that the
