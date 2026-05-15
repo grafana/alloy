@@ -3,7 +3,6 @@
 package file
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +24,6 @@ func TestLegacyConversion(t *testing.T) {
 
 	// create legacy position file
 	legacyPositionFilename := filepath.Join(tmpFileDir, "legacy.yaml")
-	fmt.Println(legacyPositionFilename)
 	legacy, err := os.Create(legacyPositionFilename)
 	require.NoError(t, err)
 
