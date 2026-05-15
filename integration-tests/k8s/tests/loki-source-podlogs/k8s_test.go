@@ -13,9 +13,9 @@ func TestLokiSourcePodlogs(t *testing.T) {
 		Labels: map[string]string{"alloy-integration-test": "true"},
 	})
 
-	targetA := deps.NewNamespace(deps.NamespaceOptions{Name: "log-producer-a"})
-	targetB := deps.NewNamespace(deps.NamespaceOptions{Name: "log-producer-b"})
-	targetC := deps.NewNamespace(deps.NamespaceOptions{Name: "log-producer-c"})
+	targetA := deps.NewNamespace(deps.NamespaceOptions{Name: "podlogs-producer-a"})
+	targetB := deps.NewNamespace(deps.NamespaceOptions{Name: "podlogs-producer-b"})
+	targetC := deps.NewNamespace(deps.NamespaceOptions{Name: "podlogs-producer-c"})
 
 	loki := deps.NewLoki(deps.LokiOptions{Namespace: namespace.Name()})
 

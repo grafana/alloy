@@ -8,7 +8,7 @@ spec:
       alloy-logs-test: "true"
   namespaceSelector:
     matchLabels:
-      kubernetes.io/metadata.name: log-producer-a
+      kubernetes.io/metadata.name: podlogs-producer-a
   relabelings:
     - sourceLabels: [__meta_kubernetes_namespace]
       targetLabel: namespace

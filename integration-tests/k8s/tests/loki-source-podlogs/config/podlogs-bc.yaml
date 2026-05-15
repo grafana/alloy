@@ -10,7 +10,7 @@ spec:
     matchExpressions:
       - key: kubernetes.io/metadata.name
         operator: In
-        values: [log-producer-b, log-producer-c]
+        values: [podlogs-producer-b, podlogs-producer-c]
   relabelings:
     - sourceLabels: [__meta_kubernetes_namespace]
       targetLabel: namespace
