@@ -117,12 +117,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		}),
 	)
 
-	o.OnStateChange(Exports{Receiver: c.receiver})
-
 	// Call to Update() to start readers and set receivers once at the start.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
+
+	o.OnStateChange(Exports{Receiver: c.receiver})
 
 	return c, nil
 }
