@@ -1375,8 +1375,11 @@ func TestSchemaDetails(t *testing.T) {
 		err = collector.Start(t.Context())
 		require.NoError(t, err)
 
+		// Wait until every sqlmock expectation has been consumed to make sure
+		// the collector has a chance to run all bulk queries even if
+		// OP_CREATE_STATEMENT is not emitted.
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
+			return mock.ExpectationsWereMet() == nil
 		}, 5*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
