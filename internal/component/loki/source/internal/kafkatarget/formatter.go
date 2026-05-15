@@ -17,7 +17,9 @@ func format(lbs labels.Labels, cfg []*relabel.Config) model.LabelSet {
 		return nil
 	}
 	lb := labels.NewBuilder(lbs)
-	relabel.ProcessBuilder(lb, cfg...)
+	if !relabel.ProcessBuilder(lb, cfg...) {
+		return nil
+	}
 	processed := lb.Labels()
 	labelOut := model.LabelSet(LabelsToMetric(processed))
 	for k := range labelOut {
