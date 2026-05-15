@@ -1241,12 +1241,12 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		}
 
 		require.NoError(t, collector.extractNames(context.Background()))
-		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("throttle_test_db", "public", "table_a"))
-		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("throttle_test_db", "public", "table_b"))
+		require.Contains(t, collector.lastEmittedAt[database("throttle_test_db")], schemaTableKey("public", "table_a"))
+		require.Contains(t, collector.lastEmittedAt[database("throttle_test_db")], schemaTableKey("public", "table_b"))
 
 		// Second scrape: only table_a remains. table_b should be evicted from
 		// the throttle map by housekeeping. Since table_a was already emitted
-		// less than EmitInterval ago, no further metadata queries are expected.
+		// less than emitInterval ago, no further metadata queries are expected.
 		fakeNow = fakeNow.Add(time.Minute)
 		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("throttle_test_db"))
@@ -1258,8 +1258,8 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		require.NoError(t, collector.extractNames(context.Background()))
 
 		require.NoError(t, mock.ExpectationsWereMet())
-		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("throttle_test_db", "public", "table_a"))
-		require.NotContains(t, collector.lastEmittedAt, fullyQualifiedName("throttle_test_db", "public", "table_b"))
+		require.Contains(t, collector.lastEmittedAt[database("throttle_test_db")], schemaTableKey("public", "table_a"))
+		require.NotContains(t, collector.lastEmittedAt[database("throttle_test_db")], schemaTableKey("public", "table_b"))
 	})
 
 	t.Run("same schema.table in different databases is throttled independently", func(t *testing.T) {
@@ -1330,9 +1330,90 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 		require.NoError(t, mockA.ExpectationsWereMet())
 		require.NoError(t, mockB.ExpectationsWereMet())
 
-		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("db_a", "public", "test_table"))
-		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("db_b", "public", "test_table"))
+		require.Contains(t, collector.lastEmittedAt[database("db_a")], schemaTableKey("public", "test_table"))
+		require.Contains(t, collector.lastEmittedAt[database("db_b")], schemaTableKey("public", "test_table"))
 		require.Len(t, collector.lastEmittedAt, 2)
+	})
+
+	t.Run("transient extractSchemas error does not purge throttle entries", func(t *testing.T) {
+		t.Parallel()
+
+		// Single mock used for both databases. The factory returns this
+		// connection (which is also the initial connection), so extractNames
+		// never calls conn.Close() on it.
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			DSN:             "postgres://user:pass@localhost:5432/db_a",
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+		collector.now = func() time.Time { return fakeNow }
+
+		// First scrape: both databases succeed. Each populates a throttle entry.
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("db_a").AddRow("db_b"))
+		for i := 0; i < 2; i++ {
+			mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+			mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("test_table"))
+			mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"column_name", "column_type", "not_nullable", "column_default",
+					"identity_generation", "is_primary_key",
+				}).AddRow("id", "integer", true, nil, "", true))
+			mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"index_name", "index_type", "unique", "column_names",
+					"expressions", "has_nullable_column",
+				}))
+			mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").RowsWillBeClosed().
+				WillReturnRows(sqlmock.NewRows([]string{
+					"constraint_name", "column_name", "referenced_table_name", "referenced_column_name",
+				}))
+		}
+
+		require.NoError(t, collector.extractNames(context.Background()))
+		require.Contains(t, collector.lastEmittedAt[database("db_a")], schemaTableKey("public", "test_table"))
+		require.Contains(t, collector.lastEmittedAt[database("db_b")], schemaTableKey("public", "test_table"))
+
+		// Second scrape (within emitInterval): db_a scrapes successfully but
+		// is throttled (no metadata queries). db_b's selectSchemaNames fails
+		// transiently. The throttle entry for db_b must survive — otherwise
+		// the throttle guarantee is broken.
+		fakeNow = fakeNow.Add(time.Minute)
+		mock.ExpectQuery(fmt.Sprintf(selectAllDatabases, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"datname"}).AddRow("db_a").AddRow("db_b"))
+		// db_a: schemas + tables (throttled, so no metadata queries)
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).AddRow("public"))
+		mock.ExpectQuery(selectTableNames).WithArgs("public").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("test_table"))
+		// db_b: schemas query fails
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().
+			WillReturnError(fmt.Errorf("transient db_b error"))
+
+		require.NoError(t, collector.extractNames(context.Background()))
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		require.Contains(t, collector.lastEmittedAt[database("db_a")], schemaTableKey("public", "test_table"))
+		require.Contains(t, collector.lastEmittedAt[database("db_b")], schemaTableKey("public", "test_table"),
+			"transient error for db_b must not purge its throttle entries")
 	})
 }
 
@@ -1374,9 +1455,10 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 
 		collector := &SchemaDetails{
 			logger: logging.NewSlogNop(),
+			now:    time.Now,
 		}
 
-		err = collector.extractSchemas(context.Background(), "testdb", db, time.Now(), map[string]struct{}{})
+		err = collector.extractSchemas(context.Background(), "testdb", db)
 
 		require.Error(t, err)
 		require.NoError(t, mock.ExpectationsWereMet())
