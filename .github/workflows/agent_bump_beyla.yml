@@ -22,12 +22,14 @@ concurrency:
   group: agent-bump-beyla-${{ inputs.source_ref }}-${{ inputs.beyla_ref || inputs.beyla_release_tag }}
   cancel-in-progress: true
 
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
+
 jobs:
   plan-beyla-update:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: read
       id-token: write
 
     steps:
@@ -38,17 +40,12 @@ jobs:
           export_env: false
           repo_secrets: |
             ANTHROPIC_API_KEY=anthropic-token:token
-            ALLOYBOT_APP_ID=alloybot:app_id
-            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
       - name: Generate token
         id: app-token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
         with:
-          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-          owner: grafana
-          repositories: alloy
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -154,8 +151,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
-      contents: write
-      pull-requests: write
       id-token: write
 
     steps:
@@ -166,17 +161,12 @@ jobs:
           export_env: false
           repo_secrets: |
             ANTHROPIC_API_KEY=anthropic-token:token
-            ALLOYBOT_APP_ID=alloybot:app_id
-            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
       - name: Generate token
         id: app-token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
         with:
-          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-          owner: grafana
-          repositories: alloy
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -200,7 +190,7 @@ jobs:
       - name: Get GitHub App identity
         id: get-app
         env:
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           APP_ID="$(gh api "/apps/${APP_SLUG}" --jq .id)"

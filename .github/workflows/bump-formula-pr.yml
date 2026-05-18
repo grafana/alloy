@@ -3,8 +3,10 @@ on:
   release:
     types: [released]
 
-permissions:
-  contents: read
+permissions: {}
+
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
 
 jobs:
   homebrew-grafana:
@@ -12,34 +14,23 @@ jobs:
     runs-on: ubuntu-latest
     # These permissions are needed to assume roles from Github's OIDC.
     permissions:
-      contents: read
       id-token: write
     steps:
     # TODO: Remove this when we no longer need a forked action in the "Update Homebrew formula" step.
+    - uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+      id: app-token
+      with:
+        github_app: ${{ env.ALLOYBOT_APP_NAME }}
+
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
+        token: ${{ steps.app-token.outputs.token }}
         persist-credentials: false
-
-    - id: get-secrets
-      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
-      with:
-        repo_secrets: |
-          ALLOYBOT_APP_ID=alloybot:app_id
-          ALLOYBOT_PRIVATE_KEY=alloybot:private_key
-        export_env: false
-
-    - uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
-      id: app-token
-      with:
-        app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-        private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-        owner: grafana
-        repositories: alloy,homebrew-grafana
 
     - name: Get GitHub App
       env:
-        APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
       id: get-app
       run: |
@@ -82,5 +73,5 @@ jobs:
         revision: ${{github.sha}}
         # Optional, if don't want to check for already open PRs
         force: false # true
-        user_name: grafana-alloybot[bot]
-        user_email: 879451+grafana-alloybot[bot]@users.noreply.github.com
+        user_name: ${{ env.ALLOYBOT_APP_NAME }}[bot]
+        user_email: 879451+${{ env.ALLOYBOT_APP_NAME }}[bot]@users.noreply.github.com
