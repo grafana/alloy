@@ -319,7 +319,6 @@ generate-module-dependencies:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	# Clear GOOS/GOARCH/GOARM so go generate builds/runs for the host
 	cd ./tools/generate-module-dependencies && GOOS= GOARCH= GOARM= go generate
 endif
 
