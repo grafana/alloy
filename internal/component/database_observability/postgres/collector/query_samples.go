@@ -197,13 +197,38 @@ func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEve
 
 // WaitEventOccurrence tracks a continuous occurrence of the same wait event
 // with the same blocked_by_pids set.
+//
+// wait_time is computed at emit time, not stored on the struct. PG only
+// exposes state_change for the `state` column (active/idle/etc.) — it does
+// NOT move when wait_event identity changes within an active query. So a
+// naive `now - state_change` anchor would inflate every secondary wait in a
+// multi-wait query by the full prior state duration. To bound that, we
+// anchor on state_change but cap the first emit at the gap to the prior
+// scrape of this same sample — anything older would have been observable to
+// alloy earlier. Brand-new samples have no prior scrape and are NOT capped:
+// they credit the full `now - state_change` so a query observed once still
+// shows up under `sum_over_time(unwrap wait_time)`, and a backend that was
+// already waiting when alloy started gets that historical time attributed
+// (intentional — same shape on the PR #6214 counter, see note below).
+//
+//	First emit (existing sample): min(now - state_change, now - priorLastSeen)
+//	First emit (brand-new sample): now - state_change
+//	Subsequent emits: now - LastEmittedAt  (pure delta).
+//
+// FirstObservedAt is kept for PR #6214's wait_event_seconds_total counter.
+// For the counter and Loki sum_over_time(wait_time) to be interchangeable,
+// PR #6214 must increment the counter PER EMIT by the same waitTime
+// computed here — not once at finalize by LastTimestamp - FirstObservedAt.
+// That way every Loki entry corresponds to exactly one counter increment of
+// the same value, and the two surfaces are equal by construction.
 type WaitEventOccurrence struct {
-	WaitEventType string
-	WaitEvent     string
-	BlockedByPIDs []int64 // normalized set (sorted, unique)
-	LastWaitTime  string  // last stateDuration seen for this wait event
-	LastState     string
-	LastTimestamp time.Time
+	WaitEventType   string
+	WaitEvent       string
+	BlockedByPIDs   []int64 // normalized set (sorted, unique)
+	LastState       string
+	LastTimestamp   time.Time // scrape time of the most recent observation
+	FirstObservedAt time.Time // first scrape that saw this occurrence
+	LastEmittedAt   time.Time // scrape time of the most recent emit; zero == not yet emitted
 }
 
 // WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
@@ -419,15 +444,78 @@ func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 
 func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
 	state, ok := c.samples[key]
+	var priorLastSeen time.Time
 	if !ok {
 		state = &SampleState{tracker: newWaitEventTracker()}
 		c.samples[key] = state
+	} else {
+		priorLastSeen = state.LastSeenAt
 	}
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
 	state.updateCpuTime(sample)
 	state.LastRow.State = sample.State
 	state.tracker.upsertWaitEvent(sample, sample.Now)
+	c.emitOpenWaitEvent(state, sample.Now, priorLastSeen)
+}
+
+// emitOpenWaitEvent emits a wait_event log entry for the tracker's currently
+// open occurrence, if any. See the WaitEventOccurrence comment for the full
+// rationale on how waitTime is computed.
+//
+//   - Brand-new sample (no prior scrape): waitTime = now - state_change.
+//     No cap — captures pre-collector wait time so queries observed once
+//     still register in sum_over_time, and a backend already waiting at
+//     alloy startup gets that historical duration on its first emit.
+//   - Existing sample (prior scrape saw this sample, with or without a
+//     different wait identity): waitTime = min(now - state_change,
+//     now - priorLastSeen). The priorLastSeen bound prevents PG's stable
+//     state_change from re-crediting prior-occurrence time on every
+//     secondary wait identity within a multi-wait query.
+//   - Subsequent emits on an open occurrence: waitTime = now - LastEmittedAt.
+func (c *QuerySamples) emitOpenWaitEvent(state *SampleState, now time.Time, priorLastSeen time.Time) {
+	if state.tracker.openIdx < 0 {
+		return
+	}
+	we := &state.tracker.waitEvents[state.tracker.openIdx]
+	if we.WaitEventType == "" || we.WaitEvent == "" {
+		return
+	}
+
+	var waitTime time.Duration
+	if we.LastEmittedAt.IsZero() {
+		if state.LastRow.StateChange.Valid {
+			waitTime = now.Sub(state.LastRow.StateChange.Time)
+		}
+		if !priorLastSeen.IsZero() {
+			observableBound := now.Sub(priorLastSeen)
+			if observableBound < waitTime {
+				waitTime = observableBound
+			}
+		}
+		if waitTime < 0 {
+			waitTime = 0
+		}
+	} else {
+		waitTime = now.Sub(we.LastEmittedAt)
+	}
+	waitTimeStr := waitTime.String()
+
+	op := OP_WAIT_EVENT
+	labels := c.buildWaitEventLabels(state, *we, waitTimeStr)
+	if c.enablePreClassifiedWaitEvents {
+		op = OP_WAIT_EVENT_V2
+		labels = c.buildWaitEventV2Labels(state, *we, waitTimeStr)
+	}
+
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+		logging.LevelInfo,
+		op,
+		labels,
+		now.UnixNano(),
+	)
+
+	we.LastEmittedAt = now
 }
 
 func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Time) {
@@ -441,7 +529,6 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			we := t.waitEvents[t.openIdx]
 			existing := WaitEventIdentity{eventType: we.WaitEventType, event: we.WaitEvent, blockedBy: we.BlockedByPIDs}
 			if existing.Equal(current) {
-				we.LastWaitTime = calculateDuration(sample.StateChange, now)
 				we.LastState = sample.State.String
 				we.LastTimestamp = now
 				t.waitEvents[t.openIdx] = we
@@ -451,12 +538,12 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 		}
 
 		newOcc := WaitEventOccurrence{
-			WaitEventType: current.eventType,
-			WaitEvent:     current.event,
-			BlockedByPIDs: current.blockedBy,
-			LastWaitTime:  calculateDuration(sample.StateChange, now),
-			LastState:     sample.State.String,
-			LastTimestamp: now,
+			WaitEventType:   current.eventType,
+			WaitEvent:       current.event,
+			BlockedByPIDs:   current.blockedBy,
+			LastState:       sample.State.String,
+			LastTimestamp:   now,
+			FirstObservedAt: now,
 		}
 		t.waitEvents = append(t.waitEvents, newOcc)
 		t.openIdx = len(t.waitEvents) - 1
@@ -485,26 +572,11 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		ts,
 	)
 
-	for _, we := range state.tracker.WaitEvents() {
-		if we.WaitEventType == "" || we.WaitEvent == "" {
-			continue
-		}
-		if c.enablePreClassifiedWaitEvents {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT_V2,
-				c.buildWaitEventV2Labels(state, we),
-				we.LastTimestamp.UnixNano(),
-			)
-		} else {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT,
-				c.buildWaitEventLabels(state, we),
-				we.LastTimestamp.UnixNano(),
-			)
-		}
-	}
+	// wait_event entries were already emitted per-scrape by emitOpenWaitEvent.
+	// There is no final-emit here: the last emit's wait_time covers up to its
+	// scrape time, and we accept up to one scrape-interval under-count at the
+	// close of an occurrence — identical to the under-count baked into PR
+	// #6214's wait_event_seconds_total counter so the two stay aligned.
 
 	delete(c.samples, key)
 }
@@ -555,7 +627,7 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	return labels
 }
 
-func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
+func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence, waitTime string) string {
 	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
@@ -571,7 +643,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		we.LastState,
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
-		we.LastWaitTime,
+		waitTime,
 		we.WaitEventType,
 		we.WaitEvent,
 		waitEventFullName,
@@ -620,7 +692,7 @@ func isIdleState(state string) bool {
 	return false
 }
 
-func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOccurrence) string {
+func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOccurrence, waitTime string) string {
 	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
@@ -636,7 +708,7 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 		we.LastState,
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
-		we.LastWaitTime,
+		waitTime,
 		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
 		we.WaitEvent,
 		waitEventFullName,
