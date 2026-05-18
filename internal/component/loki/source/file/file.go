@@ -84,7 +84,7 @@ func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
 func (a *Arguments) SetToDefault() {
 	a.FileWatch.SetToDefault()
 	a.FileMatch.SetToDefault()
-	a.MaxLineSize = 0
+	a.MaxLineSize = 1 * units.MiB
 	a.OnPositionsFileError = OnPositionsFileErrorRestartBeginning
 }
 
