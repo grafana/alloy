@@ -51,7 +51,6 @@
 ##   generate-graphql          Generate the GraphQL assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
-##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
 ##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
 ##
 ## Other targets:
@@ -288,8 +287,8 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
 
 generate-graphql:
 ifeq ($(USE_CONTAINER),1)
@@ -312,20 +311,12 @@ else
 	bash ./operations/helm/scripts/rebuild-tests.sh
 endif
 
-generate-module-dependencies:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else
-	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
-endif
-
 generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	@if [ -f ./collector/go.mod ]; then \
-		cd ./collector && go mod tidy; \
-	fi
+	cd ./tools && $(GO_ENV) go run ./sync-builder-config-replaces --builder-config ../collector/builder-config.yaml --go-mod ../go.mod
+	go mod tidy
 	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
 	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif

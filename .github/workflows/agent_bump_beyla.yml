@@ -107,9 +107,7 @@ jobs:
             ## Files the implementation job may update
 
             - `collector/builder-config.yaml`
-            - `dependency-replacements.yaml`
             - `collector/go.mod`
-            - `extension/alloyengine/go.mod`
             - `go.mod`
             - `docs/sources/_index.md.t`
             - `internal/component/beyla/ebpf/args.go`
@@ -117,7 +115,7 @@ jobs:
             - `internal/component/beyla/ebpf/beyla_linux_test.go`
             - `docs/sources/reference/components/beyla/beyla.ebpf.md`
 
-            `go.sum`, `collector/go.sum`, and `extension/alloyengine/go.sum` may change only if required by module updates.
+            `go.sum` and `collector/go.sum` may change only if required by module updates.
 
             ## Required contents of `.github/agent-output/plan.md`
 
@@ -251,9 +249,7 @@ jobs:
 
             Update only what is required in these files:
             - `collector/builder-config.yaml`
-            - `dependency-replacements.yaml`
             - `collector/go.mod`
-            - `extension/alloyengine/go.mod`
             - `go.mod`
             - `docs/sources/_index.md.t`
             - `internal/component/beyla/ebpf/args.go`
@@ -261,7 +257,7 @@ jobs:
             - `internal/component/beyla/ebpf/beyla_linux_test.go`
             - `docs/sources/reference/components/beyla/beyla.ebpf.md`
 
-            You may also update `go.sum`, `collector/go.sum`, or `extension/alloyengine/go.sum` if the module changes require it. Do not touch unrelated files.
+            You may also update `go.sum` or `collector/go.sum` if the module changes require it. Do not touch unrelated files.
             Do not create, stage, or commit `.github/agent-output/implement-status.md` or any similar tracking file.
             Prefer updating source-of-truth files and then using the repo Make targets to regenerate derived module files. Do not hand-edit `collector/go.mod` when `make generate-otel-collector-distro` can regenerate it.
 
@@ -269,15 +265,12 @@ jobs:
 
             1. Bump the OBI replacement version derived from Beyla's pinned `.obi-src` SHA in:
                - `collector/builder-config.yaml`
-               - `dependency-replacements.yaml`
 
             2. Bump the Beyla version in:
-               - `extension/alloyengine/go.mod`
                - `go.mod`
                - `docs/sources/_index.md.t`
 
             3. After updating the source-of-truth files, run:
-               - `make generate-module-dependencies`
                - `make generate-otel-collector-distro`
 
             4. Review and keep the generated module changes produced by those Make targets as needed, including:
@@ -285,8 +278,6 @@ jobs:
                - `collector/go.sum`
                - `go.mod`
                - `go.sum`
-               - `extension/alloyengine/go.mod`
-               - `extension/alloyengine/go.sum`
 
             5. Compare the current Alloy Beyla integration against the target Beyla release and add any newly added fields needed for parity in:
                - `internal/component/beyla/ebpf/args.go`
@@ -311,7 +302,7 @@ jobs:
             - Keep docs concise and consistent with existing wording and table format.
             - Do not add compatibility shims unless they are strictly required by the target Beyla release.
             - Do not introduce a new function without also introducing the unit test coverage for it.
-            - `make alloy` is fine as a build check, but it does not replace `make generate-module-dependencies` or `make generate-otel-collector-distro` for dependency and collector regeneration.
+            - `make alloy` is fine as a build check, but it does not replace `make generate-otel-collector-distro` for dependency and collector regeneration.
 
             ## Verification
 

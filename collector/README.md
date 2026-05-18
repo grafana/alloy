@@ -43,7 +43,7 @@ The OCB tool reads `builder-config.yaml` and generates:
 The `builder-config.yaml` file defines:
 - General collector distribution metadata
 - The Open Telemetry components to include in the distribution (receivers/processors/exporters etc)
-- Replace directives, which are automated/generated to keep in sync with `dependency-replacements.yaml` in the root of the project
+- Shared replace directives, which are the source of truth for the root `go.mod` replace block and generated collector module
 
 ### 2. Go Module Tidying (`go mod tidy`)
 
@@ -72,4 +72,6 @@ If your work involves anything that would modify the generated files, please com
 
 ## A Note On Replace Directives
 
-The `replaces` section in `builder-config.yaml` must be kept in sync with the replace directives in the root `go.mod` file as well as the `go.mod` file in the alloy engine extension. The Alloy project uses the `dependency-replacements.yaml` file found in the root of the project to generate replace directives. If you modify a replacement, please run `make generate-module-dependencies` to sync things up. There is also a github workflow that will check against this.
+The shared replace block in `builder-config.yaml` is the source of truth for dependency replacements used by the OTel collector distro. Local path replaces, such as `github.com/grafana/alloy => ../`, must stay outside the shared block.
+
+If you modify a shared replacement, run `make generate-otel-collector-distro`. This syncs the shared replace block into the root `go.mod` file and regenerates the collector module files. There is also a GitHub workflow that checks this output.
