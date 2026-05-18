@@ -28,6 +28,13 @@ type Stage interface {
 	Cleanup()
 }
 
+// Stopper is an optional interface for stages that need an out-of-band signal
+// to unblock goroutines during shutdown. Implementations must not block,
+// panic, or assume Run has stopped.
+type Stopper interface {
+	Stop()
+}
+
 // stageProcessor Allow to transform a Processor (old synchronous pipeline stage) into an async Stage
 type stageProcessor struct {
 	Processor

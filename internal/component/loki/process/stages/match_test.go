@@ -245,3 +245,18 @@ func TestMatchStage_NewPipelineErrorIsWrapped(t *testing.T) {
 	require.ErrorContains(t, err, "match stage failed to create pipeline")
 	require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
 }
+
+var testMatchNestedLimitAlloy = `
+stage.match {
+		selector = "{app=\"loki\"}"
+		action = "keep"
+		stage.limit {
+				rate  = 0.1
+				burst = 1
+				drop  = false
+		}
+}`
+
+func TestMatchNestedLimitShutdown(t *testing.T) {
+	assertPipelineStopsPromptly(t, testMatchNestedLimitAlloy)
+}
