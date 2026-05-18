@@ -1457,6 +1457,81 @@ func TestQuerySamples_WaitEventDeltaAcrossScrapes(t *testing.T) {
 	require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 100*time.Millisecond)
 }
 
+// First emit on an existing sample is bounded by the prior-scrape gap, not
+// by the (much larger) stateAge — verifies the multi-wait inflation fix.
+func TestQuerySamples_WaitEventFirstEmitBoundedByPriorScrape(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	t0 := time.Now()
+	t1 := t0.Add(5 * time.Second)
+	stateChange := t0.Add(-1 * time.Hour) // query went active 1h ago, real PG keeps state_change here through wait_event changes
+	queryStart := t0.Add(-1 * time.Hour)
+	xactStart := t0.Add(-1 * time.Hour)
+	backendStart := t0.Add(-2 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+	}
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Scrape 1 at t0: sample is active with no wait. Stores LastSeenAt=t0.
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			t0, "testdb", 710, sql.NullInt64{},
+			"testuser", "testapp", "127.0.0.1", 5432,
+			"client backend", backendStart, sql.NullInt32{}, sql.NullInt32{},
+			xactStart, "active", stateChange, sql.NullString{},
+			sql.NullString{}, nil, queryStart,
+			sql.NullInt64{Int64: 8888, Valid: true},
+		))
+	// Scrape 2 at t0+5s: SAME sample, now Lock:relation. stateAge would be 1h+5s
+	// but priorLastSeen=t0 bounds the first emit to the 5s gap.
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(
+			t1, "testdb", 710, sql.NullInt64{},
+			"testuser", "testapp", "127.0.0.1", 5432,
+			"client backend", backendStart, sql.NullInt32{}, sql.NullInt32{},
+			xactStart, "waiting", stateChange, sql.NullString{String: "Lock", Valid: true},
+			sql.NullString{String: "relation", Valid: true}, pq.Int64Array{}, queryStart,
+			sql.NullInt64{Int64: 8888, Valid: true},
+		))
+	// Scrape 3: disappear, finalize.
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns))
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                 db,
+		CollectInterval:    time.Millisecond,
+		EntryHandler:       lokiClient,
+		Logger:             log.NewNopLogger(),
+		ExcludeCurrentUser: true,
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, sampleCollector.Start(t.Context()))
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 100*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Len(t, entries, 2)
+	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `wait_time="5s"`, "first emit on existing sample is bounded by 5s prior-scrape gap, not 1h stateAge")
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[1].Labels)
+
+	sampleCollector.Stop()
+	require.Eventually(t, func() bool { return sampleCollector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+	require.Eventually(t, func() bool { return mock.ExpectationsWereMet() == nil }, 5*time.Second, 100*time.Millisecond)
+}
+
 func TestClassifyPostgresWaitEventType(t *testing.T) {
 	testCases := []struct {
 		name     string

@@ -152,8 +152,8 @@ func newSampleKey(pid int, queryID int64, queryStart sql.NullTime) SampleKey {
 	return key
 }
 
-// SampleState buffers state across scrapes and is emitted once the query
-// turns idle or disappears, avoiding partial/duplicate emissions.
+// SampleState buffers per-sample state across scrapes. query_sample is
+// emitted at finalize; wait_event entries are emitted per-scrape.
 type SampleState struct {
 	LastRow     QuerySamplesInfo
 	LastSeenAt  time.Time
@@ -194,6 +194,14 @@ func newWaitEventTracker() WaitEventTracker {
 
 func (t *WaitEventTracker) CloseOpen()                        { t.openIdx = -1 }
 func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
+
+// Open returns a pointer to the currently open occurrence, or nil if none.
+func (t *WaitEventTracker) Open() *WaitEventOccurrence {
+	if t.openIdx < 0 {
+		return nil
+	}
+	return &t.waitEvents[t.openIdx]
+}
 
 // WaitEventOccurrence tracks a continuous occurrence of the same wait event
 // with the same blocked_by_pids set. wait_time is computed at emit time:
@@ -423,13 +431,13 @@ func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 }
 
 func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
-	state, ok := c.samples[key]
+	state, existed := c.samples[key]
 	var priorLastSeen time.Time
-	if !ok {
+	if existed {
+		priorLastSeen = state.LastSeenAt
+	} else {
 		state = &SampleState{tracker: newWaitEventTracker()}
 		c.samples[key] = state
-	} else {
-		priorLastSeen = state.LastSeenAt
 	}
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
@@ -440,11 +448,8 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 }
 
 func (c *QuerySamples) emitOpenWaitEvent(state *SampleState, now time.Time, priorLastSeen time.Time) {
-	if state.tracker.openIdx < 0 {
-		return
-	}
-	we := &state.tracker.waitEvents[state.tracker.openIdx]
-	if we.WaitEventType == "" || we.WaitEvent == "" {
+	we := state.tracker.Open()
+	if we == nil || we.WaitEventType == "" || we.WaitEvent == "" {
 		return
 	}
 
