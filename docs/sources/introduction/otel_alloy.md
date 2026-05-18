@@ -152,20 +152,15 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 ## Custom builds with the OpenTelemetry Collector Builder (OCB)
 
-The {{< param "OTEL_ENGINE" >}} is produced from an [OpenTelemetry Collector Builder (OCB)][OCB] manifest.
-If the default bundle is too large, or you need additional receivers, processors, exporters, extensions, or connectors, you can maintain your own copy of the Alloy repository, edit that manifest, regenerate the collector sources, and build {{< param "PRODUCT_NAME" >}} as usual.
-
-Custom builds are **not** covered by the same support expectations as standard releases; see [Alloy maintenance and stability](../../reference/release-information/alloy-maintenance/) for scope.
+The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)][https://opentelemetry.io/docs/collector/custom-collector/] manifest. If you 
+need additional components or want to remove some of the default components - you can manually edit this manifest and create a custom Alloy build for your workloads. Custom builds are **not** covered by the same support expectations as standard releases.
 
 ### 1. Start from the checked-in manifest
 
-The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in the Alloy repository.
-It lists each bundled component as a `gomod` entry under `extensions`, `exporters`, `processors`, `receivers`, `connectors`, and any other sections OCB supports.
+The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in the Alloy repository. You can:
 
 - **Remove** a component by deleting its `- gomod: ...` line from the appropriate section.
-- **Add** a component by appending a line that points at the module path and version you want, using the same pattern as existing entries (for example, packages under [`opentelemetry-collector-contrib`](https://github.com/open-telemetry/opentelemetry-collector-contrib) for contrib components).
-
-The `replaces` block in the manifest is maintained for the upstream Alloy project (see [`collector/README.md`](https://github.com/grafana/alloy/blob/main/collector/README.md) and `dependency-replacements.yaml`). If you only add or remove standard components at compatible versions, you may not need to change it; if `go generate` fails to resolve modules, inspect the replaces in the checked-in manifest and the [upstream OCB documentation][OCB].
+- **Add** a component by appending a line that points at the module path and version you want, using the same pattern as existing entries
 
 ### 2. Regenerate the collector distribution
 
@@ -175,9 +170,6 @@ From the root of your Alloy checkout, run:
 make generate-otel-collector-distro
 ```
 
-That target runs OpenTelemetry Collector Builder against `collector/builder-config.yaml` (with compilation skipped during generation), tidies modules, then runs Alloy’s generator so the `otel` subcommand stays wired correctly.
-It refreshes generated files under `collector/` (for example `main.go`, `components.go`, and `go.mod`). **Commit those generated changes** together with edits to `builder-config.yaml`; CI verifies that they stay in sync.
-
 ### 3. Build the Alloy binary
 
 Build the full CLI (including the {{< param "OTEL_ENGINE" >}}):
@@ -186,22 +178,17 @@ Build the full CLI (including the {{< param "OTEL_ENGINE" >}}):
 make alloy
 ```
 
-The resulting binary behaves like a standard `alloy` build; use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
+The resulting binary in `build/` behaves like a standard `alloy` build; use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
 
 ### 4. Build a Docker image
 
 To produce an image analogous to Grafana’s Alloy image:
 
 ```shell
-make alloy-image
+make alloy-image ALLOY_IMAGE=[registry_name/image_name]
 ```
 
-By default the image tag comes from Makefile variables such as `ALLOY_IMAGE` (see Makefile comments).
-The image build runs `make alloy` inside the Dockerfile, so it picks up whatever collector code you generated in the previous steps.
-
-For more detail on generated files and the `replaces` workflow used in the Grafana tree, refer to [`collector/README.md`](https://github.com/grafana/alloy/blob/main/collector/README.md).
-
-[OCB]: https://opentelemetry.io/docs/collector/custom-collector/
+Ensure to set `ALLOY_IMAGE` to point to your image repository and desired image name, otherwise the image name will fall back to `grafana/alloy`.
 
 ## Next steps
 
