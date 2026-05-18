@@ -673,8 +673,6 @@ func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 	require.Equal(t, float64(0), totalCount, "historical logs must not produce metrics")
 }
 
-// Without a log_timezone resolver, a non-UTC abbreviation (e.g. PST) must
-// still be counted: the historical filter is skipped rather than mis-applied.
 func TestLogsCollector_NonUTCLogTimezone(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
@@ -692,8 +690,7 @@ func TestLogsCollector_NonUTCLogTimezone(t *testing.T) {
 	require.NoError(t, err)
 	defer collector.Stop()
 
-	// PST = UTC-8: PG's wall-clock for real instant startTime+10s is startTime+10s-8h.
-	pstWall := startTime.Add(10 * time.Second).Add(-8 * time.Hour)
+	pstWall := startTime.Add(10 * time.Second).Add(-8 * time.Hour) // PST wall-clock for real UTC startTime+10s
 	ts1 := pstWall.Format("2006-01-02 15:04:05.000") + " PST"
 	ts2 := pstWall.Add(-1*time.Second).Format("2006-01-02 15:04:05") + " PST"
 
@@ -720,8 +717,6 @@ func TestLogsCollector_NonUTCLogTimezone(t *testing.T) {
 	require.Equal(t, float64(1), totalCount, "log with non-UTC abbreviation timezone must be counted")
 }
 
-// With the correct log_timezone Location supplied, a recent non-UTC log is
-// counted and the historical filter still applies (it just lets it through).
 func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
 	loc, err := time.LoadLocation("America/Los_Angeles")
 	require.NoError(t, err)
@@ -743,7 +738,6 @@ func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
 	require.NoError(t, err)
 	defer collector.Stop()
 
-	// Real UTC instant startTime+10s, expressed as wall-clock in loc (PST or PDT depending on date).
 	abs := startTime.Add(10 * time.Second)
 	inLoc := abs.In(loc)
 	abbrev, _ := inLoc.Zone()
@@ -766,8 +760,6 @@ func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
 	require.Equal(t, float64(1), totalCount, "recent non-UTC log must be counted when log_timezone Location is supplied")
 }
 
-// With the correct log_timezone Location supplied, the historical filter
-// still drops a non-UTC log whose real UTC instant is before startTime.
 func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
 	loc, err := time.LoadLocation("America/Los_Angeles")
 	require.NoError(t, err)
@@ -789,7 +781,7 @@ func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
 	require.NoError(t, err)
 	defer collector.Stop()
 
-	abs := startTime.Add(-1 * time.Hour) // real UTC 1h before startTime
+	abs := startTime.Add(-1 * time.Hour)
 	inLoc := abs.In(loc)
 	abbrev, _ := inLoc.Zone()
 	ts1 := inLoc.Format("2006-01-02 15:04:05.000") + " " + abbrev
@@ -811,10 +803,8 @@ func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
 	require.Equal(t, float64(0), totalCount, "historical non-UTC log must be dropped when log_timezone Location is supplied")
 }
 
-// If the cached Location's abbreviation disagrees with the log line's, the
-// collector skips the filter rather than emitting a wrong absolute time.
 func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
-	// Europe/London emits GMT/BST — neither matches PST.
+	// Europe/London emits GMT/BST — neither matches the PST in the log line.
 	loc, err := time.LoadLocation("Europe/London")
 	require.NoError(t, err)
 
@@ -835,8 +825,6 @@ func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
 	require.NoError(t, err)
 	defer collector.Stop()
 
-	// Wall-clock would look historical if naively reconstructed in Europe/London;
-	// the abbrev mismatch must prevent the drop.
 	pstWall := startTime.Add(-2 * time.Hour)
 	ts1 := pstWall.Format("2006-01-02 15:04:05.000") + " PST"
 	ts2 := pstWall.Add(-1*time.Second).Format("2006-01-02 15:04:05") + " PST"
