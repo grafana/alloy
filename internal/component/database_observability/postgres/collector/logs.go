@@ -44,6 +44,9 @@ type LogsArguments struct {
 	Registry         *prometheus.Registry
 	ExcludeDatabases []string
 	ExcludeUsers     []string
+	// LogTimezone returns PostgreSQL's configured log_timezone as a Location,
+	// or nil if it is unknown. Called on every log line, so must be cheap.
+	LogTimezone func() *time.Location
 }
 
 type Logs struct {
@@ -54,6 +57,7 @@ type Logs struct {
 	receiver         loki.LogsReceiver
 	excludeDatabases []string
 	excludeUsers     []string
+	getLogTimezone   func() *time.Location
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -74,6 +78,11 @@ type Logs struct {
 func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
+	getLogTimezone := args.LogTimezone
+	if getLogTimezone == nil {
+		getLogTimezone = func() *time.Location { return nil }
+	}
+
 	l := &Logs{
 		logger:           args.Logger.With("collector", LogsCollector),
 		entryHandler:     args.EntryHandler,
@@ -81,6 +90,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		receiver:         args.Receiver,
 		excludeDatabases: args.ExcludeDatabases,
 		excludeUsers:     args.ExcludeUsers,
+		getLogTimezone:   getLogTimezone,
 		ctx:              ctx,
 		cancel:           cancel,
 		stopped:          atomic.NewBool(false),
@@ -199,10 +209,11 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 			} {
 				logTimestamp, err := time.Parse(layout, timestampStr)
 				if err == nil {
-					if !logTimestamp.After(l.startTime) {
+					absolute, ok := l.resolveAbsolute(logTimestamp)
+					if ok && !absolute.After(l.startTime) {
 						return nil // Skip historical log
 					}
-					break // Found valid timestamp, continue processing
+					break
 				}
 			}
 		}
@@ -266,6 +277,33 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	).Inc()
 
 	return nil
+}
+
+// resolveAbsolute returns a trustworthy UTC instant for a timestamp produced
+// by time.Parse. Go's time.Parse fabricates a zero-offset Location for any
+// abbreviation it doesn't know (PST, PDT, EDT, AEDT, ...); we recover the
+// real instant by re-interpreting the wall-clock fields in the configured
+// log_timezone, but only trust the recovery when its abbreviation matches the
+// one in the log line (otherwise the cached log_timezone is stale).
+func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
+	name, offset := parsed.Zone()
+	if offset != 0 || name == "UTC" || name == "GMT" {
+		return parsed, true
+	}
+
+	loc := l.getLogTimezone()
+	if loc == nil {
+		return time.Time{}, false
+	}
+
+	y, mo, d := parsed.Date()
+	h, mi, s := parsed.Clock()
+	reconstructed := time.Date(y, mo, d, h, mi, s, parsed.Nanosecond(), loc)
+	reconstructedName, _ := reconstructed.Zone()
+	if reconstructedName != name {
+		return time.Time{}, false
+	}
+	return reconstructed, true
 }
 
 // isContinuationLine checks if a line is part of a multi-line PostgreSQL error

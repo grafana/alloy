@@ -673,6 +673,190 @@ func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 	require.Equal(t, float64(0), totalCount, "historical logs must not produce metrics")
 }
 
+// Without a log_timezone resolver, a non-UTC abbreviation (e.g. PST) must
+// still be counted: the historical filter is skipped rather than mis-applied.
+func TestLogsCollector_NonUTCLogTimezone(t *testing.T) {
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	startTime := collector.startTime
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	// PST = UTC-8: PG's wall-clock for real instant startTime+10s is startTime+10s-8h.
+	pstWall := startTime.Add(10 * time.Second).Add(-8 * time.Hour)
+	ts1 := pstWall.Format("2006-01-02 15:04:05.000") + " PST"
+	ts2 := pstWall.Add(-1*time.Second).Format("2006-01-02 15:04:05") + " PST"
+
+	logLine := ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
+
+	collector.Receiver().Chan() <- loki.Entry{
+		Entry: push.Entry{
+			Line:      logLine,
+			Timestamp: time.Now(),
+		},
+	}
+
+	time.Sleep(200 * time.Millisecond)
+
+	mfs, _ := registry.Gather()
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				totalCount += metric.GetCounter().GetValue()
+			}
+		}
+	}
+	require.Equal(t, float64(1), totalCount, "log with non-UTC abbreviation timezone must be counted")
+}
+
+// With the correct log_timezone Location supplied, a recent non-UTC log is
+// counted and the historical filter still applies (it just lets it through).
+func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
+	loc, err := time.LoadLocation("America/Los_Angeles")
+	require.NoError(t, err)
+
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+		LogTimezone:  func() *time.Location { return loc },
+	})
+	require.NoError(t, err)
+
+	startTime := collector.startTime
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	// Real UTC instant startTime+10s, expressed as wall-clock in loc (PST or PDT depending on date).
+	abs := startTime.Add(10 * time.Second)
+	inLoc := abs.In(loc)
+	abbrev, _ := inLoc.Zone()
+	ts1 := inLoc.Format("2006-01-02 15:04:05.000") + " " + abbrev
+	ts2 := inLoc.Add(-1*time.Second).Format("2006-01-02 15:04:05") + " " + abbrev
+
+	logLine := ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
+	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: logLine, Timestamp: time.Now()}}
+	time.Sleep(200 * time.Millisecond)
+
+	mfs, _ := registry.Gather()
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				totalCount += metric.GetCounter().GetValue()
+			}
+		}
+	}
+	require.Equal(t, float64(1), totalCount, "recent non-UTC log must be counted when log_timezone Location is supplied")
+}
+
+// With the correct log_timezone Location supplied, the historical filter
+// still drops a non-UTC log whose real UTC instant is before startTime.
+func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
+	loc, err := time.LoadLocation("America/Los_Angeles")
+	require.NoError(t, err)
+
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+		LogTimezone:  func() *time.Location { return loc },
+	})
+	require.NoError(t, err)
+
+	startTime := collector.startTime
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	abs := startTime.Add(-1 * time.Hour) // real UTC 1h before startTime
+	inLoc := abs.In(loc)
+	abbrev, _ := inLoc.Zone()
+	ts1 := inLoc.Format("2006-01-02 15:04:05.000") + " " + abbrev
+	ts2 := inLoc.Add(-1*time.Second).Format("2006-01-02 15:04:05") + " " + abbrev
+
+	logLine := ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
+	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: logLine, Timestamp: time.Now()}}
+	time.Sleep(200 * time.Millisecond)
+
+	mfs, _ := registry.Gather()
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				totalCount += metric.GetCounter().GetValue()
+			}
+		}
+	}
+	require.Equal(t, float64(0), totalCount, "historical non-UTC log must be dropped when log_timezone Location is supplied")
+}
+
+// If the cached Location's abbreviation disagrees with the log line's, the
+// collector skips the filter rather than emitting a wrong absolute time.
+func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
+	// Europe/London emits GMT/BST — neither matches PST.
+	loc, err := time.LoadLocation("Europe/London")
+	require.NoError(t, err)
+
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       log.NewNopLogger(),
+		Registry:     registry,
+		LogTimezone:  func() *time.Location { return loc },
+	})
+	require.NoError(t, err)
+
+	startTime := collector.startTime
+	err = collector.Start(context.Background())
+	require.NoError(t, err)
+	defer collector.Stop()
+
+	// Wall-clock would look historical if naively reconstructed in Europe/London;
+	// the abbrev mismatch must prevent the drop.
+	pstWall := startTime.Add(-2 * time.Hour)
+	ts1 := pstWall.Format("2006-01-02 15:04:05.000") + " PST"
+	ts2 := pstWall.Add(-1*time.Second).Format("2006-01-02 15:04:05") + " PST"
+
+	logLine := ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
+	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: logLine, Timestamp: time.Now()}}
+	time.Sleep(200 * time.Millisecond)
+
+	mfs, _ := registry.Gather()
+	var totalCount float64
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			for _, metric := range mf.GetMetric() {
+				totalCount += metric.GetCounter().GetValue()
+			}
+		}
+	}
+	require.Equal(t, float64(1), totalCount, "stale/mismatched log_timezone must fall back to counting the log, not silently drop it")
+}
+
 func TestLogsCollector_ExcludeDatabases(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
