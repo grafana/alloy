@@ -107,10 +107,6 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 					WillReturnRows(sqlmock.NewRows(columns))
 			},
-			// wait_event is emitted per-scrape (during scrape 1); query_sample
-			// is emitted on finalize (scrape 2). The first emit on a brand-new
-			// sample credits the full now - state_change (no cap), so a
-			// one-shot observation isn't lost.
 			expectedLabels: []model.LabelSet{
 				{"op": OP_WAIT_EVENT},
 				{"op": OP_QUERY_SAMPLE},
@@ -414,9 +410,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		// Scrape 1 at `now`: wait event with unordered/dup PIDs. First emit
-		// uses `now - state_change` (10s) so the observation survives even if
-		// the query disappears on the next scrape.
+		// Scrape 1: wait event with unordered/dup PIDs.
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 300, sql.NullInt64{},
@@ -426,9 +420,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{104, 103}, now, sql.NullInt64{Int64: 124, Valid: true},
 				"UPDATE users SET status = 'active'",
 			))
-		// Scrape 2 at `now + 5s`: same wait event with normalized PIDs. Identity
-		// matches → no new occurrence; emit reports the pure 5s delta since the
-		// previous emit.
+		// Scrape 2 at now+5s: same wait, normalized PIDs.
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now.Add(5*time.Second), "testdb", 300, sql.NullInt64{},
@@ -438,7 +430,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, now, sql.NullInt64{Int64: 124, Valid: true},
 				"UPDATE users SET status = 'active'",
 			))
-		// Scrape 3: disappear → finalize.
+		// Scrape 3: disappear, finalize.
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns))
 
@@ -450,10 +442,8 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 3)
-		// scrape 1 first emit: brand-new sample → full now - state_change = 10s.
 		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="300" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`, entries[0].Line)
-		// scrape 2: identity matches → pure 5s delta since scrape 1's emit.
 		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="300" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`, entries[1].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[2].Labels)
@@ -521,8 +511,6 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		// wait_event emitted on scrape 1 (brand-new sample → full state-anchored
-		// 10s); query_sample emitted on scrape 3 (finalize after disappear).
 		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="301" leader_pid="" user="testuser" backend_type="client backend" state="active" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="555"`, entries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[1].Labels)
@@ -559,7 +547,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Scrape 1 at `now`: active, no wait. Sample stored; no wait_event emit.
+		// Scrape 1: active CPU snapshot (10s).
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 402, sql.NullInt64{},
@@ -569,9 +557,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				sql.NullString{}, nil, queryStartTime, sql.NullInt64{Int64: 9002, Valid: true},
 				"SELECT * FROM t",
 			))
-		// Scrape 2 at `now + 5s`: waiting on IO. Sample existed at scrape 1, so
-		// observableBound = now+5s - priorLastSeen(now) = 5s; first emit
-		// wait_time = min(stateAge=12s, 5s) = 5s.
+		// Scrape 2 at now+5s: waiting on IO. Bounded by 5s prior-scrape gap.
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now.Add(5*time.Second), "testdb", 402, sql.NullInt64{},
@@ -593,10 +579,6 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 2)
-		// wait_event emitted on scrape 2: first emit bounded by gap to scrape 1
-		// (priorLastSeen-anchored), so wait_time=5s (the 5s scrape gap) even
-		// though stateAge is 12s. cpu_time on the query_sample reflects the
-		// active-state duration captured at scrape 1.
 		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="402" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="IO" wait_event="DataFileRead" wait_event_name="IO:DataFileRead" blocked_by_pids="[501]" queryid="9002"`, entries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[1].Labels)
@@ -633,8 +615,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		// Scrape 1 at `now`: wait event set A, state_change 5s ago. First emit
-		// uses state_change anchor → wait_time = 5s.
+		// Scrape 1: wait event set A.
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now, "testdb", 403, sql.NullInt64{},
@@ -644,10 +625,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 				sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103}, queryStartTime, sql.NullInt64{Int64: 9003, Valid: true},
 				"UPDATE t SET c=1",
 			))
-		// Scrape 2 at `now + 3s`: same event but PID set changes → new
-		// occurrence. state_change unchanged (still 5s before original now).
-		// Telescoping subtracts the 5s already credited to occurrence A, so
-		// B's first emit reports the 3s gap since A's last emit.
+		// Scrape 2 at now+3s: PID set changes, new occurrence B.
 		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows(columns).AddRow(
 				now.Add(3*time.Second), "testdb", 403, sql.NullInt64{},
@@ -669,11 +647,8 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 
 		entries := lokiClient.Received()
 		require.Len(t, entries, 3)
-		// scrape 1: brand-new sample → full now - state_change = 5s.
 		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[0].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="5s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103]" queryid="9003"`, entries[0].Line)
-		// scrape 2: identity changed → first emit of B bounded by 3s gap to
-		// the prior scrape (priorLastSeen-anchored), even though stateAge=8s.
 		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
 		require.Equal(t, `level="info" datname="testdb" pid="403" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="3s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="9003"`, entries[1].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[2].Labels)
@@ -1400,15 +1375,8 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 	})
 }
 
-// TestQuerySamples_WaitEventDeltaAcrossScrapes pins the contract that powers
-// the user's LogQL query
-//
-//	sum_over_time({...op="wait_event"} | logfmt | unwrap duration_seconds(wait_time)[$__auto])
-//
-// Brand-new sample first emit credits the full now - state_change (no cap),
-// so a query observed on a single scrape isn't lost. Subsequent scrapes emit
-// pure now - LastEmittedAt deltas. Sum of all wait_time values across
-// scrapes ≈ pre-collector wait + alloy-observed wait duration.
+// First emit on a brand-new sample uses now-state_change; subsequent emits
+// are pure now-LastEmittedAt deltas.
 func TestQuerySamples_WaitEventDeltaAcrossScrapes(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
 
@@ -1449,7 +1417,6 @@ func TestQuerySamples_WaitEventDeltaAcrossScrapes(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows(columns).AddRow(rowAt(t1)...))
 	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(columns).AddRow(rowAt(t2)...))
-	// Final scrape: empty → finalize and emit query_sample.
 	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(columns))
 
@@ -1472,15 +1439,15 @@ func TestQuerySamples_WaitEventDeltaAcrossScrapes(t *testing.T) {
 	require.Len(t, entries, 4)
 
 	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[0].Labels)
-	require.Contains(t, entries[0].Line, `wait_time="5s"`, "brand-new first emit uses full state_change anchor")
+	require.Contains(t, entries[0].Line, `wait_time="5s"`)
 	require.True(t, entries[0].Timestamp.Equal(time.Unix(0, t0.UnixNano())))
 
 	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
-	require.Contains(t, entries[1].Line, `wait_time="10s"`, "second emit is pure delta since previous emit")
+	require.Contains(t, entries[1].Line, `wait_time="10s"`)
 	require.True(t, entries[1].Timestamp.Equal(time.Unix(0, t1.UnixNano())))
 
 	require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[2].Labels)
-	require.Contains(t, entries[2].Line, `wait_time="10s"`, "third emit is pure delta since previous emit")
+	require.Contains(t, entries[2].Line, `wait_time="10s"`)
 	require.True(t, entries[2].Timestamp.Equal(time.Unix(0, t2.UnixNano())))
 
 	require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[3].Labels)

@@ -196,31 +196,11 @@ func (t *WaitEventTracker) CloseOpen()                        { t.openIdx = -1 }
 func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
 
 // WaitEventOccurrence tracks a continuous occurrence of the same wait event
-// with the same blocked_by_pids set.
-//
-// wait_time is computed at emit time, not stored on the struct. PG only
-// exposes state_change for the `state` column (active/idle/etc.) — it does
-// NOT move when wait_event identity changes within an active query. So a
-// naive `now - state_change` anchor would inflate every secondary wait in a
-// multi-wait query by the full prior state duration. To bound that, we
-// anchor on state_change but cap the first emit at the gap to the prior
-// scrape of this same sample — anything older would have been observable to
-// alloy earlier. Brand-new samples have no prior scrape and are NOT capped:
-// they credit the full `now - state_change` so a query observed once still
-// shows up under `sum_over_time(unwrap wait_time)`, and a backend that was
-// already waiting when alloy started gets that historical time attributed
-// (intentional — same shape on the PR #6214 counter, see note below).
-//
-//	First emit (existing sample): min(now - state_change, now - priorLastSeen)
-//	First emit (brand-new sample): now - state_change
-//	Subsequent emits: now - LastEmittedAt  (pure delta).
-//
-// FirstObservedAt is kept for PR #6214's wait_event_seconds_total counter.
-// For the counter and Loki sum_over_time(wait_time) to be interchangeable,
-// PR #6214 must increment the counter PER EMIT by the same waitTime
-// computed here — not once at finalize by LastTimestamp - FirstObservedAt.
-// That way every Loki entry corresponds to exactly one counter increment of
-// the same value, and the two surfaces are equal by construction.
+// with the same blocked_by_pids set. wait_time is computed at emit time:
+// PG's state_change doesn't move when wait_event identity changes inside an
+// active query, so we anchor on state_change but cap the first emit on
+// existing samples at the gap to the prior scrape — otherwise every
+// secondary wait re-credits the full state duration.
 type WaitEventOccurrence struct {
 	WaitEventType   string
 	WaitEvent       string
@@ -459,20 +439,6 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	c.emitOpenWaitEvent(state, sample.Now, priorLastSeen)
 }
 
-// emitOpenWaitEvent emits a wait_event log entry for the tracker's currently
-// open occurrence, if any. See the WaitEventOccurrence comment for the full
-// rationale on how waitTime is computed.
-//
-//   - Brand-new sample (no prior scrape): waitTime = now - state_change.
-//     No cap — captures pre-collector wait time so queries observed once
-//     still register in sum_over_time, and a backend already waiting at
-//     alloy startup gets that historical duration on its first emit.
-//   - Existing sample (prior scrape saw this sample, with or without a
-//     different wait identity): waitTime = min(now - state_change,
-//     now - priorLastSeen). The priorLastSeen bound prevents PG's stable
-//     state_change from re-crediting prior-occurrence time on every
-//     secondary wait identity within a multi-wait query.
-//   - Subsequent emits on an open occurrence: waitTime = now - LastEmittedAt.
 func (c *QuerySamples) emitOpenWaitEvent(state *SampleState, now time.Time, priorLastSeen time.Time) {
 	if state.tracker.openIdx < 0 {
 		return
@@ -571,12 +537,6 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		sampleLabels,
 		ts,
 	)
-
-	// wait_event entries were already emitted per-scrape by emitOpenWaitEvent.
-	// There is no final-emit here: the last emit's wait_time covers up to its
-	// scrape time, and we accept up to one scrape-interval under-count at the
-	// close of an occurrence — identical to the under-count baked into PR
-	// #6214's wait_event_seconds_total counter so the two stay aligned.
 
 	delete(c.samples, key)
 }
