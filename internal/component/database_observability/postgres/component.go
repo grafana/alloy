@@ -44,12 +44,6 @@ SELECT
 FROM pg_settings
 WHERE name = 'server_version';`
 
-const selectLogTimezone = `SELECT setting FROM pg_settings WHERE name = 'log_timezone';`
-
-// log_timezone has context=sighup, so operators can change it without a
-// restart; re-read on a tick so the logs collector stays in sync.
-const logTimezoneRefreshInterval = time.Minute
-
 func init() {
 	component.Register(component.Registration{
 		Name:      name,
@@ -234,22 +228,20 @@ type Collector interface {
 }
 
 type Component struct {
-	opts                   component.Options
-	args                   Arguments
-	handler                loki.LogsReceiver
-	fanout                 *loki.Fanout
-	mut                    sync.RWMutex
-	registry               *prometheus.Registry
-	baseTarget             discovery.Target
-	collectors             []Collector
-	instanceKey            string
-	dbConnection           *sql.DB
-	healthErr              *atomic.String
-	openSQL                func(driverName, dataSourceName string) (*sql.DB, error)
-	logsReceiver           loki.LogsReceiver
-	exporterCollectors     []prometheus.Collector
-	logTimezone            atomic.Pointer[time.Location]
-	lastLogTimezoneWarning atomic.Pointer[string] // dedupes the unparseable-log_timezone warning across refresh ticks
+	opts               component.Options
+	args               Arguments
+	handler            loki.LogsReceiver
+	fanout             *loki.Fanout
+	mut                sync.RWMutex
+	registry           *prometheus.Registry
+	baseTarget         discovery.Target
+	collectors         []Collector
+	instanceKey        string
+	dbConnection       *sql.DB
+	healthErr          *atomic.String
+	openSQL            func(driverName, dataSourceName string) (*sql.DB, error)
+	logsReceiver       loki.LogsReceiver
+	exporterCollectors []prometheus.Collector
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -343,20 +335,6 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	})
 
-	wg.Go(func() {
-		ticker := time.NewTicker(logTimezoneRefreshInterval)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				c.refreshLogTimezone(ctx)
-			}
-		}
-	})
-
 	wg.Wait()
 
 	return nil
@@ -381,49 +359,6 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 func (c *Component) reportError(errorMsg string, err error) {
 	c.opts.SLogger.Error(fmt.Sprintf("%s: %+v", errorMsg, err))
 	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
-}
-
-// storeLogTimezoneFrom queries log_timezone on db and caches the resulting
-// Location. Any failure clears the cache and makes the logs collector fall
-// back to its ambiguous-zone path. Caller owns whatever locking is needed
-// to read db safely.
-func (c *Component) storeLogTimezoneFrom(ctx context.Context, db *sql.DB) {
-	if db == nil {
-		c.logTimezone.Store(nil)
-		return
-	}
-
-	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	var name string
-	if err := db.QueryRowContext(queryCtx, selectLogTimezone).Scan(&name); err != nil {
-		level.Debug(c.opts.Logger).Log("msg", "failed to query log_timezone", "err", err)
-		c.logTimezone.Store(nil)
-		return
-	}
-
-	loc, err := time.LoadLocation(name)
-	if err != nil {
-		// PG accepts POSIX specs like 'EST5EDT,M3.2.0,M11.1.0' or '<+05>5' that
-		// Go's IANA-only tzdata can't load. Warn once per distinct value.
-		if prev := c.lastLogTimezoneWarning.Load(); prev == nil || *prev != name {
-			level.Warn(c.opts.Logger).Log("msg", "PostgreSQL log_timezone is not a Go-loadable IANA name; logs collector will skip its historical-log filter. Consider setting log_timezone to an IANA name (e.g. 'America/New_York') in postgresql.conf.", "log_timezone", name, "err", err)
-			c.lastLogTimezoneWarning.Store(&name)
-		}
-		c.logTimezone.Store(nil)
-		return
-	}
-	c.lastLogTimezoneWarning.Store(nil)
-	c.logTimezone.Store(loc)
-}
-
-// refreshLogTimezone is the locking variant. Must not be called while c.mut is held.
-func (c *Component) refreshLogTimezone(ctx context.Context) {
-	c.mut.RLock()
-	db := c.dbConnection
-	c.mut.RUnlock()
-	c.storeLogTimezoneFrom(ctx, db)
 }
 
 func (c *Component) tryReconnect(ctx context.Context) error {
@@ -583,10 +518,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		collector.Stop()
 	}
 	c.collectors = nil
-
-	// Prime log_timezone before the logs collector starts; the periodic
-	// refresh in Run() picks up later changes.
-	c.storeLogTimezoneFrom(ctx, dbConnection)
 
 	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
@@ -787,7 +718,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
 		ExcludeUsers:     effectiveExcludeUsers,
-		LogTimezone:      c.logTimezone.Load,
+		DB:               c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)

@@ -734,9 +734,9 @@ func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
-		LogTimezone:  func() *time.Location { return loc },
 	})
 	require.NoError(t, err)
+	collector.logTimezone.Store(loc)
 
 	startTime := collector.startTime
 	err = collector.Start(context.Background())
@@ -780,9 +780,9 @@ func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
-		LogTimezone:  func() *time.Location { return loc },
 	})
 	require.NoError(t, err)
+	collector.logTimezone.Store(loc)
 
 	startTime := collector.startTime
 	err = collector.Start(context.Background())
@@ -826,9 +826,9 @@ func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
 		EntryHandler: entryHandler,
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
-		LogTimezone:  func() *time.Location { return loc },
 	})
 	require.NoError(t, err)
+	collector.logTimezone.Store(loc)
 
 	startTime := collector.startTime
 	err = collector.Start(context.Background())

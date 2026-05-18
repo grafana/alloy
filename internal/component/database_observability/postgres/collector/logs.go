@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -19,7 +20,12 @@ import (
 const (
 	LogsCollector         = "logs"
 	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
+	selectLogTimezone     = `SELECT setting FROM pg_settings WHERE name = 'log_timezone';`
 )
+
+// log_timezone has context=sighup, so operators can change it without a
+// restart; re-read on a tick so we stay in sync.
+const logTimezoneRefreshInterval = time.Minute
 
 // Postgres log format regex
 var logFormatRegex = regexp.MustCompile(
@@ -44,9 +50,10 @@ type LogsArguments struct {
 	Registry         *prometheus.Registry
 	ExcludeDatabases []string
 	ExcludeUsers     []string
-	// LogTimezone returns PostgreSQL's configured log_timezone as a Location,
-	// or nil if it is unknown. Called on every log line, so must be cheap.
-	LogTimezone func() *time.Location
+	// DB, if non-nil, is polled for PostgreSQL's log_timezone setting so the
+	// historical-log filter can resolve non-UTC abbreviations. When nil, the
+	// collector skips the filter for ambiguous timezones (still counts the log).
+	DB *sql.DB
 }
 
 type Logs struct {
@@ -57,7 +64,10 @@ type Logs struct {
 	receiver         loki.LogsReceiver
 	excludeDatabases []string
 	excludeUsers     []string
-	getLogTimezone   func() *time.Location
+
+	db                     *sql.DB
+	logTimezone            atomic.Pointer[time.Location]
+	lastLogTimezoneWarning atomic.Pointer[string] // dedupes unparseable-log_timezone warns across refresh ticks
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -78,11 +88,6 @@ type Logs struct {
 func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	getLogTimezone := args.LogTimezone
-	if getLogTimezone == nil {
-		getLogTimezone = func() *time.Location { return nil }
-	}
-
 	l := &Logs{
 		logger:           args.Logger.With("collector", LogsCollector),
 		entryHandler:     args.EntryHandler,
@@ -90,7 +95,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		receiver:         args.Receiver,
 		excludeDatabases: args.ExcludeDatabases,
 		excludeUsers:     args.ExcludeUsers,
-		getLogTimezone:   getLogTimezone,
+		db:               args.DB,
 		ctx:              ctx,
 		cancel:           cancel,
 		stopped:          atomic.NewBool(false),
@@ -138,9 +143,57 @@ func (l *Logs) Receiver() loki.LogsReceiver {
 func (l *Logs) Start(ctx context.Context) error {
 	l.logger.Debug("collector started")
 
+	if l.db != nil {
+		// Prime synchronously so the first log line can be filtered against
+		// the configured log_timezone, then poll for sighup-reload changes.
+		l.refreshLogTimezone(l.ctx)
+		l.wg.Go(l.logTimezoneRefreshLoop)
+	}
 	l.wg.Go(l.run)
 
 	return nil
+}
+
+func (l *Logs) logTimezoneRefreshLoop() {
+	ticker := time.NewTicker(logTimezoneRefreshInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-l.ctx.Done():
+			return
+		case <-ticker.C:
+			l.refreshLogTimezone(l.ctx)
+		}
+	}
+}
+
+// refreshLogTimezone queries log_timezone and caches the resulting Location.
+// Any failure clears the cache so resolveAbsolute falls back to its
+// ambiguous-zone path.
+func (l *Logs) refreshLogTimezone(ctx context.Context) {
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var name string
+	if err := l.db.QueryRowContext(queryCtx, selectLogTimezone).Scan(&name); err != nil {
+		level.Debug(l.logger).Log("msg", "failed to query log_timezone", "err", err)
+		l.logTimezone.Store(nil)
+		return
+	}
+
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		// PG accepts POSIX specs like 'EST5EDT,M3.2.0,M11.1.0' or '<+05>5' that
+		// Go's IANA-only tzdata can't load. Warn once per distinct value.
+		if prev := l.lastLogTimezoneWarning.Load(); prev == nil || *prev != name {
+			level.Warn(l.logger).Log("msg", "PostgreSQL log_timezone is not a Go-loadable IANA name; logs collector will skip its historical-log filter. Consider setting log_timezone to an IANA name (e.g. 'America/New_York') in postgresql.conf.", "log_timezone", name, "err", err)
+			l.lastLogTimezoneWarning.Store(&name)
+		}
+		l.logTimezone.Store(nil)
+		return
+	}
+	l.lastLogTimezoneWarning.Store(nil)
+	l.logTimezone.Store(loc)
 }
 
 func (l *Logs) Stop() {
@@ -291,7 +344,7 @@ func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
 		return parsed, true
 	}
 
-	loc := l.getLogTimezone()
+	loc := l.logTimezone.Load()
 	if loc == nil {
 		return time.Time{}, false
 	}
