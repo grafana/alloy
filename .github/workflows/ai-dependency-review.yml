@@ -20,15 +20,10 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     steps:
-      # SECURITY: Check out the PR's base SHA (trusted code already merged to the
-      # target branch), not the PR head/merge ref. The tool below runs with
-      # OPENAI_API_KEY and a write-scoped GITHUB_TOKEN in its environment, so it
-      # must not execute any code or read any prompt from the PR. The PR's diff
-      # itself is fetched via the GitHub API inside the tool (see
-      # tools/ai-review/github.go: getPRDiff), so we never need PR files on disk.
-      - name: Checkout base ref (trusted code only)
+      - name: Checkout base ref
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          # Use the trusted base SHA so the tooling we run is not from the PR.
           ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
