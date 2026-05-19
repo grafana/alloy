@@ -2,8 +2,10 @@ package collector
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +33,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -135,27 +137,16 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT, category INT)"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 
 		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
@@ -172,7 +163,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -279,27 +270,16 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT, category INT)"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"}],"indexes":[{"name":"idx_category","type":"BTREE","columns":["category"],"expressions":["category = 0"],"unique":true,"nullable":false}]}`))
 
 		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
@@ -316,7 +296,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -446,27 +426,16 @@ func TestSchemaDetails(t *testing.T) {
 				),
 			)
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT, category INT, name VARCHAR(255))"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"},{"name":"category","type":"int","not_null":true,"default_value":"null"},{"name":"name","type":"varchar(255)","default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false},{"name":"idx_name","type":"BTREE","columns":["name"],"expressions":["name = 'test'"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_name","column_name":"category","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
 
 		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
@@ -739,7 +708,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -833,27 +802,17 @@ func TestSchemaDetails(t *testing.T) {
 					"some_charset_connection",
 				),
 			)
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		collector.Stop()
 		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE VIEW some_view (id INT)"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false}]}`))
 
 		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
@@ -870,7 +829,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -934,24 +893,13 @@ func TestSchemaDetails(t *testing.T) {
 				)
 		}
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 4
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
 
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
 		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 4)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="schema_a" table="table_a"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
@@ -972,7 +920,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -989,19 +937,10 @@ func TestSchemaDetails(t *testing.T) {
 			}),
 		)
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Eventually(t, func() bool {
-			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
 
 		require.Empty(t, lokiClient.Received())
 	})
@@ -1048,7 +987,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -1077,24 +1016,15 @@ func TestSchemaDetails(t *testing.T) {
 			).RowError(1, fmt.Errorf("rs error")), // error on the second row
 		)
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		err = collector.extractSchema(t.Context())
+		require.ErrorContains(t, err, "failed to iterate over tables result set")
+		require.ErrorContains(t, err, "rs error")
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 1
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
 
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
-
 		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 1)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
 	})
@@ -1109,7 +1039,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -1199,24 +1129,20 @@ func TestSchemaDetails(t *testing.T) {
 			),
 		)
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		// First scrape: the tables query fails. The collector logs the error
+		// and the loop would normally retry on the next tick.
+		require.ErrorContains(t, collector.extractSchema(t.Context()), "connection error")
+		// Second scrape: connection recovers and the table is processed end to end.
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 2
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
 
 		expectedCreateStmt := base64.StdEncoding.EncodeToString([]byte("CREATE TABLE some_table (id INT)"))
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"int","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"null"}],"indexes":[{"name":"PRIMARY","type":"BTREE","columns":["id"],"unique":true,"nullable":false}]}`))
 
 		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
@@ -1233,7 +1159,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
-			CollectInterval: time.Millisecond,
+			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
 			Logger:          log.NewLogfmtLogger(os.Stderr),
 		})
@@ -1287,26 +1213,15 @@ func TestSchemaDetails(t *testing.T) {
 				)
 		}
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 
-		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 4
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
 		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
-		err = mock.ExpectationsWereMet()
-		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
 		// Two table-detection entries plus two create-statement entries; order
 		// within entry types follows the bulk-tables result order.
+		require.Len(t, lokiEntries, 4)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="some_schema" table="table_a"`, lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
@@ -1384,6 +1299,175 @@ func TestSchemaDetails(t *testing.T) {
 		require.Len(t, lokiEntries, 1)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
 		require.Equal(t, `level="info" schema="some_schema" table="some_table"`, lokiEntries[0].Line)
+	})
+	t.Run("extractSchema table spec column defaults and index branches", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_schema", "table_name", "table_type", "create_time", "update_time",
+			}).AddRow(
+				"some_schema", "some_table", "BASE TABLE",
+				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+			))
+
+		mock.ExpectQuery(fmt.Sprintf(selectColumnNames, database_observability.BuildExclusionClause([]string{"some_table"}))).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"TABLE_NAME", "COLUMN_NAME", "COLUMN_DEFAULT", "IS_NULLABLE",
+				"COLUMN_TYPE", "COLUMN_KEY", "EXTRA",
+			}).
+				AddRow("some_table", "updated_at", "CURRENT_TIMESTAMP", "NO", "timestamp", "", "on update current_timestamp").
+				AddRow("some_table", "name", nil, "YES", "varchar(255)", "", ""))
+
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, database_observability.BuildExclusionClause([]string{"some_table"}))).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "index_name", "seq_in_index", "column_name", "expression",
+				"nullable", "non_unique", "index_type",
+			}).
+				AddRow("some_table", "idx_composite", 1, "col_a", nil, "", 0, "BTREE").
+				AddRow("some_table", "idx_composite", 2, "col_b", nil, "", 0, "BTREE").
+				AddRow("some_table", "idx_expr_only", 1, nil, "lower(name)", "", 0, "BTREE").
+				AddRow("some_table", "idx_dup", 1, "name", nil, "YES", 1, "BTREE"))
+
+		mock.ExpectQuery(fmt.Sprintf(selectForeignKeys, database_observability.BuildExclusionClause([]string{"some_table"}))).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "constraint_name", "column_name",
+				"referenced_table_name", "referenced_column_name",
+			}).AddRow("some_table", "fk_name", "name", "other_table", "id"))
+
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name", "create_statement"}).
+				AddRow("some_schema.some_table", "CREATE TABLE some_table (updated_at TIMESTAMP, name VARCHAR(255))"))
+
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiClient.Stop()
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+
+		_, after, ok := strings.Cut(lokiEntries[1].Line, `table_spec="`)
+		require.True(t, ok)
+		specB64, _, ok := strings.Cut(after, `"`)
+		require.True(t, ok)
+		specJSON, err := base64.StdEncoding.DecodeString(specB64)
+		require.NoError(t, err)
+
+		var spec tableSpec
+		require.NoError(t, json.Unmarshal(specJSON, &spec))
+
+		require.Len(t, spec.Columns, 2)
+		require.Equal(t, "updated_at", spec.Columns[0].Name)
+		require.Equal(t, "CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP", spec.Columns[0].DefaultValue)
+		require.True(t, spec.Columns[0].NotNull)
+		require.Equal(t, "name", spec.Columns[1].Name)
+		require.Equal(t, "", spec.Columns[1].DefaultValue)
+		require.False(t, spec.Columns[1].NotNull)
+
+		require.Len(t, spec.Indexes, 3)
+
+		var idxComposite, idxExprOnly, idxDup *indexSpec
+		for i := range spec.Indexes {
+			switch spec.Indexes[i].Name {
+			case "idx_composite":
+				idxComposite = &spec.Indexes[i]
+			case "idx_expr_only":
+				idxExprOnly = &spec.Indexes[i]
+			case "idx_dup":
+				idxDup = &spec.Indexes[i]
+			}
+		}
+		require.NotNil(t, idxComposite)
+		require.Equal(t, []string{"col_a", "col_b"}, idxComposite.Columns)
+		require.Empty(t, idxComposite.Expressions)
+		require.True(t, idxComposite.Unique)
+
+		require.NotNil(t, idxExprOnly)
+		require.Empty(t, idxExprOnly.Columns)
+		require.Equal(t, []string{"lower(name)"}, idxExprOnly.Expressions)
+
+		require.NotNil(t, idxDup)
+		require.Equal(t, []string{"name"}, idxDup.Columns)
+		require.False(t, idxDup.Unique)
+		require.True(t, idxDup.Nullable)
+
+		require.Len(t, spec.ForeignKeys, 1)
+		require.Equal(t, "fk_name", spec.ForeignKeys[0].Name)
+	})
+	t.Run("Start and Stop drive a single scrape and clean up", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:              db,
+			CollectInterval: time.Hour,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_schema", "table_name", "table_type", "create_time", "update_time",
+			}).AddRow(
+				"some_schema", "some_table", "BASE TABLE",
+				time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+				time.Date(2024, 2, 2, 0, 0, 0, 0, time.UTC),
+			))
+		mock.ExpectQuery(fmt.Sprintf(selectColumnNames, database_observability.BuildExclusionClause([]string{"some_table"}))).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"TABLE_NAME", "COLUMN_NAME", "COLUMN_DEFAULT", "IS_NULLABLE",
+				"COLUMN_TYPE", "COLUMN_KEY", "EXTRA",
+			}).AddRow("some_table", "id", "null", "NO", "int", "PRI", "auto_increment"))
+		mock.ExpectQuery(fmt.Sprintf(selectIndexNames, database_observability.BuildExclusionClause([]string{"some_table"}))).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "index_name", "seq_in_index", "column_name", "expression",
+				"nullable", "non_unique", "index_type",
+			}).AddRow("some_table", "PRIMARY", 1, "id", nil, "", 0, "BTREE"))
+		mock.ExpectQuery(fmt.Sprintf(selectForeignKeys, database_observability.BuildExclusionClause([]string{"some_table"}))).WithArgs("some_schema").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "constraint_name", "column_name",
+				"referenced_table_name", "referenced_column_name",
+			}))
+		mock.ExpectQuery("SHOW CREATE TABLE `some_schema`.`some_table`").WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name", "create_statement"}).
+				AddRow("some_schema.some_table", "CREATE TABLE some_table (id INT)"))
+
+		require.NoError(t, collector.Start(t.Context()))
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 10*time.Millisecond)
+
+		collector.Stop()
+		require.True(t, collector.Stopped())
+
+		lokiClient.Stop()
+		require.NoError(t, mock.ExpectationsWereMet())
 	})
 }
 
