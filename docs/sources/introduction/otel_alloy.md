@@ -152,25 +152,43 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 ## Custom builds with the OpenTelemetry Collector Builder (OCB)
 
-The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)][https://opentelemetry.io/docs/collector/custom-collector/] manifest. If you 
-need additional components or want to remove some of the default components - you can manually edit this manifest and create a custom Alloy build for your workloads. Custom builds are **not** covered by the same support expectations as standard releases.
+The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)](https://opentelemetry.io/docs/collector/custom-collector/) manifest. If you 
+need additional components or want to remove some of the default components - you can manually edit this manifest and create a custom {{< param "PRODUCT_NAME" >}} build for your workloads. Custom builds are **not** covered by the same support expectations as standard releases.
 
-### 1. Start from the checked-in manifest
+### 1. Clone the {{< param "PRODUCT_NAME" >}} repository
 
-The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in the Alloy repository. You can:
+Clone the Git repository and change into the repository root. The following steps assume you run commands from this directory.
+
+```shell
+git clone https://github.com/grafana/alloy.git
+cd alloy
+```
+
+To build from a **specific release**, fetch tags and check out the tag after cloning:
+
+```shell
+git fetch --tags
+git checkout v1.16.0
+```
+
+Replace `v1.16.0` with the [release tag](https://github.com/grafana/alloy/releases) you want.
+
+### 2. Start from the checked-in manifest
+
+The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout. You can:
 
 - **Remove** a component by deleting its `- gomod: ...` line from the appropriate section.
 - **Add** a component by appending a line that points at the module path and version you want, using the same pattern as existing entries
 
-### 2. Regenerate the collector distribution
+### 3. Regenerate the collector distribution
 
-From the root of your Alloy checkout, run:
+From the root of your {{< param "PRODUCT_NAME" >}} checkout, run:
 
 ```shell
 make generate-otel-collector-distro
 ```
 
-### 3. Build the Alloy binary
+### 4. Build the {{< param "PRODUCT_NAME" >}} binary
 
 Build the full CLI (including the {{< param "OTEL_ENGINE" >}}):
 
@@ -180,7 +198,7 @@ make alloy
 
 The resulting binary in `build/` behaves like a standard `alloy` build; use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
 
-### 4. Build a Docker image
+### 5. Build a Docker image
 
 To produce an image analogous to Grafana’s {{< param "PRODUCT_NAME" >}} image:
 
