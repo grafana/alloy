@@ -5,6 +5,7 @@ package syntaxtags
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 )
 
@@ -235,11 +236,12 @@ func Get(ty reflect.Type) []Field {
 				// Get the inner fields from the squashed struct and append each of them.
 				// The index of the squashed field is prepended to the index of the inner
 				// struct.
+				// Use slices.Concat to avoid append aliasing when field.Index has spare capacity.
 				innerFields := Get(deferenceType(field.Type))
 				for _, innerField := range innerFields {
 					fields = append(fields, Field{
 						Name:  innerField.Name,
-						Index: append(field.Index, innerField.Index...),
+						Index: slices.Concat(field.Index, innerField.Index),
 						Flags: innerField.Flags,
 					})
 				}
