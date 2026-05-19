@@ -187,7 +187,10 @@ scrape_configs:
         target_label: unit
 ```
 
-The equivalent {{< param "PRODUCT_NAME" >}} configuration uses the [`loki.source.journal`][loki.source.journal] component paired with [`loki.relabel`][loki.relabel] for the `__journal__systemd_unit` → `unit` mapping:
+The equivalent {{< param "PRODUCT_NAME" >}} configuration uses [`loki.source.journal`][loki.source.journal] and [`loki.relabel`][loki.relabel] together so you can reproduce the label behavior from the `relabel_configs` section in the Promtail example above.
+[`loki.source.journal`][loki.source.journal] reads the systemd journal and surfaces internal metadata on each line, including the `__journal__systemd_unit` field.
+[`loki.relabel`][loki.relabel] holds the rule that writes that value to the `unit` label.
+The journal component must reference the relabel block: set its `relabel_rules` argument to the `rules` value exported from [`loki.relabel`][loki.relabel] so that rule runs on journal lines before they reach `forward_to`.
 
 ```alloy
 loki.relabel "journal" {
