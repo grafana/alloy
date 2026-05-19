@@ -75,16 +75,19 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `build_id_cache_size`     | `int`                    | Deprecated (no-op), previously controlled the size of the elf file build id -> symbols table LRU cache.              | `64`     | no       |
 | `cache_rounds`            | `int`                    | Deprecated (no-op), previously controlled the number of cache rounds.                                                |          | no       |
 | `collect_interval`        | `duration`               | How frequently to collect profiles.                                                                                  | `"15s"`  | no       |
-| `collect_kernel_profile`  | `bool`                   | Deprecated (no-op), previously enabled collection of kernelspace profiles.                                           | `true`   | no       |
-| `collect_user_profile`    | `bool`                   | Deprecated (no-op), previously enabled collection of userspace profiles.                                             | `true`   | no       |
+| `collect_kernel_profile`  | `bool`                   | Deprecated (no-op), previously enabled collection of kernel-space profiles.                                          | `true`   | no       |
+| `collect_user_profile`    | `bool`                   | Deprecated (no-op), previously enabled collection of user-space profiles.                                            | `true`   | no       |
+| `comm`                    | `string`                 | How the process command name (`comm`) is included in profiles. One of `none`, `label`, `stackframe`, or `both`.      | `"none"` | no       |
 | `container_id_cache_size` | `int`                    | The size of the PID -> container ID table LRU cache.                                                                 | `1024`   | no       |
-| `demangle`                | `string`                 | C++ demangle mode. Available options are: `none`, `simplified`, `templates`, or `full`.                              | `"none"` | no       |
+| `demangle`                | `string`                 | C++ `demangle` mode. Available options are: `none`, `simplified`, `templates`, or `full`.                            | `"none"` | no       |
 | `dotnet_enabled`          | `bool`                   | A flag to enable or disable .NET profiling.                                                                          | `true`   | no       |
 | `go_table_fallback`       | `bool`                   | Deprecated (no-op), previously enabled symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. | `false`  | no       |
-| `hotspot_enabled`         | `bool`                   | A flag to enable ordisable hotspot profiling.                                                                        | `true`   | no       |
+| `hotspot_enabled`         | `bool`                   | A flag to enable or disable HotSpot profiling.                                                                       | `true`   | no       |
+| `kernel_frames`           | `bool`                   | Include kernel-space frames in collected profiles. Set to `false` to drop kernel frames from each stack trace.       | `true`   | no       |
 | `perl_enabled`            | `bool`                   | A flag to enable or disable Perl profiling.                                                                          | `true`   | no       |
 | `php_enabled`             | `bool`                   | A flag to enable or disable PHP profiling.                                                                           | `true`   | no       |
 | `pid_cache_size`          | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache.                       | `32`     | no       |
+| `pid_label`               | `bool`                   | Attach the process PID to each pprof sample as a `pid` label.                                                        | `false`  | no       |
 | `pid_map_size`            | `int`                    | Deprecated (no-op), previously controlled the size of eBPF PID map.                                                  | `2048`   | no       |
 | `python_enabled`          | `bool`                   | A flag to enable or disable python profiling.                                                                        | `true`   | no       |
 | `ruby_enabled`            | `bool`                   | A flag to enable or disable Ruby profiling.                                                                          | `true`   | no       |
