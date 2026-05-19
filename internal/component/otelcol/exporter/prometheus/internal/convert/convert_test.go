@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus/internal/convert"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testappender"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
@@ -1424,6 +1426,200 @@ func TestConverterExponentialHistograms(t *testing.T) {
 			require.JSONEq(t, tc.expect, string(familyJsonRep))
 		})
 	}
+}
+
+// Classic histograms converted to NHCB don't have a text format
+// representation. Compare via the JSON form of the MetricFamily, like the
+// exponential histogram test does.
+func TestConverterClassicHistogramToNHCB(t *testing.T) {
+	input := `{
+		"resource_metrics": [{
+			"scope_metrics": [{
+				"metrics": [{
+					"name": "test_histogram",
+					"description": "A classic histogram converted to NHCB",
+					"histogram": {
+						"aggregation_temporality": 2,
+						"data_points": [{
+							"start_time_unix_nano": 1000000000,
+							"time_unix_nano": 1000000000,
+							"count": 11,
+							"sum": 158.63,
+							"bucket_counts": [2, 3, 4, 2],
+							"explicit_bounds": [0.1, 0.5, 1.0],
+							"exemplars":[
+								{
+									"time_unix_nano": 1000000001,
+									"as_double": 0.3,
+									"span_id": "aaaaaaaaaaaaaaaa",
+									"trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+								}
+							]
+						}]
+					}
+				}]
+			}]
+		}]
+	}`
+
+	decoder := &pmetric.JSONUnmarshaler{}
+	payload, err := decoder.UnmarshalMetrics([]byte(input))
+	require.NoError(t, err)
+
+	var app testappender.Appender
+	l := util.TestLogger(t)
+	conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+		ConvertClassicHistogramsToNHCB: true,
+	})
+	require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
+
+	families, err := app.MetricFamilies()
+	require.NoError(t, err)
+	require.NotEmpty(t, families)
+
+	// Find the family for the native histogram (written at the base metric name).
+	var nhcb *dto.MetricFamily
+	for _, mf := range families {
+		if mf.GetName() == "test_histogram" {
+			nhcb = mf
+			break
+		}
+	}
+	require.NotNil(t, nhcb, "expected a metric family at the base name 'test_histogram'")
+
+	// Without HonorMetadata, the family is UNTYPED (type 3). The single Metric
+	// holds the converted native histogram: schema -53 (CustomBucketsSchema),
+	// spans/deltas computed from the cumulative bucket counts, and sum/count
+	// inline. CustomValues is not exposed in this version of client_model so
+	// we don't assert on it here; the conversion is verified separately in
+	// unit tests of explicitToCustomBucketsHistogram.
+	familyJSON, err := json.Marshal(nhcb)
+	require.NoError(t, err)
+	expect := `{
+		"name": "test_histogram",
+		"type": 3,
+		"metric": [{
+			"histogram": {
+				"positive_delta": [2, 1, 1, -2],
+				"positive_span": [{"length": 4, "offset": 0}],
+				"sample_count": 11,
+				"sample_sum": 158.63,
+				"schema": -53,
+				"zero_count": 0,
+				"zero_threshold": 0
+			}
+		}]
+	}`
+	require.JSONEq(t, expect, string(familyJSON))
+
+	// No classic per-bucket series should have been emitted.
+	for _, mf := range families {
+		switch mf.GetName() {
+		case "test_histogram_bucket", "test_histogram_sum", "test_histogram_count":
+			t.Fatalf("unexpected classic histogram family emitted: %s", mf.GetName())
+		}
+	}
+}
+
+func TestExplicitToCustomBucketsHistogram_Layout(t *testing.T) {
+	// Layout-focused unit test that exercises convertCustomBucketsLayout
+	// indirectly via explicitToCustomBucketsHistogram. Verifies leading-zero
+	// trimming and the CustomValues passthrough that the dto.MetricFamily
+	// JSON form doesn't expose.
+	cases := []struct {
+		name            string
+		bounds          []float64
+		buckets         []uint64
+		count           uint64
+		sum             float64
+		wantSpansOffset int32
+		wantSpansLen    uint32
+		wantDeltas      []int64
+	}{
+		{
+			name:            "simple",
+			bounds:          []float64{0.1, 0.5, 1.0},
+			buckets:         []uint64{2, 3, 4, 2},
+			count:           11,
+			sum:             158.63,
+			wantSpansOffset: 0,
+			wantSpansLen:    4,
+			wantDeltas:      []int64{2, 1, 1, -2},
+		},
+		{
+			name:            "leading zeros trimmed",
+			bounds:          []float64{0.1, 0.5, 1.0},
+			buckets:         []uint64{0, 0, 4, 2},
+			count:           6,
+			sum:             3.0,
+			wantSpansOffset: 2,
+			wantSpansLen:    2,
+			wantDeltas:      []int64{4, -2},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			input := `{
+				"resource_metrics": [{
+					"scope_metrics": [{
+						"metrics": [{
+							"name": "h",
+							"histogram": {
+								"aggregation_temporality": 2,
+								"data_points": [{
+									"time_unix_nano": 1000000000,
+									"count": ` + strconv.FormatUint(tc.count, 10) + `,
+									"sum": ` + strconv.FormatFloat(tc.sum, 'f', -1, 64) + `,
+									"bucket_counts": ` + uint64SliceJSON(tc.buckets) + `,
+									"explicit_bounds": ` + float64SliceJSON(tc.bounds) + `
+								}]
+							}
+						}]
+					}]
+				}]
+			}`
+			decoder := &pmetric.JSONUnmarshaler{}
+			payload, err := decoder.UnmarshalMetrics([]byte(input))
+			require.NoError(t, err)
+
+			var app testappender.Appender
+			l := util.TestLogger(t)
+			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+				ConvertClassicHistogramsToNHCB: true,
+			})
+			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
+
+			families, err := app.MetricFamilies()
+			require.NoError(t, err)
+			require.Len(t, families, 1)
+			require.Len(t, families[0].Metric, 1)
+			h := families[0].Metric[0].Histogram
+			require.NotNil(t, h)
+			require.Equal(t, int32(histogram.CustomBucketsSchema), h.GetSchema())
+			require.Equal(t, tc.count, h.GetSampleCount())
+			require.Equal(t, tc.sum, h.GetSampleSum())
+			require.Len(t, h.PositiveSpan, 1)
+			require.Equal(t, tc.wantSpansOffset, h.PositiveSpan[0].GetOffset())
+			require.Equal(t, tc.wantSpansLen, h.PositiveSpan[0].GetLength())
+			require.Equal(t, tc.wantDeltas, h.PositiveDelta)
+		})
+	}
+}
+
+func uint64SliceJSON(s []uint64) string {
+	parts := make([]string, len(s))
+	for i, v := range s {
+		parts[i] = strconv.FormatUint(v, 10)
+	}
+	return "[" + strings.Join(parts, ",") + "]"
+}
+
+func float64SliceJSON(s []float64) string {
+	parts := make([]string, len(s))
+	for i, v := range s {
+		parts[i] = strconv.FormatFloat(v, 'f', -1, 64)
+	}
+	return "[" + strings.Join(parts, ",") + "]"
 }
 
 // appenderAppendable always returns the same Appender.
