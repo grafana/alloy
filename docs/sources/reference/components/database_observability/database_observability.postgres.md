@@ -145,19 +145,21 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 
 ### `schema_details`
 
-| Name               | Type       | Description                                                           | Default | Required |
-|--------------------|------------|-----------------------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect information from database.                  | `"1m"`  | no       |
-| `cache_enabled`    | `boolean`  | Whether to enable caching of table definitions.                       | `true`  | no       |
-| `cache_size`       | `integer`  | Cache size.                                                           | `256`   | no       |
-| `cache_ttl`        | `duration` | Cache TTL.                                                            | `"10m"` | no       |
+| Name                       | Type       | Description                                                           | Default | Required |
+|----------------------------|------------|-----------------------------------------------------------------------|---------|----------|
+| `collect_interval`         | `duration` | How frequently to collect information from database.                  | `"1m"`  | no       |
+| `cache_enabled`            | `boolean`  | Whether to enable caching of table definitions.                       | `true`  | no       |
+| `cache_size`               | `integer`  | Cache size.                                                           | `256`   | no       |
+| `cache_ttl`                | `duration` | Cache TTL.                                                            | `"10m"` | no       |
+| `skip_extension_internals` | `boolean`  | Hide schemas owned by detected Postgres extensions (such as TimescaleDB's `_timescaledb_*` catalog schemas and `timescaledb_information`/`timescaledb_experimental` metadata views) from schema reports. Has no effect when no recognized extension is present. | `true`  | no       |
 
 ### `explain_plans`
 
-| Name                | Type           | Description                                          | Default | Required |
-|---------------------|----------------|------------------------------------------------------|---------|----------|
-| `collect_interval`  | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
-| `per_collect_ratio` | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
+| Name                       | Type           | Description                                          | Default | Required |
+|----------------------------|----------------|------------------------------------------------------|---------|----------|
+| `collect_interval`         | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
+| `per_collect_ratio`        | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
+| `skip_extension_internals` | `boolean`      | Skip running `EXPLAIN` on queries against detected Postgres extensions' internal schemas. When TimescaleDB is detected, statements that reference `_timescaledb_catalog`, `_timescaledb_internal`, `_timescaledb_functions`, `_timescaledb_config`, `_timescaledb_cache`, or `_timescaledb_debug` are skipped, since their text in `pg_stat_statements` is emitted by SPI invocations and cannot be re-prepared standalone (resulting in `PREPARE`/`EXPLAIN` errors logged by Postgres). Has no effect when no recognized extension is present. | `true`  | no       |
 
 ### `health_check`
 

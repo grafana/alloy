@@ -3,6 +3,7 @@ package collector
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -2554,7 +2556,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 			rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", exclusionClause, "")).WillReturnRows(rows)
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", exclusionClause, "", "")).WillReturnRows(rows)
 
 			ctx := context.Background()
 			err = explainPlan.populateQueryCache(ctx)
@@ -2590,7 +2592,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()).
 				AddRow("testdb2", "345678", "SELECT * FROM orders", int64(20), time.Now())
 
-			expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"information_schema"}), "")
+			expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"information_schema"}), "", "")
 			mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
 
 			ctx := context.Background()
@@ -2624,7 +2626,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "", "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()))
 
@@ -2650,7 +2652,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "", "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now()))
 
@@ -2677,7 +2679,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				},
 			}
 
-			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).
+			mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "", "")).
 				WillReturnRows(sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 					AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(1), time.Now().Add(-time.Minute)))
 
@@ -2777,7 +2779,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 			AddRow("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now())
 
-		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "")).WillReturnRows(rows)
+		mock.ExpectQuery(fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "", "")).WillReturnRows(rows)
 
 		ctx := context.Background()
 		err = explainPlan.fetchExplainPlans(ctx)
@@ -3211,7 +3213,7 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 	}
 
 	// Verify the query uses the custom exclusion clause that includes both default and user-provided exclusions
-	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"excluded_db"}), "")
+	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", buildExcludedDatabasesClause([]string{"excluded_db"}), "", "")
 
 	// Return only non-excluded database rows (simulating SQL-level filtering)
 	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
@@ -3254,7 +3256,7 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 	}
 
 	expectedExcludedUsersClause := buildExcludedUsersClause([]string{"excluded_user"}, "pg_get_userbyid(s.userid)")
-	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, expectedExcludedUsersClause)
+	expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, expectedExcludedUsersClause, "")
 
 	rows := sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
 		AddRow("testdb", "111111", "SELECT * FROM test_table", int64(5), time.Now())
@@ -3268,4 +3270,270 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 	assert.Contains(t, explainPlan.queryCache, "testdb111111")
 
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlans_TimescaleDBExtensionFilter(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	post17ver := semver.MustParse("17.0.0")
+	logBuffer := syncbuffer.Buffer{}
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+	logger := log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer))
+
+	t.Run("TimescaleDB detected -> filter clause present", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		explainPlan := &ExplainPlans{
+			dbConnection:           db,
+			dbVersion:              post17ver,
+			queryCache:             make(map[string]*queryInfo),
+			queryDenylist:          make(map[string]*queryInfo),
+			finishedQueryCache:     make(map[string]*queryInfo),
+			perScrapeRatio:         1.0,
+			detectedExtensions:     DetectedExtensions{TimescaleDB: true},
+			skipExtensionInternals: true,
+			logger:                 logger,
+			entryHandler:           lokiClient,
+		}
+
+		extensionClause := `AND s.query !~ '_timescaledb_(cache|catalog|config|debug|functions|internal)\.'`
+		expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "", extensionClause)
+		mock.ExpectQuery(expectedQuery).WillReturnRows(
+			sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}).
+				AddRow("testdb", "999", "SELECT * FROM public.app", int64(1), time.Now()),
+		)
+
+		require.NoError(t, explainPlan.populateQueryCache(t.Context()))
+		assert.Len(t, explainPlan.queryCache, 1)
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("TimescaleDB detected + opt-out -> filter clause absent", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		explainPlan := &ExplainPlans{
+			dbConnection:           db,
+			dbVersion:              post17ver,
+			queryCache:             make(map[string]*queryInfo),
+			queryDenylist:          make(map[string]*queryInfo),
+			finishedQueryCache:     make(map[string]*queryInfo),
+			perScrapeRatio:         1.0,
+			detectedExtensions:     DetectedExtensions{TimescaleDB: true},
+			skipExtensionInternals: false,
+			logger:                 logger,
+			entryHandler:           lokiClient,
+		}
+
+		expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "", "")
+		mock.ExpectQuery(expectedQuery).WillReturnRows(
+			sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}),
+		)
+
+		require.NoError(t, explainPlan.populateQueryCache(t.Context()))
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("TimescaleDB not detected -> filter clause absent", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		explainPlan := &ExplainPlans{
+			dbConnection:           db,
+			dbVersion:              post17ver,
+			queryCache:             make(map[string]*queryInfo),
+			queryDenylist:          make(map[string]*queryInfo),
+			finishedQueryCache:     make(map[string]*queryInfo),
+			perScrapeRatio:         1.0,
+			detectedExtensions:     DetectedExtensions{TimescaleDB: false},
+			skipExtensionInternals: true,
+			logger:                 logger,
+			entryHandler:           lokiClient,
+		}
+
+		expectedQuery := fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", exclusionClause, "", "")
+		mock.ExpectQuery(expectedQuery).WillReturnRows(
+			sqlmock.NewRows([]string{"datname", "queryid", "query", "calls", "stats_since"}),
+		)
+
+		require.NoError(t, explainPlan.populateQueryCache(t.Context()))
+		assert.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func TestExplainPlans_SQLStateDenylistScope(t *testing.T) {
+	t.Parallel()
+
+	build := func(t *testing.T, queryText string, det DetectedExtensions, skip bool) (*ExplainPlans, sqlmock.Sqlmock, *queryInfo) {
+		t.Helper()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		t.Cleanup(func() { db.Close() })
+
+		dbConnFactory := &mockDbConnectionFactory{
+			db:   db,
+			Mock: &mock,
+		}
+		entryHandler := loki.NewCollectingHandler()
+		t.Cleanup(entryHandler.Stop)
+		qi := newQueryInfo("testdb", "123456", queryText, int64(1), time.Now())
+		return &ExplainPlans{
+			dbConnection:           db,
+			dbDSN:                  "postgres://user:pass@host:1234/testdb",
+			dbConnectionFactory:    dbConnFactory.NewDBConnection,
+			dbVersion:              semver.MustParse("17.0.0"),
+			queryCache:             map[string]*queryInfo{qi.uniqueKey: qi},
+			queryDenylist:          map[string]*queryInfo{},
+			finishedQueryCache:     map[string]*queryInfo{},
+			perScrapeRatio:         1.0,
+			currentBatchSize:       1,
+			logger:                 log.NewNopLogger(),
+			detectedExtensions:     det,
+			skipExtensionInternals: skip,
+			entryHandler:           entryHandler,
+		}, mock, qi
+	}
+
+	t.Run("does not denylist ordinary app query SQLSTATE errors", func(t *testing.T) {
+		explainPlan, mock, qi := build(t,
+			"SELECT missing_column FROM public.users",
+			DetectedExtensions{TimescaleDB: true},
+			true,
+		)
+
+		mock.ExpectExec(`SET SESSION search_path TO "testdb", public`).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(`PREPARE explain_plan_123456 AS SELECT missing_column FROM public.users`).
+			WillReturnError(&pq.Error{Code: "42703", Message: `column "missing_column" does not exist`})
+
+		require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+		require.Empty(t, explainPlan.queryDenylist)
+		require.Contains(t, explainPlan.finishedQueryCache, qi.uniqueKey)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("denylists TimescaleDB internal query SQLSTATE errors when extension skipping is enabled", func(t *testing.T) {
+		explainPlan, mock, qi := build(t,
+			"SELECT dim.column_type FROM _timescaledb_catalog.hypertable ht WHERE ht.id = htid",
+			DetectedExtensions{TimescaleDB: true},
+			true,
+		)
+
+		mock.ExpectExec(`SET SESSION search_path TO "testdb", public`).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(`PREPARE explain_plan_123456 AS SELECT dim.column_type FROM _timescaledb_catalog.hypertable ht WHERE ht.id = htid`).
+			WillReturnError(&pq.Error{Code: "42703", Message: `column "htid" does not exist`})
+
+		require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+		require.Contains(t, explainPlan.queryDenylist, qi.uniqueKey)
+		require.Empty(t, explainPlan.finishedQueryCache)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("opt-out restores ordinary retry behavior for TimescaleDB internal SQLSTATE errors", func(t *testing.T) {
+		explainPlan, mock, qi := build(t,
+			"SELECT dim.column_type FROM _timescaledb_catalog.hypertable ht WHERE ht.id = htid",
+			DetectedExtensions{TimescaleDB: true},
+			false,
+		)
+
+		mock.ExpectExec(`SET SESSION search_path TO "testdb", public`).WillReturnResult(sqlmock.NewResult(0, 1))
+		mock.ExpectExec(`PREPARE explain_plan_123456 AS SELECT dim.column_type FROM _timescaledb_catalog.hypertable ht WHERE ht.id = htid`).
+			WillReturnError(&pq.Error{Code: "42703", Message: `column "htid" does not exist`})
+
+		require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+		require.Empty(t, explainPlan.queryDenylist)
+		require.Contains(t, explainPlan.finishedQueryCache, qi.uniqueKey)
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func TestQueryReferencesTimescaleDBInternalSchema(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name  string
+		query string
+		want  bool
+	}{
+		{
+			name:  "unquoted internal schema",
+			query: "SELECT * FROM _timescaledb_catalog.hypertable",
+			want:  true,
+		},
+		{
+			name:  "quoted internal schema",
+			query: `SELECT * FROM "_timescaledb_catalog"."hypertable"`,
+			want:  true,
+		},
+		{
+			name:  "metadata schema is not internal",
+			query: "SELECT * FROM timescaledb_information.hypertables",
+			want:  false,
+		},
+		{
+			name:  "string literal is ignored",
+			query: "SELECT '_timescaledb_catalog.hypertable'",
+			want:  false,
+		},
+		{
+			name:  "comment is ignored",
+			query: "SELECT 1 -- FROM _timescaledb_catalog.hypertable",
+			want:  false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, queryReferencesTimescaleDBInternalSchema(tt.query))
+		})
+	}
+}
+
+func TestIsUnrecoverableExplainError(t *testing.T) {
+	t.Parallel()
+
+	timescaleQuery := "SELECT * FROM _timescaledb_catalog.hypertable WHERE id = htid"
+	isTimescaleError := func(err error) bool {
+		return isUnrecoverableExplainError(err, timescaleQuery, DetectedExtensions{TimescaleDB: true}, true)
+	}
+
+	t.Run("SQLSTATE 42703 undefined_column (TimescaleDB htid leakage)", func(t *testing.T) {
+		err := &pq.Error{Code: "42703", Message: `column "htid" does not exist`}
+		require.True(t, isTimescaleError(err))
+	})
+
+	t.Run("SQLSTATE 42804 datatype_mismatch (UNION type mismatch)", func(t *testing.T) {
+		err := &pq.Error{Code: "42804", Message: "UNION types text and double precision cannot be matched"}
+		require.True(t, isTimescaleError(err))
+	})
+
+	t.Run("SQLSTATE 42P01 undefined_table", func(t *testing.T) {
+		err := &pq.Error{Code: "42P01", Message: `relation "foo" does not exist`}
+		require.True(t, isTimescaleError(err))
+	})
+
+	t.Run("wrapped pq.Error preserves unrecoverable signal", func(t *testing.T) {
+		inner := &pq.Error{Code: "42703"}
+		wrapped := fmt.Errorf("failed to prepare explain plan: %w", inner)
+		require.True(t, isTimescaleError(wrapped))
+	})
+
+	t.Run("substring fallback still works for non-SQLSTATE errors", func(t *testing.T) {
+		err := errors.New("pq: pg_hba.conf rejects connection for host 10.0.0.1")
+		require.True(t, isUnrecoverableExplainError(err, "SELECT * FROM public.users", DetectedExtensions{}, false))
+	})
+
+	t.Run("transient SQLSTATE is not unrecoverable", func(t *testing.T) {
+		err := &pq.Error{Code: "40001", Message: "could not serialize access"}
+		require.False(t, isTimescaleError(err))
+	})
+
+	t.Run("nil error", func(t *testing.T) {
+		require.False(t, isUnrecoverableExplainError(nil, timescaleQuery, DetectedExtensions{TimescaleDB: true}, true))
+	})
 }

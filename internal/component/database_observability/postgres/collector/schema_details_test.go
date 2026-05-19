@@ -1986,3 +1986,81 @@ func Test_Postgres_SchemaDetails_ExcludeDatabases(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, mock.ExpectationsWereMet())
 }
+
+func Test_Postgres_SchemaDetails_TimescaleDBSchemaFilter(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	build := func(t *testing.T, det DetectedExtensions, skip bool) (*SchemaDetails, sqlmock.Sqlmock, func()) {
+		t.Helper()
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		col, err := NewSchemaDetails(SchemaDetailsArguments{
+			DB:                     db,
+			DSN:                    "postgres://user:pass@localhost:5432/books_store",
+			CollectInterval:        time.Minute,
+			EntryHandler:           loki.NewCollectingHandler(),
+			Logger:                 log.NewLogfmtLogger(os.Stderr),
+			DetectedExtensions:     det,
+			SkipExtensionInternals: skip,
+			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
+				return db, nil
+			},
+		})
+		require.NoError(t, err)
+		return col, mock, func() { db.Close() }
+	}
+
+	t.Run("timescaledb detected -> internal and metadata schemas excluded", func(t *testing.T) {
+		t.Parallel()
+		col, mock, cleanup := build(t, DetectedExtensions{TimescaleDB: true}, true)
+		defer cleanup()
+
+		excluded := append(append([]string{"information_schema", "pg_catalog", "pg_toast"},
+			TimescaleDBInternalSchemas()...), TimescaleDBMetadataSchemas()...)
+		expected := fmt.Sprintf(selectSchemaNamesTemplate, "("+
+			"'information_schema', 'pg_catalog', 'pg_toast', "+
+			"'_timescaledb_cache', '_timescaledb_catalog', '_timescaledb_config', '_timescaledb_debug', '_timescaledb_functions', '_timescaledb_internal', "+
+			"'timescaledb_experimental', 'timescaledb_information', 'toolkit_experimental'"+
+			")")
+		// Sanity check: the helper used by the collector renders the same string we hand-build above.
+		require.Equal(t, expected, fmt.Sprintf(selectSchemaNamesTemplate, "("+strings.Join(quoteAll(excluded), ", ")+")"))
+
+		mock.ExpectQuery(expected).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}))
+
+		require.NoError(t, col.extractSchemas(context.Background(), "books_store", col.initialConnection))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("timescaledb detected but skip disabled -> default exclusion only", func(t *testing.T) {
+		t.Parallel()
+		col, mock, cleanup := build(t, DetectedExtensions{TimescaleDB: true}, false)
+		defer cleanup()
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}))
+
+		require.NoError(t, col.extractSchemas(context.Background(), "books_store", col.initialConnection))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+
+	t.Run("timescaledb not detected -> default exclusion only", func(t *testing.T) {
+		t.Parallel()
+		col, mock, cleanup := build(t, DetectedExtensions{TimescaleDB: false}, true)
+		defer cleanup()
+
+		mock.ExpectQuery(selectSchemaNames).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}))
+
+		require.NoError(t, col.extractSchemas(context.Background(), "books_store", col.initialConnection))
+		require.NoError(t, mock.ExpectationsWereMet())
+	})
+}
+
+func quoteAll(items []string) []string {
+	out := make([]string, len(items))
+	for i, s := range items {
+		out[i] = "'" + s + "'"
+	}
+	return out
+}
