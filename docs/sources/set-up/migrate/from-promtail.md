@@ -220,7 +220,7 @@ loki.write "default" {
 ```
 
 {{< admonition type="note" >}}
-Make sure the `alloy` user is a member of the `adm` and `systemd-journal` groups so that it can read the journal.
+Make sure that the `alloy` user is a member of the `adm` and `systemd-journal` groups so it can read the journal.
 {{< /admonition >}}
 
 ## Limitations
