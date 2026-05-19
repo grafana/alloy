@@ -12,6 +12,7 @@ beyla.ebpf "default" {
   discovery {
     instrument {
       name = "petclinic"
+      open_ports = "8080"
       exe_path = "*java"
       containers_only = true
       exports = ["traces"]
@@ -20,6 +21,7 @@ beyla.ebpf "default" {
 
   injector {
     instrument {
+      open_ports = "8080"
       exe_path = "*java"
     }
     enabled_sdks = ["java"]

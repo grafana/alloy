@@ -3,14 +3,12 @@ package controller
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-
 	"github.com/grafana/alloy/internal/dag"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (
@@ -28,7 +26,7 @@ type RunnableNode interface {
 // Scheduler runs components.
 type Scheduler struct {
 	running              sync.WaitGroup
-	logger               log.Logger
+	logger               *slog.Logger
 	taskShutdownDeadline time.Duration
 
 	tasksMut sync.Mutex
@@ -39,7 +37,7 @@ type Scheduler struct {
 // components which are running.
 //
 // Call Stop to stop the Scheduler and all running components.
-func NewScheduler(logger log.Logger, taskShutdownDeadline time.Duration) *Scheduler {
+func NewScheduler(logger *slog.Logger, taskShutdownDeadline time.Duration) *Scheduler {
 	return &Scheduler{
 		logger:               logger,
 		taskShutdownDeadline: taskShutdownDeadline,
@@ -105,16 +103,16 @@ func (s *Scheduler) Synchronize(g *dag.Graph) error {
 			onDone: func(err error) {
 				defer s.running.Done()
 				if err != nil {
-					level.Error(s.logger).Log("msg", "node exited with error", "node", id, "err", err)
+					s.logger.Error("node exited with error", "node", id, "err", err)
 				} else {
-					level.Info(s.logger).Log("msg", "node exited without error", "node", id)
+					s.logger.Info("node exited without error", "node", id)
 				}
 
 				s.tasksMut.Lock()
 				defer s.tasksMut.Unlock()
 				delete(s.tasks, id)
 			},
-			logger:               log.With(s.logger, "taskID", id),
+			logger:               s.logger.With("taskID", id),
 			taskShutdownDeadline: s.taskShutdownDeadline,
 		})
 
@@ -175,7 +173,7 @@ type task struct {
 type taskOptions struct {
 	runnable             RunnableNode
 	onDone               func(error)
-	logger               log.Logger
+	logger               *slog.Logger
 	taskShutdownDeadline time.Duration
 }
 
@@ -194,7 +192,7 @@ func newTask(groupID, rank int, opts taskOptions) *task {
 }
 
 func (t *task) Start() {
-	level.Debug(t.opts.logger).Log("msg", "Starting task", "id", t.opts.runnable.NodeID())
+	t.opts.logger.Debug("Starting task", "id", t.opts.runnable.NodeID())
 
 	go func() {
 		err := t.opts.runnable.Run(t.ctx)
@@ -209,7 +207,7 @@ func (t *task) Start() {
 }
 
 func (t *task) Stop() {
-	level.Debug(t.opts.logger).Log("msg", "Stopping task", "id", t.opts.runnable.NodeID())
+	t.opts.logger.Debug("Stopping task", "id", t.opts.runnable.NodeID())
 	t.cancel()
 
 	deadlineDuration := t.opts.taskShutdownDeadline
@@ -225,7 +223,7 @@ func (t *task) Stop() {
 		case <-t.exited:
 			return // Task exited normally.
 		case <-time.After(TaskShutdownWarningTimeout):
-			level.Warn(t.opts.logger).Log("msg", "task shutdown is taking longer than expected")
+			t.opts.logger.Warn("task shutdown is taking longer than expected")
 		case <-deadlineCtx.Done():
 			t.doneOnce.Do(func() {
 				t.opts.onDone(fmt.Errorf("task shutdown deadline exceeded"))

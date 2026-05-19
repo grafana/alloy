@@ -7,7 +7,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -30,7 +29,7 @@ type Component struct {
 
 // New creates a new  component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	level.Info(o.Logger).Log("msg", "loki.source.journal is not enabled, and must be ran on linux with journal support")
+	o.SLogger.Info("loki.source.journal is not enabled, and must be ran on linux with journal support")
 	c := &Component{}
 	return c, nil
 }

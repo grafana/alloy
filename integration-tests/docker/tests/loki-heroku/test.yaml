@@ -1,0 +1,5 @@
+alloy_container:
+  ports:
+    - container: 1516
+      host: 1516
+      protocol: "tcp"

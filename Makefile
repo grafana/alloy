@@ -18,7 +18,8 @@
 ##   test                  Run tests
 ##   lint                  Lint code
 ##   integration-test      Run integration tests
-##   integration-test-k8s  Run Kubernetes integration tests
+##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
+##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
 ##
 ## Targets for building binaries:
 ##
@@ -47,6 +48,7 @@
 ##   generate-helm-docs        Generate Helm chart documentation.
 ##   generate-helm-tests       Generate Helm chart tests.
 ##   generate-ui               Generate the UI assets.
+##   generate-graphql          Generate the GraphQL assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
 ##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
@@ -137,7 +139,7 @@ GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOA
 VERSION      ?= $(shell bash ./tools/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
-BEYLA_MODULE  := $(shell go list -m all | grep "^github.com/grafana/beyla" | head -1)
+BEYLA_MODULE  := $(shell go list -m -f '{{.Path}} {{.Version}}' github.com/grafana/beyla/v3 2>/dev/null)
 BEYLA_VERSION := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f2)
 BEYLA_PKG     := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f1)/pkg/buildinfo
 VPREFIX      := github.com/grafana/alloy/internal/build
@@ -199,12 +201,17 @@ endif
 
 .PHONY: integration-test-docker
 integration-test-docker:
-	cd integration-tests/docker && $(GO_ENV) go run .
+	cd integration-tests/docker && $(GO_ENV) go run . --test-timeout=15m
 
 .PHONY: integration-test-k8s
-integration-test-k8s: alloy-image
-	# Use -p 1 to run K8s tests sequentially to avoid kubectl context conflicts between tests
-	cd integration-tests/k8s && $(GO_ENV) go test -p 1 -tags="gore2regex alloyintegrationtests" -timeout 30m ./...
+integration-test-k8s:
+	$(GO_ENV) go run ./integration-tests/k8s/runner --test-tags='$(GO_TAGS)' $(RUN_ARGS)
+
+# Interactive mode for local development: pick reuse-cluster, skip-image-builds,
+# and shard/packages from a TUI menu before tests run.
+.PHONY: integration-test-k8s-local-dev
+integration-test-k8s-local-dev:
+	$(GO_ENV) go run ./integration-tests/k8s/runner --interactive --test-tags='$(GO_TAGS)' $(RUN_ARGS)
 
 # Windows service integration test. Runs only on Windows with Administrator privileges.
 # Builds the Windows installer, runs it, verifies the Alloy service, then uninstalls.
@@ -264,6 +271,13 @@ images: alloy-image
 alloy-image:
 	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t $(ALLOY_IMAGE) -f Dockerfile .
 
+# Test fixture image used by the k8s integration tests as a Prometheus scrape
+# target. The runner builds this alongside alloy-image so the tests don't have
+# to call `docker build` themselves.
+.PHONY: prom-gen-image
+prom-gen-image:
+	DOCKER_BUILDKIT=1 docker build $(DOCKER_FLAGS) -t prom-gen:latest -f integration-tests/docker/configs/prom-gen/Dockerfile .
+
 .PHONY: images-windows alloy-image-windows
 images: alloy-image-windows
 
@@ -274,8 +288,15 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
+
+generate-graphql:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else
+	cd ./internal/service/graphql && GOOS= GOARCH= go generate ./...
+endif
 
 generate-helm-docs:
 ifeq ($(USE_CONTAINER),1)

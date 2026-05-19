@@ -1,8 +1,10 @@
 package receiver
 
 import (
+	"compress/gzip"
 	"crypto/subtle"
 	"encoding/json"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -19,7 +21,7 @@ import (
 
 const apiKeyHeader = "x-api-key"
 
-var defaultAllowedHeaders = []string{"content-type", "traceparent", apiKeyHeader, "x-faro-session-id", "x-scope-orgid"}
+var defaultAllowedHeaders = []string{"content-type", "content-encoding", "traceparent", apiKeyHeader, "x-faro-session-id", "x-scope-orgid"}
 
 type handler struct {
 	log            log.Logger
@@ -117,8 +119,19 @@ func (h *handler) handleRequest(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	var bodyReader io.Reader = req.Body
+	if req.Header.Get("Content-Encoding") == "gzip" {
+		gzipReader, err := gzip.NewReader(req.Body)
+		if err != nil {
+			http.Error(rw, "failed to decompress gzip body", http.StatusBadRequest)
+			return
+		}
+		defer gzipReader.Close()
+		bodyReader = gzipReader
+	}
+
 	var p payload.Payload
-	if err := json.NewDecoder(req.Body).Decode(&p); err != nil {
+	if err := json.NewDecoder(bodyReader).Decode(&p); err != nil {
 		http.Error(rw, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -182,15 +195,12 @@ func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p pa
 
 	var wg sync.WaitGroup
 	for _, exp := range h.exporters {
-		wg.Add(1)
-		go func(exp exporter) {
-			defer wg.Done()
-
+		wg.Go(func() {
 			if err := exp.Export(req.Context(), p); err != nil {
 				level.Error(h.log).Log("msg", "exporter failed with error", "exporter", exp.Name(), "err", err)
 				h.errorsTotal.WithLabelValues(exp.Name()).Inc()
 			}
-		}(exp)
+		})
 	}
 	wg.Wait()
 

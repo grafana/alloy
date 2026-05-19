@@ -1,6 +1,11 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
 
 func TestExtractCommitSHA(t *testing.T) {
 	tests := []struct {
@@ -88,6 +93,21 @@ func TestFormatAttribution(t *testing.T) {
 	}
 }
 
+func TestOnlyOneLinePerEntry(t *testing.T) {
+	line := "* Fix release notes ([abc1234](https://github.com/grafana/alloy/commit/abc1234))\r"
+
+	result := appendAttribution(line, []string{"alice"})
+
+	if strings.ContainsAny(result, "\r\n") {
+		t.Fatalf("appendAttribution() returned a multi-line entry: %q", result)
+	}
+
+	expected := "* Fix release notes ([abc1234](https://github.com/grafana/alloy/commit/abc1234)) (@alice)"
+	if result != expected {
+		t.Errorf("appendAttribution() = %q, want %q", result, expected)
+	}
+}
+
 func TestDeriveDocTag(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -116,5 +136,22 @@ func TestDeriveDocTag(t *testing.T) {
 				t.Errorf("deriveDocTag(%q) = %q, want %q", tt.tag, result, tt.expected)
 			}
 		})
+	}
+}
+
+func TestAppendFooterSkipsComponentRelease(t *testing.T) {
+	footerPath := filepath.Join(t.TempDir(), "footer.md")
+	if err := os.WriteFile(footerPath, []byte("Docs: ${RELEASE_DOC_TAG}"), 0o644); err != nil {
+		t.Fatalf("writing footer: %v", err)
+	}
+
+	body := "release notes"
+	result, err := appendFooter(body, "syntax/v0.1.2", footerPath)
+	if err != nil {
+		t.Fatalf("appendFooter returned error: %v", err)
+	}
+
+	if result != body {
+		t.Errorf("appendFooter() = %q, want %q", result, body)
 	}
 }

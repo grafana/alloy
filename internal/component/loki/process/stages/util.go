@@ -1,7 +1,9 @@
 package stages
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
@@ -10,17 +12,13 @@ import (
 	"github.com/grafana/alloy/internal/util"
 )
 
-var (
-	// Debug is used to wrap debug log statements, the go-kit logger won't let us introspect the current log level
-	// so this global is used for that purpose. This allows us to skip allocations of log messages at the
-	// debug level when debug level logging is not enabled. Log level allocations can become very expensive
-	// as we log numerous log entries per log line at debug level.
-	Debug = false
-)
-
 const (
 	ErrTimestampContainsYear = "timestamp '%s' is expected to not contain the year date component"
 )
+
+func debugEnabled(logger *slog.Logger) bool {
+	return logger.Enabled(context.Background(), slog.LevelDebug)
+}
 
 // convertDateLayout converts pre-defined date format layout into date format
 func convertDateLayout(predef string, location *time.Location) parser {

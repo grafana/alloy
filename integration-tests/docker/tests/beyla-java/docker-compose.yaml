@@ -1,6 +1,8 @@
 services:
   alloy:
     image: alloy-integration-tests
+    environment:
+      OTEL_EBPF_JAVAAGENT_ATTACH_TIMEOUT: "30s"
     command:
       [
         "run",

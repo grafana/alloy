@@ -2,10 +2,13 @@ package logging_test
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,6 +19,23 @@ import (
 	alloylevel "github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/stretchr/testify/require"
 )
+
+type safeBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (b *safeBuffer) Write(p []byte) (int, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.Write(p)
+}
+
+func (b *safeBuffer) String() string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.buf.String()
+}
 
 /* Most recent performance results on M2 Macbook Air:
 $ go test -count=1 -benchmem ./internal/alloy/logging -run ^$ -bench BenchmarkLogging_
@@ -183,6 +203,152 @@ func Test_lokiWriter_nil(t *testing.T) {
 	require.NotPanics(t, func() {
 		_ = logger.Log("msg", "test message")
 	})
+}
+
+// TestWriteToDisabledViaUpdate verifies that logs go to both stderr and the
+// configured write_to receiver while write_to is set, and that calling Update
+// with an empty WriteTo stops sending logs to the receiver while still emitting
+// to stderr.
+func TestWriteToDisabledViaUpdate(t *testing.T) {
+	var buf safeBuffer
+	receiver := loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry, 16)))
+
+	logger, err := logging.New(&buf, debugLevel())
+	require.NoError(t, err)
+
+	require.NoError(t, logger.Update(logging.Options{
+		Level:   logging.LevelDebug,
+		Format:  logging.FormatLogfmt,
+		WriteTo: []loki.LogsReceiver{receiver},
+	}))
+
+	require.NoError(t, logger.Log("msg", "with-write-to"))
+
+	require.Eventually(t, func() bool {
+		return strings.Contains(buf.String(), "with-write-to")
+	}, time.Second, 10*time.Millisecond, "stderr did not receive log while write_to was enabled")
+
+	select {
+	case entry := <-receiver.Chan():
+		require.Contains(t, entry.Line, "with-write-to")
+	case <-time.After(time.Second):
+		t.Fatal("write_to receiver did not receive log while write_to was enabled")
+	}
+
+	require.NoError(t, logger.Update(logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	}))
+
+	beforeLen := buf.String()
+	require.NoError(t, logger.Log("msg", "without-write-to"))
+
+	require.Eventually(t, func() bool {
+		return strings.Contains(buf.String(), "without-write-to")
+	}, time.Second, 10*time.Millisecond, "stderr did not receive log after write_to was disabled")
+	require.Greater(t, len(buf.String()), len(beforeLen))
+
+	select {
+	case entry := <-receiver.Chan():
+		t.Fatalf("write_to receiver got log %q after write_to was disabled", entry.Line)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
+// TestUpdateConcurrentHandle verifies that Logger.Update completes successfully
+// when child handlers are being used concurrently, as happens when components
+// start logging during graph evaluation before the logging config block is processed.
+func TestUpdateConcurrentHandle(t *testing.T) {
+	l, err := logging.NewDeferred(io.Discard)
+	require.NoError(t, err)
+
+	child := l.Handler().WithAttrs([]slog.Attr{slog.String("component", "test")})
+
+	stop := make(chan struct{})
+	defer close(stop)
+
+	go func() {
+		rec := slog.NewRecord(time.Now(), slog.LevelInfo, "concurrent log", 0)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				_ = child.Handle(context.Background(), rec)
+				runtime.Gosched()
+			}
+		}
+	}()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- l.Update(logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+	}()
+
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Logger.Update did not complete while child handlers were being used concurrently")
+	}
+}
+
+// TestUpdateNoLostBufferedMessages verifies that log records buffered before
+// Update is called are not lost even when concurrent Handle calls are in-flight
+// during the window between bufferMut being released and buildHandlers completing.
+func TestUpdateNoLostBufferedMessages(t *testing.T) {
+	var buf safeBuffer
+	l, err := logging.NewDeferred(&buf)
+	require.NoError(t, err)
+
+	// Buffer some messages before Update is called.
+	child := l.Handler().WithAttrs([]slog.Attr{slog.String("component", "test")})
+	for i := range 10 {
+		rec := slog.NewRecord(time.Now(), slog.LevelInfo, fmt.Sprintf("buffered-%d", i), 0)
+		require.NoError(t, child.Handle(context.Background(), rec))
+	}
+
+	// Hammer Handle from a separate goroutine so that calls are in-flight while
+	// Update releases bufferMut to run buildHandlers.
+	stop := make(chan struct{})
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		rec := slog.NewRecord(time.Now(), slog.LevelInfo, "concurrent", 0)
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+				_ = child.Handle(context.Background(), rec)
+				runtime.Gosched()
+			}
+		}
+	}()
+
+	require.NoError(t, l.Update(logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt}))
+	close(stop)
+	<-done
+
+	for i := range 10 {
+		require.Contains(t, buf.String(), fmt.Sprintf("buffered-%d", i), "buffered message %d was lost", i)
+	}
+}
+
+// TestHandlerAfterUpdateIsReal verifies that a child handler created via
+// WithAttrs or WithGroup after Update has been called writes directly to the
+// underlying handler rather than buffering.
+func TestHandlerAfterUpdateIsReal(t *testing.T) {
+	var buf bytes.Buffer
+	l, err := logging.New(&buf, infoLevel())
+	require.NoError(t, err)
+
+	// Handler created after Update should write immediately — no second Update needed.
+	child := l.Handler().WithAttrs([]slog.Attr{slog.String("component", "post-update")})
+	rec := slog.NewRecord(time.Now(), slog.LevelInfo, "direct-write", 0)
+	require.NoError(t, child.Handle(context.Background(), rec))
+
+	require.Contains(t, buf.String(), "direct-write")
 }
 
 func BenchmarkLogging_NoLevel_Prints(b *testing.B) {

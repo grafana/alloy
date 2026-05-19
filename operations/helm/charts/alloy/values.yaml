@@ -18,6 +18,9 @@ global:
     # -- Optional set of global image pull secrets.
     pullSecrets: []
 
+    # -- Global image pull policy to apply to all containers. Overrides `image.pullPolicy` and `configReloader.image.pullPolicy`.
+    pullPolicy: ""
+
   # -- Security context to apply to the Grafana Alloy pod.
   podSecurityContext: {}
 
@@ -241,7 +244,7 @@ configReloader:
     # -- Repository to get config reloader image from.
     repository: prometheus-operator/prometheus-config-reloader
     # -- Tag of image to use for config reloading.
-    tag: v0.81.0
+    tag: v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
     # -- Config reloader image pull policy.

@@ -23,7 +23,6 @@ import (
 
 const (
 	SchemaDetailsCollector = "schema_details"
-	OP_SCHEMA_DETECTION    = "schema_detection"
 	OP_TABLE_DETECTION     = "table_detection"
 	OP_CREATE_STATEMENT    = "create_statement"
 )
@@ -462,12 +461,6 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 			break
 		}
 		schemas = append(schemas, schema)
-
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_SCHEMA_DETECTION,
-			fmt.Sprintf(`datname="%s" schema="%s"`, dbName, schema),
-		)
 	}
 
 	if err := schemaRs.Err(); err != nil {

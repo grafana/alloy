@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
+	"github.com/grafana/ckit/shard"
 	"k8s.io/client-go/rest"
 
 	"github.com/grafana/alloy/internal/component"
@@ -21,6 +21,8 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/cluster"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 // Generous timeout period for configuring informers
@@ -49,6 +51,8 @@ type Arguments struct {
 
 	// Client settings to connect to Kubernetes.
 	Client kubernetes.ClientArguments `alloy:"client,block,optional"`
+
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
 // DefaultArguments holds default settings for loki.source.kubernetes_events.
@@ -79,10 +83,10 @@ func (args *Arguments) Validate() error {
 // watches events from Kubernetes and forwards received events to other Loki
 // components.
 type Component struct {
-	log       log.Logger
 	opts      component.Options
 	positions positions.Positions
 	handler   loki.LogsReceiver
+	cluster   cluster.Cluster
 
 	mut        sync.RWMutex
 	args       Arguments
@@ -95,6 +99,7 @@ type Component struct {
 var (
 	_ component.Component      = (*Component)(nil)
 	_ component.DebugComponent = (*Component)(nil)
+	_ cluster.Component        = (*Component)(nil)
 )
 
 // New creates a new loki.source.kubernetes_events component.
@@ -103,7 +108,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
+	positionsFile, err := positions.New(o.SLogger, positions.Config{
 		SyncPeriod:    10 * time.Second,
 		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
 	})
@@ -111,11 +116,16 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
+	data, err := o.GetServiceData(cluster.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
-		log:       o.Logger,
 		opts:      o,
 		positions: positionsFile,
 		handler:   loki.NewLogsReceiver(),
+		cluster:   data.(cluster.Cluster),
 		scheduler: source.NewScheduler[string](),
 		fanout:    loki.NewFanout(args.ForwardTo),
 	}
@@ -149,12 +159,12 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
-	restConfig := c.restConfig
-
 	// Create a new restConfig if we don't have one or if our arguments changed.
-	if restConfig == nil || !reflect.DeepEqual(c.args.Client, newArgs.Client) {
+	if c.restConfig == nil || !reflect.DeepEqual(c.args.Client, newArgs.Client) {
 		var err error
-		restConfig, err = newArgs.Client.BuildRESTConfig(c.log)
+		// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that uses shared
+		// kubernetes client builder to slog. Part of https://github.com/grafana/alloy/issues/4813.
+		c.restConfig, err = newArgs.Client.BuildRESTConfig(slogadapter.GoKit(c.opts.SLogger.Handler()))
 		if err != nil {
 			return fmt.Errorf("building Kubernetes client config: %w", err)
 		}
@@ -163,31 +173,75 @@ func (c *Component) Update(args component.Arguments) error {
 		c.scheduler.Reset()
 	}
 
-	source.Reconcile(
-		c.opts.Logger,
-		c.scheduler,
-		getNamespaces(newArgs),
-		func(namespace string) string { return namespace },
-		func(_ string, namespace string) (source.Source[string], error) {
-			return newEventController(eventControllerOptions{
-				Log:          c.log,
-				Config:       restConfig,
-				Namespace:    namespace,
-				JobName:      newArgs.JobName,
-				InstanceName: c.opts.ID,
-				Receiver:     c.handler,
-				Positions:    c.positions,
-				LogFormat:    newArgs.LogFormat,
-			}), nil
-		},
-	)
-
 	c.args = newArgs
+	c.reconcile()
 	return nil
 }
 
-// getNamespaces returns a iterator of namespaces to watch from the arguments. If the
-// list of namespaces is empty, returns a iterator to watch all namespaces.
+// reconcile synchronizes the running event controllers with the desired set
+// of namespaces, filtered by clustering ownership.
+func (c *Component) reconcile() {
+	source.Reconcile(
+		c.opts.SLogger,
+		c.scheduler,
+		c.localNamespaces(),
+		func(namespace string) string { return namespace },
+		func(_ string, namespace string) (source.Source[string], error) {
+			return newEventController(eventControllerOptions{
+				Log:          c.opts.SLogger,
+				Config:       c.restConfig,
+				Namespace:    namespace,
+				JobName:      c.args.JobName,
+				InstanceName: c.opts.ID,
+				Receiver:     c.handler,
+				Positions:    c.positions,
+				LogFormat:    c.args.LogFormat,
+			}), nil
+		},
+	)
+}
+
+// NotifyClusterChange implements cluster.Component.
+func (c *Component) NotifyClusterChange() {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	if !c.args.Clustering.Enabled {
+		return
+	}
+	c.reconcile()
+}
+
+// localNamespaces returns an iterator of namespaces that this node should
+// watch, filtered by cluster ownership when clustering is enabled.
+func (c *Component) localNamespaces() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		if c.args.Clustering.Enabled && !c.cluster.Ready() {
+			// When clustering is enabled but the cluster isn't ready yet,
+			// don't watch any namespaces. NotifyClusterChange will be called
+			// once the cluster is ready, triggering a reconcile.
+			return
+		}
+
+		for ns := range getNamespaces(c.args) {
+			if c.args.Clustering.Enabled {
+				// Use the namespace name as the hash key. For the "all namespaces"
+				// case (empty string), this results in a single key, so only one
+				// node in the cluster will watch all events.
+				peers, err := c.cluster.Lookup(shard.StringKey(ns), 1, shard.OpReadWrite)
+				if err == nil && len(peers) > 0 && !peers[0].Self {
+					continue // This namespace belongs to another node.
+				}
+			}
+			if !yield(ns) {
+				return
+			}
+		}
+	}
+}
+
+// getNamespaces returns an iterator of namespaces to watch from the arguments. If the
+// list of namespaces is empty, returns an iterator to watch all namespaces.
 func getNamespaces(args Arguments) iter.Seq[string] {
 	return func(yield func(string) bool) {
 		if len(args.Namespaces) == 0 {

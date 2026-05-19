@@ -617,8 +617,8 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemIfBothLocalAndRemoteLocation(t *
 		},
 	}, "123")
 
-	require.Equal(t, []string{"/var/build/latest/foo.js.map"}, fileService.stats)
-	require.Equal(t, []string{"/var/build/latest/foo.js.map"}, fileService.reads)
+	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.stats)
+	require.Equal(t, []string{filepath.FromSlash("/var/build/latest/foo.js.map")}, fileService.reads)
 	require.Nil(t, httpClient.requests)
 	require.Equal(t, expect, actual)
 }

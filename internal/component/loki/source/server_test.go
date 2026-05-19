@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -18,7 +19,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestServer(t *testing.T) {
@@ -138,6 +139,44 @@ func TestServer(t *testing.T) {
 		for err := range errs {
 			require.NoError(t, err)
 		}
+	})
+
+	t.Run("uses custom response writer when implemented by route", func(t *testing.T) {
+		recv := loki.NewCollectingBatchReceiver()
+		defer recv.Stop()
+
+		srv := newTestServer(
+			t,
+			recv,
+			testServerConfig(time.Second, &LogsConfig{}),
+			newTestCustomResponseLogsRoute(
+				func(_ *http.Request, _ *LogsConfig) ([]loki.Entry, int, error) {
+					return []loki.Entry{loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "hello"})},
+						http.StatusAccepted,
+						errors.New("partial failure")
+				},
+				func(w http.ResponseWriter, _ *http.Request, status int, err error) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(status)
+					_, _ = io.WriteString(w, fmt.Sprintf(`{"status":%d,"error":"%s"}`, status, err.Error()))
+				},
+			),
+		)
+		defer srv.ForceShutdown()
+
+		resp := doPost(t, srv)
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		require.NoError(t, err)
+
+		assert.Equal(t, http.StatusAccepted, resp.StatusCode)
+		assert.Equal(t, "application/json", resp.Header.Get("Content-Type"))
+		assert.JSONEq(t, `{"status":202,"error":"partial failure"}`, string(body))
+
+		assertReceivedLogs(t, recv, []loki.Entry{
+			loki.NewEntry(model.LabelSet{"source": "test"}, push.Entry{Line: "hello"}),
+		})
 	})
 }
 
@@ -286,6 +325,17 @@ func newTestLogsRoute(logsFn func(r *http.Request, opts *LogsConfig) ([]loki.Ent
 	}
 }
 
+func newTestCustomResponseLogsRoute(
+	logsFn func(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error),
+	writeResponse func(w http.ResponseWriter, r *http.Request, status int, err error),
+) *testCustomResponseLogsRoute {
+
+	return &testCustomResponseLogsRoute{
+		testLogsRoute: testLogsRoute{logsFn: logsFn},
+		writeResponse: writeResponse,
+	}
+}
+
 type testLogsRoute struct {
 	logsFn func(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error)
 }
@@ -300,6 +350,15 @@ func (r testLogsRoute) Method() string {
 
 func (r testLogsRoute) Logs(req *http.Request, opts *LogsConfig) ([]loki.Entry, int, error) {
 	return r.logsFn(req, opts)
+}
+
+type testCustomResponseLogsRoute struct {
+	testLogsRoute
+	writeResponse func(w http.ResponseWriter, r *http.Request, status int, err error)
+}
+
+func (r testCustomResponseLogsRoute) WriteResponse(w http.ResponseWriter, req *http.Request, status int, err error) {
+	r.writeResponse(w, req, status, err)
 }
 
 type testHandlerRoute struct {
@@ -326,7 +385,7 @@ func (r testHandlerRoute) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func newTestServer(t *testing.T, recv loki.LogsBatchReceiver, cfg ServerConfig, logsRoutes ...LogsRoute) *Server {
 	t.Helper()
 
-	srv, err := NewServer(util.TestLogger(t), prometheus.NewRegistry(), recv, cfg)
+	srv, err := NewServer(logging.NewSlogNop(), prometheus.NewRegistry(), recv, cfg)
 	require.NoError(t, err)
 
 	err = srv.Run(logsRoutes, []HandlerRoute{testHandlerRoute{

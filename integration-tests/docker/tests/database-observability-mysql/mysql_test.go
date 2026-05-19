@@ -9,12 +9,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
+	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 )
 
 const testName = "database_observability_mysql"
 
 func TestDatabaseObservabilityMySQLMetrics(t *testing.T) {
-	var metrics = []string{
+	metrics := []string{
 		"database_observability_connection_info",
 	}
 	common.MimirMetricsTest(t, metrics, []string{}, testName)
@@ -27,26 +28,20 @@ func TestDatabaseObservabilityMySQLLogs(t *testing.T) {
 		"health_status",
 		"query_association",
 		"query_parsed_table_name",
-		"schema_detection",
 		"table_detection",
 		"create_statement",
 	}
 
-	var logResponse common.LogResponse
-
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		_, err := common.FetchDataFromURL(common.LogQuery(testName, 100), &logResponse)
-		assert.NoError(c, err)
-
-		ops := make(map[string]bool)
-		for _, result := range logResponse.Data.Result {
-			if op, ok := result.Stream["op"]; ok {
-				ops[op] = true
-			}
-		}
-
 		for _, op := range expectedOps {
-			assert.True(c, ops[op], "expected %s logs", op)
+			var resp lokihttp.LogResponse
+			_, err := common.FetchDataFromURL(
+				// fetch one log with exact match for op label
+				common.LogQuery(testName, 1, common.LabelMatcher{Name: "op", Value: op}),
+				&resp,
+			)
+			assert.NoError(c, err)
+			assert.NotEmpty(c, resp.Data.Result, "expected at least one log with op=%s", op)
 		}
 	}, common.TestTimeoutEnv(t), common.DefaultRetryInterval)
 }

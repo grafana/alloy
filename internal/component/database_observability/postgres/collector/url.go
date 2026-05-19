@@ -12,7 +12,7 @@ func ParseURL(url string) (map[string]string, error) {
 		return map[string]string{}, nil
 	}
 
-	raw, err := pq.ParseURL(url)
+	raw, err := pq.ParseURL(url) //nolint:staticcheck // pq.ParseURL is deprecated but needed to extract DSN key-value pairs
 	if err != nil {
 		return nil, err
 	}

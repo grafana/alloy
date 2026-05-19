@@ -112,7 +112,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -126,14 +126,12 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 
-		assert.Len(t, lokiEntries, 3)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="public"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="public" table="authors"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		assert.Len(t, lokiEntries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" datname="books_store" schema="public" table="authors"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}],"indexes":[{"name":"authors_pkey","type":"btree","columns":["id"],"unique":true,"nullable":true}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="authors" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="authors" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
 
 	t.Run("collector selects and logs multiple schemas and multiple tables", func(t *testing.T) {
@@ -297,7 +295,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 8
+			return len(lokiClient.Received()) == 6
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -311,26 +309,22 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 
-		assert.Len(t, lokiEntries, 8)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="public"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="postgis"`, lokiEntries[1].Line)
+		assert.Len(t, lokiEntries, 6)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" datname="books_store" schema="public" table="authors"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
+		require.Equal(t, `level="info" datname="books_store" schema="public" table="categories"`, lokiEntries[1].Line)
 		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[2].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="public" table="authors"`, lokiEntries[2].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[3].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="public" table="categories"`, lokiEntries[3].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[4].Labels)
-		require.Equal(t, `level="info" datname="books_store" schema="postgis" table="spatial_ref_sys"`, lokiEntries[4].Line)
+		require.Equal(t, `level="info" datname="books_store" schema="postgis" table="spatial_ref_sys"`, lokiEntries[2].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[4].Labels)
 		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[5].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[6].Labels)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[7].Labels)
 		expectedAuthorsTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}],"indexes":[{"name":"authors_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false}]}`))
 		expectedCategoriesTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}],"indexes":[{"name":"categories_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false}]}`))
 		expectedSpatialTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"srid","type":"integer","not_null":true,"primary_key":true}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="authors" table_spec="%s"`, expectedAuthorsTableSpec), lokiEntries[5].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="categories" table_spec="%s"`, expectedCategoriesTableSpec), lokiEntries[6].Line)
-		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="postgis" table="spatial_ref_sys" table_spec="%s"`, expectedSpatialTableSpec), lokiEntries[7].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="authors" table_spec="%s"`, expectedAuthorsTableSpec), lokiEntries[3].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="categories" table_spec="%s"`, expectedCategoriesTableSpec), lokiEntries[4].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="postgis" table="spatial_ref_sys" table_spec="%s"`, expectedSpatialTableSpec), lokiEntries[5].Line)
 	})
 
 	t.Run("collector discovers and collects from multiple databases", func(t *testing.T) {
@@ -415,7 +409,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 6
+			return len(lokiClient.Received()) == 4
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -429,21 +423,17 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, db2Mock.ExpectationsWereMet())
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 6)
+		assert.Len(t, lokiEntries, 4)
 
-		assert.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		assert.Equal(t, `level="info" datname="db1" schema="public"`, lokiEntries[0].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		assert.Equal(t, `level="info" datname="db1" schema="public" table="users"`, lokiEntries[1].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
-		assert.Equal(t, fmt.Sprintf(`level="info" datname="db1" schema="public" table="users" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}]}`))), lokiEntries[2].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		assert.Equal(t, `level="info" datname="db1" schema="public" table="users"`, lokiEntries[0].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
+		assert.Equal(t, fmt.Sprintf(`level="info" datname="db1" schema="public" table="users" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true}]}`))), lokiEntries[1].Line)
 
-		assert.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[3].Labels)
-		assert.Equal(t, `level="info" datname="db2" schema="public"`, lokiEntries[3].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[4].Labels)
-		assert.Equal(t, `level="info" datname="db2" schema="public" table="metrics"`, lokiEntries[4].Line)
-		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[5].Labels)
-		assert.Equal(t, fmt.Sprintf(`level="info" datname="db2" schema="public" table="metrics" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"bigint","not_null":true,"primary_key":true}]}`))), lokiEntries[5].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[2].Labels)
+		assert.Equal(t, `level="info" datname="db2" schema="public" table="metrics"`, lokiEntries[2].Line)
+		assert.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[3].Labels)
+		assert.Equal(t, fmt.Sprintf(`level="info" datname="db2" schema="public" table="metrics" table_spec="%s"`, base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"bigint","not_null":true,"primary_key":true}]}`))), lokiEntries[3].Line)
 	})
 
 	t.Run("collector handles multiple indexes on single table", func(t *testing.T) {
@@ -537,7 +527,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -550,14 +540,12 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 3)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" datname="multi_index_db" schema="public"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" datname="multi_index_db" schema="public" table="users"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		assert.Len(t, lokiEntries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" datname="multi_index_db" schema="public" table="users"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)","not_null":true},{"name":"email","type":"character varying(255)"},{"name":"created_at","type":"timestamp with time zone","not_null":true,"default_value":"now()"}],"indexes":[{"name":"users_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false},{"name":"idx_users_email_unique","type":"btree","columns":["email"],"unique":true,"nullable":false},{"name":"idx_users_name","type":"btree","columns":["name"],"unique":false,"nullable":false},{"name":"idx_users_name_lower","type":"btree","columns":null,"expressions":["lower(name::text)"],"unique":false,"nullable":true},{"name":"idx_users_created_at","type":"btree","columns":["created_at"],"unique":false,"nullable":false}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" datname="multi_index_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="multi_index_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
 
 	t.Run("no schemas found", func(t *testing.T) {
@@ -705,7 +693,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -718,14 +706,12 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 3)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" datname="test_db" schema="public"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" datname="test_db" schema="public" table="test_table"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		assert.Len(t, lokiEntries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" datname="test_db" schema="public" table="test_table"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"name","type":"character varying(255)"}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" datname="test_db" schema="public" table="test_table" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="test_db" schema="public" table="test_table" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
 }
 
@@ -817,7 +803,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -830,14 +816,12 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 3)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" datname="serial_test_db" schema="public"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" datname="serial_test_db" schema="public" table="users"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		assert.Len(t, lokiEntries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" datname="serial_test_db" schema="public" table="users"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true,"default_value":"nextval('users_id_seq'::regclass)"},{"name":"username","type":"character varying(255)","not_null":true}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" datname="serial_test_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="serial_test_db" schema="public" table="users" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
 
 	t.Run("collector detects identity column", func(t *testing.T) {
@@ -926,7 +910,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -939,14 +923,12 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		assert.Len(t, lokiEntries, 3)
-		require.Equal(t, model.LabelSet{"op": OP_SCHEMA_DETECTION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" datname="identity_test_db" schema="public"`, lokiEntries[0].Line)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[1].Labels)
-		require.Equal(t, `level="info" datname="identity_test_db" schema="public" table="products"`, lokiEntries[1].Line)
-		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[2].Labels)
+		assert.Len(t, lokiEntries, 2)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, lokiEntries[0].Labels)
+		require.Equal(t, `level="info" datname="identity_test_db" schema="public" table="products"`, lokiEntries[0].Line)
+		require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, lokiEntries[1].Labels)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"auto_increment":true,"primary_key":true},{"name":"code","type":"integer","not_null":true,"auto_increment":true},{"name":"name","type":"character varying(255)","not_null":true}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" datname="identity_test_db" schema="public" table="products" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="identity_test_db" schema="public" table="products" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
 
 	t.Run("collector detects foreign keys", func(t *testing.T) {
@@ -1037,7 +1019,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 2*time.Second, 100*time.Millisecond)
 
 		collector.Stop()
@@ -1050,9 +1032,9 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Len(t, lokiEntries, 3)
+		require.Len(t, lokiEntries, 2)
 		expectedTableSpec := base64.StdEncoding.EncodeToString([]byte(`{"columns":[{"name":"id","type":"integer","not_null":true,"primary_key":true},{"name":"title","type":"character varying(255)","not_null":true},{"name":"author_id","type":"integer","not_null":true},{"name":"category_id","type":"integer"}],"indexes":[{"name":"books_pkey","type":"btree","columns":["id"],"unique":true,"nullable":false}],"foreign_keys":[{"name":"fk_books_author","column_name":"author_id","referenced_table_name":"authors","referenced_column_name":"id"},{"name":"fk_books_category","column_name":"category_id","referenced_table_name":"categories","referenced_column_name":"id"}]}`))
-		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="books" table_spec="%s"`, expectedTableSpec), lokiEntries[2].Line)
+		require.Equal(t, fmt.Sprintf(`level="info" datname="books_store" schema="public" table="books" table_spec="%s"`, expectedTableSpec), lokiEntries[1].Line)
 	})
 }
 
@@ -1139,9 +1121,9 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// first run invocation
 		require.NoError(t, collector.extractNames(context.Background()))
-		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 3 }, 2*time.Second, 100*time.Millisecond)
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 2*time.Second, 100*time.Millisecond)
 		firstRunEntries := lokiClient.Received()
-		require.Len(t, firstRunEntries, 3)
+		require.Len(t, firstRunEntries, 2)
 
 		lokiClient.Clear()
 
@@ -1171,9 +1153,9 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 
 		// second run invocation
 		require.NoError(t, collector.extractNames(context.Background()))
-		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 3 }, 2*time.Second, 100*time.Millisecond)
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 2*time.Second, 100*time.Millisecond)
 		secondRunEntries := lokiClient.Received()
-		require.Len(t, secondRunEntries, 3)
+		require.Len(t, secondRunEntries, 2)
 
 		// assert that first and second run results are identical
 		for i := range firstRunEntries {
@@ -1273,14 +1255,14 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 		// first run
 		require.NoError(t, collector.extractNames(context.Background()))
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 2*time.Second, 100*time.Millisecond)
 		lokiClient.Clear()
 
 		// second run
 		require.NoError(t, collector.extractNames(context.Background()))
 		require.Eventually(t, func() bool {
-			return len(lokiClient.Received()) == 3
+			return len(lokiClient.Received()) == 2
 		}, 2*time.Second, 100*time.Millisecond)
 
 		// ensure that selectColumnNames, selectIndexes, selectForeignKeys are called twice

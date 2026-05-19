@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +24,7 @@ const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
 	OP_WAIT_EVENT         = "wait_event"
+	OP_WAIT_EVENT_V2      = "wait_event_v2"
 )
 
 const (
@@ -101,24 +103,26 @@ type QuerySamplesInfo struct {
 }
 
 type QuerySamplesArguments struct {
-	DB                    *sql.DB
-	CollectInterval       time.Duration
-	ExcludeDatabases      []string
-	ExcludeUsers          []string
-	EntryHandler          loki.EntryHandler
-	Logger                log.Logger
-	DisableQueryRedaction bool
-	ExcludeCurrentUser    bool
+	DB                            *sql.DB
+	CollectInterval               time.Duration
+	ExcludeDatabases              []string
+	ExcludeUsers                  []string
+	EntryHandler                  loki.EntryHandler
+	Logger                        log.Logger
+	DisableQueryRedaction         bool
+	ExcludeCurrentUser            bool
+	EnablePreClassifiedWaitEvents bool
 }
 
 type QuerySamples struct {
-	dbConnection          *sql.DB
-	collectInterval       time.Duration
-	excludeDatabases      []string
-	excludeUsers          []string
-	entryHandler          loki.EntryHandler
-	disableQueryRedaction bool
-	excludeCurrentUser    bool
+	dbConnection                  *sql.DB
+	collectInterval               time.Duration
+	excludeDatabases              []string
+	excludeUsers                  []string
+	entryHandler                  loki.EntryHandler
+	disableQueryRedaction         bool
+	excludeCurrentUser            bool
+	enablePreClassifiedWaitEvents bool
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -221,17 +225,18 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	const emittedCacheTTL = 10 * time.Minute
 
 	return &QuerySamples{
-		dbConnection:          args.DB,
-		collectInterval:       args.CollectInterval,
-		excludeDatabases:      args.ExcludeDatabases,
-		excludeUsers:          args.ExcludeUsers,
-		entryHandler:          args.EntryHandler,
-		disableQueryRedaction: args.DisableQueryRedaction,
-		excludeCurrentUser:    args.ExcludeCurrentUser,
-		logger:                log.With(args.Logger, "collector", QuerySamplesCollector),
-		running:               &atomic.Bool{},
-		samples:               map[SampleKey]*SampleState{},
-		idleEmitted:           expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
+		dbConnection:                  args.DB,
+		collectInterval:               args.CollectInterval,
+		excludeDatabases:              args.ExcludeDatabases,
+		excludeUsers:                  args.ExcludeUsers,
+		entryHandler:                  args.EntryHandler,
+		disableQueryRedaction:         args.DisableQueryRedaction,
+		excludeCurrentUser:            args.ExcludeCurrentUser,
+		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
+		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		running:                       &atomic.Bool{},
+		samples:                       map[SampleKey]*SampleState{},
+		idleEmitted:                   expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
 	}, nil
 }
 
@@ -484,13 +489,21 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
 			continue
 		}
-		waitEventLabels := c.buildWaitEventLabels(state, we)
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-			logging.LevelInfo,
-			OP_WAIT_EVENT,
-			waitEventLabels,
-			we.LastTimestamp.UnixNano(),
-		)
+		if c.enablePreClassifiedWaitEvents {
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT_V2,
+				c.buildWaitEventV2Labels(state, we),
+				we.LastTimestamp.UnixNano(),
+			)
+		} else {
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+				logging.LevelInfo,
+				OP_WAIT_EVENT,
+				c.buildWaitEventLabels(state, we),
+				we.LastTimestamp.UnixNano(),
+			)
+		}
 	}
 
 	delete(c.samples, key)
@@ -605,4 +618,70 @@ func isIdleState(state string) bool {
 		return true
 	}
 	return false
+}
+
+func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOccurrence) string {
+	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	return fmt.Sprintf(
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
+		state.LastRow.DatabaseName.String,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.BackendType.String,
+		we.LastState,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
+		we.LastWaitTime,
+		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
+		we.WaitEvent,
+		waitEventFullName,
+		we.BlockedByPIDs,
+		state.LastRow.QueryID.Int64,
+	)
+}
+
+var postgresReplicationWaitEventPrefixes = []string{
+	"SyncRep",
+	"WalSender",
+	"WalReceiver",
+	"Recovery",
+	"LogicalApply",
+	"LogicalLauncher",
+	"LogicalSync",
+	"LogicalParallelApply",
+	"LogicalRep",
+	"ReplicationSlot",
+	"ReplicationOrigin",
+}
+
+func isPostgresReplicationWaitEvent(waitEvent string) bool {
+	for _, p := range postgresReplicationWaitEventPrefixes {
+		if strings.HasPrefix(waitEvent, p) {
+			return true
+		}
+	}
+	return false
+}
+
+func classifyPostgresWaitEventType(rawType, waitEvent string) string {
+	if isPostgresReplicationWaitEvent(waitEvent) {
+		return "Replication Wait"
+	}
+	switch rawType {
+	case "IO":
+		return "IO Wait"
+	case "Client":
+		return "Network Wait"
+	case "Lock":
+		return "Lock Wait"
+	case "LWLock", "BufferPin", "IPC":
+		return "Engine Wait"
+	default:
+		return "Other Wait"
+	}
 }

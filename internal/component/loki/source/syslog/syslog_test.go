@@ -21,13 +21,14 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 )
 
 func Test(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		SLogger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -110,7 +111,7 @@ func Test(t *testing.T) {
 
 func TestWithRelabelRules(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		SLogger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -202,7 +203,7 @@ func mustNewRegexp(s string) alloy_relabel.Regexp {
 
 func TestShutdownAndRebindOnSamePort(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		SLogger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -308,7 +309,7 @@ func TestExperimentalFeaturesStabilityLevel(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.label, func(t *testing.T) {
 			opts := component.Options{
-				Logger:        util.TestAlloyLogger(t),
+				SLogger:       logging.NewSlogNop(),
 				Registerer:    prometheus.NewRegistry(),
 				OnStateChange: func(e component.Exports) {},
 				MinStability:  featuregate.StabilityGenerallyAvailable,

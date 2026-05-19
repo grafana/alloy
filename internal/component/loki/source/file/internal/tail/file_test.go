@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/text/encoding"
 	"golang.org/x/text/encoding/unicode"
@@ -20,7 +20,7 @@ import (
 
 func TestFile(t *testing.T) {
 	t.Run("file must exist", func(t *testing.T) {
-		_, err := NewFile(log.NewNopLogger(), &Config{
+		_, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: "/no/such/file",
 		})
 		require.ErrorIs(t, err, os.ErrNotExist)
@@ -28,7 +28,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "exists", "")
 		defer removeFile(t, name)
 
-		_, err = NewFile(log.NewNopLogger(), &Config{
+		_, err = NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 		})
 		require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "over4096", "test\n"+testString+"\nhello\nworld\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 		})
 		require.NoError(t, err)
@@ -63,7 +63,7 @@ func TestFile(t *testing.T) {
 		)
 
 		t.Run("start", func(t *testing.T) {
-			file, err := NewFile(log.NewNopLogger(), &Config{
+			file, err := NewFile(logging.NewSlogNop(), &Config{
 				Filename: name,
 				Offset:   0,
 			})
@@ -76,7 +76,7 @@ func TestFile(t *testing.T) {
 		})
 
 		t.Run("skip first", func(t *testing.T) {
-			file, err := NewFile(log.NewNopLogger(), &Config{
+			file, err := NewFile(logging.NewSlogNop(), &Config{
 				Filename: name,
 				Offset:   first,
 			})
@@ -88,7 +88,7 @@ func TestFile(t *testing.T) {
 		})
 
 		t.Run("last", func(t *testing.T) {
-			file, err := NewFile(log.NewNopLogger(), &Config{
+			file, err := NewFile(logging.NewSlogNop(), &Config{
 				Filename: name,
 				Offset:   middle,
 			})
@@ -103,7 +103,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "partial", "hello\nwo")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Offset:   0,
 			Filename: name,
 		})
@@ -122,7 +122,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "truncate", "a really long string goes here\nhello\nworld\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			WatcherConfig: WatcherConfig{
 				MinPollFrequency: 50 * time.Millisecond,
@@ -152,7 +152,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "stopped", "hello\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Offset:   0,
 			Filename: name,
 		})
@@ -172,7 +172,7 @@ func TestFile(t *testing.T) {
 	t.Run("stopped while waiting for file to be created", func(t *testing.T) {
 		name := createFile(t, "removed", "hello\n")
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Offset:   0,
 			Filename: name,
 			WatcherConfig: WatcherConfig{
@@ -197,7 +197,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "stopped", "hello\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Offset:   0,
 			Filename: name,
 		})
@@ -211,7 +211,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "rotation", "line1\nline2\nline3\nline4\npartial")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			WatcherConfig: WatcherConfig{
 				MinPollFrequency: 50 * time.Millisecond,
@@ -240,7 +240,7 @@ func TestFile(t *testing.T) {
 
 	t.Run("deleted while reading", func(t *testing.T) {
 		name := createFile(t, "removed", "1\n2\n")
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Offset:   0,
 			Filename: name,
 			WatcherConfig: WatcherConfig{
@@ -272,7 +272,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "atomicwrite", "line1\nline2\nline3\nline4\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			WatcherConfig: WatcherConfig{
 				MinPollFrequency: 50 * time.Millisecond,
@@ -295,7 +295,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "atomicwrite", "line1\nline2\nline3\nline4\n")
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			WatcherConfig: WatcherConfig{
 				MinPollFrequency: 50 * time.Millisecond,
@@ -316,7 +316,7 @@ func TestFile(t *testing.T) {
 	})
 
 	t.Run("UTF-16LE", func(t *testing.T) {
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: "testdata/mssql.log",
 			Encoding: "UTF-16LE",
 		})
@@ -340,7 +340,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "utf-16LE", encoded)
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			// We are setting UTF8 here but still expect to decode the file using UTF-16LE
 			Encoding: "UTF-8",
@@ -356,7 +356,7 @@ func TestFile(t *testing.T) {
 		appendToFile(t, name, encoded)
 
 		// Reopen file from last offset to make sure it handles that.
-		file, err = NewFile(log.NewNopLogger(), &Config{
+		file, err = NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
 			Encoding: "UTF-8",
@@ -375,7 +375,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "utf-16LE", encoded)
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
 			Encoding: "UTF-8",
@@ -391,7 +391,7 @@ func TestFile(t *testing.T) {
 		appendToFile(t, name, encoded)
 
 		// Reopen file from last offset.
-		file, err = NewFile(log.NewNopLogger(), &Config{
+		file, err = NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			// We are setting UTF-8 here but still expect to decode the file using UTF-16LE
 			Encoding: "UTF-8",
@@ -409,7 +409,7 @@ func TestFile(t *testing.T) {
 		name := createFile(t, "utf-8", string(append(bomUTF8Bytes, bytes...)))
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: name,
 			Encoding: "UTF-16",
 		})
@@ -486,7 +486,7 @@ func compressionTest(t *testing.T, name, compression string, enc *encoding.Encod
 		fileName := createCompressedFile(t, name, compression, strings.NewReader(content))
 		defer removeFile(t, fileName)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename: fileName,
 			WatcherConfig: WatcherConfig{
 				MinPollFrequency: 50 * time.Millisecond,
@@ -502,7 +502,7 @@ func compressionTest(t *testing.T, name, compression string, enc *encoding.Encod
 		verifyResult(t, file, nil, io.EOF)
 		require.NoError(t, file.Stop())
 
-		file, err = NewFile(log.NewNopLogger(), &Config{
+		file, err = NewFile(logging.NewSlogNop(), &Config{
 			Filename: fileName,
 			WatcherConfig: WatcherConfig{
 				MinPollFrequency: 50 * time.Millisecond,
@@ -546,7 +546,7 @@ func startFromEndTest(t *testing.T, name string, encoder, appendEncoder *encodin
 		name := createFile(t, name, content)
 		defer removeFile(t, name)
 
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename:     name,
 			Offset:       offset,
 			StartFromEnd: true,
@@ -654,7 +654,7 @@ func BenchmarkFile(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		file, err := NewFile(log.NewNopLogger(), &Config{
+		file, err := NewFile(logging.NewSlogNop(), &Config{
 			Filename:      name,
 			WatcherConfig: WatcherConfig{},
 		})

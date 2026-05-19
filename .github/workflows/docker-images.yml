@@ -30,6 +30,14 @@ jobs:
   windows:
     runs-on: windows-2022
     steps:
+      - name: Ensure Docker is running (Docker issue workaround)
+        id: docker-workaround
+        run: |
+          $dockerState = Get-Service -Name "docker"
+          if ($dockerState.Status -ne "Running") {
+            Start-Service -Name "docker"
+          }
+
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:

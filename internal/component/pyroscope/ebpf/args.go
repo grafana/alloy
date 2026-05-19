@@ -38,7 +38,6 @@ type Arguments struct {
 	PIDLabel                        bool   `alloy:"pid_label,attr,optional"`
 	Comm                            string `alloy:"comm,attr,optional"` // to address a Grafana Labs customer's escalation
 	KernelFrames                    bool   `alloy:"kernel_frames,attr,optional"`
-	SymbCacheEnabled                bool   `alloy:"symb_cache_enabled,attr,optional"`
 
 	DebugInfoArguments debuginfo.Arguments `alloy:"debug_info,block,optional"`
 }

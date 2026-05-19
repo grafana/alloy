@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 // TestConfig is used by tests to describe special setup requirements.
 type TestConfig struct {
 	Container            ContainerConfig             `yaml:"alloy_container"`
@@ -8,6 +10,10 @@ type TestConfig struct {
 
 // ContainerConfig is used to configure alloy container used for the test.
 type ContainerConfig struct {
+	// Dockerfile layers on the standard integration image; build context is the repository root.
+	// Path is relative to the test directory.
+	// When set, the runner builds and runs alloy-integration-tests-<test_dir>:latest.
+	Dockerfile string `yaml:"dockerfile"`
 	// UseMount when set to true will create "mount" directory inside test
 	// folder that will be mounted into the container.
 	UseMount bool `yaml:"use_mount"`
@@ -24,6 +30,8 @@ type ContainerConfig struct {
 	SecurityOpt []string `yaml:"security_opts"`
 	// PIDMode is the PID namespace to use for the container.
 	PIDMode string `yaml:"pid_mode"`
+	// Environment is passed to the container as KEY=value entries.
+	Environment map[string]string `yaml:"environment"`
 }
 
 // AdditionalContainerConfig is used to configure additional containers used for the test.
@@ -36,6 +44,16 @@ type AdditionalContainerConfig struct {
 	Build AdditionalContainerBuildConfig `yaml:"build"`
 	// Command overrides the default image command.
 	Command []string `yaml:"command"`
+	// Environment is passed to the container as KEY=value entries (Docker -e).
+	Environment map[string]string `yaml:"environment"`
+	// If a startup healthcheck is set, the test will wait until the container reports healthy.
+	StartupHealthcheck *AdditionalContainerHealthcheck `yaml:"startup_healthcheck,omitempty"`
+}
+
+// AdditionalContainerHealthcheck maps to Docker's healthcheck on the container config.
+type AdditionalContainerHealthcheck struct {
+	Test     []string      `yaml:"test"`
+	Interval time.Duration `yaml:"interval,omitempty"`
 }
 
 // AdditionalContainerBuildConfig is used to build an additional container image.

@@ -1,11 +1,12 @@
 package source
 
 import (
+	"errors"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -13,12 +14,12 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 // Server exposes HTTP routes that ingest log entries and forward them in batches.
 type Server struct {
-	logger         log.Logger
+	logger         *slog.Logger
 	entriesWritten prometheus.Counter
 
 	server    *fnet.TargetServer
@@ -48,6 +49,24 @@ type LogsRoute interface {
 	Logs(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error)
 }
 
+// LogsResponseWriter can customize the HTTP response written for a LogsRoute
+// after entries have been forwarded or a request has been rejected.
+type LogsResponseWriter interface {
+	WriteResponse(w http.ResponseWriter, r *http.Request, status int, err error)
+}
+
+var _ LogsResponseWriter = DefaultLogsResponseWriter{}
+
+type DefaultLogsResponseWriter struct{}
+
+func (d DefaultLogsResponseWriter) WriteResponse(w http.ResponseWriter, r *http.Request, status int, err error) {
+	if err != nil {
+		http.Error(w, err.Error(), status)
+		return
+	}
+	w.WriteHeader(status)
+}
+
 // HandlerRoute describes an HTTP endpoint handled directly with an http.Handler.
 type HandlerRoute interface {
 	HTTPRoute
@@ -67,8 +86,10 @@ type LogsConfig struct {
 	UseIncomingTimestamp bool
 }
 
-func NewServer(logger log.Logger, reg prometheus.Registerer, recv loki.LogsBatchReceiver, cfg ServerConfig) (*Server, error) {
-	server, err := fnet.NewTargetServer(logger, cfg.Namespace, reg, cfg.NetConfig)
+func NewServer(logger *slog.Logger, reg prometheus.Registerer, recv loki.LogsBatchReceiver, cfg ServerConfig) (*Server, error) {
+	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use fnet.NewTargetServer
+	// to slog. Part of https://github.com/grafana/alloy/issues/4813.
+	server, err := fnet.NewTargetServer(slogadapter.GoKit(logger.Handler()), cfg.Namespace, reg, cfg.NetConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +110,7 @@ func NewServer(logger log.Logger, reg prometheus.Registerer, recv loki.LogsBatch
 func (s *Server) Run(logs []LogsRoute, handlers []HandlerRoute) error {
 	return s.server.MountAndRun(func(router *mux.Router) {
 		for _, l := range logs {
-			router.Path(l.Path()).Methods(l.Method()).Handler(s.logsHandler(l.Logs))
+			router.Path(l.Path()).Methods(l.Method()).Handler(s.logsHandler(l))
 		}
 
 		for _, h := range handlers {
@@ -121,7 +142,7 @@ func (s *Server) HTTPAddr() string {
 
 // Shutdown stops the server.
 func (s *Server) Shutdown() {
-	level.Info(s.logger).Log("msg", "stopping server")
+	s.logger.Info("stopping server")
 	// StopAndShutdown tries to gracefully shutdown.
 	// It will stop idle and incoming connections
 	// and try to wait for all in-flight connections
@@ -136,23 +157,30 @@ func (s *Server) Shutdown() {
 
 // ForceShutdown stops the server without waiting for in-flight requests.
 func (s *Server) ForceShutdown() {
-	level.Info(s.logger).Log("msg", "force shutdown of server")
+	s.logger.Info("force shutdown of server")
 	s.once.Do(func() { close(s.forceShutdown) })
 	s.server.StopAndShutdown()
 }
 
-func (s *Server) logsHandler(logsFn func(r *http.Request, opts *LogsConfig) ([]loki.Entry, int, error)) http.Handler {
+func (s *Server) logsHandler(route LogsRoute) http.Handler {
+	var responseWriter LogsResponseWriter = DefaultLogsResponseWriter{}
+
+	customResponseWriter, ok := route.(LogsResponseWriter)
+	if ok {
+		responseWriter = customResponseWriter
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.mut.RLock()
 		logsConfig := s.logsConfig
 		s.mut.RUnlock()
 
-		entries, status, err := logsFn(r, logsConfig)
+		entries, status, err := route.Logs(r, logsConfig)
 		numEntries := len(entries)
 
 		if err != nil && numEntries == 0 {
-			level.Warn(s.logger).Log("msg", "failed to parse request", "err", err)
-			http.Error(w, err.Error(), status)
+			s.logger.Warn("failed to parse request", "err", err)
+			responseWriter.WriteResponse(w, r, status, err)
 			return
 		}
 
@@ -160,22 +188,20 @@ func (s *Server) logsHandler(logsFn func(r *http.Request, opts *LogsConfig) ([]l
 			select {
 			case s.recv.Chan() <- entries:
 			case <-r.Context().Done():
-				w.WriteHeader(http.StatusServiceUnavailable)
+				responseWriter.WriteResponse(w, r, http.StatusServiceUnavailable, r.Context().Err())
 				return
 			case <-s.forceShutdown:
-				w.WriteHeader(http.StatusServiceUnavailable)
+				responseWriter.WriteResponse(w, r, http.StatusServiceUnavailable, errors.New("server shutdown"))
 				return
 			}
 
 			s.entriesWritten.Add(float64(numEntries))
 
 			if err != nil {
-				level.Warn(s.logger).Log("msg", "at least one entry failed to be processed", "err", err)
-				http.Error(w, err.Error(), status)
-				return
+				s.logger.Warn("at least one entry failed to be processed", "err", err)
 			}
 		}
 
-		w.WriteHeader(status)
+		responseWriter.WriteResponse(w, r, status, err)
 	})
 }

@@ -10,6 +10,25 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.8.1 (2026-05-05)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.16.1 (@x1unix)
+
+- Update config-reloader default version to v0.91.0 (@kalleep)
+
+1.8.0 (2026-04-23)
+----------
+
+### Enhancements
+
+- Add the ability to set global.image.pullPolicy to update both Alloy and Config Reloader. (@petewall)
+
+- Update to Grafana Alloy v1.16.0 (@jharvey10)
+
+
 1.7.0 (2026-04-01)
 ----------
 

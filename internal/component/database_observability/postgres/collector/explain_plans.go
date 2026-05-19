@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -565,6 +566,21 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 	return nil
 }
 
+// postgresPreparedStatementParamCount returns N for EXECUTE, where N is the highest
+// placeholder index in the query. The same index may appear multiple times (e.g. two $1)
+// without increasing N.
+func postgresPreparedStatementParamCount(queryText string) int {
+	matches := paramCountRegex.FindAllString(queryText, -1)
+	maxParam := 0
+	for _, m := range matches {
+		n, err := strconv.Atoi(m[1:])
+		if err == nil && n > maxParam {
+			maxParam = n
+		}
+	}
+	return maxParam
+}
+
 func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) ([]byte, error) {
 	querySpecificDSN, err := replaceDatabaseNameInDSN(c.dbDSN, qi.datname)
 	if err != nil {
@@ -599,12 +615,10 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 	}
 
 	explainQuery := fmt.Sprintf("%s%s", selectExplainPlanPrefix, preparedStatementName)
-	paramCount := len(paramCountRegex.FindAllString(qi.queryText, -1))
+	paramCount := postgresPreparedStatementParamCount(qi.queryText)
 	if paramCount > 0 {
 		nullParams := strings.Repeat("null,", paramCount)
-		if paramCount > 0 {
-			nullParams = nullParams[:len(nullParams)-1]
-		}
+		nullParams = nullParams[:len(nullParams)-1]
 
 		explainQuery = fmt.Sprintf("%s%s(%s)", selectExplainPlanPrefix, preparedStatementName, nullParams)
 	}

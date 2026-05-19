@@ -57,7 +57,8 @@ func runIntegrationTests(cmd *cobra.Command, args []string) {
 	testsRootDir = filepath.Join(repoRootDir, "integration-tests", "docker")
 
 	if !skipBuild {
-		buildAlloy()
+		buildBaseAlloyImage()
+		buildAlloyImagesFromTestYAMLs()
 	}
 
 	start := time.Now()

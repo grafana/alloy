@@ -10,7 +10,7 @@ You can use the following arguments to configure the `grpc` block. Any omitted f
 
 | Name                            | Type       | Description                                                                                                         | Default      | Required |
 | ------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------- | ------------ | -------- |
-| `conn_limit`                    | `int`      | Maximum number of simultaneous HTTP connections. Defaults to no limit.                                              | `0`          | no       |
+| `conn_limit`                    | `int`      | Maximum number of simultaneous gRPC connections. Defaults to no limit.                                              | `0`          | no       |
 | `listen_address`                | `string`   | Network address on which the server listens for new connections. It defaults to accepting all incoming connections. | `""`         | no       |
 | `listen_port`                   | `int`      | Port number on which the server listens for new connections. Defaults to a random free port.                        | `0`          | no       |
 | `max_connection_age_grace`      | `duration` | An additive period after `max_connection_age` after which the connection is forcibly closed.                        | `"infinity"` | no       |

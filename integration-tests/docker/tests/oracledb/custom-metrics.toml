@@ -1,0 +1,12 @@
+[[metric]]
+context = "startup_time"
+metricsdesc = {hours_up = "DBSTtartuptime"}
+labels = ["db_name", "startup_time"]
+request = '''
+SELECT
+        instance_name as db_name,
+       startup_Time as startup_time,
+        (sysdate - startup_time)*12 as hours_up
+FROM
+        V$instance
+'''

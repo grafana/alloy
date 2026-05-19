@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax/ast"
@@ -31,7 +29,6 @@ type CustomComponentNode struct {
 	nodeID            string // Cached from id.String() to avoid allocating new strings every time NodeID is called.
 	moduleController  ModuleController
 	OnBlockNodeUpdate func(cn BlockNode) // Informs controller that we need to reevaluate
-	logger            log.Logger
 
 	importNamespace     string
 	customComponentName string
@@ -107,7 +104,6 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 
 	componentName := b.GetBlockName()
 	importNamespace, customComponentName := ExtractImportAndDeclare(componentName)
-	parent, node := splitPath(globalID)
 
 	cn := &CustomComponentNode{
 		id:                  id,
@@ -119,7 +115,6 @@ func NewCustomComponentNode(globals ComponentGlobals, b *ast.BlockStmt, getConfi
 		customComponentName: customComponentName,
 		moduleController:    globals.NewModuleController(ModuleControllerOpts{Id: globalID}),
 		OnBlockNodeUpdate:   globals.OnBlockNodeUpdate,
-		logger:              log.With(globals.Logger, "component_path", parent, "component_id", node),
 		getConfig:           getConfig,
 
 		block: b,

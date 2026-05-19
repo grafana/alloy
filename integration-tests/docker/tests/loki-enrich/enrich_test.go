@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
+	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 )
 
 func TestEnrichWithFileDiscovery(t *testing.T) {
@@ -54,17 +55,17 @@ func sendTestLogsForDevice(t *testing.T, hostname string) {
 	}
 
 	now := time.Now()
-	values := make([][2]string, 0, len(networkLogs))
+	values := make([]lokihttp.LogEntry, 0, len(networkLogs))
 	for _, msg := range networkLogs {
-		values = append(values, [2]string{
-			fmt.Sprintf("%d", now.UnixNano()),
-			msg,
+		values = append(values, lokihttp.LogEntry{
+			Timestamp: fmt.Sprintf("%d", now.UnixNano()),
+			Line:      msg,
 		})
 		now = now.Add(time.Second)
 	}
 
-	pushReq := common.PushRequest{
-		Streams: []common.LogData{{
+	pushReq := lokihttp.PushRequest{
+		Streams: []lokihttp.LogData{{
 			Stream: map[string]string{
 				"host":      hostname,
 				"test_name": common.SanitizeTestName(t),

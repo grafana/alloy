@@ -206,7 +206,7 @@ func (q *queue) tryEnqueueingBatch(done <-chan struct{}) bool {
 
 // newShards creates a new shards instance for parallel processing of log entries.
 // It validates the configuration and creates an HTTP client for sending batches to Loki.
-func newShards(metrics *metrics, logger log.Logger, markerHandler SentDataMarkerHandler, cfg Config) (*shards, error) {
+func newShards(metrics *metrics, logger log.Logger, tracker sentDataTracker, cfg Config) (*shards, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("endpoint needs target URL")
 	}
@@ -224,12 +224,12 @@ func newShards(metrics *metrics, logger log.Logger, markerHandler SentDataMarker
 	client.Timeout = cfg.Timeout
 
 	return &shards{
-		cfg:           cfg,
-		logger:        logger,
-		metrics:       metrics,
-		client:        client,
-		markerHandler: markerHandler,
-		tenants:       make(map[string]struct{}),
+		cfg:     cfg,
+		logger:  logger,
+		metrics: metrics,
+		client:  client,
+		tracker: tracker,
+		tenants: make(map[string]struct{}),
 	}, nil
 }
 
@@ -238,11 +238,11 @@ func newShards(metrics *metrics, logger log.Logger, markerHandler SentDataMarker
 // enabling parallel processing and improved throughput. Each shard has its own queue and worker goroutine.
 // Entries are routed to shards using a hash of their label fingerprint.
 type shards struct {
-	cfg           Config
-	logger        log.Logger
-	metrics       *metrics
-	client        *http.Client
-	markerHandler SentDataMarkerHandler
+	cfg     Config
+	logger  log.Logger
+	metrics *metrics
+	client  *http.Client
+	tracker sentDataTracker
 
 	mut     sync.Mutex
 	tenants map[string]struct{}
@@ -402,7 +402,7 @@ func (s *shards) initBatchMetrics(tenantID string) {
 // sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
 	obs := s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID)
-	defer batch.reportAsSentData(s.markerHandler, obs)
+	defer batch.reportAsSentData(s.tracker, obs)
 
 	r, entriesCount := batch.request()
 

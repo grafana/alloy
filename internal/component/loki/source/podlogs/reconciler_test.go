@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/util/strutil"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestBuildPodLogsTargetLabels(t *testing.T) {
@@ -177,7 +177,7 @@ func TestReconcilePodLogs_DefaultLabels(t *testing.T) {
 
 	// Create a reconciler. The tailer and cluster are not used by reconcilePodLogs,
 	// so we can pass nil.
-	r := newReconciler(log.NewNopLogger(), nil, nil)
+	r := newReconciler(logging.NewSlogNop(), nil, nil)
 
 	// Call reconcilePodLogs.
 	targets, _ := r.reconcilePodLogs(t.Context(), cl, podLogs)
@@ -391,7 +391,7 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 			}).Build()
 
 			// Create a reconciler and configure node filtering
-			r := newReconciler(log.NewNopLogger(), nil, nil)
+			r := newReconciler(logging.NewSlogNop(), nil, nil)
 			r.UpdateNodeFilter(tt.nodeFilterEnabled, tt.nodeFilterName)
 
 			// Call reconcilePodLogs.
@@ -434,7 +434,7 @@ func TestReconcilePodLogs_NodeFiltering(t *testing.T) {
 }
 
 func TestNodeFilterConfiguration(t *testing.T) {
-	r := newReconciler(log.NewNopLogger(), nil, nil)
+	r := newReconciler(logging.NewSlogNop(), nil, nil)
 
 	// Test initial state
 	if r.getNodeFilterName() != "" {
@@ -469,7 +469,7 @@ func TestNodeFilterConfiguration(t *testing.T) {
 
 func TestPreserveDiscoveredLabels_MetaLabelPreservation(t *testing.T) {
 	// Create a reconciler with preserve discovered labels enabled
-	r := newReconciler(log.NewNopLogger(), nil, nil)
+	r := newReconciler(logging.NewSlogNop(), nil, nil)
 	r.UpdatePreserveMetaLabels(true)
 
 	// Verify the preserveMetaLabels field is set correctly

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
+	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +14,7 @@ import (
 const testName = "database_observability_postgres"
 
 func TestDatabaseObservabilityPostgresMetrics(t *testing.T) {
-	var metrics = []string{
+	metrics := []string{
 		"database_observability_connection_info",
 	}
 	common.MimirMetricsTest(t, metrics, []string{}, testName)
@@ -26,12 +27,11 @@ func TestDatabaseObservabilityPostgresLogs(t *testing.T) {
 		"health_status",
 		"query_association",
 		"query_parsed_table_name",
-		"schema_detection",
 		"table_detection",
 		"create_statement",
 	}
 
-	var logResponse common.LogResponse
+	var logResponse lokihttp.LogResponse
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		_, err := common.FetchDataFromURL(common.LogQuery(testName, 100), &logResponse)

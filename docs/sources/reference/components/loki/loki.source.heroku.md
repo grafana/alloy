@@ -60,7 +60,7 @@ You can use the following blocks with `loki.source.heroku`:
 | Name                  | Description                                        | Required |
 | --------------------- | -------------------------------------------------- | -------- |
 | [`grpc`][grpc]        | Configures the gRPC server that receives requests. | no       |
-| `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
+| `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                | no       |
 | [`http`][http]        | Configures the HTTP server that receives requests. | no       |
 | `http` > [`tls`][tls] | Configures TLS for the HTTP server.                | no       |
 
