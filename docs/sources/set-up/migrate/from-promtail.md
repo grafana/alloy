@@ -164,8 +164,8 @@ loki.write "default" {
 
 ### Convert a systemd journal scrape configuration
 
-Promtail deployments scraping the systemd journal are a common pattern for Linux host log collection.
-The following Promtail configuration is typical for servers, containers, and VMs using `systemd-journald`:
+Promtail is a common way to collect Linux host logs from the systemd journal.
+The following typical Promtail configuration for servers, containers, and VMs that run `systemd-journald`:
 
 ```yaml
 server:
