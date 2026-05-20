@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -99,13 +100,19 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 	}
 
 	runCommand := e.runCommandFactory()
-	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
+	configPath, cleanupConfig, err := e.writeInlineConfigFile()
+	if err != nil {
+		return err
+	}
+	runCommand.SetArgs([]string{configPath})
 	if err := runCommand.ParseFlags(e.config.flagsAsSlice()); err != nil {
+		cleanupConfig()
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
 	// Here we check if another extension instance is already running, if so we return an error
 	if !running.CompareAndSwap(false, true) {
+		cleanupConfig()
 		return fmt.Errorf("only one alloyengine extension can be active per process; an instance is already running")
 	}
 
@@ -122,6 +129,7 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 	go func() {
 		defer func() {
 			running.Store(false)
+			cleanupConfig()
 			close(e.runExited)
 		}()
 
@@ -137,6 +145,32 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		}
 	}()
 	return nil
+}
+
+func (e *alloyEngineExtension) writeInlineConfigFile() (string, func(), error) {
+	configFile, err := os.CreateTemp("", "alloyengine-*.alloy")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create temporary alloy config file: %w", err)
+	}
+
+	configPath := configFile.Name()
+	cleanup := func() {
+		if err := os.Remove(configPath); err != nil && !os.IsNotExist(err) {
+			e.settings.Logger.Warn("failed to remove temporary alloy config file", zap.String("path", configPath), zap.Error(err))
+		}
+	}
+
+	if _, err := configFile.WriteString(e.config.AlloyConfig.Content); err != nil {
+		_ = configFile.Close()
+		cleanup()
+		return "", nil, fmt.Errorf("failed to write temporary alloy config file: %w", err)
+	}
+	if err := configFile.Close(); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("failed to close temporary alloy config file: %w", err)
+	}
+
+	return configPath, cleanup, nil
 }
 
 func (e *alloyEngineExtension) runWithBackoffRetry(runCommand *cobra.Command, ctx context.Context) error {

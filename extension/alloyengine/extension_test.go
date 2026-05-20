@@ -3,6 +3,8 @@ package alloyengine
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -43,7 +45,7 @@ func requireShutdownAndTerminated(t *testing.T, e *alloyEngineExtension) {
 func defaultTestConfig() *Config {
 	return &Config{
 		AlloyConfig: AlloyConfig{
-			File: "testdata/config.alloy",
+			Content: "logging { level = \"debug\" }",
 		},
 		Flags: map[string]string{},
 	}
@@ -123,15 +125,81 @@ func newRetryTrackingCommand(failCount int, err error) (func() *cobra.Command, *
 	return factory, state
 }
 
-func TestConfig_MissingPath(t *testing.T) {
+func TestConfig_MissingContent(t *testing.T) {
 	t.Helper()
 	cfg := &Config{
 		AlloyConfig: AlloyConfig{
-			File: "",
+			Content: "",
 		},
 		Flags: map[string]string{},
 	}
-	require.Error(t, cfg.Validate())
+	require.EqualError(t, cfg.Validate(), "config.content is required")
+}
+
+func TestLifecycle_StartWritesInlineConfig(t *testing.T) {
+	const content = "logging { level = \"debug\" }"
+
+	pathCh := make(chan string, 1)
+	errCh := make(chan error, 1)
+	factory := func() *cobra.Command {
+		return &cobra.Command{
+			RunE: func(cmd *cobra.Command, args []string) error {
+				if len(args) != 1 {
+					err := fmt.Errorf("expected one config path argument, got %d", len(args))
+					errCh <- err
+					return err
+				}
+
+				pathCh <- args[0]
+				data, err := os.ReadFile(args[0])
+				if err != nil {
+					errCh <- err
+					return err
+				}
+				if string(data) != content {
+					err := fmt.Errorf("unexpected config content: %q", string(data))
+					errCh <- err
+					return err
+				}
+				errCh <- nil
+
+				if fn, ok := readyctx.OnReadyFromContext(cmd.Context()); ok && fn != nil {
+					fn()
+				}
+				<-cmd.Context().Done()
+				return nil
+			},
+		}
+	}
+	e := newTestExtension(t, factory, &Config{
+		AlloyConfig: AlloyConfig{
+			Content: content,
+		},
+		Flags: map[string]string{},
+	})
+
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
+
+	var configPath string
+	select {
+	case configPath = <-pathCh:
+	case <-time.After(time.Second):
+		t.Fatal("run command did not receive config path")
+	}
+	select {
+	case err := <-errCh:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("run command did not validate inline config")
+	}
+
+	_, err := os.Stat(configPath)
+	require.NoError(t, err)
+
+	requireShutdownAndTerminated(t, e)
+
+	_, err = os.Stat(configPath)
+	require.True(t, os.IsNotExist(err), "temporary config file should be removed after shutdown")
 }
 
 func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
