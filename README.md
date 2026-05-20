@@ -51,6 +51,8 @@ profiles.
 * **Debugging utilities**: Use the [built-in UI][ui] for visualizing and
   debugging pipelines.
 
+* **Run Crysis**
+
 [syntax]: https://grafana.com/docs/alloy/latest/concepts/configuration-syntax/
 [distribution]: https://opentelemetry.io/docs/collector/distributions/
 [OpenTelemetry Collector]: https://opentelemetry.io
