@@ -4,8 +4,11 @@ package reporter
 
 import (
 	"bytes"
+	"context"
+	"encoding/hex"
 	"log/slog"
 	"testing"
+	"time"
 
 	"github.com/google/pprof/profile"
 	"github.com/grafana/alloy/internal/component/pyroscope"
@@ -17,8 +20,25 @@ import (
 
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
-	"go.opentelemetry.io/ebpf-profiler/support"
 )
+
+var profileTypeSampling = &samples.TypeMetadata{
+	PeriodType: "cpu",
+	PeriodUnit: "nanoseconds",
+	SampleType: "samples",
+	SampleUnit: "count",
+}
+
+var profileTypeOffCPU = &samples.TypeMetadata{
+	SampleType:   "off_cpu",
+	SampleUnit:   "nanoseconds",
+	ReportValues: true,
+}
+
+var profileTypeProbe = &samples.TypeMetadata{
+	SampleType: "events",
+	SampleUnit: "count",
+}
 
 func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, lineno libpf.AddressOrLineno, funcName, sourceFile string, sourceLine libpf.SourceLineno) libpf.Frames {
 	frames := make(libpf.Frames, 0, 1)
@@ -60,7 +80,7 @@ func newReporterWithTargets(targets []discovery.DiscoveredTarget) *PPROFReporter
 		},
 		tp,
 		nil,
-		nil,
+		func(context.Context, []PPROF) {},
 	)
 }
 
@@ -84,7 +104,7 @@ func TestPPROFReporter_DoesNotOverrideScopeLabels(t *testing.T) {
 
 	profiles := rep.createProfile(
 		samples.ResourceKey{PID: 123},
-		support.TraceOriginSampling,
+		profileTypeSampling,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -112,7 +132,7 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 
 	profiles := rep.createProfile(
 		samples.ResourceKey{PID: 123},
-		support.TraceOriginSampling,
+		profileTypeSampling,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -169,7 +189,7 @@ func TestPPROFReporter_NativeFrame(t *testing.T) {
 	}
 	profiles := rep.createProfile(
 		samples.ResourceKey{PID: 123},
-		support.TraceOriginSampling,
+		profileTypeSampling,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -210,7 +230,7 @@ func TestPPROFReporter_WithoutMapping(t *testing.T) {
 
 	profiles := rep.createProfile(
 		samples.ResourceKey{PID: 123},
-		support.TraceOriginSampling,
+		profileTypeSampling,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -231,6 +251,112 @@ Mappings
 1: 0x0/0x0/0x0   
 `
 	assert.Equal(t, expected, p.String())
+}
+
+func TestPPROFReporter_SpanAndTraceIDsBecomeSampleLabels(t *testing.T) {
+	rep := newReporter()
+
+	frames := make(libpf.Frames, 0, 1)
+	frames.Append(&libpf.Frame{
+		Type:            libpf.KernelFrame,
+		AddressOrLineno: 0x2000,
+	})
+
+	spanIDOne := libpf.APMSpanID{1, 2, 3, 4, 5, 6, 7, 8}
+	traceIDOne := libpf.APMTraceID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+	spanIDTwo := libpf.APMSpanID{8, 7, 6, 5, 4, 3, 2, 1}
+	traceIDTwo := libpf.APMTraceID{16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+
+	events := samples.SampleToEvents{
+		{Hash: libpf.NewTraceHash(0, 1), SpanID: spanIDOne, TraceID: traceIDOne}: {
+			Frames:     frames,
+			Timestamps: []uint64{42},
+		},
+		{Hash: libpf.NewTraceHash(0, 1), SpanID: spanIDTwo, TraceID: traceIDTwo}: {
+			Frames:     frames,
+			Timestamps: []uint64{43},
+		},
+	}
+
+	profiles := rep.createProfile(
+		samples.ResourceKey{PID: 123},
+		profileTypeSampling,
+		events,
+	)
+	require.Len(t, profiles, 1)
+	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
+
+	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
+	require.NoError(t, err)
+	require.Len(t, p.Sample, 2)
+
+	got := map[string]string{}
+	for _, sample := range p.Sample {
+		require.Contains(t, sample.Label, "span_id")
+		require.Contains(t, sample.Label, "trace_id")
+		require.Len(t, sample.Label["span_id"], 1)
+		require.Len(t, sample.Label["trace_id"], 1)
+		got[sample.Label["span_id"][0]] = sample.Label["trace_id"][0]
+	}
+
+	assert.Equal(t, map[string]string{
+		hex.EncodeToString(spanIDOne[:]): hex.EncodeToString(traceIDOne[:]),
+		hex.EncodeToString(spanIDTwo[:]): hex.EncodeToString(traceIDTwo[:]),
+	}, got)
+}
+
+func TestPPROFReporter_UsesProfileType(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		profileType *samples.TypeMetadata
+		values      []int64
+		sampleType  string
+		sampleUnit  string
+		value       int64
+	}{
+		{
+			name:        "sampling",
+			profileType: profileTypeSampling,
+			sampleType:  "cpu",
+			sampleUnit:  "nanoseconds",
+			value:       2 * (time.Second.Nanoseconds() / 97),
+		},
+		{
+			name:        "off CPU",
+			profileType: profileTypeOffCPU,
+			values:      []int64{10, 20},
+			sampleType:  "offcpu",
+			sampleUnit:  "nanoseconds",
+			value:       30,
+		},
+		{
+			name:        "probe",
+			profileType: profileTypeProbe,
+			sampleType:  "uprobe",
+			sampleUnit:  "count",
+			value:       2,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rep := newReporter()
+			profiles := rep.createProfile(samples.ResourceKey{PID: 123}, tc.profileType, samples.SampleToEvents{
+				{}: {
+					Frames:     singleFrameTrace(libpf.KernelFrame, libpf.FrameMappingFile{}, 0x2000, "", "", 0),
+					Timestamps: []uint64{42, 43},
+					Values:     tc.values,
+				},
+			})
+
+			require.Len(t, profiles, 1)
+			p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
+			require.NoError(t, err)
+			require.Len(t, p.SampleType, 1)
+			require.Len(t, p.Sample, 1)
+			assert.Equal(t, tc.sampleType, p.SampleType[0].Type)
+			assert.Equal(t, tc.sampleUnit, p.SampleType[0].Unit)
+			assert.Equal(t, tc.value, p.Sample[0].Value[0])
+		})
+	}
 }
 
 func TestPPROFReporter_Bug(t *testing.T) {
@@ -266,7 +392,7 @@ func TestPPROFReporter_Bug(t *testing.T) {
 
 	profiles := rep.createProfile(
 		samples.ResourceKey{PID: 123},
-		support.TraceOriginSampling,
+		profileTypeSampling,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -354,7 +480,7 @@ func TestPPROFReporter_Demangle(t *testing.T) {
 
 	profiles := rep.createProfile(
 		samples.ResourceKey{PID: 123},
-		support.TraceOriginSampling,
+		profileTypeSampling,
 		events,
 	)
 	require.Len(t, profiles, 1)
@@ -417,7 +543,7 @@ func TestPPROFReporter_UnsymbolizedStub(t *testing.T) {
 
 	profiles := rep.createProfile(
 		samples.ResourceKey{PID: 123},
-		support.TraceOriginSampling,
+		profileTypeSampling,
 		events,
 	)
 	require.Len(t, profiles, 1)

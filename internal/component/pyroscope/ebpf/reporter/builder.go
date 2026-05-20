@@ -12,8 +12,10 @@ import (
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/klauspost/compress/gzip"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/support"
+	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 )
+
+const cpuProfileType = "cpu"
 
 var (
 	gzipWriterPool = sync.Pool{
@@ -30,7 +32,7 @@ var (
 type BuildersOptions struct {
 	SampleRate    int64
 	PerPIDProfile bool
-	Origin        libpf.Origin
+	ProfileType   *samples.TypeMetadata
 }
 
 type builderHashKey struct {
@@ -70,20 +72,18 @@ func (b *ProfileBuilders) BuilderForSample(
 	var sampleType []*profile.ValueType
 	var periodType *profile.ValueType
 	var period int64
-	switch b.opt.Origin {
-	case support.TraceOriginSampling:
-		sampleType = []*profile.ValueType{{Type: "cpu", Unit: "nanoseconds"}}
-		periodType = &profile.ValueType{Type: "cpu", Unit: "nanoseconds"}
-		period = time.Second.Nanoseconds() / b.opt.SampleRate
-	case support.TraceOriginOffCPU:
+	switch {
+	case b.opt.ProfileType.ReportValues:
 		sampleType = []*profile.ValueType{{Type: "offcpu", Unit: "nanoseconds"}}
 		period = 1
-	case support.TraceOriginProbe:
+	case b.opt.ProfileType.SampleType == "events":
 		sampleType = []*profile.ValueType{{Type: "uprobe", Unit: "count"}}
 		periodType = &profile.ValueType{Type: "uprobe", Unit: "count"}
 		period = 1
 	default:
-		panic(fmt.Sprintf("unknown sample type %v", sampleType))
+		sampleType = []*profile.ValueType{{Type: cpuProfileType, Unit: "nanoseconds"}}
+		periodType = &profile.ValueType{Type: cpuProfileType, Unit: "nanoseconds"}
+		period = time.Second.Nanoseconds() / b.opt.SampleRate
 	}
 	dummyMapping := &profile.Mapping{
 		ID: 1,
