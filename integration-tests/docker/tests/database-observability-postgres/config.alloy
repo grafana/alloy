@@ -2,11 +2,11 @@
 // It is not intended to represent a recommended production configuration.
 
 prometheus.exporter.postgres "postgres" {
-  data_source_names = ["postgresql://root:rootpassword@postgres:5432/testdb?sslmode=disable"]
+  data_source_names = ["postgresql://monitoring_user:monitoring_password@postgres:5432/testdb?sslmode=disable"]
 }
 
 database_observability.postgres "test" {
-  data_source_name = "postgresql://root:rootpassword@postgres:5432/testdb?sslmode=disable"
+  data_source_name = "postgresql://monitoring_user:monitoring_password@postgres:5432/testdb?sslmode=disable"
   forward_to       = [loki.write.default.receiver]
   targets          = prometheus.exporter.postgres.postgres.targets
 

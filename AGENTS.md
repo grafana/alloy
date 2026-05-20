@@ -29,6 +29,7 @@ If you are developing code, depending on what you are building, make sure you ge
 - [Updating OpenTelemetry dependencies](docs/developer/updating-otel/README.md)
 - [Add OpenTelemetry components](docs/developer/add-otel-component.md)
 - [Adding community components](docs/developer/adding-community-components.md)
+- [Writing tests](docs/developer/writing-tests.md)
 - [Writing documentation](docs/developer/writing-docs.md)
 - [Write component docs](docs/developer/writing-component-documentation.md)
 - [Create exporter components](docs/developer/writing-exporter-components.md)

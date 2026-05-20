@@ -1,0 +1,3 @@
+# Runner-managed kubeconfig for the kind cluster, written by
+# integration-tests/k8s/runner/main.go.
+/.kube/

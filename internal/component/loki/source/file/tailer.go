@@ -8,11 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"go.uber.org/atomic"
@@ -20,13 +20,12 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 )
 
 type tailer struct {
 	metrics   *metrics
-	logger    log.Logger
+	logger    *slog.Logger
 	receiver  loki.LogsReceiver
 	positions positions.Positions
 
@@ -51,7 +50,7 @@ type tailer struct {
 
 func newTailer(
 	metrics *metrics,
-	logger log.Logger,
+	logger *slog.Logger,
 	receiver loki.LogsReceiver,
 	pos positions.Positions,
 	componentStopping func() bool,
@@ -60,7 +59,7 @@ func newTailer(
 
 	return &tailer{
 		metrics:              metrics,
-		logger:               log.With(logger, "component", "tailer", "path", opts.path),
+		logger:               logger.With("component", "tailer", "path", opts.path),
 		receiver:             receiver,
 		positions:            pos,
 		key:                  positions.Entry{Path: opts.path, Labels: opts.labels.String()},
@@ -94,7 +93,7 @@ func (t *tailer) Run(ctx context.Context) {
 		// We are mostly interested in this log if this happens directly when
 		// the tailer is scheduled and not on retries.
 		t.report.Do(func() {
-			level.Error(t.logger).Log("msg", "failed to run tailer", "error", err)
+			t.logger.Error("failed to run tailer", "error", err)
 		})
 		return
 	}
@@ -134,13 +133,13 @@ func (t *tailer) initRun() (int64, error) {
 			return 0, fmt.Errorf("failed to get file position: %w", err)
 		case OnPositionsFileErrorRestartEnd:
 			startFromEnd = true
-			level.Info(t.logger).Log("msg", "reset position to end of file after position error")
+			t.logger.Info("reset position to end of file after position error")
 		default:
-			level.Debug(t.logger).Log("msg", "unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.onPositionsFileError)
+			t.logger.Debug("unrecognized `on_positions_file_error` option, defaulting to `restart_from_beginning`", "option", t.onPositionsFileError)
 			fallthrough
 		case OnPositionsFileErrorRestartBeginning:
 			pos = 0
-			level.Info(t.logger).Log("msg", "reset position to start of file after positions error")
+			t.logger.Info("reset position to start of file after positions error")
 		}
 	}
 
@@ -187,10 +186,10 @@ func (t *tailer) initRun() (int64, error) {
 // is reached for a fully consumed compressed file) or when the context is canceled,
 // including while a send to the receiver's channel is blocked.
 func (t *tailer) readLines(ctx context.Context, pos int64) {
-	level.Info(t.logger).Log("msg", "start tailing file")
+	t.logger.Info("start tailing file")
 
 	if t.decompression.Enabled && t.decompression.InitialDelay > 0 {
-		level.Info(t.logger).Log("msg", "sleeping before reading file", "duration", t.decompression.InitialDelay.String())
+		t.logger.Info("sleeping before reading file", "duration", t.decompression.InitialDelay.String())
 		time.Sleep(t.decompression.InitialDelay)
 	}
 
@@ -214,7 +213,7 @@ func (t *tailer) readLines(ctx context.Context, pos int64) {
 			// that means that we consumed the file fully and don't wait for more events, this
 			// happens when compression is configured.
 			if !errors.Is(err, context.Canceled) && !errors.Is(err, io.EOF) {
-				level.Error(t.logger).Log("msg", "failed to tail file", "err", err)
+				t.logger.Error("failed to tail file", "err", err)
 			}
 			return
 		}
@@ -250,19 +249,19 @@ func (t *tailer) stop(wg *sync.WaitGroup) {
 		if util.IsEphemeralOrFileClosed(err) {
 			// Don't log as error if the file is already closed, or we got an ephemeral error - it's a common case
 			// when files are rotating while being read and the tailer would have stopped correctly anyway.
-			level.Debug(t.logger).Log("msg", "failed to stop tailer", "error", err)
+			t.logger.Debug("failed to stop tailer", "error", err)
 		} else if !errors.Is(err, os.ErrNotExist) {
 			// Log as error for other reasons, as a resource leak may have happened.
-			level.Error(t.logger).Log("msg", "failed to stop tailer", "error", err)
+			t.logger.Error("failed to stop tailer", "error", err)
 		}
 	}
 
-	level.Debug(t.logger).Log("msg", "waiting for readLines to exit")
+	t.logger.Debug("waiting for readLines to exit")
 
 	// Wait for readLines() to exit.
 	wg.Wait()
 
-	level.Info(t.logger).Log("msg", "stopped tailing file")
+	t.logger.Info("stopped tailing file")
 
 	// We need to cleanup created metrics.
 	t.cleanupMetrics()

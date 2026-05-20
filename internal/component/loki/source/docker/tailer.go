@@ -11,13 +11,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/client"
@@ -28,12 +28,11 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // tailer for Docker container logs.
 type tailer struct {
-	logger            log.Logger
+	logger            *slog.Logger
 	recv              loki.LogsReceiver
 	positions         positions.Positions
 	containerID       string
@@ -59,7 +58,7 @@ type tailer struct {
 
 // newTailer starts a new tailer to read logs from a given container ID.
 func newTailer(
-	metrics *metrics, logger log.Logger, recv loki.LogsReceiver, position positions.Positions, containerID string,
+	metrics *metrics, logger *slog.Logger, recv loki.LogsReceiver, position positions.Positions, containerID string,
 	labels model.LabelSet, relabelConfig []*relabel.Config, client client.APIClient, restartInterval time.Duration,
 	componentStopping func() bool,
 ) (*tailer, error) {
@@ -100,14 +99,14 @@ func (t *tailer) Run(ctx context.Context) {
 			res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 			if err != nil {
 				if !errors.Is(err, context.Canceled) {
-					level.Error(t.logger).Log("msg", "error inspecting Docker container", "id", t.containerID, "error", err)
+					t.logger.Error("error inspecting Docker container", "id", t.containerID, "error", err)
 				}
 				continue
 			}
 
 			finished, err := time.Parse(time.RFC3339Nano, res.Container.State.FinishedAt)
 			if err != nil {
-				level.Error(t.logger).Log("msg", "error parsing finished time for Docker container", "id", t.containerID, "error", err)
+				t.logger.Error("error parsing finished time for Docker container", "id", t.containerID, "error", err)
 				finished = time.Unix(0, 0)
 			}
 
@@ -127,12 +126,12 @@ func (t *tailer) startIfNotRunning() {
 	defer t.mu.Unlock()
 
 	if !t.running {
-		level.Debug(t.logger).Log("msg", "starting process loop", "container", t.containerID)
+		t.logger.Debug("starting process loop", "container", t.containerID)
 
 		ctx := context.Background()
 		info, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 		if err != nil {
-			level.Error(t.logger).Log("msg", "could not inspect container info", "container", t.containerID, "err", err)
+			t.logger.Error("could not inspect container info", "container", t.containerID, "err", err)
 			t.err = err
 			return
 		}
@@ -145,7 +144,7 @@ func (t *tailer) startIfNotRunning() {
 			Since:      strconv.FormatInt(t.since.Load(), 10),
 		})
 		if err != nil {
-			level.Error(t.logger).Log("msg", "could not fetch logs for container", "container", t.containerID, "err", err)
+			t.logger.Error("could not fetch logs for container", "container", t.containerID, "err", err)
 			t.err = err
 			return
 		}
@@ -170,7 +169,7 @@ func (t *tailer) stop() {
 			t.cancel()
 		}
 		t.wg.Wait()
-		level.Debug(t.logger).Log("msg", "stopped Docker target", "container", t.containerID)
+		t.logger.Debug("stopped Docker target", "container", t.containerID)
 
 		// If the component is not stopping, then it means that the target for this component is gone and that
 		// we should clear the entry from the positions file.
@@ -235,9 +234,9 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 		}
 
 		if err != nil {
-			level.Warn(t.logger).Log("msg", "could not transfer logs", "written", written, "container", t.containerID, "err", err)
+			t.logger.Warn("could not transfer logs", "written", written, "container", t.containerID, "err", err)
 		} else {
-			level.Info(t.logger).Log("msg", "finished transferring logs", "written", written, "container", t.containerID)
+			t.logger.Info("finished transferring logs", "written", written, "container", t.containerID)
 		}
 	}()
 
@@ -254,7 +253,7 @@ func (t *tailer) processLoop(ctx context.Context, tty bool, reader io.ReadCloser
 
 	// Wait until done
 	<-ctx.Done()
-	level.Debug(t.logger).Log("msg", "done processing Docker logs", "container", t.containerID)
+	t.logger.Debug("done processing Docker logs", "container", t.containerID)
 }
 
 // extractTsFromBytes parses an RFC3339Nano timestamp from the byte slice.
@@ -291,7 +290,7 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 			}
 
 			if errors.Is(err, bufio.ErrTooLong) {
-				level.Error(t.logger).Log("msg", "line too big, skipping")
+				t.logger.Error("line too big, skipping")
 				err = skipUntilNewline(reader)
 			}
 
@@ -301,7 +300,7 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 					return
 				}
 				// An unexpected error and we stop reading.
-				level.Error(t.logger).Log("msg", "error reading docker log line", "err", err)
+				t.logger.Error("error reading docker log line", "err", err)
 				t.metrics.dockerErrors.Inc()
 			}
 
@@ -312,13 +311,14 @@ func (t *tailer) process(r io.Reader, logStreamLset model.LabelSet) {
 
 		ts, content, err := extractTsFromBytes(scanner.Bytes())
 		if err != nil {
-			level.Error(t.logger).Log("msg", "could not extract timestamp, skipping line", "err", err)
+			t.logger.Error("could not extract timestamp, skipping line", "err", err)
 			t.metrics.dockerErrors.Inc()
 			continue
 		}
 
 		if len(content) == 0 {
-			level.Debug(t.logger).Log("msg", "empty log, skipping line")
+			t.logger.Debug("empty log, skipping line")
+
 			continue
 		}
 
@@ -374,7 +374,7 @@ func skipUntilNewline(r *bufio.Reader) error {
 // dockerChunkWriter implements io.Writer to preprocess and reassemble Docker log frames.
 type dockerChunkWriter struct {
 	writer      io.Writer
-	logger      log.Logger
+	logger      *slog.Logger
 	buffer      *bytes.Buffer
 	isBuffering bool
 }
@@ -385,7 +385,7 @@ var bufferPool = sync.Pool{
 	},
 }
 
-func newChunkWriter(writer io.Writer, logger log.Logger) *dockerChunkWriter {
+func newChunkWriter(writer io.Writer, logger *slog.Logger) *dockerChunkWriter {
 	return &dockerChunkWriter{
 		writer: writer,
 		logger: logger,
@@ -418,7 +418,7 @@ func (fw *dockerChunkWriter) Write(p []byte) (int, error) {
 	_, content, err := extractTsFromBytes(p)
 	if err != nil {
 		// Should not normally happen, but flog.log has entries like this for some reason.
-		level.Warn(fw.logger).Log("msg", "could not strip timestamp from continuation chunk", "err", err)
+		fw.logger.Warn("could not strip timestamp from continuation chunk", "err", err)
 		fw.buffer.Write(p)
 	} else {
 		fw.buffer.Write(content)

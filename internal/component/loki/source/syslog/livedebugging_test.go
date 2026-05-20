@@ -18,9 +18,9 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/util"
 )
 
 type hostStub struct {
@@ -69,7 +69,7 @@ func TestLiveDebugging(t *testing.T) {
 	sender.SetEnabled(!isDbgDisabled)
 	opts := component.Options{
 		ID:            cid,
-		Logger:        util.TestAlloyLogger(t),
+		SLogger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 		GetServiceData: func(name string) (any, error) {

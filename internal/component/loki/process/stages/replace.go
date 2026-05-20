@@ -3,15 +3,13 @@ package stages
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"reflect"
 	"regexp"
 	"text/template"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -43,11 +41,11 @@ func getExpressionRegex(c ReplaceConfig) (*regexp.Regexp, error) {
 type replaceStage struct {
 	cfg        ReplaceConfig
 	expression *regexp.Regexp
-	logger     log.Logger
+	logger     *slog.Logger
 }
 
 // newReplaceStage creates a newReplaceStage
-func newReplaceStage(logger log.Logger, config ReplaceConfig) (Stage, error) {
+func newReplaceStage(logger *slog.Logger, config ReplaceConfig) (Stage, error) {
 	expression, err := getExpressionRegex(config)
 	if err != nil {
 		return nil, err
@@ -56,7 +54,7 @@ func newReplaceStage(logger log.Logger, config ReplaceConfig) (Stage, error) {
 	return toStage(&replaceStage{
 		cfg:        config,
 		expression: expression,
-		logger:     log.With(logger, "component", "stage", "type", "replace"),
+		logger:     logger.With("stage", "replace"),
 	}), nil
 }
 
@@ -68,13 +66,13 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 
 	if r.cfg.Source != "" {
 		if _, ok := extracted[r.cfg.Source]; !ok {
-			level.Debug(r.logger).Log("msg", "source does not exist in the set of extracted values", "source", r.cfg.Source)
+			r.logger.Debug("source does not exist in the set of extracted values", "source", r.cfg.Source)
 			return
 		}
 
 		value, err := getString(extracted[r.cfg.Source])
 		if err != nil {
-			level.Debug(r.logger).Log("msg", "failed to convert source value to string", "source", r.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[r.cfg.Source]))
+			r.logger.Debug("failed to convert source value to string", "source", r.cfg.Source, "err", err, "type", reflect.TypeOf(extracted[r.cfg.Source]))
 			return
 		}
 
@@ -82,7 +80,7 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 	}
 
 	if input == nil {
-		level.Debug(r.logger).Log("msg", "cannot parse a nil entry")
+		r.logger.Debug("cannot parse a nil entry")
 		return
 	}
 
@@ -91,7 +89,7 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 	matchAllIndex := r.expression.FindAllStringSubmatchIndex(*input, -1)
 
 	if matchAllIndex == nil {
-		level.Debug(r.logger).Log("msg", "regex did not match", "input", *input, "regex", r.expression)
+		r.logger.Debug("regex did not match", "input", *input, "regex", r.expression)
 		return
 	}
 
@@ -101,13 +99,13 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 	// Initialize the template with the "replace" string defined by user
 	templ, err := template.New("pipeline_template").Funcs(functionMap).Parse(r.cfg.Replace)
 	if err != nil {
-		level.Debug(r.logger).Log("msg", "template initialization error", "err", err)
+		r.logger.Debug("template initialization error", "err", err)
 		return
 	}
 
 	result, capturedMap, err := r.getReplacedEntry(matchAllIndex, *input, td, templ)
 	if err != nil {
-		level.Debug(r.logger).Log("msg", "failed to execute template on extracted value", "err", err)
+		r.logger.Debug("failed to execute template on extracted value", "err", err)
 		return
 	}
 
@@ -125,8 +123,8 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 			}
 		}
 	}
-	if Debug {
-		level.Debug(r.logger).Log("msg", "extracted data debug in replace stage", "extracted_data", extracted)
+	if debugEnabled(r.logger) {
+		r.logger.Debug("extracted data debug in replace stage", "extracted_data", extracted)
 	}
 }
 
@@ -169,7 +167,7 @@ func (r *replaceStage) getTemplateData(extracted map[string]any) map[string]stri
 	for k, v := range extracted {
 		s, err := getString(v)
 		if err != nil {
-			level.Debug(r.logger).Log("msg", "extracted template could not be converted to a string", "err", err, "type", reflect.TypeOf(v))
+			r.logger.Debug("extracted template could not be converted to a string", "err", err, "type", reflect.TypeOf(v))
 			continue
 		}
 		td[k] = s

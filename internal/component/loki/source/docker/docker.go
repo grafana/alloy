@@ -15,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/moby/moby/client"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -30,7 +29,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 )
 
@@ -126,7 +124,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
+	positionsFile, err := positions.New(o.SLogger, positions.Config{
 		SyncPeriod:        10 * time.Second,
 		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
 		IgnoreInvalidYaml: false,
@@ -217,19 +215,19 @@ func (c *Component) Update(args component.Arguments) error {
 	})
 
 	source.Reconcile(
-		c.opts.Logger,
+		c.opts.SLogger,
 		c.scheduler,
 		slices.Values(promTargets),
 		func(target promTarget) string { return string(target.labels[dockerLabelContainerID]) },
 		func(containerID string, target promTarget) (source.Source[string], error) {
 			if containerID == "" {
-				level.Debug(c.opts.Logger).Log("msg", "docker target did not include container ID label:"+dockerLabelContainerID)
+				c.opts.SLogger.Debug("docker target did not include container ID label: " + dockerLabelContainerID)
 				return nil, source.ErrSkip
 			}
 
 			return newTailer(
 				c.metrics,
-				log.With(c.opts.Logger, "component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
+				c.opts.SLogger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
 				c.handler,
 				c.posFile,
 				containerID,
@@ -285,7 +283,7 @@ func (c *Component) getClient(args Arguments) (client.APIClient, error) {
 
 	client, err := client.New(opts...)
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "could not create new Docker client", "err", err)
+		c.opts.SLogger.Error("could not create new Docker client", "err", err)
 		return c.client, fmt.Errorf("failed to build docker client: %w", err)
 	}
 

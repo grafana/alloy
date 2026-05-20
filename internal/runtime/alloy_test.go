@@ -53,9 +53,14 @@ func TestRuntime(t *testing.T) {
 
 	var verifyHealth = func(comps []ScheduledComponent, l int, h component.HealthType) {
 		require.Len(t, comps, l)
-		for _, c := range comps {
-			assert.Equal(t, h, c.CurrentHealth().Health, "unexpected status for %s", c.NodeID())
-		}
+		// Component runHealth transitions to its terminal value inside the Run
+		// goroutine after the scheduler launches it, which happens asynchronously
+		// from LoadComplete. Poll so the assertion is not racey on slow runners.
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			for _, c := range comps {
+				assert.Equal(collect, h, c.CurrentHealth().Health, "unexpected status for %s", c.NodeID())
+			}
+		}, 2*time.Second, 50*time.Millisecond)
 	}
 
 	var verifyService = func(s serviceState, running bool) {

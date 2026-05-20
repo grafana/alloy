@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	corev1 "k8s.io/api/core/v1"
@@ -20,7 +20,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -29,7 +28,7 @@ const (
 )
 
 type eventControllerOptions struct {
-	Log          log.Logger
+	Log          *slog.Logger
 	Config       *rest.Config // Config to connect to Kubernetes.
 	Namespace    string       // Namespace to watch for events in.
 	JobName      string       // Label value to use for job.
@@ -68,11 +67,11 @@ func newEventController(opts eventControllerOptions) *eventController {
 func (ctrl *eventController) Run(ctx context.Context) {
 	defer ctrl.handler.Stop()
 
-	level.Info(ctrl.opts.Log).Log("msg", "watching events for namespace", "namespace", ctrl.opts.Namespace)
-	defer level.Info(ctrl.opts.Log).Log("msg", "stopping watcher for events", "namespace", ctrl.opts.Namespace)
+	ctrl.opts.Log.Info("watching events for namespace", "namespace", ctrl.opts.Namespace)
+	defer ctrl.opts.Log.Info("stopping watcher for events", "namespace", ctrl.opts.Namespace)
 
 	if err := ctrl.runError(ctx); err != nil {
-		level.Error(ctrl.opts.Log).Log("msg", "event watcher exited with error", "err", err)
+		ctrl.opts.Log.Error("event watcher exited with error", "err", err)
 	}
 }
 
@@ -102,7 +101,7 @@ func (ctrl *eventController) runError(ctx context.Context) error {
 	go func() {
 		err := informers.Start(ctx)
 		if err != nil && ctx.Err() != nil {
-			level.Error(ctrl.opts.Log).Log("msg", "failed to start informers", "err", err)
+			ctrl.opts.Log.Error("failed to start informers", "err", err)
 		}
 	}()
 
@@ -150,35 +149,35 @@ func (ctrl *eventController) configureInformers(ctx context.Context, informers c
 func (ctrl *eventController) onAdd(ctx context.Context, obj any) {
 	event, ok := obj.(*corev1.Event)
 	if !ok {
-		level.Warn(ctrl.opts.Log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", obj))
+		ctrl.opts.Log.Warn("received an event for a non-Event Kind", "type", fmt.Sprintf("%T", obj))
 		return
 	}
 	err := ctrl.handleEvent(ctx, event)
 	if err != nil {
-		level.Error(ctrl.opts.Log).Log("msg", "error handling event", "err", err)
+		ctrl.opts.Log.Error("error handling event", "err", err)
 	}
 }
 
 func (ctrl *eventController) onUpdate(ctx context.Context, oldObj, newObj any) {
 	oldEvent, ok := oldObj.(*corev1.Event)
 	if !ok {
-		level.Warn(ctrl.opts.Log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", oldObj))
+		ctrl.opts.Log.Warn("received an event for a non-Event Kind", "type", fmt.Sprintf("%T", oldObj))
 		return
 	}
 	newEvent, ok := newObj.(*corev1.Event)
 	if !ok {
-		level.Warn(ctrl.opts.Log).Log("msg", "received an event for a non-Event Kind", "type", fmt.Sprintf("%T", newObj))
+		ctrl.opts.Log.Warn("received an event for a non-Event Kind", "type", fmt.Sprintf("%T", newObj))
 		return
 	}
 
 	if oldEvent.GetResourceVersion() == newEvent.GetResourceVersion() {
-		level.Debug(ctrl.opts.Log).Log("msg", "resource version didn't change, ignoring call to onUpdate", "resource version", newEvent.GetResourceVersion())
+		ctrl.opts.Log.Debug("resource version didn't change, ignoring call to onUpdate", "resource version", newEvent.GetResourceVersion())
 		return
 	}
 
 	err := ctrl.handleEvent(ctx, newEvent)
 	if err != nil {
-		level.Error(ctrl.opts.Log).Log("msg", "error handling event", "err", err)
+		ctrl.opts.Log.Error("error handling event", "err", err)
 	}
 }
 

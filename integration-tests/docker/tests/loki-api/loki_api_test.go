@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/integration-tests/docker/common"
+	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 )
 
 const lokiAPIURL = "http://localhost:1515/loki/api/v1/push"
@@ -70,20 +71,20 @@ func TestLokiAPI(t *testing.T) {
 func pushJSON(apps ...string) error {
 	var (
 		now     = time.Now()
-		streams = make([]common.LogData, 0, len(apps))
+		streams = make([]lokihttp.LogData, 0, len(apps))
 	)
 
 	for _, app := range apps {
-		values := make([]common.LogEntry, 0, 30)
+		values := make([]lokihttp.LogEntry, 0, 30)
 		for i := range 30 {
-			values = append(values, common.LogEntry{
+			values = append(values, lokihttp.LogEntry{
 				Timestamp: fmt.Sprintf("%d", now.UnixNano()),
 				Line:      fmt.Sprintf("log line %d from %s", i, app),
 			})
 			now = now.Add(time.Second)
 		}
 
-		streams = append(streams, common.LogData{
+		streams = append(streams, lokihttp.LogData{
 			Stream: map[string]string{
 				"app":          app,
 				"content_type": "json",
@@ -92,7 +93,7 @@ func pushJSON(apps ...string) error {
 		})
 	}
 
-	body, err := json.Marshal(common.PushRequest{Streams: streams})
+	body, err := json.Marshal(lokihttp.PushRequest{Streams: streams})
 	if err != nil {
 		return err
 	}
