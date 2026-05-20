@@ -37,6 +37,7 @@ jobs:
     env:
       CGO_ENABLED: 0
       GOOS: linux
+      GOARCH: amd64
     steps:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -47,7 +48,5 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
-    - run: cd collector && GOARCH=amd64 go build .
-    - run: cd collector && GOARCH=arm64 go build .
-    - run: GOARCH=amd64 go build ./internal/component/pyroscope/util/internal/cmd/playground
-    - run: GOARCH=arm64 go build ./internal/component/pyroscope/util/internal/cmd/playground
+    - run: cd collector &&  go build .
+    - run: go build ./internal/component/pyroscope/util/internal/cmd/playground
