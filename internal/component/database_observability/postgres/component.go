@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"path"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -429,14 +428,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		return fmt.Errorf("failed to scan engine version: %w", err)
 	}
 
-	var trackActivityQuerySize int
-	var rawSetting sql.NullString
-	if err := dbConnection.QueryRowContext(ctx, "SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'").Scan(&rawSetting); err != nil {
-		level.Warn(c.opts.Logger).Log("msg", "failed to read track_activity_query_size; truncation sentinel will not fire", "err", err)
-	} else if rawSetting.Valid {
-		trackActivityQuerySize, _ = strconv.Atoi(rawSetting.String)
-	}
-
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
 
 	// Get the current user and compute the effective exclude users list.
@@ -539,7 +530,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp, effectiveExcludeUsers, trackActivityQuerySize); err != nil {
+	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -586,7 +577,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported.
-func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string, trackActivityQuerySize int) error {
+func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -666,7 +657,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ExcludeCurrentUser:            qsExcludeCurrentUser,
 			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
 			EnableQueryFingerprint:        c.args.EnableQueryFingerprint,
-			TrackActivityQuerySize:        trackActivityQuerySize,
 			Registry:                      c.registry,
 		})
 		if err != nil {

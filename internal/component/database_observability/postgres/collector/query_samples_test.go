@@ -1741,10 +1741,10 @@ func TestQuerySamples_FingerprintTruncationSentinelFires(t *testing.T) {
 		EntryHandler:           lokiClient,
 		Logger:                 log.NewNopLogger(),
 		EnableQueryFingerprint: true,
-		TrackActivityQuerySize: size,
 		Registry:               registry,
 	})
 	require.NoError(t, err)
+	qs.trackActivityQuerySize = size
 
 	got := qs.resolveQueryFingerprint(QuerySamplesInfo{Query: sql.NullString{String: bad, Valid: true}})
 	require.Equal(t, fingerprint.FingerprintOf(fingerprint.SentinelTruncated), got)
@@ -1768,7 +1768,6 @@ func TestQuerySamples_FingerprintUnparsableSentinelFires(t *testing.T) {
 		EntryHandler:           lokiClient,
 		Logger:                 log.NewNopLogger(),
 		EnableQueryFingerprint: true,
-		TrackActivityQuerySize: 1024,
 		Registry:               registry,
 	})
 	require.NoError(t, err)
@@ -1793,7 +1792,6 @@ func TestQuerySamples_FingerprintCountersSilentOnSuccess(t *testing.T) {
 		EntryHandler:           lokiClient,
 		Logger:                 log.NewNopLogger(),
 		EnableQueryFingerprint: true,
-		TrackActivityQuerySize: 1024,
 		Registry:               registry,
 	})
 	require.NoError(t, err)

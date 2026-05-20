@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -118,7 +119,6 @@ type QuerySamplesArguments struct {
 	ExcludeCurrentUser            bool
 	EnablePreClassifiedWaitEvents bool
 	EnableQueryFingerprint        bool
-	TrackActivityQuerySize        int
 	Registry                      *prometheus.Registry
 }
 
@@ -278,7 +278,6 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		excludeCurrentUser:            args.ExcludeCurrentUser,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
 		enableQueryFingerprint:        args.EnableQueryFingerprint,
-		trackActivityQuerySize:        args.TrackActivityQuerySize,
 		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 		samples:                       map[SampleKey]*SampleState{},
@@ -314,6 +313,8 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 	} else {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
+
+	c.trackActivityQuerySize = readTrackActivityQuerySize(ctx, c.dbConnection, c.logger)
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -786,6 +787,22 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 		labels = fmt.Sprintf(`%s query_fingerprint="%s"`, labels, state.QueryFingerprint)
 	}
 	return labels
+}
+
+// readTrackActivityQuerySize reads the server's track_activity_query_size
+// setting. Returns 0 (and logs a warning) on failure; the truncation sentinel
+// in the fingerprint pipeline simply won't fire in that case.
+func readTrackActivityQuerySize(ctx context.Context, db *sql.DB, logger log.Logger) int {
+	var raw sql.NullString
+	if err := db.QueryRowContext(ctx, trackActivityQuerySizeQuery).Scan(&raw); err != nil {
+		level.Warn(logger).Log("msg", "failed to read track_activity_query_size; truncation sentinel will not fire", "err", err)
+		return 0
+	}
+	if !raw.Valid {
+		return 0
+	}
+	size, _ := strconv.Atoi(raw.String)
+	return size
 }
 
 // classifyPostgresWaitEventType maps a raw PostgreSQL wait event type to a standardized category.
