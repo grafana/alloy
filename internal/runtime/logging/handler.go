@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -22,7 +23,12 @@ import (
 // JSON or logfmt, and create a new inner handler if needed.
 
 type handler struct {
-	w         io.Writer
+	// w owns every sink (innerWriter, lokiWriter, tmpWriter, and the
+	// optional event log). It also implements io.Writer so it can be
+	// passed straight into slog.NewTextHandler/JSONHandler on the fast
+	// path. The slow path (event log attached) uses *writerVar methods
+	// directly — Write + WriteRecord + FastPathFlags.
+	w         *writerVar
 	leveler   slog.Leveler
 	formatter formatter
 
@@ -52,13 +58,95 @@ func (h *handler) Enabled(ctx context.Context, l slog.Level) bool {
 }
 
 func (h *handler) Handle(ctx context.Context, r slog.Record) error {
-	return h.buildHandler().Handle(ctx, r)
+	hasSink, hasEventLog := h.w.FastPathFlags()
+	if !hasSink {
+		// Skip formatting entirely when no sink is listening — the slog
+		// text/JSON handler would otherwise allocate, run ReplaceAttr on
+		// every attribute, and hand the bytes to io.Discard.
+		return nil
+	}
+	if !hasEventLog {
+		// Stderr happy path: the cached slog handler writes directly into
+		// writerVar via the io.Writer interface, no buffer, no per-call
+		// rebuild.
+		return h.buildHandler().Handle(ctx, r)
+	}
+	// Event log attached: format once into a buffer so we can hand both
+	// the bytes and the record level to writerVar.WriteRecord.
+	return h.handleWithEventLog(ctx, r)
 }
 
+// handleWithEventLog formats the record into a per-call buffer using a
+// freshly-built slog handler, then dispatches via writerVar.WriteRecord
+// which knows about the event log and the record level. Only used when
+// the event log destination is active.
+func (h *handler) handleWithEventLog(ctx context.Context, r slog.Record) error {
+	// Cheap level filter before we allocate the buffer and build the
+	// per-call slog handler. The inner slog handler filters too, but doing
+	// it here also skips the event-log dispatch (which would otherwise
+	// receive an empty message).
+	if !h.Enabled(ctx, r.Level) {
+		return nil
+	}
+
+	buf := bytesPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bytesPool.Put(buf)
+
+	if err := h.newSlogHandler(buf).Handle(ctx, r); err != nil {
+		return err
+	}
+	if buf.Len() == 0 {
+		return nil // belt-and-suspenders for handlers that drop records silently
+	}
+	return h.w.Dispatch(buf.Bytes(), &r.Level)
+}
+
+// bytesPool reuses bytes.Buffer instances across event-log slow-path
+// calls to avoid an allocation per record.
+var bytesPool = sync.Pool{
+	New: func() any { return new(bytes.Buffer) },
+}
+
+// newSlogHandler constructs a fresh slog handler writing into w, with the
+// current format and the WithAttrs/WithGroup chain applied. Used by both
+// buildHandler (which caches the result for the fast path) and the
+// event-log slow path (which can't cache because the writer is per-call).
+func (h *handler) newSlogHandler(w io.Writer) slog.Handler {
+	handlerOpts := slog.HandlerOptions{
+		AddSource: false,
+		Level:     h.leveler,
+		// Replace attributes with how they were represented in go-kit/log
+		// for consistency.
+		ReplaceAttr: h.replacer,
+	}
+	var hdlr slog.Handler
+	switch h.formatter.Format() {
+	case FormatLogfmt:
+		hdlr = slog.NewTextHandler(w, &handlerOpts)
+	case FormatJSON:
+		hdlr = slog.NewJSONHandler(w, &handlerOpts)
+	default:
+		panic(fmt.Sprintf("unknown format %v", h.formatter.Format()))
+	}
+	// Replay our groups and attrs in the order they were entered.
+	for _, n := range h.nested {
+		if n.group != "" {
+			hdlr = hdlr.WithGroup(n.group)
+		} else {
+			hdlr = hdlr.WithAttrs(n.attrs)
+		}
+	}
+	return hdlr
+}
+
+// buildHandler returns a cached slog handler bound to h.w. Used by the
+// fast path (no event log) so each Log call avoids the cost of
+// reconstructing the WithAttrs/WithGroup chain.
 func (h *handler) buildHandler() slog.Handler {
-	// Get the expected format for the duration of this call. It's possible that
-	// this will be stale by the time the call returns, but it will be correct on
-	// the next call.
+	// Get the expected format for the duration of this call. It's possible
+	// that this will be stale by the time the call returns, but it will be
+	// correct on the next call.
 	expectFormat := h.formatter.Format()
 
 	// Fast path: if our cached handler is still valid, immediately return it.
@@ -69,42 +157,12 @@ func (h *handler) buildHandler() slog.Handler {
 	}
 	h.mut.RUnlock()
 
-	// Slow path: we need to build a new handler.
+	// Slow path: build a new handler and cache it.
 	h.mut.Lock()
 	defer h.mut.Unlock()
-
-	var newHandler slog.Handler
-
-	handlerOpts := slog.HandlerOptions{
-		AddSource: false,
-		Level:     h.leveler,
-
-		// Replace attributes with how they were represented in go-kit/log for
-		// consistency.
-		ReplaceAttr: h.replacer,
-	}
-
-	switch expectFormat {
-	case FormatLogfmt:
-		newHandler = slog.NewTextHandler(h.w, &handlerOpts)
-	case FormatJSON:
-		newHandler = slog.NewJSONHandler(h.w, &handlerOpts)
-	default:
-		panic(fmt.Sprintf("unknown format %v", expectFormat))
-	}
-
-	// Need to replay our groups and attrs in the correct order.
-	for _, n := range h.nested {
-		if n.group != "" {
-			newHandler = newHandler.WithGroup(n.group)
-		} else {
-			newHandler = newHandler.WithAttrs(n.attrs)
-		}
-	}
-
+	h.inner = h.newSlogHandler(h.w)
 	h.currentFormat = expectFormat
-	h.inner = newHandler
-	return newHandler
+	return h.inner
 }
 
 func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {

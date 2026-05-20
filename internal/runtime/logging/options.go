@@ -12,23 +12,58 @@ import (
 
 // Options is a set of options used to construct and configure a Logger.
 type Options struct {
-	Level  Level  `alloy:"level,attr,optional"`
-	Format Format `alloy:"format,attr,optional"`
+	Level       Level          `alloy:"level,attr,optional"`
+	Format      Format         `alloy:"format,attr,optional"`
+	Destination LogDestination `alloy:"destination,attr,optional"`
 
 	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
 }
 
+// LogDestination is where to send the primary log output.
+type LogDestination string
+
+// TODO: Add a "none" destination to disable primary output.
+const (
+	LogDestinationStderr          LogDestination = "stderr"
+	LogDestinationWindowsEventLog LogDestination = "windows_event_log"
+)
+
+var _ encoding.TextUnmarshaler = (*LogDestination)(nil)
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (d *LogDestination) UnmarshalText(text []byte) error {
+	switch LogDestination(text) {
+	case LogDestinationStderr, LogDestinationWindowsEventLog:
+		*d = LogDestination(text)
+		return nil
+	default:
+		return fmt.Errorf("unrecognized log destination %q", string(text))
+	}
+}
+
+// defaultDestination returns the platform-appropriate default log destination.
+func defaultDestination() LogDestination {
+	if isWindowsService() {
+		return LogDestinationWindowsEventLog
+	}
+	return LogDestinationStderr
+}
+
 // DefaultOptions holds defaults for creating a Logger.
 var DefaultOptions = Options{
-	Level:  LevelDefault,
-	Format: FormatDefault,
+	Level:       LevelDefault,
+	Format:      FormatDefault,
+	Destination: defaultDestination(),
 }
 
 var _ syntax.Defaulter = (*Options)(nil)
 
-// SetToDefault implements syntax.Defaulter.
+// SetToDefault implements syntax.Defaulter. Destination is re-evaluated so
+// tests that stub isWindowsService after package init still observe the
+// expected default.
 func (o *Options) SetToDefault() {
 	*o = DefaultOptions
+	o.Destination = defaultDestination()
 }
 
 // Level represents how verbose logging should be.
