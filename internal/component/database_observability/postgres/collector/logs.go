@@ -24,7 +24,7 @@ const (
 )
 
 // log_timezone is sighup-reloadable; poll for changes.
-const logTimezoneRefreshInterval = time.Minute
+const logTimezoneRefreshInterval = time.Hour
 
 // Postgres log format regex
 var logFormatRegex = regexp.MustCompile(
@@ -62,9 +62,9 @@ type Logs struct {
 	excludeDatabases []string
 	excludeUsers     []string
 
-	db                     *sql.DB
-	logTimezone            atomic.Pointer[time.Location]
-	lastLogTimezoneWarning atomic.Pointer[string]
+	db              *sql.DB
+	logTimezone     atomic.Pointer[time.Location]
+	lastLogTimezone atomic.Pointer[string]
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -166,24 +166,25 @@ func (l *Logs) refreshLogTimezone(ctx context.Context) {
 	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var name string
-	if err := l.db.QueryRowContext(queryCtx, selectLogTimezone).Scan(&name); err != nil {
+	var tzName string
+	if err := l.db.QueryRowContext(queryCtx, selectLogTimezone).Scan(&tzName); err != nil {
+		// Keep any previously cached Location: a transient query failure
+		// doesn't mean PG's setting changed.
 		level.Debug(l.logger).Log("msg", "failed to query log_timezone", "err", err)
-		l.logTimezone.Store(nil)
 		return
 	}
 
-	loc, err := time.LoadLocation(name)
+	loc, err := time.LoadLocation(tzName)
 	if err != nil {
 		// PG accepts POSIX specs (e.g. 'EST5EDT,M3.2.0,M11.1.0') that Go's tzdata can't load.
-		if prev := l.lastLogTimezoneWarning.Load(); prev == nil || *prev != name {
-			level.Warn(l.logger).Log("msg", "PostgreSQL log_timezone is not a Go-loadable IANA name; logs collector will skip its historical-log filter. Consider setting log_timezone to an IANA name (e.g. 'America/New_York') in postgresql.conf.", "log_timezone", name, "err", err)
-			l.lastLogTimezoneWarning.Store(&name)
+		if prev := l.lastLogTimezone.Load(); prev == nil || *prev != tzName {
+			level.Warn(l.logger).Log("msg", "PostgreSQL log_timezone is not a Go-loadable IANA name; logs collector will skip its historical-log filter. Consider setting log_timezone to an IANA name (e.g. 'America/New_York') in postgresql.conf.", "log_timezone", tzName, "err", err)
+			l.lastLogTimezone.Store(&tzName)
 		}
 		l.logTimezone.Store(nil)
 		return
 	}
-	l.lastLogTimezoneWarning.Store(nil)
+	l.lastLogTimezone.Store(nil)
 	l.logTimezone.Store(loc)
 }
 
