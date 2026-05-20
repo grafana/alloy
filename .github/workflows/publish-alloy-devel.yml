@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 env:
-  UPDATER_APP_NAME: updater-app
+  UPDATER_APP_NAME: updater-for-ci
   UPDATER_BOT_EMAIL: 119986603+updater-for-ci[bot]@users.noreply.github.com
   UPDATER_BOT_NAME: updater-for-ci[bot]
 
