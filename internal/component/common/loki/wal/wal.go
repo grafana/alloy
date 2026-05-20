@@ -37,7 +37,7 @@ func New(cfg Config, logger *slog.Logger, registerer prometheus.Registerer) (WAL
 	// yet. This will attest for the lack of buffering in the channel Writer exposes.
 	tsdbWAL, err := wlog.NewSize(logger, registerer, cfg.Dir, wlog.DefaultSegmentSize, compression.Snappy)
 	if err != nil {
-		return nil, fmt.Errorf("failde to create tsdb WAL: %w", err)
+		return nil, fmt.Errorf("failed to create tsdb WAL: %w", err)
 	}
 	return &wrapper{
 		wal:    tsdbWAL,
