@@ -39,7 +39,10 @@ func Test_UnmarshalConfig(t *testing.T) {
 				forward_to = []
 				targets = []`,
 			expected: Arguments{
-				MaxLineSize: 1 * units.MiB,
+				Line: LineConfig{
+					MaxSize: 1 * units.MiB,
+				},
+
 				FileWatch: FileWatch{
 					MinPollFrequency: 250 * time.Millisecond,
 					MaxPollFrequency: 250 * time.Millisecond,
@@ -65,7 +68,9 @@ func Test_UnmarshalConfig(t *testing.T) {
 					sync_period = "14s"
 				}`,
 			expected: Arguments{
-				MaxLineSize: 1 * units.MiB,
+				Line: LineConfig{
+					MaxSize: 1 * units.MiB,
+				},
 				FileWatch: FileWatch{
 					MinPollFrequency: 250 * time.Millisecond,
 					MaxPollFrequency: 250 * time.Millisecond,
@@ -95,7 +100,9 @@ func Test_UnmarshalConfig(t *testing.T) {
 					sync_period = "14s"
 				}`,
 			expected: Arguments{
-				MaxLineSize: 1 * units.MiB,
+				Line: LineConfig{
+					MaxSize: 1 * units.MiB,
+				},
 				FileWatch: FileWatch{
 					MinPollFrequency: 250 * time.Millisecond,
 					MaxPollFrequency: 250 * time.Millisecond,

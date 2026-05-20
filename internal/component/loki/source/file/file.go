@@ -23,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -50,7 +51,7 @@ type Arguments struct {
 	ForwardTo            []loki.LogsReceiver  `alloy:"forward_to,attr"`
 	Encoding             string               `alloy:"encoding,attr,optional"`
 	TailFromEnd          bool                 `alloy:"tail_from_end,attr,optional"`
-	MaxLineSize          units.Base2Bytes     `alloy:"max_line_size,attr,optional"`
+	Line                 LineConfig           `alloy:"line,block,optional"`
 	FileWatch            FileWatch            `alloy:"file_watch,block,optional"`
 	FileMatch            FileMatch            `alloy:"file_match,block,optional"`
 	LegacyPositionsFile  string               `alloy:"legacy_positions_file,attr,optional"`
@@ -82,9 +83,9 @@ func (o *OnPositionsFileError) UnmarshalText(text []byte) error {
 }
 
 func (a *Arguments) SetToDefault() {
+	a.Line.SetToDefault()
 	a.FileWatch.SetToDefault()
 	a.FileMatch.SetToDefault()
-	a.MaxLineSize = 1 * units.MiB
 	a.OnPositionsFileError = OnPositionsFileErrorRestartBeginning
 }
 
@@ -135,6 +136,17 @@ func (d DecompressionConfig) GetFormat() string {
 		return d.Format.String()
 	}
 	return ""
+}
+
+var _ syntax.Defaulter = (*LineConfig)(nil)
+
+type LineConfig struct {
+	MaxSize units.Base2Bytes `alloy:"max_size,attr,optional"`
+}
+
+// SetToDefault implements syntax.Defaulter.
+func (l *LineConfig) SetToDefault() {
+	l.MaxSize = 1 * units.MiB
 }
 
 func supportedCompressedFormats() map[string]struct{} {
@@ -355,10 +367,10 @@ func (c *Component) scheduleSources() {
 					path:                 target.Path,
 					labels:               target.Labels,
 					encoding:             c.args.Encoding,
-					decompressionConfig:  c.args.DecompressionConfig,
 					fileWatch:            c.args.FileWatch,
 					tailFromEnd:          c.args.TailFromEnd,
-					maxLineSize:          int(c.args.MaxLineSize),
+					lineConfig:           c.args.Line,
+					decompressionConfig:  c.args.DecompressionConfig,
 					onPositionsFileError: c.args.OnPositionsFileError,
 					legacyPositionUsed:   c.args.LegacyPositionsFile != "",
 				},

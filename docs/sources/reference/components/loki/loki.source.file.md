@@ -45,16 +45,12 @@ You can use the following arguments with `loki.source.file`:
 | `targets`                 | `list(map(string))`  | List of files to read from.                                    |                            | yes      |
 | `encoding`                | `string`             | The encoding to convert from when reading files.               | `""`                       | no       |
 | `legacy_positions_file`   | `string`             | Allows conversion from legacy positions file.                  | `""`                       | no       |
-| `max_line_size`           | `string`             | Maximum size of a single emitted log line.                     | `"1MiB"`                   | no       |
 | `on_positions_file_error` | `string`             | How to handle a corrupt positions file entry for a given file. | `"restart_from_beginning"` | no       |
 | `tail_from_end`           | `bool`               | Whether to tail from end if a stored position isn't found.     | `false`                    | no       |
 
 The `encoding` argument must be a valid [IANA encoding][] name and if not set, it defaults to UTF-8. {{< param "PRODUCT_NAME" >}} can automatically change
 the encoding to `UTF-16` if the file includes a Byte Order Mark (BOM) for either `UTF-16BE` or `UTF-16LE`.
 The BOM will be taken into account even if {{< param "PRODUCT_NAME" >}} resumes tailing a file from the middle of the file. This can happen after {{< param "PRODUCT_NAME" >}} is restarted.
-
-The `max_line_size` argument limits the size of a single emitted log line, set to `0` disable.
-If a line grows beyond this limit before a newline is encountered, {{< param "PRODUCT_NAME" >}} emits the first `max_line_size` bytes and continues reading the remainder on subsequent reads.
 
 You can use the `tail_from_end` argument when you want to tail a large file without reading its entire content.
 When set to true, only new logs are read, ignoring the existing ones.
@@ -84,10 +80,12 @@ You can use the following blocks with `loki.source.file`:
 | [`decompression`][decompression] | Configure reading logs from compressed files.                                | no       |
 | [`file_match`][file_match]       | Configure file discovery using glob patterns for automatic target discovery. | no       |
 | [`file_watch`][file_watch]       | Configure how often files should be polled from disk for changes.            | no       |
+| [`line`][line]                   | Configure how individual log lines are read and processed.                   | no       |
 
 [decompression]: #decompression
 [file_watch]: #file_watch
 [file_match]: #file_match
+[line]: #line
 
 {{< /docs/alloy-config >}}
 
@@ -154,6 +152,18 @@ The glob patterns support the `{a,b,c}` syntax for matching multiple alternative
 
 * `/tmp/*.{log,txt,json}` matches files with `.log`, `.txt`, or `.json` extensions.
 * `/var/log/{nginx,apache}/*.log` matches `.log` files in either the `nginx` or `apache` subdirectories.
+
+### `line`
+
+The `line` block configures how individual log lines are read and processed.
+The following arguments are supported:
+
+| Name       | Type     | Description                                | Default  | Required |
+|------------|----------|--------------------------------------------|----------|----------|
+| `max_size` | `string` | Maximum size of a single emitted log line. | `"1MiB"` | no       |
+
+The `max_size` argument limits the size of a single emitted log line. Set to `0` to disable.
+If a line grows beyond this limit before a newline is encountered, {{< param "PRODUCT_NAME" >}} emits the first `max_size` bytes and continues reading the remainder on subsequent reads.
 
 ## Exported fields
 

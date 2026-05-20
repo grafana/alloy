@@ -45,10 +45,10 @@ type tailerOptions struct {
 	labels               model.LabelSet
 	encoding             string
 	tailFromEnd          bool
-	maxLineSize          int
 	fileWatch            FileWatch
 	onPositionsFileError OnPositionsFileError
 	legacyPositionUsed   bool
+	lineConfig           LineConfig
 	decompressionConfig  DecompressionConfig
 }
 
@@ -160,9 +160,9 @@ func (t *tailer) initRun() (int64, error) {
 		Filename:     t.key.Path,
 		Offset:       pos,
 		StartFromEnd: startFromEnd,
-		MaxLineSize:  t.opts.maxLineSize,
 		Encoding:     t.opts.encoding,
 		Compression:  t.opts.decompressionConfig.GetFormat(),
+		MaxLineSize:  int(t.opts.lineConfig.MaxSize),
 		WatcherConfig: tail.WatcherConfig{
 			MinPollFrequency: t.opts.fileWatch.MinPollFrequency,
 			MaxPollFrequency: t.opts.fileWatch.MaxPollFrequency,
