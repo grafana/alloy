@@ -197,19 +197,18 @@ func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEve
 
 // WaitEventOccurrence tracks a continuous occurrence of the same wait event
 // with the same blocked_by_pids set. wait_time at emit time is
-// LastTimestamp - boundedStart; boundedStart is anchored on state_change but
-// offset to priorLastSeen when a prior wait identity ended before this one
-// began (PG's state_change is stable across wait_event changes, so without
-// the offset every secondary occurrence would re-credit the full state
-// duration).
+// LastTimestamp - waitStartedAt; waitStartedAt is anchored on state_change
+// but offset to priorLastSeen when a prior wait identity ended before this
+// one began (PG's state_change is stable across wait_event changes, so
+// without the offset every secondary occurrence would re-credit the full
+// state duration).
 type WaitEventOccurrence struct {
-	WaitEventType   string
-	WaitEvent       string
-	BlockedByPIDs   []int64 // normalized set (sorted, unique)
-	LastState       string
-	LastTimestamp   time.Time // scrape time of the most recent observation
-	FirstObservedAt time.Time // first scrape that saw this occurrence
-	boundedStart    time.Time // wait_time anchor: max(state_change, priorLastSeen at first observation)
+	WaitEventType string
+	WaitEvent     string
+	BlockedByPIDs []int64 // normalized set (sorted, unique)
+	LastState     string
+	LastTimestamp time.Time // scrape time of the most recent observation
+	waitStartedAt time.Time // wait_time anchor: max(state_change, priorLastSeen at first observation)
 }
 
 // WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
@@ -425,13 +424,16 @@ func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 
 func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
 	state, existed := c.samples[key]
-	var priorLastSeen time.Time
-	if existed {
-		priorLastSeen = state.LastSeenAt
-	} else {
+	if !existed {
 		state = &SampleState{tracker: newWaitEventTracker()}
 		c.samples[key] = state
 	}
+
+	var priorLastSeen time.Time
+	if existed {
+		priorLastSeen = state.LastSeenAt
+	}
+
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
 	state.updateCpuTime(sample)
@@ -458,25 +460,24 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			t.openIdx = -1
 		}
 
-		boundedStart := time.Time{}
+		waitStartedAt := time.Time{}
 		if sample.StateChange.Valid {
-			boundedStart = sample.StateChange.Time
+			waitStartedAt = sample.StateChange.Time
 		}
-		if !priorLastSeen.IsZero() && priorLastSeen.After(boundedStart) {
-			boundedStart = priorLastSeen
+		if !priorLastSeen.IsZero() && priorLastSeen.After(waitStartedAt) {
+			waitStartedAt = priorLastSeen
 		}
-		if boundedStart.IsZero() {
-			boundedStart = now
+		if waitStartedAt.IsZero() {
+			waitStartedAt = now
 		}
 
 		newOcc := WaitEventOccurrence{
-			WaitEventType:   current.eventType,
-			WaitEvent:       current.event,
-			BlockedByPIDs:   current.blockedBy,
-			LastState:       sample.State.String,
-			LastTimestamp:   now,
-			FirstObservedAt: now,
-			boundedStart:    boundedStart,
+			WaitEventType: current.eventType,
+			WaitEvent:     current.event,
+			BlockedByPIDs: current.blockedBy,
+			LastState:     sample.State.String,
+			LastTimestamp: now,
+			waitStartedAt: waitStartedAt,
 		}
 		t.waitEvents = append(t.waitEvents, newOcc)
 		t.openIdx = len(t.waitEvents) - 1
@@ -509,17 +510,19 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
 			continue
 		}
-		waitTime := we.LastTimestamp.Sub(we.boundedStart)
+		waitTime := we.LastTimestamp.Sub(we.waitStartedAt)
 		if waitTime < 0 {
 			waitTime = 0
 		}
 		waitTimeStr := waitTime.String()
 
-		op := OP_WAIT_EVENT
-		labels := c.buildWaitEventLabels(state, we, waitTimeStr)
+		var op, labels string
 		if c.enablePreClassifiedWaitEvents {
 			op = OP_WAIT_EVENT_V2
 			labels = c.buildWaitEventV2Labels(state, we, waitTimeStr)
+		} else {
+			op = OP_WAIT_EVENT
+			labels = c.buildWaitEventLabels(state, we, waitTimeStr)
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
