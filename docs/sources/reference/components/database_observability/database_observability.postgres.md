@@ -78,7 +78,7 @@ You can use the following blocks with `database_observability.postgres`:
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
 | [`health_check`][health_check]               | Configure the health check collector.   | no       |
-| [`logs_collection`][logs_collection]         | Configure the logs collector.           | no       |
+| [`logs_processing`][logs_processing]         | Configure the logs collector.           | no       |
 | [`prometheus_exporter`][prometheus_exporter] | Configure the embedded postgres_exporter. | no       |
 
 [cloud_provider]: #cloud_provider
@@ -90,7 +90,7 @@ You can use the following blocks with `database_observability.postgres`:
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
 [health_check]: #health_check
-[logs_collection]: #logs_collection
+[logs_processing]: #logs_processing
 [prometheus_exporter]: #prometheus_exporter
 
 {{< /docs/alloy-config >}}
@@ -167,7 +167,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1h"`  | no       |
 
-### `logs_collection`
+### `logs_processing`
 
 | Name                | Type   | Description                                                                                                                  | Default | Required |
 |---------------------|--------|------------------------------------------------------------------------------------------------------------------------------|---------|----------|

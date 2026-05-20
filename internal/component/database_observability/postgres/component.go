@@ -81,11 +81,11 @@ type Arguments struct {
 	SchemaDetailsArguments  SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
 	ExplainPlansArguments   ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
 	HealthCheckArguments    HealthCheckArguments         `alloy:"health_check,block,optional"`
-	LogsCollectionArguments LogsCollectionArguments      `alloy:"logs_collection,block,optional"`
+	LogsProcessingArguments LogsProcessingArguments      `alloy:"logs_processing,block,optional"`
 	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
 }
 
-type LogsCollectionArguments struct {
+type LogsProcessingArguments struct {
 	EnableErrorLogs bool `alloy:"enable_error_logs,attr,optional"`
 }
 
@@ -727,7 +727,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Registry:               c.registry,
 		ExcludeDatabases:       c.args.ExcludeDatabases,
 		ExcludeUsers:           effectiveExcludeUsers,
-		EnableErrorLogs: c.args.LogsCollectionArguments.EnableErrorLogs,
+		EnableErrorLogs: c.args.LogsProcessingArguments.EnableErrorLogs,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
