@@ -251,7 +251,7 @@ func newEntryWriter() *entryWriter {
 	}
 }
 
-// WriteEntry writes an loki.Entry to a WAL. Note that since it's re-using the same Record object for every
+// WriteEntry writes a loki.Entry to a WAL. Note that since it's re-using the same Record object for every
 // write, it first has to be reset, and then overwritten accordingly. Therefore, WriteEntry is not thread-safe.
 func (ew *entryWriter) WriteEntry(entry loki.Entry, wl WAL) error {
 	// Reset wal record slices
