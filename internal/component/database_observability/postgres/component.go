@@ -75,7 +75,7 @@ type Arguments struct {
 	ExcludeUsers       []string            `alloy:"exclude_users,attr,optional"`
 	ExcludeCurrentUser bool                `alloy:"exclude_current_user,attr,optional"`
 
-	EnableQueryFingerprint bool `alloy:"enable_query_fingerprint,attr,optional"`
+	EnableErrorLogs bool `alloy:"enable_error_logs,attr,optional"`
 
 	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments         `alloy:"query_samples,block,optional"`
@@ -724,7 +724,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Registry:               c.registry,
 		ExcludeDatabases:       c.args.ExcludeDatabases,
 		ExcludeUsers:           effectiveExcludeUsers,
-		EnableQueryFingerprint: c.args.EnableQueryFingerprint,
+		EnableErrorLogs: c.args.EnableErrorLogs,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
