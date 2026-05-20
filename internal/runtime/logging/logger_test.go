@@ -205,6 +205,56 @@ func Test_lokiWriter_nil(t *testing.T) {
 	})
 }
 
+// TestWriteToDisabledViaUpdate verifies that logs go to both stderr and the
+// configured write_to receiver while write_to is set, and that calling Update
+// with an empty WriteTo stops sending logs to the receiver while still emitting
+// to stderr.
+func TestWriteToDisabledViaUpdate(t *testing.T) {
+	var buf safeBuffer
+	receiver := loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry, 16)))
+
+	logger, err := logging.New(&buf, debugLevel())
+	require.NoError(t, err)
+
+	require.NoError(t, logger.Update(logging.Options{
+		Level:   logging.LevelDebug,
+		Format:  logging.FormatLogfmt,
+		WriteTo: []loki.LogsReceiver{receiver},
+	}))
+
+	require.NoError(t, logger.Log("msg", "with-write-to"))
+
+	require.Eventually(t, func() bool {
+		return strings.Contains(buf.String(), "with-write-to")
+	}, time.Second, 10*time.Millisecond, "stderr did not receive log while write_to was enabled")
+
+	select {
+	case entry := <-receiver.Chan():
+		require.Contains(t, entry.Line, "with-write-to")
+	case <-time.After(time.Second):
+		t.Fatal("write_to receiver did not receive log while write_to was enabled")
+	}
+
+	require.NoError(t, logger.Update(logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	}))
+
+	beforeLen := buf.String()
+	require.NoError(t, logger.Log("msg", "without-write-to"))
+
+	require.Eventually(t, func() bool {
+		return strings.Contains(buf.String(), "without-write-to")
+	}, time.Second, 10*time.Millisecond, "stderr did not receive log after write_to was disabled")
+	require.Greater(t, len(buf.String()), len(beforeLen))
+
+	select {
+	case entry := <-receiver.Chan():
+		t.Fatalf("write_to receiver got log %q after write_to was disabled", entry.Line)
+	case <-time.After(100 * time.Millisecond):
+	}
+}
+
 // TestUpdateConcurrentHandle verifies that Logger.Update completes successfully
 // when child handlers are being used concurrently, as happens when components
 // start logging during graph evaluation before the logging config block is processed.
