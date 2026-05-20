@@ -22,7 +22,7 @@
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.6",
     "@grafana/data": "^13.0.1",
-    "@grafana/ui": "^13.0.1",
+    "@grafana/ui": "^13.1.0-25893932881",
     "@xyflow/react": "^12.10.2",
     "d3": "^7.9.0",
     "d3-dag": "^0.11.5",
@@ -31,7 +31,7 @@
     "rc-slider": "^11.1.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router": "^7.15.0"
+    "react-router": "^7.15.1"
   },
   "overrides": {
     "js-yaml": "^4.1.1"
@@ -42,7 +42,7 @@
     "@testing-library/react": "^16.3.2",
     "@types/d3": "7.4.3",
     "@types/d3-zoom": "3.0.8",
-    "@types/node": "^25.7.0",
+    "@types/node": "^25.9.1",
     "@types/react": "18.3.28",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "5.2.0",
@@ -52,10 +52,10 @@
     "eslint-plugin-simple-import-sort": "12.1.1",
     "globals": "16.5.0",
     "prettier": "3.8.1",
-    "tsx": "^4.21.0",
+    "tsx": "^4.22.3",
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.1",
     "vite": "7.3.2",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.7"
   }
 }
