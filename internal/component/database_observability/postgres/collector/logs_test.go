@@ -851,7 +851,7 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
 		Logger:                 log.NewNopLogger(),
 		Registry:               registry,
-		EnableQueryFingerprint: true,
+		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
 	// Use the default pendingErrorTimeout (5s) — this is a happy-path test, the
@@ -920,7 +920,7 @@ func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
 		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
 		Logger:                 log.NewNopLogger(),
 		Registry:               registry,
-		EnableQueryFingerprint: true,
+		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
 	c.pendingErrorTimeout = 100 * time.Millisecond
@@ -957,7 +957,7 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
 		Logger:                 log.NewNopLogger(),
 		Registry:               registry,
-		EnableQueryFingerprint: true,
+		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
 	// Default pendingErrorTimeout — the displaced-pending semantics here are
@@ -1012,7 +1012,7 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
 		Logger:                 log.NewNopLogger(),
 		Registry:               registry,
-		EnableQueryFingerprint: true,
+		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
 	require.NoError(t, c.Start(context.Background()))
@@ -1079,7 +1079,7 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
 		Logger:                 log.NewNopLogger(),
 		Registry:               registry,
-		EnableQueryFingerprint: true,
+		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
 	c.pendingErrorTimeout = 500 * time.Millisecond
@@ -1118,7 +1118,7 @@ func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
 		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
 		Logger:                 log.NewNopLogger(),
 		Registry:               registry,
-		EnableQueryFingerprint: true,
+		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
 	// Default pendingErrorTimeout — happy-path test, no timeout-race coverage here.
@@ -1153,7 +1153,7 @@ func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
 }
 
 // TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled confirms that
-// with EnableQueryFingerprint explicitly false the component still increments
+// with EnableErrorLogs explicitly false the component still increments
 // pg_errors_total but never forwards an op="error" Loki entry.
 func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T) {
 	receiver := loki.NewLogsReceiver()
@@ -1165,7 +1165,7 @@ func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T
 		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
 		Logger:                 log.NewNopLogger(),
 		Registry:               registry,
-		EnableQueryFingerprint: false, // explicitly off
+		EnableErrorLogs: false, // explicitly off
 	})
 	require.NoError(t, err)
 	require.NoError(t, c.Start(context.Background()))
@@ -1204,7 +1204,7 @@ func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T
 }
 
 // TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled pins that omitting
-// EnableQueryFingerprint from LogsArguments yields the disabled behavior:
+// EnableErrorLogs from LogsArguments yields the disabled behavior:
 // pg_errors_total still increments, but no op="error" Loki entry appears.
 func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 	receiver := loki.NewLogsReceiver()
@@ -1216,7 +1216,7 @@ func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
 		Logger:       log.NewNopLogger(),
 		Registry:     registry,
-		// EnableQueryFingerprint intentionally omitted — defaults to false
+		// EnableErrorLogs intentionally omitted — defaults to false
 	})
 	require.NoError(t, err)
 	require.NoError(t, c.Start(context.Background()))

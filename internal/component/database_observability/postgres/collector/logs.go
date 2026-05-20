@@ -82,7 +82,7 @@ type LogsArguments struct {
 	Registry               *prometheus.Registry
 	ExcludeDatabases       []string
 	ExcludeUsers           []string
-	EnableQueryFingerprint bool
+	EnableErrorLogs bool
 }
 
 type Logs struct {
@@ -93,7 +93,7 @@ type Logs struct {
 	receiver               loki.LogsReceiver
 	excludeDatabases       []string
 	excludeUsers           []string
-	enableQueryFingerprint bool
+	enableErrorLogs bool
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -128,7 +128,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		receiver:               args.Receiver,
 		excludeDatabases:       args.ExcludeDatabases,
 		excludeUsers:           args.ExcludeUsers,
-		enableQueryFingerprint: args.EnableQueryFingerprint,
+		enableErrorLogs: args.EnableErrorLogs,
 		pendingErrors:          make(map[string]*pendingError),
 		pendingErrorTimeout:    5 * time.Second,
 		ctx:                    ctx,
@@ -199,10 +199,10 @@ func (l *Logs) Stopped() bool {
 func (l *Logs) run() {
 	level.Debug(l.logger).Log("msg", "collector running, waiting for log entries")
 
-	// The STATEMENT-pairing ticker only runs when the fingerprint pipeline is
-	// on; otherwise pendingErrors stays empty and there's nothing to expire.
+	// The STATEMENT-pairing ticker only runs when op="error" emission is on;
+	// otherwise pendingErrors stays empty and there's nothing to expire.
 	var tickerC <-chan time.Time
-	if l.enableQueryFingerprint {
+	if l.enableErrorLogs {
 		tickPeriod := l.pendingErrorTimeout / 2
 		if tickPeriod < 50*time.Millisecond {
 			tickPeriod = 50 * time.Millisecond
@@ -235,7 +235,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	line := entry.Entry.Line
 
 	if strings.HasPrefix(line, "\t") {
-		if l.enableQueryFingerprint {
+		if l.enableErrorLogs {
 			l.appendToStatement(line)
 		}
 		return nil
@@ -245,21 +245,21 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	// when log_line_prefix is empty. Production lines are handled below by
 	// the prefixed-keyword path.
 	if isBareContinuationLine(line) {
-		if l.enableQueryFingerprint {
+		if l.enableErrorLogs {
 			l.processBareContinuation(line)
 		}
 		return nil
 	}
 
 	// A new prefix-formatted line ends any in-progress STATEMENT accumulation.
-	if l.enableQueryFingerprint && logFormatRegex.MatchString(line) {
+	if l.enableErrorLogs && logFormatRegex.MatchString(line) {
 		l.flushStatement()
 	}
 
 	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
 		strings.Contains(line, "FATAL:") ||
 		strings.Contains(line, "PANIC:")
-	hasStatement := l.enableQueryFingerprint && strings.Contains(line, ":STATEMENT:")
+	hasStatement := l.enableErrorLogs && strings.Contains(line, ":STATEMENT:")
 	if !hasErrorKeyword && !hasStatement {
 		return nil
 	}
@@ -367,7 +367,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		user,
 	).Inc()
 
-	if !l.enableQueryFingerprint || pid == "" {
+	if !l.enableErrorLogs || pid == "" {
 		return nil
 	}
 

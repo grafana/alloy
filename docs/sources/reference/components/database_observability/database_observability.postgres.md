@@ -37,7 +37,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `exclude_databases`        | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_users`            | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `exclude_current_user`     | `bool`               | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
-| `enable_query_fingerprint` | `bool`               | Compute a stable semantic `query_fingerprint` for every observed query and emit it on Loki entries via versioned ops, and unlock the `op="error"` Loki entries that pair PostgreSQL `ERROR` + `STATEMENT` log lines. When `false`, the component preserves the pre-fingerprint op shapes exactly. | `false` | no       |
+| `enable_error_logs`        | `bool`               | Emit `op="error"` Loki entries that pair PostgreSQL `ERROR`/`FATAL`/`PANIC` log lines with their `STATEMENT:` continuations. | `false` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
 
@@ -185,50 +185,6 @@ The `logs_receiver` entry point must be fed by `loki` log source components, for
 {{< admonition type="note" >}}
 Refer to the [documentation](https://grafana.com/docs/grafana-cloud/monitor-applications/database-observability/get-started/postgres/) for detailed log configuration options.
 {{< /admonition >}}
-
-### Emitted Loki entries
-
-Emitted only when `enable_query_fingerprint = true` on the parent `database_observability.postgres` block. With the default value, the component preserves all pre-fingerprint op shapes exactly.
-
-Alongside `database_observability_pg_errors_total`, the `logs` collector
-forwards a Loki entry on its `forward_to` target for every PostgreSQL
-`ERROR`/`FATAL`/`PANIC` for which the matching `STATEMENT:` continuation was
-successfully observed. The entry uses a single stable label and encodes
-every other field as logfmt key/value pairs in the line body — no Loki
-structured metadata is used, so the entries are portable across Loki
-versions and downstream tooling.
-
-| Field                          | Source                  | Notes                                                                |
-|--------------------------------|-------------------------|----------------------------------------------------------------------|
-| Label `op`                     | constant                | `error`                                                              |
-| Body field `level`             | constant                | `info` (Alloy convention from `BuildLokiEntry`)                      |
-| Body field `severity`          | log keyword             | `ERROR`, `FATAL`, or `PANIC`                                         |
-| Body field `sqlstate`          | `%e`                    | full 5-character SQLSTATE                                            |
-| Body field `sqlstate_class`    | first 2 chars of `%e`   | `40`, `42`, `53`, `23`, ...                                          |
-| Body field `datname`           | `%d`                    | database name                                                        |
-| Body field `query_fingerprint` | computed                | `libpg_query` fingerprint of the SQL text (16-char hex)              |
-| Body field `pid`               | `%p`                    | backend PID                                                          |
-| Body field `backend_start`     | `%s`                    | session start timestamp (raw text)                                   |
-| Body field `application_name`  | `%a`                    | typically `[unknown]` unless set client-side                         |
-| Body field `xid`               | `%x`                    | omitted when `0` (read-only / not yet assigned)                      |
-| Body field `client_addr`       | host portion of `%r`    | `[local]` for unix-domain                                            |
-| Body field `client_port`       | port portion of `%r`    | empty for unix-domain                                                |
-| Body field `session_id`        | `%c`                    | unique per backend connection                                        |
-| Body field `user`              | `%u`                    | also present on `pg_errors_total` as a label                         |
-| Body field `error_message`     | text after `<sev>:`     | human-readable error message                                         |
-
-Compute error rate per logical query in LogQL:
-
-```logql
-sum by (datname, query_fingerprint)
-  (count_over_time({op="error"} | logfmt [5m]))
-```
-
-Correlate to `pg_stat_activity` samples emitted by the `query_samples`
-collector by joining on `query_fingerprint` AND `pid` AND a small time
-window around the entry's timestamp. If the failed query was inside a write
-transaction, `xid` is also a deterministic key against
-`pg_stat_activity.backend_xid`.
 
 ## Example
 
