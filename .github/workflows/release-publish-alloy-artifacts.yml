@@ -11,6 +11,7 @@ on:
         type: boolean
         default: true
 env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
   RELEASE_TAG: ${{ github.ref_name }}
 
 permissions:
@@ -240,29 +241,15 @@ jobs:
     needs:
     - sign_alloy_windows_installer
     permissions:
-      # This job needs write access to upload assets to the GitHub release.
-      contents: write
       id-token: write
     steps:
     # A GitHub App is used to create the release instead of github-actions so that
     # submit-winget-manifest is triggered when the release is published
-    - name: Get GitHub app secrets 🔐
-      id: get-secrets
-      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
-      with:
-        export_env: false
-        repo_secrets: |
-          ALLOYBOT_APP_ID=alloybot:app_id
-          ALLOYBOT_PRIVATE_KEY=alloybot:private_key
-
     - name: Create GitHub app token 🔐
-      uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+      uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
       id: app-token
       with:
-        app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-        private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-        owner: grafana
-        repositories: alloy
+        github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
     - name: Checkout repository 🛎️
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -307,4 +294,3 @@ jobs:
       env:
         RELEASE_TAG: ${{ env.RELEASE_TAG }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
-
