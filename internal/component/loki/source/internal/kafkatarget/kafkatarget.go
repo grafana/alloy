@@ -6,16 +6,15 @@ package kafkatarget
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type runnableDroppedTarget struct {
@@ -55,7 +54,7 @@ func (d *droppedTarget) Details() any {
 }
 
 type KafkaTarget struct {
-	logger               log.Logger
+	logger               *slog.Logger
 	discoveredLabels     model.LabelSet
 	lbs                  model.LabelSet
 	details              ConsumerDetails
@@ -68,7 +67,7 @@ type KafkaTarget struct {
 }
 
 func NewKafkaTarget(
-	logger log.Logger,
+	logger *slog.Logger,
 	session sarama.ConsumerGroupSession,
 	claim sarama.ConsumerGroupClaim,
 	discoveredLabels, lbs model.LabelSet,
@@ -119,7 +118,7 @@ func (t *KafkaTarget) run() {
 		}
 		entries, err := t.messageParser.Parse(message, out, t.relabelConfig, t.useIncomingTimestamp)
 		if err != nil {
-			level.Error(t.logger).Log("msg", "message parsing error", "err", err)
+			t.logger.Error("message parsing error", "err", err)
 		} else {
 			for _, entry := range entries {
 				t.client.Chan() <- entry

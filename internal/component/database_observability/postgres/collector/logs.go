@@ -46,14 +46,12 @@ var supportedSeverities = map[string]struct{}{
 type pendingError struct {
 	receivedAt time.Time
 
-	// Label-shaped fields (also live as Loki labels or as labels of pg_errors_total).
 	severity      string
 	sqlstate      string
 	sqlstateClass string
 	datname       string
 	user          string
 
-	// Body-shaped fields populated from the prefix and the message tail.
 	timestamp       time.Time
 	clientAddr      string
 	clientPort      string
@@ -65,10 +63,8 @@ type pendingError struct {
 	errorMessage    string
 }
 
-// statementBuffer holds a STATEMENT continuation as it accumulates across
-// multiple log lines. PostgreSQL emits the SQL text of an error's statement
-// over a keyword line (`<prefix>STATEMENT:  <first line of SQL>`) plus zero
-// or more TAB-prefixed continuation lines for the rest of the SQL.
+// statementBuffer accumulates a STATEMENT continuation across the keyword line
+// and the zero-or-more TAB-prefixed lines that follow.
 type statementBuffer struct {
 	pid        string
 	receivedAt time.Time
@@ -76,13 +72,13 @@ type statementBuffer struct {
 }
 
 type LogsArguments struct {
-	Receiver               loki.LogsReceiver
-	EntryHandler           loki.EntryHandler
-	Logger                 log.Logger
-	Registry               *prometheus.Registry
-	ExcludeDatabases       []string
-	ExcludeUsers           []string
-	EnableQueryFingerprint bool
+	Receiver         loki.LogsReceiver
+	EntryHandler     loki.EntryHandler
+	Logger           log.Logger
+	Registry         *prometheus.Registry
+	ExcludeDatabases []string
+	ExcludeUsers     []string
+	EnableErrorLogs  bool
 }
 
 type Logs struct {
@@ -90,10 +86,10 @@ type Logs struct {
 	entryHandler loki.EntryHandler
 	registry     *prometheus.Registry
 
-	receiver               loki.LogsReceiver
-	excludeDatabases       []string
-	excludeUsers           []string
-	enableQueryFingerprint bool
+	receiver         loki.LogsReceiver
+	excludeDatabases []string
+	excludeUsers     []string
+	enableErrorLogs  bool
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -122,21 +118,20 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:                 log.With(args.Logger, "collector", LogsCollector),
-		entryHandler:           args.EntryHandler,
-		registry:               args.Registry,
-		receiver:               args.Receiver,
-		excludeDatabases:       args.ExcludeDatabases,
-		excludeUsers:           args.ExcludeUsers,
-		enableQueryFingerprint: args.EnableQueryFingerprint,
-		ctx:                    ctx,
-		cancel:                 cancel,
-		stopped:                atomic.NewBool(false),
-		startTime:              time.Now(),
+		logger:              log.With(args.Logger, "collector", LogsCollector),
+		entryHandler:        args.EntryHandler,
+		registry:            args.Registry,
+		receiver:            args.Receiver,
+		excludeDatabases:    args.ExcludeDatabases,
+		excludeUsers:        args.ExcludeUsers,
+		enableErrorLogs:     args.EnableErrorLogs,
+		pendingErrors:       make(map[string]*pendingError),
+		pendingErrorTimeout: 5 * time.Second,
+		ctx:                 ctx,
+		cancel:              cancel,
+		stopped:             atomic.NewBool(false),
+		startTime:           time.Now(),
 	}
-
-	l.pendingErrors = make(map[string]*pendingError)
-	l.pendingErrorTimeout = 5 * time.Second
 
 	l.initMetrics()
 
@@ -200,12 +195,16 @@ func (l *Logs) Stopped() bool {
 func (l *Logs) run() {
 	level.Debug(l.logger).Log("msg", "collector running, waiting for log entries")
 
-	tickPeriod := l.pendingErrorTimeout / 2
-	if tickPeriod < 50*time.Millisecond {
-		tickPeriod = 50 * time.Millisecond
+	var tickerC <-chan time.Time
+	if l.enableErrorLogs {
+		tickPeriod := l.pendingErrorTimeout / 2
+		if tickPeriod < 50*time.Millisecond {
+			tickPeriod = 50 * time.Millisecond
+		}
+		t := time.NewTicker(tickPeriod)
+		defer t.Stop()
+		tickerC = t.C
 	}
-	timeoutTicker := time.NewTicker(tickPeriod)
-	defer timeoutTicker.Stop()
 
 	for {
 		select {
@@ -220,7 +219,7 @@ func (l *Logs) run() {
 					"line_preview", truncateString(entry.Entry.Line, 100),
 				)
 			}
-		case <-timeoutTicker.C:
+		case <-tickerC:
 			l.flushExpiredPending()
 		}
 	}
@@ -229,32 +228,30 @@ func (l *Logs) run() {
 func (l *Logs) parseTextLog(entry loki.Entry) error {
 	line := entry.Entry.Line
 
-	// TAB-prefixed lines continue the current STATEMENT body's SQL text.
 	if strings.HasPrefix(line, "\t") {
-		l.appendToStatement(line)
+		if l.enableErrorLogs {
+			l.appendToStatement(line)
+		}
 		return nil
 	}
 
-	// Bare-keyword continuation (no log_line_prefix) — used in tests and in
-	// configurations without a log_line_prefix. Production lines carry the
-	// prefix and are handled below by the prefixed-keyword path.
+	// Bare-keyword continuations are only emitted when log_line_prefix is empty.
 	if isBareContinuationLine(line) {
-		l.processBareContinuation(line)
+		if l.enableErrorLogs {
+			l.processBareContinuation(line)
+		}
 		return nil
 	}
 
-	// A new prefix-formatted line ends any in-progress STATEMENT accumulation.
-	// Detect prefix-shaped lines via the format regex so we don't flush on
-	// arbitrary unrelated input.
-	prefixed := logFormatRegex.MatchString(line)
-	if prefixed {
+	if l.enableErrorLogs && logFormatRegex.MatchString(line) {
 		l.flushStatement()
 	}
 
-	if !strings.Contains(line, "ERROR:") &&
-		!strings.Contains(line, "FATAL:") &&
-		!strings.Contains(line, "PANIC:") &&
-		!strings.Contains(line, ":STATEMENT:") {
+	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
+		strings.Contains(line, "FATAL:") ||
+		strings.Contains(line, "PANIC:")
+	hasStatement := l.enableErrorLogs && strings.Contains(line, ":STATEMENT:")
+	if !hasErrorKeyword && !hasStatement {
 		return nil
 	}
 
@@ -272,7 +269,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		if colonIdx > 0 {
 			timestampStr := strings.TrimSpace(line[:20+colonIdx])
 
-			// Format: "YYYY-MM-DD HH:MM:SS[.mmm] TZ:..." where TZ can be GMT, UTC, -03, etc.
+			// "YYYY-MM-DD HH:MM:SS[.mmm] TZ:..." where TZ can be GMT, UTC, -03, etc.
 			for _, layout := range []string{
 				"2006-01-02 15:04:05.000 MST",
 				"2006-01-02 15:04:05.000 -07",
@@ -282,10 +279,10 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 				logTimestamp, err := time.Parse(layout, timestampStr)
 				if err == nil {
 					if !logTimestamp.After(l.startTime) {
-						return nil // Skip historical log
+						return nil
 					}
 					parsedTimestamp = logTimestamp
-					break // Found valid timestamp, continue processing
+					break
 				}
 			}
 		}
@@ -310,11 +307,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	// Parse the %r (host(port) or [local]) value sitting between the first
-	// colon after %m and the user portion.
-	clientAddr, clientPort := parseRemote(extractRemoteSegment(line, lastColonBeforeAt))
-
-	// Extract SQLSTATE from format: [pid]:line_number:SQLSTATE:...
 	pidEndIdx := strings.Index(afterAt, "]")
 	afterPid := afterAt[pidEndIdx+1:]
 
@@ -325,7 +317,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
-	// Extract PID for STATEMENT/error correlation.
 	pidStart := strings.Index(afterAt, "[")
 	pidEnd := strings.Index(afterAt, "]")
 	pid := ""
@@ -333,59 +324,14 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		pid = afterAt[pidStart+1 : pidEnd]
 	}
 
-	// Locate the keyword (`:ERROR:`/`:STATEMENT:`/etc.) to anchor the right
-	// edge of the prefix so we can parse %s/%v/%x/%c and %a.
-	kwStart, _ := findKeywordPos(line)
-	var (
-		backendStart    string
-		xidRaw          string
-		sessionID       string
-		applicationName string
-	)
-	if kwStart != -1 {
-		// The keyword sits at line[kwStart]. The prefix ends with
-		// `...:<%c>:<%a>:KEYWORD:`, so:
-		//   appEnd   = the `:` immediately before KEYWORD  (== kwStart-1)
-		//   appStart = position right after the `:` preceding %a
-		appEnd := strings.LastIndex(line[:kwStart], ":")
-		appStart := strings.LastIndex(line[:appEnd], ":") + 1
-		if appStart > 0 && appStart < appEnd {
-			applicationName = line[appStart:appEnd]
-		}
-
-		// Segment between `]` (after [%p]) and the colon preceding %a holds
-		// `%l:%e:%s:%v:%x:%c`. %s contains internal `:` chars (HH:MM:SS),
-		// so we right-anchor for %c, %x, %v and left-anchor for %l, %e, %s.
-		absPidEnd := atIdx + 1 + pidEnd
-		segL := absPidEnd + 2 // skip `]` and the `:` separator after it
-		segR := appStart - 1  // exclude the `:` preceding %a
-		if segL < segR && segR <= len(line) {
-			seg := line[segL:segR] // %l:%e:%s:%v:%x:%c
-			rest := seg
-			if rest, sessionID = popRight(rest, ":"); rest != "" {
-				if rest, xidRaw = popRight(rest, ":"); rest != "" {
-					// drop %v (we don't surface it)
-					if r, _ := popRight(rest, ":"); r != "" {
-						_, after := popLeft(r, ":")     // drop %l
-						_, backendStart = popLeft(after, ":") // drop %e, keep %s
-					}
-				}
-			}
+	if hasStatement {
+		if statementIdx := strings.Index(line, ":STATEMENT:"); statementIdx != -1 {
+			stmt := strings.TrimSpace(line[statementIdx+len(":STATEMENT:"):])
+			l.startStatement(pid, stmt)
+			return nil
 		}
 	}
 
-	xid := normalizedXid(xidRaw)
-
-	// Detect STATEMENT continuation that arrived with a log_line_prefix.
-	// The `:STATEMENT:` substring is unambiguous because the prefix ends
-	// with `:` followed by the message keyword.
-	if statementIdx := strings.Index(line, ":STATEMENT:"); statementIdx != -1 {
-		stmt := strings.TrimSpace(line[statementIdx+len(":STATEMENT:"):])
-		l.startStatement(pid, stmt)
-		return nil
-	}
-
-	// Find severity keyword (ERROR:, FATAL:, PANIC:)
 	messageStart := -1
 	severity := ""
 	for sev := range supportedSeverities {
@@ -400,17 +346,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	if _, ok := supportedSeverities[severity]; !ok {
-		return nil
-	}
-
-	// Capture the error message body — everything after `<severity>:  `.
-	errorMessage := ""
-	if msgBody := line[messageStart+len(severity)+1:]; len(msgBody) > 0 {
-		errorMessage = strings.TrimLeft(msgBody, " ")
-		errorMessage = strings.TrimRight(errorMessage, " \t")
-	}
-
 	l.errorsBySQLState.WithLabelValues(
 		severity,
 		sqlstateCode,
@@ -419,63 +354,97 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		user,
 	).Inc()
 
-	if pid != "" {
-		// Buffer the error so a matching STATEMENT continuation can stitch the
-		// SQL text and emit a Loki entry.
-		l.pendingMu.Lock()
-		// If a previous error from this PID is still pending (no STATEMENT
-		// arrived within the timeout window), the new error displaces it.
-		// The displaced error is NOT credited to the Loki op — only
-		// pg_errors_total counts it. This keeps the op count strictly equal
-		// to "errors with successfully captured SQL".
-		l.pendingErrors[pid] = &pendingError{
-			receivedAt:      time.Now(),
-			severity:        severity,
-			sqlstate:        sqlstateCode,
-			sqlstateClass:   sqlstateClass,
-			datname:         database,
-			user:            user,
-			timestamp:       parsedTimestamp,
-			clientAddr:      clientAddr,
-			clientPort:      clientPort,
-			pid:             pid,
-			backendStart:    backendStart,
-			xid:             xid,
-			sessionID:       sessionID,
-			applicationName: applicationName,
-			errorMessage:    errorMessage,
-		}
-		l.pendingMu.Unlock()
+	if !l.enableErrorLogs || pid == "" {
+		return nil
 	}
+
+	clientAddr, clientPort := parseRemote(extractRemoteSegment(line, lastColonBeforeAt))
+	backendStart, xidRaw, sessionID, applicationName := parsePrefixTail(line, atIdx, pidEnd)
+	xid := xidRaw
+	if xid == "0" {
+		xid = ""
+	}
+
+	errorMessage := ""
+	if msgBody := line[messageStart+len(severity)+1:]; len(msgBody) > 0 {
+		errorMessage = strings.TrimLeft(msgBody, " ")
+		errorMessage = strings.TrimRight(errorMessage, " \t")
+	}
+
+	// A prior pending error from this PID is displaced and never reaches
+	// op="error" — pg_errors_total still counts it. This keeps the op count
+	// equal to "errors with captured SQL".
+	l.pendingMu.Lock()
+	l.pendingErrors[pid] = &pendingError{
+		receivedAt:      time.Now(),
+		severity:        severity,
+		sqlstate:        sqlstateCode,
+		sqlstateClass:   sqlstateClass,
+		datname:         database,
+		user:            user,
+		timestamp:       parsedTimestamp,
+		clientAddr:      clientAddr,
+		clientPort:      clientPort,
+		pid:             pid,
+		backendStart:    backendStart,
+		xid:             xid,
+		sessionID:       sessionID,
+		applicationName: applicationName,
+		errorMessage:    errorMessage,
+	}
+	l.pendingMu.Unlock()
 
 	return nil
 }
 
-// extractRemoteSegment returns the %r portion of a prefixed line. The prefix
-// is `%m:%r:%u@%d:...` so %r sits between the first colon after the
-// (up-to-one-space) timestamp and the colon immediately before %u@%d. The
-// caller already located the colon directly before `%u`.
+// parsePrefixTail extracts %s, %x, %c, %a from a prefix-formatted line.
+// The prefix ends `...:<%c>:<%a>:KEYWORD:`. Between `]` (after [%p]) and the
+// `:` before %a sits `%l:%e:%s:%v:%x:%c`, and %s contributes 3 colon-separated
+// fields (HH:MM:SS), so the segment splits into exactly 8 parts.
+func parsePrefixTail(line string, atIdx, pidEnd int) (backendStart, xidRaw, sessionID, applicationName string) {
+	kwStart := findKeywordPos(line)
+	if kwStart == -1 {
+		return
+	}
+	appEnd := strings.LastIndex(line[:kwStart], ":")
+	appStart := strings.LastIndex(line[:appEnd], ":") + 1
+	if appStart > 0 && appStart < appEnd {
+		applicationName = line[appStart:appEnd]
+	}
+
+	segL := atIdx + 1 + pidEnd + 2
+	segR := appStart - 1
+	if segL >= segR || segR > len(line) {
+		return
+	}
+	parts := strings.Split(line[segL:segR], ":")
+	if len(parts) < 8 {
+		return
+	}
+	// parts: %l, %e, HH, MM, SS+tz, %v, %x, %c
+	backendStart = parts[2] + ":" + parts[3] + ":" + parts[4]
+	xidRaw = parts[6]
+	sessionID = parts[7]
+	return
+}
+
+// extractRemoteSegment returns the %r portion of a prefixed line. Skip past
+// the timestamp's HH:MM:SS before scanning for the colon that ends %m.
 func extractRemoteSegment(line string, lastColonBeforeAt int) string {
-	// First colon after %m: skip the leading 20+ chars of the timestamp,
-	// then locate the next ':'.
 	if len(line) < 30 {
 		return ""
 	}
-	scanFrom := 20
-	rel := strings.Index(line[scanFrom:], ":")
+	rel := strings.Index(line[20:], ":")
 	if rel < 0 {
 		return ""
 	}
-	rStart := scanFrom + rel + 1
+	rStart := 20 + rel + 1
 	if rStart >= lastColonBeforeAt {
 		return ""
 	}
 	return line[rStart:lastColonBeforeAt]
 }
 
-// parseRemote extracts the host and port from a %r value. Returns
-// ("[local]", "") for unix-domain connections and (s, "") if the value
-// can't be parsed as `host(port)`.
 func parseRemote(s string) (host, port string) {
 	if s == "" || s == "[local]" {
 		return s, ""
@@ -488,59 +457,20 @@ func parseRemote(s string) (host, port string) {
 	return s[:open], s[open+1 : close]
 }
 
-// popRight splits s at the last occurrence of sep. Returns ("", "") if sep
-// is not found.
-func popRight(s, sep string) (head, tail string) {
-	idx := strings.LastIndex(s, sep)
-	if idx == -1 {
-		return "", ""
-	}
-	return s[:idx], s[idx+len(sep):]
-}
-
-// popLeft splits s at the first occurrence of sep. Returns (s, "") if sep
-// is not found.
-func popLeft(s, sep string) (head, tail string) {
-	idx := strings.Index(s, sep)
-	if idx == -1 {
-		return s, ""
-	}
-	return s[:idx], s[idx+len(sep):]
-}
-
-// findKeywordPos returns the byte index in line where a known message keyword
-// (preceded by `:` and followed by `:`) begins. Returns (-1, "") if absent.
-func findKeywordPos(line string) (kwStart int, keyword string) {
+func findKeywordPos(line string) int {
 	keywords := []string{"ERROR", "FATAL", "PANIC", "STATEMENT", "DETAIL", "HINT", "CONTEXT", "QUERY", "LOCATION"}
 	best := -1
-	bestKw := ""
 	for _, kw := range keywords {
-		needle := ":" + kw + ":"
-		if idx := strings.Index(line, needle); idx != -1 {
-			if best == -1 || idx < best {
-				best = idx
-				bestKw = kw
-			}
+		if idx := strings.Index(line, ":"+kw+":"); idx != -1 && (best == -1 || idx < best) {
+			best = idx
 		}
 	}
 	if best == -1 {
-		return -1, ""
+		return -1
 	}
-	return best + 1, bestKw // +1 to skip the leading ':'
+	return best + 1 // skip the leading ':'
 }
 
-// normalizedXid maps "0" to "" so we can omit %x from the body when no real
-// transaction xid is assigned (the common autocommit-read case).
-func normalizedXid(s string) string {
-	if s == "0" {
-		return ""
-	}
-	return s
-}
-
-// isBareContinuationLine reports whether a line is a continuation message that
-// arrives without a log_line_prefix — only emitted by PostgreSQL when
-// log_line_prefix is empty, but also useful for tests.
 func isBareContinuationLine(line string) bool {
 	continuationKeywords := []string{
 		"DETAIL:",
@@ -561,12 +491,9 @@ func isBareContinuationLine(line string) bool {
 	return false
 }
 
-// processBareContinuation handles a STATEMENT continuation line that has no
-// log_line_prefix. It matches the most recently buffered pending error.
-//
-// In a non-prefixed configuration we cannot extract the originating PID from
-// the continuation line, so we rely on PostgreSQL's ereport mutex emitting
-// ERROR + STATEMENT contiguously per backend.
+// processBareContinuation matches a no-prefix STATEMENT to the most recent
+// pending error — PostgreSQL's ereport mutex emits ERROR + STATEMENT
+// contiguously per backend.
 func (l *Logs) processBareContinuation(line string) {
 	trimmed := strings.TrimSpace(line)
 	if !strings.HasPrefix(trimmed, "STATEMENT:") {
@@ -591,8 +518,6 @@ func (l *Logs) processBareContinuation(line string) {
 	l.emitErrorEntry(bestEntry, stmt)
 }
 
-// startStatement begins a new STATEMENT accumulation, flushing any prior
-// in-progress buffer first.
 func (l *Logs) startStatement(pid, initialSQL string) {
 	l.statementMu.Lock()
 	defer l.statementMu.Unlock()
@@ -605,9 +530,6 @@ func (l *Logs) startStatement(pid, initialSQL string) {
 	l.currentStatement.sql.WriteString(initialSQL)
 }
 
-// appendToStatement appends a TAB-prefixed continuation line's SQL text to the
-// in-progress STATEMENT buffer. Lines that arrive without an active buffer are
-// silently dropped (they may be continuations of non-STATEMENT messages).
 func (l *Logs) appendToStatement(line string) {
 	l.statementMu.Lock()
 	defer l.statementMu.Unlock()
@@ -621,9 +543,6 @@ func (l *Logs) appendToStatement(line string) {
 	l.currentStatement.sql.WriteString(strings.TrimLeft(line, "\t"))
 }
 
-// flushStatement consumes the in-progress STATEMENT buffer and matches it to
-// the buffered pending error sharing its PID, incrementing the fingerprint
-// counter. Safe to call when no statement is in progress.
 func (l *Logs) flushStatement() {
 	l.statementMu.Lock()
 	defer l.statementMu.Unlock()
@@ -653,16 +572,7 @@ func (l *Logs) flushStatementLocked() {
 	l.emitErrorEntry(entry, stmt)
 }
 
-// emitErrorEntry forwards a Loki entry for the matched ERROR + STATEMENT
-// pair. The Loki stream label is just `op="error"` (matching the codebase's
-// existing BuildLokiEntry convention); every other field — including the
-// fingerprint, the SQL, and all prefix metadata — is encoded as logfmt
-// key/value pairs in the line body so downstream LogQL can extract them via
-// `| logfmt`. No-op if entry is nil or if the SQL fingerprints to ErrEmpty.
 func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
-	if !l.enableQueryFingerprint {
-		return
-	}
 	if entry == nil {
 		return
 	}
@@ -685,17 +595,16 @@ func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
 	)
 }
 
-// buildErrorLine assembles a logfmt line containing every high-cardinality
-// field for one ERROR + STATEMENT pair. The SQL itself is not emitted on the
-// op=error entry — its fingerprint stands in for it; consumers can join to
-// the query_samples / query_details entries by `(query_fingerprint, pid)`
-// to recover the SQL text when needed.
+// buildErrorLine assembles the logfmt body for one ERROR + STATEMENT pair.
+// The SQL is not emitted; consumers join on (query_fingerprint, pid) to
+// recover it from the query_samples / query_details streams.
 func buildErrorLine(entry *pendingError, fp string) string {
 	type kv struct{ k, v string }
 	fields := []kv{
 		{"severity", entry.severity},
 		{"sqlstate", entry.sqlstate},
 		{"sqlstate_class", entry.sqlstateClass},
+		{"xid", entry.xid},
 		{"datname", entry.datname},
 		{"query_fingerprint", fp},
 		{"pid", entry.pid},
@@ -707,18 +616,10 @@ func buildErrorLine(entry *pendingError, fp string) string {
 		{"user", entry.user},
 		{"error_message", entry.errorMessage},
 	}
-	if entry.xid != "" {
-		// Place xid right after sqlstate to keep ordering predictable.
-		out := make([]kv, 0, len(fields)+1)
-		out = append(out, fields[0], fields[1], kv{"xid", entry.xid})
-		out = append(out, fields[2:]...)
-		fields = out
-	}
 
 	var b strings.Builder
 	for _, f := range fields {
-		// Skip empty optional fields, but keep error_message even when
-		// empty so consumers always see the field.
+		// error_message is always emitted, even when empty.
 		if f.v == "" && f.k != "error_message" {
 			continue
 		}
@@ -732,8 +633,6 @@ func buildErrorLine(entry *pendingError, fp string) string {
 	return b.String()
 }
 
-// logfmtQuote returns v as a logfmt value: bare if safe, otherwise wrapped
-// in double quotes with internal `"` and `\` backslash-escaped.
 func logfmtQuote(v string) string {
 	if !strings.ContainsAny(v, " =\"\\") {
 		return v
@@ -751,19 +650,10 @@ func logfmtQuote(v string) string {
 	return b.String()
 }
 
-// flushExpiredPending drops pending entries older than pendingErrorTimeout
-// and flushes any in-progress STATEMENT buffer that has aged past the same
-// window. Errors without a matching STATEMENT continuation never increment
-// the pg_errors_by_fingerprint_total counter — they remain counted only on
-// pg_errors_total.
-//
-// Order matters: an in-progress STATEMENT buffer is flushed first so it can
-// consume its matching pending error before that pending is expired. The
-// statement and its pending share a `receivedAt` of approximately the same
-// instant (PG emits ERROR + STATEMENT contiguously per backend), so without
-// this ordering both would expire on the same ticker fire and the statement
-// would lose its pending — under-counting the fingerprint metric for any
-// error whose STATEMENT precedes a long log gap.
+// flushExpiredPending drops pending entries older than pendingErrorTimeout.
+// The statement buffer flushes FIRST so it can consume its matching pending
+// before the pending is expired — both share approximately the same
+// receivedAt, so without this order they'd expire on the same ticker fire.
 func (l *Logs) flushExpiredPending() {
 	deadline := time.Now().Add(-l.pendingErrorTimeout)
 

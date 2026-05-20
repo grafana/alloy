@@ -23,6 +23,15 @@ const (
 	OP_HEALTH_STATUS     = "health_status"
 )
 
+const showGrantsQuery = `SHOW GRANTS`
+
+func performanceSchemaHasRowsQuery(excludeSchemas []string) string {
+	return fmt.Sprintf(
+		`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN %s`,
+		buildExcludedSchemasClause(excludeSchemas),
+	)
+}
+
 type HealthCheckArguments struct {
 	DB              *sql.DB
 	CollectInterval time.Duration
@@ -150,7 +159,7 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 		"SHOW VIEW":          false,
 	}
 
-	rows, err := db.QueryContext(ctx, "SHOW GRANTS")
+	rows, err := db.QueryContext(ctx, showGrantsQuery)
 	if err != nil {
 		r.err = fmt.Errorf("SHOW GRANTS: %w", err)
 		return r
@@ -228,7 +237,7 @@ func checkRequiredGrants(ctx context.Context, db *sql.DB) healthCheckResult {
 // excluding system schemas.
 func (c *HealthCheck) checkEventsStatementsDigestHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PerformanceSchemaHasRows"}
-	q := fmt.Sprintf(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN %s`, buildExcludedSchemasClause(c.excludeSchemas))
+	q := performanceSchemaHasRowsQuery(c.excludeSchemas)
 	var rowCount int64
 	if err := db.QueryRowContext(ctx, q).Scan(&rowCount); err != nil {
 		r.err = err

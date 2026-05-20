@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 type DiscovererFn func(sarama.ConsumerGroupSession, sarama.ConsumerGroupClaim) (RunnableTarget, error)
@@ -38,7 +39,7 @@ func Test_ConsumerConsume(t *testing.T) {
 		session     = &testSession{}
 		ctx, cancel = context.WithCancel(t.Context())
 		c           = &consumer{
-			logger:        log.NewNopLogger(),
+			logger:        logging.NewSlogNop(),
 			ctx:           t.Context(),
 			cancel:        func() {},
 			ConsumerGroup: group,
@@ -90,7 +91,7 @@ func Test_ConsumerRetry(t *testing.T) {
 		}
 		ctx, cancel = context.WithCancel(t.Context())
 		c           = &consumer{
-			logger:        log.NewNopLogger(),
+			logger:        logging.NewSlogNop(),
 			ctx:           t.Context(),
 			cancel:        func() {},
 			ConsumerGroup: group,

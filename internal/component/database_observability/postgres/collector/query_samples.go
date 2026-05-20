@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -645,7 +646,7 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
 	eventType := we.WaitEventType
 	if c.enablePreClassifiedWaitEvents {
-		eventType = classifyPostgresWaitEventType(we.WaitEventType)
+		eventType = classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent)
 	}
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
@@ -714,15 +715,43 @@ func isIdleState(state string) bool {
 	return false
 }
 
+var postgresReplicationWaitEventPrefixes = []string{
+	"SyncRep",
+	"WalSender",
+	"WalReceiver",
+	"Recovery",
+	"LogicalApply",
+	"LogicalLauncher",
+	"LogicalSync",
+	"LogicalParallelApply",
+	"LogicalRep",
+	"ReplicationSlot",
+	"ReplicationOrigin",
+}
+
+func isPostgresReplicationWaitEvent(waitEvent string) bool {
+	for _, p := range postgresReplicationWaitEventPrefixes {
+		if strings.HasPrefix(waitEvent, p) {
+			return true
+		}
+	}
+	return false
+}
+
 // classifyPostgresWaitEventType maps a raw PostgreSQL wait event type to a standardized category.
-func classifyPostgresWaitEventType(rawType string) string {
+func classifyPostgresWaitEventType(rawType, waitEvent string) string {
+	if isPostgresReplicationWaitEvent(waitEvent) {
+		return "Replication Wait"
+	}
 	switch rawType {
 	case "IO":
 		return "IO Wait"
-	case "Lock", "LWLock", "Activity", "Extension", "InjectionPoint", "IPC", "Timeout", "BufferPin":
-		return "Lock Wait"
 	case "Client":
 		return "Network Wait"
+	case "Lock":
+		return "Lock Wait"
+	case "LWLock", "BufferPin", "IPC":
+		return "Engine Wait"
 	default:
 		return "Other Wait"
 	}

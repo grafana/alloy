@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 )
 
@@ -17,7 +16,7 @@ type StaticLabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
 }
 
-func newStaticLabelsStage(_ log.Logger, config StaticLabelsConfig) (Stage, error) {
+func newStaticLabelsStage(config StaticLabelsConfig) (Stage, error) {
 	err := validateLabelStaticConfig(config)
 	if err != nil {
 		return nil, err

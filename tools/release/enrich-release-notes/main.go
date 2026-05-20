@@ -216,6 +216,11 @@ func appendAttribution(line string, contributors []string) string {
 
 // appendFooter reads the release notes footer template and appends it with version substitution.
 func appendFooter(body, tag, footerPath string) (string, error) {
+	if isComponentReleaseTag(tag) {
+		fmt.Printf("Skipping release notes footer for component release tag %s\n", tag)
+		return body, nil
+	}
+
 	footer, err := os.ReadFile(footerPath)
 	if err != nil {
 		return "", fmt.Errorf("reading footer template: %w", err)
@@ -232,6 +237,10 @@ func appendFooter(body, tag, footerPath string) (string, error) {
 
 	// Append footer to body
 	return body + "\n\n" + footerStr, nil
+}
+
+func isComponentReleaseTag(tag string) bool {
+	return strings.Contains(tag, "/")
 }
 
 // deriveDocTag derives the documentation tag from a release tag.

@@ -132,9 +132,11 @@ func TestComponent(t *testing.T) {
 			defer collector1.Stop()
 			collector2 := loki.NewCollectingHandler()
 			defer collector2.Stop()
+			logger := util.TestAlloyLogger(t)
 
 			opts := component.Options{
-				Logger:         util.TestAlloyLogger(t),
+				Logger:         logger,
+				SLogger:        logger.Slog(),
 				Registerer:     prometheus.NewRegistry(),
 				OnStateChange:  func(e component.Exports) {},
 				GetServiceData: getServiceData,
@@ -205,8 +207,10 @@ func BenchmarkRelabelComponent(b *testing.B) {
 	ch1 := loki.NewLogsReceiver()
 
 	// Create and run the component, so that it relabels and forwards logs.
+	logger := util.TestAlloyLogger(b)
 	opts := component.Options{
-		Logger:         util.TestAlloyLogger(b),
+		Logger:         logger,
+		SLogger:        logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
@@ -254,8 +258,10 @@ func TestCache(t *testing.T) {
 	ch1 := loki.NewLogsReceiver()
 
 	// Create and run the component, so that it relabels and forwards logs.
+	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         util.TestAlloyLogger(t),
+		Logger:         logger,
+		SLogger:        logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,

@@ -18,7 +18,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 const restartInterval = 20 * time.Millisecond
@@ -39,8 +39,11 @@ func TestTailer(t *testing.T) {
 	server := newDockerServer(t)
 	defer server.Close()
 
-	logger := log.NewNopLogger()
-	entryHandler := loki.NewCollectingHandler()
+	var (
+		logger       = logging.NewSlogNop()
+		entryHandler = loki.NewCollectingHandler()
+	)
+
 	client, err := client.New(client.WithHost(server.URL))
 	require.NoError(t, err)
 
@@ -108,8 +111,10 @@ func TestTailerStartStopStressTest(t *testing.T) {
 	server := newDockerServer(t)
 	defer server.Close()
 
-	logger := log.NewNopLogger()
-	entryHandler := loki.NewCollectingHandler()
+	var (
+		logger       = logging.NewSlogNop()
+		entryHandler = loki.NewCollectingHandler()
+	)
 
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
@@ -236,7 +241,7 @@ func TestTailerConsumeLines(t *testing.T) {
 	t.Run("skip empty line", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
 		tailer := &tailer{
-			logger:            log.NewNopLogger(),
+			logger:            logging.NewSlogNop(),
 			recv:              collector.Receiver(),
 			positions:         positions.NewNop(),
 			containerID:       "test",
@@ -275,7 +280,7 @@ func TestTailerConsumeLines(t *testing.T) {
 	t.Run("bigger than max size", func(t *testing.T) {
 		collector := loki.NewCollectingHandler()
 		tailer := &tailer{
-			logger:            log.NewJSONLogger(os.Stdout),
+			logger:            logging.NewSlogNop(),
 			recv:              collector.Receiver(),
 			positions:         positions.NewNop(),
 			containerID:       "test",
@@ -315,10 +320,12 @@ func TestTailerConsumeLines(t *testing.T) {
 }
 
 func TestChunkWriter(t *testing.T) {
-	logger := log.NewNopLogger()
-	var buf bytes.Buffer
-	writer := newChunkWriter(&buf, logger)
+	var (
+		buf    bytes.Buffer
+		logger = logging.NewSlogNop()
+	)
 
+	writer := newChunkWriter(&buf, logger)
 	timestamp := []byte("2023-12-09T12:00:00.000000000Z ")
 	shortLine := []byte("short log line\n")
 
@@ -438,8 +445,10 @@ func containsString(slice []string, str string) bool {
 }
 
 func setupTailer(t *testing.T, client clientMock) (*tailer, *loki.CollectingHandler) {
-	logger := log.NewNopLogger()
-	entryHandler := loki.NewCollectingHandler()
+	var (
+		logger       = logging.NewSlogNop()
+		entryHandler = loki.NewCollectingHandler()
+	)
 
 	ps, err := positions.New(logger, positions.Config{
 		SyncPeriod:    10 * time.Second,

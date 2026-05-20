@@ -18,7 +18,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestEventLogger(t *testing.T) {
@@ -32,7 +32,7 @@ func TestEventLogger(t *testing.T) {
 	rec := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
-		Logger:   util.TestAlloyLogger(t),
+		SLogger:  logging.NewSlogNop(),
 		DataPath: dataPath,
 		OnStateChange: func(e component.Exports) {
 
@@ -90,7 +90,7 @@ func TestLegacyBookmarkConversion(t *testing.T) {
 	rec := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
-		Logger:   util.TestAlloyLogger(t),
+		SLogger:  logging.NewSlogNop(),
 		DataPath: dataPath,
 		OnStateChange: func(e component.Exports) {
 

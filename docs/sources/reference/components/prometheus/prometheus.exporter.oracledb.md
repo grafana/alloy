@@ -15,11 +15,6 @@ title: prometheus.exporter.oracledb
 The `prometheus.exporter.oracledb` component embeds
 [`oracledb_exporter`](https://github.com/oracle/oracle-db-appdev-monitoring) for collecting statistics from one or more OracleDB servers.
 
-{{< admonition type="warning" >}}
-Don't run more than one `prometheus.exporter.oracledb` component in the same {{< param "PRODUCT_NAME" >}} process.
-Configure one component with multiple `database` blocks when you scrape more than one database.
-{{< /admonition >}}
-
 Ensure you have the following:
 
 - Oracle Instant Client Basic installed on the system running {{< param "PRODUCT_NAME" >}}

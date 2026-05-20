@@ -19,7 +19,7 @@ import (
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/gcplog/gcptypes"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 // TODO (@tpaschalis) We can't test this easily as there's no way to inject
@@ -31,7 +31,7 @@ func TestPushFromNestedController(t *testing.T) {
 
 	opts := component.Options{
 		ID:            "foo/loki.source.gcplog.default",
-		Logger:        util.TestAlloyLogger(t),
+		SLogger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -65,7 +65,7 @@ func TestPushFromNestedController(t *testing.T) {
 
 func TestPush(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		SLogger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

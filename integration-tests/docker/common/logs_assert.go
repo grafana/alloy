@@ -4,19 +4,32 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/grafana/alloy/integration-tests/internal/lokihttp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 const lokiURL = "http://localhost:3100/loki/api/v1/"
 
-// LogQuery returns a formatted Loki query with the given test_name label
-func LogQuery(testName string, limit int) string {
+// LabelMatcher is an extra Loki stream selector matcher (e.g. op="create_statement")
+// that callers can pass to LogQuery to narrow the query beyond test_name.
+type LabelMatcher struct {
+	Name, Value string
+}
+
+// LogQuery returns a formatted Loki query selecting on the given test_name
+// label and any additional label matchers.
+func LogQuery(testName string, limit int, extraLabelMatchers ...LabelMatcher) string {
 	// https://grafana.com/docs/loki/latest/reference/loki-http-api/#query-logs-within-a-range-of-time
-	queryFilter := fmt.Sprintf("{test_name=\"%s\"}", testName)
+	parts := []string{fmt.Sprintf(`test_name=%q`, testName)}
+	for _, m := range extraLabelMatchers {
+		parts = append(parts, fmt.Sprintf(`%s=%q`, m.Name, m.Value))
+	}
+	queryFilter := "{" + strings.Join(parts, ", ") + "}"
 	query := fmt.Sprintf("%squery_range?query=%s&limit=%d", lokiURL, url.QueryEscape(queryFilter), limit)
 
 	// Loki queries require a nanosecond unix timestamp for the start time.
@@ -38,7 +51,7 @@ func AssertLogsPresent(t *testing.T, totalCount int, expected ...ExpectedLogResu
 	t.Helper()
 	AssertStatefulTestEnv(t)
 
-	var logResponse LogResponse
+	var logResponse lokihttp.LogResponse
 
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		err := fetchLokiQueryRange(SanitizeTestName(t), totalCount, &logResponse)
@@ -84,7 +97,7 @@ func AssertLabelsNotIndexed(t *testing.T, labels ...string) {
 	t.Helper()
 	AssertStatefulTestEnv(t)
 
-	var resp LogSeriesResponse
+	var resp lokihttp.LogSeriesResponse
 	_, err := FetchDataFromURL(LogSeriesQuery(SanitizeTestName(t)), &resp)
 	require.NoError(t, err)
 	require.NotEmpty(t, resp.Data, "no Loki series found for test; call AssertLogsPresent before AssertLabelsNotIndexed")
@@ -109,7 +122,7 @@ func WaitForInitalLogs(testName string) error {
 	for {
 		select {
 		case <-tick.C:
-			var resp LogResponse
+			var resp lokihttp.LogResponse
 
 			err := fetchLokiQueryRange(testName, 1, &resp)
 			if err != nil {
@@ -126,7 +139,7 @@ func WaitForInitalLogs(testName string) error {
 	}
 }
 
-func fetchLokiQueryRange(testName string, totalExpected int, res *LogResponse) error {
+func fetchLokiQueryRange(testName string, totalExpected int, res *lokihttp.LogResponse) error {
 	// We need to set this header for loki to pass structured_metadata for every entry and
 	// not return it as a label in stream.
 	const (
@@ -144,8 +157,8 @@ func fetchLokiQueryRange(testName string, totalExpected int, res *LogResponse) e
 
 // matchingEntries returns all log entries across streams whose labels are a
 // superset of the provided label set.
-func matchingEntries(labels map[string]string, result []LogData) []LogEntry {
-	var entries []LogEntry
+func matchingEntries(labels map[string]string, result []lokihttp.LogData) []lokihttp.LogEntry {
+	var entries []lokihttp.LogEntry
 	for _, r := range result {
 		if streamContainsLabels(r.Stream, labels) {
 			entries = append(entries, r.Values...)

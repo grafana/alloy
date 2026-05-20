@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -66,31 +67,29 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets           []discovery.Target  `alloy:"targets,attr,optional"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
-	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
-	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
+	DataSourceName     alloytypes.Secret   `alloy:"data_source_name,attr"`
+	ForwardTo          []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Targets            []discovery.Target  `alloy:"targets,attr,optional"`
+	EnableCollectors   []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors  []string            `alloy:"disable_collectors,attr,optional"`
+	ExcludeDatabases   []string            `alloy:"exclude_databases,attr,optional"`
+	ExcludeUsers       []string            `alloy:"exclude_users,attr,optional"`
+	ExcludeCurrentUser bool                `alloy:"exclude_current_user,attr,optional"`
 
-	// EnableQueryFingerprint, when true, makes the component compute a stable
-	// semantic query_fingerprint for every observed query and emit it on Loki
-	// entries via versioned ops (query_association_v2, query_sample_v2,
-	// wait_event_v3, wait_event_v4). It also unlocks the new op="error" Loki
-	// entries that pair PostgreSQL ERROR + STATEMENT log lines and attach the
-	// fingerprint. When false (the default), the component preserves the
-	// pre-existing op shapes exactly and does not invoke the fingerprint
-	// pipeline at all.
 	EnableQueryFingerprint bool `alloy:"enable_query_fingerprint,attr,optional"`
 
-	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
-	QuerySampleArguments   QuerySampleArguments         `alloy:"query_samples,block,optional"`
-	QueryDetailsArguments  QueryDetailsArguments        `alloy:"query_details,block,optional"`
-	SchemaDetailsArguments SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
-	ExplainPlansArguments  ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
-	HealthCheckArguments   HealthCheckArguments         `alloy:"health_check,block,optional"`
-	PrometheusExporter     *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
+	CloudProvider           *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	QuerySampleArguments    QuerySampleArguments         `alloy:"query_samples,block,optional"`
+	QueryDetailsArguments   QueryDetailsArguments        `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments  SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments   ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments    HealthCheckArguments         `alloy:"health_check,block,optional"`
+	LogsProcessingArguments LogsProcessingArguments      `alloy:"logs_processing,block,optional"`
+	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
+}
+
+type LogsProcessingArguments struct {
+	EnableErrorLogs bool `alloy:"enable_error_logs,attr,optional"`
 }
 
 type CloudProvider struct {
@@ -114,10 +113,13 @@ type GCPCloudProviderInfo struct {
 }
 
 type QuerySampleArguments struct {
-	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
-	ExcludeCurrentUser            bool          `alloy:"exclude_current_user,attr,optional"`
-	EnablePreClassifiedWaitEvents bool          `alloy:"enable_pre_classified_wait_events,attr,optional"`
+	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
+	// Deprecated: `query_samples.exclude_current_user` is deprecated in favour of the top-level setting.
+	// When set (non-nil), it takes precedence over the top-level setting for the
+	// query_samples collector only and preserves the legacy behaviour.
+	ExcludeCurrentUser            *bool `alloy:"exclude_current_user,attr,optional"`
+	EnablePreClassifiedWaitEvents bool  `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type QueryDetailsArguments struct {
@@ -134,12 +136,12 @@ type SchemaDetailsArguments struct {
 
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
-		ExcludeUsers:     database_observability.DefaultExcludedUsers(),
+		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
+		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
+		ExcludeCurrentUser: true,
 		QuerySampleArguments: QuerySampleArguments{
 			CollectInterval:       15 * time.Second,
 			DisableQueryRedaction: false,
-			ExcludeCurrentUser:    true,
 		},
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
@@ -437,6 +439,20 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
 
+	// Get the current user and compute the effective exclude users list.
+	var currentUser sql.NullString
+	if c.args.ExcludeCurrentUser {
+		if err := dbConnection.QueryRowContext(ctx, "SELECT current_user").Scan(&currentUser); err != nil {
+			return fmt.Errorf("failed to query current_user: %w", err)
+		}
+	}
+	effectiveExcludeUsers := slices.Clone(c.args.ExcludeUsers)
+	if currentUser.Valid {
+		if !slices.Contains(effectiveExcludeUsers, currentUser.String) {
+			effectiveExcludeUsers = append(effectiveExcludeUsers, currentUser.String)
+		}
+	}
+
 	var cp *database_observability.CloudProvider
 	if c.args.CloudProvider != nil {
 		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
@@ -523,7 +539,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp, trackActivityQuerySize); err != nil {
+	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp, effectiveExcludeUsers, trackActivityQuerySize); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -569,8 +585,8 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, trackActivityQuerySize int) error {
+// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported.
+func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string, trackActivityQuerySize int) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -612,7 +628,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			CollectInterval:        c.args.QueryDetailsArguments.CollectInterval,
 			StatementsLimit:        c.args.QueryDetailsArguments.StatementsLimit,
 			ExcludeDatabases:       c.args.ExcludeDatabases,
-			ExcludeUsers:           c.args.ExcludeUsers,
+			ExcludeUsers:           effectiveExcludeUsers,
 			EntryHandler:           entryHandler,
 			TableRegistry:          tableRegistry,
 			EnableQueryFingerprint: c.args.EnableQueryFingerprint,
@@ -628,15 +644,26 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
+		// For backward compatibility, give precedence to query_samples.exclude_current_user
+		// setting over the top-level exclude_current_user: when set, preserve today's behavior;
+		// when unset, inherit the top-level cascade.
+		qsExcludeUsers := effectiveExcludeUsers
+		qsExcludeCurrentUser := false
+		if localExcludeCurrentUser := c.args.QuerySampleArguments.ExcludeCurrentUser; localExcludeCurrentUser != nil {
+			level.Warn(c.opts.Logger).Log("msg", "query_samples.exclude_current_user is deprecated; use the top-level exclude_current_user setting instead")
+			qsExcludeUsers = c.args.ExcludeUsers
+			qsExcludeCurrentUser = *localExcludeCurrentUser
+		}
+
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
 			DB:                            c.dbConnection,
 			CollectInterval:               c.args.QuerySampleArguments.CollectInterval,
 			ExcludeDatabases:              c.args.ExcludeDatabases,
-			ExcludeUsers:                  c.args.ExcludeUsers,
+			ExcludeUsers:                  qsExcludeUsers,
 			EntryHandler:                  entryHandler,
 			Logger:                        c.opts.Logger,
 			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
-			ExcludeCurrentUser:            c.args.QuerySampleArguments.ExcludeCurrentUser,
+			ExcludeCurrentUser:            qsExcludeCurrentUser,
 			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
 			EnableQueryFingerprint:        c.args.EnableQueryFingerprint,
 			TrackActivityQuerySize:        trackActivityQuerySize,
@@ -675,7 +702,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     c.args.ExcludeUsers,
+			ExcludeUsers:     effectiveExcludeUsers,
 			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
 			EntryHandler:     entryHandler,
@@ -694,7 +721,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		DB:               c.dbConnection,
 		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
 		ExcludeDatabases: c.args.ExcludeDatabases,
-		ExcludeUsers:     c.args.ExcludeUsers,
+		ExcludeUsers:     effectiveExcludeUsers,
 		EntryHandler:     entryHandler,
 		Logger:           c.opts.Logger,
 	})
@@ -709,16 +736,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver: c.logsReceiver,
-		// Forward emitted ops (e.g. op="error") to the same fanout the other
-		// collectors use, NOT back into the receiver — the receiver is the
-		// inbound queue we tail postgres log files from.
+		Receiver:               c.logsReceiver,
 		EntryHandler:           entryHandler,
 		Logger:                 c.opts.Logger,
 		Registry:               c.registry,
 		ExcludeDatabases:       c.args.ExcludeDatabases,
-		ExcludeUsers:           c.args.ExcludeUsers,
-		EnableQueryFingerprint: c.args.EnableQueryFingerprint,
+		ExcludeUsers:           effectiveExcludeUsers,
+		EnableErrorLogs: c.args.LogsProcessingArguments.EnableErrorLogs,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
