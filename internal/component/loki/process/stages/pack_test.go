@@ -38,7 +38,7 @@ stage.match {
 func TestPackPipeline(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testPackAlloy), registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testPackAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	require.NoError(t, err)
 
 	l1Lbls := model.LabelSet{
@@ -336,7 +336,7 @@ func TestPackStage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := util.TestAlloyLogger(t)
-			m := newPackStage(logger, *tt.config, prometheus.DefaultRegisterer)
+			m := newPackStage(logger.Slog(), *tt.config, prometheus.DefaultRegisterer)
 			// Normal pipeline operation will put all the labels into the extracted map
 			// replicate that here.
 			for labelName, labelValue := range tt.inputEntry.Labels {

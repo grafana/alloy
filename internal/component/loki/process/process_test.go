@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testlivedebugging"
@@ -817,6 +818,7 @@ func TestComponent(t *testing.T) {
 
 			opts := component.Options{
 				Logger:         log.NewNopLogger(),
+				SLogger:        logging.NewSlogNop(),
 				Registerer:     prometheus.NewRegistry(),
 				OnStateChange:  func(component.Exports) {},
 				GetServiceData: getServiceData,
@@ -1041,8 +1043,10 @@ func TestJSONLabelsStage(t *testing.T) {
 	liveDebuggingLog := testlivedebugging.NewLog()
 
 	// Create and run the component, so that it can process and forwards logs.
+	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         util.TestAlloyLogger(t),
+		Logger:         logger,
+		SLogger:        logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceDataWithLiveDebugging(liveDebuggingLog),
@@ -1266,8 +1270,10 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 
 	args.ForwardTo = []loki.LogsReceiver{res.receiver1, res.receiver2}
 
+	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         util.TestAlloyLogger(t),
+		Logger:         logger,
+		SLogger:        logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
@@ -1623,8 +1629,10 @@ type tester struct {
 func newTester(t *testing.T) *tester {
 	reg := prometheus.NewRegistry()
 
+	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         util.TestAlloyLogger(t),
+		Logger:         logger,
+		SLogger:        logger.Slog(),
 		Registerer:     reg,
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,

@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.8.0](https://img.shields.io/badge/Version-1.8.0-informational?style=flat-square) ![AppVersion: v1.16.0](https://img.shields.io/badge/AppVersion-v1.16.0-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.8.1](https://img.shields.io/badge/Version-1.8.1-informational?style=flat-square) ![AppVersion: v1.16.1](https://img.shields.io/badge/AppVersion-v1.16.1-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -68,7 +68,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.image.pullPolicy | string | `"IfNotPresent"` | Config reloader image pull policy. |
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
-| configReloader.image.tag | string | `"v0.81.0"` | Tag of image to use for config reloading. |
+| configReloader.image.tag | string | `"v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1"` | Tag of image to use for config reloading. |
 | configReloader.resources | object | `{"requests":{"cpu":"10m","memory":"50Mi"}}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |

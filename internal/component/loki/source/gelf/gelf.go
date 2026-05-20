@@ -12,7 +12,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/gelf/internal/target"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -76,7 +75,7 @@ type Component struct {
 // Run starts the component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "component shutting down")
+		c.opts.SLogger.Info("component shutting down")
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
@@ -109,7 +108,7 @@ func (c *Component) Update(args component.Arguments) error {
 		rcs = alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelRules)
 	}
 
-	t, err := target.NewTarget(c.metrics, c.opts.Logger, c.handler, rcs, &scrapeconfig.GelfTargetConfig{
+	t, err := target.NewTarget(c.metrics, c.opts.SLogger, c.handler, rcs, &scrapeconfig.GelfTargetConfig{
 		ListenAddress:        newArgs.ListenAddress,
 		UseIncomingTimestamp: newArgs.UseIncomingTimestamp,
 	})

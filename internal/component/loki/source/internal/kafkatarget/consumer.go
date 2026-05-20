@@ -7,15 +7,13 @@ package kafkatarget
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var defaultBackOff = backoff.Config{
@@ -47,7 +45,7 @@ type TargetDiscoverer interface {
 type consumer struct {
 	sarama.ConsumerGroup
 	discoverer TargetDiscoverer
-	logger     log.Logger
+	logger     *slog.Logger
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -64,7 +62,7 @@ func (c *consumer) start(ctx context.Context, topics []string) {
 	c.wg.Add(1)
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
-	level.Info(c.logger).Log("msg", "starting consumer", "topics", fmt.Sprintf("%+v", topics))
+	c.logger.Info("starting consumer", "topics", fmt.Sprintf("%+v", topics))
 
 	go func() {
 		defer c.wg.Done()
@@ -74,17 +72,17 @@ func (c *consumer) start(ctx context.Context, topics []string) {
 			// In which case all claims will be renewed.
 			err := c.ConsumerGroup.Consume(c.ctx, topics, c)
 			if err != nil && err != context.Canceled {
-				level.Error(c.logger).Log("msg", "error from the consumer, retrying...", "err", err)
+				c.logger.Error("error from the consumer, retrying...", "err", err)
 				// backoff before re-trying.
 				backoff.Wait()
 				if backoff.Ongoing() {
 					continue
 				}
-				level.Error(c.logger).Log("msg", "maximum error from the consumer reached", "last_err", err)
+				c.logger.Error("maximum error from the consumer reached", "last_err", err)
 				return
 			}
 			if c.ctx.Err() != nil || err == context.Canceled {
-				level.Info(c.logger).Log("msg", "stopping consumer", "topics", fmt.Sprintf("%+v", topics))
+				c.logger.Info("stopping consumer", "topics", fmt.Sprintf("%+v", topics))
 				return
 			}
 			backoff.Reset()
@@ -107,7 +105,7 @@ func (c *consumer) ConsumeClaim(session sarama.ConsumerGroupSession, claim saram
 		return nil
 	}
 	c.addTarget(t)
-	level.Info(c.logger).Log("msg", "consuming topic", "details", t.Details())
+	c.logger.Info("consuming topic", "details", t.Details())
 	t.run()
 
 	return nil

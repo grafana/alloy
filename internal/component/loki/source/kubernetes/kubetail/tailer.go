@@ -6,11 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
@@ -22,7 +22,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/runner"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // tailerTask is the payload used to create tailers. It implements runner.Task.
@@ -54,7 +53,7 @@ func (tt *tailerTask) Equals(other runner.Task) bool {
 // A tailer tails the logs of a Kubernetes container. It is created by a
 // [Manager].
 type tailer struct {
-	log    log.Logger
+	log    *slog.Logger
 	opts   *Options
 	target *Target
 
@@ -65,13 +64,12 @@ var _ runner.Worker = (*tailer)(nil)
 
 // newTailer returns a new Tailer which tails logs from the target specified by
 // the task.
-func newTailer(l log.Logger, task *tailerTask) *tailer {
+func newTailer(l *slog.Logger, task *tailerTask) *tailer {
 	return &tailer{
-		log:    log.WithPrefix(l, "target", task.Target.String()),
+		log:    l.With("target", task.Target.String()),
 		opts:   task.Options,
 		target: task.Target,
-
-		lset: newLabelSet(task.Target.Labels()),
+		lset:   newLabelSet(task.Target.Labels()),
 	}
 }
 
@@ -96,8 +94,8 @@ func (t *tailer) Run(ctx context.Context) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	level.Info(t.log).Log("msg", "tailer running")
-	defer level.Info(t.log).Log("msg", "tailer exited")
+	t.log.Info("tailer running")
+	defer t.log.Info("tailer exited")
 
 	bo := backoff.New(ctx, retailBackoff)
 
@@ -115,26 +113,26 @@ func (t *tailer) Run(ctx context.Context) {
 			// Fetch pod info once and use different logic for job pods vs regular pods
 			podInfo, podCheckErr := t.getPodInfo(ctx)
 			if podCheckErr != nil {
-				level.Warn(t.log).Log("msg", "could not get pod info; will retry tailing", "err", podCheckErr)
+				t.log.Warn("could not get pod info; will retry tailing", "err", podCheckErr)
 			} else {
 				isJob := isJobPod(podInfo)
 				if isJob {
 					// For job pods, use special grace period logic to ensure all logs are captured
 					finished, err := t.shouldStopTailingJobContainer(podInfo)
 					if finished {
-						level.Info(t.log).Log("msg", "should stop tailing job container, stopping tailer")
+						t.log.Info("should stop tailing job container, stopping tailer")
 						return
 					} else if err != nil {
-						level.Warn(t.log).Log("msg", "could not determine if should stop tailing job container; will retry tailing", "err", err)
+						t.log.Warn("could not determine if should stop tailing job container; will retry tailing", "err", err)
 					}
 				} else {
 					// For regular pods, use standard termination logic
 					terminated, err := t.shouldStopTailingContainer(podInfo)
 					if terminated {
-						level.Info(t.log).Log("msg", "container terminated, stopping tailer")
+						t.log.Info("container terminated, stopping tailer")
 						return
 					} else if err != nil {
-						level.Warn(t.log).Log("msg", "could not determine if container terminated; will retry tailing", "err", err)
+						t.log.Warn("could not determine if container terminated; will retry tailing", "err", err)
 					}
 				}
 			}
@@ -142,7 +140,7 @@ func (t *tailer) Run(ctx context.Context) {
 
 		if err != nil {
 			t.target.Report(time.Now().UTC(), err)
-			level.Warn(t.log).Log("msg", "tailer stopped; will retry", "err", err)
+			t.log.Warn("tailer stopped; will retry", "err", err)
 		}
 		bo.Wait()
 	}
@@ -165,7 +163,7 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 	var lastReadTime time.Time
 
 	if offset, err := t.opts.Positions.Get(positionsEnt.Path, positionsEnt.Labels); err != nil {
-		level.Warn(t.log).Log("msg", "failed to load last read offset", "err", err)
+		t.log.Warn("failed to load last read offset", "err", err)
 	} else if offset != 0 {
 		lastReadTime = time.UnixMicro(offset)
 	}
@@ -248,7 +246,7 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 					}
 					s := time.Since(last)
 					if s > avg*3 {
-						level.Debug(t.log).Log("msg", "have not seen a log line in 3x average time between lines, closing and re-opening tailer", "rolling_average", avg, "time_since_last", s)
+						t.log.Debug("have not seen a log line in 3x average time between lines, closing and re-opening tailer", "rolling_average", avg, "time_since_last", s)
 						return
 					}
 				}
@@ -261,7 +259,7 @@ func (t *tailer) tail(ctx context.Context, handler loki.EntryHandler) error {
 		}()
 	}
 
-	level.Info(t.log).Log("msg", "opened log stream", "start time", lastReadTime)
+	t.log.Info("opened log stream", "start time", lastReadTime)
 
 	return t.processLogStream(ctx, stream, handler, lastReadTime, positionsEnt, calc)
 }
@@ -453,7 +451,7 @@ func (t *tailer) shouldStopTailingJobContainer(podInfo *corev1.Pod) (finished bo
 		if podInfo.DeletionTimestamp != nil {
 			// Pod is being deleted - we should try to get remaining logs quickly
 			// but we know the pod won't be around much longer
-			level.Debug(t.log).Log("msg", "job pod is being deleted, will stop tailing soon", "pod", fmt.Sprintf("%s/%s", podInfo.Namespace, podInfo.Name))
+			t.log.Debug("job pod is being deleted, will stop tailing soon", "pod", fmt.Sprintf("%s/%s", podInfo.Namespace, podInfo.Name))
 			return true, nil
 		}
 
@@ -483,7 +481,7 @@ func (t *tailer) shouldStopTailingJobContainer(podInfo *corev1.Pod) (finished bo
 		// For now, we'll be conservative and continue tailing for a reasonable period
 		maxWaitTime := 60 * time.Second // Maximum time to wait for logs
 		if time.Since(terminatedAt) > maxWaitTime {
-			level.Debug(t.log).Log("msg", "job container terminated and max wait time exceeded", "pod", fmt.Sprintf("%s/%s", podInfo.Namespace, podInfo.Name), "container", containerName)
+			t.log.Debug("job container terminated and max wait time exceeded", "pod", fmt.Sprintf("%s/%s", podInfo.Namespace, podInfo.Name), "container", containerName)
 			return true, nil
 		}
 

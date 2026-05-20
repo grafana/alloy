@@ -2,16 +2,15 @@ package stages
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 
 	crip "github.com/grafana/alloy/internal/component/loki/process/stages/cri"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
@@ -50,11 +49,11 @@ func (args *CRIConfig) Validate() error {
 	return nil
 }
 
-func NewCRI(logger log.Logger, cfg CRIConfig, registerer prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
+func NewCRI(logger *slog.Logger, cfg CRIConfig, registerer prometheus.Registerer, _ featuregate.Stability) (Stage, error) {
 	partialLinesFlushedMetric := getPartialLinesFlushedMetric(registerer)
 	linesTruncatedMetric := getLinesTruncatedMetric(registerer)
 	return &cri{
-		logger:                    logger,
+		logger:                    logger.With("stage", "cri"),
 		cfg:                       cfg,
 		partialLines:              make(map[model.Fingerprint]Entry, cfg.MaxPartialLines),
 		partialLinesFlushedMetric: partialLinesFlushedMetric,
@@ -81,7 +80,7 @@ func getLinesTruncatedMetric(registerer prometheus.Registerer) prometheus.Counte
 var _ Stage = (*cri)(nil)
 
 type cri struct {
-	logger                    log.Logger
+	logger                    *slog.Logger
 	cfg                       CRIConfig
 	partialLines              map[model.Fingerprint]Entry
 	partialLinesFlushedMetric prometheus.Counter
@@ -125,7 +124,7 @@ func (c *cri) Run(in chan Entry) chan Entry {
 		// We received partial-line (tag: "P")
 		if parsed.Flag == crip.FlagPartial {
 			if len(c.partialLines) >= c.cfg.MaxPartialLines {
-				level.Warn(c.logger).Log("msg", "cri stage: partial lines upperbound exceeded. merging it to single line", "threshold", c.cfg.MaxPartialLines)
+				c.logger.Warn("partial lines upperbound exceeded, merging it to single line", "threshold", c.cfg.MaxPartialLines)
 				if c.partialLinesFlushedMetric != nil {
 					c.partialLinesFlushedMetric.Add(float64(len(c.partialLines)))
 				}

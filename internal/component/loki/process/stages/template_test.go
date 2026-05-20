@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -60,7 +60,7 @@ var testTemplateLogLineWithMissingKey = `
 `
 
 func TestPipeline_Template(t *testing.T) {
-	pl, err := NewPipeline(log.NewNopLogger(), loadConfig(testTemplateYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(testTemplateYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,16 +75,16 @@ func TestPipeline_Template(t *testing.T) {
 
 func TestPipelineWithMissingKey_Template(t *testing.T) {
 	var buf bytes.Buffer
-	w := log.NewSyncWriter(&buf)
-	logger := log.NewLogfmtLogger(w)
-	pl, err := NewPipeline(logger, loadConfig(testTemplateYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	logger, err := logging.New(&buf, logging.Options{Level: logging.LevelDebug, Format: logging.FormatLogfmt})
+	require.NoError(t, err)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testTemplateYaml), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	_ = processEntries(pl, newEntry(nil, nil, testTemplateLogLineWithMissingKey, time.Now()))
 
-	expectedLog := "level=debug msg=\"extracted template could not be converted to a string\" err=\"can't convert <nil> to string\" type=null"
+	expectedLog := "level=debug msg=\"extracted template could not be converted to a string\" stage=template err=\"can't convert <nil> to string\" type=<nil>"
 	if !(strings.Contains(buf.String(), expectedLog)) {
 		t.Errorf("\nexpected: %s\n+actual: %s", expectedLog, buf.String())
 	}
@@ -414,7 +414,7 @@ func TestTemplateStage_Process(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			st, err := newTemplateStage(log.NewNopLogger(), tt.config)
+			st, err := newTemplateStage(logging.NewSlogNop(), tt.config)
 			require.NoError(t, err)
 			out := processEntries(st, newEntry(tt.extracted, nil, "not important for this test", time.Time{}))[0]
 			assert.Equal(t, tt.expectedExtracted, out.Extracted)
@@ -433,7 +433,7 @@ func BenchmarkTemplateStage(b *testing.B) {
 		return m
 	}
 
-	st, err := newTemplateStage(log.NewNopLogger(), TemplateConfig{
+	st, err := newTemplateStage(logging.NewSlogNop(), TemplateConfig{
 		Source:   "1",
 		Template: mustTemplate("{{ .Value }}"),
 	})

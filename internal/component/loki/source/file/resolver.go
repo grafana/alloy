@@ -2,13 +2,12 @@ package file
 
 import (
 	"iter"
+	"log/slog"
 	"path/filepath"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util/glob"
 )
 
@@ -54,11 +53,11 @@ func (s *staticResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTa
 
 var _ resolver = (*globResolver)(nil)
 
-func newGlobResolver(logger log.Logger) *globResolver {
+func newGlobResolver(logger *slog.Logger) *globResolver {
 	return newGlobResolverWithGlobber(logger, glob.NewGlobber())
 }
 
-func newGlobResolverWithGlobber(logger log.Logger, globber glob.Globber) *globResolver {
+func newGlobResolverWithGlobber(logger *slog.Logger, globber glob.Globber) *globResolver {
 	return &globResolver{logger: logger, globber: globber}
 }
 
@@ -67,7 +66,7 @@ func newGlobResolverWithGlobber(logger log.Logger, globber glob.Globber) *globRe
 // If __path_exclude__ is present, matches that satisfy the exclude pattern are
 // filtered out. Returned paths are normalized to absolute form.
 type globResolver struct {
-	logger  log.Logger
+	logger  *slog.Logger
 	globber glob.Globber
 }
 
@@ -79,7 +78,7 @@ func (s *globResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTarg
 
 			matches, err := s.globber.FilepathGlob(targetPath)
 			if err != nil {
-				level.Error(s.logger).Log("msg", "failed to resolve target", "error", err)
+				s.logger.Error("failed to resolve target", "error", err)
 				continue
 			}
 
@@ -94,7 +93,7 @@ func (s *globResolver) Resolve(targets []discovery.Target) iter.Seq[resolvedTarg
 
 				path, err := filepath.Abs(m)
 				if err != nil {
-					level.Error(s.logger).Log("msg", "failed to resolve target", "error", err)
+					s.logger.Error("failed to resolve target", "error", err)
 					continue
 				}
 

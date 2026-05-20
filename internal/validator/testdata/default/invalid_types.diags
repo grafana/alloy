@@ -5,7 +5,7 @@ Error: main.alloy:2:15: expected array, got string
   |                  ^^^^^^^
 3 |     targets = [10]
 
-Error: main.alloy:3:13: expected capsule, got number
+Error: main.alloy:3:13: target::ConvertFrom: conversion from 'int64' is not supported
 
 2 |     forward_to = "wrong"
 3 |     targets = [10]
@@ -18,3 +18,10 @@ Error: main.alloy:4:13: expected string, got bool
 4 |     encoding = true
   |                ^^^^
 5 | }
+
+Error: main.alloy:10:12: unknown action random
+
+ 9 |         key = "test"
+10 |         action = "random"
+   |                  ^^^^^^^^
+11 |     }

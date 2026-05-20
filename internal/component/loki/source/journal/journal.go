@@ -18,7 +18,6 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -60,10 +59,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	positionFile := filepath.Join(o.DataPath, "positions.yml")
 	if args.LegacyPosition != nil {
-		positions.ConvertLegacyPositionsFileJournal(args.LegacyPosition.File, args.LegacyPosition.Name, positionFile, o.ID, o.Logger)
+		positions.ConvertLegacyPositionsFileJournal(args.LegacyPosition.File, args.LegacyPosition.Name, positionFile, o.ID, o.SLogger)
 	}
 
-	positionsFile, err := positions.New(o.Logger, positions.Config{
+	positionsFile, err := positions.New(o.SLogger, positions.Config{
 		SyncPeriod:        10 * time.Second,
 		PositionsFile:     positionFile,
 		IgnoreInvalidYaml: false,
@@ -89,7 +88,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run starts the component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "loki.source.journal component shutting down")
+		c.opts.SLogger.Info("loki.source.journal component shutting down")
 		// We need to stop posFile first so we don't record entries we are draining
 		c.positions.Stop()
 
@@ -98,7 +97,7 @@ func (c *Component) Run(ctx context.Context) error {
 			defer c.mut.Unlock()
 			if c.tailer != nil {
 				if err := c.tailer.Stop(); err != nil {
-					level.Warn(c.opts.Logger).Log("msg", "error stopping journal tailer", "err", err)
+					c.opts.SLogger.Warn("error stopping journal tailer", "err", err)
 				}
 			}
 		})
@@ -171,7 +170,7 @@ func (c *Component) reloadTailer() {
 	if tailerToStop != nil {
 		err := tailerToStop.Stop()
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "error stopping journal tailer", "err", err)
+			c.opts.SLogger.Error("error stopping journal tailer", "err", err)
 		}
 	}
 
@@ -180,9 +179,9 @@ func (c *Component) reloadTailer() {
 	defer c.mut.Unlock()
 	c.tailer = nil
 
-	tailer, err := newTailer(c.metrics, c.opts.Logger, c.recv, c.positions, c.opts.ID, rcs, convertArgs(c.opts.ID, c.args))
+	tailer, err := newTailer(c.metrics, c.opts.SLogger, c.recv, c.positions, c.opts.ID, rcs, convertArgs(c.opts.ID, c.args))
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "error creating journal tailer", "err", err, "path", c.args.Path)
+		c.opts.SLogger.Error("error creating journal tailer", "err", err, "path", c.args.Path)
 		c.healthErr = fmt.Errorf("error creating journal tailer: %w", err)
 	} else {
 		c.tailer = tailer

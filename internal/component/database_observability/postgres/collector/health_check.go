@@ -23,6 +23,39 @@ const (
 	OP_HEALTH_STATUS     = "health_status"
 )
 
+const (
+	pgStatStatementsEnabledQuery = `SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements'`
+	trackActivityQuerySizeQuery  = `SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'`
+	computeQueryIdQuery          = `SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`
+
+	// monitoringUserPrivilegesQuery probes whether the connected user can usefully
+	// read data from pg_stat_statements.
+	monitoringUserPrivilegesQuery = `
+	SELECT
+		pg_has_role(current_user, 'pg_monitor',        'MEMBER') AS has_pg_monitor_role,
+		pg_has_role(current_user, 'pg_read_all_stats', 'MEMBER') AS has_pg_read_all_stats_role,
+		has_table_privilege(current_user, 'pg_stat_statements', 'SELECT') AS can_select_pg_stat_statements,
+		EXISTS (
+			SELECT 1 FROM pg_stat_statements
+			WHERE query = '<insufficient privilege>'
+		) AS sees_insufficient_privilege`
+)
+
+func pgStatStatementsHasRowsQuery(excludeDatabases, excludeUsers []string) string {
+	return fmt.Sprintf(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM pg_stat_statements
+			JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
+			WHERE pg_database.datname NOT IN %s
+			  AND pg_stat_statements.queryid <> 0
+			  %s
+		)`,
+		buildExcludedDatabasesClause(excludeDatabases),
+		buildExcludedUsersClause(excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)"),
+	)
+}
+
 type HealthCheckArguments struct {
 	DB               *sql.DB
 	CollectInterval  time.Duration
@@ -147,9 +180,8 @@ func checkAlloyVersion(ctx context.Context, db *sql.DB) healthCheckResult {
 // checkPgStatStatementsEnabled verifies that the pg_stat_statements extension is enabled.
 func checkPgStatStatementsEnabled(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PgStatStatementsEnabled"}
-	const q = `SELECT * FROM pg_extension WHERE extname = 'pg_stat_statements'`
 
-	rows, err := db.QueryContext(ctx, q)
+	rows, err := db.QueryContext(ctx, pgStatStatementsEnabledQuery)
 	if err != nil {
 		r.err = fmt.Errorf("query pg_extension: %w", err)
 		return r
@@ -169,11 +201,10 @@ func checkPgStatStatementsEnabled(ctx context.Context, db *sql.DB) healthCheckRe
 
 func checkTrackActivityQuerySize(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "TrackActivityQuerySize"}
-	const q = `SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'`
 	const expectedSize = 4096
 
 	var sizeString string
-	if err := db.QueryRowContext(ctx, q).Scan(&sizeString); err != nil {
+	if err := db.QueryRowContext(ctx, trackActivityQuerySizeQuery).Scan(&sizeString); err != nil {
 		r.err = fmt.Errorf("query track_activity_query_size: %w", err)
 		return r
 	}
@@ -192,33 +223,54 @@ func checkTrackActivityQuerySize(ctx context.Context, db *sql.DB) healthCheckRes
 
 func checkMonitoringUserPrivileges(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "MonitoringUserPrivileges"}
-	const q = `SELECT * FROM pg_stat_statements LIMIT 1`
 
-	rows, err := db.QueryContext(ctx, q)
-	if err != nil {
-		r.err = fmt.Errorf("query pg_stat_statements: %w", err)
+	var hasMonitorRole, hasReadStatsRole, canSelectView, seesInsufficientPrivilege bool
+	if err := db.QueryRowContext(ctx, monitoringUserPrivilegesQuery).Scan(
+		&hasMonitorRole, &hasReadStatsRole, &canSelectView, &seesInsufficientPrivilege,
+	); err != nil {
+		r.err = fmt.Errorf("query monitoring user privileges: %w", err)
 		return r
 	}
-	defer rows.Close()
 
-	if rows.Next() {
-		r.result = true
-	}
-
-	if err := rows.Err(); err != nil {
-		r.err = fmt.Errorf("iterate pg_stat_statements: %w", err)
-	}
-
+	// The 'result' doesn't take role membership into account, but we report the
+	// role checks in 'value' for diagnostics:
+	// checks in 'value' for diagnostics:
+	//
+	// - canSelectView (i.e. can read the view) and !seesInsufficientPrivilege (i.e.
+	//   no '<insufficient privilege>' rows visible) gate result, because
+	//   together they prove the user can actually read real data
+	//   regardless of how that access was granted.
+	//
+	// - hasMonitorRole / hasReadStatsRole are reported in value for diagnostics only.
+	//   pg_has_role(_, _, 'MEMBER') resolves transitive membership, so
+	//   granting pg_monitor implies has_pg_read_all_stats_role=true (pg_monitor is
+	//   its parent role); the reverse does not hold. Role membership is also
+	//   not the only path: a direct GRANT SELECT on pg_stat_statements lets a
+	//   user read the view without either role - they show can_select_view=true but
+	//   will see '<insufficient privilege>' for queries from other users,
+	//   which sees_insufficient_privilege catches. Treating the role columns as gating
+	//   would produce false negatives on perfectly valid setups.
+	//
+	// Example: a user with only `GRANT SELECT ON pg_stat_statements TO ...`
+	// reports can_select_view=true, has_pg_monitor_role=false, has_pg_read_all_stats_role=false,
+	// sees_insufficient_privilege=true once any other user has executed a
+	// statement; result is correctly false because the collector won't get
+	// useful data, even though the role checks alone wouldn't have told us
+	// whether SELECT was reachable.
+	r.result = canSelectView && !seesInsufficientPrivilege
+	r.value = fmt.Sprintf(
+		"can_select_view=%v,has_pg_monitor_role=%v,has_pg_read_all_stats_role=%v,sees_insufficient_privilege=%v",
+		canSelectView, hasMonitorRole, hasReadStatsRole, seesInsufficientPrivilege,
+	)
 	return r
 }
 
 // checkComputeQueryIdEnabled verifies the compute_query_id is not disabled
 func checkComputeQueryIdEnabled(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "ComputeQueryIdEnabled"}
-	const q = `SELECT setting FROM pg_settings WHERE name = 'compute_query_id'`
 
 	var setting string
-	if err := db.QueryRowContext(ctx, q).Scan(&setting); err != nil {
+	if err := db.QueryRowContext(ctx, computeQueryIdQuery).Scan(&setting); err != nil {
 		r.err = fmt.Errorf("query compute_query_id: %w", err)
 		return r
 	}
@@ -232,17 +284,7 @@ func checkComputeQueryIdEnabled(ctx context.Context, db *sql.DB) healthCheckResu
 // ingest after applying the exclude_databases / exclude_users filters.
 func (c *HealthCheck) checkPgStatStatementsHasRows(ctx context.Context, db *sql.DB) healthCheckResult {
 	r := healthCheckResult{name: "PgStatStatementsHasRows"}
-	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
-	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(pg_stat_statements.userid)")
-	q := fmt.Sprintf(`
-		SELECT EXISTS (
-			SELECT 1
-			FROM pg_stat_statements
-			JOIN pg_database ON pg_database.oid = pg_stat_statements.dbid
-			WHERE pg_database.datname NOT IN %s
-			  AND pg_stat_statements.queryid <> 0
-			  %s
-		)`, excludedDatabasesClause, excludedUsersClause)
+	q := pgStatStatementsHasRowsQuery(c.excludeDatabases, c.excludeUsers)
 
 	var hasRows bool
 	if err := db.QueryRowContext(ctx, q).Scan(&hasRows); err != nil {

@@ -3,12 +3,11 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"reflect"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -66,7 +65,7 @@ func validateLabelsConfig(cfg *LabelsConfig) (map[string]string, error) {
 }
 
 // newLabelStage creates a new label stage to set labels from extracted data
-func newLabelStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
+func newLabelStage(logger *slog.Logger, configs LabelsConfig) (Stage, error) {
 	labelsConfig, err := validateLabelsConfig(&configs)
 	if err != nil {
 		return nil, err
@@ -74,7 +73,7 @@ func newLabelStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
 	return &labelStage{
 		cfg:          &configs,
 		labelsConfig: labelsConfig,
-		logger:       logger,
+		logger:       logger.With("stage", "labels"),
 	}, nil
 }
 
@@ -82,7 +81,7 @@ func newLabelStage(logger log.Logger, configs LabelsConfig) (Stage, error) {
 type labelStage struct {
 	cfg          *LabelsConfig
 	labelsConfig map[string]string
-	logger       log.Logger
+	logger       *slog.Logger
 }
 
 // Run implements Stage
@@ -108,15 +107,15 @@ func (l *labelStage) addLabelFromExtractedMap(labels model.LabelSet, extracted m
 		if lValue, ok := extracted[lSrc]; ok {
 			s, err := getString(lValue)
 			if err != nil {
-				if Debug {
-					level.Debug(l.logger).Log("msg", "failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
+				if debugEnabled(l.logger) {
+					l.logger.Debug("failed to convert extracted label value to string", "err", err, "type", reflect.TypeOf(lValue))
 				}
 				continue
 			}
 			labelValue := model.LabelValue(s)
 			if !labelValue.IsValid() {
-				if Debug {
-					level.Debug(l.logger).Log("msg", "invalid label value parsed", "value", labelValue)
+				if debugEnabled(l.logger) {
+					l.logger.Debug("invalid label value parsed", "value", labelValue)
 				}
 				continue
 			}
@@ -135,8 +134,8 @@ func (l *labelStage) addLabelsFromStructuredMetadata(labels model.LabelSet, meta
 
 			labelValue := model.LabelValue(kv.Value)
 			if !labelValue.IsValid() {
-				if Debug {
-					level.Debug(l.logger).Log("msg", "invalid structured metadata label value", "label", lName, "value", labelValue)
+				if debugEnabled(l.logger) {
+					l.logger.Debug("invalid structured metadata label value", "label", lName, "value", labelValue)
 				}
 				break
 			}

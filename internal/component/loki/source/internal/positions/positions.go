@@ -7,6 +7,7 @@ package positions
 import (
 	"flag"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -15,10 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"gopkg.in/yaml.v2"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -49,7 +47,7 @@ func (cfg *Config) RegisterFlags(flags *flag.FlagSet) {
 
 // Positions tracks how far through each file we've read.
 type positions struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	cfg       Config
 	mtx       sync.Mutex
 	positions map[Entry]string
@@ -105,17 +103,17 @@ type LegacyFile struct {
 // ConvertLegacyPositionsFile will convert the legacy positions file to the new format if:
 // 1. There is no file at the newpath
 // 2. There is a file at the legacy path and that it is valid yaml
-func ConvertLegacyPositionsFile(legacyPath, newPath string, l log.Logger) {
+func ConvertLegacyPositionsFile(legacyPath, newPath string, l *slog.Logger) {
 	legacyPositions := readLegacyFile(legacyPath, l)
 	// legacyPositions did not exist or was invalid so return.
 	if legacyPositions == nil {
-		level.Info(l).Log("msg", "will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
+		l.Info("will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
 		return
 	}
 	fi, err := os.Stat(newPath)
 	// If the newpath exists, then don't convert.
 	if err == nil && fi.Size() > 0 {
-		level.Info(l).Log("msg", "will not convert the legacy positions file as the new positions file already exists", "path", newPath)
+		l.Info("will not convert the legacy positions file as the new positions file already exists", "path", newPath)
 		return
 	}
 
@@ -129,9 +127,9 @@ func ConvertLegacyPositionsFile(legacyPath, newPath string, l log.Logger) {
 	}
 	err = writePositionFile(newPath, newPositions)
 	if err != nil {
-		level.Error(l).Log("msg", "error writing new positions file converted from legacy", "path", newPath, "error", err)
+		l.Error("error writing new positions file converted from legacy", "path", newPath, "error", err)
 	}
-	level.Info(l).Log("msg", "successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
+	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
 }
 
 // ConvertLegacyPositionsFileJournal will convert the legacy positions file to the new format for a journal job if:
@@ -139,17 +137,17 @@ func ConvertLegacyPositionsFile(legacyPath, newPath string, l log.Logger) {
 // 2. There is a file at the legacy path and that it is valid yaml
 //
 // legacyJob is the name of the journal job in e.g. promatil or agent static.
-func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath string, componentID string, l log.Logger) {
+func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath string, componentID string, l *slog.Logger) {
 	legacyPositions := readLegacyFile(legacyPath, l)
 	// legacyPositions did not exist or was invalid so return.
 	if legacyPositions == nil {
-		level.Info(l).Log("msg", "will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
+		l.Info("will not convert the legacy positions file as it is not valid or does not exist", "legacy_path", legacyPath)
 		return
 	}
 	fi, err := os.Stat(newPath)
 	// If the newpath exists, then don't convert.
 	if err == nil && fi.Size() > 0 {
-		level.Info(l).Log("msg", "will not convert the legacy positions file as the new positions file already exists", "path", newPath)
+		l.Info("will not convert the legacy positions file as the new positions file already exists", "path", newPath)
 		return
 	}
 
@@ -170,36 +168,36 @@ func ConvertLegacyPositionsFileJournal(legacyPath, legacyJob string, newPath str
 	}
 	err = writePositionFile(newPath, newPositions)
 	if err != nil {
-		level.Error(l).Log("msg", "error writing new positions file converted from legacy", "path", newPath, "error", err)
+		l.Error("error writing new positions file converted from legacy", "path", newPath, "error", err)
 	}
-	level.Info(l).Log("msg", "successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
+	l.Info("successfully converted legacy positions file to the new format", "path", newPath, "legacy_path", legacyPath)
 }
 
-func readLegacyFile(legacyPath string, l log.Logger) *LegacyFile {
+func readLegacyFile(legacyPath string, l *slog.Logger) *LegacyFile {
 	oldFile, err := os.Stat(legacyPath)
 	// If the old file doesn't exist or is empty then return early.
 	if err != nil || oldFile.Size() == 0 {
-		level.Info(l).Log("msg", "no legacy positions file found", "path", legacyPath)
+		l.Info("no legacy positions file found", "path", legacyPath)
 		return nil
 	}
 	// Try to read and parse the legacy file.
 	clean := filepath.Clean(legacyPath)
 	buf, err := os.ReadFile(clean)
 	if err != nil {
-		level.Error(l).Log("msg", "error reading legacy positions file", "path", clean, "error", err)
+		l.Error("error reading legacy positions file", "path", clean, "error", err)
 		return nil
 	}
 	legacyPositions := &LegacyFile{}
 	err = yaml.UnmarshalStrict(buf, legacyPositions)
 	if err != nil {
-		level.Error(l).Log("msg", "error parsing legacy positions file", "path", clean, "error", err)
+		l.Error("error parsing legacy positions file", "path", clean, "error", err)
 		return nil
 	}
 	return legacyPositions
 }
 
 // New makes a new Positions.
-func New(logger log.Logger, cfg Config) (Positions, error) {
+func New(logger *slog.Logger, cfg Config) (Positions, error) {
 	positionData, err := readPositionsFile(cfg, logger)
 	if err != nil {
 		return nil, err
@@ -265,7 +263,7 @@ func (p *positions) SyncPeriod() time.Duration {
 func (p *positions) run() {
 	defer func() {
 		p.save()
-		level.Debug(p.logger).Log("msg", "positions saved")
+		p.logger.Debug("positions saved")
 		close(p.done)
 	}()
 
@@ -291,7 +289,7 @@ func (p *positions) save() {
 	p.mtx.Unlock()
 
 	if err := writePositionFile(p.cfg.PositionsFile, positions); err != nil {
-		level.Error(p.logger).Log("msg", "error writing positions file", "error", err)
+		p.logger.Error("error writing positions file", "error", err)
 	}
 }
 
@@ -318,8 +316,7 @@ func (p *positions) cleanup() {
 				toRemove = append(toRemove, k)
 			} else {
 				// Can't determine if file exists or not, some other error.
-				level.Warn(p.logger).Log("msg", "could not determine if log file "+
-					"still exists while cleaning positions file", "error", err)
+				p.logger.Warn("could not determine if log file still exists while cleaning positions file", "error", err)
 			}
 		}
 	}
@@ -328,7 +325,7 @@ func (p *positions) cleanup() {
 	}
 }
 
-func readPositionsFile(cfg Config, logger log.Logger) (map[Entry]string, error) {
+func readPositionsFile(cfg Config, logger *slog.Logger) (map[Entry]string, error) {
 	cleanfn := filepath.Clean(cfg.PositionsFile)
 	buf, err := os.ReadFile(cleanfn)
 	if err != nil {
@@ -343,7 +340,7 @@ func readPositionsFile(cfg Config, logger log.Logger) (map[Entry]string, error) 
 	if err != nil {
 		// return empty if cfg option enabled
 		if cfg.IgnoreInvalidYaml {
-			level.Debug(logger).Log("msg", "ignoring invalid positions file", "file", cleanfn, "error", err)
+			logger.Debug("ignoring invalid positions file", "file", cleanfn, "error", err)
 			return map[Entry]string{}, nil
 		}
 
