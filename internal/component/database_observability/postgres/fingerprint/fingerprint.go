@@ -73,13 +73,8 @@ func Fingerprint(query string, source Source, trackActivityQuerySize int) (fp st
 	return sentinelFingerprint(query, source, trackActivityQuerySize), true, nil
 }
 
-// SentinelKind classifies a fingerprint string as one of the sentinel hashes
-// produced by the package, or returns an empty string when the fingerprint
-// reflects a real (parsed or repaired) query. Cheap — compares against two
-// pre-computed package-level vars.
-//
-// Use to drive observability of fall-through cases without re-implementing
-// the comparison at every call site.
+// SentinelKind returns "truncated" / "unparsable" / "" depending on whether
+// fp matches one of the package's sentinel hashes.
 func SentinelKind(fp string) string {
 	switch fp {
 	case sentinelTruncatedFp:
@@ -114,7 +109,7 @@ func sentinelFingerprint(query string, source Source, trackActivityQuerySize int
 // is only used for fingerprint computation — it is not emitted anywhere.
 //
 // This is a heuristic and has known false positives:
-//   - Doubled-apostrophe escapes inside string literals (`'O''Brien'`) are
+//   - Doubled-apostrophe escapes inside string literals (`'O”Brien'`) are
 //     counted as four separate `'` characters.
 //   - Dollar-quoted strings (`$body$ ... $body$`) are not understood at all.
 //   - Backslash-escaped quotes (with `standard_conforming_strings = off`) are
