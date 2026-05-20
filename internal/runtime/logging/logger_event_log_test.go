@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"log/slog"
 	"testing"
-	"time"
 
 	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
 	"github.com/grafana/alloy/internal/runtime/logging/eventlog/testutil"
@@ -33,14 +32,13 @@ func TestLogger_EventLog_LevelReloadTakesEffect(t *testing.T) {
 		Destination: LogDestinationWindowsEventLog,
 	}))
 
-	h := l.Slog().Handler()
+	sl := l.Slog()
 	ctx := t.Context()
 
 	// Debug record should be filtered at Info level.
-	require.False(t, h.Enabled(ctx, slog.LevelDebug),
+	require.False(t, sl.Handler().Enabled(ctx, slog.LevelDebug),
 		"handler should report debug as disabled at Info level")
-	require.NoError(t, h.Handle(ctx,
-		slog.NewRecord(time.Now(), slog.LevelDebug, "debug-before", 0)))
+	sl.Log(ctx, slog.LevelDebug, "debug-before")
 	require.Empty(t, mock.Infos, "debug record at Info level should be filtered")
 
 	// Reload at Debug level, same destination — no reopen.
@@ -51,10 +49,9 @@ func TestLogger_EventLog_LevelReloadTakesEffect(t *testing.T) {
 	}))
 
 	// Debug record should now pass through.
-	require.True(t, h.Enabled(ctx, slog.LevelDebug),
+	require.True(t, sl.Handler().Enabled(ctx, slog.LevelDebug),
 		"handler should report debug as enabled at Debug level")
-	require.NoError(t, h.Handle(ctx,
-		slog.NewRecord(time.Now(), slog.LevelDebug, "debug-after", 0)))
+	sl.Log(ctx, slog.LevelDebug, "debug-after")
 	require.Len(t, mock.Infos, 1, "debug record at Debug level should reach event log")
 	require.Contains(t, mock.Infos[0], "debug-after")
 }

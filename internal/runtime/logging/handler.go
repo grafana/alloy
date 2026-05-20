@@ -81,23 +81,18 @@ func (h *handler) Handle(ctx context.Context, r slog.Record) error {
 // which knows about the event log and the record level. Only used when
 // the event log destination is active.
 func (h *handler) handleWithEventLog(ctx context.Context, r slog.Record) error {
-	// Cheap level filter before we allocate the buffer and build the
-	// per-call slog handler. The inner slog handler filters too, but doing
-	// it here also skips the event-log dispatch (which would otherwise
-	// receive an empty message).
-	if !h.Enabled(ctx, r.Level) {
-		return nil
-	}
-
 	buf := bytesPool.Get().(*bytes.Buffer)
 	buf.Reset()
-	defer bytesPool.Put(buf)
+	defer func() {
+		buf.Reset()
+		bytesPool.Put(buf)
+	}()
 
 	if err := h.newSlogHandler(buf).Handle(ctx, r); err != nil {
 		return err
 	}
 	if buf.Len() == 0 {
-		return nil // belt-and-suspenders for handlers that drop records silently
+		return nil // No need to dispatch empty log entries.
 	}
 	return h.w.Dispatch(buf.Bytes(), &r.Level)
 }

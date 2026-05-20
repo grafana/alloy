@@ -331,7 +331,7 @@ func (w *writerVar) RemoveTemporaryWriter() {
 	w.tmpWriter = nil
 }
 
-func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiverr) {
+func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
 	if len(receivers) > 0 {
