@@ -48,5 +48,5 @@ jobs:
       with:
         go-version-file: go.mod
         cache: false
-    - run: cd collector &&  go build .
+    - run: cd collector && go build .
     - run: go build ./internal/component/pyroscope/util/internal/cmd/playground
