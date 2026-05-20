@@ -21,13 +21,15 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
-	ExplainPlanCollector   = "explain_plans"
-	OP_EXPLAIN_PLAN_OUTPUT = "explain_plan_output"
+	ExplainPlanCollector      = "explain_plans"
+	OP_EXPLAIN_PLAN_OUTPUT    = "explain_plan_output"
+	OP_EXPLAIN_PLAN_OUTPUT_V2 = "explain_plan_output_v2"
 )
 
 const selectQueriesForExplainPlanTemplate = `
@@ -191,75 +193,85 @@ func (p *PlanNode) totalCost() *float64 {
 }
 
 type queryInfo struct {
-	datname      string
-	queryId      string
-	queryText    string
-	failureCount int
-	uniqueKey    string
-	calls        int64
-	callsReset   time.Time
+	datname          string
+	queryId          string
+	queryText        string
+	queryFingerprint string
+	failureCount     int
+	uniqueKey        string
+	calls            int64
+	callsReset       time.Time
 }
 
 func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset time.Time) *queryInfo {
+	// Compute the fingerprint once when the queryInfo is created; it is cheap
+	// (~microseconds) and is reused across every EXPLAIN attempt for the row.
+	// An empty fingerprint string is acceptable -- the v2 emit path embeds it
+	// as-is, matching how query_association_v2 handles parse failures.
+	fp, _, _ := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
 	return &queryInfo{
-		datname:    datname,
-		queryId:    queryId,
-		queryText:  queryText,
-		uniqueKey:  datname + queryId,
-		calls:      calls,
-		callsReset: callsReset,
+		datname:          datname,
+		queryId:          queryId,
+		queryText:        queryText,
+		queryFingerprint: fp,
+		uniqueKey:        datname + queryId,
+		calls:            calls,
+		callsReset:       callsReset,
 	}
 }
 
 type ExplainPlansArguments struct {
-	DB               *sql.DB
-	DSN              string
-	ScrapeInterval   time.Duration
-	PerScrapeRatio   float64
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EntryHandler     loki.EntryHandler
-	DBVersion        string
+	DB                     *sql.DB
+	DSN                    string
+	ScrapeInterval         time.Duration
+	PerScrapeRatio         float64
+	ExcludeDatabases       []string
+	ExcludeUsers           []string
+	EntryHandler           loki.EntryHandler
+	DBVersion              string
+	EnableQueryFingerprint bool
 
 	Logger log.Logger
 }
 
 type ExplainPlans struct {
-	dbConnection        *sql.DB
-	dbDSN               string
-	dbVersion           semver.Version
-	dbConnectionFactory databaseConnectionFactory
-	scrapeInterval      time.Duration
-	queryCache          map[string]*queryInfo
-	queryDenylist       map[string]*queryInfo
-	finishedQueryCache  map[string]*queryInfo
-	excludeDatabases    []string
-	excludeUsers        []string
-	perScrapeRatio      float64
-	currentBatchSize    int
-	entryHandler        loki.EntryHandler
-	logger              log.Logger
-	running             *atomic.Bool
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	wg                  sync.WaitGroup
+	dbConnection           *sql.DB
+	dbDSN                  string
+	dbVersion              semver.Version
+	dbConnectionFactory    databaseConnectionFactory
+	scrapeInterval         time.Duration
+	queryCache             map[string]*queryInfo
+	queryDenylist          map[string]*queryInfo
+	finishedQueryCache     map[string]*queryInfo
+	excludeDatabases       []string
+	excludeUsers           []string
+	perScrapeRatio         float64
+	currentBatchSize       int
+	entryHandler           loki.EntryHandler
+	enableQueryFingerprint bool
+	logger                 log.Logger
+	running                *atomic.Bool
+	ctx                    context.Context
+	cancel                 context.CancelFunc
+	wg                     sync.WaitGroup
 }
 
 func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 	ep := &ExplainPlans{
-		dbConnection:        args.DB,
-		dbDSN:               args.DSN,
-		dbConnectionFactory: defaultDbConnectionFactory,
-		scrapeInterval:      args.ScrapeInterval,
-		perScrapeRatio:      args.PerScrapeRatio,
-		excludeDatabases:    args.ExcludeDatabases,
-		excludeUsers:        args.ExcludeUsers,
-		queryCache:          make(map[string]*queryInfo),
-		queryDenylist:       make(map[string]*queryInfo),
-		finishedQueryCache:  make(map[string]*queryInfo),
-		entryHandler:        args.EntryHandler,
-		logger:              log.With(args.Logger, "collector", ExplainPlanCollector),
-		running:             atomic.NewBool(false),
+		dbConnection:           args.DB,
+		dbDSN:                  args.DSN,
+		dbConnectionFactory:    defaultDbConnectionFactory,
+		scrapeInterval:         args.ScrapeInterval,
+		perScrapeRatio:         args.PerScrapeRatio,
+		excludeDatabases:       args.ExcludeDatabases,
+		excludeUsers:           args.ExcludeUsers,
+		queryCache:             make(map[string]*queryInfo),
+		queryDenylist:          make(map[string]*queryInfo),
+		finishedQueryCache:     make(map[string]*queryInfo),
+		entryHandler:           args.EntryHandler,
+		enableQueryFingerprint: args.EnableQueryFingerprint,
+		logger:                 log.With(args.Logger, "collector", ExplainPlanCollector),
+		running:                atomic.NewBool(false),
 	}
 	// Pre-sanitize the version by removing any trailing characters before semver gets it
 	foundVers := versSanitizeRegex.FindString(args.DBVersion)
@@ -272,7 +284,7 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 	return ep, nil
 }
 
-func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
+func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, queryFingerprint string, generatedAt string, result database_observability.ExplainProcessingResult, reason string, plan *database_observability.ExplainPlanNode) error {
 	output := &database_observability.ExplainPlanOutput{
 		Metadata: database_observability.ExplainPlanMetadataInfo{
 			DatabaseEngine:         "PostgreSQL",
@@ -292,16 +304,30 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 		return fmt.Errorf("failed to marshal explain plan output: %w", err)
 	}
 
-	logMessage := fmt.Sprintf(
-		`schema="%s" digest="%s" explain_plan_output="%s"`,
-		schemaName,
-		digest,
-		base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
-	)
+	var op string
+	var logMessage string
+	if c.enableQueryFingerprint {
+		op = OP_EXPLAIN_PLAN_OUTPUT_V2
+		logMessage = fmt.Sprintf(
+			`schema="%s" digest="%s" query_fingerprint="%s" explain_plan_output="%s"`,
+			schemaName,
+			digest,
+			queryFingerprint,
+			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
+		)
+	} else {
+		op = OP_EXPLAIN_PLAN_OUTPUT
+		logMessage = fmt.Sprintf(
+			`schema="%s" digest="%s" explain_plan_output="%s"`,
+			schemaName,
+			digest,
+			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
+		)
+	}
 
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 		logging.LevelInfo,
-		OP_EXPLAIN_PLAN_OUTPUT,
+		op,
 		logMessage,
 	)
 
@@ -408,6 +434,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 			err := c.sendExplainPlansOutput(
 				datname,
 				queryId,
+				qi.queryFingerprint,
 				generatedAt,
 				database_observability.ExplainProcessingResultSkipped,
 				"query denylisted",
@@ -460,6 +487,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			err := c.sendExplainPlansOutput(
 				qi.datname,
 				qi.queryId,
+				qi.queryFingerprint,
 				generatedAt,
 				database_observability.ExplainProcessingResultSkipped,
 				"query is truncated",
@@ -477,6 +505,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			err := c.sendExplainPlansOutput(
 				qi.datname,
 				qi.queryId,
+				qi.queryFingerprint,
 				generatedAt,
 				database_observability.ExplainProcessingResultError,
 				fmt.Sprintf("failed to check for reserved keywords: %s", err.Error()),
@@ -492,6 +521,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			err := c.sendExplainPlansOutput(
 				qi.datname,
 				qi.queryId,
+				qi.queryFingerprint,
 				generatedAt,
 				database_observability.ExplainProcessingResultSkipped,
 				"query contains reserved word",
@@ -554,6 +584,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 		if err := c.sendExplainPlansOutput(
 			qi.datname,
 			qi.queryId,
+			qi.queryFingerprint,
 			generatedAt,
 			database_observability.ExplainProcessingResultSuccess,
 			"",

@@ -149,6 +149,9 @@ type QuerySamples struct {
 	registry            *prometheus.Registry
 	fingerprintRepaired prometheus.Counter
 	fingerprintSentinel *prometheus.CounterVec
+
+	// per-fingerprint wait-event time accounting
+	waitEventSeconds *prometheus.CounterVec
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -242,12 +245,13 @@ func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEve
 // WaitEventOccurrence tracks a continuous occurrence of the same wait event
 // with the same blocked_by_pids set.
 type WaitEventOccurrence struct {
-	WaitEventType string
-	WaitEvent     string
-	BlockedByPIDs []int64 // normalized set (sorted, unique)
-	LastWaitTime  string  // last stateDuration seen for this wait event
-	LastState     string
-	LastTimestamp time.Time
+	WaitEventType   string
+	WaitEvent       string
+	BlockedByPIDs   []int64 // normalized set (sorted, unique)
+	LastWaitTime    string  // last stateDuration seen for this wait event (computed from pg_stat_activity.state_change)
+	LastState       string
+	FirstObservedAt time.Time // first scrape that saw this occurrence; used as the lower bound for the wait_event_seconds_total counter
+	LastTimestamp   time.Time
 }
 
 // WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
@@ -299,6 +303,15 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 
 	if args.Registry != nil {
 		args.Registry.MustRegister(qs.fingerprintRepaired, qs.fingerprintSentinel)
+	}
+
+	if args.Registry != nil && args.EnableQueryFingerprint {
+		qs.waitEventSeconds = prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "database_observability",
+			Name:      "wait_event_seconds_total",
+			Help:      "Total observed duration of PostgreSQL wait events, in seconds, aggregated by the semantic query fingerprint and database. Mirrors database_observability_wait_event_seconds_total on the MySQL collector but keyed by query_fingerprint instead of digest.",
+		}, []string{"query_fingerprint", "datname"})
+		args.Registry.MustRegister(qs.waitEventSeconds)
 	}
 
 	return qs, nil
@@ -356,6 +369,9 @@ func (c *QuerySamples) Stop() {
 	if c.registry != nil {
 		c.registry.Unregister(c.fingerprintRepaired)
 		c.registry.Unregister(c.fingerprintSentinel)
+	}
+	if c.registry != nil && c.waitEventSeconds != nil {
+		c.registry.Unregister(c.waitEventSeconds)
 	}
 }
 
@@ -527,12 +543,13 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 		}
 
 		newOcc := WaitEventOccurrence{
-			WaitEventType: current.eventType,
-			WaitEvent:     current.event,
-			BlockedByPIDs: current.blockedBy,
-			LastWaitTime:  calculateDuration(sample.StateChange, now),
-			LastState:     sample.State.String,
-			LastTimestamp: now,
+			WaitEventType:   current.eventType,
+			WaitEvent:       current.event,
+			BlockedByPIDs:   current.blockedBy,
+			LastWaitTime:    calculateDuration(sample.StateChange, now),
+			LastState:       sample.State.String,
+			FirstObservedAt: now,
+			LastTimestamp:   now,
 		}
 		t.waitEvents = append(t.waitEvents, newOcc)
 		t.openIdx = len(t.waitEvents) - 1
@@ -571,6 +588,21 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			c.waitEventLabels(state, we),
 			we.LastTimestamp.UnixNano(),
 		)
+		if c.waitEventSeconds != nil && state.QueryFingerprint != "" {
+			// Counter measures wait time as observed by Alloy across the
+			// scrapes that saw this occurrence. Using LastTimestamp -
+			// FirstObservedAt (rather than now - state_change) avoids
+			// attributing pre-existing wait time to the counter when Alloy
+			// starts mid-wait — a 30-minute lock that began before the
+			// collector launched would otherwise dump 1800s into the
+			// counter on the first emit.
+			observed := we.LastTimestamp.Sub(we.FirstObservedAt).Seconds()
+			if observed > 0 {
+				c.waitEventSeconds.
+					WithLabelValues(state.QueryFingerprint, state.LastRow.DatabaseName.String).
+					Add(observed)
+			}
+		}
 	}
 
 	delete(c.samples, key)

@@ -2,6 +2,7 @@ package collector
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"fmt"
 	"reflect"
@@ -1804,4 +1805,140 @@ func TestQuerySamples_FingerprintCountersSilentOnSuccess(t *testing.T) {
 	require.Equal(t, float64(0), testutil.ToFloat64(qs.fingerprintRepaired))
 	require.Equal(t, float64(0), testutil.ToFloat64(qs.fingerprintSentinel.WithLabelValues("truncated")))
 	require.Equal(t, float64(0), testutil.ToFloat64(qs.fingerprintSentinel.WithLabelValues("unparsable")))
+}
+
+// TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration drives
+// the collector through three scrapes: scrape 1 sees a Lock:relation wait,
+// scrape 2 sees the SAME wait 5s later (same identity, so the tracker
+// extends the open occurrence), scrape 3 returns no rows — triggering
+// finalize -> emitAndDeleteSample.
+//
+// The counter must record the ALLOY-OBSERVED interval (5s = the gap between
+// the two scrapes that saw the wait), NOT the cumulative `now - state_change`
+// duration on the last scrape. state_change is 10 minutes before the first
+// scrape, simulating a wait that was already in progress when the collector
+// started; the counter must NOT attribute that pre-collector time.
+func TestQuerySamples_WaitEventSecondsCounterIncrementsByObservedDuration(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	t0 := time.Now()
+	t1 := t0.Add(5 * time.Second)                  // second scrape, 5s later
+	stateChangeTime := t0.Add(-10 * time.Minute)   // wait has been "active" for 10min before the collector saw it
+	queryStartTime := t0.Add(-30 * time.Second)
+	xactStartTime := t0.Add(-2 * time.Minute)
+	backendStartTime := t0.Add(-1 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+		"query",
+	}
+
+	rowAt := func(now time.Time) []driver.Value {
+		return []driver.Value{
+			now, "books", 200, sql.NullInt64{},
+			"user1", "app1", "127.0.0.1", 5432,
+			"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+			xactStartTime, "waiting", stateChangeTime, sql.NullString{String: "Lock", Valid: true},
+			sql.NullString{String: "relation", Valid: true}, pq.Int64Array{201}, queryStartTime,
+			sql.NullInt64{Int64: 9876, Valid: true},
+			"SELECT * FROM books WHERE id = 5",
+		}
+	}
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	// Three scrapes: same wait at t0 and t1, then empty at the third (triggers emit).
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).
+		RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(rowAt(t0)...))
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).
+		RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns).AddRow(rowAt(t1)...))
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, queryTextClause, exclusionClause, excludeCurrentUserClause, "")).
+		RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows(columns))
+
+	registry := prometheus.NewRegistry()
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	qs, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                            db,
+		CollectInterval:               time.Millisecond,
+		EntryHandler:                  lokiClient,
+		Logger:                        log.NewNopLogger(),
+		DisableQueryRedaction:         true,
+		EnableQueryFingerprint:        true,
+		EnablePreClassifiedWaitEvents: false,
+		Registry:                      registry,
+		ExcludeCurrentUser:            true,
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, qs.Start(t.Context()))
+
+	// Wait until both Loki entries (sample + wait_event) have flowed.
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) >= 2
+	}, 5*time.Second, 100*time.Millisecond)
+
+	qs.Stop()
+	require.Eventually(t, func() bool { return qs.Stopped() }, 5*time.Second, 100*time.Millisecond)
+
+	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM books WHERE id = 5", fingerprint.SourcePgStatActivity, 0)
+	require.NoError(t, fpErr)
+
+	got := testutil.ToFloat64(qs.waitEventSeconds.WithLabelValues(expectedFP, "books"))
+	// FirstObservedAt = t0 (scrape 1's clock_timestamp), LastTimestamp = t1
+	// (scrape 2's clock_timestamp), so the counter receives exactly 5s.
+	// The 10-minute pre-collector duration measured by state_change is NOT
+	// attributed to the counter — that's the bug fix this test pins.
+	require.InDelta(t, 5.0, got, 0.001,
+		"expected counter == 5s (alloy-observed interval); got %.3f. "+
+			"If got is ~600 (10min), the counter is using state_change-based duration "+
+			"and overcounting pre-collector wait time.",
+		got)
+}
+
+// TestQuerySamples_WaitEventSecondsCounterAbsentWhenFingerprintDisabled
+// confirms the counter is not constructed and not registered when
+// EnableQueryFingerprint is false. With the flag off there is no
+// QueryFingerprint resolved on SampleState, so a registered counter would
+// either never increment or produce a single query_fingerprint="" series --
+// neither of which is meaningful.
+func TestQuerySamples_WaitEventSecondsCounterAbsentWhenFingerprintDisabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, _, err := sqlmock.New()
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	registry := prometheus.NewRegistry()
+	qs, err := NewQuerySamples(QuerySamplesArguments{
+		DB:                     db,
+		CollectInterval:        time.Second,
+		EntryHandler:           lokiClient,
+		Logger:                 log.NewNopLogger(),
+		EnableQueryFingerprint: false, // explicitly off
+		Registry:               registry,
+	})
+	require.NoError(t, err)
+	require.Nil(t, qs.waitEventSeconds, "counter should not be constructed when EnableQueryFingerprint is false")
+
+	// Sanity: gathering produces no series for this metric name.
+	mfs, err := registry.Gather()
+	require.NoError(t, err)
+	for _, mf := range mfs {
+		require.NotEqual(t, "database_observability_wait_event_seconds_total", mf.GetName(),
+			"metric should not be registered when EnableQueryFingerprint is false")
+	}
 }

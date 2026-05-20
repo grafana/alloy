@@ -632,6 +632,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			EntryHandler:           entryHandler,
 			TableRegistry:          tableRegistry,
 			EnableQueryFingerprint: c.args.EnableQueryFingerprint,
+			Registry:               c.registry,
 			Logger:                 c.opts.Logger,
 		})
 		if err != nil {
@@ -697,15 +698,16 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.ExplainPlanCollector] {
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlansArguments{
-			DB:               c.dbConnection,
-			DSN:              string(c.args.DataSourceName),
-			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
-			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     effectiveExcludeUsers,
-			Logger:           c.opts.Logger,
-			DBVersion:        engineVersion,
-			EntryHandler:     entryHandler,
+			DB:                     c.dbConnection,
+			DSN:                    string(c.args.DataSourceName),
+			ScrapeInterval:         c.args.ExplainPlansArguments.CollectInterval,
+			PerScrapeRatio:         c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeDatabases:       c.args.ExcludeDatabases,
+			ExcludeUsers:           effectiveExcludeUsers,
+			Logger:                 c.opts.Logger,
+			DBVersion:              engineVersion,
+			EntryHandler:           entryHandler,
+			EnableQueryFingerprint: c.args.EnableQueryFingerprint,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)

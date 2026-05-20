@@ -10,6 +10,7 @@ import (
 
 	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -20,10 +21,11 @@ import (
 )
 
 const (
-	QueryDetailsCollector      = "query_details"
-	OP_QUERY_ASSOCIATION       = "query_association"
-	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
-	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
+	QueryDetailsCollector         = "query_details"
+	OP_QUERY_ASSOCIATION          = "query_association"
+	OP_QUERY_ASSOCIATION_V2       = "query_association_v2"
+	OP_QUERY_PARSED_TABLE_NAME    = "query_parsed_table_name"
+	OP_QUERY_PARSED_TABLE_NAME_V2 = "query_parsed_table_name_v2"
 )
 
 var selectQueriesFromActivity = `
@@ -56,6 +58,7 @@ type QueryDetailsArguments struct {
 	EntryHandler           loki.EntryHandler
 	TableRegistry          *TableRegistry
 	EnableQueryFingerprint bool
+	Registry               *prometheus.Registry
 
 	Logger log.Logger
 }
@@ -71,6 +74,9 @@ type QueryDetails struct {
 	enableQueryFingerprint bool
 	normalizer             *sqllexer.Normalizer
 
+	registry             *prometheus.Registry
+	queryFingerprintInfo *prometheus.GaugeVec
+
 	logger  log.Logger
 	running *atomic.Bool
 	ctx     context.Context
@@ -79,7 +85,7 @@ type QueryDetails struct {
 }
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
-	return &QueryDetails{
+	qd := &QueryDetails{
 		dbConnection:           args.DB,
 		collectInterval:        args.CollectInterval,
 		statementsLimit:        args.StatementsLimit,
@@ -91,7 +97,19 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		normalizer:             sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
 		logger:                 log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:                &atomic.Bool{},
-	}, nil
+		registry:               args.Registry,
+	}
+
+	if args.Registry != nil && args.EnableQueryFingerprint {
+		qd.queryFingerprintInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: "database_observability",
+			Name:      "pg_query_fingerprint_info",
+			Help:      "Mapping of pg_stat_statements.queryid to its semantic query_fingerprint, per database. Value is always 1; the labels are the join key. Refreshed each query_details scrape -- series for queryids no longer observed are dropped.",
+		}, []string{"queryid", "query_fingerprint", "datname"})
+		args.Registry.MustRegister(qd.queryFingerprintInfo)
+	}
+
+	return qd, nil
 }
 
 func (c *QueryDetails) Name() string {
@@ -138,6 +156,10 @@ func (c *QueryDetails) Stop() {
 		c.cancel()
 	}
 	c.wg.Wait()
+
+	if c.registry != nil && c.queryFingerprintInfo != nil {
+		c.registry.Unregister(c.queryFingerprintInfo)
+	}
 }
 
 func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
@@ -150,6 +172,10 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	}
 	defer rs.Close()
 
+	if c.queryFingerprintInfo != nil {
+		c.queryFingerprintInfo.Reset()
+	}
+
 	for rs.Next() {
 		var queryID, queryText string
 		var databaseName database
@@ -159,6 +185,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
+		var fp string
 		if c.enableQueryFingerprint {
 			// Fingerprint the raw pg_stat_statements.query text BEFORE comment
 			// stripping, so the fingerprint is stable across comment differences.
@@ -166,7 +193,8 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			// the value matches the fingerprint computed from the raw text in
 			// pg_stat_activity (op=query_sample) or from STATEMENT continuations
 			// in server logs (op=error).
-			fp, _, fpErr := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
+			var fpErr error
+			fp, _, fpErr = fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
 			if fpErr != nil {
 				// fingerprint.ErrEmpty — the row's query text was empty/whitespace.
 				// Skip emitting; an empty fingerprint isn't useful as a join key.
@@ -184,6 +212,12 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 				OP_QUERY_ASSOCIATION_V2,
 				fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
 			)
+
+			if c.queryFingerprintInfo != nil && fp != "" {
+				c.queryFingerprintInfo.
+					WithLabelValues(queryID, fp, string(databaseName)).
+					Set(1)
+			}
 		} else {
 			queryText, err = removeComments(c.normalizer, queryText)
 			if err != nil {
@@ -211,11 +245,22 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 				resolvedTable, validated = c.tableRegistry.IsValid(databaseName, table)
 			}
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_QUERY_PARSED_TABLE_NAME,
-				fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
-			)
+			if c.enableQueryFingerprint {
+				// Reuse the fingerprint computed once for the parent
+				// query_association_v2 line; every parsed-table-name line for
+				// this row carries the same fingerprint as a join key.
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+					logging.LevelInfo,
+					OP_QUERY_PARSED_TABLE_NAME_V2,
+					fmt.Sprintf(`queryid="%s" query_fingerprint="%s" datname="%s" table="%s" validated="%t"`, queryID, fp, databaseName, resolvedTable, validated),
+				)
+			} else {
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+					logging.LevelInfo,
+					OP_QUERY_PARSED_TABLE_NAME,
+					fmt.Sprintf(`queryid="%s" datname="%s" table="%s" validated="%t"`, queryID, databaseName, resolvedTable, validated),
+				)
+			}
 		}
 	}
 

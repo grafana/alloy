@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -18,6 +20,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -2348,6 +2351,12 @@ func TestNewQueryInfo(t *testing.T) {
 	assert.Equal(t, callsReset, qi.callsReset)
 	assert.Equal(t, datname+queryId, qi.uniqueKey)
 	assert.Equal(t, 0, qi.failureCount)
+
+	// Fingerprint is cached on the struct so every downstream emit reuses
+	// the same value -- compute it independently and compare.
+	expectedFP, _, err := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
+	require.NoError(t, err)
+	assert.Equal(t, expectedFP, qi.queryFingerprint)
 }
 
 func TestPlanNode_TotalCost(t *testing.T) {
@@ -3267,5 +3276,152 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 	assert.Len(t, explainPlan.queryCache, 1)
 	assert.Contains(t, explainPlan.queryCache, "testdb111111")
 
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlans_EmitsV2WhenEnabled(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	post17ver, err := semver.ParseTolerant("17.0")
+	require.NoError(t, err)
+
+	const sqlText = "select * from some_table where id = $1"
+	expectedFP, _, err := fingerprint.Fingerprint(sqlText, fingerprint.SourcePgStatStatements, 0)
+	require.NoError(t, err)
+	require.NotEmpty(t, expectedFP)
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+	logBuffer := syncbuffer.Buffer{}
+
+	dbConnFactory := &mockDbConnectionFactory{db: db, Mock: &mock, InstantiationCount: 0}
+	explainPlan := &ExplainPlans{
+		dbConnection:        db,
+		dbDSN:               "postgres://user:pass@host:1234/database",
+		dbConnectionFactory: dbConnFactory.NewDBConnection,
+		dbVersion:           post17ver,
+		queryCache: map[string]*queryInfo{
+			"testdb123456": {
+				datname:          "testdb",
+				queryId:          "123456",
+				queryText:        sqlText,
+				queryFingerprint: expectedFP,
+				calls:            int64(10),
+				callsReset:       time.Now(),
+			},
+		},
+		queryDenylist:          map[string]*queryInfo{},
+		finishedQueryCache:     map[string]*queryInfo{},
+		excludeDatabases:       []string{},
+		perScrapeRatio:         1.0,
+		logger:                 log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		entryHandler:           lokiClient,
+		currentBatchSize:       1,
+		enableQueryFingerprint: true,
+	}
+
+	archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+	require.NoError(t, err)
+	require.Equal(t, 1, len(archive.Files))
+	jsonData := archive.Files[0].Data
+
+	mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("PREPARE explain_plan_123456 AS " + sqlText).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
+	mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 },
+		5*time.Second, 10*time.Millisecond, "did not receive the explain plan output log message")
+
+	entries := lokiClient.Received()
+	require.Equal(t, 1, len(entries))
+
+	require.Equal(t, model.LabelSet{"op": OP_EXPLAIN_PLAN_OUTPUT_V2}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `schema="testdb"`)
+	require.Contains(t, entries[0].Line, `digest="123456"`)
+	require.Contains(t, entries[0].Line, fmt.Sprintf(`query_fingerprint="%s"`, expectedFP))
+	require.Contains(t, entries[0].Line, "explain_plan_output=")
+
+	// Fingerprint sits between digest= and explain_plan_output= in the body.
+	digestIdx := strings.Index(entries[0].Line, "digest=")
+	fpIdx := strings.Index(entries[0].Line, "query_fingerprint=")
+	planIdx := strings.Index(entries[0].Line, "explain_plan_output=")
+	require.Greater(t, fpIdx, digestIdx, "query_fingerprint must come after digest")
+	require.Less(t, fpIdx, planIdx, "query_fingerprint must come before explain_plan_output")
+
+	require.NotContains(t, logBuffer.String(), "error")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestExplainPlans_StaysLegacyWhenFingerprintDisabled(t *testing.T) {
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	post17ver, err := semver.ParseTolerant("17.0")
+	require.NoError(t, err)
+
+	const sqlText = "select * from some_table where id = $1"
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+	logBuffer := syncbuffer.Buffer{}
+
+	dbConnFactory := &mockDbConnectionFactory{db: db, Mock: &mock, InstantiationCount: 0}
+	explainPlan := &ExplainPlans{
+		dbConnection:        db,
+		dbDSN:               "postgres://user:pass@host:1234/database",
+		dbConnectionFactory: dbConnFactory.NewDBConnection,
+		dbVersion:           post17ver,
+		queryCache: map[string]*queryInfo{
+			"testdb123456": {
+				datname:    "testdb",
+				queryId:    "123456",
+				queryText:  sqlText,
+				calls:      int64(10),
+				callsReset: time.Now(),
+			},
+		},
+		queryDenylist:      map[string]*queryInfo{},
+		finishedQueryCache: map[string]*queryInfo{},
+		excludeDatabases:   []string{},
+		perScrapeRatio:     1.0,
+		logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		entryHandler:       lokiClient,
+		currentBatchSize:   1,
+		// enableQueryFingerprint defaults to false.
+	}
+
+	archive, err := txtar.ParseFile("./testdata/explain_plan/complex_aggregation_with_case.txtar")
+	require.NoError(t, err)
+	require.Equal(t, 1, len(archive.Files))
+	jsonData := archive.Files[0].Data
+
+	mock.ExpectExec("SET SESSION search_path TO \"testdb\", public").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("PREPARE explain_plan_123456 AS " + sqlText).WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec("SET plan_cache_mode = force_generic_plan").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectQuery("EXPLAIN (FORMAT JSON) EXECUTE explain_plan_123456(null)").WillReturnRows(sqlmock.NewRows([]string{"json"}).AddRow(jsonData))
+	mock.ExpectExec("DEALLOCATE explain_plan_123456").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	require.NoError(t, explainPlan.fetchExplainPlans(t.Context()))
+
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) == 1 },
+		5*time.Second, 10*time.Millisecond, "did not receive the explain plan output log message")
+
+	entries := lokiClient.Received()
+	require.Equal(t, 1, len(entries))
+
+	// Legacy op label, legacy line shape, no fingerprint anywhere.
+	require.Equal(t, model.LabelSet{"op": OP_EXPLAIN_PLAN_OUTPUT}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `schema="testdb"`)
+	require.Contains(t, entries[0].Line, `digest="123456"`)
+	require.NotContains(t, entries[0].Line, "query_fingerprint=")
+
+	require.NotContains(t, logBuffer.String(), "error")
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
