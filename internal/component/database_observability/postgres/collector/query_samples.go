@@ -149,7 +149,9 @@ type QuerySamples struct {
 	registry            *prometheus.Registry
 	fingerprintRepaired prometheus.Counter
 	fingerprintSentinel *prometheus.CounterVec
-	waitEventSeconds    *prometheus.CounterVec
+
+	// per-fingerprint wait-event time accounting
+	waitEventSeconds *prometheus.CounterVec
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -246,9 +248,9 @@ type WaitEventOccurrence struct {
 	WaitEventType   string
 	WaitEvent       string
 	BlockedByPIDs   []int64 // normalized set (sorted, unique)
-	LastWaitTime    string  // last stateDuration seen, anchored on pg_stat_activity.state_change
+	LastWaitTime    string  // last stateDuration seen for this wait event (computed from pg_stat_activity.state_change)
 	LastState       string
-	FirstObservedAt time.Time // lower bound for wait_event_seconds_total
+	FirstObservedAt time.Time // first scrape that saw this occurrence; used as the lower bound for the wait_event_seconds_total counter
 	LastTimestamp   time.Time
 }
 
@@ -587,10 +589,13 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 			we.LastTimestamp.UnixNano(),
 		)
 		if c.waitEventSeconds != nil && state.QueryFingerprint != "" {
-			// Anchor on Alloy-observed scrapes (LastTimestamp - FirstObservedAt)
-			// rather than now - state_change; otherwise a wait that started
-			// before the collector launched would dump its full pre-collector
-			// duration into the counter on first emit.
+			// Counter measures wait time as observed by Alloy across the
+			// scrapes that saw this occurrence. Using LastTimestamp -
+			// FirstObservedAt (rather than now - state_change) avoids
+			// attributing pre-existing wait time to the counter when Alloy
+			// starts mid-wait — a 30-minute lock that began before the
+			// collector launched would otherwise dump 1800s into the
+			// counter on the first emit.
 			observed := we.LastTimestamp.Sub(we.FirstObservedAt).Seconds()
 			if observed > 0 {
 				c.waitEventSeconds.
