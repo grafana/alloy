@@ -1595,7 +1595,7 @@ func TestExplicitToCustomBucketsHistogram_Layout(t *testing.T) {
 			require.Len(t, families[0].Metric, 1)
 			h := families[0].Metric[0].Histogram
 			require.NotNil(t, h)
-			require.Equal(t, int32(histogram.CustomBucketsSchema), h.GetSchema())
+			require.Equal(t, histogram.CustomBucketsSchema, h.GetSchema())
 			require.Equal(t, tc.count, h.GetSampleCount())
 			require.Equal(t, tc.sum, h.GetSampleSum())
 			require.Len(t, h.PositiveSpan, 1)
