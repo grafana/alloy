@@ -4,7 +4,6 @@ package irsymcache
 
 import (
 	"go.opentelemetry.io/ebpf-profiler/libpf"
-	"go.opentelemetry.io/ebpf-profiler/process"
 )
 
 type NativeSymbolResolver interface {
@@ -29,7 +28,7 @@ func SymbolizeNativeFrame(
 	var (
 		si SourceInfo
 	)
-	if mappingName != process.VdsoPathName {
+	if mappingName != vdsoPathName {
 		si, _ = resolver.ResolveAddress(fileID, uint64(addr))
 	}
 	symbolize(si)

@@ -4,6 +4,7 @@ package reporter
 
 import (
 	"bytes"
+	"encoding/hex"
 	"testing"
 
 	"github.com/google/pprof/profile"
@@ -196,6 +197,58 @@ Mappings
 1: 0x0/0x0/0x0   
 `
 	assert.Equal(t, expected, p.String())
+}
+
+func TestPPROFReporter_SpanAndTraceIDsBecomeSampleLabels(t *testing.T) {
+	rep := newReporter()
+
+	frames := make(libpf.Frames, 0, 1)
+	frames.Append(&libpf.Frame{
+		Type:            libpf.KernelFrame,
+		AddressOrLineno: 0x2000,
+	})
+
+	spanIDOne := libpf.APMSpanID{1, 2, 3, 4, 5, 6, 7, 8}
+	traceIDOne := libpf.APMTraceID{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16}
+	spanIDTwo := libpf.APMSpanID{8, 7, 6, 5, 4, 3, 2, 1}
+	traceIDTwo := libpf.APMTraceID{16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1}
+
+	events := samples.SampleToEvents{
+		{Hash: libpf.NewTraceHash(0, 1), SpanID: spanIDOne, TraceID: traceIDOne}: {
+			Frames:     frames,
+			Timestamps: []uint64{42},
+		},
+		{Hash: libpf.NewTraceHash(0, 1), SpanID: spanIDTwo, TraceID: traceIDTwo}: {
+			Frames:     frames,
+			Timestamps: []uint64{43},
+		},
+	}
+
+	profiles := rep.createProfile(
+		samples.ResourceKey{PID: 123},
+		support.TraceOriginSampling,
+		events,
+	)
+	require.Len(t, profiles, 1)
+	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
+
+	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
+	require.NoError(t, err)
+	require.Len(t, p.Sample, 2)
+
+	got := map[string]string{}
+	for _, sample := range p.Sample {
+		require.Contains(t, sample.Label, "span_id")
+		require.Contains(t, sample.Label, "trace_id")
+		require.Len(t, sample.Label["span_id"], 1)
+		require.Len(t, sample.Label["trace_id"], 1)
+		got[sample.Label["span_id"][0]] = sample.Label["trace_id"][0]
+	}
+
+	assert.Equal(t, map[string]string{
+		hex.EncodeToString(spanIDOne[:]): hex.EncodeToString(traceIDOne[:]),
+		hex.EncodeToString(spanIDTwo[:]): hex.EncodeToString(traceIDTwo[:]),
+	}, got)
 }
 
 func TestPPROFReporter_Bug(t *testing.T) {
