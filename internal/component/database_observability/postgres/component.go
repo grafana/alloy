@@ -428,15 +428,11 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 
 	var trackActivityQuerySize int
-	{
-		var raw sql.NullString
-		if err := dbConnection.QueryRowContext(ctx, "SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'").Scan(&raw); err != nil {
-			level.Warn(c.opts.Logger).Log("msg", "failed to read track_activity_query_size; truncation sentinel will not fire", "err", err)
-		} else if raw.Valid {
-			if v, err := strconv.Atoi(raw.String); err == nil {
-				trackActivityQuerySize = v
-			}
-		}
+	var rawSetting sql.NullString
+	if err := dbConnection.QueryRowContext(ctx, "SELECT setting FROM pg_settings WHERE name = 'track_activity_query_size'").Scan(&rawSetting); err != nil {
+		level.Warn(c.opts.Logger).Log("msg", "failed to read track_activity_query_size; truncation sentinel will not fire", "err", err)
+	} else if rawSetting.Valid {
+		trackActivityQuerySize, _ = strconv.Atoi(rawSetting.String)
 	}
 
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
