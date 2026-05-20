@@ -159,23 +159,38 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
-		queryText, err = removeComments(c.normalizer, queryText)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
-			continue
-		}
-
 		if c.enableQueryFingerprint {
+			// Fingerprint the raw pg_stat_statements.query text BEFORE comment
+			// stripping, so the fingerprint is stable across comment differences.
+			// pg_query.Fingerprint canonicalizes literals at the AST level, so
+			// the value matches the fingerprint computed from the raw text in
+			// pg_stat_activity (op=query_sample) or from STATEMENT continuations
+			// in server logs (op=error).
 			fp, _, fpErr := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
 			if fpErr != nil {
+				// fingerprint.ErrEmpty — the row's query text was empty/whitespace.
+				// Skip emitting; an empty fingerprint isn't useful as a join key.
 				level.Debug(c.logger).Log("msg", "skip fingerprint", "queryid", queryID, "err", fpErr)
 			}
+
+			queryText, err = removeComments(c.normalizer, queryText)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
+				continue
+			}
+
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_ASSOCIATION_V2,
 				fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
 			)
 		} else {
+			queryText, err = removeComments(c.normalizer, queryText)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
+				continue
+			}
+
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_ASSOCIATION,

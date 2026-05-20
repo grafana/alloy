@@ -145,6 +145,7 @@ type QuerySamples struct {
 	// keep track of idle keys that were already emitted to avoid duplicates
 	idleEmitted *expirable.LRU[SampleKey, struct{}]
 
+	// fingerprint pipeline observability
 	registry            *prometheus.Registry
 	fingerprintRepaired prometheus.Counter
 	fingerprintSentinel *prometheus.CounterVec
@@ -176,8 +177,9 @@ type SampleState struct {
 	// EndAt is the time we determined the sample ended (idle transition
 	// or when it was only observed idle), used to compute durations/timestamps.
 	EndAt sql.NullTime
-	// QueryFingerprint is resolved at most once per SampleKey and reused
-	// across subsequent wait events and the final emit.
+	// QueryFingerprint caches the libpg_query fingerprint of LastRow.Query
+	// so we resolve at most once per active sample. Subsequent waits and
+	// the final emission for the same SampleKey reuse this cached value.
 	QueryFingerprint string
 }
 
@@ -187,9 +189,12 @@ func (s *SampleState) updateCpuTime(sample QuerySamplesInfo) {
 	}
 }
 
-// resolveQueryFingerprint returns "" when the row carried no query (e.g.
-// background workers idle before any query has run) or when fingerprinting
-// returned ErrEmpty.
+// resolveQueryFingerprint computes a stable fingerprint from the sample's
+// pg_stat_activity.query text. The text is always available (the SELECT now
+// always includes s.query) regardless of disableQueryRedaction — only the
+// emission of raw SQL on log lines is gated by that flag. Returns "" when
+// the row carried no query (e.g. background workers with state="idle"
+// before any query has run) or when fingerprinting fails entirely.
 func (c *QuerySamples) resolveQueryFingerprint(sample QuerySamplesInfo) string {
 	if !sample.Query.Valid {
 		return ""
@@ -355,8 +360,9 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	// s.query is always selected (needed for fingerprint); raw-text emission
-	// on log lines is still gated by c.disableQueryRedaction.
+	// We always select s.query so we can compute query_fingerprint inline.
+	// Whether the raw text is *emitted* on the log line is still gated by
+	// c.disableQueryRedaction below.
 	queryTextField := queryTextClause
 
 	excludeCurrentUserClauseField := ""
@@ -453,6 +459,9 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
+		// Always scan s.query so we can compute query_fingerprint
+		// regardless of disableQueryRedaction. The raw text is only
+		// emitted on the line when disableQueryRedaction is true.
 		&sample.Query,
 	}
 	err := rows.Scan(scanArgs...)
@@ -559,7 +568,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 			logging.LevelInfo,
 			c.waitEventOp(),
-			c.buildWaitEventLabels(state, we),
+			c.waitEventLabels(state, we),
 			we.LastTimestamp.UnixNano(),
 		)
 	}
@@ -567,6 +576,9 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	delete(c.samples, key)
 }
 
+// querySampleOp picks the op label for query_sample lines. The v2 variant
+// carries the trailing query_fingerprint= field; the v1 variant predates the
+// fingerprint pipeline.
 func (c *QuerySamples) querySampleOp() string {
 	if c.enableQueryFingerprint {
 		return OP_QUERY_SAMPLE_V2
@@ -574,13 +586,13 @@ func (c *QuerySamples) querySampleOp() string {
 	return OP_QUERY_SAMPLE
 }
 
-// waitEventOp picks the op label for wait_event lines from the matrix of
-// (enableQueryFingerprint, enablePreClassifiedWaitEvents):
+// waitEventOp picks the op label for wait_event lines based on the matrix of
+// (enableQueryFingerprint, enablePreClassifiedWaitEvents). Cells:
 //
-//	off / off -> wait_event       (raw type, no fingerprint)
-//	off / on  -> wait_event_v2    (pre-classified type, no fingerprint)
-//	on  / off -> wait_event_v3    (raw type + fingerprint)
-//	on  / on  -> wait_event_v4    (pre-classified type + fingerprint)
+//	off / off -> wait_event       (raw event_type, no fingerprint)
+//	off / on  -> wait_event_v2    (pre-classified event_type, no fingerprint)
+//	on  / off -> wait_event_v3    (raw event_type + fingerprint)
+//	on  / on  -> wait_event_v4    (pre-classified event_type + fingerprint)
 func (c *QuerySamples) waitEventOp() string {
 	switch {
 	case c.enableQueryFingerprint && c.enablePreClassifiedWaitEvents:
@@ -592,6 +604,18 @@ func (c *QuerySamples) waitEventOp() string {
 	default:
 		return OP_WAIT_EVENT
 	}
+}
+
+// waitEventLabels picks the label-builder that matches the wait_event op
+// shape. Pre-classified variants (v2, v4) go through buildWaitEventV2Labels;
+// raw variants (v1, v3) go through buildWaitEventLabels. The fingerprint
+// field is appended unconditionally by both builders when state.QueryFingerprint
+// is non-empty, so no separate fingerprint-aware builder is needed.
+func (c *QuerySamples) waitEventLabels(state *SampleState, we WaitEventOccurrence) string {
+	if c.enablePreClassifiedWaitEvents {
+		return c.buildWaitEventV2Labels(state, we)
+	}
+	return c.buildWaitEventLabels(state, we)
 }
 
 func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt sql.NullTime) string {
@@ -644,10 +668,7 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 }
 
 func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
-	eventType := we.WaitEventType
-	if c.enablePreClassifiedWaitEvents {
-		eventType = classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent)
-	}
+	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
@@ -663,9 +684,9 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
 		we.LastWaitTime,
-		eventType,
+		we.WaitEventType,
 		we.WaitEvent,
-		fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent),
+		waitEventFullName,
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
@@ -736,6 +757,35 @@ func isPostgresReplicationWaitEvent(waitEvent string) bool {
 		}
 	}
 	return false
+}
+
+func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOccurrence) string {
+	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	labels := fmt.Sprintf(
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
+		state.LastRow.DatabaseName.String,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.BackendType.String,
+		we.LastState,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
+		we.LastWaitTime,
+		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
+		we.WaitEvent,
+		waitEventFullName,
+		we.BlockedByPIDs,
+		state.LastRow.QueryID.Int64,
+	)
+	if state.QueryFingerprint != "" {
+		labels = fmt.Sprintf(`%s query_fingerprint="%s"`, labels, state.QueryFingerprint)
+	}
+	return labels
 }
 
 // classifyPostgresWaitEventType maps a raw PostgreSQL wait event type to a standardized category.
