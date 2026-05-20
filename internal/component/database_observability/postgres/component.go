@@ -75,14 +75,6 @@ type Arguments struct {
 	ExcludeUsers       []string            `alloy:"exclude_users,attr,optional"`
 	ExcludeCurrentUser bool                `alloy:"exclude_current_user,attr,optional"`
 
-	// EnableQueryFingerprint, when true, makes the component compute a stable
-	// semantic query_fingerprint for every observed query and emit it on Loki
-	// entries via versioned ops (query_association_v2, query_sample_v2,
-	// wait_event_v3, wait_event_v4). It also unlocks the new op="error" Loki
-	// entries that pair PostgreSQL ERROR + STATEMENT log lines and attach the
-	// fingerprint. When false (the default), the component preserves the
-	// pre-existing op shapes exactly and does not invoke the fingerprint
-	// pipeline at all.
 	EnableQueryFingerprint bool `alloy:"enable_query_fingerprint,attr,optional"`
 
 	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
@@ -726,10 +718,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver: c.logsReceiver,
-		// Forward emitted ops (e.g. op="error") to the same fanout the other
-		// collectors use, NOT back into the receiver — the receiver is the
-		// inbound queue we tail postgres log files from.
+		Receiver:               c.logsReceiver,
 		EntryHandler:           entryHandler,
 		Logger:                 c.opts.Logger,
 		Registry:               c.registry,
