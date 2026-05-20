@@ -246,9 +246,6 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			}
 
 			if c.enableQueryFingerprint {
-				// Reuse the fingerprint computed once for the parent
-				// query_association_v2 line; every parsed-table-name line for
-				// this row carries the same fingerprint as a join key.
 				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 					logging.LevelInfo,
 					OP_QUERY_PARSED_TABLE_NAME_V2,

@@ -204,10 +204,8 @@ type queryInfo struct {
 }
 
 func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset time.Time) *queryInfo {
-	// Compute the fingerprint once when the queryInfo is created; it is cheap
-	// (~microseconds) and is reused across every EXPLAIN attempt for the row.
-	// An empty fingerprint string is acceptable -- the v2 emit path embeds it
-	// as-is, matching how query_association_v2 handles parse failures.
+	// Resolve once per row; reused across every EXPLAIN attempt. Empty fp is
+	// fine — the v2 emit path embeds it as-is.
 	fp, _, _ := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
 	return &queryInfo{
 		datname:          datname,
@@ -304,32 +302,15 @@ func (c *ExplainPlans) sendExplainPlansOutput(schemaName string, digest string, 
 		return fmt.Errorf("failed to marshal explain plan output: %w", err)
 	}
 
-	var op string
-	var logMessage string
+	encodedPlan := base64.StdEncoding.EncodeToString(explainPlanOutputJSON)
+	op := OP_EXPLAIN_PLAN_OUTPUT
+	logMessage := fmt.Sprintf(`schema="%s" digest="%s" explain_plan_output="%s"`, schemaName, digest, encodedPlan)
 	if c.enableQueryFingerprint {
 		op = OP_EXPLAIN_PLAN_OUTPUT_V2
-		logMessage = fmt.Sprintf(
-			`schema="%s" digest="%s" query_fingerprint="%s" explain_plan_output="%s"`,
-			schemaName,
-			digest,
-			queryFingerprint,
-			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
-		)
-	} else {
-		op = OP_EXPLAIN_PLAN_OUTPUT
-		logMessage = fmt.Sprintf(
-			`schema="%s" digest="%s" explain_plan_output="%s"`,
-			schemaName,
-			digest,
-			base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
-		)
+		logMessage = fmt.Sprintf(`schema="%s" digest="%s" query_fingerprint="%s" explain_plan_output="%s"`, schemaName, digest, queryFingerprint, encodedPlan)
 	}
 
-	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-		logging.LevelInfo,
-		op,
-		logMessage,
-	)
+	c.entryHandler.Chan() <- database_observability.BuildLokiEntry(logging.LevelInfo, op, logMessage)
 
 	return nil
 }
