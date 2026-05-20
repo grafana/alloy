@@ -3,8 +3,8 @@ package stages
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -62,7 +62,7 @@ func validateMatcherConfig(cfg *MatchConfig) (logql.Expr, error) {
 }
 
 // newMatcherStage creates a new matcherStage from config
-func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
+func newMatcherStage(slogger *slog.Logger, config MatchConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (Stage, error) {
 	selector, err := validateMatcherConfig(&config)
 	if err != nil {
 		return nil, err
@@ -71,9 +71,9 @@ func newMatcherStage(logger log.Logger, config MatchConfig, registerer prometheu
 	var pl *Pipeline
 	if config.Action == MatchActionKeep {
 		var err error
-		pl, err = NewPipeline(logger, config.Stages, registerer, minStability)
+		pl, err = NewPipeline(slogger, config.Stages, registerer, minStability)
 		if err != nil {
-			return nil, fmt.Errorf("%v: %w", err, fmt.Errorf("match stage failed to create pipeline from config: %v", config))
+			return nil, fmt.Errorf("match stage failed to create pipeline from config %+v: %w", config, err)
 		}
 	}
 
@@ -191,5 +191,11 @@ func (m *matcherStage) processLogQL(e Entry) (Entry, bool) {
 func (m *matcherStage) Cleanup() {
 	if m.pipeline != nil {
 		m.pipeline.Cleanup()
+	}
+}
+
+func (m *matcherStage) Stop() {
+	if m.pipeline != nil { // nil for MatchActionDrop matchers, see Cleanup
+		m.pipeline.Stop()
 	}
 }

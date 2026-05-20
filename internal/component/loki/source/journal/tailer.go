@@ -9,12 +9,12 @@ package journal
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/coreos/go-systemd/v22/sdjournal"
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/loki/pkg/push"
 	jsoniter "github.com/json-iterator/go"
@@ -25,7 +25,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -101,7 +100,7 @@ var defaultJournalEntryFunc = func(c sdjournal.JournalReaderConfig, cursor strin
 // nolint
 type tailer struct {
 	metrics       *metrics
-	logger        log.Logger
+	logger        *slog.Logger
 	recv          loki.LogsReceiver
 	positions     positions.Positions
 	positionPath  string
@@ -116,7 +115,7 @@ type tailer struct {
 // newTailer return as new tailer
 func newTailer(
 	metrics *metrics,
-	logger log.Logger,
+	logger *slog.Logger,
 	recv loki.LogsReceiver,
 	positions positions.Positions,
 	jobName string,
@@ -139,7 +138,7 @@ func newTailer(
 
 func newTailerWithReader(
 	metrics *metrics,
-	logger log.Logger,
+	logger *slog.Logger,
 	recv loki.LogsReceiver,
 	pos positions.Positions,
 	jobName string,
@@ -218,11 +217,11 @@ func newTailerWithReader(
 				}
 
 				if err == syscall.EBADMSG || err == io.EOF || strings.HasPrefix(err.Error(), "failed to iterate journal:") {
-					level.Error(t.logger).Log("msg", "unable to follow journal", "err", err.Error())
+					t.logger.Error("unable to follow journal", "err", err.Error())
 					return
 				}
 
-				level.Error(t.logger).Log("msg", "received unexpected error while following the journal", "err", err.Error())
+				t.logger.Error("received unexpected error while following the journal", "err", err.Error())
 			}
 
 			// prevent tight loop
@@ -273,7 +272,7 @@ func (t *tailer) generateJournalConfig(
 	// rather than cfg.Cursor.
 	entry, err := cb.EntryFunc(cfg, cb.Position)
 	if err != nil {
-		level.Error(t.logger).Log("msg", "received error reading saved journal position", "err", err.Error())
+		t.logger.Error("received error reading saved journal position", "err", err.Error())
 		cfg.Since = -1 * cb.MaxAge
 		return cfg
 	}
@@ -298,7 +297,7 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 
 		bb, err := json.Marshal(entry.Fields)
 		if err != nil {
-			level.Error(t.logger).Log("msg", "could not marshal journal fields to JSON", "err", err, "unit", entry.Fields["_SYSTEMD_UNIT"])
+			t.logger.Error("could not marshal journal fields to JSON", "err", err, "unit", entry.Fields["_SYSTEMD_UNIT"])
 			return journalEmptyStr, nil
 		}
 		msg = string(bb)
@@ -306,7 +305,7 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 		var ok bool
 		msg, ok = entry.Fields["MESSAGE"]
 		if !ok {
-			level.Debug(t.logger).Log("msg", "received journal entry with no MESSAGE field", "unit", entry.Fields["_SYSTEMD_UNIT"])
+			t.logger.Debug("received journal entry with no MESSAGE field", "unit", entry.Fields["_SYSTEMD_UNIT"])
 			t.metrics.journalErrors.WithLabelValues(noMessageError).Inc()
 			return journalEmptyStr, nil
 		}
@@ -332,7 +331,7 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 	}
 	if len(lbls) == 0 {
 		// No labels, drop journal entry
-		level.Debug(t.logger).Log("msg", "received journal entry with no labels", "unit", entry.Fields["_SYSTEMD_UNIT"])
+		t.logger.Debug("received journal entry with no labels", "unit", entry.Fields["_SYSTEMD_UNIT"])
 		t.metrics.journalErrors.WithLabelValues(emptyLabelsError).Inc()
 		return journalEmptyStr, nil
 	}

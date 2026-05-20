@@ -3,10 +3,7 @@ package source
 import (
 	"errors"
 	"iter"
-
-	"github.com/go-kit/log"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
+	"log/slog"
 )
 
 // ErrSkip is used to indicate that a particular source should not be scheduled.
@@ -26,7 +23,7 @@ type SourceFactoryFn[Key comparable, Input any] func(Key, Input) (Source[Key], e
 // It iterates over inputs, creates sources for new items, and stops sources that are
 // no longer needed.
 func Reconcile[Key comparable, Input any](
-	logger log.Logger,
+	logger *slog.Logger,
 	s *Scheduler[Key],
 	it iter.Seq[Input],
 	keyFn KeyFn[Key, Input],
@@ -54,7 +51,7 @@ func Reconcile[Key comparable, Input any](
 		source, err := sourceFactoryFn(key, i)
 		if err != nil {
 			if !errors.Is(err, ErrSkip) {
-				level.Error(logger).Log("msg", "failed to create source, skipping", "error", err, "key", key)
+				logger.Error("failed to create source, skipping", "error", err, "key", key)
 			}
 			delete(shouldRun, key)
 			continue

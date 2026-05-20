@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	monitoringv1alpha2 "github.com/grafana/alloy/internal/component/loki/source/podlogs/internal/apis/monitoring/v1alpha2"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -19,7 +18,7 @@ import (
 )
 
 type controller struct {
-	log        log.Logger
+	log        *slog.Logger
 	reconciler *reconciler
 
 	mut       sync.RWMutex
@@ -36,7 +35,7 @@ const informerSyncTimeout = 10 * time.Minute
 
 // newController creates a new, unstarted controller. The controller will
 // request a reconcile when the state of Kubernetes changes.
-func newController(l log.Logger, reconciler *reconciler) *controller {
+func newController(l *slog.Logger, reconciler *reconciler) *controller {
 	return &controller{
 		log:        l,
 		reconciler: reconciler,
@@ -115,7 +114,7 @@ func (ctrl *controller) Run(ctx context.Context) error {
 
 			go func() {
 				if err := ctrl.run(informerContext, newInformers, newClient); err != nil {
-					level.Error(ctrl.log).Log("msg", "failed to run controller", "err", err)
+					ctrl.log.Error("failed to run controller", "err", err)
 				}
 			}()
 
@@ -126,13 +125,13 @@ func (ctrl *controller) Run(ctx context.Context) error {
 }
 
 func (ctrl *controller) run(ctx context.Context, informers cache.Informers, client client.Client) error {
-	level.Info(ctrl.log).Log("msg", "starting controller")
-	defer level.Info(ctrl.log).Log("msg", "controller exiting")
+	ctrl.log.Info("starting controller")
+	defer ctrl.log.Info("controller exiting")
 
 	go func() {
 		err := informers.Start(ctx)
 		if err != nil && ctx.Err() != nil {
-			level.Error(ctrl.log).Log("msg", "failed to start informers", "err", err)
+			ctrl.log.Error("failed to start informers", "err", err)
 		}
 	}()
 
@@ -150,7 +149,7 @@ func (ctrl *controller) run(ctx context.Context, informers cache.Informers, clie
 			return nil
 		case <-ctrl.reconcileCh:
 			if err := ctrl.reconciler.Reconcile(ctx, client); err != nil {
-				level.Error(ctrl.log).Log("msg", "reconcile failed", "err", err)
+				ctrl.log.Error("reconcile failed", "err", err)
 			}
 		}
 	}
@@ -178,7 +177,7 @@ func (ctrl *controller) configureInformers(ctx context.Context, informers cache.
 		}); err != nil {
 			return fmt.Errorf("failed to register field index for spec.nodeName: %w", err)
 		}
-		level.Debug(ctrl.log).Log("msg", "registered field index for spec.nodeName")
+		ctrl.log.Debug("registered field index for spec.nodeName")
 	}
 
 	for _, ty := range types {

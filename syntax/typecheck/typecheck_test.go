@@ -1,6 +1,7 @@
 package typecheck
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -311,8 +312,8 @@ func TestBlock(t *testing.T) {
 					arg1 = true
 					arg2 = "test"	
 					arg3 = true
-					arr = ["test", 1]
-					obj = { "key" = 1 }
+					arr = ["test", true]
+					obj = { "key" = true }
 					capsule = 1
 					int = -"test"
 					int2 = 1 + "test"
@@ -335,8 +336,8 @@ func TestBlock(t *testing.T) {
 			`),
 			expectedErr: []string{
 				`3:13: expected string, got bool`,
-				`6:21: expected string, got number`,
-				`7:22: expected string, got number`,
+				`6:21: expected string, got bool`,
+				`7:22: expected string, got bool`,
 				`8:16: expected capsule, got number`,
 				`9:13: expected number, got string`,
 				`10:13: expected number, got string`,
@@ -377,4 +378,49 @@ func TestBlockMap(t *testing.T) {
 	require.NoError(t, err)
 	diag := Block(file.Body[0].(*ast.BlockStmt), &Args{})
 	require.Len(t, diag, 0)
+}
+
+type ValidatedString string
+
+func (s *ValidatedString) UnmarshalText(text []byte) error {
+	*s = ValidatedString(text)
+	return nil
+}
+
+func (s ValidatedString) Validate() error {
+	if s != "allowed" {
+		return fmt.Errorf("value must be \"allowed\"")
+	}
+	return nil
+}
+
+type ValidatedArgs struct {
+	Value ValidatedString `alloy:"value,attr"`
+}
+
+func TestBlock_ValidatorAttr(t *testing.T) {
+	src := []byte(`
+		test "name" {
+			value = "denied"
+		}
+	`)
+
+	file, err := parser.ParseFile("", src)
+	require.NoError(t, err)
+
+	diags := Block(file.Body[0].(*ast.BlockStmt), &ValidatedArgs{})
+	require.Len(t, diags, 1)
+	require.EqualError(t, diags[0], `3:12: value must be "allowed"`)
+
+	src = []byte(`
+		test "name" {
+			value = "allowed"
+		}
+	`)
+
+	file, err = parser.ParseFile("", src)
+	require.NoError(t, err)
+
+	diags = Block(file.Body[0].(*ast.BlockStmt), &ValidatedArgs{})
+	require.Len(t, diags, 0)
 }

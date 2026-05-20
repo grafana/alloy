@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/azure_event_hubs/internal/parser"
 	kt "github.com/grafana/alloy/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -104,14 +103,14 @@ type Component struct {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "loki.source.azure_event_hubs component shutting down, stopping the targets")
+		c.opts.SLogger.Info("loki.source.azure_event_hubs component shutting down, stopping the targets")
 
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 
 			if err := c.target.Stop(); err != nil {
-				level.Error(c.opts.Logger).Log("msg", "error while stopping azure_event_hubs target", "err", err)
+				c.opts.SLogger.Error("error while stopping azure_event_hubs target", "err", err)
 			}
 		})
 	}()
@@ -139,7 +138,7 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	t, err := kt.NewSyncer(c.opts.Logger, cfg, entryHandler, &parser.AzureEventHubsTargetMessageParser{
+	t, err := kt.NewSyncer(c.opts.SLogger, cfg, entryHandler, &parser.AzureEventHubsTargetMessageParser{
 		DisallowCustomMessages: newArgs.DisallowCustomMessages,
 	})
 	if err != nil {
