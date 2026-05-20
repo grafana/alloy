@@ -32,7 +32,7 @@ jobs:
       run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
 
   cross-compile-mac-to-linux-nocgo:
-    name: Maintain developer-friendly mac-to-linux cross-compile
+    name: Verify mac-to-linux cross-compile # This is to maintain good developer experience on macOS
     runs-on: macos-15-xlarge
     env:
       CGO_ENABLED: 0
