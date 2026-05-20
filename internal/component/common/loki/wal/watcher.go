@@ -241,7 +241,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 				w.logger.Debug("draining segment completely", "segment", segmentNum, "lastSegment", last)
 			}
 
-			// We now that there's either a new segment (last > segmentNum), or we are draining the WAL. Either case, read
+			// We know that there's either a new segment (last > segmentNum), or we are draining the WAL. Either case, read
 			// the remaining data from the segmentNum and return from `watch` to read the next one.
 			_, err = w.readSegment(reader, segmentNum)
 
