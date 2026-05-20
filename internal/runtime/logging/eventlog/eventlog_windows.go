@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/sys/windows/registry"
 	"golang.org/x/sys/windows/svc/eventlog"
 )
+
+const eventLogAppRegPath = `SYSTEM\CurrentControlSet\Services\EventLog\Application\`
 
 // GetEventLogOpener returns the platform's EventLogOpener (real on Windows, stub elsewhere).
 func GetEventLogOpener() EventLogOpener {
@@ -31,13 +34,45 @@ func (r *realEventLog) Close() error {
 	return nil
 }
 
+// isEventSourceRegistered reports whether the named event source has a
+// registry entry under HKLM\...\EventLog\Application. Uses read-only
+// QUERY_VALUE access on the subkey, which is granted to all users by
+// default — no admin rights required. A false return means "not present,
+// or we can't tell"; the caller then falls through to
+// InstallAsEventCreate, which surfaces any deeper permission issue.
+func isEventSourceRegistered(serviceName string) bool {
+	key, err := registry.OpenKey(
+		registry.LOCAL_MACHINE,
+		eventLogAppRegPath+serviceName,
+		registry.QUERY_VALUE,
+	)
+	if err != nil {
+		return false
+	}
+	_ = key.Close()
+	return true
+}
+
 // openEventLogWindows installs the event source (if needed) and opens the event log.
 // It is the default EventLogOpener on Windows.
+//
+// Registering a new event source writes to HKLM and requires administrator
+// rights. To let non-admin runs proceed when the source is already
+// registered, we probe the registry read-only first and skip the install
+// entirely on a hit.
+//
+// TODO: Also do the registration in the Alloy Windows installer.
+// That way users don't have to run Alloy with admin rights one time just for this to be installed.
 func openEventLogWindows(serviceName string) (EventLog, error) {
-	eventTypes := uint32(eventlog.Info | eventlog.Warning | eventlog.Error)
-	err := eventlog.InstallAsEventCreate(serviceName, eventTypes)
-	if err != nil && !strings.Contains(err.Error(), "already exists") {
-		return nil, fmt.Errorf("failed to install event source: %w", err)
+	if !isEventSourceRegistered(serviceName) {
+		eventTypes := uint32(eventlog.Info | eventlog.Warning | eventlog.Error)
+		if err := eventlog.InstallAsEventCreate(serviceName, eventTypes); err != nil &&
+			!strings.Contains(err.Error(), "already exists") {
+			return nil, fmt.Errorf(
+				"event source %q is not registered and registration requires administrator rights; "+
+					"register it once via the Alloy installer or by running Alloy as administrator (underlying error: %w)",
+				serviceName, err)
+		}
 	}
 	el, err := eventlog.Open(serviceName)
 	if err != nil {
