@@ -27,7 +27,7 @@ type handler struct {
 	// optional event log). It also implements io.Writer so it can be
 	// passed straight into slog.NewTextHandler/JSONHandler on the fast
 	// path. The slow path (event log attached) uses *writerVar methods
-	// directly — Write + WriteRecord + FastPathFlags.
+	// directly — FastPathFlags + Dispatch.
 	w         *writerVar
 	leveler   slog.Leveler
 	formatter formatter
@@ -72,12 +72,12 @@ func (h *handler) Handle(ctx context.Context, r slog.Record) error {
 		return h.buildHandler().Handle(ctx, r)
 	}
 	// Event log attached: format once into a buffer so we can hand both
-	// the bytes and the record level to writerVar.WriteRecord.
+	// the bytes and the record level to writerVar.Dispatch.
 	return h.handleWithEventLog(ctx, r)
 }
 
 // handleWithEventLog formats the record into a per-call buffer using a
-// freshly-built slog handler, then dispatches via writerVar.WriteRecord
+// freshly-built slog handler, then dispatches via writerVar.Dispatch
 // which knows about the event log and the record level. Only used when
 // the event log destination is active.
 func (h *handler) handleWithEventLog(ctx context.Context, r slog.Record) error {
