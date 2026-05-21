@@ -34,8 +34,7 @@ type Logger struct {
 	// handler is the single slog.Handler dispatched to by both the
 	// gokit and slog paths. It is set once in NewDeferred and never
 	// reassigned. Its writer (a *writerVar) owns every sink, including
-	// the optional Windows Event Log; Update toggles state on writerVar
-	// rather than swapping handlers.
+	// the optional Windows Event Log.
 	handler      *handler
 	deferredSlog *deferredSlogHandler // Buffers slog output until config is loaded, then delegates to handler.
 
@@ -154,21 +153,6 @@ func (l *Logger) Update(o Options) error {
 
 // applyDestination toggles state on l.writer to match the new destination.
 // Must be called with l.bufferMut held by the caller.
-//
-// The architecture is loss-free by construction:
-//   - l.handler is stable — Update never reassigns it.
-//   - l.writer owns every sink (stderr, write_to, tmp, event log).
-//     Transitions are atomic from Dispatch's point of view:
-//     SwitchToEventLog and SwitchToInnerOnly each hold the write lock
-//     across every state change they make, so a single Dispatch never
-//     observes a mid-transition mix of suppressInner and eventLog.
-//   - A record may straddle a destination switch — handler.Handle reads
-//     FastPathFlags before Dispatch acquires its own RLock, so the two
-//     can observe different configurations. Dispatch's fallback handles
-//     this: when bytes can't reach the event log (no level supplied or
-//     event log detached), they fall through to innerWriter even if
-//     suppressInner is true. A switching record may land on stderr
-//     instead of the event log, but it is never dropped.
 func (l *Logger) applyDestination(d LogDestination) error {
 	if d == LogDestinationWindowsEventLog {
 		el, err := l.eventLogOpener("Alloy")
@@ -296,17 +280,14 @@ func (f *formatVar) Set(format Format) {
 type writerVar struct {
 	mut sync.RWMutex
 
-	lokiWriter    *lokiWriter
+	// Inner writer is stderr on the production path.
+	// Tests may set it to something else.
 	innerWriter   io.Writer
-	tmpWriter     io.Writer
-	suppressInner bool // when true, Write skips innerWriter
+	suppressInner bool // when true, Write() and Dispatch() skip innerWriter
 
-	// eventLog is the optional Windows Event Log sink. When non-nil and the
-	// caller of Dispatch supplied a level, Dispatch maps the level to
-	// Info/Warning/Error and forwards the formatted bytes. Protected by mut
-	// so concurrent Dispatch calls drain before SwitchToInnerOnly /
-	// SwitchToEventLog release or replace the underlying OS handle.
-	eventLog eventlog.EventLog
+	lokiWriter *lokiWriter
+	tmpWriter  io.Writer
+	eventLog   eventlog.EventLog
 }
 
 func (w *writerVar) SetTemporaryWriter(writer io.Writer) {
@@ -337,10 +318,6 @@ func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
 // flip, so no Dispatch ever observes the mid-state where suppressInner
 // and eventLog disagree about whether bytes belong on stderr or the
 // event log.
-//
-// Returns the previous event log's Close error, if any. Callers should
-// open el fresh — event_log → event_log reloads close + reopen the
-// handle, which is cheap (DeregisterEventSource + RegisterEventSource).
 func (w *writerVar) SwitchToEventLog(el eventlog.EventLog) error {
 	w.mut.Lock()
 	defer w.mut.Unlock()
@@ -371,10 +348,7 @@ func (w *writerVar) SwitchToInnerOnly() error {
 }
 
 // FastPathFlags returns whether any sink is active and whether the event
-// log sink in particular is attached. Both checks happen under a single
-// RLock so callers see a consistent snapshot. Used by handler.Handle
-// to decide between the fast path (no buffer; direct slog handler write
-// to writerVar) and the slow path (capture bytes + dispatch with level).
+// log sink in particular is attached.
 //
 // io.Discard is treated as "no sink": tests and benchmarks pass it as
 // the underlying writer when they want to measure the logger path
@@ -403,22 +377,9 @@ func (w *writerVar) HasSink() bool {
 // and, when attached, the event log.
 //
 // SwitchToEventLog / SwitchToInnerOnly hold the write lock across every
-// state change they make, so any Dispatch RLock observes one of two
-// states: (suppressInner=false, eventLog=nil) — stderr mode — or
-// (suppressInner=true, eventLog!=nil) — event_log mode.
-//
-// Loss-prevention property: in event_log mode, a fast-path Write call
-// (eventLogLevel=nil) can still occur if a destination switch happened
-// between handler.Handle's FastPathFlags read and the slog handler's
-// Write. Rather than dropping the record or misrouting it to stderr,
-// Dispatch defaults to Info and delivers it to the event log — the
-// operator's configured destination. The level may be slightly off
-// (the original record's level is embedded in the formatted text), but
-// the message reaches Event Viewer.
-//
-// The trailing newline added by slog's TextHandler/JSONHandler is trimmed
-// before handing the message to the event log API, which renders cleaner
-// in Event Viewer.
+// state change they make, so any Dispatch RLock observes one of two states:
+// 1. (suppressInner=false, eventLog=nil) — stderr mode.
+// 2. (suppressInner=true, eventLog!=nil) — event_log mode.
 func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 	w.mut.RLock()
 	defer w.mut.RUnlock()
@@ -441,10 +402,23 @@ func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 	if w.eventLog == nil {
 		return nil
 	}
+
+	// The trailing newline added by slog's TextHandler/JSONHandler is trimmed
+	// before handing the message to the event log API, which renders cleaner
+	// in Event Viewer.
 	msg := p
 	if n := len(msg); n > 0 && msg[n-1] == '\n' {
 		msg = msg[:n-1]
 	}
+
+	// Loss-prevention property: in event_log mode, a fast-path Write call
+	// (eventLogLevel=nil) can still occur if a destination switch happened
+	// between handler.Handle's FastPathFlags read and the slog handler's
+	// Write. Rather than dropping the record or misrouting it to stderr,
+	// Dispatch defaults to Info and delivers it to the event log — the
+	// operator's configured destination. The level may be slightly off
+	// (the original record's level is embedded in the formatted text), but
+	// the message reaches Event Viewer.
 	if eventLogLevel != nil {
 		switch *eventLogLevel {
 		case slog.LevelWarn:

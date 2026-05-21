@@ -23,11 +23,10 @@ import (
 // JSON or logfmt, and create a new inner handler if needed.
 
 type handler struct {
-	// w owns every sink (innerWriter, lokiWriter, tmpWriter, and the
-	// optional event log). It also implements io.Writer so it can be
-	// passed straight into slog.NewTextHandler/JSONHandler on the fast
-	// path. The slow path (event log attached) uses *writerVar methods
-	// directly — FastPathFlags + Dispatch.
+	// w owns every sink (innerWriter, lokiWriter, tmpWriter, and the optional event log).
+	// It also implements io.Writer so it can be passed straight into slog.NewTextHandler
+	// and slog.JSONHandler on the fast path. The slow path (event log attached) uses
+	// *writerVar's Dispatch method directly.
 	w         *writerVar
 	leveler   slog.Leveler
 	formatter formatter
@@ -60,15 +59,13 @@ func (h *handler) Enabled(ctx context.Context, l slog.Level) bool {
 func (h *handler) Handle(ctx context.Context, r slog.Record) error {
 	hasSink, hasEventLog := h.w.FastPathFlags()
 	if !hasSink {
-		// Skip formatting entirely when no sink is listening — the slog
-		// text/JSON handler would otherwise allocate, run ReplaceAttr on
-		// every attribute, and hand the bytes to io.Discard.
+		// Skip formatting entirely when no sink is listening.
 		return nil
 	}
 	if !hasEventLog {
-		// Stderr happy path: the cached slog handler writes directly into
-		// writerVar via the io.Writer interface, no buffer, no per-call
-		// rebuild.
+		// Stderr happy path.
+		// The cached slog handler writes directly into writerVar via
+		// the io.Writer interface, no buffer, no per-call rebuild.
 		return h.buildHandler().Handle(ctx, r)
 	}
 	// Event log attached: format once into a buffer so we can hand both
