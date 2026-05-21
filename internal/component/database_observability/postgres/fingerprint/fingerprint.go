@@ -1,6 +1,10 @@
+//go:build cgo
+
 // Package fingerprint computes stable, semantic SQL fingerprints via
 // libpg_query. The fingerprint is identical across comment/whitespace
-// differences and literal-vs-placeholder differences.
+// differences and literal-vs-placeholder differences. libpg_query is cgo-only;
+// the !cgo build is provided by fingerprint_nocgo.go and returns ErrEmpty
+// from every call.
 package fingerprint
 
 import (
