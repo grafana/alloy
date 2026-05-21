@@ -494,14 +494,14 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 				logging.LevelInfo,
 				OP_WAIT_EVENT_V2,
 				c.buildWaitEventV2Labels(state, we),
-				we.LastTimestamp.UnixNano(),
+				ts,
 			)
 		} else {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
 				c.buildWaitEventLabels(state, we),
-				we.LastTimestamp.UnixNano(),
+				ts,
 			)
 		}
 	}

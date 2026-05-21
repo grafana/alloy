@@ -2875,7 +2875,7 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 	)
 	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 		float64(0), // initial timerBookmark
-		10e12,      // uptime of 10 seconds in picoseconds (modulo 0 overflows)
+		10e12,      // uptime of 10 seconds in picoseconds
 	).WillReturnRows(sqlmock.NewRows([]string{
 		"statements.CURRENT_SCHEMA",
 		"statements.THREAD_ID",
@@ -2920,12 +2920,12 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 			100,
 			0,
 			0,
-			nil,
-			nil,
-			nil,
-			nil,
-			nil,
-			nil,
+			"124",
+			"125",
+			"wait/io/file/innodb/innodb_data_file",
+			"wait_object_name",
+			"wait_object_type",
+			100000000,
 			nil,
 			nil,
 			nil,
@@ -2953,11 +2953,14 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 	lokiClient.Stop()
 
 	require.Eventually(t, func() bool {
-		return len(lokiClient.Received()) == 1
+		return len(lokiClient.Received()) == 2
 	}, 5*time.Second, 100*time.Millisecond)
-	require.Len(t, lokiClient.Received(), 1)
+	require.Len(t, lokiClient.Received(), 2)
 
-	assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[0].Timestamp) // timer_end - elapsed time
+	assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
+	assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[0].Timestamp) // timer_end - elapsed time = timer_start
+	assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiClient.Received()[1].Labels)
+	assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[1].Timestamp) // timer_end - elapsed time = timer_start
 }
 
 func TestQuerySamples_handles_timer_overflows(t *testing.T) {

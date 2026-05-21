@@ -46,9 +46,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 		disableQueryRedaction bool
 		expectedLabels        []model.LabelSet
 		expectedLines         []string
-		// expectedTimestamps mirrors expectedLines: OP_QUERY_SAMPLE entries are
-		// stamped at query_start, OP_WAIT_EVENT entries at the wait observation time.
-		expectedTimestamps []time.Time
+		expectedTimestamps    []time.Time
 	}{
 		{
 			name: "active query without wait event",
@@ -105,7 +103,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 						"testuser", "testapp", "127.0.0.1", 5432,
 						"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
 						xactStartTime, "waiting", stateChangeTime, sql.NullString{String: "Lock", Valid: true},
-						sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, now, sql.NullInt64{Int64: 124, Valid: true},
+						sql.NullString{String: "relation", Valid: true}, pq.Int64Array{103, 104}, queryStartTime, sql.NullInt64{Int64: 124, Valid: true},
 					))
 				// Second scrape: empty to trigger finalization
 				mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
@@ -116,10 +114,10 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				{"op": OP_WAIT_EVENT},
 			},
 			expectedLines: []string{
-				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="0s" queryid="124"`,
+				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="124"`,
 				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`,
 			},
-			expectedTimestamps: []time.Time{now, now},
+			expectedTimestamps: []time.Time{queryStartTime, queryStartTime},
 		},
 		{
 			name: "query with redaction disabled",
