@@ -5,9 +5,10 @@ import (
 	"log/slog"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
+
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
 	"github.com/grafana/alloy/internal/runtime/logging/eventlog/testutil"
