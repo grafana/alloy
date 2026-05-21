@@ -128,7 +128,7 @@ func TestEventLoop(t *testing.T) {
 		ruleLister:        ruleLister,
 		ruleSelector:      labels.Everything(),
 		lokiClient:        newFakeLokiClient(),
-		args:              Arguments{LokiNameSpacePrefix: "alloy"},
+		args:              Arguments{LokiNameSpacePrefix: "alloy", LokiNamespaceSeparator: "-"},
 		metrics:           newMetrics(),
 	}
 	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
@@ -163,7 +163,7 @@ func TestEventLoop(t *testing.T) {
 	require.Eventually(t, func() bool {
 		allRules, err := component.lokiClient.ListRules(ctx, "")
 		require.NoError(t, err)
-		rules := allRules[lokiNamespaceForRuleCRD("alloy", rule)][0].Rules
+		rules := allRules[lokiNamespaceForRuleCRD("alloy", "-", rule)][0].Rules
 		return len(rules) == 2
 	}, time.Second, 10*time.Millisecond)
 	component.queue.AddRateLimited(kubernetes.Event{Typ: eventTypeSyncLoki})
@@ -219,7 +219,8 @@ func TestExtraQueryMatchers(t *testing.T) {
 	}
 
 	args := Arguments{
-		LokiNameSpacePrefix: "alloy",
+		LokiNameSpacePrefix:    "alloy",
+		LokiNamespaceSeparator: "-",
 		ExtraQueryMatchers: &ExtraQueryMatchers{Matchers: []Matcher{
 			{
 				Name:      "cluster",
@@ -291,6 +292,22 @@ func TestExtraQueryMatchers(t *testing.T) {
 		require.NoError(t, err)
 		return len(rules) == 0
 	}, time.Second, 10*time.Millisecond)
+}
+
+func TestCustomNamespaceSeparator(t *testing.T) {
+	rule := &v1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+			UID:       types.UID("64aab764-c95e-4ee9-a932-cd63ba57e6cf"),
+		},
+	}
+
+	require.Equal(t, "alloy_namespace_name_64aab764-c95e-4ee9-a932-cd63ba57e6cf", lokiNamespaceForRuleCRD("alloy", "_", rule))
+	require.True(t, isManagedLokiNamespace("alloy", "alloy_namespace_name_64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
+	// Old dash-separated format is still recognised (enables automatic cleanup on separator change).
+	require.True(t, isManagedLokiNamespace("alloy", "alloy-namespace-name-64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
+	require.False(t, isManagedLokiNamespace("alloy", "other-namespace-name-64aab764-c95e-4ee9-a932-cd63ba57e6cf"))
 }
 
 func testRuleIndexer() cache.Indexer {
