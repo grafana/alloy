@@ -1,8 +1,6 @@
 # yaml-language-server: $schema=https://taskfile.dev/schema.json
 #
-# container:* tasks implement the USE_CONTAINER=1 proxy that re-invokes a
-# task inside grafana/alloy-build-image. Mirrors the Makefile's
-# RERUN_IN_CONTAINER macro (tools/make/build-container.mk:90-98).
+# container:* tasks implement the USE_CONTAINER=1 proxy that re-invokes task inside grafana/alloy-build-image.
 version: "3"
 
 vars:
@@ -33,17 +31,17 @@ tasks:
       # be re-forwarded here to reach the `_native` task.
       - task: ':{{ if and (eq .USE_CONTAINER "1") (eq .IN_CONTAINER "") }}container:run{{ else }}{{.INNER}}{{ end }}'
         vars:
-          INNER: '{{.INNER}}'
-          GO_TAGS: '{{.GO_TAGS}}'
-          RELEASE_BUILD: '{{.RELEASE_BUILD}}'
-          GOOS: '{{.GOOS}}'
-          GOARCH: '{{.GOARCH}}'
-          GOARM: '{{.GOARM}}'
-          CGO_ENABLED: '{{.CGO_ENABLED}}'
-          GOEXPERIMENT: '{{.GOEXPERIMENT}}'
-          ALLOY_BINARY: '{{.ALLOY_BINARY}}'
-          SERVICE_BINARY: '{{.SERVICE_BINARY}}'
-          SKIP_UI_BUILD: '{{.SKIP_UI_BUILD}}'
+          INNER: "{{.INNER}}"
+          GO_TAGS: "{{.GO_TAGS}}"
+          RELEASE_BUILD: "{{.RELEASE_BUILD}}"
+          GOOS: "{{.GOOS}}"
+          GOARCH: "{{.GOARCH}}"
+          GOARM: "{{.GOARM}}"
+          CGO_ENABLED: "{{.CGO_ENABLED}}"
+          GOEXPERIMENT: "{{.GOEXPERIMENT}}"
+          ALLOY_BINARY: "{{.ALLOY_BINARY}}"
+          SERVICE_BINARY: "{{.SERVICE_BINARY}}"
+          SKIP_UI_BUILD: "{{.SKIP_UI_BUILD}}"
 
   run:
     desc: |

@@ -23,12 +23,12 @@ vars:
   ALLOYLINT_BINARY: '{{.ALLOYLINT_BINARY | default "build/alloylint"}}'
 
   BUILD_IMAGE_VERSION: '{{.BUILD_IMAGE_VERSION | default "v0.1.26"}}'
-  BUILD_IMAGE: 'grafana/alloy-build-image:{{.BUILD_IMAGE_VERSION}}'
+  BUILD_IMAGE: "grafana/alloy-build-image:{{.BUILD_IMAGE_VERSION}}"
 
-  JSONNET: 'go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0'
-  JB: 'go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0'
-  GRIZZLY: 'go run github.com/grafana/grizzly/cmd/grr@v0.7.1'
-  BUILDER_VERSION: 'v0.139.0'
+  JSONNET: "go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0"
+  JB: "go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0"
+  GRIZZLY: "go run github.com/grafana/grizzly/cmd/grr@v0.7.1"
+  BUILDER_VERSION: "v0.139.0"
 
   GOOS:
     sh: go env GOOS
@@ -40,7 +40,7 @@ vars:
     sh: go env GOEXPERIMENT
   CGO_ENABLED: '{{.CGO_ENABLED | default "1"}}'
 
-  # Ensure gore2regex is present in GO_TAGS (Makefile:130-135).
+  # Ensure gore2regex is present in GO_TAGS.
   GO_TAGS_RAW: '{{.GO_TAGS | default ""}}'
   GO_TAGS: >-
     {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS_RAW -}}
@@ -49,7 +49,7 @@ vars:
     {{ trim (printf "gore2regex %s" .GO_TAGS_RAW) }}
     {{- end -}}
 
-  # golangci-lint resolution chain (Makefile:106-116).
+  # golangci-lint resolution chain.
   GOLANGCI_LINT_BINARY:
     sh: |
       if [ -n "${GOLANGCI_LINT_BINARY:-}" ]; then echo "$GOLANGCI_LINT_BINARY"; exit; fi
@@ -69,7 +69,7 @@ vars:
   BUILDER_HOST:
     sh: hostname
 
-  # Beyla module lookup (Makefile:142-144).
+  # Beyla module lookup.
   BEYLA_MODULE:
     sh: go list -m -f '{{`{{.Path}} {{.Version}}`}}' github.com/grafana/beyla/v3 2>/dev/null || true
   BEYLA_VERSION: '{{ if .BEYLA_MODULE }}{{ index (splitList " " .BEYLA_MODULE) 1 }}{{ end }}'

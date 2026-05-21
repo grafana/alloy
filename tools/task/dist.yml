@@ -2,10 +2,10 @@
 version: "3"
 
 vars:
-  # Strip leading "v" from VERSION for package names (Makefile:167).
+  # Strip leading "v" from VERSION for package names.
   ALLOY_PACKAGE_VERSION: '{{ trimPrefix "v" .VERSION }}'
   ALLOY_PACKAGE_RELEASE: "1"
-  ALLOY_PACKAGE_PREFIX: 'dist/alloy-{{.ALLOY_PACKAGE_VERSION}}-1'
+  ALLOY_PACKAGE_PREFIX: "dist/alloy-{{.ALLOY_PACKAGE_VERSION}}-1"
   ALLOY_ENVIRONMENT_FILE_rpm: /etc/sysconfig/alloy
   ALLOY_ENVIRONMENT_FILE_deb: /etc/default/alloy
 
@@ -40,7 +40,7 @@ tasks:
       - for: { var: PLATFORMS }
         task: binary
         vars:
-          PLATFORM: '{{.ITEM}}'
+          PLATFORM: "{{.ITEM}}"
 
   binary:
     desc: Build a single release binary for PLATFORM (e.g. linux/amd64).
@@ -60,20 +60,20 @@ tasks:
         {{- else -}}
         netgo embedalloyui
         {{- end -}}
-      OUT: 'dist/alloy-{{.BIN_GOOS}}-{{.BIN_GOARCH}}{{.EXT}}'
+      OUT: "dist/alloy-{{.BIN_GOOS}}-{{.BIN_GOARCH}}{{.EXT}}"
     cmds:
-      # Windows requires winmanifest to have run first (Makefile:84).
+      # Windows requires winmanifest to have run first.
       - |
         if [ "{{.BIN_GOOS}}" = "windows" ]; then
           task gen:winmanifest
         fi
       - task: :build:alloy
         vars:
-          GOOS: '{{.BIN_GOOS}}'
-          GOARCH: '{{.BIN_GOARCH}}'
-          GO_TAGS: '{{.BIN_GO_TAGS}}'
+          GOOS: "{{.BIN_GOOS}}"
+          GOARCH: "{{.BIN_GOARCH}}"
+          GO_TAGS: "{{.BIN_GO_TAGS}}"
           RELEASE_BUILD: "1"
-          ALLOY_BINARY: '{{.OUT}}'
+          ALLOY_BINARY: "{{.OUT}}"
 
   boringcrypto-binaries:
     desc: Build linux/amd64 and linux/arm64 binaries with GOEXPERIMENT=boringcrypto.
@@ -88,16 +88,16 @@ tasks:
       vars:
         - name: BIN_GOARCH
     vars:
-      OUT: 'dist/alloy-boringcrypto-linux-{{.BIN_GOARCH}}'
+      OUT: "dist/alloy-boringcrypto-linux-{{.BIN_GOARCH}}"
     cmds:
       - task: :build:alloy
         vars:
           GOOS: linux
-          GOARCH: '{{.BIN_GOARCH}}'
+          GOARCH: "{{.BIN_GOARCH}}"
           GO_TAGS: netgo embedalloyui promtail_journal_enabled
           GOEXPERIMENT: boringcrypto
           RELEASE_BUILD: "1"
-          ALLOY_BINARY: '{{.OUT}}'
+          ALLOY_BINARY: "{{.OUT}}"
 
   service-binaries:
     desc: Build the Windows alloy-service intermediate binary.
@@ -128,14 +128,26 @@ tasks:
     cmds:
       - task: :container:exec
         vars:
-          INNER: '{{.TASK}}:_native'
+          INNER: "{{.TASK}}:_native"
 
   packages:amd64:_native:
     cmds:
       - task: _fpm
-        vars: { FMT: deb, PKG_ARCH: amd64, ALLOY_ARCH: amd64, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.amd64.deb' }
+        vars:
+          {
+            FMT: deb,
+            PKG_ARCH: amd64,
+            ALLOY_ARCH: amd64,
+            OUT: "{{.ALLOY_PACKAGE_PREFIX}}.amd64.deb",
+          }
       - task: _fpm
-        vars: { FMT: rpm, PKG_ARCH: x86_64, ALLOY_ARCH: amd64, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.amd64.rpm' }
+        vars:
+          {
+            FMT: rpm,
+            PKG_ARCH: x86_64,
+            ALLOY_ARCH: amd64,
+            OUT: "{{.ALLOY_PACKAGE_PREFIX}}.amd64.rpm",
+          }
 
   packages:arm64:
     desc: Build arm64 deb + rpm packages.
@@ -145,14 +157,26 @@ tasks:
     cmds:
       - task: :container:exec
         vars:
-          INNER: '{{.TASK}}:_native'
+          INNER: "{{.TASK}}:_native"
 
   packages:arm64:_native:
     cmds:
       - task: _fpm
-        vars: { FMT: deb, PKG_ARCH: arm64, ALLOY_ARCH: arm64, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.arm64.deb' }
+        vars:
+          {
+            FMT: deb,
+            PKG_ARCH: arm64,
+            ALLOY_ARCH: arm64,
+            OUT: "{{.ALLOY_PACKAGE_PREFIX}}.arm64.deb",
+          }
       - task: _fpm
-        vars: { FMT: rpm, PKG_ARCH: aarch64, ALLOY_ARCH: arm64, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.arm64.rpm' }
+        vars:
+          {
+            FMT: rpm,
+            PKG_ARCH: aarch64,
+            ALLOY_ARCH: arm64,
+            OUT: "{{.ALLOY_PACKAGE_PREFIX}}.arm64.rpm",
+          }
 
   packages:ppc64le:
     desc: Build ppc64le deb + rpm packages.
@@ -162,14 +186,26 @@ tasks:
     cmds:
       - task: :container:exec
         vars:
-          INNER: '{{.TASK}}:_native'
+          INNER: "{{.TASK}}:_native"
 
   packages:ppc64le:_native:
     cmds:
       - task: _fpm
-        vars: { FMT: deb, PKG_ARCH: ppc64el, ALLOY_ARCH: ppc64le, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.ppc64el.deb' }
+        vars:
+          {
+            FMT: deb,
+            PKG_ARCH: ppc64el,
+            ALLOY_ARCH: ppc64le,
+            OUT: "{{.ALLOY_PACKAGE_PREFIX}}.ppc64el.deb",
+          }
       - task: _fpm
-        vars: { FMT: rpm, PKG_ARCH: ppc64le, ALLOY_ARCH: ppc64le, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.ppc64le.rpm' }
+        vars:
+          {
+            FMT: rpm,
+            PKG_ARCH: ppc64le,
+            ALLOY_ARCH: ppc64le,
+            OUT: "{{.ALLOY_PACKAGE_PREFIX}}.ppc64le.rpm",
+          }
 
   packages:s390x:
     desc: Build s390x deb + rpm packages.
@@ -179,14 +215,26 @@ tasks:
     cmds:
       - task: :container:exec
         vars:
-          INNER: '{{.TASK}}:_native'
+          INNER: "{{.TASK}}:_native"
 
   packages:s390x:_native:
     cmds:
       - task: _fpm
-        vars: { FMT: deb, PKG_ARCH: s390x, ALLOY_ARCH: s390x, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.s390x.deb' }
+        vars:
+          {
+            FMT: deb,
+            PKG_ARCH: s390x,
+            ALLOY_ARCH: s390x,
+            OUT: "{{.ALLOY_PACKAGE_PREFIX}}.s390x.deb",
+          }
       - task: _fpm
-        vars: { FMT: rpm, PKG_ARCH: s390x, ALLOY_ARCH: s390x, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.s390x.rpm' }
+        vars:
+          {
+            FMT: rpm,
+            PKG_ARCH: s390x,
+            ALLOY_ARCH: s390x,
+            OUT: "{{.ALLOY_PACKAGE_PREFIX}}.s390x.rpm",
+          }
 
   # Internal fpm wrapper. Mirrors generate_alloy_fpm in tools/make/packaging.mk:144-165.
   _fpm:
@@ -226,7 +274,7 @@ tasks:
     cmds:
       - task: :container:exec
         vars:
-          INNER: '{{.TASK}}:_native'
+          INNER: "{{.TASK}}:_native"
 
   installer:windows:_native:
     cmds:
