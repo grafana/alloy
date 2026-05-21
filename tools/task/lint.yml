@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  default:
+    desc: Run golangci-lint over every module and alloylint over the workspace.
+    deps:
+      - :build:alloylint
+    cmds:
+      - find . -name go.mod | xargs dirname | xargs -I __dir__ {{.GOLANGCI_LINT_BINARY}} run -v --timeout=10m
+      - GOFLAGS="-tags={{.GO_TAGS}}" {{.ALLOYLINT_BINARY}} ./...
+
+  alloylint:
+    desc: Run only the alloylint custom linter.
+    deps:
+      - :build:alloylint
+    cmds:
+      - GOFLAGS="-tags={{.GO_TAGS}}" {{.ALLOYLINT_BINARY}} ./...

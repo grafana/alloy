@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  DOCKER_PLATFORM: '{{.DOCKER_PLATFORM | default ""}}'
+  PLATFORM_FLAG: '{{ if .DOCKER_PLATFORM }}--platform={{.DOCKER_PLATFORM}}{{ end }}'
+  DOCKER_FLAGS: '--build-arg RELEASE_BUILD={{.RELEASE_BUILD}} --build-arg VERSION={{.VERSION}} {{.PLATFORM_FLAG}}'
+
+tasks:
+  alloy:
+    desc: Build the Linux Alloy Docker image.
+    env:
+      DOCKER_BUILDKIT: "1"
+    cmds:
+      - docker build {{.DOCKER_FLAGS}} -t {{.ALLOY_IMAGE}} -f Dockerfile .
+
+  alloy-windows:
+    desc: Build the Windows Alloy Docker image.
+    cmds:
+      - docker build {{.DOCKER_FLAGS}} -t {{.ALLOY_IMAGE_WINDOWS}} -f Dockerfile.windows .
+
+  prom-gen:
+    desc: Build the prom-gen test fixture image used by k8s integration tests.
+    env:
+      DOCKER_BUILDKIT: "1"
+    cmds:
+      - docker build {{.DOCKER_FLAGS}} -t prom-gen:latest -f integration-tests/docker/configs/prom-gen/Dockerfile .

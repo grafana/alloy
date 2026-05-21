@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  update-go-version:pr-1:
+    desc: Update Go version in build images. Requires VERSION=X.Y.Z.
+    requires:
+      vars:
+        - name: GO_VERSION
+    dir: tools
+    cmds:
+      - go run ./go-version pr-1 {{.GO_VERSION}}
+
+  update-go-version:pr-2:
+    desc: Update Go version in go.mod and Dockerfiles. Requires VERSION=X.Y.Z.
+    requires:
+      vars:
+        - name: GO_VERSION
+    dir: tools
+    cmds:
+      - go run ./go-version pr-2 {{.GO_VERSION}}

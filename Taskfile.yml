@@ -1,0 +1,156 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+includes:
+  build: tools/task/build.yml
+  test: tools/task/test.yml
+  lint: tools/task/lint.yml
+  gen: tools/task/gen.yml
+  image: tools/task/image.yml
+  dist: tools/task/dist.yml
+  container: tools/task/container.yml
+  release: tools/task/release.yml
+
+vars:
+  USE_CONTAINER: '{{.USE_CONTAINER | default "0"}}'
+  SKIP_UI_BUILD: '{{.SKIP_UI_BUILD | default "0"}}'
+  RELEASE_BUILD: '{{.RELEASE_BUILD | default "0"}}'
+
+  ALLOY_IMAGE: '{{.ALLOY_IMAGE | default "grafana/alloy:latest"}}'
+  ALLOY_IMAGE_WINDOWS: '{{.ALLOY_IMAGE_WINDOWS | default "grafana/alloy:windowsservercore-ltsc2022"}}'
+  ALLOY_BINARY: '{{.ALLOY_BINARY | default "build/alloy"}}'
+  SERVICE_BINARY: '{{.SERVICE_BINARY | default "build/alloy-service"}}'
+  ALLOYLINT_BINARY: '{{.ALLOYLINT_BINARY | default "build/alloylint"}}'
+
+  BUILD_IMAGE_VERSION: '{{.BUILD_IMAGE_VERSION | default "v0.1.26"}}'
+  BUILD_IMAGE: 'grafana/alloy-build-image:{{.BUILD_IMAGE_VERSION}}'
+
+  JSONNET: 'go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0'
+  JB: 'go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0'
+  GRIZZLY: 'go run github.com/grafana/grizzly/cmd/grr@v0.7.1'
+  BUILDER_VERSION: 'v0.139.0'
+
+  GOOS:
+    sh: go env GOOS
+  GOARCH:
+    sh: go env GOARCH
+  GOARM:
+    sh: go env GOARM
+  GOEXPERIMENT:
+    sh: go env GOEXPERIMENT
+  CGO_ENABLED: '{{.CGO_ENABLED | default "1"}}'
+
+  # Ensure gore2regex is present in GO_TAGS (Makefile:130-135).
+  GO_TAGS_RAW: '{{.GO_TAGS | default ""}}'
+  GO_TAGS: >-
+    {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS_RAW -}}
+    {{.GO_TAGS_RAW}}
+    {{- else -}}
+    {{ trim (printf "gore2regex %s" .GO_TAGS_RAW) }}
+    {{- end -}}
+
+  # golangci-lint resolution chain (Makefile:106-116).
+  GOLANGCI_LINT_BINARY:
+    sh: |
+      if [ -n "${GOLANGCI_LINT_BINARY:-}" ]; then echo "$GOLANGCI_LINT_BINARY"; exit; fi
+      gobin="$(go env GOBIN)"; if [ -n "$gobin" ] && [ -x "$gobin/golangci-lint" ]; then echo "$gobin/golangci-lint"; exit; fi
+      gopath="$(go env GOPATH)"; if [ -x "$gopath/bin/golangci-lint" ]; then echo "$gopath/bin/golangci-lint"; exit; fi
+      if command -v golangci-lint >/dev/null 2>&1; then command -v golangci-lint; exit; fi
+      echo golangci-lint
+
+  GIT_REVISION:
+    sh: git rev-parse --short HEAD
+  GIT_BRANCH:
+    sh: git rev-parse --abbrev-ref HEAD
+  VERSION:
+    sh: bash ./tools/image-tag
+  BUILDER_USER:
+    sh: whoami
+  BUILDER_HOST:
+    sh: hostname
+
+  # Beyla module lookup (Makefile:142-144).
+  BEYLA_MODULE:
+    sh: go list -m -f '{{`{{.Path}} {{.Version}}`}}' github.com/grafana/beyla/v3 2>/dev/null || true
+  BEYLA_VERSION: '{{ if .BEYLA_MODULE }}{{ index (splitList " " .BEYLA_MODULE) 1 }}{{ end }}'
+  BEYLA_PKG: '{{ if .BEYLA_MODULE }}{{ index (splitList " " .BEYLA_MODULE) 0 }}/pkg/buildinfo{{ end }}'
+
+  BUILD_DATE:
+    sh: |
+      if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+        date -u -d "@${SOURCE_DATE_EPOCH}" +"%Y-%m-%dT%H:%M:%SZ"
+      else
+        date -u +"%Y-%m-%dT%H:%M:%SZ"
+      fi
+
+  VPREFIX: github.com/grafana/alloy/internal/build
+  VPREFIXSYNTAX: github.com/grafana/alloy/syntax/internal/stdlib
+
+  GO_LDFLAGS: >-
+    -X {{.VPREFIX}}.Branch={{.GIT_BRANCH}}
+    -X {{.VPREFIX}}.Version={{.VERSION}}
+    -X {{.VPREFIXSYNTAX}}.Version={{.VERSION}}
+    -X {{.VPREFIX}}.Revision={{.GIT_REVISION}}
+    -X {{.VPREFIX}}.BuildUser={{.BUILDER_USER}}@{{.BUILDER_HOST}}
+    -X {{.VPREFIX}}.BuildDate={{.BUILD_DATE}}
+    {{- if .BEYLA_VERSION }} -X {{.BEYLA_PKG}}.Version={{.BEYLA_VERSION}}{{ end }}
+
+  # GO_FLAGS is computed inside each *:_native task (see tools/task/build.yml)
+  # so that callers (e.g. dist:binary) can override GO_TAGS without GO_FLAGS
+  # getting baked in at root-scope before the override takes effect.
+
+tasks:
+  default:
+    cmds:
+      - task --list
+
+  binaries:
+    desc: Build the alloy binary (alias for build:alloy).
+    cmds:
+      - task: build:alloy
+
+  images:
+    desc: Build all Linux Docker images.
+    deps:
+      - image:alloy
+      - image:alloy-windows
+
+  generate:
+    desc: Run every code generator in the same order as `make generate`.
+    cmds:
+      - task: gen:helm-docs
+      - task: gen:helm-tests
+      - task: gen:ui
+      - task: gen:docs
+      - task: gen:winmanifest
+      - task: gen:snmp
+      - task: gen:rendered-mixin
+      - task: gen:module-dependencies
+      - task: gen:otel-collector-distro
+      - task: gen:graphql
+
+  clean:
+    desc: Remove dist artifacts and the container cache volumes.
+    cmds:
+      - task: dist:clean
+      - task: container:cache:clean
+      - rm -rf ./build/*
+
+  info:
+    desc: Print resolved configuration variables.
+    cmds:
+      - |
+        printf 'USE_CONTAINER       = %s\n' '{{.USE_CONTAINER}}'
+        printf 'ALLOY_IMAGE         = %s\n' '{{.ALLOY_IMAGE}}'
+        printf 'ALLOY_IMAGE_WINDOWS = %s\n' '{{.ALLOY_IMAGE_WINDOWS}}'
+        printf 'BUILD_IMAGE         = %s\n' '{{.BUILD_IMAGE}}'
+        printf 'ALLOY_BINARY        = %s\n' '{{.ALLOY_BINARY}}'
+        printf 'GOOS                = %s\n' '{{.GOOS}}'
+        printf 'GOARCH              = %s\n' '{{.GOARCH}}'
+        printf 'GOARM               = %s\n' '{{.GOARM}}'
+        printf 'CGO_ENABLED         = %s\n' '{{.CGO_ENABLED}}'
+        printf 'RELEASE_BUILD       = %s\n' '{{.RELEASE_BUILD}}'
+        printf 'VERSION             = %s\n' '{{.VERSION}}'
+        printf 'GO_TAGS             = %s\n' '{{.GO_TAGS}}'
+        printf 'GOEXPERIMENT        = %s\n' '{{.GOEXPERIMENT}}'
+        printf 'GOLANGCI_LINT_BINARY = %s\n' '{{.GOLANGCI_LINT_BINARY}}'

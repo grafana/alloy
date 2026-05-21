@@ -1,0 +1,144 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  default:
+    desc: Run unit tests (alias for test:unit).
+    cmds:
+      - task: unit
+
+  unit:
+    desc: Run unit tests across every module (excludes testdata).
+    env:
+      GOOS: '{{.GOOS}}'
+      GOARCH: '{{.GOARCH}}'
+      GOARM: '{{.GOARM}}'
+      CGO_ENABLED: '{{.CGO_ENABLED}}'
+      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+    vars:
+      LOCAL_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{.GO_TAGS}}
+        {{- else -}}
+        {{ trim (printf "gore2regex %s" .GO_TAGS) }}
+        {{- end -}}
+      LOCAL_FLAGS: '-ldflags "{{ if eq .RELEASE_BUILD "1" }}-s -w {{ end }}{{.GO_LDFLAGS}}" -tags "{{.LOCAL_TAGS}}"'
+    cmds:
+      - |
+        for dir in $(find . -name go.mod -type f -exec sh -c 'dirname "$1"' _ {} \;); do
+          if echo "$dir" | grep -qv testdata; then
+            (cd "$dir" && go test {{.LOCAL_FLAGS}} -race ./...) || exit 1
+          fi
+        done
+
+  pyroscope:
+    desc: Run pyroscope-specific component tests and build the playground.
+    env:
+      GOOS: '{{.GOOS}}'
+      GOARCH: '{{.GOARCH}}'
+      GOARM: '{{.GOARM}}'
+      CGO_ENABLED: '{{.CGO_ENABLED}}'
+      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+    vars:
+      LOCAL_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{.GO_TAGS}}
+        {{- else -}}
+        {{ trim (printf "gore2regex %s" .GO_TAGS) }}
+        {{- end -}}
+      LOCAL_FLAGS: '-ldflags "{{ if eq .RELEASE_BUILD "1" }}-s -w {{ end }}{{.GO_LDFLAGS}}" -tags "{{.LOCAL_TAGS}}"'
+    cmds:
+      - go test {{.LOCAL_FLAGS}} -race $(go list ./... | grep pyroscope)
+      - cd ./internal/component/pyroscope/util/internal/cmd/playground/ && go build .
+
+  packages:
+    desc: Test packaging artifacts. Requires the build image to be pulled.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  packages:_native:
+    cmds:
+      - docker pull {{.BUILD_IMAGE}}
+      - go test -tags="gore2regex packaging" -race ./internal/tools/packaging_test
+
+  integration:docker:
+    desc: Run Docker integration tests.
+    env:
+      GOOS: '{{.GOOS}}'
+      GOARCH: '{{.GOARCH}}'
+      GOARM: '{{.GOARM}}'
+      CGO_ENABLED: '{{.CGO_ENABLED}}'
+      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+    cmds:
+      - cd integration-tests/docker && go run . --test-timeout=15m
+
+  integration:k8s:
+    desc: Run k8s integration tests in CI mode.
+    env:
+      GOOS: '{{.GOOS}}'
+      GOARCH: '{{.GOARCH}}'
+      GOARM: '{{.GOARM}}'
+      CGO_ENABLED: '{{.CGO_ENABLED}}'
+      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+    vars:
+      RUN_ARGS: '{{.RUN_ARGS | default ""}}'
+    cmds:
+      - go run ./integration-tests/k8s/runner --test-tags='{{.GO_TAGS}}' {{.RUN_ARGS}}
+
+  integration:k8s:interactive:
+    desc: Run k8s integration tests with interactive TUI for local development.
+    env:
+      GOOS: '{{.GOOS}}'
+      GOARCH: '{{.GOARCH}}'
+      GOARM: '{{.GOARM}}'
+      CGO_ENABLED: '{{.CGO_ENABLED}}'
+      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+    vars:
+      RUN_ARGS: '{{.RUN_ARGS | default ""}}'
+    cmds:
+      - go run ./integration-tests/k8s/runner --interactive --test-tags='{{.GO_TAGS}}' {{.RUN_ARGS}}
+
+  integration:windows-service:
+    desc: Run Windows service integration tests (Windows + Administrator required).
+    deps:
+      - :dist:installer:windows
+    env:
+      GOOS: '{{.GOOS}}'
+      GOARCH: '{{.GOARCH}}'
+      GOARM: '{{.GOARM}}'
+      CGO_ENABLED: '{{.CGO_ENABLED}}'
+      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+    cmds:
+      - >-
+        cd integration-tests/windows-service && ALLOY_INSTALLER_PATH="../../dist/alloy-installer-windows-amd64.exe"
+        go test -v -tags="gore2regex alloyintegrationtests" -timeout 5m -run TestWindowsService ./...
+
+  mixin:
+    desc: Validate rendered mixin dashboards and run Jsonnet tests.
+    deps:
+      - :gen:rendered-mixin
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  mixin:_native:
+    cmds:
+      - echo "Running Jsonnet tests..."
+      - |
+        for test in operations/alloy-mixin/test/*_test.jsonnet; do
+          echo "Testing $test..."
+          {{.JSONNET}} -J operations/alloy-mixin -J operations/alloy-mixin/vendor "$test" || exit 1
+          echo ""
+        done
+      - echo "All Jsonnet tests passed."
+      - echo "Validating dashboards with Grizzly..."
+      - |
+        for dashboard in operations/alloy-mixin/rendered/dashboards/*.json; do
+          echo "  Validating $dashboard..."
+          {{.GRIZZLY}} show "$dashboard" > /dev/null || exit 1
+        done
+      - echo "Grizzly validation passed."
+      - echo "All mixin tests passed."

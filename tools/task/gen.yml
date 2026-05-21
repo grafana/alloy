@@ -1,0 +1,171 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  ui:
+    desc: Build the web UI assets. SKIP_UI_BUILD=1 to skip npm install/build.
+    vars:
+      SKIP_UI_BUILD: '{{.SKIP_UI_BUILD | default "0"}}'
+    requires:
+      vars:
+        - name: SKIP_UI_BUILD
+          enum: ["0", "1"]
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  ui:_native:
+    cmds:
+      - |
+        {{ if eq .SKIP_UI_BUILD "1" -}}
+        echo "Skipping UI build (SKIP_UI_BUILD=1)"
+        {{- else -}}
+        cd ./internal/web/ui && npm install && npm run build
+        {{- end }}
+
+  graphql:
+    desc: Run go generate for the GraphQL service.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  graphql:_native:
+    dir: internal/service/graphql
+    env:
+      # Intentionally cleared (Makefile:298).
+      GOOS: ""
+      GOARCH: ""
+    cmds:
+      - go generate ./...
+
+  helm-docs:
+    desc: Regenerate Helm chart docs.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  helm-docs:_native:
+    dir: operations/helm/charts/alloy
+    cmds:
+      - helm-docs
+
+  helm-tests:
+    desc: Rebuild Helm chart tests.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  helm-tests:_native:
+    cmds:
+      - bash ./operations/helm/scripts/rebuild-tests.sh
+
+  module-dependencies:
+    desc: Refresh module replace directives.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  module-dependencies:_native:
+    dir: tools/generate-module-dependencies
+    env:
+      GOOS: '{{.GOOS}}'
+      GOARCH: '{{.GOARCH}}'
+      GOARM: '{{.GOARM}}'
+      CGO_ENABLED: '{{.CGO_ENABLED}}'
+      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+    cmds:
+      - go generate
+
+  otel-collector-distro:
+    desc: Regenerate the OpenTelemetry Collector distribution.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  otel-collector-distro:_native:
+    env:
+      # Intentionally cleared (Makefile:330).
+      GOOS: ""
+      GOARCH: ""
+      BUILDER_VERSION: '{{.BUILDER_VERSION}}'
+    cmds:
+      - |
+        if [ -f ./collector/go.mod ]; then
+          cd ./collector && go mod tidy
+        fi
+      - cd ./collector && go generate
+
+  docs:
+    desc: Regenerate API docs.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  docs:_native:
+    cmds:
+      - go generate ./internal/tools/docs_generator/
+
+  winmanifest:
+    desc: Regenerate the Windows manifest.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  winmanifest:_native:
+    cmds:
+      - go generate ./internal/winmanifest
+
+  rendered-mixin:
+    desc: Render mixin dashboards and alerts.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  rendered-mixin:_native:
+    cmds:
+      - rm -rf operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+      - mkdir -p operations/alloy-mixin/rendered/alerts operations/alloy-mixin/rendered/dashboards
+      - cd operations/alloy-mixin && {{.JB}} install
+      - >-
+        {{.JSONNET}} -J operations/alloy-mixin -J operations/alloy-mixin/vendor
+        -m operations/alloy-mixin/rendered/dashboards
+        -e 'local mixin = import "mixin.libsonnet"; mixin.grafanaDashboards'
+      - >-
+        {{.JSONNET}} -S -J operations/alloy-mixin -J operations/alloy-mixin/vendor
+        -m operations/alloy-mixin/rendered/alerts
+        -e 'local mixin = import "mixin.libsonnet"; { [g.name + ".yaml"]: std.manifestYamlDoc({ groups: [g] }) for g in mixin.prometheusAlerts.groups }'
+
+  snmp:
+    desc: Update SNMP exporter modules to the version pinned in go.mod.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  snmp:_native:
+    cmds:
+      - |
+        LATEST_SNMP_VERSION=$(go list -f '{{`{{.Version}}`}}' -m github.com/prometheus/snmp_exporter)
+        sed -i '' "s|snmp_exporter/[^/]*/snmp.yml|snmp_exporter/${LATEST_SNMP_VERSION}/snmp.yml|" internal/static/integrations/snmp_exporter/common/common.go
+        go generate ./internal/static/integrations/snmp_exporter/common
+        sed -i '' "s/SNMP_VERSION: v[0-9]\+\.[0-9]\+\.[0-9]\+/SNMP_VERSION: ${LATEST_SNMP_VERSION}/" docs/sources/_index.md.t
+
+  gh-issue-templates:
+    desc: Regenerate GitHub issue templates.
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  gh-issue-templates:_native:
+    cmds:
+      - bash ./.github/ISSUE_TEMPLATE/scripts/update-gh-issue-templates.sh

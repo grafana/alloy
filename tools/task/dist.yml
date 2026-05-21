@@ -1,0 +1,234 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+vars:
+  # Strip leading "v" from VERSION for package names (Makefile:167).
+  ALLOY_PACKAGE_VERSION: '{{ trimPrefix "v" .VERSION }}'
+  ALLOY_PACKAGE_RELEASE: "1"
+  ALLOY_PACKAGE_PREFIX: 'dist/alloy-{{.ALLOY_PACKAGE_VERSION}}-1'
+  ALLOY_ENVIRONMENT_FILE_rpm: /etc/sysconfig/alloy
+  ALLOY_ENVIRONMENT_FILE_deb: /etc/default/alloy
+
+tasks:
+  default:
+    desc: Build the full distribution set (binaries, packages, installer).
+    cmds:
+      - task: binaries
+      - task: boringcrypto-binaries
+      - task: packages
+      - task: installer:windows
+
+  clean:
+    desc: Remove dist/ and dist.temp/ contents.
+    cmds:
+      - rm -rf ./dist/* ./dist.temp/*
+
+  mixin-zip:
+    desc: Zip rendered mixin dashboards for release.
+    cmds:
+      - mkdir -p dist
+      - >-
+        cd operations/alloy-mixin/rendered &&
+        zip "../../../dist/alloy-mixin-dashboards-${RELEASE_TAG:-{{.VERSION}}}.zip"
+        dashboards/*.json
+
+  binaries:
+    desc: Build all release binaries for the supported platforms.
+    vars:
+      PLATFORMS: linux/amd64 linux/arm64 linux/ppc64le linux/s390x darwin/amd64 darwin/arm64 windows/amd64 freebsd/amd64
+    cmds:
+      - for: { var: PLATFORMS }
+        task: binary
+        vars:
+          PLATFORM: '{{.ITEM}}'
+
+  binary:
+    desc: Build a single release binary for PLATFORM (e.g. linux/amd64).
+    requires:
+      vars:
+        - name: PLATFORM
+    vars:
+      BIN_GOOS: '{{ index (splitList "/" .PLATFORM) 0 }}'
+      BIN_GOARCH: '{{ index (splitList "/" .PLATFORM) 1 }}'
+      EXT: '{{ if eq (index (splitList "/" .PLATFORM) 0) "windows" }}.exe{{ end }}'
+      BIN_GO_TAGS: >-
+        {{- $os := index (splitList "/" .PLATFORM) 0 -}}
+        {{- if eq $os "windows" -}}
+        embedalloyui
+        {{- else if eq $os "linux" -}}
+        netgo embedalloyui promtail_journal_enabled
+        {{- else -}}
+        netgo embedalloyui
+        {{- end -}}
+      OUT: 'dist/alloy-{{.BIN_GOOS}}-{{.BIN_GOARCH}}{{.EXT}}'
+    cmds:
+      # Windows requires winmanifest to have run first (Makefile:84).
+      - |
+        if [ "{{.BIN_GOOS}}" = "windows" ]; then
+          task gen:winmanifest
+        fi
+      - task: :build:alloy
+        vars:
+          GOOS: '{{.BIN_GOOS}}'
+          GOARCH: '{{.BIN_GOARCH}}'
+          GO_TAGS: '{{.BIN_GO_TAGS}}'
+          RELEASE_BUILD: "1"
+          ALLOY_BINARY: '{{.OUT}}'
+
+  boringcrypto-binaries:
+    desc: Build linux/amd64 and linux/arm64 binaries with GOEXPERIMENT=boringcrypto.
+    cmds:
+      - task: boringcrypto-binary
+        vars: { BIN_GOARCH: amd64 }
+      - task: boringcrypto-binary
+        vars: { BIN_GOARCH: arm64 }
+
+  boringcrypto-binary:
+    requires:
+      vars:
+        - name: BIN_GOARCH
+    vars:
+      OUT: 'dist/alloy-boringcrypto-linux-{{.BIN_GOARCH}}'
+    cmds:
+      - task: :build:alloy
+        vars:
+          GOOS: linux
+          GOARCH: '{{.BIN_GOARCH}}'
+          GO_TAGS: netgo embedalloyui promtail_journal_enabled
+          GOEXPERIMENT: boringcrypto
+          RELEASE_BUILD: "1"
+          ALLOY_BINARY: '{{.OUT}}'
+
+  service-binaries:
+    desc: Build the Windows alloy-service intermediate binary.
+    deps:
+      - :gen:winmanifest
+    cmds:
+      - task: :build:alloy-service
+        vars:
+          GOOS: windows
+          GOARCH: amd64
+          GO_TAGS: embedalloyui
+          RELEASE_BUILD: "1"
+          SERVICE_BINARY: dist.temp/alloy-service-windows-amd64.exe
+
+  packages:
+    desc: Build all deb and rpm packages.
+    cmds:
+      - task: packages:amd64
+      - task: packages:arm64
+      - task: packages:ppc64le
+      - task: packages:s390x
+
+  packages:amd64:
+    desc: Build amd64 deb + rpm packages.
+    deps:
+      - task: binary
+        vars: { PLATFORM: linux/amd64 }
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  packages:amd64:_native:
+    cmds:
+      - task: _fpm
+        vars: { FMT: deb, PKG_ARCH: amd64, ALLOY_ARCH: amd64, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.amd64.deb' }
+      - task: _fpm
+        vars: { FMT: rpm, PKG_ARCH: x86_64, ALLOY_ARCH: amd64, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.amd64.rpm' }
+
+  packages:arm64:
+    desc: Build arm64 deb + rpm packages.
+    deps:
+      - task: binary
+        vars: { PLATFORM: linux/arm64 }
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  packages:arm64:_native:
+    cmds:
+      - task: _fpm
+        vars: { FMT: deb, PKG_ARCH: arm64, ALLOY_ARCH: arm64, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.arm64.deb' }
+      - task: _fpm
+        vars: { FMT: rpm, PKG_ARCH: aarch64, ALLOY_ARCH: arm64, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.arm64.rpm' }
+
+  packages:ppc64le:
+    desc: Build ppc64le deb + rpm packages.
+    deps:
+      - task: binary
+        vars: { PLATFORM: linux/ppc64le }
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  packages:ppc64le:_native:
+    cmds:
+      - task: _fpm
+        vars: { FMT: deb, PKG_ARCH: ppc64el, ALLOY_ARCH: ppc64le, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.ppc64el.deb' }
+      - task: _fpm
+        vars: { FMT: rpm, PKG_ARCH: ppc64le, ALLOY_ARCH: ppc64le, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.ppc64le.rpm' }
+
+  packages:s390x:
+    desc: Build s390x deb + rpm packages.
+    deps:
+      - task: binary
+        vars: { PLATFORM: linux/s390x }
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  packages:s390x:_native:
+    cmds:
+      - task: _fpm
+        vars: { FMT: deb, PKG_ARCH: s390x, ALLOY_ARCH: s390x, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.s390x.deb' }
+      - task: _fpm
+        vars: { FMT: rpm, PKG_ARCH: s390x, ALLOY_ARCH: s390x, OUT: '{{.ALLOY_PACKAGE_PREFIX}}.s390x.rpm' }
+
+  # Internal fpm wrapper. Mirrors generate_alloy_fpm in tools/make/packaging.mk:144-165.
+  _fpm:
+    internal: true
+    requires:
+      vars: [FMT, PKG_ARCH, ALLOY_ARCH, OUT]
+    vars:
+      ENV_FILE: '{{ if eq .FMT "rpm" }}{{.ALLOY_ENVIRONMENT_FILE_rpm}}{{ else }}{{.ALLOY_ENVIRONMENT_FILE_deb}}{{ end }}'
+    cmds:
+      - >-
+        fpm -s dir -v {{.ALLOY_PACKAGE_VERSION}} -a {{.PKG_ARCH}}
+        -n alloy --iteration {{.ALLOY_PACKAGE_RELEASE}} -f
+        --log error
+        --license "Apache 2.0"
+        --vendor "Grafana Labs"
+        --url "https://github.com/grafana/alloy"
+        --description "Grafana Alloy is an OpenTelemetry Collector distribution with programmable pipelines."
+        --rpm-digest sha256
+        -t {{.FMT}}
+        --after-install packaging/{{.FMT}}/control/postinst
+        --before-remove packaging/{{.FMT}}/control/prerm
+        --config-files /etc/alloy/config.alloy
+        --config-files {{.ENV_FILE}}
+        --rpm-rpmbuild-define "_build_id_links none"
+        --package {{.OUT}}
+        dist/alloy-linux-{{.ALLOY_ARCH}}=/usr/bin/alloy
+        packaging/config.alloy=/etc/alloy/config.alloy
+        packaging/environment-file={{.ENV_FILE}}
+        packaging/{{.FMT}}/alloy.service=/usr/lib/systemd/system/alloy.service
+
+  installer:windows:
+    desc: Build the Windows installer (.exe).
+    deps:
+      - task: binary
+        vars: { PLATFORM: windows/amd64 }
+      - service-binaries
+    cmds:
+      - task: :container:exec
+        vars:
+          INNER: '{{.TASK}}:_native'
+
+  installer:windows:_native:
+    cmds:
+      - mkdir -p dist
+      - makensis -V4 -DVERSION={{.VERSION}} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
