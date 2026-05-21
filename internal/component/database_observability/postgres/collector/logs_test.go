@@ -847,10 +847,10 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:               receiver,
-		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
-		Logger:                 log.NewNopLogger(),
-		Registry:               registry,
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          log.NewNopLogger(),
+		Registry:        registry,
 		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
@@ -916,10 +916,10 @@ func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:               receiver,
-		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
-		Logger:                 log.NewNopLogger(),
-		Registry:               registry,
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          log.NewNopLogger(),
+		Registry:        registry,
 		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
@@ -953,10 +953,10 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:               receiver,
-		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
-		Logger:                 log.NewNopLogger(),
-		Registry:               registry,
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          log.NewNopLogger(),
+		Registry:        registry,
 		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
@@ -1008,10 +1008,10 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:               receiver,
-		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
-		Logger:                 log.NewNopLogger(),
-		Registry:               registry,
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          log.NewNopLogger(),
+		Registry:        registry,
 		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
@@ -1075,10 +1075,10 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:               receiver,
-		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
-		Logger:                 log.NewNopLogger(),
-		Registry:               registry,
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          log.NewNopLogger(),
+		Registry:        registry,
 		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
@@ -1114,10 +1114,10 @@ func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
 	entryCh := make(chan loki.Entry, 8)
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:               receiver,
-		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
-		Logger:                 log.NewNopLogger(),
-		Registry:               registry,
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          log.NewNopLogger(),
+		Registry:        registry,
 		EnableErrorLogs: true,
 	})
 	require.NoError(t, err)
@@ -1161,10 +1161,10 @@ func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T
 	registry := prometheus.NewRegistry()
 
 	c, err := NewLogs(LogsArguments{
-		Receiver:               receiver,
-		EntryHandler:           loki.NewEntryHandler(entryCh, func() {}),
-		Logger:                 log.NewNopLogger(),
-		Registry:               registry,
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          log.NewNopLogger(),
+		Registry:        registry,
 		EnableErrorLogs: false, // explicitly off
 	})
 	require.NoError(t, err)
