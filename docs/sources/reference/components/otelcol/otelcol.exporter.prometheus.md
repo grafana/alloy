@@ -62,17 +62,19 @@ The following components are compatible:
 * `prometheus.remote_write` only when configured for Remote Write v2.
 * `prometheus.write_queue`
 
-[experimental]: ../../../get-started/configuration-syntax/expressions/function_calls/#experimental-functions
+[experimental]: https://grafana.com/docs/release-life-cycle/
 {{< /admonition >}}
 
 {{< admonition type="warning" >}}
 **EXPERIMENTAL**: The `convert_classic_histograms_to_nhcb` argument is an [experimental][] feature.
 
 When set to `true`, each OTel explicit-bucket histogram data point is converted to a single Prometheus native histogram with custom buckets (NHCB) instead of being expanded into `_bucket`, `_sum`, and `_count` series.
-The OTel `explicit_bounds` array maps directly to the NHCB custom bucket boundaries.
-The downstream appender must support native histograms.
-If the metrics are forwarded over remote write, both the sending component and the receiver must speak Prometheus Remote Write 2.0, since NHCB isn't representable in Remote Write 1.0.
-With `prometheus.remote_write`, set `protobuf_message = "io.prometheus.write.v2.Request"` in the `endpoint` block (the default is `"prometheus.WriteRequest"`, which is Remote Write 1.0).
+The downstream components must support native histograms.
+
+To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
+
+[experimental]: https://grafana.com/docs/release-life-cycle/
+[flag]: https://grafana.com/docs/alloy/<ALLOY_VERSION>/reference/cli/run/
 {{< /admonition >}}
 
 When `include_scope_labels` is `true`  the `otel_scope_name` and `otel_scope_version` labels are added to every converted metric sample.
@@ -204,6 +206,33 @@ otelcol.exporter.prometheus "default" {
 prometheus.remote_write "mimir" {
   endpoint {
     url = "http://mimir:9009/api/v1/push"
+  }
+}
+```
+
+## Convert classic histograms to NHCB
+
+This example enables `convert_classic_histograms_to_nhcb` and forwards the converted metrics to a `prometheus.remote_write` endpoint configured for Prometheus Remote Write 2.0.
+NHCB samples can't be sent over Remote Write 1.0, so the `protobuf_message` argument must be set to `io.prometheus.write.v2.Request` on the `endpoint` block.
+
+```alloy
+otelcol.receiver.otlp "default" {
+  grpc {}
+
+  output {
+    metrics = [otelcol.exporter.prometheus.default.input]
+  }
+}
+
+otelcol.exporter.prometheus "default" {
+  convert_classic_histograms_to_nhcb = true
+  forward_to                         = [prometheus.remote_write.mimir.receiver]
+}
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url              = "http://mimir:9009/api/v1/push"
+    protobuf_message = "io.prometheus.write.v2.Request"
   }
 }
 ```
