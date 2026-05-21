@@ -2,6 +2,8 @@ module github.com/grafana/alloy
 
 go 1.26.2
 
+// PoC-only harmless change to trigger the **/go.mod workflow path filter.
+
 // This local replace is required for local development and testing of the syntax submodule.
 // It is intentionally kept outside the generated block to avoid being overwritten by dependency management tools.
 replace github.com/grafana/alloy/syntax => ./syntax
