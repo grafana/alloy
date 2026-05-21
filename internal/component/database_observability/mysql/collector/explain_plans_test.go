@@ -1649,6 +1649,26 @@ func TestExplainPlans(t *testing.T) {
 				"insert_digest",
 				"insert into some_table (col) values (1)",
 				lastSeen,
+			).AddRow(
+				"some_schema",
+				"show_digest",
+				"show global status like 'Uptime'",
+				lastSeen,
+			).AddRow(
+				"some_schema",
+				"kill_digest",
+				"kill query 123",
+				lastSeen,
+			).AddRow(
+				"some_schema",
+				"call_digest",
+				"call refresh_summary()",
+				lastSeen,
+			).AddRow(
+				"some_schema",
+				"do_digest",
+				"do release_lock('foo')",
+				lastSeen,
 			))
 
 			err = c.fetchExplainPlans(t.Context())
@@ -1656,14 +1676,14 @@ func TestExplainPlans(t *testing.T) {
 
 			require.Eventually(
 				t,
-				func() bool { return len(lokiClient.Received()) == 3 },
+				func() bool { return len(lokiClient.Received()) == 7 },
 				5*time.Second,
 				10*time.Millisecond,
 				"did not receive the explain plan output log messages within the timeout",
 			)
 
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 3, len(lokiEntries))
+			require.Equal(t, 7, len(lokiEntries))
 
 			for _, lokiEntry := range lokiEntries {
 				ep, err := database_observability.ExtractExplainPlanOutputFromLogMsg(lokiEntry)

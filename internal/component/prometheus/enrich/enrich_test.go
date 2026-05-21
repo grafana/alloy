@@ -2,6 +2,7 @@ package enrich
 
 import (
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	prom "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -105,6 +107,64 @@ func TestEnricher(t *testing.T) {
 				"service": "test-service",
 			},
 		},
+		{
+			name: "multi-label match on namespace + pod + container",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__meta_kubernetes_namespace":          "default",
+						"__meta_kubernetes_pod_name":           "nginx-abc",
+						"__meta_kubernetes_pod_container_name": "nginx",
+						"pod_ip":                               "10.0.0.1",
+					}),
+				},
+				TargetToMetricMatch: map[string]string{
+					"__meta_kubernetes_namespace":          "namespace",
+					"__meta_kubernetes_pod_name":           "pod",
+					"__meta_kubernetes_pod_container_name": "container",
+				},
+				LabelsToCopy: []string{"pod_ip"},
+			},
+			inputLabels: map[string]string{
+				"namespace": "default",
+				"pod":       "nginx-abc",
+				"container": "nginx",
+			},
+			expectedLabels: map[string]string{
+				"namespace": "default",
+				"pod":       "nginx-abc",
+				"container": "nginx",
+				"pod_ip":    "10.0.0.1",
+			},
+		},
+		{
+			name: "multi-label match: no match when metric missing a label",
+			args: Arguments{
+				Targets: []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"__meta_kubernetes_namespace":          "default",
+						"__meta_kubernetes_pod_name":           "nginx-abc",
+						"__meta_kubernetes_pod_container_name": "nginx",
+						"pod_ip":                               "10.0.0.1",
+					}),
+				},
+				TargetToMetricMatch: map[string]string{
+					"__meta_kubernetes_namespace":          "namespace",
+					"__meta_kubernetes_pod_name":           "pod",
+					"__meta_kubernetes_pod_container_name": "container",
+				},
+				LabelsToCopy: []string{"pod_ip"},
+			},
+			// Metric is missing "container", so no match — labels pass through unchanged.
+			inputLabels: map[string]string{
+				"namespace": "default",
+				"pod":       "nginx-abc",
+			},
+			expectedLabels: map[string]string{
+				"namespace": "default",
+				"pod":       "nginx-abc",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -112,7 +172,7 @@ func TestEnricher(t *testing.T) {
 				nil,
 				prometheus.WithAppendHook(func(ref storage.SeriesRef, l labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
 					for name, value := range tt.expectedLabels {
-						require.Equal(t, l.Get(name), value)
+						require.Equal(t, value, l.Get(name), "label %s", name)
 					}
 
 					return ref, nil
@@ -143,6 +203,112 @@ func TestEnricher(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestValidate(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{
+			name: "valid legacy",
+			args: Arguments{
+				TargetMatchLabel: "service",
+			},
+		},
+		{
+			name: "valid legacy with metrics_match_label",
+			args: Arguments{
+				TargetMatchLabel:  "service",
+				MetricsMatchLabel: "svc",
+			},
+		},
+		{
+			name: "valid new match",
+			args: Arguments{
+				TargetToMetricMatch: map[string]string{"ns": "namespace", "pod_name": "pod"},
+			},
+		},
+		{
+			name:    "error: no match mechanism",
+			args:    Arguments{},
+			wantErr: "at least one match mechanism must be specified",
+		},
+		{
+			name: "new takes precedence over legacy",
+			args: Arguments{
+				TargetMatchLabel:    "service",
+				TargetToMetricMatch: map[string]string{"ns": "namespace"},
+			},
+		},
+		{
+			name: "error: metrics_match_label without target_match_label",
+			args: Arguments{
+				MetricsMatchLabel: "svc",
+			},
+			wantErr: "target_match_label must be set",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+// TestEnrichConcurrentUpdate exercises Append/Update concurrently to surface
+// data races.
+func TestEnrichConcurrentUpdate(t *testing.T) {
+	fanout := prometheus.NewInterceptor(nil,
+		prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+			return ref, nil
+		}))
+
+	args := Arguments{
+		Targets: []discovery.Target{
+			discovery.NewTargetFromMap(map[string]string{"service": "svc", "env": "prod"}),
+		},
+		TargetMatchLabel: "service",
+		LabelsToCopy:     []string{"env"},
+		ForwardTo:        []storage.Appendable{fanout},
+	}
+
+	c, err := New(component.Options{
+		ID:             "1",
+		Logger:         util.TestAlloyLogger(t),
+		OnStateChange:  func(component.Exports) {},
+		Registerer:     prom.NewRegistry(),
+		GetServiceData: getServiceData,
+	}, args)
+	require.NoError(t, err)
+
+	const iterations = 1000
+	lbls := labels.FromStrings("service", "svc")
+
+	var wg sync.WaitGroup
+
+	// append samples
+	wg.Go(func() {
+		for range iterations {
+			app := c.receiver.Appender(t.Context())
+			_, _ = app.Append(0, lbls, 0, 0)
+			_ = app.Commit()
+		}
+	})
+
+	// continuously rotate Targets and LabelsToCopy.
+	wg.Go(func() {
+		for range iterations {
+			assert.NoError(t, c.Update(args))
+		}
+	})
+	wg.Wait()
 }
 
 func getServiceData(name string) (any, error) {

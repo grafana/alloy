@@ -9,6 +9,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
@@ -63,7 +64,7 @@ func TestComponentDuplicateTargets(t *testing.T) {
 
 	cmp, err := New(component.Options{
 		ID:         "loki.source.docker.test",
-		Logger:     util.TestAlloyLogger(t),
+		SLogger:    logging.NewSlogNop(),
 		Registerer: prometheus.NewRegistry(),
 		DataPath:   t.TempDir(),
 	}, args)

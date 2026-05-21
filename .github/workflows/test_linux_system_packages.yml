@@ -15,7 +15,7 @@ permissions:
 jobs:
   test_linux_system_packages:
     name: Test Linux system packages
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
     container:
       image: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
       volumes:

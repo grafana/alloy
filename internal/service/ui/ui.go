@@ -11,7 +11,9 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
+	graphql_service "github.com/grafana/alloy/internal/service/graphql"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	remotecfg_service "github.com/grafana/alloy/internal/service/remotecfg"
@@ -25,9 +27,20 @@ const ServiceName = "ui"
 // Options are used to configure the UI service. Options are constant for the
 // lifetime of the UI service.
 type Options struct {
-	UIPrefix        string                        // Path prefix to host the UI at.
-	CallbackManager livedebugging.CallbackManager // CallbackManager is used for live debugging in the UI.
-	Logger          log.Logger
+	// UIPrefix is the path prefix to host the UI at.
+	UIPrefix string
+
+	// CallbackManager is used for live debugging in the UI.
+	CallbackManager livedebugging.CallbackManager
+
+	// Logger is used for structured logging across the service.
+	Logger log.Logger
+
+	// EnableGraphQL specifies whether the GraphQL API is enabled.
+	EnableGraphQL bool
+
+	// EnableGraphQLPlayground specifies whether the GraphQL playground UI is enabled.
+	EnableGraphQLPlayground bool
 }
 
 // Service implements the UI service.
@@ -79,11 +92,24 @@ func (s *Service) Data() any {
 // ServiceHandler implements [http_service.ServiceHandler]. It returns the HTTP
 // endpoints to host the UI.
 func (s *Service) ServiceHandler(host service.Host) (base string, handler http.Handler) {
-	r := mux.NewRouter()
+	router := mux.NewRouter()
 
-	fa := api.NewAlloyAPI(host, s.opts.CallbackManager, s.opts.Logger)
-	fa.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), r)
-	ui.RegisterRoutes(s.opts.UIPrefix, r)
+	alloyApi := api.NewAlloyAPI(host, s.opts.CallbackManager, s.opts.Logger)
+	alloyApi.RegisterRoutes(path.Join(s.opts.UIPrefix, "/api/v0/web"), router)
 
-	return s.opts.UIPrefix, r
+	if s.opts.EnableGraphQL {
+		graphql_service.RegisterRoutes(graphql_service.RegisterRoutesParams{
+			Router:           router,
+			Logger:           s.opts.Logger,
+			URLPrefix:        s.opts.UIPrefix,
+			Host:             host,
+			EnablePlayground: s.opts.EnableGraphQLPlayground,
+		})
+	} else {
+		level.Debug(s.opts.Logger).Log("msg", "GraphQL API is not enabled")
+	}
+
+	ui.RegisterRoutes(s.opts.UIPrefix, router)
+
+	return s.opts.UIPrefix, router
 }

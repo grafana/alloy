@@ -1,0 +1,105 @@
+declare "loki_pipeline" {
+	export "receiver" {
+		value = loki.process.p.receiver
+	}
+
+	argument "forward_to" { }
+
+	loki.process "p" {
+		forward_to = [loki.enrich.e.receiver]
+
+		stage.match {
+			selector = `{service_name="audit"}`
+			action   = "drop"
+		}
+
+		stage.match {
+			selector = `{service_name="api"}`
+
+			stage.logfmt {
+				mapping = {
+					ts         = "",
+					msg        = "",
+					level      = "",
+					user_id    = "",
+					request_id = "",
+				}
+			}
+		}
+
+		stage.match {
+			selector = `{service_name="worker"}`
+
+			stage.json {
+				expressions = {
+					ts         = "",
+					msg        = "",
+					level      = "",
+					user_id    = "",
+					request_id = "",
+				}
+			}
+		}
+
+		stage.timestamp {
+			source = "ts"
+			format = "RFC3339"
+		}
+
+		stage.labels {
+			values = {
+				level = "",
+			}
+		}
+
+		stage.structured_metadata {
+			values = {
+				pod        = "",
+				request_id = "",
+				user_id    = "",
+			}
+		}
+
+		stage.label_drop {
+			values = ["filename"]
+		}
+
+		stage.output {
+			source = "msg"
+		}
+	}
+
+	loki.enrich "e" {
+		targets = [
+			{
+				service_name = "api",
+				cluster      = "prod-eu",
+				dropme       = "not-important",
+			},
+			{
+				service_name = "worker",
+				cluster      = "prod-us",
+				dropme       = "not-important",
+			},
+		]
+
+		target_match_label = "service_name"
+		labels_to_copy     = ["cluster"]
+		forward_to         = [loki.relabel.r.receiver]
+	}
+
+	loki.relabel "r" {
+		forward_to = [loki.secretfilter.s.receiver]
+
+		rule {
+			action = "labeldrop"
+			regex  = "^dropme$"
+		}
+	}
+
+	loki.secretfilter "s" {
+		forward_to   = argument.forward_to.value
+		origin_label = "job"
+		redact_with  = "***REDACTED***"
+	}
+}

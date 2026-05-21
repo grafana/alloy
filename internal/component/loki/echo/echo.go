@@ -7,7 +7,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -81,10 +80,10 @@ func (c *Component) Run(ctx context.Context) error {
 		case entry := <-c.receiver.Chan():
 			structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
 			if err != nil {
-				level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
+				c.opts.SLogger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
 				structured_metadata = []byte("{}")
 			}
-			level.Info(c.opts.Logger).Log("receiver", c.opts.ID, "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
+			c.opts.SLogger.Info("received log entry", "receiver", c.opts.ID, "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
 		}
 	}
 }

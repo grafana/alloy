@@ -1,10 +1,13 @@
 package snowflake_exporter
 
 import (
+	"log/slog"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/snowflake-prometheus-exporter/collector"
 	config_util "github.com/prometheus/common/config"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -72,7 +75,9 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		return nil, err
 	}
 
-	col := collector.NewCollector(l, exporterConfig)
+	slogLogger := slog.New(logging.NewSlogGoKitHandler(l))
+
+	col := collector.NewCollector(slogLogger, exporterConfig)
 	return integrations.NewCollectorIntegration(
 		c.Name(),
 		integrations.WithCollectors(col),

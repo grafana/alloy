@@ -1,6 +1,6 @@
 import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
 import { Slider } from '@grafana/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useParams } from 'react-router';
 
 import ComponentGraph from '../features/graph/ComponentGraph';
@@ -18,6 +18,7 @@ function Graph() {
   const [window, setWindow] = useState(DEFAULT_WINDOW);
   const [sliderWindow, setSliderWindow] = useState(DEFAULT_WINDOW);
   const [enabled, setEnabled] = useState(true);
+  const windowSliderInputId = useId();
 
   // Reset component state when moduleID changes
   useEffect(() => {
@@ -45,6 +46,7 @@ function Graph() {
       <div className={styles.slider}>
         <span className={styles.sliderLabel}>Window</span>
         <Slider
+          inputId={windowSliderInputId}
           included
           min={1}
           max={60}
