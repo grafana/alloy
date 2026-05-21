@@ -10,11 +10,14 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 )
 
 func TestQueryDetails(t *testing.T) {
@@ -998,6 +1001,78 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return collector.Stopped()
 	}, 5*time.Second, 100*time.Millisecond)
+
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestQueryDetails_QueryFingerprintInfoGauge pins three behaviors of the
+// pg_query_fingerprint_info gauge:
+//  1. one series per pg_stat_statements row scraped, with value 1
+//  2. labels carry queryid, query_fingerprint, and datname
+//  3. the gauge resets across scrapes (queryids no longer present disappear)
+func TestQueryDetails_QueryFingerprintInfoGauge(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	registry := prometheus.NewRegistry()
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: 200 * time.Millisecond,
+		StatementsLimit: 100,
+		EntryHandler:    lokiClient,
+		Registry:        registry,
+		Logger:          log.NewNopLogger(),
+	})
+	require.NoError(t, err)
+
+	const q1 = "SELECT * FROM users WHERE id = 1"
+	const q2 = "SELECT * FROM products WHERE id = 2"
+	fp1, _, err := fingerprint.Fingerprint(q1, fingerprint.SourcePgStatStatements, 0)
+	require.NoError(t, err)
+	fp2, _, err := fingerprint.Fingerprint(q2, fingerprint.SourcePgStatStatements, 0)
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("101", q1, "books_store").
+			AddRow("202", q2, "books_store"))
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("202", q2, "books_store"))
+
+	require.NoError(t, c.Start(t.Context()))
+	defer c.Stop()
+
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.queryFingerprintInfo.WithLabelValues("101", fp1, "books_store")) == 1 &&
+			testutil.ToFloat64(c.queryFingerprintInfo.WithLabelValues("202", fp2, "books_store")) == 1
+	}, 3*time.Second, 50*time.Millisecond, "first scrape should populate one series per row")
+
+	require.Eventually(t, func() bool {
+		gathered, err := registry.Gather()
+		require.NoError(t, err)
+		for _, mf := range gathered {
+			if mf.GetName() != "database_observability_pg_query_fingerprint_info" {
+				continue
+			}
+			if len(mf.GetMetric()) != 1 {
+				return false
+			}
+			labels := map[string]string{}
+			for _, l := range mf.GetMetric()[0].GetLabel() {
+				labels[l.GetName()] = l.GetValue()
+			}
+			return labels["queryid"] == "202" && labels["query_fingerprint"] == fp2
+		}
+		return false
+	}, 3*time.Second, 50*time.Millisecond, "second scrape should drop queryid=101 and keep queryid=202")
 
 	require.NoError(t, mock.ExpectationsWereMet())
 }
