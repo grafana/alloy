@@ -147,6 +147,28 @@ func TestLogger_EventLog_TransitionToStderrClosesHandle(t *testing.T) {
 		"bytes path should now reach the stderr writer")
 }
 
+// TestDispatch_FastPathRaceRoutesToEventLogAsInfo locks in the loss-prevention
+// behavior for the fast-path race: when a Write(p) arrives with eventLogLevel=nil
+// in state B (suppressInner=true, eventLog!=nil), Dispatch defaults to Info on
+// the event log instead of misrouting to stderr. This preserves the operator's
+// destination choice across a destination switch.
+func TestDispatch_FastPathRaceRoutesToEventLogAsInfo(t *testing.T) {
+	mock := &testutil.MockEventLog{}
+	var inner bytes.Buffer
+	w := &writerVar{
+		innerWriter:   &inner,
+		eventLog:      mock,
+		suppressInner: true,
+	}
+
+	require.NoError(t, w.Dispatch([]byte("fast-path race bytes\n"), nil))
+
+	require.Empty(t, inner.String(), "inner should stay suppressed; bytes belong on the event log")
+	require.Len(t, mock.Infos, 1, "event log should receive the record as Info")
+	require.Equal(t, "fast-path race bytes", mock.Infos[0],
+		"trailing newline should be trimmed for the event log API")
+}
+
 // TestUpdate_NoLossDuringConcurrentDestinationFlips is a stress test that runs
 // many Handle calls in parallel with rapid destination switches between
 // stderr and windows_event_log. With Dispatch's loss-prevention fallback AND

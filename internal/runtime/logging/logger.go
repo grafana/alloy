@@ -399,32 +399,31 @@ func (w *writerVar) HasSink() bool {
 }
 
 // Dispatch is the canonical write entry point. It fans p out to every
-// active byte-stream sink (innerWriter, lokiWriter, tmpWriter). If
-// eventLogLevel is non-nil and an event log is attached, p is also
-// forwarded to the event log with the level mapped to Info/Warning/Error.
+// active sink: innerWriter (unless suppressed), lokiWriter, tmpWriter,
+// and, when attached, the event log.
 //
-// Suppression of innerWriter only applies when the bytes can actually
-// reach the event log. If they can't — because the caller didn't supply
-// a level (fast path) or because the event log was detached by a
-// concurrent reload — innerWriter receives the bytes regardless of
-// w.suppressInner. This is the loss-prevention property: during a
-// destination switch, a record may land on stderr instead of the event
-// log, but it is never dropped.
+// SwitchToEventLog / SwitchToInnerOnly hold the write lock across every
+// state change they make, so any Dispatch RLock observes one of two
+// states: (suppressInner=false, eventLog=nil) — stderr mode — or
+// (suppressInner=true, eventLog!=nil) — event_log mode.
+//
+// Loss-prevention property: in event_log mode, a fast-path Write call
+// (eventLogLevel=nil) can still occur if a destination switch happened
+// between handler.Handle's FastPathFlags read and the slog handler's
+// Write. Rather than dropping the record or misrouting it to stderr,
+// Dispatch defaults to Info and delivers it to the event log — the
+// operator's configured destination. The level may be slightly off
+// (the original record's level is embedded in the formatted text), but
+// the message reaches Event Viewer.
 //
 // The trailing newline added by slog's TextHandler/JSONHandler is trimmed
 // before handing the message to the event log API, which renders cleaner
 // in Event Viewer.
-//
-// A nil eventLogLevel is the only way to skip the event log explicitly —
-// passing slog.Level(0) would dispatch as Info, because zero is a valid
-// slog.Level.
 func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 	w.mut.RLock()
 	defer w.mut.RUnlock()
 
-	canReachEventLog := eventLogLevel != nil && w.eventLog != nil
-	writeInner := w.innerWriter != nil && (!w.suppressInner || !canReachEventLog)
-	if writeInner {
+	if !w.suppressInner && w.innerWriter != nil {
 		if _, err := w.innerWriter.Write(p); err != nil {
 			return err
 		}
@@ -439,26 +438,27 @@ func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 			return err
 		}
 	}
-	if !canReachEventLog {
+	if w.eventLog == nil {
 		return nil
 	}
 	msg := p
 	if n := len(msg); n > 0 && msg[n-1] == '\n' {
 		msg = msg[:n-1]
 	}
-	switch *eventLogLevel {
-	case slog.LevelWarn:
-		return w.eventLog.Warning(1, string(msg))
-	case slog.LevelError:
-		return w.eventLog.Error(1, string(msg))
-	default:
-		return w.eventLog.Info(1, string(msg))
+	if eventLogLevel != nil {
+		switch *eventLogLevel {
+		case slog.LevelWarn:
+			return w.eventLog.Warning(1, string(msg))
+		case slog.LevelError:
+			return w.eventLog.Error(1, string(msg))
+		}
 	}
+	return w.eventLog.Info(1, string(msg))
 }
 
 // Write is the io.Writer adapter used by the fast-path slog handler.
-// Equivalent to Dispatch(p, nil) — byte-stream sinks only, no event log.
-// For the event-log path use Dispatch directly with a non-nil level.
+// Equivalent to Dispatch(p, nil); see Dispatch for how a fast-path
+// write is handled when the event log is attached.
 func (w *writerVar) Write(p []byte) (int, error) {
 	if err := w.Dispatch(p, nil); err != nil {
 		return 0, err
