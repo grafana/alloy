@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,10 +13,12 @@ import (
 	"github.com/go-kit/log"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -23,8 +26,11 @@ import (
 const (
 	QuerySamplesCollector = "query_samples"
 	OP_QUERY_SAMPLE       = "query_sample"
+	OP_QUERY_SAMPLE_V2    = "query_sample_v2"
 	OP_WAIT_EVENT         = "wait_event"
 	OP_WAIT_EVENT_V2      = "wait_event_v2"
+	OP_WAIT_EVENT_V3      = "wait_event_v3"
+	OP_WAIT_EVENT_V4      = "wait_event_v4"
 )
 
 const (
@@ -112,6 +118,8 @@ type QuerySamplesArguments struct {
 	DisableQueryRedaction         bool
 	ExcludeCurrentUser            bool
 	EnablePreClassifiedWaitEvents bool
+	EnableQueryFingerprint        bool
+	Registry                      *prometheus.Registry
 }
 
 type QuerySamples struct {
@@ -123,6 +131,8 @@ type QuerySamples struct {
 	disableQueryRedaction         bool
 	excludeCurrentUser            bool
 	enablePreClassifiedWaitEvents bool
+	enableQueryFingerprint        bool
+	trackActivityQuerySize        int
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -134,6 +144,11 @@ type QuerySamples struct {
 	samples map[SampleKey]*SampleState
 	// keep track of idle keys that were already emitted to avoid duplicates
 	idleEmitted *expirable.LRU[SampleKey, struct{}]
+
+	// fingerprint pipeline observability
+	registry            *prometheus.Registry
+	fingerprintRepaired prometheus.Counter
+	fingerprintSentinel *prometheus.CounterVec
 }
 
 // SampleKey uses (PID, QueryID, QueryStartNs) so concurrent executions of the same
@@ -162,12 +177,41 @@ type SampleState struct {
 	// EndAt is the time we determined the sample ended (idle transition
 	// or when it was only observed idle), used to compute durations/timestamps.
 	EndAt sql.NullTime
+	// QueryFingerprint caches the libpg_query fingerprint of LastRow.Query
+	// so we resolve at most once per active sample. Subsequent waits and
+	// the final emission for the same SampleKey reuse this cached value.
+	QueryFingerprint string
 }
 
 func (s *SampleState) updateCpuTime(sample QuerySamplesInfo) {
 	if !sample.WaitEventType.Valid && !sample.WaitEvent.Valid && sample.State.String == stateActive {
 		s.LastCpuTime = calculateDuration(sample.StateChange, sample.Now)
 	}
+}
+
+// resolveQueryFingerprint computes a stable fingerprint from the sample's
+// pg_stat_activity.query text. The text is always available (the SELECT now
+// always includes s.query) regardless of disableQueryRedaction — only the
+// emission of raw SQL on log lines is gated by that flag. Returns "" when
+// the row carried no query (e.g. background workers with state="idle"
+// before any query has run) or when fingerprinting fails entirely.
+func (c *QuerySamples) resolveQueryFingerprint(sample QuerySamplesInfo) string {
+	if !sample.Query.Valid {
+		return ""
+	}
+	fp, repaired, err := fingerprint.Fingerprint(sample.Query.String, fingerprint.SourcePgStatActivity, c.trackActivityQuerySize)
+	if err != nil {
+		return ""
+	}
+	if repaired && c.fingerprintRepaired != nil {
+		c.fingerprintRepaired.Inc()
+	}
+	if c.fingerprintSentinel != nil {
+		if kind := fingerprint.SentinelKind(fp); kind != "" {
+			c.fingerprintSentinel.WithLabelValues(kind).Inc()
+		}
+	}
+	return fp
 }
 
 // setEndedAt sets EndAt and LastSeenAt based on the sample's state change or clock_timestamp if not available
@@ -224,7 +268,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 	const emittedCacheSize = 1000 // pg_stat_statements default max number of statements to track
 	const emittedCacheTTL = 10 * time.Minute
 
-	return &QuerySamples{
+	qs := &QuerySamples{
 		dbConnection:                  args.DB,
 		collectInterval:               args.CollectInterval,
 		excludeDatabases:              args.ExcludeDatabases,
@@ -233,11 +277,30 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		excludeCurrentUser:            args.ExcludeCurrentUser,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
+		enableQueryFingerprint:        args.EnableQueryFingerprint,
 		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 		samples:                       map[SampleKey]*SampleState{},
 		idleEmitted:                   expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
-	}, nil
+		registry:                      args.Registry,
+	}
+
+	qs.fingerprintRepaired = prometheus.NewCounter(prometheus.CounterOpts{
+		Namespace: "database_observability",
+		Name:      "query_fingerprint_repaired_total",
+		Help:      "Number of query texts whose fingerprint required the quote/paren repair heuristic. A non-zero rate indicates upstream truncation or unusual SQL the parser couldn't accept as-is.",
+	})
+	qs.fingerprintSentinel = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "database_observability",
+		Name:      "query_fingerprint_sentinel_total",
+		Help:      "Number of query texts that fell through the fingerprint pipeline to a sentinel hash. \"truncated\" indicates pg_stat_activity hit track_activity_query_size; \"unparsable\" indicates the parser (and the repair heuristic) could not produce a valid AST.",
+	}, []string{"sentinel"})
+
+	if args.Registry != nil {
+		args.Registry.MustRegister(qs.fingerprintRepaired, qs.fingerprintSentinel)
+	}
+
+	return qs, nil
 }
 
 func (c *QuerySamples) Name() string {
@@ -250,6 +313,8 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 	} else {
 		level.Debug(c.logger).Log("msg", "collector started")
 	}
+
+	c.trackActivityQuerySize = readTrackActivityQuerySize(ctx, c.dbConnection, c.logger)
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -288,13 +353,18 @@ func (c *QuerySamples) Stop() {
 		c.cancel()
 	}
 	c.wg.Wait()
+
+	if c.registry != nil {
+		c.registry.Unregister(c.fingerprintRepaired)
+		c.registry.Unregister(c.fingerprintSentinel)
+	}
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	queryTextField := ""
-	if c.disableQueryRedaction {
-		queryTextField = queryTextClause
-	}
+	// We always select s.query so we can compute query_fingerprint inline.
+	// Whether the raw text is *emitted* on the log line is still gated by
+	// c.disableQueryRedaction below.
+	queryTextField := queryTextClause
 
 	excludeCurrentUserClauseField := ""
 	if c.excludeCurrentUser {
@@ -335,6 +405,9 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 			} else if _, already := c.idleEmitted.Get(key); !already {
 				// new idle sample not yet seen -> create a new sample state to track and emit it
 				newIdleState := &SampleState{LastRow: sample, tracker: newWaitEventTracker()}
+				if c.enableQueryFingerprint {
+					newIdleState.QueryFingerprint = c.resolveQueryFingerprint(sample)
+				}
 				newIdleState.setEndedAt(sample)
 				newIdleState.LastRow.State = sample.State
 				c.samples[key] = newIdleState
@@ -387,9 +460,10 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
-	}
-	if c.disableQueryRedaction {
-		scanArgs = append(scanArgs, &sample.Query)
+		// Always scan s.query so we can compute query_fingerprint
+		// regardless of disableQueryRedaction. The raw text is only
+		// emitted on the line when disableQueryRedaction is true.
+		&sample.Query,
 	}
 	err := rows.Scan(scanArgs...)
 	return sample, err
@@ -427,6 +501,9 @@ func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo
 	state.LastSeenAt = sample.Now
 	state.updateCpuTime(sample)
 	state.LastRow.State = sample.State
+	if c.enableQueryFingerprint && state.QueryFingerprint == "" {
+		state.QueryFingerprint = c.resolveQueryFingerprint(sample)
+	}
 	state.tracker.upsertWaitEvent(sample, sample.Now)
 }
 
@@ -480,7 +557,7 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_QUERY_SAMPLE,
+		c.querySampleOp(),
 		sampleLabels,
 		ts,
 	)
@@ -489,24 +566,57 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
 			continue
 		}
-		if c.enablePreClassifiedWaitEvents {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT_V2,
-				c.buildWaitEventV2Labels(state, we),
-				we.LastTimestamp.UnixNano(),
-			)
-		} else {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT,
-				c.buildWaitEventLabels(state, we),
-				we.LastTimestamp.UnixNano(),
-			)
-		}
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+			logging.LevelInfo,
+			c.waitEventOp(),
+			c.waitEventLabels(state, we),
+			we.LastTimestamp.UnixNano(),
+		)
 	}
 
 	delete(c.samples, key)
+}
+
+// querySampleOp picks the op label for query_sample lines. The v2 variant
+// carries the trailing query_fingerprint= field; the v1 variant predates the
+// fingerprint pipeline.
+func (c *QuerySamples) querySampleOp() string {
+	if c.enableQueryFingerprint {
+		return OP_QUERY_SAMPLE_V2
+	}
+	return OP_QUERY_SAMPLE
+}
+
+// waitEventOp picks the op label for wait_event lines based on the matrix of
+// (enableQueryFingerprint, enablePreClassifiedWaitEvents). Cells:
+//
+//	off / off -> wait_event       (raw event_type, no fingerprint)
+//	off / on  -> wait_event_v2    (pre-classified event_type, no fingerprint)
+//	on  / off -> wait_event_v3    (raw event_type + fingerprint)
+//	on  / on  -> wait_event_v4    (pre-classified event_type + fingerprint)
+func (c *QuerySamples) waitEventOp() string {
+	switch {
+	case c.enableQueryFingerprint && c.enablePreClassifiedWaitEvents:
+		return OP_WAIT_EVENT_V4
+	case c.enableQueryFingerprint:
+		return OP_WAIT_EVENT_V3
+	case c.enablePreClassifiedWaitEvents:
+		return OP_WAIT_EVENT_V2
+	default:
+		return OP_WAIT_EVENT
+	}
+}
+
+// waitEventLabels picks the label-builder that matches the wait_event op
+// shape. Pre-classified variants (v2, v4) go through buildWaitEventV2Labels;
+// raw variants (v1, v3) go through buildWaitEventLabels. The fingerprint
+// field is appended unconditionally by both builders when state.QueryFingerprint
+// is non-empty, so no separate fingerprint-aware builder is needed.
+func (c *QuerySamples) waitEventLabels(state *SampleState, we WaitEventOccurrence) string {
+	if c.enablePreClassifiedWaitEvents {
+		return c.buildWaitEventV2Labels(state, we)
+	}
+	return c.buildWaitEventLabels(state, we)
 }
 
 func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt sql.NullTime) string {
@@ -552,6 +662,9 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
 		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
 	}
+	if state.QueryFingerprint != "" {
+		labels = fmt.Sprintf(`%s query_fingerprint="%s"`, labels, state.QueryFingerprint)
+	}
 	return labels
 }
 
@@ -561,7 +674,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 	if state.LastRow.LeaderPID.Valid {
 		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
 	}
-	return fmt.Sprintf(
+	labels := fmt.Sprintf(
 		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
 		state.LastRow.DatabaseName.String,
 		state.LastRow.PID,
@@ -578,6 +691,10 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		we.BlockedByPIDs,
 		state.LastRow.QueryID.Int64,
 	)
+	if state.QueryFingerprint != "" {
+		labels = fmt.Sprintf(`%s query_fingerprint="%s"`, labels, state.QueryFingerprint)
+	}
+	return labels
 }
 
 func calculateDuration(nullableTime sql.NullTime, currentTime time.Time) string {
@@ -620,31 +737,6 @@ func isIdleState(state string) bool {
 	return false
 }
 
-func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOccurrence) string {
-	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
-	leaderPID := ""
-	if state.LastRow.LeaderPID.Valid {
-		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
-	}
-	return fmt.Sprintf(
-		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
-		state.LastRow.DatabaseName.String,
-		state.LastRow.PID,
-		leaderPID,
-		state.LastRow.Username.String,
-		state.LastRow.BackendType.String,
-		we.LastState,
-		state.LastRow.BackendXID.Int64,
-		state.LastRow.BackendXmin.Int64,
-		we.LastWaitTime,
-		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
-		we.WaitEvent,
-		waitEventFullName,
-		we.BlockedByPIDs,
-		state.LastRow.QueryID.Int64,
-	)
-}
-
 var postgresReplicationWaitEventPrefixes = []string{
 	"SyncRep",
 	"WalSender",
@@ -668,6 +760,52 @@ func isPostgresReplicationWaitEvent(waitEvent string) bool {
 	return false
 }
 
+func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOccurrence) string {
+	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
+	leaderPID := ""
+	if state.LastRow.LeaderPID.Valid {
+		leaderPID = fmt.Sprintf(`%d`, state.LastRow.LeaderPID.Int64)
+	}
+	labels := fmt.Sprintf(
+		`datname="%s" pid="%d" leader_pid="%s" user="%s" backend_type="%s" state="%s" xid="%d" xmin="%d" wait_time="%s" wait_event_type="%s" wait_event="%s" wait_event_name="%s" blocked_by_pids="%v" queryid="%d"`,
+		state.LastRow.DatabaseName.String,
+		state.LastRow.PID,
+		leaderPID,
+		state.LastRow.Username.String,
+		state.LastRow.BackendType.String,
+		we.LastState,
+		state.LastRow.BackendXID.Int64,
+		state.LastRow.BackendXmin.Int64,
+		we.LastWaitTime,
+		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
+		we.WaitEvent,
+		waitEventFullName,
+		we.BlockedByPIDs,
+		state.LastRow.QueryID.Int64,
+	)
+	if state.QueryFingerprint != "" {
+		labels = fmt.Sprintf(`%s query_fingerprint="%s"`, labels, state.QueryFingerprint)
+	}
+	return labels
+}
+
+// readTrackActivityQuerySize reads the server's track_activity_query_size
+// setting. Returns 0 (and logs a warning) on failure; the truncation sentinel
+// in the fingerprint pipeline simply won't fire in that case.
+func readTrackActivityQuerySize(ctx context.Context, db *sql.DB, logger log.Logger) int {
+	var raw sql.NullString
+	if err := db.QueryRowContext(ctx, trackActivityQuerySizeQuery).Scan(&raw); err != nil {
+		level.Warn(logger).Log("msg", "failed to read track_activity_query_size; truncation sentinel will not fire", "err", err)
+		return 0
+	}
+	if !raw.Valid {
+		return 0
+	}
+	size, _ := strconv.Atoi(raw.String)
+	return size
+}
+
+// classifyPostgresWaitEventType maps a raw PostgreSQL wait event type to a standardized category.
 func classifyPostgresWaitEventType(rawType, waitEvent string) string {
 	if isPostgresReplicationWaitEvent(waitEvent) {
 		return "Replication Wait"

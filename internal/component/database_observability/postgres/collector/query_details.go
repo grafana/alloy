@@ -14,6 +14,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -21,6 +22,7 @@ import (
 const (
 	QueryDetailsCollector      = "query_details"
 	OP_QUERY_ASSOCIATION       = "query_association"
+	OP_QUERY_ASSOCIATION_V2    = "query_association_v2"
 	OP_QUERY_PARSED_TABLE_NAME = "query_parsed_table_name"
 )
 
@@ -46,26 +48,28 @@ var selectQueriesFromActivity = `
 `
 
 type QueryDetailsArguments struct {
-	DB               *sql.DB
-	CollectInterval  time.Duration
-	StatementsLimit  int
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EntryHandler     loki.EntryHandler
-	TableRegistry    *TableRegistry
+	DB                     *sql.DB
+	CollectInterval        time.Duration
+	StatementsLimit        int
+	ExcludeDatabases       []string
+	ExcludeUsers           []string
+	EntryHandler           loki.EntryHandler
+	TableRegistry          *TableRegistry
+	EnableQueryFingerprint bool
 
 	Logger log.Logger
 }
 
 type QueryDetails struct {
-	dbConnection     *sql.DB
-	collectInterval  time.Duration
-	statementsLimit  int
-	excludeDatabases []string
-	excludeUsers     []string
-	entryHandler     loki.EntryHandler
-	tableRegistry    *TableRegistry
-	normalizer       *sqllexer.Normalizer
+	dbConnection           *sql.DB
+	collectInterval        time.Duration
+	statementsLimit        int
+	excludeDatabases       []string
+	excludeUsers           []string
+	entryHandler           loki.EntryHandler
+	tableRegistry          *TableRegistry
+	enableQueryFingerprint bool
+	normalizer             *sqllexer.Normalizer
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -76,16 +80,17 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:     args.DB,
-		collectInterval:  args.CollectInterval,
-		statementsLimit:  args.StatementsLimit,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		entryHandler:     args.EntryHandler,
-		tableRegistry:    args.TableRegistry,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
-		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
-		running:          &atomic.Bool{},
+		dbConnection:           args.DB,
+		collectInterval:        args.CollectInterval,
+		statementsLimit:        args.StatementsLimit,
+		excludeDatabases:       args.ExcludeDatabases,
+		excludeUsers:           args.ExcludeUsers,
+		entryHandler:           args.EntryHandler,
+		tableRegistry:          args.TableRegistry,
+		enableQueryFingerprint: args.EnableQueryFingerprint,
+		normalizer:             sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
+		logger:                 log.With(args.Logger, "collector", QueryDetailsCollector),
+		running:                &atomic.Bool{},
 	}, nil
 }
 
@@ -154,17 +159,44 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
-		queryText, err = removeComments(c.normalizer, queryText)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
-			continue
-		}
+		if c.enableQueryFingerprint {
+			// Fingerprint the raw pg_stat_statements.query text BEFORE comment
+			// stripping, so the fingerprint is stable across comment differences.
+			// pg_query.Fingerprint canonicalizes literals at the AST level, so
+			// the value matches the fingerprint computed from the raw text in
+			// pg_stat_activity (op=query_sample) or from STATEMENT continuations
+			// in server logs (op=error).
+			fp, _, fpErr := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
+			if fpErr != nil {
+				// fingerprint.ErrEmpty — the row's query text was empty/whitespace.
+				// Skip emitting; an empty fingerprint isn't useful as a join key.
+				level.Debug(c.logger).Log("msg", "skip fingerprint", "queryid", queryID, "err", fpErr)
+			}
 
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			OP_QUERY_ASSOCIATION,
-			fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
-		)
+			queryText, err = removeComments(c.normalizer, queryText)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
+				continue
+			}
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION_V2,
+				fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
+			)
+		} else {
+			queryText, err = removeComments(c.normalizer, queryText)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
+				continue
+			}
+
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION,
+				fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
+			)
+		}
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {

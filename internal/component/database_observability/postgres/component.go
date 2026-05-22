@@ -75,6 +75,8 @@ type Arguments struct {
 	ExcludeUsers       []string            `alloy:"exclude_users,attr,optional"`
 	ExcludeCurrentUser bool                `alloy:"exclude_current_user,attr,optional"`
 
+	EnableQueryFingerprint bool `alloy:"enable_query_fingerprint,attr,optional"`
+
 	CloudProvider           *CloudProvider               `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments    QuerySampleArguments         `alloy:"query_samples,block,optional"`
 	QueryDetailsArguments   QueryDetailsArguments        `alloy:"query_details,block,optional"`
@@ -613,14 +615,15 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.QueryDetailsCollector] {
 		qCollector, err := collector.NewQueryDetails(collector.QueryDetailsArguments{
-			DB:               c.dbConnection,
-			CollectInterval:  c.args.QueryDetailsArguments.CollectInterval,
-			StatementsLimit:  c.args.QueryDetailsArguments.StatementsLimit,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     effectiveExcludeUsers,
-			EntryHandler:     entryHandler,
-			TableRegistry:    tableRegistry,
-			Logger:           c.opts.Logger,
+			DB:                     c.dbConnection,
+			CollectInterval:        c.args.QueryDetailsArguments.CollectInterval,
+			StatementsLimit:        c.args.QueryDetailsArguments.StatementsLimit,
+			ExcludeDatabases:       c.args.ExcludeDatabases,
+			ExcludeUsers:           effectiveExcludeUsers,
+			EntryHandler:           entryHandler,
+			TableRegistry:          tableRegistry,
+			EnableQueryFingerprint: c.args.EnableQueryFingerprint,
+			Logger:                 c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
@@ -653,6 +656,8 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
 			ExcludeCurrentUser:            qsExcludeCurrentUser,
 			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
+			EnableQueryFingerprint:        c.args.EnableQueryFingerprint,
+			Registry:                      c.registry,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)

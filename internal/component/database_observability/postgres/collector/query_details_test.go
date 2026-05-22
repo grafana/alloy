@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -15,7 +16,37 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 )
+
+// substituteFingerprints fills in the literal `<fp>` placeholders that test
+// fixtures use for query_association_v2 lines. The fingerprint comes from
+// the matching pg_stat_statements row's query text, computed via the same
+// fingerprint package that the collector uses, so the test stays correct
+// across pg_query_go version bumps.
+//
+// Rows are consumed in-order; each query_association_v2 entry advances the
+// row cursor by one. Non-association entries (table-name parses, etc.)
+// pass through unchanged.
+func substituteFingerprints(t *testing.T, logsLabels []model.LabelSet, logsLines []string, rows [][]driver.Value) []string {
+	t.Helper()
+	out := make([]string, len(logsLines))
+	rowIdx := 0
+	for i, line := range logsLines {
+		if logsLabels[i]["op"] == OP_QUERY_ASSOCIATION_V2 {
+			require.Less(t, rowIdx, len(rows), "more association lines than rows")
+			queryText, ok := rows[rowIdx][1].(string)
+			require.True(t, ok, "row %d query text not a string", rowIdx)
+			fp, _, err := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0)
+			require.NoError(t, err, "fingerprint failed for row %d", rowIdx)
+			out[i] = strings.Replace(line, "<fp>", fp, 1)
+			rowIdx++
+		} else {
+			out[i] = line
+		}
+	}
+	return out
+}
 
 func TestQueryDetails(t *testing.T) {
 	// The goroutine which deletes expired entries runs indefinitely,
@@ -37,11 +68,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -62,11 +93,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM public.users WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM public.users WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="public.users" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -87,11 +118,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM SOME_TABLE WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM SOME_TABLE WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -112,11 +143,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM PUBLIC.USERS WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM PUBLIC.USERS WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="public.users" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -137,11 +168,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM MyTable WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM MyTable WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="mytable" validated="true"`,
 			},
 			tableRegistry: &TableRegistry{
@@ -162,11 +193,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT * FROM some_table WHERE id = $1) SELECT * FROM some_with_table" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="WITH some_with_table AS (SELECT * FROM some_table WHERE id = $1) SELECT * FROM some_with_table" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -178,11 +209,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="INSERT INTO some_table (id, name) VALUES (...)" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="INSERT INTO some_table (id, name) VALUES (...)" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -194,12 +225,12 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) INSERT INTO some_table (id, name) SELECT id, name FROM some_with_table" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) INSERT INTO some_table (id, name) SELECT id, name FROM some_with_table" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_other_table" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
@@ -212,11 +243,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="UPDATE some_table SET active = false, reason = ? WHERE id = $1 AND name = $2" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="UPDATE some_table SET active = false, reason = ? WHERE id = $1 AND name = $2" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -228,11 +259,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="DELETE FROM some_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="DELETE FROM some_table WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -244,12 +275,12 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) DELETE FROM some_table WHERE id IN (SELECT id FROM some_with_table)" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="WITH some_with_table AS (SELECT id, name FROM some_other_table WHERE id = $1) DELETE FROM some_table WHERE id IN (SELECT id FROM some_with_table)" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_other_table" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
@@ -262,12 +293,12 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT t.id, t.val1, o.val2 FROM some_table t INNER JOIN other_table AS o ON t.id = o.id WHERE o.val2 = $1 ORDER BY t.val1 DESC" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT t.id, t.val1, o.val2 FROM some_table t INNER JOIN other_table AS o ON t.id = o.id WHERE o.val2 = $1 ORDER BY t.val1 DESC" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="other_table" validated="false"`,
 			},
@@ -284,15 +315,15 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="xyz456" querytext="INSERT INTO some_table..." datname="some_database"`,
+				`level="info" queryid="xyz456" query_fingerprint="<fp>" querytext="INSERT INTO some_table..." datname="some_database"`,
 				`level="info" queryid="xyz456" datname="some_database" table="some_table" validated="false"`,
-				`level="info" queryid="abc123" querytext="SELECT * FROM another_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM another_table WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="another_table" validated="false"`,
 			},
 		},
@@ -304,11 +335,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1 AND name =" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = $1 AND name =" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -320,10 +351,10 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="START TRANSACTION" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="START TRANSACTION" datname="some_database"`,
 			},
 		},
 		{
@@ -338,13 +369,13 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="xyz456" querytext="not valid sql" datname="some_database"`,
-				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="xyz456" query_fingerprint="<fp>" querytext="not valid sql" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -360,15 +391,15 @@ func TestQueryDetails(t *testing.T) {
 				"other_schema",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
-				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="other_schema"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = $1" datname="other_schema"`,
 				`level="info" queryid="abc123" datname="other_schema" table="some_table" validated="false"`,
 			},
 		},
@@ -380,13 +411,13 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) AS employees_us UNION SELECT id, name FROM employees_emea" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM (SELECT id, name FROM employees_us_east UNION SELECT id, name FROM employees_us_west) AS employees_us UNION SELECT id, name FROM employees_emea" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="employees_us_east" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="employees_us_west" validated="false"`,
 				`level="info" queryid="abc123" datname="some_database" table="employees_emea" validated="false"`,
@@ -400,11 +431,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SHOW CREATE TABLE some_table" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SHOW CREATE TABLE some_table" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -416,10 +447,10 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SHOW VARIABLES LIKE $1" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SHOW VARIABLES LIKE $1" datname="some_database"`,
 			},
 		},
 		{
@@ -430,11 +461,11 @@ func TestQueryDetails(t *testing.T) {
 				"some_database",
 			}},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE" datname="some_database"`,
+				`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE" datname="some_database"`,
 				`level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`,
 			},
 		},
@@ -463,25 +494,25 @@ func TestQueryDetails(t *testing.T) {
 				},
 			},
 			logsLabels: []model.LabelSet{
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
-				{"op": OP_QUERY_ASSOCIATION},
+				{"op": OP_QUERY_ASSOCIATION_V2},
 				{"op": OP_QUERY_PARSED_TABLE_NAME},
 			},
 			logsLines: []string{
-				`level="info" queryid="3871016669222913500" querytext="SELECT \"pizza_to_ingredients\".\"pizza_id\", \"i\".\"id\", \"i\".\"name\", \"i\".\"calories_per_slice\", \"i\".\"vegetarian\", \"i\".\"type\" FROM \"ingredients\" AS \"i\" JOIN \"pizza_to_ingredients\" AS \"pizza_to_ingredients\" ON (\"pizza_to_ingredients\".\"pizza_id\") IN ($1) WHERE (\"i\".\"id\" = \"pizza_to_ingredients\".\"ingredient_id\")" datname="quickpizza"`,
+				`level="info" queryid="3871016669222913500" query_fingerprint="<fp>" querytext="SELECT \"pizza_to_ingredients\".\"pizza_id\", \"i\".\"id\", \"i\".\"name\", \"i\".\"calories_per_slice\", \"i\".\"vegetarian\", \"i\".\"type\" FROM \"ingredients\" AS \"i\" JOIN \"pizza_to_ingredients\" AS \"pizza_to_ingredients\" ON (\"pizza_to_ingredients\".\"pizza_id\") IN ($1) WHERE (\"i\".\"id\" = \"pizza_to_ingredients\".\"ingredient_id\")" datname="quickpizza"`,
 				`level="info" queryid="3871016669222913500" datname="quickpizza" table="ingredients" validated="false"`,
 				`level="info" queryid="3871016669222913500" datname="quickpizza" table="pizza_to_ingredients" validated="false"`,
-				`level="info" queryid="7865322458849960000" querytext="SELECT \"quote\".\"name\" FROM \"quotes\" AS \"quote\"" datname="quickpizza"`,
+				`level="info" queryid="7865322458849960000" query_fingerprint="<fp>" querytext="SELECT \"quote\".\"name\" FROM \"quotes\" AS \"quote\"" datname="quickpizza"`,
 				`level="info" queryid="7865322458849960000" datname="quickpizza" table="quotes" validated="false"`,
-				`level="info" queryid="5775615007769463000" querytext="SELECT \"classical_name\".\"name\" FROM \"classical_names\" AS \"classical_name\"" datname="quickpizza"`,
+				`level="info" queryid="5775615007769463000" query_fingerprint="<fp>" querytext="SELECT \"classical_name\".\"name\" FROM \"classical_names\" AS \"classical_name\"" datname="quickpizza"`,
 				`level="info" queryid="5775615007769463000" datname="quickpizza" table="classical_names" validated="false"`,
-				`level="info" queryid="7007034463187741000" querytext="SELECT \"dough\".\"id\", \"dough\".\"name\", \"dough\".\"calories_per_slice\" FROM \"doughs\" AS \"dough\"" datname="quickpizza"`,
+				`level="info" queryid="7007034463187741000" query_fingerprint="<fp>" querytext="SELECT \"dough\".\"id\", \"dough\".\"name\", \"dough\".\"calories_per_slice\" FROM \"doughs\" AS \"dough\"" datname="quickpizza"`,
 				`level="info" queryid="7007034463187741000" datname="quickpizza" table="doughs" validated="false"`,
 			},
 		},
@@ -498,12 +529,13 @@ func TestQueryDetails(t *testing.T) {
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQueryDetails(QueryDetailsArguments{
-				DB:              db,
-				CollectInterval: time.Second,
-				StatementsLimit: 100,
-				EntryHandler:    lokiClient,
-				TableRegistry:   tc.tableRegistry,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				DB:                     db,
+				CollectInterval:        time.Second,
+				StatementsLimit:        100,
+				EntryHandler:           lokiClient,
+				TableRegistry:          tc.tableRegistry,
+				EnableQueryFingerprint: true,
+				Logger:                 log.NewLogfmtLogger(os.Stderr),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -538,12 +570,110 @@ func TestQueryDetails(t *testing.T) {
 
 			lokiEntries := lokiClient.Received()
 			require.Equal(t, len(tc.logsLines), len(lokiEntries))
+			expectedLines := substituteFingerprints(t, tc.logsLabels, tc.logsLines, tc.eventStatementsRows)
 			for i, entry := range lokiEntries {
 				require.Equal(t, tc.logsLabels[i], entry.Labels)
-				require.Equal(t, tc.logsLines[i], entry.Line)
+				require.Equal(t, expectedLines[i], entry.Line)
 			}
 		})
 	}
+}
+
+func TestQueryDetails_NoFingerprintWhenDisabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 100,
+		EntryHandler:    lokiClient,
+		TableRegistry: &TableRegistry{
+			tables: map[database]map[schema]map[table]struct{}{
+				"some_database": {"public": {"some_table": struct{}{}}},
+			},
+		},
+		Logger: log.NewLogfmtLogger(os.Stderr),
+		// EnableQueryFingerprint omitted — defaults to false
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).
+		WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("abc123", "SELECT * FROM some_table WHERE id = $1", "some_database"))
+
+	require.NoError(t, collector.Start(t.Context()))
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 5*time.Second, 100*time.Millisecond)
+	collector.Stop()
+	lokiClient.Stop()
+	require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.GreaterOrEqual(t, len(entries), 2)
+
+	// First entry: op="query_association", NO query_fingerprint field.
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, entries[0].Labels)
+	require.Equal(t,
+		`level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = $1" datname="some_database"`,
+		entries[0].Line)
+	require.NotContains(t, entries[0].Line, "query_fingerprint=")
+
+	// Second entry: parsed-table-name path is unchanged regardless of flag.
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, entries[1].Labels)
+}
+
+func TestQueryDetails_FingerprintEmittedAsV2WhenEnabled(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+
+	collector, err := NewQueryDetails(QueryDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Second,
+		StatementsLimit: 100,
+		EntryHandler:    lokiClient,
+		TableRegistry: &TableRegistry{
+			tables: map[database]map[schema]map[table]struct{}{
+				"some_database": {"public": {"some_table": struct{}{}}},
+			},
+		},
+		Logger:                 log.NewLogfmtLogger(os.Stderr),
+		EnableQueryFingerprint: true,
+	})
+	require.NoError(t, err)
+
+	const sqlText = "SELECT * FROM some_table WHERE id = $1"
+	mock.ExpectQuery(fmt.Sprintf(selectQueriesFromActivity, exclusionClause, "", 100)).
+		WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"queryid", "query", "datname"}).
+			AddRow("abc123", sqlText, "some_database"))
+
+	require.NoError(t, collector.Start(t.Context()))
+	require.Eventually(t, func() bool { return len(lokiClient.Received()) >= 2 }, 5*time.Second, 100*time.Millisecond)
+	collector.Stop()
+	lokiClient.Stop()
+	require.Eventually(t, func() bool { return collector.Stopped() }, 5*time.Second, 100*time.Millisecond)
+
+	expectedFP, _, fpErr := fingerprint.Fingerprint(sqlText, fingerprint.SourcePgStatStatements, 0)
+	require.NoError(t, fpErr)
+
+	entries := lokiClient.Received()
+	require.GreaterOrEqual(t, len(entries), 2)
+
+	require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `queryid="abc123"`)
+	require.Contains(t, entries[0].Line, fmt.Sprintf(`query_fingerprint="%s"`, expectedFP))
+	require.Contains(t, entries[0].Line, `querytext="SELECT * FROM some_table WHERE id = $1"`)
 }
 
 func TestQueryDetails_SQLDriverErrors(t *testing.T) {
@@ -561,11 +691,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 100,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                     db,
+			CollectInterval:        time.Second,
+			StatementsLimit:        100,
+			EntryHandler:           lokiClient,
+			EnableQueryFingerprint: true,
+			Logger:                 log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -609,8 +740,10 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
+		fp, _, err := fingerprint.Fingerprint("SELECT * FROM some_table WHERE id = ?", fingerprint.SourcePgStatStatements, 0)
+		require.NoError(t, err)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2}, lokiEntries[0].Labels)
+		require.Equal(t, strings.Replace(`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, "<fp>", fp, 1), lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
@@ -625,11 +758,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 100,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                     db,
+			CollectInterval:        time.Second,
+			StatementsLimit:        100,
+			EntryHandler:           lokiClient,
+			EnableQueryFingerprint: true,
+			Logger:                 log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -669,8 +803,10 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
+		fp, _, err := fingerprint.Fingerprint("SELECT * FROM some_table WHERE id = ?", fingerprint.SourcePgStatStatements, 0)
+		require.NoError(t, err)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2}, lokiEntries[0].Labels)
+		require.Equal(t, strings.Replace(`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, "<fp>", fp, 1), lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})
@@ -685,11 +821,12 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		lokiClient := loki.NewCollectingHandler()
 
 		collector, err := NewQueryDetails(QueryDetailsArguments{
-			DB:              db,
-			CollectInterval: time.Second,
-			StatementsLimit: 100,
-			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			DB:                     db,
+			CollectInterval:        time.Second,
+			StatementsLimit:        100,
+			EntryHandler:           lokiClient,
+			EnableQueryFingerprint: true,
+			Logger:                 log.NewLogfmtLogger(os.Stderr),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -727,8 +864,10 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		lokiEntries := lokiClient.Received()
-		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION}, lokiEntries[0].Labels)
-		require.Equal(t, `level="info" queryid="abc123" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, lokiEntries[0].Line)
+		fp, _, err := fingerprint.Fingerprint("SELECT * FROM some_table WHERE id = ?", fingerprint.SourcePgStatStatements, 0)
+		require.NoError(t, err)
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_ASSOCIATION_V2}, lokiEntries[0].Labels)
+		require.Equal(t, strings.Replace(`level="info" queryid="abc123" query_fingerprint="<fp>" querytext="SELECT * FROM some_table WHERE id = ?" datname="some_database"`, "<fp>", fp, 1), lokiEntries[0].Line)
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_PARSED_TABLE_NAME}, lokiEntries[1].Labels)
 		require.Equal(t, `level="info" queryid="abc123" datname="some_database" table="some_table" validated="false"`, lokiEntries[1].Line)
 	})

@@ -82,6 +82,15 @@ func TestFingerprint_SentinelStability(t *testing.T) {
 	})
 }
 
+func TestSentinelKind(t *testing.T) {
+	require.Equal(t, "truncated", SentinelKind(FingerprintOf(SentinelTruncated)))
+	require.Equal(t, "unparsable", SentinelKind(FingerprintOf(SentinelUnparsable)))
+
+	realFP, _, err := Fingerprint("SELECT 1", SourceLog, 0)
+	require.NoError(t, err)
+	require.Equal(t, "", SentinelKind(realFP), "real fingerprints should not be classified as sentinels")
+}
+
 // makeUnparsableOfLen returns a string of exactly n bytes that is unparsable
 // even after `repair()` runs (no quotes or parens to balance).
 func makeUnparsableOfLen(n int) string {
