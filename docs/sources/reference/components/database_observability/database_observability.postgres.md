@@ -27,16 +27,16 @@ database_observability.postgres "<LABEL>" {
 
 You can use the following arguments with `database_observability.postgres`:
 
-| Name                 | Type                 | Description                                                 | Default | Required |
-|----------------------|----------------------|-------------------------------------------------------------|---------|----------|
-| `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
-| `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
-| `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
-| `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
-| `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
-| `exclude_current_user` | `bool`             | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
+| Name                       | Type                 | Description                                                 | Default | Required |
+|----------------------------|----------------------|-------------------------------------------------------------|---------|----------|
+| `data_source_name`         | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
+| `forward_to`               | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
+| `targets`                  | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
+| `disable_collectors`       | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
+| `enable_collectors`        | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
+| `exclude_databases`        | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`            | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `exclude_current_user`     | `bool`               | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
 
@@ -78,6 +78,7 @@ You can use the following blocks with `database_observability.postgres`:
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
 | [`health_check`][health_check]               | Configure the health check collector.   | no       |
+| [`logs_processing`][logs_processing]         | Configure the logs collector.           | no       |
 | [`prometheus_exporter`][prometheus_exporter] | Configure the embedded postgres_exporter. | no       |
 
 [cloud_provider]: #cloud_provider
@@ -89,6 +90,7 @@ You can use the following blocks with `database_observability.postgres`:
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
 [health_check]: #health_check
+[logs_processing]: #logs_processing
 [prometheus_exporter]: #prometheus_exporter
 
 {{< /docs/alloy-config >}}
@@ -164,6 +166,12 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1h"`  | no       |
+
+### `logs_processing`
+
+| Name                | Type   | Description                                                                                                                  | Default | Required |
+|---------------------|--------|------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `enable_error_logs` | `bool` | Emit `op="error"` Loki entries that pair PostgreSQL `ERROR`/`FATAL`/`PANIC` log lines with their `STATEMENT:` continuations. | `false` | no       |
 
 ### `prometheus_exporter`
 

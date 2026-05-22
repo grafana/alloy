@@ -75,13 +75,18 @@ type Arguments struct {
 	ExcludeUsers       []string            `alloy:"exclude_users,attr,optional"`
 	ExcludeCurrentUser bool                `alloy:"exclude_current_user,attr,optional"`
 
-	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
-	QuerySampleArguments   QuerySampleArguments         `alloy:"query_samples,block,optional"`
-	QueryDetailsArguments  QueryDetailsArguments        `alloy:"query_details,block,optional"`
-	SchemaDetailsArguments SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
-	ExplainPlansArguments  ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
-	HealthCheckArguments   HealthCheckArguments         `alloy:"health_check,block,optional"`
-	PrometheusExporter     *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
+	CloudProvider           *CloudProvider               `alloy:"cloud_provider,block,optional"`
+	QuerySampleArguments    QuerySampleArguments         `alloy:"query_samples,block,optional"`
+	QueryDetailsArguments   QueryDetailsArguments        `alloy:"query_details,block,optional"`
+	SchemaDetailsArguments  SchemaDetailsArguments       `alloy:"schema_details,block,optional"`
+	ExplainPlansArguments   ExplainPlansArguments        `alloy:"explain_plans,block,optional"`
+	HealthCheckArguments    HealthCheckArguments         `alloy:"health_check,block,optional"`
+	LogsProcessingArguments LogsProcessingArguments      `alloy:"logs_processing,block,optional"`
+	PrometheusExporter      *PrometheusExporterArguments `alloy:"prometheus_exporter,block,optional"`
+}
+
+type LogsProcessingArguments struct {
+	EnableErrorLogs bool `alloy:"enable_error_logs,attr,optional"`
 }
 
 type CloudProvider struct {
@@ -717,11 +722,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
 		Receiver:         c.logsReceiver,
-		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
+		EntryHandler:     entryHandler,
 		Logger:           c.opts.Logger,
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
 		ExcludeUsers:     effectiveExcludeUsers,
+		EnableErrorLogs:  c.args.LogsProcessingArguments.EnableErrorLogs,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
