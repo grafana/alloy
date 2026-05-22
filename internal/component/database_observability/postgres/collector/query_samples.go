@@ -160,7 +160,7 @@ type SampleState struct {
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
 	// EndAt is the time we determined the sample ended (idle transition
-	// or when it was only observed idle), used to compute durations.
+	// or when it was only observed idle), used to compute durations/timestamps.
 	EndAt sql.NullTime
 }
 
@@ -475,8 +475,8 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, state.EndAt)
 	ts := state.LastSeenAt.UnixNano()
-	if state.LastRow.QueryStart.Valid {
-		ts = state.LastRow.QueryStart.Time.UnixNano()
+	if state.EndAt.Valid {
+		ts = state.EndAt.Time.UnixNano()
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
@@ -494,14 +494,14 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 				logging.LevelInfo,
 				OP_WAIT_EVENT_V2,
 				c.buildWaitEventV2Labels(state, we),
-				ts,
+				we.LastTimestamp.UnixNano(),
 			)
 		} else {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 				logging.LevelInfo,
 				OP_WAIT_EVENT,
 				c.buildWaitEventLabels(state, we),
-				ts,
+				we.LastTimestamp.UnixNano(),
 			)
 		}
 	}
