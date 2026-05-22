@@ -620,6 +620,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ExcludeUsers:     effectiveExcludeUsers,
 			EntryHandler:     entryHandler,
 			TableRegistry:    tableRegistry,
+			Registry:         c.registry,
 			Logger:           c.opts.Logger,
 		})
 		if err != nil {

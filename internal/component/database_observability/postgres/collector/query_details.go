@@ -10,10 +10,12 @@ import (
 
 	"github.com/DataDog/go-sqllexer"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -53,6 +55,7 @@ type QueryDetailsArguments struct {
 	ExcludeUsers     []string
 	EntryHandler     loki.EntryHandler
 	TableRegistry    *TableRegistry
+	Registry         *prometheus.Registry
 
 	Logger log.Logger
 }
@@ -67,6 +70,9 @@ type QueryDetails struct {
 	tableRegistry    *TableRegistry
 	normalizer       *sqllexer.Normalizer
 
+	registry             *prometheus.Registry
+	queryFingerprintInfo *prometheus.GaugeVec
+
 	logger  log.Logger
 	running *atomic.Bool
 	ctx     context.Context
@@ -75,7 +81,7 @@ type QueryDetails struct {
 }
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
-	return &QueryDetails{
+	qd := &QueryDetails{
 		dbConnection:     args.DB,
 		collectInterval:  args.CollectInterval,
 		statementsLimit:  args.StatementsLimit,
@@ -86,7 +92,19 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
 		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
 		running:          &atomic.Bool{},
-	}, nil
+		registry:         args.Registry,
+	}
+
+	if args.Registry != nil {
+		qd.queryFingerprintInfo = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: "database_observability",
+			Name:      "pg_query_fingerprint_info",
+			Help:      "Mapping of pg_stat_statements.queryid to its semantic query_fingerprint, per database. Value is always 1; the labels are the join key. Refreshed each query_details scrape -- series for queryids no longer observed are dropped.",
+		}, []string{"queryid", "query_fingerprint", "datname"})
+		args.Registry.MustRegister(qd.queryFingerprintInfo)
+	}
+
+	return qd, nil
 }
 
 func (c *QueryDetails) Name() string {
@@ -133,6 +151,10 @@ func (c *QueryDetails) Stop() {
 		c.cancel()
 	}
 	c.wg.Wait()
+
+	if c.registry != nil && c.queryFingerprintInfo != nil {
+		c.registry.Unregister(c.queryFingerprintInfo)
+	}
 }
 
 func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
@@ -145,6 +167,10 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	}
 	defer rs.Close()
 
+	if c.queryFingerprintInfo != nil {
+		c.queryFingerprintInfo.Reset()
+	}
+
 	for rs.Next() {
 		var queryID, queryText string
 		var databaseName database
@@ -152,6 +178,16 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to scan result set for pg_stat_statements", "err", err)
 			continue
+		}
+
+		if c.queryFingerprintInfo != nil {
+			// Fingerprint the raw text BEFORE comment stripping; pg_query
+			// canonicalizes literals at the AST level so the value is stable
+			// across comment-only differences and matches the fingerprint
+			// computed elsewhere from pg_stat_activity / server logs.
+			if fp, _, fpErr := fingerprint.Fingerprint(queryText, fingerprint.SourcePgStatStatements, 0); fpErr == nil && fp != "" {
+				c.queryFingerprintInfo.WithLabelValues(queryID, fp, string(databaseName)).Set(1)
+			}
 		}
 
 		queryText, err = removeComments(c.normalizer, queryText)
