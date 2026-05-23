@@ -1,0 +1,3 @@
+uuid, name, driver_model.current, driver_model.pending, vbios_version, driver_version, fan.speed [%], memory.used [MiB]
+GPU-df6e7a7c-7314-46f8-abc4-b88b36dcf3aa, NVIDIA GeForce RTX 2080 SUPER, WDDM, WDDM, 90.04.7a.40.73, 466.63, 38 %, 575 MiB
+GPU-04757e3e-3077-4e2e-b988-7e2d647b52e9, Some Other GPU, DoesntMatter, DoesntMatter, 1a.2b.3c.4d, 123.45, 50 %, 1234 MiB
