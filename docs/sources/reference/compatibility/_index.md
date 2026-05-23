@@ -105,6 +105,7 @@ The following components, grouped by namespace, _export_ Targets.
 - [prometheus.exporter.mongodb](../components/prometheus/prometheus.exporter.mongodb)
 - [prometheus.exporter.mssql](../components/prometheus/prometheus.exporter.mssql)
 - [prometheus.exporter.mysql](../components/prometheus/prometheus.exporter.mysql)
+- [prometheus.exporter.nvidiagpu](../components/prometheus/prometheus.exporter.nvidiagpu)
 - [prometheus.exporter.oracledb](../components/prometheus/prometheus.exporter.oracledb)
 - [prometheus.exporter.postgres](../components/prometheus/prometheus.exporter.postgres)
 - [prometheus.exporter.process](../components/prometheus/prometheus.exporter.process)

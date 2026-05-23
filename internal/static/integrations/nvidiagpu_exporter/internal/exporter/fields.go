@@ -24,7 +24,7 @@ const (
 var (
 	fieldRegex = regexp.MustCompile(`(?m)\n\s*\n^"([^"]+)"`)
 
-	//nolint:gochecknoglobals
+	// #nosec G101
 	fallbackQFieldToRFieldMap = map[QField]RField{
 		"timestamp":                         "timestamp",
 		"driver_version":                    "driver_version",

@@ -66,7 +66,7 @@ func writeBetweenMarkers(startMarker string, endMarker string, filePath string, 
 		newFileContents = append(newFileContents, replacement...)
 		newFileContents = append(newFileContents, fileContents[endIndex+len(endMarker):]...)
 	}
-	err = os.WriteFile(filePath, newFileContents, 0644)
+	err = os.WriteFile(filePath, newFileContents, 0644) // #nosec G703
 	return err
 }
 

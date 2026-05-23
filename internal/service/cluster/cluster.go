@@ -8,7 +8,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"os"
@@ -201,7 +201,7 @@ func New(opts Options) (*Service, error) {
 
 		sharder:             ckitConfig.Sharder,
 		node:                node,
-		randGen:             rand.New(rand.NewSource(time.Now().UnixNano())),
+		randGen:             rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()))), // #nosec G404
 		notifyClusterChange: make(chan struct{}, 1),
 	}
 	s.alloyCluster = newAlloyCluster(ckitConfig.Sharder, s.triggerClusterChangeNotification, opts, l)

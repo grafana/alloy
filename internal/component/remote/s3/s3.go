@@ -153,7 +153,7 @@ func generateS3Config(args Arguments) (*aws.Config, error) {
 			&http.Client{
 				Transport: &http.Transport{
 					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: args.Options.DisableSSL,
+						InsecureSkipVerify: args.Options.DisableSSL, // #nosec G402
 					},
 				},
 			},

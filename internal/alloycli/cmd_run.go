@@ -583,7 +583,7 @@ func loadSourceFiles(path string, converterSourceFormat string, converterBypassE
 				return nil
 			}
 
-			bb, err := os.ReadFile(curPath)
+			bb, err := os.ReadFile(curPath) // #nosec G122
 			sources[curPath] = bb
 			return err
 		})

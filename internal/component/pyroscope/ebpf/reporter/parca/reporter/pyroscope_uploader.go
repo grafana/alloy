@@ -94,7 +94,7 @@ func NewPyroscopeSymbolUploader(
 			return nil
 		}
 
-		if os.Remove(path) != nil {
+		if os.Remove(path) != nil { // #nosec G122
 			level.Warn(logger).Log("msg", "failed to remove cached file", "path", path)
 		}
 

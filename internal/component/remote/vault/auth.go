@@ -338,7 +338,7 @@ type AuthKubernetes struct {
 // DefaultAuthKubernetes provides default settings for AuthKubernetes.
 var DefaultAuthKubernetes = AuthKubernetes{
 	MountPath:               "kubernetes",
-	ServiceAccountTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token",
+	ServiceAccountTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token", // #nosec G101
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -370,7 +370,7 @@ func (a *AuthKubernetes) vaultAuthenticate(ctx context.Context, cli *vault.Clien
 // AuthLDAP authenticates against Vault with LDAP.
 type AuthLDAP struct {
 	Username  string            `alloy:"username,attr"`
-	Password  alloytypes.Secret `alloy:"password,attr"`
+	Password  alloytypes.Secret `alloy:"password,attr"` //nolint:gosec
 	MountPath string            `alloy:"mount_path,attr,optional"`
 }
 
@@ -407,7 +407,7 @@ func (a *AuthLDAP) vaultAuthenticate(ctx context.Context, cli *vault.Client) (*v
 // AuthUserPass authenticates against Vault with a username and password.
 type AuthUserPass struct {
 	Username  string            `alloy:"username,attr"`
-	Password  alloytypes.Secret `alloy:"password,attr"`
+	Password  alloytypes.Secret `alloy:"password,attr"` //nolint:gosec
 	MountPath string            `alloy:"mount_path,attr,optional"`
 }
 

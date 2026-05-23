@@ -32,6 +32,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/mongodb"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/mssql"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/nvidiagpu"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/oracledb"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/process"
@@ -285,6 +286,12 @@ func TestInstanceKey(t *testing.T) {
 				DataSourceName: "user:pass@tcp(host01:3306)/dbname?timeout=5s",
 			},
 			expectedInstanceLabel: "tcp(host01:3306)/dbname",
+		},
+		{
+			testName:      "nvidiagpu",
+			componentName: "prometheus.exporter.nvidiagpu",
+			args:          nvidiagpu.Arguments{},
+			expectedInstanceLabel: "nvidiagpu",
 		},
 		{
 			testName:      "oracledb",

@@ -2,7 +2,7 @@ package cluster
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"os"
 	"testing"
 	"time"
@@ -41,7 +41,7 @@ func TestGetPeers(t *testing.T) {
 		{
 			name:          "Test max peers limit with shuffling",
 			opts:          Options{EnableClustering: true, ClusterMaxJoinPeers: 2, DiscoverPeers: mockDiscoverPeers([]string{"A", "B", "C"}, nil)},
-			expectedPeers: []string{"A", "C"},
+			expectedPeers: []string{"A", "B"},
 		},
 	}
 
@@ -51,7 +51,7 @@ func TestGetPeers(t *testing.T) {
 			s := &Service{
 				log:     log.NewLogfmtLogger(os.Stdout),
 				opts:    test.opts,
-				randGen: rand.New(rand.NewSource(1)),
+				randGen: rand.New(rand.NewPCG(1, 1)),
 			}
 
 			peers, _ := s.getRandomPeers()

@@ -37,7 +37,7 @@ func kubeconfigFromEnv() (string, error) {
 	if !filepath.IsAbs(kubeconfig) {
 		return "", fmt.Errorf("%s must be an absolute path, got %q", KubeconfigEnv, kubeconfig)
 	}
-	if _, err := os.Stat(kubeconfig); err != nil {
+	if _, err := os.Stat(kubeconfig); err != nil { // #nosec G703
 		return "", fmt.Errorf("%s %q is not accessible: %w", KubeconfigEnv, kubeconfig, err)
 	}
 	return kubeconfig, nil

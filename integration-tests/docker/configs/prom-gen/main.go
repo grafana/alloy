@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"time"
@@ -118,7 +118,7 @@ func handleGaugeInput(gauge prometheus.Gauge) {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		newValue := rand.Float64() * 100
+		newValue := rand.Float64() * 100 // #nosec G404
 		gauge.Set(newValue)
 	}
 }
@@ -172,7 +172,7 @@ func handleHistogramInput(histogram prometheus.Histogram) {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		newValue := rand.Float64() * 1000
+		newValue := rand.Float64() * 1000 // #nosec G404
 		histogram.Observe(newValue)
 	}
 }
@@ -216,7 +216,7 @@ func handleSummary(summary prometheus.Summary) {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		newValue := rand.Float64() * 1000
+		newValue := rand.Float64() * 1000 // #nosec G404
 		summary.Observe(newValue)
 	}
 }

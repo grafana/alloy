@@ -1,7 +1,7 @@
 package jitter
 
 import (
-	"math/rand"
+	"math/rand/v2"
 	"sync"
 	"time"
 )
@@ -92,7 +92,7 @@ func (t *Ticker) getNextPeriod() time.Duration {
 	// the returned period is then d-j + jitter
 	// which results in [d-j, d+j).
 	t.mut.RLock()
-	jitter := rand.Int63n(2 * int64(t.j))
+	jitter := rand.Int64N(2 * int64(t.j)) // #nosec G404
 	period := t.d - t.j + time.Duration(jitter)
 	t.mut.RUnlock()
 

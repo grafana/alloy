@@ -6,7 +6,7 @@ package api
 
 import (
 	"encoding/json"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"path"
 	"strconv"
@@ -289,7 +289,7 @@ func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager
 			case <-ctx.Done():
 				return
 			default:
-				if sampleProb < 1 && rand.Float64() > sampleProb {
+				if sampleProb < 1 && rand.Float64() > sampleProb { // #nosec G404
 					return
 				}
 				// Avoid blocking the channel when the channel is full

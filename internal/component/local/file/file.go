@@ -159,7 +159,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 func (c *Component) readFile() error {
 	// Force a re-load of the file outside of the update detection mechanism.
-	bb, err := os.ReadFile(c.args.Filename)
+	bb, err := os.ReadFile(c.args.Filename) //nolint:gosec
 	if err != nil {
 		c.setHealth(component.Health{
 			Health:     component.HealthTypeUnhealthy,

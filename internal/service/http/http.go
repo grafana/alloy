@@ -9,7 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	_ "net/http/pprof" // Register pprof handlers
+	_ "net/http/pprof" // #nosec G108 //nolint:gosec // Register pprof handlers
 	"os"
 	"path"
 	"sort"

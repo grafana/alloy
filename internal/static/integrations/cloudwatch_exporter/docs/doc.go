@@ -48,7 +48,7 @@ func main() {
 }
 
 func checkServicesDocSection(path string, expectedDoc string) error {
-	contents, err := os.ReadFile(path)
+	contents, err := os.ReadFile(path) // #nosec G703
 	if err != nil {
 		return fmt.Errorf("failed to read file to check: %w", err)
 	}

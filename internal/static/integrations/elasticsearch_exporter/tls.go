@@ -14,7 +14,7 @@ func createTLSConfig(pemFile, pemCertFile, pemPrivateKeyFile string, insecureSki
 	tlsConfig := tls.Config{}
 	if insecureSkipVerify {
 		// pem settings are irrelevant if we're skipping verification anyway
-		tlsConfig.InsecureSkipVerify = true
+		tlsConfig.InsecureSkipVerify = true // #nosec G402
 	}
 	if len(pemFile) > 0 {
 		rootCerts, err := loadCertificatesFrom(pemFile)

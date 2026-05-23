@@ -111,7 +111,7 @@ func WithSecretManager(sm commonconfig.SecretManager) HTTPClientOption {
 }
 
 const (
-	grantTypeJWTBearer = "urn:ietf:params:oauth:grant-type:jwt-bearer"
+	grantTypeJWTBearer = "urn:ietf:params:oauth:grant-type:jwt-bearer" // #nosec G101
 )
 
 var (
@@ -241,7 +241,7 @@ func newRoundTripperFromConfigWithContext(ctx context.Context, cfg HTTPClientCon
 			if err != nil {
 				return nil, fmt.Errorf("unable to use username: %w", err)
 			}
-			passwordSecret, err := toSecret(opts.secretManager, cfg.BasicAuth.Password, cfg.BasicAuth.PasswordFile, cfg.BasicAuth.PasswordRef)
+			passwordSecret, err := toSecret(opts.secretManager, cfg.BasicAuth.Password, cfg.BasicAuth.PasswordFile, cfg.BasicAuth.PasswordRef) //nolint:gosec
 			if err != nil {
 				return nil, fmt.Errorf("unable to use password: %w", err)
 			}
