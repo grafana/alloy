@@ -97,3 +97,16 @@ jobs:
 
       - name: Test charts
         run: ct install --config ./operations/helm/ct.yaml
+
+      - name: Assert external HPA validation failure
+        run: |
+          set -e
+          cd operations/helm/charts/alloy
+          if helm template . --values ci/external-hpa-validation-failure.yaml > /dev/null 2>&1; then
+            echo "ERROR: expected helm template to fail due to mutually-exclusive flags" >&2
+            exit 1
+          fi
+          helm template . --values ci/external-hpa-validation-failure.yaml 2>&1 \
+            | grep -q "mutually exclusive" \
+            || { echo "ERROR: helm template failed but error message did not match expected text" >&2; exit 1; }
+          echo "OK: external HPA validation fails with expected message"
