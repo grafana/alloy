@@ -16,6 +16,7 @@ import (
 )
 
 const (
+	branchMain          = "main"
 	backportLabelPrefix = "backport/v"
 	releaseBranchPrefix = "release/v"
 )
@@ -31,7 +32,7 @@ type rcInfo struct {
 }
 
 func (info rcInfo) isFirstMinorRC() bool {
-	return info.RCNumber == 0 && info.Branch == "main"
+	return info.RCNumber == 0 && info.Branch == branchMain
 }
 
 // prereleaseParams holds parameters for creating a draft prerelease.
@@ -78,7 +79,7 @@ func parseFlags() (string, bool) {
 	if branch == "" {
 		log.Fatal("Branch is required (use --branch flag, e.g., --branch main)")
 	}
-	if branch != "main" {
+	if branch != branchMain {
 		if _, err := version.ParseReleaseBranch(branch); err != nil {
 			log.Fatal(err)
 		}
@@ -106,7 +107,7 @@ func resolveRCInfo(ctx context.Context, client *gh.Client, branch string) rcInfo
 	if err != nil {
 		log.Fatalf("Failed to parse version: %v", err)
 	}
-	if branch == "main" && isPatch {
+	if branch == branchMain && isPatch {
 		mm, _ := version.MajorMinor(ver)
 		log.Fatalf("Cannot create a patch release RC from main. Use the release branch instead: --branch release/v%s", mm)
 	}

@@ -31,11 +31,7 @@ func createDefaultConfig() component.Config {
 }
 
 // createExtension creates an alloyengine extension instance.
-func createExtension(
-	_ context.Context,
-	settings extension.Settings,
-	cfg component.Config,
-) (extension.Extension, error) {
+func createExtension(_ context.Context, settings extension.Settings, cfg component.Config) (extension.Extension, error) {
 	config := cfg.(*Config)
 
 	return newAlloyEngineExtension(config, settings.TelemetrySettings), nil

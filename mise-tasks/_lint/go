@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Run golangci-lint on every Go module"
+#MISE hide=true
+
+set -euo pipefail
+
+while IFS= read -r mod; do
+  dir="$(dirname "$mod")"
+  echo "==> golangci-lint: $dir"
+  (cd "$dir" && golangci-lint run -v --timeout=10m)
+done < <(find . -name go.mod -not -path '*/testdata/*')
