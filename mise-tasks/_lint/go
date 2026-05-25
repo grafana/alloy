@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#MISE description="Run golangci-lint on every Go module"
 #MISE hide=true
 
 set -euo pipefail

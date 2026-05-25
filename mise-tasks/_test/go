@@ -2,7 +2,6 @@
 
 # shellcheck disable=SC2154  # $usage_* vars are injected by mise from #USAGE
 
-#MISE description="Run go test on every Go module"
 #MISE hide=true
 #USAGE flag "-t --tags <tags>" help="Comma-separated extra build tags (e.g. netgo,embedalloyui)" default=""
 

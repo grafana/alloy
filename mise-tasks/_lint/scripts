@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-#MISE description="Run shellcheck on shell scripts"
 #MISE hide=true
 
 set -euo pipefail

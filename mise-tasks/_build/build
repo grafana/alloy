@@ -2,7 +2,6 @@
 
 # shellcheck disable=SC2154  # $usage_* vars are injected by mise from #USAGE
 
-#MISE description="Build the alloy binary (skips UI generation)"
 #MISE hide=true
 #USAGE flag "-r --release" help="Strip symbol table and DWARF for a smaller release binary" default="false"
 #USAGE flag "-t --tags <tags>" help="Comma-separated extra build tags (e.g. netgo,embedalloyui)" default=""

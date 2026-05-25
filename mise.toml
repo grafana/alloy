@@ -10,18 +10,22 @@ golangci-lint = "2.11.4"
 CGO_ENABLED = "{{ env.CGO_ENABLED | default(value='1') }}"
 
 [tasks."build"]
+description = "Build alloy with frontend assets"
 depends = ["build:frontend"]
 file = "mise-tasks/_build/build"
 
 [tasks."build:binary"]
+description = "Build the alloy binary (skips UI generation)"
 file = "mise-tasks/_build/build"
 
 [tasks."install:frontend"]
+description = "Install frontend dependencies via npm ci"
 sources = ["internal/web/ui/package.json", "internal/web/ui/package-lock.json"]
 outputs = ["internal/web/ui/node_modules/.package-lock.json"]
 run = "cd internal/web/ui && npm ci"
 
 [tasks."build:frontend"]
+description = "Build the alloy frontend UI assets"
 depends = ["install:frontend"]
 sources = [
   "internal/web/ui/src/**/*",
@@ -36,28 +40,29 @@ outputs = ["internal/web/ui/dist/**/*"]
 run = "cd internal/web/ui && npm run build"
 
 [tasks."lint"]
+description = "Run all linters (scripts, go, alloy, frontend)"
 depends = ["lint:scripts", "lint:go", "lint:alloy", "lint:frontend"]
 
 [tasks."lint:scripts"]
+description = "Run shellcheck on shell scripts"
 file = "mise-tasks/_lint/scripts"
 
 [tasks."lint:go"]
+description = "Run golangci-lint on every Go module"
 file = "mise-tasks/_lint/go"
 
 [tasks."lint:alloy"]
 description = "Run the custom alloylint analyzer"
 run = "go run ./internal/cmd/alloylint ./..."
 
-[tasks."test"]
-depends = ["test:go"]
-
-[tasks."test:go"]
-file = "mise-tasks/_test/go"
-
 [tasks."lint:frontend"]
 description = "Lint and format-check the frontend (eslint + prettier)"
 depends = ["install:frontend"]
 run = "cd internal/web/ui && npm run lint && npm run format"
+
+[tasks."test"]
+description = "Run go test on every Go module"
+file = "mise-tasks/_test/go"
 
 [tasks."test:integration:docker"]
 description = "Run Docker-based integration tests"
