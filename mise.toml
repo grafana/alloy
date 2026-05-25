@@ -1,4 +1,6 @@
 [tools]
+# Required for mise task completion. See https://usage.jdx.dev.
+usage = "3.3.0"
 go = "1.26.2"
 node = "24.13.0"
 shellcheck = "0.11.0"
@@ -56,3 +58,10 @@ file = "mise-tasks/_test/go"
 description = "Lint and format-check the frontend (eslint + prettier)"
 depends = ["install:frontend"]
 run = "cd internal/web/ui && npm run lint && npm run format"
+
+[tasks."test:integration:docker"]
+description = "Run Docker-based integration tests"
+usage = '''
+flag "--timeout <duration>" help="Test timeout (e.g. 15m, 30s)" default="15m"
+'''
+run = "go run -C integration-tests/docker . --test-timeout=$usage_timeout"
