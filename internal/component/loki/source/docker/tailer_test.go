@@ -18,6 +18,7 @@ import (
 	"testing"
 	"time"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/api/types/container"
 	"github.com/moby/moby/client"
@@ -221,6 +222,38 @@ func TestTailerNeverStarted(t *testing.T) {
 	}, time.Second, 20*time.Millisecond, "Expected log lines were not found within the time limit after restart.")
 
 	require.NotPanics(t, func() { cancel() })
+}
+
+func TestTailerStopsWhenContainerNotFound(t *testing.T) {
+	inspectCount := atomic.NewInt32(0)
+	notFoundAfter := int32(2)
+
+	mock := clientMock{
+		logLine:    "2024-05-02T13:11:55.879889Z some log line",
+		running:    func() bool { return true },
+		finishedAt: func() string { return "0001-01-01T00:00:00Z" },
+		inspectErr: func() error {
+			if inspectCount.Add(1) > notFoundAfter {
+				return cerrdefs.ErrNotFound
+			}
+			return nil
+		},
+	}
+
+	tailer, _ := setupTailer(t, mock)
+
+	done := make(chan struct{})
+	go func() {
+		tailer.Run(t.Context())
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// Run exited — tailer stopped after getting "not found"
+	case <-time.After(5 * time.Second):
+		t.Fatal("tailer did not stop after container was removed")
+	}
 }
 
 var _ io.ReadCloser = (*stringReader)(nil)
@@ -478,9 +511,15 @@ type clientMock struct {
 	logLine    string
 	running    func() bool
 	finishedAt func() string
+	inspectErr func() error
 }
 
 func (mock clientMock) ContainerInspect(ctx context.Context, c string, opts client.ContainerInspectOptions) (client.ContainerInspectResult, error) {
+	if mock.inspectErr != nil {
+		if err := mock.inspectErr(); err != nil {
+			return client.ContainerInspectResult{}, err
+		}
+	}
 	return client.ContainerInspectResult{
 		Container: container.InspectResponse{
 			ID: c,
