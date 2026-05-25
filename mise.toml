@@ -5,6 +5,7 @@ go = "1.26.2"
 node = "24.13.0"
 shellcheck = "0.11.0"
 golangci-lint = "2.11.4"
+kind = "0.24.0"
 
 [env]
 CGO_ENABLED = "{{ env.CGO_ENABLED | default(value='1') }}"
@@ -70,3 +71,14 @@ usage = '''
 flag "--timeout <duration>" help="Test timeout (e.g. 15m, 30s)" default="15m"
 '''
 run = "go run -C integration-tests/docker . --test-timeout=$usage_timeout"
+
+[tasks."test:integration:k8s"]
+description = "Run Kubernetes-based integration tests"
+usage = '''
+flag "--shard <shard>" help="Split test packages across shards (e.g. 0/2)" default=""
+'''
+run = "go run ./integration-tests/k8s/runner --test-tags=gore2regex --shard=$usage_shard"
+
+[tasks."test:integration:k8s:dev"]
+description = "Run k8s integration tests with the interactive TUI"
+run = "go run ./integration-tests/k8s/runner --interactive --test-tags=gore2regex"

@@ -65,6 +65,38 @@ url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golan
 checksum = "sha256:4932cfca5e75bf60fe1c576edf459e5e809e6644664a068185d64b84af3fad9e"
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-windows-amd64.zip"
 
+[[tools.kind]]
+version = "0.24.0"
+backend = "aqua:kubernetes-sigs/kind"
+
+[tools.kind."platforms.linux-arm64"]
+checksum = "sha256:2968808d916e12d0a25c56d07c9a1c987163f972513fa8a94a2125a69f9c50eb"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-linux-arm64"
+
+[tools.kind."platforms.linux-arm64-musl"]
+checksum = "sha256:2968808d916e12d0a25c56d07c9a1c987163f972513fa8a94a2125a69f9c50eb"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-linux-arm64"
+
+[tools.kind."platforms.linux-x64"]
+checksum = "sha256:b89aada5a39d620da3fcd16435b7f28d858927dd53f92cbac77686b0588b600d"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-linux-amd64"
+
+[tools.kind."platforms.linux-x64-musl"]
+checksum = "sha256:b89aada5a39d620da3fcd16435b7f28d858927dd53f92cbac77686b0588b600d"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-linux-amd64"
+
+[tools.kind."platforms.macos-arm64"]
+checksum = "sha256:8e34f2edc7efc5c7c160487251848a954cd60ccd52b56a3fc360eaab33543fc0"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-darwin-arm64"
+
+[tools.kind."platforms.macos-x64"]
+checksum = "sha256:6cf7ba50b37d3446153bbfb8990f03fb8102778898c84502cdb841710b499ed5"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-darwin-amd64"
+
+[tools.kind."platforms.windows-x64"]
+checksum = "sha256:6f724188289cc79395f45afae0f2b85e0d220c2b84c6ed2f5047d9d0c9a67028"
+url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.24.0/kind-windows-amd64"
+
 [[tools.node]]
 version = "24.13.0"
 backend = "core:node"
