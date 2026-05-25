@@ -2,7 +2,7 @@
 #MISE description="Build the alloy binary (skips UI generation)"
 #MISE hide=true
 #USAGE flag "-r --release" help="Strip symbol table and DWARF for a smaller release binary" default="false"
-#USAGE flag "--tags <tags>" help="Comma-separated extra build tags (e.g. netgo,embedalloyui)" default=""
+#USAGE flag "-t --tags <tags>" help="Comma-separated extra build tags (e.g. netgo,embedalloyui)" default=""
 #USAGE flag "-o --output <path>" help="Output binary path (relative to repo root, or absolute)" default="build/alloy"
 
 set -euo pipefail
