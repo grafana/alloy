@@ -115,43 +115,50 @@ func (nopSlogHandler) WithGroup(string) slog.Handler { return nopSlogHandler{} }
 
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {
-	l.bufferMut.Lock()
-	defer l.bufferMut.Unlock()
-
 	switch o.Format {
 	case FormatLogfmt, FormatJSON:
-		l.hasLogFormat = true
 	default:
 		return fmt.Errorf("unrecognized log format %q", o.Format)
 	}
 
+	l.bufferMut.Lock()
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
 
 	l.writer.SetInnerWriter(l.inner)
-	if len(o.WriteTo) > 0 {
-		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
-	}
+	l.writer.SetLokiWriter(o.WriteTo)
+	l.bufferMut.Unlock()
 
-	// Build all our deferred handlers
+	// Build deferred handlers outside bufferMut to avoid a deadlock: concurrent
+	// Handle() calls hold a child handler's RLock while waiting for bufferMut
+	// (via addRecord), while Update holding bufferMut and waiting for the child's
+	// write lock in buildHandlers creates a cycle.
 	if l.deferredSlog != nil {
 		l.deferredSlog.buildHandlers(nil)
 	}
-	// Print out the buffered logs since we determined the log format already
-	for _, bufferedLogChunk := range l.buffer {
+
+	// Flip hasLogFormat and drain/replay while holding bufferMut so new Log()
+	// calls block on RLock until replay finishes — preserving the original
+	// guarantee that buffered logs are emitted before newly-arriving ones.
+	l.bufferMut.Lock()
+	defer l.bufferMut.Unlock()
+	l.hasLogFormat = true
+	buffer := l.buffer
+	l.buffer = nil
+
+	for _, bufferedLogChunk := range buffer {
 		if len(bufferedLogChunk.kvps) > 0 {
 			// the buffered logs are currently only sent to the standard output
 			// because the components with the receivers are not running yet
 			slogadapter.GoKit(l.handler).Log(bufferedLogChunk.kvps...)
 		} else {
-			// We now can check to see if if our buffered log is at the right level.
+			// We can now check whether our buffered log is at the right level.
 			if bufferedLogChunk.handler.Enabled(context.Background(), bufferedLogChunk.record.Level) {
 				// These will always be valid due to the build handlers call above.
 				_ = bufferedLogChunk.handler.Handle(context.Background(), bufferedLogChunk.record)
 			}
 		}
 	}
-	l.buffer = nil
 
 	return nil
 }
@@ -270,10 +277,14 @@ func (w *writerVar) SetInnerWriter(writer io.Writer) {
 	w.innerWriter = writer
 }
 
-func (w *writerVar) SetLokiWriter(writer *lokiWriter) {
+func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
-	w.lokiWriter = writer
+	if len(receivers) > 0 {
+		w.lokiWriter = &lokiWriter{receivers}
+	} else {
+		w.lokiWriter = nil
+	}
 }
 
 func (w *writerVar) Write(p []byte) (int, error) {

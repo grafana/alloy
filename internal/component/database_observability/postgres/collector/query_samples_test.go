@@ -1238,3 +1238,209 @@ func TestQuerySamples_ExcludeUsers(t *testing.T) {
 		return mock.ExpectationsWereMet() == nil
 	}, 5*time.Second, 100*time.Millisecond)
 }
+
+func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("github.com/hashicorp/golang-lru/v2/expirable.NewLRU[...].func1"))
+
+	now := time.Now()
+	xactStartTime := now.Add(-2 * time.Minute)
+	backendStartTime := now.Add(-1 * time.Hour)
+
+	columns := []string{
+		"now", "datname", "pid", "leader_pid",
+		"usename", "application_name", "client_addr", "client_port",
+		"backend_type", "backend_start", "backend_xid", "backend_xmin",
+		"xact_start", "state", "state_change", "wait_event_type",
+		"wait_event", "blocked_by_pids", "query_start", "query_id",
+	}
+
+	t.Run("flag OFF emits only OP_WAIT_EVENT", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			CollectInterval:               time.Millisecond,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			ExcludeCurrentUser:            true,
+			EnablePreClassifiedWaitEvents: false,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, sampleCollector)
+
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 500, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				xactStartTime, "waiting", now.Add(-5*time.Second), sql.NullString{String: "IO", Valid: true},
+				sql.NullString{String: "DataFileRead", Valid: true}, pq.Int64Array{}, now, sql.NullInt64{Int64: 5001, Valid: true},
+			))
+		// Second scrape: empty to trigger finalization
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns))
+
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 2)
+		// First entry is query_sample, second is wait_event
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, entries[1].Labels)
+		// The wait_event entry must contain the raw wait_event_type, not a classified value
+		require.Contains(t, entries[1].Line, `wait_event_type="IO"`)
+		require.NotContains(t, entries[1].Line, `wait_event_type="IO Wait"`)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+
+	t.Run("flag ON emits only OP_WAIT_EVENT_V2 with classified wait_event_type", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		logBuffer := syncbuffer.Buffer{}
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
+
+		sampleCollector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			CollectInterval:               time.Millisecond,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			ExcludeCurrentUser:            true,
+			EnablePreClassifiedWaitEvents: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, sampleCollector)
+
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns).AddRow(
+				now, "testdb", 501, sql.NullInt64{},
+				"testuser", "testapp", "127.0.0.1", 5432,
+				"client backend", backendStartTime, sql.NullInt32{}, sql.NullInt32{},
+				xactStartTime, "waiting", now.Add(-5*time.Second), sql.NullString{String: "IO", Valid: true},
+				sql.NullString{String: "DataFileRead", Valid: true}, pq.Int64Array{}, now, sql.NullInt64{Int64: 5002, Valid: true},
+			))
+		// Second scrape: empty to trigger finalization
+		mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(columns))
+
+		require.NoError(t, sampleCollector.Start(t.Context()))
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		entries := lokiClient.Received()
+		require.Len(t, entries, 2)
+		// First entry is query_sample, second is wait_event_v2
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
+		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, entries[1].Labels)
+		// The wait_event_v2 entry must contain the classified wait_event_type
+		require.Contains(t, entries[1].Line, `wait_event_type="IO Wait"`)
+		// Must not contain a raw "IO" as wait_event_type value
+		require.NotContains(t, entries[1].Line, `wait_event_type="IO"`)
+
+		sampleCollector.Stop()
+		require.Eventually(t, func() bool {
+			return sampleCollector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+		require.Eventually(t, func() bool {
+			return mock.ExpectationsWereMet() == nil
+		}, 5*time.Second, 100*time.Millisecond)
+	})
+}
+
+func TestClassifyPostgresWaitEventType(t *testing.T) {
+	testCases := []struct {
+		name     string
+		rawType  string
+		event    string
+		expected string
+	}{
+		// IO
+		{"IO_DataFileRead", "IO", "DataFileRead", "IO Wait"},
+		{"IO_AuroraStorageLogAllocate", "IO", "AuroraStorageLogAllocate", "IO Wait"},
+		{"IO_SnapbuildSync", "IO", "SnapbuildSync", "IO Wait"},
+
+		// Network
+		{"Client_ClientRead", "Client", "ClientRead", "Network Wait"},
+		{"Client_ClientWrite", "Client", "ClientWrite", "Network Wait"},
+
+		// Lock (cascade)
+		{"Lock_relation", "Lock", "relation", "Lock Wait"},
+		{"Lock_transactionid", "Lock", "transactionid", "Lock Wait"},
+		{"Lock_extend", "Lock", "extend", "Lock Wait"},
+
+		// Engine
+		{"LWLock_BufferMapping", "LWLock", "BufferMapping", "Engine Wait"},
+		{"LWLock_BufferContent", "LWLock", "BufferContent", "Engine Wait"},
+		{"LWLock_WALInsert", "LWLock", "WALInsert", "Engine Wait"},
+		{"LWLock_LockManager", "LWLock", "LockManager", "Engine Wait"},
+		{"LWLock_pg_stat_statements", "LWLock", "pg_stat_statements", "Engine Wait"},
+		{"BufferPin", "BufferPin", "BufferPin", "Engine Wait"},
+		{"IPC_BufferIO", "IPC", "BufferIO", "Engine Wait"},
+		{"IPC_MessageQueueSend", "IPC", "MessageQueueSend", "Engine Wait"},
+		{"IPC_ParallelFinish", "IPC", "ParallelFinish", "Engine Wait"},
+
+		// Replication: name-rule wins over the raw type (Client/Activity/IPC/Timeout
+		// all route here when the event name matches the replication prefix list).
+		{"Client_WalSenderWaitForWAL", "Client", "WalSenderWaitForWAL", "Replication Wait"},
+		{"Activity_WalSenderMain", "Activity", "WalSenderMain", "Replication Wait"},
+		{"IPC_SyncRep", "IPC", "SyncRep", "Replication Wait"},
+		{"Timeout_RecoveryApplyDelay", "Timeout", "RecoveryApplyDelay", "Replication Wait"},
+		{"LogicalApplyOffsetUpdate", "IPC", "LogicalApplyOffsetUpdate", "Replication Wait"},
+		{"LogicalApplySendData", "IPC", "LogicalApplySendData", "Replication Wait"},
+		{"WalReceiverMain", "Activity", "WalReceiverMain", "Replication Wait"},
+		{"WalReceiverWaitStart", "IPC", "WalReceiverWaitStart", "Replication Wait"},
+		{"ReplicationSlotDrop", "IPC", "ReplicationSlotDrop", "Replication Wait"},
+		{"ReplicationOriginDrop", "IPC", "ReplicationOriginDrop", "Replication Wait"},
+		// PG 17+ replication-slot sync between primary and standby.
+		{"ReplicationSlotsyncMain", "Activity", "ReplicationSlotsyncMain", "Replication Wait"},
+		// Standby recovery conflicts.
+		{"RecoveryConflictSnapshot", "IPC", "RecoveryConflictSnapshot", "Replication Wait"},
+		{"RecoveryConflictBufferpin", "IPC", "RecoveryConflictBufferpin", "Replication Wait"},
+
+		// Other
+		{"Activity_AutoVacuumMain", "Activity", "AutoVacuumMain", "Other Wait"},
+		{"Timeout_SpinDelay", "Timeout", "SpinDelay", "Other Wait"},
+		{"Timeout_PgSleep", "Timeout", "PgSleep", "Other Wait"},
+		{"Extension", "Extension", "Extension", "Other Wait"},
+		{"InjectionPoint", "InjectionPoint", "InjectionPoint", "Other Wait"},
+		// PG 17+ WAL summarizer is for incremental backup, not replication.
+		{"WalSummarizerWal", "Activity", "WalSummarizerWal", "Other Wait"},
+
+		// idle row appears with empty type and event name "idle"
+		{"idle_event", "", "idle", "Other Wait"},
+		{"unknown_type", "unknown_type", "Whatever", "Other Wait"},
+		{"empty", "", "", "Other Wait"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := classifyPostgresWaitEventType(tc.rawType, tc.event)
+			require.Equal(t, tc.expected, result)
+		})
+	}
+}

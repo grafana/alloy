@@ -1,7 +1,7 @@
 import { faBroom, faBug, faCopy, faRoad, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Field, Input, Slider } from '@grafana/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 
 import Page from '../features/layout/Page';
@@ -18,6 +18,7 @@ function PageLiveDebugging() {
   const [autoScroll, setAutoScroll] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef<number>(0);
+  const sampleSliderInputId = useId();
   const { loading, error } = useLiveDebugging(String(componentID), enabled, sampleProb, setData);
 
   const filteredData = data.filter((n) => n.toLowerCase().includes(filterValue.toLowerCase()));
@@ -101,6 +102,7 @@ function PageLiveDebugging() {
     <div className={styles.slider}>
       <span className={styles.sliderLabel}>Sample rate</span>
       <Slider
+        inputId={sampleSliderInputId}
         included
         min={0}
         max={100}

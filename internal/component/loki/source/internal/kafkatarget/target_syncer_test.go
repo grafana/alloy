@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
@@ -17,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func Test_TopicDiscovery(t *testing.T) {
@@ -30,7 +30,7 @@ func Test_TopicDiscovery(t *testing.T) {
 	ts := &TargetSyncer{
 		ctx:          ctx,
 		cancel:       cancel,
-		logger:       log.NewNopLogger(),
+		logger:       logging.NewSlogNop(),
 		topicManager: mustNewTopicsManager(client, []string{"topic1", "topic2"}),
 		close: func() error {
 			closed = true
@@ -40,7 +40,7 @@ func Test_TopicDiscovery(t *testing.T) {
 			ctx:           t.Context(),
 			cancel:        func() {},
 			ConsumerGroup: group,
-			logger:        log.NewNopLogger(),
+			logger:        logging.NewSlogNop(),
 			discoverer: DiscovererFn(func(s sarama.ConsumerGroupSession, c sarama.ConsumerGroupClaim) (RunnableTarget, error) {
 				return nil, nil
 			}),
@@ -78,7 +78,7 @@ func Test_TopicDiscovery(t *testing.T) {
 
 func Test_NewTarget(t *testing.T) {
 	ts := &TargetSyncer{
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 		client: loki.NewCollectingHandler(),
 		cfg: Config{
 			RelabelConfigs: []*relabel.Config{
@@ -115,7 +115,7 @@ func Test_NewTarget(t *testing.T) {
 
 func Test_NewDroppedTarget(t *testing.T) {
 	ts := &TargetSyncer{
-		logger: log.NewNopLogger(),
+		logger: logging.NewSlogNop(),
 		cfg: Config{
 			KafkaConfig: TargetConfig{
 				UseIncomingTimestamp: true,

@@ -15,10 +15,8 @@ import (
 )
 
 func Test_TruncateStage_Process(t *testing.T) {
-	// Enable debug logging
 	cfg := &dskit.Config{}
 	require.Nil(t, cfg.LogLevel.Set("debug"))
-	Debug = true
 
 	tests := []struct {
 		name                       string
@@ -195,7 +193,7 @@ func Test_TruncateStage_Process(t *testing.T) {
 			}
 			logger := util.TestAlloyLogger(t)
 			registry := prometheus.NewRegistry()
-			m, err := newTruncateStage(logger, *cfg, registry)
+			m, err := newTruncateStage(logger.Slog(), *cfg, registry)
 			require.NoError(t, err)
 			entry := newEntry(map[string]any{}, toLabelSet(tt.labels), tt.entry, tt.t)
 			if tt.extracted != nil {

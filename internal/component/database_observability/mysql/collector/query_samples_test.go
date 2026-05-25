@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"regexp"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
 	"github.com/go-kit/log"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -41,12 +44,139 @@ func TestQuerySamples(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"select * from some_table where id = ?",
 				"70000000",
 				"20000000",
 				"5",
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"some_user",
+				"some_host",
+				"10000000",
+				"456",
+				"457",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_SAMPLE},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+			},
+		},
+		{
+			name: "select query with traceparent",
+			rows: [][]driver.Value{{
+				"some_schema",
+				"890",
+				"123",
+				"234",
+				"some_digest",
+				"select * from some_table where id = 1 /*traceparent='00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01'*/",
+				"70000000",
+				"20000000",
+				"5",
+				"5",
+				"0",
+				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"some_user",
+				"some_host",
+				"10000000",
+				"456",
+				"457",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_SAMPLE},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01\"",
+			},
+		},
+		{
+			name: "SQL_TEXT is NULL",
+			rows: [][]driver.Value{{
+				"some_schema",
+				"890",
+				"123",
+				"234",
+				"some_digest",
+				nil,
+				"70000000",
+				"20000000",
+				"5",
+				"5",
+				"0",
+				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"some_user",
+				"some_host",
+				"10000000",
+				"456",
+				"457",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_SAMPLE},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+			},
+		},
+		{
+			name: "select query with truncated traceparent",
+			rows: [][]driver.Value{{
+				"some_schema",
+				"890",
+				"123",
+				"234",
+				"some_digest",
+				"select * from some_table where id = 1 /*traceparent='00-abc...",
+				"70000000",
+				"20000000",
+				"5",
+				"5",
+				"0",
+				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -74,12 +204,19 @@ func TestQuerySamples(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				"select * from some_table where id = ?",
 				"70000000",
 				"20000000",
 				"5",
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -97,12 +234,19 @@ func TestQuerySamples(t *testing.T) {
 				"124",
 				"235",
 				"some_digest",
+				"select * from some_table where id = ?",
 				"70000000",
 				"20000000",
 				"5",
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -165,7 +309,7 @@ func TestQuerySamples(t *testing.T) {
 					1,
 				))
 
-			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 				1e12, // initial timerBookmark
 				1e12,
 			).RowsWillBeClosed().
@@ -176,6 +320,7 @@ func TestQuerySamples(t *testing.T) {
 						"statements.EVENT_ID",
 						"statements.END_EVENT_ID",
 						"statements.DIGEST",
+						"statements.SQL_TEXT",
 						"statements.TIMER_END",
 						"statements.TIMER_WAIT",
 						"statements.ROWS_EXAMINED",
@@ -188,6 +333,12 @@ func TestQuerySamples(t *testing.T) {
 						"waits.object_name",
 						"waits.object_type",
 						"waits.timer_wait",
+						"nested_waits.event_id",
+						"nested_waits.end_event_id",
+						"nested_waits.event_name",
+						"nested_waits.object_name",
+						"nested_waits.object_type",
+						"nested_waits.timer_wait",
 						"threads.PROCESSLIST_USER",
 						"threads.PROCESSLIST_HOST",
 						"statements.CPU_TIME",
@@ -251,7 +402,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -262,6 +413,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -274,6 +426,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -286,6 +444,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -298,6 +457,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						"100000000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -350,7 +515,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -361,6 +526,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -373,6 +539,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -385,6 +557,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -397,6 +570,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						nil, // NULL timer_wait
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -449,7 +628,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -460,6 +639,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -472,6 +652,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -484,6 +670,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -496,6 +683,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"150000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -508,6 +701,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -520,6 +714,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"categories",
 						"TABLE",
 						"350000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -532,6 +732,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -544,6 +745,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"500000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -556,6 +763,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -568,6 +776,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"categories",
 						"TABLE",
 						"700000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -626,7 +840,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -637,6 +851,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -649,6 +864,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -661,6 +882,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -673,6 +895,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"books",
 						"TABLE",
 						"150000",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -685,12 +913,19 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"126",
 						"234",
 						"another_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						nil,
 						nil,
 						nil,
@@ -768,7 +1003,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField+sqlTextField, "", exclusionClause, sqlTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			1e12,
 		).RowsWillBeClosed().
@@ -779,6 +1014,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -791,18 +1027,24 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
-					"statements.SQL_TEXT",
 				}).AddRow(
 					"some_schema",
 					"890",
 					"123",
 					"234",
 					"some_digest",
+					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
 					"5",
@@ -815,12 +1057,17 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"wait_object_name",
 					"wait_object_type",
 					"100000000",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
 					"456",
 					"457",
-					"select * from some_table where id = 1",
 				),
 			)
 
@@ -868,7 +1115,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", "AND nested_waits.timer_wait >= 1000000000", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -879,6 +1126,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -891,6 +1139,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -903,6 +1157,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -910,6 +1165,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"0",
 						"0",
 						nil, // no wait joined (filtered by SQL)
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						nil,
 						nil,
 						nil,
@@ -966,7 +1227,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", "AND nested_waits.timer_wait >= 1000000000", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -977,6 +1238,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -989,6 +1251,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1001,6 +1269,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"123",
 						"234",
 						"some_digest",
+						nil,
 						"70000000",
 						"20000000",
 						"5",
@@ -1013,6 +1282,12 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"wait_object_name",
 						"wait_object_type",
 						"1000000000", // 1ms in picoseconds
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -1044,6 +1319,347 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"1.000000ms\"", lokiEntries[1].Line)
 	})
+
+	// No wait_event_min_duration is set, so the nested atom passes through
+	// unfiltered and the Go-side override surfaces it instead of the molecule.
+	t.Run("wait/io/table/sql/handler with nested event uses nested event data", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:              db,
+			EngineVersion:   latestCompatibleVersion,
+			CollectInterval: time.Second,
+			EntryHandler:    lokiClient,
+			Logger:          log.NewLogfmtLogger(os.Stderr),
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.SQL_TEXT",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"select * from books where id = ?",
+					"70000000",
+					"20000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"200",                                  // WAIT_EVENT_ID (outer table handler)
+					"201",                                  // WAIT_END_EVENT_ID
+					"wait/io/table/sql/handler",            // WAIT_EVENT_NAME (the handler wrapper)
+					"books",                                // WAIT_OBJECT_NAME
+					"TABLE",                                // WAIT_OBJECT_TYPE
+					"900000000",                            // WAIT_TIMER_WAIT (0.9ms)
+					"210",                                  // NESTED_WAIT_EVENT_ID
+					"211",                                  // NESTED_WAIT_END_EVENT_ID
+					"wait/io/file/innodb/innodb_data_file", // NESTED_WAIT_EVENT_NAME (actual I/O)
+					"ibdata1",                              // NESTED_WAIT_OBJECT_NAME
+					"FILE",                                 // NESTED_WAIT_OBJECT_TYPE
+					"500000000",                            // NESTED_WAIT_TIMER_WAIT (0.5ms)
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
+	})
+
+	t.Run("wait/io/table/sql/handler with nested event classifies on nested name in v2 mode", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			EngineVersion:                 latestCompatibleVersion,
+			CollectInterval:               time.Second,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			EnablePreClassifiedWaitEvents: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.SQL_TEXT",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"select * from books where id = ?",
+					"70000000",
+					"20000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"200",                                  // WAIT_EVENT_ID (outer table handler)
+					"201",                                  // WAIT_END_EVENT_ID
+					"wait/io/table/sql/handler",            // WAIT_EVENT_NAME (the handler wrapper)
+					"books",                                // WAIT_OBJECT_NAME
+					"TABLE",                                // WAIT_OBJECT_TYPE
+					"900000000",                            // WAIT_TIMER_WAIT (0.9ms)
+					"210",                                  // NESTED_WAIT_EVENT_ID
+					"211",                                  // NESTED_WAIT_END_EVENT_ID
+					"wait/io/file/innodb/innodb_data_file", // NESTED_WAIT_EVENT_NAME (actual I/O)
+					"ibdata1",                              // NESTED_WAIT_OBJECT_NAME
+					"FILE",                                 // NESTED_WAIT_OBJECT_TYPE
+					"500000000",                            // NESTED_WAIT_TIMER_WAIT (0.5ms)
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[1].Labels)
+		// Pins that wait_event_type is derived from the substituted (nested) name,
+		// not the outer wrapper.
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"210\" wait_end_event_id=\"211\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_event_type=\"IO Wait\" wait_object_name=\"ibdata1\" wait_object_type=\"FILE\" wait_time=\"0.500000ms\"", lokiEntries[1].Line)
+	})
+
+	// When the outer molecule wait passes wait_event_min_duration but the nested
+	// atom is below the threshold, the SQL nested_waits.timer_wait predicate
+	// nullifies the nested columns. The Go-side override is then skipped and the
+	// outer molecule (wait/io/table/sql/handler) is emitted, ensuring every
+	// wait_event has wait_time >= wait_event_min_duration.
+	t.Run("wait/io/table/sql/handler falls back to molecule when nested atom is below threshold", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                   db,
+			EngineVersion:        latestCompatibleVersion,
+			CollectInterval:      time.Second,
+			EntryHandler:         lokiClient,
+			Logger:               log.NewLogfmtLogger(os.Stderr),
+			WaitEventMinDuration: 1 * time.Millisecond,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "AND waits.timer_wait >= 1000000000", "AND nested_waits.timer_wait >= 1000000000", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12,
+			1e12,
+		).RowsWillBeClosed().
+			WillReturnRows(
+				sqlmock.NewRows([]string{
+					"statements.CURRENT_SCHEMA",
+					"statements.THREAD_ID",
+					"statements.EVENT_ID",
+					"statements.END_EVENT_ID",
+					"statements.DIGEST",
+					"statements.SQL_TEXT",
+					"statements.TIMER_END",
+					"statements.TIMER_WAIT",
+					"statements.ROWS_EXAMINED",
+					"statements.ROWS_SENT",
+					"statements.ROWS_AFFECTED",
+					"statements.ERRORS",
+					"waits.event_id",
+					"waits.end_event_id",
+					"waits.event_name",
+					"waits.object_name",
+					"waits.object_type",
+					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
+					"threads.PROCESSLIST_USER",
+					"threads.PROCESSLIST_HOST",
+					"statements.CPU_TIME",
+					"statements.MAX_CONTROLLED_MEMORY",
+					"statements.MAX_TOTAL_MEMORY",
+				}).AddRow(
+					"some_schema",
+					"890",
+					"123",
+					"234",
+					"some_digest",
+					"select * from books where id = ?",
+					"70000000",
+					"20000000",
+					"5",
+					"5",
+					"0",
+					"0",
+					"200",                       // WAIT_EVENT_ID (outer table handler)
+					"201",                       // WAIT_END_EVENT_ID
+					"wait/io/table/sql/handler", // WAIT_EVENT_NAME (the handler wrapper)
+					"books",                     // WAIT_OBJECT_NAME
+					"TABLE",                     // WAIT_OBJECT_TYPE
+					"50000000000",               // WAIT_TIMER_WAIT (50ms, qualifies)
+					nil,                         // NESTED_WAIT_EVENT_ID (filtered by SQL)
+					nil,                         // NESTED_WAIT_END_EVENT_ID
+					nil,                         // NESTED_WAIT_EVENT_NAME
+					nil,                         // NESTED_WAIT_OBJECT_NAME
+					nil,                         // NESTED_WAIT_OBJECT_TYPE
+					nil,                         // NESTED_WAIT_TIMER_WAIT
+					"some_user",
+					"some_host",
+					"10000000",
+					"456",
+					"457",
+				),
+			)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		err = mock.ExpectationsWereMet()
+		require.NoError(t, err)
+
+		lokiEntries := lokiClient.Received()
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"200\" wait_end_event_id=\"201\" wait_event_name=\"wait/io/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"50.000000ms\"", lokiEntries[1].Line)
+	})
 }
 
 func TestQuerySamples_SampleMinDuration(t *testing.T) {
@@ -1067,7 +1683,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1078,6 +1694,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -1090,6 +1707,12 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1137,7 +1760,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 
 		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "AND statements.TIMER_WAIT >= 1000000000", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1148,6 +1771,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -1160,6 +1784,12 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1171,12 +1801,19 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					nil,
 					"70000000",
 					"1000000000", // 1ms in picoseconds
 					"5",
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1253,7 +1890,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField+sqlTextField, "", exclusionClause, sqlTextNotNullClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -1261,6 +1898,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -1273,18 +1911,24 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
 					"statements.MAX_CONTROLLED_MEMORY",
 					"statements.MAX_TOTAL_MEMORY",
-					"statements.SQL_TEXT",
 				}).AddRow(
 					"some_schema",
 					"890",
 					"123",
 					"234",
 					"some_digest",
+					"select * from some_table where id = 1",
 					"70000000",
 					"20000000",
 					"5",
@@ -1297,12 +1941,17 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
 					"456",
 					"457",
-					"select * from some_table where id = 1",
 				),
 			)
 
@@ -1365,7 +2014,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -1373,6 +2022,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -1385,6 +2035,12 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1396,12 +2052,19 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					nil,
 					"70000000",
 					"20000000",
 					"5",
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1460,6 +2123,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"statements.EVENT_ID",
 				"statements.END_EVENT_ID",
 				"statements.DIGEST",
+				"statements.SQL_TEXT",
 				"statements.TIMER_END",
 				"statements.TIMER_WAIT",
 				"statements.ROWS_EXAMINED",
@@ -1472,6 +2136,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"nested_waits.event_id",
+				"nested_waits.end_event_id",
+				"nested_waits.event_name",
+				"nested_waits.object_name",
+				"nested_waits.object_type",
+				"nested_waits.timer_wait",
 				"threads.PROCESSLIST_USER",
 				"threads.PROCESSLIST_HOST",
 			},
@@ -1482,12 +2152,19 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				nil,
 				"70000000",
 				"20000000",
 				"5",
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1508,6 +2185,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"statements.EVENT_ID",
 				"statements.END_EVENT_ID",
 				"statements.DIGEST",
+				"statements.SQL_TEXT",
 				"statements.TIMER_END",
 				"statements.TIMER_WAIT",
 				"statements.ROWS_EXAMINED",
@@ -1520,6 +2198,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"nested_waits.event_id",
+				"nested_waits.end_event_id",
+				"nested_waits.event_name",
+				"nested_waits.object_name",
+				"nested_waits.object_type",
+				"nested_waits.timer_wait",
 				"threads.PROCESSLIST_USER",
 				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
@@ -1531,12 +2215,19 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				nil,
 				"70000000",
 				"20000000",
 				"5",
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1558,6 +2249,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"statements.EVENT_ID",
 				"statements.END_EVENT_ID",
 				"statements.DIGEST",
+				"statements.SQL_TEXT",
 				"statements.TIMER_END",
 				"statements.TIMER_WAIT",
 				"statements.ROWS_EXAMINED",
@@ -1570,6 +2262,12 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"waits.object_name",
 				"waits.object_type",
 				"waits.timer_wait",
+				"nested_waits.event_id",
+				"nested_waits.end_event_id",
+				"nested_waits.event_name",
+				"nested_waits.object_name",
+				"nested_waits.object_type",
+				"nested_waits.timer_wait",
 				"threads.PROCESSLIST_USER",
 				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
@@ -1583,12 +2281,19 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"123",
 				"234",
 				"some_digest",
+				nil,
 				"70000000",
 				"20000000",
 				"5",
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -1642,7 +2347,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 					1,
 				))
 
-			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, tc.expectedFields, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+			mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, tc.expectedFields, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
 				WillReturnRows(
 					sqlmock.NewRows(tc.expectedColumns).AddRow(tc.scanValues...),
 				)
@@ -1710,7 +2415,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1730,7 +2435,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -1741,6 +2446,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -1753,6 +2459,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1764,12 +2476,19 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					nil,
 					"70000000",
 					"20000000",
 					"5",
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1842,7 +2561,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(1e12, 2e12).RowsWillBeClosed().
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 2e12).RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
 					"statements.CURRENT_SCHEMA",
@@ -1850,6 +2569,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -1862,6 +2582,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -1873,12 +2599,19 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					nil,
 					"70000000",
 					"20000000",
 					"5",
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1896,12 +2629,19 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"124",
 					"235",
 					"some_digest",
+					nil,
 					"70000000",
 					"20000000",
 					"5",
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1974,7 +2714,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			2e12,
 		).WillReturnError(fmt.Errorf("connection error"))
@@ -1988,7 +2728,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 				2,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			2e12,
 		).RowsWillBeClosed().
@@ -1999,6 +2739,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -2011,6 +2752,12 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -2022,12 +2769,19 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					nil,
 					"70000000",
 					"20000000",
 					"5",
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -2120,7 +2874,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				5,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2129,6 +2883,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"statements.EVENT_ID",
 			"statements.END_EVENT_ID",
 			"statements.DIGEST",
+			"statements.SQL_TEXT",
 			"statements.TIMER_END",
 			"statements.TIMER_WAIT",
 			"statements.ROWS_EXAMINED",
@@ -2141,6 +2896,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"statements.CPU_TIME",
@@ -2153,6 +2914,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				123,           // EVENT_ID
 				234,           // END_EVENT_ID
 				"some digest", // digest
+				nil,           // SQL_TEXT
 				2e12,          // timer_end
 				2e12,          // timer_wait
 				1000,          // rows_examined
@@ -2165,11 +2927,17 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,           // WAIT_OBJECT_NAME
 				nil,           // WAIT_OBJECT_TYPE
 				nil,           // WAIT_TIME
-				"some_user",   // PROCESSLIST_USER
-				"some_host",   // PROCESSLIST_HOST
-				555555,        // cpu_time
-				1048576,       // max_controlled_memory (1MB)
-				2097152,       // max_total_memory (2MB)
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"some_user", // PROCESSLIST_USER
+				"some_host", // PROCESSLIST_HOST
+				555555,      // cpu_time
+				1048576,     // max_controlled_memory (1MB)
+				2097152,     // max_total_memory (2MB)
 			),
 		)
 
@@ -2218,7 +2986,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				5,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12, // initial timerBookmark
 			5e12, // uptime of 5 seconds in picoseconds (modulo 0 overflows)
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2227,6 +2995,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"event_id",
 			"end_event_id",
 			"digest",
+			"sql_text",
 			"timer_end",
 			"timer_wait",
 			"rows_examined",
@@ -2239,6 +3008,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2271,7 +3046,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", beginningAndEndOfTimeline)).WithArgs( // asserts that beginningAndEndOfTimeline clause is used
 			3e12,
 			10e12, // uptimeLimit is calculated as uptime "modulo" overflows: (uptime - 1 overflow) in picoseconds
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2280,6 +3055,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"event_id",
 			"end_event_id",
 			"digest",
+			"sql_text",
 			"timer_end",
 			"timer_wait",
 			"rows_examined",
@@ -2291,6 +3067,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2323,7 +3105,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", beginningAndEndOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", beginningAndEndOfTimeline)).WithArgs(
 			3e12,
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2333,6 +3115,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"end_event_id",
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"rows_examined",
 			"rows_sent",
@@ -2343,6 +3126,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2366,7 +3155,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				picosecondsToSeconds(math.MaxUint64)+13,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs( // asserts revert to endOfTimeline clause
 			10e12, // asserts timerBookmark has been updated to the previous uptimeLimit
 			13e12, // asserts uptimeLimit is now updated to the current uptime "modulo" overflows
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2375,6 +3164,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"thread_id",
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"rows_examined",
 			"rows_sent",
@@ -2385,6 +3175,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2410,7 +3206,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				10,
 			),
 		)
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			float64(0),
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2419,6 +3215,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"thread_id",
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"rows_examined",
 			"rows_sent",
@@ -2429,6 +3226,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2456,7 +3259,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			float64(0),
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
@@ -2465,6 +3268,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"thread_id",
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_wait",
 			"rows_examined",
 			"rows_sent",
@@ -2475,6 +3279,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2516,7 +3326,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, "", "", "", exclusionClause, "", endOfTimeline)).WithArgs(3e12, 10e12).WillReturnError(fmt.Errorf("some error"))
 
 		c := &QuerySamples{
 			dbConnection:  db,
@@ -2533,12 +3343,13 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		require.NoError(t, err)
 		defer db.Close()
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(picosecondsToSeconds(math.MaxUint64)+15, 10))
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			2e12,
 			10e12,
 		).WillReturnRows(sqlmock.NewRows([]string{
 			"current_schema",
 			"digest",
+			"sql_text",
 			"timer_end",
 			"timer_wait",
 			"rows_examined",
@@ -2551,6 +3362,12 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"waits.object_name",
 			"waits.object_type",
 			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
 			"threads.PROCESSLIST_USER",
 			"threads.PROCESSLIST_HOST",
 			"cpu_time",
@@ -2560,6 +3377,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			AddRow(
 				"test_schema", // current_schema
 				"some digest", // digest
+				nil,           // sql_text
 				2e12,          // timer_end
 				2e12,          // timer_wait
 				1000,          // rows_examined
@@ -2572,11 +3390,17 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				nil,           // WAIT_OBJECT_NAME
 				nil,           // WAIT_OBJECT_TYPE
 				nil,           // WAIT_TIME
-				"some_user",   // PROCESSLIST_USER
-				"some_host",   // PROCESSLIST_HOST
-				555555,        // cpu_time
-				1048576,       // max_controlled_memory (1MB)
-				2097152,       // max_total_memory (2MB)
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"some_user", // PROCESSLIST_USER
+				"some_host", // PROCESSLIST_HOST
+				555555,      // cpu_time
+				1048576,     // max_controlled_memory (1MB)
+				2097152,     // max_total_memory (2MB)
 			),
 		)
 		mockParser := &parser.MockParser{}
@@ -2643,6 +3467,100 @@ func TestQuerySamples_calculateTimerClauseAndLimit(t *testing.T) {
 	}
 }
 
+func Test_TryExtractTraceParent(t *testing.T) {
+	testCases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name:     "valid traceparent with single quotes",
+			input:    "SELECT * FROM users /*traceparent='00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'*/",
+			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		},
+		{
+			name:     "valid traceparent with double quotes",
+			input:    `SELECT * FROM users /*traceparent="00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"*/`,
+			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		},
+		{
+			name:     "valid traceparent without quotes",
+			input:    "SELECT * FROM users /*traceparent=00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01*/",
+			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		},
+		{
+			name:     "traceparent with mixed case keyword",
+			input:    "SELECT * FROM users /*TraceParent='00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'*/",
+			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		},
+		{
+			name:     "traceparent among other comment fields",
+			input:    "SELECT * FROM users /*controller='index',traceparent='00-abc123-def456-01',framework='django'*/",
+			expected: "00-abc123-def456-01",
+		},
+		{
+			name:     "no traceparent in SQL",
+			input:    "SELECT * FROM users WHERE id = 1",
+			expected: "",
+		},
+		{
+			name:     "truncated SQL ending with ...",
+			input:    "SELECT * FROM users WHERE id = 1 /*traceparent='00-abc...",
+			expected: "",
+		},
+		{
+			name:     "truncated as traceparent=... ",
+			input:    "SELECT * FROM users WHERE id = 1 /*traceparent=...",
+			expected: "",
+		},
+		{
+			name:     "truncated as traceparent=",
+			input:    "SELECT * FROM users WHERE id = 1 /*traceparent=",
+			expected: "",
+		},
+		{
+			name:     "traceparent without closing quote",
+			input:    "SELECT * FROM users /*traceparent='00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+			expected: "",
+		},
+		{
+			name:     "empty traceparent value",
+			input:    "SELECT * FROM users /*traceparent=''*/",
+			expected: "",
+		},
+		{
+			name:     "traceparent with whitespace",
+			input:    "SELECT * FROM users /*traceparent='  00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01  '*/",
+			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+		},
+		{
+			name:     "multiple traceparent occurrences - last one wins",
+			input:    "SELECT * FROM users /*traceparent='00-first-first-01'*/ /*traceparent='00-second-second-02'*/",
+			expected: "00-second-second-02",
+		},
+		{
+			name:     "empty string",
+			input:    "",
+			expected: "",
+		},
+		{
+			name: "SQLCommenter exhibit",
+			// Note that traceparent and value (W3C trace context) cannot have meta characters nor URL to decode, so they are effectively inert to tryExtractTraceParent
+			input: `SELECT * FROM FOO /*action='%2Fparam*\'d',controller='index,'framework='spring',` +
+				"\n" + `traceparent='00-5bd66ef5095369c7b0d1f8f4bd33716a-c532cb4098ac3dd2-01',` +
+				"\n" + `tracestate='congo%3Dt61rcWkgMzE%2Crojo%3D00f067aa0ba902b7'*/`,
+			expected: "00-5bd66ef5095369c7b0d1f8f4bd33716a-c532cb4098ac3dd2-01",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := tryExtractTraceParent(tc.input)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+}
+
 func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
@@ -2687,7 +3605,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 				1,
 			))
 
-		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", exclusionClause, digestTextNotNullClause, "", endOfTimeline)).WithArgs(
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
 			1e12,
 			1e12,
 		).RowsWillBeClosed().
@@ -2698,6 +3616,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"statements.EVENT_ID",
 					"statements.END_EVENT_ID",
 					"statements.DIGEST",
+					"statements.SQL_TEXT",
 					"statements.TIMER_END",
 					"statements.TIMER_WAIT",
 					"statements.ROWS_EXAMINED",
@@ -2710,6 +3629,12 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"waits.object_name",
 					"waits.object_type",
 					"waits.timer_wait",
+					"nested_waits.event_id",
+					"nested_waits.end_event_id",
+					"nested_waits.event_name",
+					"nested_waits.object_name",
+					"nested_waits.object_type",
+					"nested_waits.timer_wait",
 					"threads.PROCESSLIST_USER",
 					"threads.PROCESSLIST_HOST",
 					"statements.CPU_TIME",
@@ -2721,12 +3646,19 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"123",
 					"234",
 					"some_digest",
+					nil,
 					"70000000",
 					"20000000",
 					"5",
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -2838,7 +3770,7 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 
 	// Verify the query uses the custom exclusion clause
 	customClause := buildExcludedSchemasClause([]string{"excluded_schema"})
-	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", customClause, digestTextNotNullClause, "", endOfTimeline)).
+	mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", customClause, "", endOfTimeline)).
 		WithArgs(1e12, 1e12).RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"current_schema", "thread_id", "event_id", "end_event_id", "digest",
 		"timer_end", "timer_wait", "rows_examined", "rows_sent", "rows_affected",
@@ -2848,4 +3780,324 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 
 	c.fetchQuerySamples(t.Context())
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestQuerySamples_WaitEventCounter_MatchesLogLines pins the invariant that
+// the counter delta for (digest, schema) equals the sum of wait_time on
+// every emitted wait_event_v2 line for that key.
+func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
+	waitOp := OP_WAIT_EVENT_V2
+	t.Run("wait_event_v2", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+		registry := prometheus.NewRegistry()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			EngineVersion:                 latestCompatibleVersion,
+			CollectInterval:               time.Second,
+			EntryHandler:                  lokiClient,
+			Registry:                      registry,
+			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			EnablePreClassifiedWaitEvents: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector.waitEventCounter)
+
+		rows := [][]driver.Value{
+			// (digest_A, schema_X): two rows, 0.1ms + 0.2ms = 0.3ms
+			{"schema_X", "1", "10", "11", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "100", "101", "wait/io/file/x", "obj", "typ", "100000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "20", "21", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "200", "201", "wait/io/file/y", "obj", "typ", "200000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			// (digest_B, schema_X): 0.05ms
+			{"schema_X", "1", "30", "31", "digest_B", "sql2", "70000000", "20000000", "5", "5", "0", "0", "300", "301", "wait/lock/metadata", "obj", "typ", "50000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			// (digest_A, schema_Y): 0.075ms — same digest, different schema
+			{"schema_Y", "1", "40", "41", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "400", "401", "wait/synch/mutex", "obj", "typ", "75000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			// (digest_D, schema_X): wait/io/table/sql/handler molecule with two
+			// nested atoms (same outer event_id, two rows from the JOIN). Pre-fix,
+			// the counter added outer 5ms twice (over-count by N). Post-fix, each
+			// row contributes its own nested timer, matching the log line.
+			// Expected counter contribution: 0.4ms + 0.6ms = 1.0ms total.
+			{"schema_X", "1", "60", "61", "digest_D", "sql4", "70000000", "20000000", "5", "5", "0", "0", "500", "501", "wait/io/table/sql/handler", "books", "TABLE", "5000000000", "510", "511", "wait/io/file/innodb/innodb_data_file", "ibdata1", "FILE", "400000000", "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "60", "61", "digest_D", "sql4", "70000000", "20000000", "5", "5", "0", "0", "500", "501", "wait/io/table/sql/handler", "books", "TABLE", "5000000000", "520", "521", "wait/io/file/innodb/innodb_data_file", "ibdata1", "FILE", "600000000", "u", "h", "1000", "1", "1"},
+			// digest_C: no wait event (nil wait fields) — must not increment any counter
+			{"schema_X", "1", "50", "51", "digest_C", "sql3", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+		}
+
+		mockRows := sqlmock.NewRows([]string{
+			"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
+			"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
+			"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
+			"statements.ROWS_AFFECTED", "statements.ERRORS",
+			"waits.event_id", "waits.end_event_id", "waits.event_name",
+			"waits.object_name", "waits.object_type", "waits.timer_wait",
+			"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
+			"nested_waits.object_name", "nested_waits.object_type", "nested_waits.timer_wait",
+			"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
+			"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
+		})
+		for _, r := range rows {
+			mockRows = mockRows.AddRow(r...)
+		}
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12, 1e12,
+		).RowsWillBeClosed().WillReturnRows(mockRows)
+
+		require.NoError(t, collector.Start(t.Context()))
+
+		// 6 query samples (digest_D's two rows dedup to one) + 6 wait events = 12 entries.
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 12
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+		require.Eventually(t, collector.Stopped, 5*time.Second, 100*time.Millisecond)
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		// Build expected counter values by parsing the emitted log lines so
+		// the assertion drifts with the emitter rather than with hard-coded sums.
+		digestRe := regexp.MustCompile(`digest="([^"]+)"`)
+		schemaRe := regexp.MustCompile(`schema="([^"]+)"`)
+		waitTimeRe := regexp.MustCompile(`wait_time="([^"]+)"`)
+		expected := map[[2]string]float64{}
+		waitEventEntries := 0
+		for _, e := range lokiClient.Received() {
+			if e.Labels["op"] != model.LabelValue(waitOp) {
+				continue
+			}
+			waitEventEntries++
+			d := digestRe.FindStringSubmatch(e.Line)
+			s := schemaRe.FindStringSubmatch(e.Line)
+			w := waitTimeRe.FindStringSubmatch(e.Line)
+			require.Len(t, d, 2, "digest not found in line: %s", e.Line)
+			require.Len(t, s, 2, "schema not found in line: %s", e.Line)
+			require.Len(t, w, 2, "wait_time not found in line: %s", e.Line)
+			dur, err := time.ParseDuration(w[1])
+			require.NoError(t, err)
+			expected[[2]string{d[1], s[1]}] += dur.Seconds()
+		}
+		require.Equal(t, 6, waitEventEntries, "should emit one wait-event log per row with a valid wait event")
+		require.Len(t, expected, 4, "digest_C has no wait event, so only 4 (digest, schema) groups should be seen")
+
+		for key, expSec := range expected {
+			counter, err := collector.waitEventCounter.GetMetricWith(prometheus.Labels{
+				"digest": key[0],
+				"schema": key[1],
+			})
+			require.NoError(t, err)
+			var m dto.Metric
+			require.NoError(t, counter.Write(&m))
+			assert.InDelta(t, expSec, m.Counter.GetValue(), 1e-9,
+				"counter for digest=%s schema=%s does not match sum of logged wait_time", key[0], key[1])
+		}
+	})
+}
+
+func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
+	t.Run("flag OFF emits only OP_WAIT_EVENT without wait_event_type", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			EngineVersion:                 latestCompatibleVersion,
+			CollectInterval:               time.Second,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			EnablePreClassifiedWaitEvents: false,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12, 1e12,
+		).RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
+				"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
+				"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
+				"statements.ROWS_AFFECTED", "statements.ERRORS",
+				"waits.event_id", "waits.end_event_id", "waits.event_name",
+				"waits.object_name", "waits.object_type", "waits.timer_wait",
+				"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
+				"nested_waits.object_name", "nested_waits.object_type", "nested_waits.timer_wait",
+				"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
+				"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
+			}).AddRow(
+				"some_schema", "890", "123", "234", "some_digest", "some_sql_text",
+				"70000000", "20000000", "5", "5", "0", "0",
+				"124", "124", "wait/io/file/innodb/innodb_data_file",
+				"wait_object_name", "wait_object_type", "100000000",
+				nil, nil, nil, nil, nil, nil,
+				"some_user", "some_host",
+				"10000000", "456", "457",
+			),
+		)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
+		assert.NotContains(t, lokiEntries[1].Line, "wait_event_type=")
+	})
+
+	t.Run("flag ON emits only OP_WAIT_EVENT_V2 with wait_event_type classified", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                            db,
+			EngineVersion:                 latestCompatibleVersion,
+			CollectInterval:               time.Second,
+			EntryHandler:                  lokiClient,
+			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			EnablePreClassifiedWaitEvents: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			1e12, 1e12,
+		).RowsWillBeClosed().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
+				"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
+				"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
+				"statements.ROWS_AFFECTED", "statements.ERRORS",
+				"waits.event_id", "waits.end_event_id", "waits.event_name",
+				"waits.object_name", "waits.object_type", "waits.timer_wait",
+				"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
+				"nested_waits.object_name", "nested_waits.object_type", "nested_waits.timer_wait",
+				"threads.PROCESSLIST_USER", "threads.PROCESSLIST_HOST",
+				"statements.CPU_TIME", "statements.MAX_CONTROLLED_MEMORY", "statements.MAX_TOTAL_MEMORY",
+			}).AddRow(
+				"some_schema", "890", "123", "234", "some_digest", "some_sql_text",
+				"70000000", "20000000", "5", "5", "0", "0",
+				"124", "124", "wait/io/file/innodb/innodb_data_file",
+				"wait_object_name", "wait_object_type", "100000000",
+				nil, nil, nil, nil, nil, nil,
+				"some_user", "some_host",
+				"10000000", "456", "457",
+			),
+		)
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiEntries := lokiClient.Received()
+		require.Len(t, lokiEntries, 2)
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiEntries[1].Labels)
+		assert.Contains(t, lokiEntries[1].Line, `wait_event_type="IO Wait"`)
+		// structured metadata labels should not contain wait_event_type
+		assert.NotContains(t, string(lokiEntries[1].Labels["wait_event_type"]), "IO Wait")
+	})
+}
+
+func TestClassifyMySQLWaitEventType(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		// IO
+		{"wait/io/file/innodb/innodb_data_file", "IO Wait"},
+		{"wait/io/file/sql/binlog", "IO Wait"},
+		{"wait/io/file/sql/io_cache", "IO Wait"},
+		{"wait/io/file/sql/slow_log", "IO Wait"},
+		{"wait/io/table/sql/handler", "IO Wait"},
+
+		// Network
+		{"wait/io/socket/sql/client_connection", "Network Wait"},
+
+		// Lock (cascade)
+		{"wait/io/lock/table/handler", "Lock Wait"},
+		{"wait/lock/table/sql/handler", "Lock Wait"},
+		{"wait/lock/metadata/sql/mdl", "Lock Wait"},
+
+		// Engine
+		{"wait/synch/mutex/sql/LOCK_open", "Engine Wait"},
+		{"wait/synch/mutex/sql/LOCK_table_cache", "Engine Wait"},
+		{"wait/synch/mutex/sql/LOG::LOCK_log", "Engine Wait"},
+		{"wait/synch/mutex/sql/MYSQL_BIN_LOG::LOCK_done", "Engine Wait"},
+		{"wait/synch/mutex/sql/LOCK_global_system_variables", "Engine Wait"},
+		{"wait/synch/cond/sql/MYSQL_BIN_LOG::COND_done", "Engine Wait"},
+		{"wait/synch/rwlock/sql/LOCK_system_variables_hash", "Engine Wait"},
+		{"wait/synch/prlock/sql/MDL_lock::rwlock", "Engine Wait"},
+		{"wait/synch/mutex/innodb/trx_mutex", "Engine Wait"},
+		{"wait/synch/mutex/innodb/dict_table_mutex", "Engine Wait"},
+
+		// Replication
+		{"wait/io/file/sql/relaylog", "Replication Wait"},
+		{"wait/io/file/sql/relaylog_index", "Replication Wait"},
+		{"wait/synch/mutex/sql/Slave_jobs_lock", "Replication Wait"},
+		{"wait/synch/mutex/sql/Slave_worker::jobs_lock", "Replication Wait"},
+		{"wait/synch/cond/sql/Slave_worker::jobs_cond", "Replication Wait"},
+		{"wait/synch/mutex/sql/Relay_log_info::pending_jobs_lock", "Replication Wait"},
+		{"wait/synch/mutex/sql/Relay_log_info::log_space_lock", "Replication Wait"},
+		// MySQL 8.0.22+ renamed Slave_* to Replica_*.
+		{"wait/synch/mutex/sql/Replica_jobs_lock", "Replication Wait"},
+		{"wait/synch/mutex/sql/Replica_committed_queue_lock", "Replication Wait"},
+		// MySQL 5.7 used Master_info, MySQL 8.0+ uses Source_info.
+		{"wait/synch/mutex/sql/Master_info::data_lock", "Replication Wait"},
+		{"wait/synch/mutex/sql/Source_info::data_lock", "Replication Wait"},
+		// Relay-log internal mutexes and multi-threaded replica coordination.
+		{"wait/synch/mutex/sql/MYSQL_RELAY_LOG::LOCK_log", "Replication Wait"},
+		{"wait/synch/mutex/sql/Mts_submode_logical_clock::data_lock", "Replication Wait"},
+
+		// Other / unknown
+		{"wait/unknown/something", "Other Wait"},
+		{"not_a_wait_event", "Other Wait"},
+		{"", "Other Wait"},
+		{"idle", "Other Wait"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.input, func(t *testing.T) {
+			result := classifyMySQLWaitEventType(tc.input)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
 }

@@ -41,7 +41,7 @@ case "$1" in
         chown root:"$ALLOY_GROUP" /etc/alloy
         chmod 770 /etc/alloy
 
-        if [ -z ${2+x} ] && [ "$RESTART_ON_UPGRADE" = "true" ]; then
+        if [ -n "$2" ] && [ "$RESTART_ON_UPGRADE" = "true" ]; then
             if command -v systemctl 2>/dev/null; then
                 systemctl daemon-reload
                 systemctl restart alloy

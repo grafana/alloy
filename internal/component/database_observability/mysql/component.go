@@ -106,10 +106,10 @@ type QueryDetailsArguments struct {
 }
 
 type SchemaDetailsArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
-	CacheSize       int           `alloy:"cache_size,attr,optional"`
-	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
+	CollectInterval time.Duration  `alloy:"collect_interval,attr,optional"`
+	CacheEnabled    *bool          `alloy:"cache_enabled,attr,optional"`
+	CacheSize       *int           `alloy:"cache_size,attr,optional"`
+	CacheTTL        *time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
 type SetupConsumersArguments struct {
@@ -133,12 +133,13 @@ type LocksArguments struct {
 }
 
 type QuerySamplesArguments struct {
-	CollectInterval             time.Duration `alloy:"collect_interval,attr,optional"`
-	DisableQueryRedaction       bool          `alloy:"disable_query_redaction,attr,optional"`
-	AutoEnableSetupConsumers    bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
-	SetupConsumersCheckInterval time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
-	SampleMinDuration           time.Duration `alloy:"sample_min_duration,attr,optional"`
-	WaitEventMinDuration        time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	CollectInterval               time.Duration `alloy:"collect_interval,attr,optional"`
+	DisableQueryRedaction         bool          `alloy:"disable_query_redaction,attr,optional"`
+	AutoEnableSetupConsumers      bool          `alloy:"auto_enable_setup_consumers,attr,optional"`
+	SetupConsumersCheckInterval   time.Duration `alloy:"setup_consumers_check_interval,attr,optional"`
+	SampleMinDuration             time.Duration `alloy:"sample_min_duration,attr,optional"`
+	WaitEventMinDuration          time.Duration `alloy:"wait_event_min_duration,attr,optional"`
+	EnablePreClassifiedWaitEvents bool          `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -174,9 +175,6 @@ func defaultArguments() Arguments {
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
 		},
 
 		SetupConsumersArguments: SetupConsumersArguments{
@@ -586,13 +584,20 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	}
 
 	if collectors[collector.SchemaDetailsCollector] {
+		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
+			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
+		}
+		if c.args.SchemaDetailsArguments.CacheSize != nil {
+			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
+		}
+		if c.args.SchemaDetailsArguments.CacheTTL != nil {
+			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
+		}
+
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
-			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})
@@ -615,17 +620,19 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                          c.dbConnection,
-			EngineVersion:               parsedEngineVersion,
-			CollectInterval:             c.args.QuerySamplesArguments.CollectInterval,
-			ExcludeSchemas:              c.args.ExcludeSchemas,
-			EntryHandler:                entryHandler,
-			Logger:                      c.opts.Logger,
-			DisableQueryRedaction:       c.args.QuerySamplesArguments.DisableQueryRedaction,
-			AutoEnableSetupConsumers:    c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
-			SetupConsumersCheckInterval: c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
-			SampleMinDuration:           c.args.QuerySamplesArguments.SampleMinDuration,
-			WaitEventMinDuration:        c.args.QuerySamplesArguments.WaitEventMinDuration,
+			DB:                            c.dbConnection,
+			EngineVersion:                 parsedEngineVersion,
+			CollectInterval:               c.args.QuerySamplesArguments.CollectInterval,
+			ExcludeSchemas:                c.args.ExcludeSchemas,
+			EntryHandler:                  entryHandler,
+			Registry:                      c.registry,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySamplesArguments.DisableQueryRedaction,
+			AutoEnableSetupConsumers:      c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
+			SetupConsumersCheckInterval:   c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
+			SampleMinDuration:             c.args.QuerySamplesArguments.SampleMinDuration,
+			WaitEventMinDuration:          c.args.QuerySamplesArguments.WaitEventMinDuration,
+			EnablePreClassifiedWaitEvents: c.args.QuerySamplesArguments.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
@@ -735,6 +742,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
 		DB:              c.dbConnection,
 		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
+		ExcludeSchemas:  c.args.ExcludeSchemas,
 		EntryHandler:    entryHandler,
 		Logger:          c.opts.Logger,
 	})

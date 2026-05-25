@@ -135,7 +135,7 @@ func (c *Component) Update(args component.Arguments) error {
 		c.uncheckedCollector.SetCollector(reg)
 
 		var err error
-		c.server, err = source.NewServer(c.opts.Logger, reg, c.handler, source.ServerConfig{
+		c.server, err = source.NewServer(c.opts.SLogger, reg, c.handler, source.ServerConfig{
 			Namespace:      "loki_source_api",
 			EntriesWritten: c.metrics.entriesWritten,
 			NetConfig:      newArgs.Server,

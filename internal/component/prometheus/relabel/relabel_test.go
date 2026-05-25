@@ -3,7 +3,6 @@ package relabel
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"testing"
 	"time"
 
@@ -29,22 +28,39 @@ func TestUpdateReset(t *testing.T) {
 	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeller.relabel(0, lbls)
-	require.True(t, relabeller.cache.Len() == 1)
-	_ = relabeller.Update(Arguments{
+	require.True(t, relabeller.cache.len() == 1)
+	require.NoError(t, relabeller.Update(Arguments{
 		CacheSize:            100000,
 		MetricRelabelConfigs: []*alloy_relabel.Config{},
-	})
-	require.True(t, relabeller.cache.Len() == 0)
+	}))
+	require.True(t, relabeller.cache.len() == 0)
 }
 
 func TestValidator(t *testing.T) {
-	args := Arguments{CacheSize: 0}
-	err := args.Validate()
-	require.Error(t, err)
-
-	args.CacheSize = 1
-	err = args.Validate()
-	require.NoError(t, err)
+	cases := []struct {
+		name    string
+		args    Arguments
+		wantErr string
+	}{
+		{name: "default LRU", args: Arguments{CacheSize: 1}},
+		{name: "TTL only", args: Arguments{CacheSize: 0, CacheTTL: 5 * time.Minute}},
+		{name: "negative size", args: Arguments{CacheSize: -1}, wantErr: "max_cache_size must be >= 0"},
+		{name: "negative ttl", args: Arguments{CacheSize: 1, CacheTTL: -time.Second}, wantErr: "cache_ttl must be >= 0"},
+		{name: "both set", args: Arguments{CacheSize: 100, CacheTTL: time.Minute}, wantErr: "mutually exclusive"},
+		{name: "neither set", args: Arguments{}, wantErr: "one of max_cache_size or cache_ttl must be set"},
+		{name: "ttl too short", args: Arguments{CacheSize: 0, CacheTTL: 30 * time.Second}, wantErr: "at least"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.args.Validate()
+			if tc.wantErr == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.wantErr)
+		})
+	}
 }
 
 func TestNil(t *testing.T) {
@@ -76,17 +92,23 @@ func TestNil(t *testing.T) {
 	relabeller.relabel(0, lbls)
 }
 
-func TestLRU(t *testing.T) {
-	relabeller := generateRelabel(t)
+// TestUpdateSwitchesCacheMode confirms that toggling cache_ttl on or
+// off via Update() swaps the cache implementation.
+func TestUpdateSwitchesCacheMode(t *testing.T) {
+	relabeller := generateRelabelWithArgs(t, Arguments{CacheSize: 1_000})
+	require.IsType(t, &lruRelabelCache{}, relabeller.cache)
 
-	for i := 0; i < 600_000; i++ {
-		lbls := labels.FromStrings("__address__", "localhost", "inc", strconv.Itoa(i))
-		relabeller.relabel(0, lbls)
-	}
-	require.Equal(t, 100_000, relabeller.cache.Len())
+	require.NoError(t, relabeller.Update(Arguments{CacheSize: 0, CacheTTL: time.Minute}))
+	require.IsType(t, &ttlRelabelCache{}, relabeller.cache)
+
+	require.NoError(t, relabeller.Update(Arguments{CacheSize: 1_000}))
+	require.IsType(t, &lruRelabelCache{}, relabeller.cache)
 }
 
-func TestLRUNaN(t *testing.T) {
+// TestStaleNaNRemovesFromCache asserts that the relabel hook drops a
+// cached entry when it sees a stale-NaN sample, regardless of cache
+// mode (the cache itself is exercised via the component's interface).
+func TestStaleNaNRemovesFromCache(t *testing.T) {
 	relabeller := generateRelabel(t)
 	lbls := labels.FromStrings("__address__", "localhost")
 	relabeled := relabeller.relabel(0, lbls)
@@ -100,6 +122,62 @@ func TestLRUNaN(t *testing.T) {
 
 	_, found = relabeller.getFromCache(lbls)
 	require.False(t, found)
+}
+
+// TestCacheSizeMetric verifies the cache_size gauge reports the live
+// cache length when scraped, in each mode.
+func TestCacheSizeMetric(t *testing.T) {
+	cases := []struct {
+		name string
+		args Arguments
+		want float64
+	}{
+		{name: "lru", args: Arguments{CacheSize: 100}, want: 1},
+		{name: "ttl", args: Arguments{CacheSize: 0, CacheTTL: time.Hour}, want: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			reg := prom.NewRegistry()
+			fanout := prometheus.NewInterceptor(nil)
+			args := tc.args
+			args.ForwardTo = []storage.Appendable{fanout}
+			args.MetricRelabelConfigs = []*alloy_relabel.Config{
+				{
+					SourceLabels: []string{"__address__"},
+					Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+					TargetLabel:  "new_label",
+					Replacement:  "new_value",
+					Action:       "replace",
+				},
+			}
+			relabeller, err := New(component.Options{
+				ID:             "1",
+				Logger:         util.TestAlloyLogger(t),
+				OnStateChange:  func(e component.Exports) {},
+				Registerer:     reg,
+				GetServiceData: getServiceData,
+			}, args)
+			require.NoError(t, err)
+			t.Cleanup(func() {
+				relabeller.mut.RLock()
+				relabeller.cache.close()
+				relabeller.mut.RUnlock()
+			})
+
+			relabeller.relabel(0, labels.FromStrings("__address__", "localhost"))
+
+			mfs, err := reg.Gather()
+			require.NoError(t, err)
+			var got float64
+			for _, mf := range mfs {
+				if mf.GetName() == "alloy_prometheus_relabel_cache_size" {
+					got = mf.Metric[0].Gauge.GetValue()
+					break
+				}
+			}
+			require.Equal(t, tc.want, got)
+		})
+	}
 }
 
 func TestMetrics(t *testing.T) {
@@ -190,29 +268,88 @@ func BenchmarkCache(b *testing.B) {
 	app.Commit()
 }
 
+// BenchmarkCacheModes exercises the relabel hot path under each cache
+// mode at steady state (single label set; every call hits the cache
+// after the first). Use to compare per-call overhead between modes.
+func BenchmarkCacheModes(b *testing.B) {
+	cases := []struct {
+		name string
+		args Arguments
+	}{
+		{name: "lru", args: Arguments{CacheSize: 100_000}},
+		{name: "ttl", args: Arguments{CacheSize: 0, CacheTTL: 10 * time.Minute}},
+	}
+	for _, tc := range cases {
+		b.Run(tc.name, func(b *testing.B) {
+			fanout := prometheus.NewInterceptor(nil, prometheus.WithAppendHook(func(ref storage.SeriesRef, _ labels.Labels, _ int64, _ float64, _ storage.Appender) (storage.SeriesRef, error) {
+				return ref, nil
+			}))
+			args := tc.args
+			args.ForwardTo = []storage.Appendable{fanout}
+			args.MetricRelabelConfigs = []*alloy_relabel.Config{
+				{
+					SourceLabels: []string{"__address__"},
+					Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+					TargetLabel:  "new_label",
+					Replacement:  "new_value",
+					Action:       "replace",
+				},
+			}
+			var entry storage.Appendable
+			_, err := New(component.Options{
+				ID:     "1",
+				Logger: util.TestAlloyLogger(b),
+				OnStateChange: func(e component.Exports) {
+					entry = e.(Exports).Receiver
+				},
+				Registerer:     prom.NewRegistry(),
+				GetServiceData: getServiceData,
+			}, args)
+			require.NoError(b, err)
+
+			lbls := labels.FromStrings("__address__", "localhost")
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				app := entry.Appender(b.Context())
+				for pb.Next() {
+					app.Append(0, lbls, time.Now().UnixMilli(), 0)
+				}
+				app.Commit()
+			})
+		})
+	}
+}
+
 func generateRelabel(t *testing.T) *Component {
+	return generateRelabelWithArgs(t, Arguments{CacheSize: 100_000})
+}
+
+func generateRelabelWithArgs(t *testing.T, args Arguments) *Component {
 	fanout := prometheus.NewInterceptor(nil)
+	args.ForwardTo = []storage.Appendable{fanout}
+	args.MetricRelabelConfigs = []*alloy_relabel.Config{
+		{
+			SourceLabels: []string{"__address__"},
+			Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
+			TargetLabel:  "new_label",
+			Replacement:  "new_value",
+			Action:       "replace",
+		},
+	}
 	relabeller, err := New(component.Options{
 		ID:             "1",
 		Logger:         util.TestAlloyLogger(t),
 		OnStateChange:  func(e component.Exports) {},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
-	}, Arguments{
-		ForwardTo: []storage.Appendable{fanout},
-		MetricRelabelConfigs: []*alloy_relabel.Config{
-			{
-				SourceLabels: []string{"__address__"},
-				Regex:        alloy_relabel.Regexp(relabel.MustNewRegexp("(.+)")),
-				TargetLabel:  "new_label",
-				Replacement:  "new_value",
-				Action:       "replace",
-			},
-		},
-		CacheSize: 100_000,
-	})
+	}, args)
 	require.NotNil(t, relabeller)
 	require.NoError(t, err)
+	t.Cleanup(func() {
+		relabeller.mut.RLock()
+		relabeller.cache.close()
+		relabeller.mut.RUnlock()
+	})
 	return relabeller
 }
 

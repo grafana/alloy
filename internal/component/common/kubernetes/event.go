@@ -1,6 +1,8 @@
 package kubernetes
 
 import (
+	"time"
+
 	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"k8s.io/client-go/tools/cache"
@@ -18,6 +20,11 @@ type EventType string
 
 const (
 	EventTypeResourceChanged EventType = "resource-changed"
+
+	// RulerSyncTimeout is the timeout applied to remote ruler API calls (e.g.
+	// listing rule groups) to prevent the event loop from blocking indefinitely
+	// on transient network issues.
+	RulerSyncTimeout = 30 * time.Second
 )
 
 type queuedEventHandler struct {

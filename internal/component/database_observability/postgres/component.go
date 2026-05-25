@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"path"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -65,13 +66,14 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName    alloytypes.Secret   `alloy:"data_source_name,attr"`
-	ForwardTo         []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets           []discovery.Target  `alloy:"targets,attr,optional"`
-	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
-	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
-	ExcludeUsers      []string            `alloy:"exclude_users,attr,optional"`
+	DataSourceName     alloytypes.Secret   `alloy:"data_source_name,attr"`
+	ForwardTo          []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Targets            []discovery.Target  `alloy:"targets,attr,optional"`
+	EnableCollectors   []string            `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors  []string            `alloy:"disable_collectors,attr,optional"`
+	ExcludeDatabases   []string            `alloy:"exclude_databases,attr,optional"`
+	ExcludeUsers       []string            `alloy:"exclude_users,attr,optional"`
+	ExcludeCurrentUser bool                `alloy:"exclude_current_user,attr,optional"`
 
 	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments         `alloy:"query_samples,block,optional"`
@@ -105,7 +107,11 @@ type GCPCloudProviderInfo struct {
 type QuerySampleArguments struct {
 	CollectInterval       time.Duration `alloy:"collect_interval,attr,optional"`
 	DisableQueryRedaction bool          `alloy:"disable_query_redaction,attr,optional"`
-	ExcludeCurrentUser    bool          `alloy:"exclude_current_user,attr,optional"`
+	// Deprecated: `query_samples.exclude_current_user` is deprecated in favour of the top-level setting.
+	// When set (non-nil), it takes precedence over the top-level setting for the
+	// query_samples collector only and preserves the legacy behaviour.
+	ExcludeCurrentUser            *bool `alloy:"exclude_current_user,attr,optional"`
+	EnablePreClassifiedWaitEvents bool  `alloy:"enable_pre_classified_wait_events,attr,optional"`
 }
 
 type QueryDetailsArguments struct {
@@ -122,12 +128,12 @@ type SchemaDetailsArguments struct {
 
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
-		ExcludeUsers:     database_observability.DefaultExcludedUsers(),
+		ExcludeDatabases:   database_observability.DefaultExcludedDatabases(),
+		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
+		ExcludeCurrentUser: true,
 		QuerySampleArguments: QuerySampleArguments{
 			CollectInterval:       15 * time.Second,
 			DisableQueryRedaction: false,
-			ExcludeCurrentUser:    true,
 		},
 		QueryDetailsArguments: QueryDetailsArguments{
 			CollectInterval: 1 * time.Minute,
@@ -417,6 +423,20 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 
 	generatedSystemID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s:%s", systemID.String, systemIP.String, systemPort.String))))
 
+	// Get the current user and compute the effective exclude users list.
+	var currentUser sql.NullString
+	if c.args.ExcludeCurrentUser {
+		if err := dbConnection.QueryRowContext(ctx, "SELECT current_user").Scan(&currentUser); err != nil {
+			return fmt.Errorf("failed to query current_user: %w", err)
+		}
+	}
+	effectiveExcludeUsers := slices.Clone(c.args.ExcludeUsers)
+	if currentUser.Valid {
+		if !slices.Contains(effectiveExcludeUsers, currentUser.String) {
+			effectiveExcludeUsers = append(effectiveExcludeUsers, currentUser.String)
+		}
+	}
+
 	var cp *database_observability.CloudProvider
 	if c.args.CloudProvider != nil {
 		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
@@ -503,7 +523,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp); err != nil {
+	if err := c.startCollectors(generatedSystemID, engineVersion.String, cp, effectiveExcludeUsers); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -549,8 +569,8 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 	return collectors
 }
 
-// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported
-func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider) error {
+// startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported.
+func (c *Component) startCollectors(systemID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider, effectiveExcludeUsers []string) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -592,7 +612,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			CollectInterval:  c.args.QueryDetailsArguments.CollectInterval,
 			StatementsLimit:  c.args.QueryDetailsArguments.StatementsLimit,
 			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     c.args.ExcludeUsers,
+			ExcludeUsers:     effectiveExcludeUsers,
 			EntryHandler:     entryHandler,
 			TableRegistry:    tableRegistry,
 			Logger:           c.opts.Logger,
@@ -607,15 +627,27 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	}
 
 	if collectors[collector.QuerySamplesCollector] {
+		// For backward compatibility, give precedence to query_samples.exclude_current_user
+		// setting over the top-level exclude_current_user: when set, preserve today's behavior;
+		// when unset, inherit the top-level cascade.
+		qsExcludeUsers := effectiveExcludeUsers
+		qsExcludeCurrentUser := false
+		if localExcludeCurrentUser := c.args.QuerySampleArguments.ExcludeCurrentUser; localExcludeCurrentUser != nil {
+			level.Warn(c.opts.Logger).Log("msg", "query_samples.exclude_current_user is deprecated; use the top-level exclude_current_user setting instead")
+			qsExcludeUsers = c.args.ExcludeUsers
+			qsExcludeCurrentUser = *localExcludeCurrentUser
+		}
+
 		aCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
-			DB:                    c.dbConnection,
-			CollectInterval:       c.args.QuerySampleArguments.CollectInterval,
-			ExcludeDatabases:      c.args.ExcludeDatabases,
-			ExcludeUsers:          c.args.ExcludeUsers,
-			EntryHandler:          entryHandler,
-			Logger:                c.opts.Logger,
-			DisableQueryRedaction: c.args.QuerySampleArguments.DisableQueryRedaction,
-			ExcludeCurrentUser:    c.args.QuerySampleArguments.ExcludeCurrentUser,
+			DB:                            c.dbConnection,
+			CollectInterval:               c.args.QuerySampleArguments.CollectInterval,
+			ExcludeDatabases:              c.args.ExcludeDatabases,
+			ExcludeUsers:                  qsExcludeUsers,
+			EntryHandler:                  entryHandler,
+			Logger:                        c.opts.Logger,
+			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
+			ExcludeCurrentUser:            qsExcludeCurrentUser,
+			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
 		})
 		if err != nil {
 			logStartError(collector.QuerySamplesCollector, "create", err)
@@ -650,7 +682,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
 			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     c.args.ExcludeUsers,
+			ExcludeUsers:     effectiveExcludeUsers,
 			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
 			EntryHandler:     entryHandler,
@@ -666,10 +698,12 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// HealthCheck collector is always enabled
 	hcCollector, err := collector.NewHealthCheck(collector.HealthCheckArguments{
-		DB:              c.dbConnection,
-		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
-		EntryHandler:    entryHandler,
-		Logger:          c.opts.Logger,
+		DB:               c.dbConnection,
+		CollectInterval:  c.args.HealthCheckArguments.CollectInterval,
+		ExcludeDatabases: c.args.ExcludeDatabases,
+		ExcludeUsers:     effectiveExcludeUsers,
+		EntryHandler:     entryHandler,
+		Logger:           c.opts.Logger,
 	})
 	if err != nil {
 		logStartError(collector.HealthCheckCollector, "create", err)
@@ -687,7 +721,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Logger:           c.opts.Logger,
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
-		ExcludeUsers:     c.args.ExcludeUsers,
+		ExcludeUsers:     effectiveExcludeUsers,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)

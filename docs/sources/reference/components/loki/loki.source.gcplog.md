@@ -52,7 +52,7 @@ You can use the following blocks with `loki.source.gcplog`:
 | `pull` > [`limit`][limit]      | Configures Pub/Sub flow-control limits for in-flight message processing.      | no       |
 | [`push`][push]                 | Configures a server to receive logs as GCP Pub/Sub push requests.             | no       |
 | `push` > [`grpc`][grpc]        | Configures the gRPC server that receives requests when using the `push` mode. | no       |
-| `push` > `gprc` > [`tls`][tls] | Configures TLS for the gRPC server.                                           | no       |
+| `push` > `grpc` > [`tls`][tls] | Configures TLS for the gRPC server.                                           | no       |
 | `push` > [`http`][http]        | Configures the HTTP server that receives requests when using the `push` mode. | no       |
 | `push` > `http` > [`tls`][tls] | Configures TLS for the HTTP server.                                           | no       |
 

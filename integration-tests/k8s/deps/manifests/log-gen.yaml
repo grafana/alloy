@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-gen
+binaryData:
+  test.log: ${CONTENT}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: log-gen
+spec:
+  serviceName: log-gen
+  replicas: ${REPLICAS}
+  selector:
+    matchLabels:
+      app: log-gen
+  template:
+    metadata:
+      labels:
+        app: log-gen
+        alloy-logs-test: "true"
+    spec:
+      containers:
+        - name: log-gen
+          image: busybox:1.36
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c"]
+          args:
+            - |
+              while IFS= read -r line; do
+                printf '%s\n' "$line"
+                sleep 0.001
+              done < /etc/log-gen/test.log
+              tail -f /dev/null
+          volumeMounts:
+            - name: content
+              mountPath: /etc/log-gen
+              readOnly: true
+      volumes:
+        - name: content
+          configMap:
+            name: log-gen

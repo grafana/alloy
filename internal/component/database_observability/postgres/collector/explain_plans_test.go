@@ -2865,6 +2865,24 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
+					"testdb123459": {
+						queryId:    "123459",
+						queryText:  "show search_path",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123460": {
+						queryId:    "123460",
+						queryText:  "call refresh_summary()",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123461": {
+						queryId:    "123461",
+						queryText:  "do 'begin perform 1; end'",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
@@ -2872,7 +2890,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				perScrapeRatio:     1.0,
 				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
 				entryHandler:       lokiClient,
-				currentBatchSize:   3,
+				currentBatchSize:   6,
 			}
 
 			err = explainPlan.fetchExplainPlans(t.Context())
@@ -2880,14 +2898,14 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.NoError(t, err)
 			require.Eventually(
 				t,
-				func() bool { return len(lokiClient.Received()) == 3 },
+				func() bool { return len(lokiClient.Received()) == 6 },
 				5*time.Second,
 				10*time.Millisecond,
 				"did not receive the explain plan output log message within the timeout",
 			)
 
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 3, len(lokiEntries))
+			require.Equal(t, 6, len(lokiEntries))
 
 			require.NotContains(t, logBuffer.String(), "error")
 			assert.NoError(t, mock.ExpectationsWereMet())

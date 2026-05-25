@@ -8,6 +8,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"unicode"
 
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 	"github.com/grafana/alloy/tools/release/internal/version"
@@ -152,7 +153,7 @@ func addContributorInfo(ctx context.Context, client *gh.Client, body string) str
 		}
 
 		fmt.Printf("   Commit %s: %v\n", sha, contributors)
-		lines[i] = line + " " + formatAttribution(contributors)
+		lines[i] = appendAttribution(line, contributors)
 	}
 
 	return strings.Join(lines, "\n")
@@ -209,8 +210,17 @@ func formatAttribution(usernames []string) string {
 	return "(" + strings.Join(mentions, ", ") + ")"
 }
 
+func appendAttribution(line string, contributors []string) string {
+	return strings.TrimRightFunc(line, unicode.IsSpace) + " " + formatAttribution(contributors)
+}
+
 // appendFooter reads the release notes footer template and appends it with version substitution.
 func appendFooter(body, tag, footerPath string) (string, error) {
+	if isComponentReleaseTag(tag) {
+		fmt.Printf("Skipping release notes footer for component release tag %s\n", tag)
+		return body, nil
+	}
+
 	footer, err := os.ReadFile(footerPath)
 	if err != nil {
 		return "", fmt.Errorf("reading footer template: %w", err)
@@ -227,6 +237,10 @@ func appendFooter(body, tag, footerPath string) (string, error) {
 
 	// Append footer to body
 	return body + "\n\n" + footerStr, nil
+}
+
+func isComponentReleaseTag(tag string) bool {
+	return strings.Contains(tag, "/")
 }
 
 // deriveDocTag derives the documentation tag from a release tag.

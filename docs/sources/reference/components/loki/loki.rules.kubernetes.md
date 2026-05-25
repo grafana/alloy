@@ -50,7 +50,8 @@ You can use the following arguments with `loki.rules.kubernetes`:
 | `enable_http2`          | `bool`              | Whether HTTP2 is supported for requests.                                                | `true`    | no       |
 | `follow_redirects`      | `bool`              | Whether redirects returned by the server should be followed.                            | `true`    | no       |
 | `http_headers`          | `map(list(secret))` | Custom HTTP headers to be sent along with each request. The map key is the header name. |           | no       |
-| `loki_namespace_prefix` | `string`            | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.         | `"alloy"` | no       |
+| `loki_namespace_prefix`    | `string`         | Prefix used to differentiate multiple {{< param "PRODUCT_NAME" >}} deployments.         | `"alloy"` | no       |
+| `loki_namespace_separator` | `string`         | Separator between components of the Loki namespace string.                              | `"-"`     | no       |
 | `proxy_url`             | `string`            | HTTP proxy to proxy requests through.                                                   |           | no       |
 | `sync_interval`         | `duration`          | Amount of time between reconciliations with Loki.                                       | `"30s"`   | no       |
 | `tenant_id`             | `string`            | Loki tenant ID.                                                                         |           | no       |
@@ -65,6 +66,9 @@ You can use the following arguments with `loki.rules.kubernetes`:
 * [`oauth2`][oauth2] block
 
  [arguments]: #arguments
+ [authorization]: #authorization
+ [basic_auth]: #basic_auth
+ [oauth2]: #oauth2
 
 If no `tenant_id` is provided, the component assumes that the Loki instance at `address` is running in single-tenant mode and no `X-Scope-OrgID` header is sent.
 
@@ -146,6 +150,8 @@ The following arguments are supported:
 
 When the `match_labels` argument is empty, all resources are matched.
 
+You can also use the `match_expression` block to define more complex label expressions.
+
 ### `match_expression`
 
 The `match_expression` block describes a Kubernetes label match expression for rule or namespace discovery.
@@ -160,9 +166,9 @@ The following arguments are supported:
 
 The `operator` argument should be one of the following strings:
 
-* `"in"`
-* `"notin"`
-* `"exists"`
+* `"In"`
+* `"NotIn"`
+* `"Exists"`
 
 ### `oauth2`
 

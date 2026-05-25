@@ -4,7 +4,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/go-kit/log"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,7 +14,7 @@ func TestReconcile(t *testing.T) {
 
 	t.Run("should reconcile all new sources", func(t *testing.T) {
 		Reconcile(
-			log.NewNopLogger(),
+			logging.NewSlogNop(),
 			s,
 			slices.Values([]int{1, 2, 3}),
 			func(v int) int {
@@ -29,7 +29,7 @@ func TestReconcile(t *testing.T) {
 
 	t.Run("should stop all missing sources", func(t *testing.T) {
 		Reconcile(
-			log.NewNopLogger(),
+			logging.NewSlogNop(),
 			s,
 			slices.Values([]int{2, 3}),
 			func(v int) int {
@@ -44,7 +44,7 @@ func TestReconcile(t *testing.T) {
 
 	t.Run("should prevent duplicated source from being scheduled", func(t *testing.T) {
 		Reconcile(
-			log.NewNopLogger(),
+			logging.NewSlogNop(),
 			s,
 			slices.Values([]int{2, 2, 3}),
 			func(v int) int {
@@ -59,7 +59,7 @@ func TestReconcile(t *testing.T) {
 
 	t.Run("should not schedule if error is returned", func(t *testing.T) {
 		Reconcile(
-			log.NewNopLogger(),
+			logging.NewSlogNop(),
 			s,
 			slices.Values([]int{2, 3, 4}),
 			func(v int) int {

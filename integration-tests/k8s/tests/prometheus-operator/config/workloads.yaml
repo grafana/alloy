@@ -1,0 +1,73 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prom-gen-service-monitor
+  namespace: ${NAMESPACE}
+  labels:
+    alloy-integration-test: "true"
+spec:
+  selector:
+    matchLabels:
+      app: prom-gen
+  namespaceSelector:
+    matchNames:
+      - ${NAMESPACE}
+  endpoints:
+    - port: metrics
+      interval: 5s
+      scrapeTimeout: 3s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: prom-gen-pod-monitor
+  namespace: ${NAMESPACE}
+  labels:
+    alloy-integration-test: "true"
+spec:
+  selector:
+    matchLabels:
+      app: prom-gen
+  namespaceSelector:
+    matchNames:
+      - ${NAMESPACE}
+  podMetricsEndpoints:
+    - port: metrics
+      interval: 5s
+      scrapeTimeout: 3s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: http-probe
+  namespace: ${NAMESPACE}
+  labels:
+    alloy-integration-test: "true"
+spec:
+  interval: 5s
+  scrapeTimeout: 3s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.${NAMESPACE}.svc:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://prom-gen.${NAMESPACE}.svc:9001/metrics
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: prom-gen-scrape-config
+  namespace: ${NAMESPACE}
+  labels:
+    alloy-integration-test: "true"
+spec:
+  staticConfigs:
+    - targets:
+        - "prom-gen.${NAMESPACE}.svc:9001"
+      labels:
+        job: "prom-gen-static"
+  metricsPath: /metrics
+  scrapeInterval: 5s
+  scrapeTimeout: 3s

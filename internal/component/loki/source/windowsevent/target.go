@@ -6,12 +6,11 @@ package windowsevent
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -28,7 +27,7 @@ type Target struct {
 	handler       loki.LogsReceiver
 	cfg           *scrapeconfig.WindowsEventsTargetConfig
 	relabelConfig []*relabel.Config
-	logger        log.Logger
+	logger        *slog.Logger
 
 	bm      *bookMark // bookmark to save positions.
 	fetcher *win_eventlog.EventFetcher
@@ -40,7 +39,7 @@ type Target struct {
 
 // NewTarget create a new windows targets, that will fetch windows event logs and send them to Loki.
 func NewTarget(
-	logger log.Logger,
+	logger *slog.Logger,
 	handler loki.LogsReceiver,
 	relabel []*relabel.Config,
 	cfg *scrapeconfig.WindowsEventsTargetConfig,
@@ -105,7 +104,7 @@ func (t *Target) loop() {
 			if err != nil {
 				if err != win_eventlog.ERROR_NO_MORE_ITEMS {
 					t.err = err
-					level.Error(t.logger).Log("msg", "error fetching events", "err", err)
+					t.logger.Error("error fetching events", "err", err)
 				}
 				break loop
 			}
@@ -118,7 +117,7 @@ func (t *Target) loop() {
 				err = t.bm.update(handles[len(handles)-1])
 				if err != nil {
 					t.err = err
-					level.Error(t.logger).Log("msg", "error updating in-memory bookmark", "err", err)
+					t.logger.Error("error updating in-memory bookmark", "err", err)
 				}
 			}
 			win_eventlog.Close(handles)
@@ -149,7 +148,7 @@ func (t *Target) updateBookmark(bookmarkSyncPeriod time.Duration) {
 func (t *Target) saveBookmarkPosition() {
 	if err := t.bm.save(); err != nil {
 		t.err = err
-		level.Error(t.logger).Log("msg", "error saving bookmark", "err", err)
+		t.logger.Error("error saving bookmark", "err", err)
 	}
 }
 
@@ -164,7 +163,7 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 		if t.cfg.UseIncomingTimestamp {
 			timeStamp, err := time.Parse(time.RFC3339Nano, fmt.Sprintf("%v", event.TimeCreated.SystemTime))
 			if err != nil {
-				level.Warn(t.logger).Log("msg", "error parsing timestamp", "err", err)
+				t.logger.Warn("error parsing timestamp", "err", err)
 			} else {
 				entry.Timestamp = timeStamp
 			}
@@ -193,7 +192,7 @@ func (t *Target) renderEntries(events []win_eventlog.Event) []loki.Entry {
 
 		line, err := formatLine(t.cfg, event)
 		if err != nil {
-			level.Warn(t.logger).Log("msg", "error formatting event", "err", err)
+			t.logger.Warn("error formatting event", "err", err)
 			continue
 		}
 		entry.Line = line

@@ -500,12 +500,15 @@ The following arguments are supported:
 
 | Name             | Type          | Description                                           | Default | Required |
 | ---------------- | ------------- | ----------------------------------------------------- | ------- | -------- |
-| `expressions`    | `map(string)` | Key-value pairs of JMESPath expressions.              |         | yes      |
+| `expressions`    | `map(string)` | Key-value pairs of JMESPath expressions.              |         | no       |
+| `regex`          | `string`      | Regular expression matched against JSON keys.         |         | no       |
 | `drop_malformed` | `bool`        | Drop lines whose input can't be parsed as valid JSON. | `false` | no       |
 | `source`         | `string`      | Source of the data to parse as JSON.                  | `""`    | no       |
 
 The `expressions` field is the set of key-value pairs of JMESPath expressions to run.
-The map key defines the name with which the data is extracted, while the map value is the expression used to populate the value.
+The map key defines the name used to extract the data, while the map value is the expression used to populate the value.
+
+The `regex` field is a regular expression. All keys in the JSON source matching the regular expression are extracted.
 
 When configuring a JSON stage, the `source` field defines the source of data to parse as JSON.
 By default, this is the log line itself, but it can also be a previously extracted value.
@@ -673,19 +676,19 @@ The `stage.logfmt` inner block configures a processing stage that reads incoming
 
 The following arguments are supported:
 
-| Name      | Type          | Description                                    | Default | Required |
-| --------- | ------------- | ---------------------------------------------- | ------- | -------- |
-| `mapping` | `map(string)` | Key-value pairs of `logmft` fields to extract. |         | yes      |
-| `source`  | `string`      | Source of the data to parse as `logfmt`.       | `""`    | no       |
+| Name      | Type          | Description                                     | Default | Required |
+| --------- | ------------- | ----------------------------------------------- | ------- | -------- |
+| `mapping` | `map(string)` | Key-value pairs of `logmft` fields to extract.  |         | no       |
+| `regex`   | `string`      | Regular expression matched against logfmt keys. |         | no       |
+| `source`  | `string`      | Source of the data to parse as `logfmt`.        | `""`    | no       |
+
+The `mapping` field is the set of key-value pairs.
+The map key defines the name used to extract the data, while the map value is the logfmt field used to populate the value.
+
+The `regex` field is a regular expression. All logfmt fields matching the regular expression are extracted.
 
 The `source` field defines the source of data to parse as `logfmt`.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
-
-This stage uses the [go-logfmt][] unmarshaler, so that numeric or boolean types are unmarshalled into their correct form.
-The stage doesn't perform any other type conversions.
-If the extracted value is a complex type, it's treated as a string.
-
-[go-logfmt]: https://github.com/go-logfmt/logfmt
 
 The following log line and stages demonstrates how this works.
 
@@ -1799,13 +1802,14 @@ When no timestamp stage is set, the log entry timestamp defaults to the time whe
 
 The following arguments are supported:
 
-| Name                | Type           | Description                                                 | Default   | Required |
-| ------------------- | -------------- | ----------------------------------------------------------- | --------- | -------- |
-| `format`            | `string`       | Determines how to parse the source string.                  |           | yes      |
-| `source`            | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
-| `action_on_failure` | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
-| `fallback_formats`  | `list(string)` | Fallback formats to try if the `format` field fails.        | `[]`      | no       |
-| `location`          | `string`       | IANA Timezone Database location to use when parsing.        | `""`      | no       |
+| Name                            | Type           | Description                                                 | Default   | Required |
+| ------------------- ------------| -------------- | ----------------------------------------------------------- | --------- | -------- |
+| `format`                        | `string`       | Determines how to parse the source string.                  |           | yes      |
+| `source`                        | `string`       | Name from extracted values map to use for the timestamp.    |           | yes      |
+| `action_on_failure`             | `string`       | What to do when the timestamp can't be extracted or parsed. | `"fudge"` | no       |
+| `action_on_duplicate_timestamp` | `string`       | What to do when parsing duplicate timestamps.               | `"fudge"` | no       |
+| `fallback_formats`              | `list(string)` | Fallback formats to try if the `format` field fails.        | `[]`      | no       |
+| `location`                      | `string`       | IANA Timezone Database location to use when parsing.        | `""`      | no       |
 
 {{< admonition type="note" >}}
 Be careful with further stages which may also override the timestamp.
@@ -1879,6 +1883,13 @@ The supported actions are:
 
 * fudge (default): Change the timestamp to the last known timestamp, summing up 1 nanosecond to guarantee log entries ordering.
 * skip: Don't change the timestamp and keep the time when the log entry was scraped.
+
+The `action_on_duplicate_timestamp` field defines what to do when parsing succeeds but the parsed timestamp is equal to the last emitted timestamp for that stream, for example, when multiple messages share the same second or millisecond.
+
+The supported actions are:
+
+* fudge (default): Set the entry timestamp to the last emitted timestamp plus 1 nanosecond so that message order is preserved in Loki and Grafana.
+* keep: Leave the parsed timestamp as-is; duplicate timestamps may appear out of order downstream.
 
 The following stage fetches the `time` value from the shared values map, parses it as a RFC3339 format, and sets it as the log entry's timestamp.
 
