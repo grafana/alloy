@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#MISE description="Print -ldflags string used by alloy build tasks"
+#MISE hide=true
+
+set -euo pipefail
+
+vprefix="github.com/grafana/alloy/internal/build"
+vprefix_syntax="github.com/grafana/alloy/syntax/internal/stdlib"
+
+git_branch="$(git rev-parse --abbrev-ref HEAD)"
+git_revision="$(git rev-parse --short HEAD)"
+version="${VERSION:-$(bash ./tools/image-tag)}"
+builder="$(whoami)@$(hostname)"
+
+if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+  build_date="$(date -u -d@"$SOURCE_DATE_EPOCH" +%Y-%m-%dT%H:%M:%SZ)"
+else
+  build_date="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+fi
+
+beyla_module="$(go list -m -f '{{.Path}} {{.Version}}' github.com/grafana/beyla/v3 2>/dev/null || true)"
+beyla_pkg="$(echo "$beyla_module" | cut -d' ' -f1)/pkg/buildinfo"
+beyla_version="$(echo "$beyla_module" | cut -d' ' -f2)"
+
+ldflags="-X ${vprefix}.Branch=${git_branch}"
+ldflags="${ldflags} -X ${vprefix}.Version=${version}"
+ldflags="${ldflags} -X ${vprefix_syntax}.Version=${version}"
+ldflags="${ldflags} -X ${vprefix}.Revision=${git_revision}"
+ldflags="${ldflags} -X ${vprefix}.BuildUser=${builder}"
+ldflags="${ldflags} -X ${vprefix}.BuildDate=${build_date}"
+ldflags="${ldflags} -X ${beyla_pkg}.Version=${beyla_version}"
+
+echo "$ldflags"

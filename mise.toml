@@ -1,0 +1,8 @@
+[tools]
+go = "1.26.2"
+
+[env]
+CGO_ENABLED = "1"
+
+[tasks.alloy]
+file = "mise-tasks/build/alloy"

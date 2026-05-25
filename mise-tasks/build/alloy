@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#MISE description="Build the alloy binary (skips UI generation)"
+#MISE hide=true
+#USAGE flag "-r --release" help="Strip symbol table and DWARF for a smaller release binary" default="false"
+
+set -euo pipefail
+
+ldflags="$(mise run build:ldflags)"
+if [ "$usage_release" = "true" ]; then
+  ldflags="-s -w ${ldflags}"
+fi
+
+cd collector && go build -tags gore2regex -ldflags "$ldflags" -o ../build/alloy .
