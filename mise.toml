@@ -14,7 +14,13 @@ file = "mise-tasks/_build/build"
 [tasks."build:binary"]
 file = "mise-tasks/_build/build"
 
+[tasks."install:frontend"]
+sources = ["internal/web/ui/package.json", "internal/web/ui/package-lock.json"]
+outputs = ["internal/web/ui/node_modules/.package-lock.json"]
+run = "cd internal/web/ui && npm ci"
+
 [tasks."build:frontend"]
+depends = ["install:frontend"]
 sources = [
   "internal/web/ui/src/**/*",
   "internal/web/ui/public/**/*",
@@ -25,10 +31,10 @@ sources = [
   "internal/web/ui/tsconfig*.json",
 ]
 outputs = ["internal/web/ui/dist/**/*"]
-file = "mise-tasks/_build/frontend"
+run = "cd internal/web/ui && npm run build"
 
 [tasks."lint"]
-depends = ["lint:scripts", "lint:go", "lint:alloy"]
+depends = ["lint:scripts", "lint:go", "lint:alloy", "lint:frontend"]
 
 [tasks."lint:scripts"]
 file = "mise-tasks/_lint/scripts"
@@ -37,4 +43,10 @@ file = "mise-tasks/_lint/scripts"
 file = "mise-tasks/_lint/go"
 
 [tasks."lint:alloy"]
-file = "mise-tasks/_lint/alloy"
+description = "Run the custom alloylint analyzer"
+run = "go run ./internal/cmd/alloylint ./..."
+
+[tasks."lint:frontend"]
+description = "Lint and format-check the frontend (eslint + prettier)"
+depends = ["install:frontend"]
+run = "cd internal/web/ui && npm run lint && npm run format"

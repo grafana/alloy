@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-#MISE description="Build the alloy frontend UI assets"
-#MISE hide=true
-
-set -euo pipefail
-
-cd internal/web/ui
-npm ci
-npm run build
