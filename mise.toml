@@ -28,10 +28,13 @@ outputs = ["internal/web/ui/dist/**/*"]
 file = "mise-tasks/_build/frontend"
 
 [tasks."lint"]
-depends = ["lint:scripts", "lint:go"]
+depends = ["lint:scripts", "lint:go", "lint:alloy"]
 
 [tasks."lint:scripts"]
 file = "mise-tasks/_lint/scripts"
 
 [tasks."lint:go"]
 file = "mise-tasks/_lint/go"
+
+[tasks."lint:alloy"]
+file = "mise-tasks/_lint/alloy"

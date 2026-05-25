@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#MISE description="Run the custom alloylint analyzer"
+#MISE hide=true
+
+set -euo pipefail
+
+go run ./internal/cmd/alloylint ./...
