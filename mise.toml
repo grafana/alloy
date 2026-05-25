@@ -3,7 +3,7 @@ go = "1.26.2"
 node = "24.13.0"
 
 [env]
-CGO_ENABLED = "1"
+CGO_ENABLED = "{{ env.CGO_ENABLED | default(value='1') }}"
 
 [tasks."build:alloy"]
 depends = ["build:frontend"]

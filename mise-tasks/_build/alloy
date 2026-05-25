@@ -2,6 +2,8 @@
 #MISE description="Build the alloy binary (skips UI generation)"
 #MISE hide=true
 #USAGE flag "-r --release" help="Strip symbol table and DWARF for a smaller release binary" default="false"
+#USAGE flag "--tags <tags>" help="Comma-separated extra build tags (e.g. netgo,embedalloyui)" default=""
+#USAGE flag "-o --output <path>" help="Output binary path (relative to repo root, or absolute)" default="build/alloy"
 
 set -euo pipefail
 
@@ -10,4 +12,9 @@ if [ "$usage_release" = "true" ]; then
   ldflags="-s -w ${ldflags}"
 fi
 
-cd collector && go build -tags gore2regex -ldflags "$ldflags" -o ../build/alloy .
+tags="gore2regex"
+if [ -n "${usage_tags:-}" ]; then
+  tags="${tags},${usage_tags}"
+fi
+
+go build -C collector -tags "$tags" -ldflags "$ldflags" -o "$usage_output" .
