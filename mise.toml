@@ -5,12 +5,13 @@ node = "24.13.0"
 [env]
 CGO_ENABLED = "1"
 
-[tasks.alloy]
-depends = ["frontend"]
-file = "mise-tasks/build/alloy"
+[tasks."build:alloy"]
+depends = ["build:frontend", "build:binary"]
 
-[tasks.frontend]
-file = "mise-tasks/build/frontend"
+[tasks."build:binary"]
+file = "mise-tasks/_build/alloy"
+
+[tasks."build:frontend"]
 sources = [
   "internal/web/ui/src/**/*",
   "internal/web/ui/public/**/*",
@@ -21,3 +22,4 @@ sources = [
   "internal/web/ui/tsconfig*.json",
 ]
 outputs = ["internal/web/ui/dist/**/*"]
+file = "mise-tasks/_build/frontend"
