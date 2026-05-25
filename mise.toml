@@ -1,8 +1,23 @@
 [tools]
 go = "1.26.2"
+node = "24.13.0"
 
 [env]
 CGO_ENABLED = "1"
 
 [tasks.alloy]
+depends = ["frontend"]
 file = "mise-tasks/build/alloy"
+
+[tasks.frontend]
+file = "mise-tasks/build/frontend"
+sources = [
+  "internal/web/ui/src/**/*",
+  "internal/web/ui/public/**/*",
+  "internal/web/ui/index.html",
+  "internal/web/ui/package.json",
+  "internal/web/ui/package-lock.json",
+  "internal/web/ui/vite.config.ts",
+  "internal/web/ui/tsconfig*.json",
+]
+outputs = ["internal/web/ui/dist/**/*"]

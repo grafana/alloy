@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-ldflags="$(mise run build:ldflags)"
+ldflags="$(mise run -q build:ldflags)"
 if [ "$usage_release" = "true" ]; then
   ldflags="-s -w ${ldflags}"
 fi
