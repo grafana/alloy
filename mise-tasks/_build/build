@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2154  # $usage_* vars are injected by mise from the #USAGE spec
+
+# shellcheck disable=SC2154  # $usage_* vars are injected by mise from the #USAGE
+
 #MISE description="Build the alloy binary (skips UI generation)"
 #MISE hide=true
 #USAGE flag "-r --release" help="Strip symbol table and DWARF for a smaller release binary" default="false"

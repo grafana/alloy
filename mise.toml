@@ -1,6 +1,7 @@
 [tools]
 go = "1.26.2"
 node = "24.13.0"
+shellcheck = "0.11.0"
 
 [env]
 CGO_ENABLED = "{{ env.CGO_ENABLED | default(value='1') }}"
@@ -24,3 +25,9 @@ sources = [
 ]
 outputs = ["internal/web/ui/dist/**/*"]
 file = "mise-tasks/_build/frontend"
+
+[tasks."lint"]
+depends = ["lint:scripts"]
+
+[tasks."lint:scripts"]
+file = "mise-tasks/_lint/scripts"

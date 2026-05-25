@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#MISE description="Run shellcheck on shell scripts"
+#MISE hide=true
+
+set -euo pipefail
+
+dirs=(
+  packaging
+  tools
+  docs
+  mise-tasks
+)
+
+files=()
+while IFS= read -r -d '' f; do
+  if head -1 "$f" 2>/dev/null | grep -qE '^#!.*[/ ](sh|bash)$'; then
+    files+=("$f")
+  fi
+done < <(find "${dirs[@]}" -type f \( -iname '*.sh' -o -iname '*.bash' -o ! -iname '*.*' \) -print0)
+
+shellcheck "${files[@]}"
