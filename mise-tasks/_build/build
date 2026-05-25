@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC2154  # $usage_* vars are injected by mise from the #USAGE
+# shellcheck disable=SC2154  # $usage_* vars are injected by mise from #USAGE
 
 #MISE description="Build the alloy binary (skips UI generation)"
 #MISE hide=true

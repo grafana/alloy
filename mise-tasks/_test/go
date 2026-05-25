@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# shellcheck disable=SC2154  # $usage_* vars are injected by mise from #USAGE
+
+#MISE description="Run go test on every Go module"
+#MISE hide=true
+#USAGE flag "-t --tags <tags>" help="Comma-separated extra build tags (e.g. netgo,embedalloyui)" default=""
+
+set -euo pipefail
+
+tags="gore2regex"
+if [ -n "${usage_tags:-}" ]; then
+  tags="${tags},${usage_tags}"
+fi
+
+while IFS= read -r mod; do
+  dir="$(dirname "$mod")"
+  echo "go test -C $dir -tags $tags -race ./..."
+  go test -C "$dir" -tags "$tags" -race ./...
+done < <(find . -name go.mod -not -path '*/testdata/*')

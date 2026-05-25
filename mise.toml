@@ -46,6 +46,12 @@ file = "mise-tasks/_lint/go"
 description = "Run the custom alloylint analyzer"
 run = "go run ./internal/cmd/alloylint ./..."
 
+[tasks."test"]
+depends = ["test:go"]
+
+[tasks."test:go"]
+file = "mise-tasks/_test/go"
+
 [tasks."lint:frontend"]
 description = "Lint and format-check the frontend (eslint + prettier)"
 depends = ["install:frontend"]
