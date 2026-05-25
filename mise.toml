@@ -6,7 +6,8 @@ node = "24.13.0"
 CGO_ENABLED = "1"
 
 [tasks."build:alloy"]
-depends = ["build:frontend", "build:binary"]
+depends = ["build:frontend"]
+file = "mise-tasks/_build/alloy"
 
 [tasks."build:binary"]
 file = "mise-tasks/_build/alloy"
