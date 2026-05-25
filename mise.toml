@@ -5,12 +5,12 @@ node = "24.13.0"
 [env]
 CGO_ENABLED = "{{ env.CGO_ENABLED | default(value='1') }}"
 
-[tasks."build:alloy"]
+[tasks."build"]
 depends = ["build:frontend"]
-file = "mise-tasks/_build/alloy"
+file = "mise-tasks/_build/build"
 
 [tasks."build:binary"]
-file = "mise-tasks/_build/alloy"
+file = "mise-tasks/_build/build"
 
 [tasks."build:frontend"]
 sources = [
