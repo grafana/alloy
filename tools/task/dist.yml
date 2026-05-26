@@ -212,7 +212,7 @@ tasks:
             OUT: "{{.ALLOY_PACKAGE_PREFIX}}.s390x.rpm",
           }
 
-  # Internal fpm wrapper. Mirrors generate_alloy_fpm in tools/make/packaging.mk:144-165.
+  # Internal fpm wrapper. Mirrors generate_alloy_fpm in build-tools/make/packaging.mk:144-165.
   _fpm:
     internal: true
     requires:

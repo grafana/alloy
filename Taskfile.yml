@@ -61,7 +61,7 @@ vars:
   GIT_BRANCH:
     sh: git rev-parse --abbrev-ref HEAD
   VERSION:
-    sh: bash ./tools/image-tag
+    sh: bash ./scripts/image-tag
   BUILDER_USER:
     sh: whoami
   BUILDER_HOST:
