@@ -110,9 +110,9 @@ tasks:
 
   images:
     desc: Build all Linux Docker images.
-    deps:
-      - image:alloy
-      - image:alloy-windows
+    cmds:
+      - task: image:alloy
+      - task: image:alloy-windows
 
   generate:
     desc: Run every code generator in the same order as `make generate`.
