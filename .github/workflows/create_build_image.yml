@@ -51,7 +51,7 @@ jobs:
       uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
       with:
         platforms: linux/amd64,linux/arm64
-        context: ./tools/build-image
+        context: ./build-tools/build-image
         push: true
         tags: grafana/alloy-build-image:${{ steps.get_image_version.outputs.image_tag }}
         build-args: |

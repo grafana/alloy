@@ -7,5 +7,5 @@ if [ ! -z "${GITHUB_WORKSPACE}" ]; then
   git config user.email "alloy@users.noreply.github.com"
 fi
 
-TAG=$(tools/image-tag)
+TAG=$(scripts/image-tag)
 git tag $TAG -m "tag dev"

@@ -7,7 +7,7 @@ on:
     - packaging/**
     - internal/tools/packaging_test/**
     - Makefile
-    - tools/make/*.mk
+    - build-tools/make/*.mk
 
 permissions:
   contents: read

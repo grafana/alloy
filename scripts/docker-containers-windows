@@ -39,14 +39,14 @@ export RELEASE_ALLOY_IMAGE=grafana/alloy
 export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 
 # TODO: Unit test this script? Test cases:
-# * Input:  ALLOY_GO_VERSION=1.24 WINDOWS_VERSION=windows-2022 GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v1.8.0 ./tools/ci/docker-containers-windows alloy
+# * Input:  ALLOY_GO_VERSION=1.24 WINDOWS_VERSION=windows-2022 GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v1.8.0 ./scripts/docker-containers-windows alloy
 #   Output: docker build -t grafana/alloy:v1.8.0-windowsservercore-ltsc2022 -t grafana/alloy:windowsservercore-ltsc2022 --build-arg VERSION=v1.8.0 --build-arg RELEASE_BUILD=1 --build-arg BASE_IMAGE_GO=golang:1.24-windowsservercore-ltsc2022 --build-arg BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022 -f ./Dockerfile.windows .
 if [ -n "$GITHUB_TAG" ]; then
   VERSION=$GITHUB_TAG
 else
-  # NOTE(rfratto): Do not use ./tools/image-tag-docker here, which doesn't
+  # NOTE(rfratto): Do not use ./scripts/image-tag-docker here, which doesn't
   # produce valid semver.
-  VERSION=$(./tools/image-tag)
+  VERSION=$(./scripts/image-tag)
 fi
 
 # DEFAULT_LATEST is the default tag to use for the "latest" tag.
@@ -55,7 +55,7 @@ CNGCRYPTO_LATEST=$IMAGE_NAME_SUFFIX-cngcrypto
 
 # The VERSION_TAG is the version to use for the Docker tag. It is sanitized to
 # force it to be a valid Docker tag name (primarily by removing the +
-# characters that may have been emitted by ./tools/image-tag).
+# characters that may have been emitted by ./scripts/image-tag).
 VERSION_TAG=${VERSION//+/-}-$IMAGE_NAME_SUFFIX
 
 # We also need to know which "branch tag" to update. Branch tags are used as a

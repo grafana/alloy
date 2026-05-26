@@ -83,7 +83,7 @@
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
 
-include tools/make/*.mk
+include build-tools/make/*.mk
 
 ALLOY_IMAGE          		?= grafana/alloy:latest
 ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
@@ -136,7 +136,7 @@ endif
 
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
-VERSION      ?= $(shell bash ./tools/image-tag)
+VERSION      ?= $(shell bash ./scripts/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 BEYLA_MODULE  := $(shell go list -m -f '{{.Path}} {{.Version}}' github.com/grafana/beyla/v3 2>/dev/null)

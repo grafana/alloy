@@ -64,13 +64,13 @@ jobs:
 
     - name: Get the image tag
       run: |
-        echo "$(bash ./tools/image-tag-docker)" > .tag-only
-        echo "grafana/alloy-dev:$(bash ./tools/image-tag-docker)" > .image-tag
+        echo "$(bash ./scripts/image-tag-docker)" > .tag-only
+        echo "grafana/alloy-dev:$(bash ./scripts/image-tag-docker)" > .image-tag
 
       # This step needs to run after "Get the image tag".
       # That's because the login to GAR generates a new file.
       # We don't want this file to end up in the repo directory.
-      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+      # Then "scripts/image-tag" would get confused because "git status" no longer reports a clean repo.
     - name: Log in to Google Artifact Registry
       uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
       with:
