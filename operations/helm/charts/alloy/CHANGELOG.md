@@ -12,7 +12,7 @@ Unreleased
 
 ### Enhancements
 
-- Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#TBD)
+- Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
 
 ### Bug fixes
 
