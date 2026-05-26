@@ -39,6 +39,10 @@ vars:
   CGO_ENABLED: '{{.CGO_ENABLED | default "1"}}'
 
   # Ensure gore2regex is present in GO_TAGS.
+  # NOTE: Only works for env-var overrides. CLI overrides (task foo GO_TAGS=bar) bypass
+  # global vars — Task evaluates them at load time, before CLI vars are merged (no
+  # equivalent of Makefile's `override`). Tasks use a LOCAL_TAGS var instead, which is
+  # evaluated at run time with CLI vars available.
   GO_TAGS_RAW: '{{.GO_TAGS | default ""}}'
   GO_TAGS: >-
     {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS_RAW -}}

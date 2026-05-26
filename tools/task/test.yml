@@ -78,8 +78,14 @@ tasks:
       GOEXPERIMENT: '{{.GOEXPERIMENT}}'
     vars:
       RUN_ARGS: '{{.RUN_ARGS | default ""}}'
+      LOCAL_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{.GO_TAGS}}
+        {{- else -}}
+        {{ trim (printf "gore2regex %s" .GO_TAGS) }}
+        {{- end -}}
     cmds:
-      - go run ./integration-tests/k8s/runner --test-tags='{{.GO_TAGS}}' {{.RUN_ARGS}}
+      - go run ./integration-tests/k8s/runner --test-tags='{{.LOCAL_TAGS}}' {{.RUN_ARGS}}
 
   integration:k8s:interactive:
     desc: Run k8s integration tests with interactive TUI for local development.
@@ -91,8 +97,14 @@ tasks:
       GOEXPERIMENT: '{{.GOEXPERIMENT}}'
     vars:
       RUN_ARGS: '{{.RUN_ARGS | default ""}}'
+      LOCAL_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{.GO_TAGS}}
+        {{- else -}}
+        {{ trim (printf "gore2regex %s" .GO_TAGS) }}
+        {{- end -}}
     cmds:
-      - go run ./integration-tests/k8s/runner --interactive --test-tags='{{.GO_TAGS}}' {{.RUN_ARGS}}
+      - go run ./integration-tests/k8s/runner --interactive --test-tags='{{.LOCAL_TAGS}}' {{.RUN_ARGS}}
 
   integration:windows-service:
     desc: Run Windows service integration tests (Windows + Administrator required).
