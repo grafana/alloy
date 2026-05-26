@@ -14,7 +14,7 @@ tasks:
         {{ trim (printf "gore2regex %s" .GO_TAGS) }}
         {{- end -}}
     cmds:
-      - find . -name go.mod | xargs dirname | xargs -I __dir__ {{.GOLANGCI_LINT_BINARY}} run -v --timeout=10m
+      - find . -name go.mod | xargs dirname | xargs -I __dir__ sh -c 'cd __dir__ && {{.GOLANGCI_LINT_BINARY}} run -v --timeout=10m'
       - GOFLAGS="-tags={{.LOCAL_TAGS}}" {{.ALLOYLINT_BINARY}} ./...
 
   alloylint:
