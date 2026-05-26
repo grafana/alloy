@@ -3,7 +3,7 @@ version: "3"
 
 tasks:
   update-go-version:pr-1:
-    desc: Update Go version in build images. Requires VERSION=X.Y.Z.
+    desc: Update Go version in build images. Requires GO_VERSION=X.Y.Z.
     requires:
       vars:
         - name: GO_VERSION
@@ -12,7 +12,7 @@ tasks:
       - go run ./go-version pr-1 {{.GO_VERSION}}
 
   update-go-version:pr-2:
-    desc: Update Go version in go.mod and Dockerfiles. Requires VERSION=X.Y.Z.
+    desc: Update Go version in go.mod and Dockerfiles. Requires GO_VERSION=X.Y.Z.
     requires:
       vars:
         - name: GO_VERSION
