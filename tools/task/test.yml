@@ -54,12 +54,6 @@ tasks:
   packages:
     desc: Test packaging artifacts. Requires the build image to be pulled.
     cmds:
-      - task: :container:exec
-        vars:
-          INNER: '{{.TASK}}:_native'
-
-  packages:_native:
-    cmds:
       - docker pull {{.BUILD_IMAGE}}
       - go test -tags="gore2regex packaging" -race ./internal/tools/packaging_test
 
@@ -119,12 +113,6 @@ tasks:
     desc: Validate rendered mixin dashboards and run Jsonnet tests.
     deps:
       - :gen:rendered-mixin
-    cmds:
-      - task: :container:exec
-        vars:
-          INNER: '{{.TASK}}:_native'
-
-  mixin:_native:
     cmds:
       - echo "Running Jsonnet tests..."
       - |

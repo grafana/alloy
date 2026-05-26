@@ -3,30 +3,16 @@ version: "3"
 
 tasks:
   alloy:
-    desc: Build the alloy binary. Set USE_CONTAINER=1 to build inside the build image.
+    desc: Build the alloy binary. SKIP_UI_BUILD=1 to skip npm install/build.
     deps:
       - :gen:ui
-    cmds:
-      - task: :container:exec
-        vars:
-          INNER: '{{.TASK}}:_native'
-          GO_TAGS: '{{.GO_TAGS}}'
-          RELEASE_BUILD: '{{.RELEASE_BUILD}}'
-          GOOS: '{{.GOOS}}'
-          GOARCH: '{{.GOARCH}}'
-          GOARM: '{{.GOARM}}'
-          CGO_ENABLED: '{{.CGO_ENABLED}}'
-          GOEXPERIMENT: '{{.GOEXPERIMENT}}'
-          ALLOY_BINARY: '{{.ALLOY_BINARY}}'
-
-  alloy:_native:
     dir: collector
     env:
-      GOOS: '{{.GOOS}}'
-      GOARCH: '{{.GOARCH}}'
-      GOARM: '{{.GOARM}}'
-      CGO_ENABLED: '{{.CGO_ENABLED}}'
-      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+      GOOS: "{{.GOOS}}"
+      GOARCH: "{{.GOARCH}}"
+      GOARM: "{{.GOARM}}"
+      CGO_ENABLED: "{{.CGO_ENABLED}}"
+      GOEXPERIMENT: "{{.GOEXPERIMENT}}"
     vars:
       # Computed per call so caller overrides of GO_TAGS / RELEASE_BUILD take effect.
       LOCAL_TAGS: >-
@@ -41,26 +27,12 @@ tasks:
 
   alloy-service:
     desc: Build the alloy-service Windows binary.
-    cmds:
-      - task: :container:exec
-        vars:
-          INNER: '{{.TASK}}:_native'
-          GO_TAGS: '{{.GO_TAGS}}'
-          RELEASE_BUILD: '{{.RELEASE_BUILD}}'
-          GOOS: '{{.GOOS}}'
-          GOARCH: '{{.GOARCH}}'
-          GOARM: '{{.GOARM}}'
-          CGO_ENABLED: '{{.CGO_ENABLED}}'
-          GOEXPERIMENT: '{{.GOEXPERIMENT}}'
-          SERVICE_BINARY: '{{.SERVICE_BINARY}}'
-
-  alloy-service:_native:
     env:
-      GOOS: '{{.GOOS}}'
-      GOARCH: '{{.GOARCH}}'
-      GOARM: '{{.GOARM}}'
-      CGO_ENABLED: '{{.CGO_ENABLED}}'
-      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+      GOOS: "{{.GOOS}}"
+      GOARCH: "{{.GOARCH}}"
+      GOARM: "{{.GOARM}}"
+      CGO_ENABLED: "{{.CGO_ENABLED}}"
+      GOEXPERIMENT: "{{.GOEXPERIMENT}}"
     vars:
       LOCAL_TAGS: >-
         {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
@@ -74,27 +46,13 @@ tasks:
 
   alloylint:
     desc: Build the alloylint custom linter binary.
-    cmds:
-      - task: :container:exec
-        vars:
-          INNER: '{{.TASK}}:_native'
-          GO_TAGS: '{{.GO_TAGS}}'
-          RELEASE_BUILD: '{{.RELEASE_BUILD}}'
-          GOOS: '{{.GOOS}}'
-          GOARCH: '{{.GOARCH}}'
-          GOARM: '{{.GOARM}}'
-          CGO_ENABLED: '{{.CGO_ENABLED}}'
-          GOEXPERIMENT: '{{.GOEXPERIMENT}}'
-          ALLOYLINT_BINARY: '{{.ALLOYLINT_BINARY}}'
-
-  alloylint:_native:
     dir: internal/cmd/alloylint
     env:
-      GOOS: '{{.GOOS}}'
-      GOARCH: '{{.GOARCH}}'
-      GOARM: '{{.GOARM}}'
-      CGO_ENABLED: '{{.CGO_ENABLED}}'
-      GOEXPERIMENT: '{{.GOEXPERIMENT}}'
+      GOOS: "{{.GOOS}}"
+      GOARCH: "{{.GOARCH}}"
+      GOARM: "{{.GOARM}}"
+      CGO_ENABLED: "{{.CGO_ENABLED}}"
+      GOEXPERIMENT: "{{.GOEXPERIMENT}}"
     vars:
       LOCAL_TAGS: >-
         {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}

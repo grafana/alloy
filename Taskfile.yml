@@ -8,11 +8,9 @@ includes:
   gen: tools/task/gen.yml
   image: tools/task/image.yml
   dist: tools/task/dist.yml
-  container: tools/task/container.yml
   release: tools/task/release.yml
 
 vars:
-  USE_CONTAINER: '{{.USE_CONTAINER | default "0"}}'
   SKIP_UI_BUILD: '{{.SKIP_UI_BUILD | default "0"}}'
   RELEASE_BUILD: '{{.RELEASE_BUILD | default "0"}}'
 
@@ -95,9 +93,6 @@ vars:
     -X {{.VPREFIX}}.BuildDate={{.BUILD_DATE}}
     {{- if .BEYLA_VERSION }} -X {{.BEYLA_PKG}}.Version={{.BEYLA_VERSION}}{{ end }}
 
-  # GO_FLAGS is computed inside each *:_native task (see tools/task/build.yml)
-  # so that callers (e.g. dist:binary) can override GO_TAGS without GO_FLAGS
-  # getting baked in at root-scope before the override takes effect.
 
 tasks:
   default:
@@ -130,17 +125,15 @@ tasks:
       - task: gen:graphql
 
   clean:
-    desc: Remove dist artifacts and the container cache volumes.
+    desc: Remove dist artifacts.
     cmds:
       - task: dist:clean
-      - task: container:cache:clean
       - rm -rf ./build/*
 
   info:
     desc: Print resolved configuration variables.
     cmds:
       - |
-        printf 'USE_CONTAINER       = %s\n' '{{.USE_CONTAINER}}'
         printf 'ALLOY_IMAGE         = %s\n' '{{.ALLOY_IMAGE}}'
         printf 'ALLOY_IMAGE_WINDOWS = %s\n' '{{.ALLOY_IMAGE_WINDOWS}}'
         printf 'BUILD_IMAGE         = %s\n' '{{.BUILD_IMAGE}}'

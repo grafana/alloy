@@ -126,12 +126,6 @@ tasks:
       - task: binary
         vars: { PLATFORM: linux/amd64 }
     cmds:
-      - task: :container:exec
-        vars:
-          INNER: "{{.TASK}}:_native"
-
-  packages:amd64:_native:
-    cmds:
       - task: _fpm
         vars:
           {
@@ -154,12 +148,6 @@ tasks:
     deps:
       - task: binary
         vars: { PLATFORM: linux/arm64 }
-    cmds:
-      - task: :container:exec
-        vars:
-          INNER: "{{.TASK}}:_native"
-
-  packages:arm64:_native:
     cmds:
       - task: _fpm
         vars:
@@ -184,12 +172,6 @@ tasks:
       - task: binary
         vars: { PLATFORM: linux/ppc64le }
     cmds:
-      - task: :container:exec
-        vars:
-          INNER: "{{.TASK}}:_native"
-
-  packages:ppc64le:_native:
-    cmds:
       - task: _fpm
         vars:
           {
@@ -212,12 +194,6 @@ tasks:
     deps:
       - task: binary
         vars: { PLATFORM: linux/s390x }
-    cmds:
-      - task: :container:exec
-        vars:
-          INNER: "{{.TASK}}:_native"
-
-  packages:s390x:_native:
     cmds:
       - task: _fpm
         vars:
@@ -271,12 +247,6 @@ tasks:
       - task: binary
         vars: { PLATFORM: windows/amd64 }
       - service-binaries
-    cmds:
-      - task: :container:exec
-        vars:
-          INNER: "{{.TASK}}:_native"
-
-  installer:windows:_native:
     cmds:
       - mkdir -p dist
       - makensis -V4 -DVERSION={{.VERSION}} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
