@@ -1,0 +1,19 @@
+package generate
+
+import "github.com/spf13/cobra"
+
+func Command() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "generate",
+		Short: "Generators for derived files in the Alloy repository",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Usage()
+		},
+	}
+
+	cmd.AddCommand(
+		moduleDependenciesCommand(),
+	)
+
+	return cmd
+}

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grafana/replace-generator/internal/types"
+	"github.com/grafana/alloy/tools/generate/internal/types"
 	"gopkg.in/yaml.v3"
 )
 

@@ -8,6 +8,7 @@ require (
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/mod v0.33.0
 	golang.org/x/oauth2 v0.35.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (

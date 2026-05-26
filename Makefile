@@ -316,7 +316,7 @@ generate-module-dependencies:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+	$(GO_ENV) go run -C tools ./cmd generate module-dependencies --dependency-yaml=dependency-replacements.yaml --project-root=.
 endif
 
 generate-otel-collector-distro:

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/grafana/replace-generator/internal/helpers"
-	"github.com/grafana/replace-generator/internal/types"
+	"github.com/grafana/alloy/tools/generate/internal/helpers"
+	"github.com/grafana/alloy/tools/generate/internal/types"
 )
 
 func GenerateReplaces(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectReplaces) map[string]*string {

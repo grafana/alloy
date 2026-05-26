@@ -1,12 +1,10 @@
-package main
+package generate
 
 import (
 	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/grafana/replace-generator/cmd"
 )
 
 type testCase struct {
@@ -20,7 +18,7 @@ func TestE2EMod(t *testing.T) {
 		t.Fatalf("Failed to get current working directory: %v", err)
 	}
 
-	command := cmd.NewRootCommand()
+	command := Command()
 
 	var testCases = []testCase{
 		{
@@ -53,7 +51,7 @@ func TestE2EMod(t *testing.T) {
 				}
 			}()
 
-			command.SetArgs([]string{"generate", "--dependency-yaml", dependencyYaml, "--project-root", projectRoot})
+			command.SetArgs([]string{"module-dependencies", "--dependency-yaml", dependencyYaml, "--project-root", projectRoot})
 			err = command.Execute()
 			if err != nil {
 				t.Fatalf("Failed to run command: %v", err)
@@ -84,7 +82,7 @@ func TestE2EOCB(t *testing.T) {
 		t.Fatalf("Failed to get current working directory: %v", err)
 	}
 
-	command := cmd.NewRootCommand()
+	command := Command()
 
 	var testCases = []testCase{
 		{
@@ -117,7 +115,7 @@ func TestE2EOCB(t *testing.T) {
 				}
 			}()
 
-			command.SetArgs([]string{"generate", "--dependency-yaml", dependencyYaml, "--project-root", projectRoot})
+			command.SetArgs([]string{"module-dependencies", "--dependency-yaml", dependencyYaml, "--project-root", projectRoot})
 			err = command.Execute()
 			if err != nil {
 				t.Fatalf("Failed to run command: %v", err)

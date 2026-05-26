@@ -6,8 +6,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/grafana/replace-generator/internal/helpers"
-	"github.com/grafana/replace-generator/internal/types"
+	"github.com/grafana/alloy/tools/generate/internal/helpers"
+	"github.com/grafana/alloy/tools/generate/internal/types"
 )
 
 func ApplyReplaces(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectReplaces, modByReplaceStr map[string]*string) {

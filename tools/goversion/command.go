@@ -107,7 +107,7 @@ func updateBuildImage(root string, version string) error {
 }
 
 func updateGoModFiles(root, version string) error {
-	paths, err := getPaths(root, "go.mod", "tools/generate-module-dependencies/testdata")
+	paths, err := getPaths(root, "go.mod", "tools/generate/testdata")
 	if err != nil {
 		return err
 	}
