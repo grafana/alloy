@@ -3,6 +3,7 @@ package rules
 import (
 	"context"
 	"fmt"
+	"maps"
 	"regexp"
 	"time"
 
@@ -140,6 +141,17 @@ func (c *Component) loadStateFromK8s() (kubernetes.PrometheusRuleGroupsByNamespa
 			groups, err := convertCRDRuleGroupToRuleGroup(rule.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert rule group: %w", err)
+			}
+
+			if len(c.args.ExternalLabels) > 0 {
+				for _, ruleGroup := range groups {
+					for i := range ruleGroup.Rules {
+						if ruleGroup.Rules[i].Labels == nil {
+							ruleGroup.Rules[i].Labels = make(map[string]string, len(c.args.ExternalLabels))
+						}
+						maps.Copy(ruleGroup.Rules[i].Labels, c.args.ExternalLabels)
+					}
+				}
 			}
 
 			if c.args.ExtraQueryMatchers != nil {
