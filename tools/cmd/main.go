@@ -5,6 +5,7 @@ import (
 
 	"github.com/grafana/alloy/tools/aireview"
 	"github.com/grafana/alloy/tools/goversion"
+	"github.com/grafana/alloy/tools/release"
 	"github.com/spf13/cobra"
 )
 
@@ -18,6 +19,7 @@ func main() {
 	cmd.AddCommand(
 		aireview.Command(),
 		goversion.Command(),
+		release.Command(),
 	)
 
 	if err := cmd.Execute(); err != nil {
