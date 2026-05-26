@@ -83,7 +83,7 @@
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
 
-include tools/make/*.mk
+include build-tools/make/*.mk
 
 ALLOY_IMAGE          		?= grafana/alloy:latest
 ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022

@@ -70,7 +70,7 @@ func updateBuildImage(root string, version string) error {
 	paths := []string{
 		".github/workflows/create_build_image.yml",
 		".github/workflows/check-linux-build-image.yml",
-		"tools/build-image/windows/Dockerfile",
+		"build-tools/build-image/windows/Dockerfile",
 	}
 
 	for _, path := range paths {
@@ -113,7 +113,7 @@ func updateGoModFiles(root, version string) error {
 }
 
 func updateDockerFiles(root, version string) error {
-	paths, err := getPaths(root, "Dockerfile", "Dockerfile.windows", "tools/build-image")
+	paths, err := getPaths(root, "Dockerfile", "Dockerfile.windows", "build-tools/build-image")
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@ ARG RELEASE_BUILD=1
 ARG GO_TAGS
 
 ####################
-# The snippet below was taken from tools/build-image/windows/Dockerfile.
+# The snippet below was taken from build-tools/build-image/windows/Dockerfile.
 # This is so that we don't have to run the CI step inside a build image container.
 #
 # TODO: Build Alloy outside of the Dockerfile?
@@ -65,7 +65,7 @@ RUN choco install nodejs.install --version 24.4.0 -y
 RUN git config --global --add safe.directory \*
 
 ####################
-# End of snipped from tools/build-image/windows/Dockerfile.
+# End of snipped from build-tools/build-image/windows/Dockerfile.
 ####################
 
 COPY . /src/alloy
