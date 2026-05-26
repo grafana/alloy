@@ -29,4 +29,4 @@ jobs:
         with:
           version: 3.x
 
-      - run: make GO_TAGS="nodocker" test
+      - run: task test:unit GO_TAGS="nodocker"
