@@ -20,6 +20,7 @@ func Command() *cobra.Command {
 		backportCommand(),
 		createRCCommand(),
 		createReleaseBranchCommand(),
+		enrichReleaseNotesCommand(),
 	)
 
 	return cmd
