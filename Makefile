@@ -414,12 +414,12 @@ endif
 .PHONY: update-go-version-pr-1
 update-go-version-pr-1:
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-build-image VERSION=1.25.8)"; exit 1; fi
-	cd ./tools && go run ./go-version pr-1 $(VERSION)
+	cd ./tools && go run ./cmd update-go-version pr-1 $(VERSION)
 
 .PHONY: update-go-version-pr-2
 update-go-version-pr-2:
 	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-mod VERSION=1.25.8)"; exit 1; fi
-	cd ./tools && go run ./go-version pr-2 $(VERSION)
+	cd ./tools && go run ./cmd update-go-version pr-2 $(VERSION)
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
