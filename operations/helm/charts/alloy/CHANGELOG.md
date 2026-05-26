@@ -12,7 +12,7 @@ Unreleased
 
 ### Bug fixes
 
-- Fix `templates/configmap.yaml` ignoring `alloy.configMap.key`. The pod template honors the value via the `alloy.config-map.key` helper, but the ConfigMap template hardcoded the data key as `config.alloy`, producing a key/expected-path mismatch that crash-looped Alloy when the value was set. (#TBD)
+- Fix `templates/configmap.yaml` ignoring `alloy.configMap.key`. The pod template honors the value via the `alloy.config-map.key` helper, but the ConfigMap template hardcoded the data key as `config.alloy`, producing a key/expected-path mismatch that crash-looped Alloy when the value was set. (#6312)
 
 1.8.2 (2026-05-25)
 ----------
