@@ -104,12 +104,10 @@ jobs:
           LABELS: ${{ steps.pr-info.outputs.labels }}
           PR_NUMBER: ${{ steps.pr-number.outputs.pr_number }}
         run: |
-          cd tools
-
           # Use while-read loop to safely handle labels with special characters
           echo "${LABELS}" | jq -r '.[]' | while IFS= read -r label; do
             echo "🍒 Processing backport for label: $label"
-            go run ./release/backport \
+            go run -C tools ./cmd release backport \
               --pr "${PR_NUMBER}" \
               --label "$label" || echo "⚠️ Backport for $label failed, moving to next..."
           done
