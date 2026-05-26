@@ -65,7 +65,7 @@ RUN choco install nodejs.install --version 24.4.0 -y
 RUN git config --global --add safe.directory \*
 
 ####################
-# End of snipped from build-tools/build-image/windows/Dockerfile.
+# End of snippet from build-tools/build-image/windows/Dockerfile.
 ####################
 
 COPY . /src/alloy
