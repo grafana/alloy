@@ -44,6 +44,7 @@ tasks:
 
   binary:
     desc: Build a single release binary for PLATFORM (e.g. linux/amd64).
+    run: when_changed
     requires:
       vars:
         - name: PLATFORM
@@ -61,12 +62,13 @@ tasks:
         netgo embedalloyui
         {{- end -}}
       OUT: "dist/alloy-{{.BIN_GOOS}}-{{.BIN_GOARCH}}{{.EXT}}"
+    sources:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+    generates:
+      - '{{.OUT}}'
     cmds:
-      # Windows requires winmanifest to have run first.
-      - |
-        if [ "{{.BIN_GOOS}}" = "windows" ]; then
-          task gen:winmanifest
-        fi
       - task: :build:alloy
         vars:
           GOOS: "{{.BIN_GOOS}}"
@@ -84,11 +86,18 @@ tasks:
         vars: { BIN_GOARCH: arm64 }
 
   boringcrypto-binary:
+    run: when_changed
     requires:
       vars:
         - name: BIN_GOARCH
     vars:
       OUT: "dist/alloy-boringcrypto-linux-{{.BIN_GOARCH}}"
+    sources:
+      - '**/*.go'
+      - go.mod
+      - go.sum
+    generates:
+      - '{{.OUT}}'
     cmds:
       - task: :build:alloy
         vars:
@@ -103,6 +112,7 @@ tasks:
     desc: Build the Windows alloy-service intermediate binary.
     deps:
       - :gen:winmanifest
+      - :gen:ui
     cmds:
       - task: :build:alloy-service
         vars:
@@ -243,10 +253,13 @@ tasks:
 
   installer:windows:
     desc: Build the Windows installer (.exe).
-    deps:
+    cmds:
+      # Sequential: winmanifest must finish before binary links the manifest into the PE.
+      # Using cmds (not deps) avoids the race where the parallel subprocess in binary
+      # and service-binaries both invoke gen:winmanifest concurrently.
+      - task: :gen:winmanifest
       - task: binary
         vars: { PLATFORM: windows/amd64 }
-      - service-binaries
-    cmds:
+      - task: service-binaries
       - mkdir -p dist
       - makensis -V4 -DVERSION={{.VERSION}} -DOUT="../../dist/alloy-installer-windows-amd64.exe" ./packaging/windows/install_script.nsis
