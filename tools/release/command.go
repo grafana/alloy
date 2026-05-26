@@ -18,6 +18,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(
 		backportCommand(),
+		createRCCommand(),
 		createReleaseBranchCommand(),
 	)
 

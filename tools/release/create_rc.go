@@ -1,24 +1,23 @@
-package main
+package release
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"log"
 	"regexp"
 	"sort"
 	"strconv"
 
 	"github.com/google/go-github/v57/github"
+	"github.com/spf13/cobra"
 
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 	"github.com/grafana/alloy/tools/release/internal/version"
 )
 
-const (
-	backportLabelPrefix = "backport/v"
-	releaseBranchPrefix = "release/v"
-)
+type createRCFlags struct {
+	branch string
+	dryRun bool
+}
 
 // rcInfo holds the resolved parameters for creating a release candidate.
 type rcInfo struct {
@@ -43,53 +42,62 @@ type prereleaseParams struct {
 	PRNumber  int    // Associated release-please PR number
 }
 
-func main() {
-	branch, dryRun := parseFlags()
+func createRCCommand() *cobra.Command {
+	var flags createRCFlags
 
-	ctx := context.Background()
-	client, err := gh.NewClientFromEnv(ctx)
-	if err != nil {
-		log.Fatal(err)
+	cmd := &cobra.Command{
+		Use:   "create-rc",
+		Short: "Create a release candidate tag and draft prerelease from the open release-please PR",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runCreateRC(cmd.Context(), flags)
+		},
 	}
 
-	info := resolveRCInfo(ctx, client, branch)
+	cmd.Flags().StringVar(&flags.branch, "branch", "", "Branch to create RC for (e.g., main or release/v1.15)")
+	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Dry run (do not create tag or release)")
+	_ = cmd.MarkFlagRequired("branch")
 
-	if dryRun {
-		printDryRun(info)
-		return
-	}
-
-	createRCRelease(ctx, client, info)
-
-	if info.isFirstMinorRC() {
-		ensureBackportLabelForRC(ctx, client, info)
-	}
+	return cmd
 }
 
-func parseFlags() (string, bool) {
-	var (
-		dryRun bool
-		branch string
-	)
-	flag.BoolVar(&dryRun, "dry-run", false, "Dry run (do not create tag or release)")
-	flag.StringVar(&branch, "branch", "", "Branch to create RC for (e.g., main or release/v1.15)")
-	flag.Parse()
-
-	if branch == "" {
-		log.Fatal("Branch is required (use --branch flag, e.g., --branch main)")
-	}
-	if branch != "main" {
-		if _, err := version.ParseReleaseBranch(branch); err != nil {
-			log.Fatal(err)
+func runCreateRC(ctx context.Context, flags createRCFlags) error {
+	if flags.branch != "main" {
+		if _, err := version.ParseReleaseBranch(flags.branch); err != nil {
+			return err
 		}
 	}
-	return branch, dryRun
+
+	client, err := gh.NewClientFromEnv(ctx)
+	if err != nil {
+		return err
+	}
+
+	info, err := resolveRCInfo(ctx, client, flags.branch)
+	if err != nil {
+		return err
+	}
+
+	if flags.dryRun {
+		printRCDryRun(info)
+		return nil
+	}
+
+	if err := createRCRelease(ctx, client, info); err != nil {
+		return err
+	}
+
+	if info.isFirstMinorRC() {
+		if err := ensureBackportLabelForRC(ctx, client, info); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func resolveRCInfo(ctx context.Context, client *gh.Client, branch string) rcInfo {
+func resolveRCInfo(ctx context.Context, client *gh.Client, branch string) (rcInfo, error) {
 	pr, err := findReleasePleasePR(ctx, client, branch)
 	if err != nil {
-		log.Fatalf("Failed to find release-please PR: %v", err)
+		return rcInfo{}, fmt.Errorf("finding release-please PR: %w", err)
 	}
 
 	fmt.Printf("Found release-please PR #%d: %s\n", pr.GetNumber(), pr.GetTitle())
@@ -98,22 +106,22 @@ func resolveRCInfo(ctx context.Context, client *gh.Client, branch string) rcInfo
 
 	ver, err := extractVersionFromTitle(pr.GetTitle())
 	if err != nil {
-		log.Fatalf("Failed to extract version from PR title: %v", err)
+		return rcInfo{}, fmt.Errorf("extracting version from PR title: %w", err)
 	}
 	fmt.Printf("Target version: %s\n", ver)
 
 	isPatch, err := version.IsPatch(ver)
 	if err != nil {
-		log.Fatalf("Failed to parse version: %v", err)
+		return rcInfo{}, fmt.Errorf("parsing version: %w", err)
 	}
 	if branch == "main" && isPatch {
 		mm, _ := version.MajorMinor(ver)
-		log.Fatalf("Cannot create a patch release RC from main. Use the release branch instead: --branch release/v%s", mm)
+		return rcInfo{}, fmt.Errorf("cannot create a patch release RC from main. Use the release branch instead: --branch release/v%s", mm)
 	}
 
 	rcNumber, err := findNextRCNumber(ctx, client, ver)
 	if err != nil {
-		log.Fatalf("Failed to determine next RC number: %v", err)
+		return rcInfo{}, fmt.Errorf("determining next RC number: %w", err)
 	}
 
 	rcTag := fmt.Sprintf("v%s-rc.%d", ver, rcNumber)
@@ -129,10 +137,10 @@ func resolveRCInfo(ctx context.Context, client *gh.Client, branch string) rcInfo
 		RCTag:     rcTag,
 		BranchSHA: branchSHA,
 		Branch:    branch,
-	}
+	}, nil
 }
 
-func printDryRun(info rcInfo) {
+func printRCDryRun(info rcInfo) {
 	fmt.Println("\n🏃 DRY RUN - No changes made")
 	fmt.Printf("Would create tag: %s\n", info.RCTag)
 	fmt.Printf("Base branch: %s\n", info.Branch)
@@ -144,7 +152,7 @@ func printDryRun(info rcInfo) {
 	}
 }
 
-func createRCRelease(ctx context.Context, client *gh.Client, info rcInfo) {
+func createRCRelease(ctx context.Context, client *gh.Client, info rcInfo) error {
 	// Draft releases don't create tags until published. Tag creation is what triggers artifacts to
 	// build and get attached to releases. So we create a tag here like how release-please does with
 	// force-tag-creation.
@@ -153,7 +161,7 @@ func createRCRelease(ctx context.Context, client *gh.Client, info rcInfo) {
 		SHA:     info.BranchSHA,
 		Message: fmt.Sprintf("Release candidate %s", info.RCTag),
 	}); err != nil {
-		log.Fatalf("Failed to create tag: %v", err)
+		return fmt.Errorf("creating tag: %w", err)
 	}
 	fmt.Printf("Created tag: %s -> %s\n", info.RCTag, info.BranchSHA[:12])
 
@@ -165,15 +173,16 @@ func createRCRelease(ctx context.Context, client *gh.Client, info rcInfo) {
 		PRNumber:  info.PR.GetNumber(),
 	})
 	if err != nil {
-		log.Fatalf("Failed to create draft prerelease: %v", err)
+		return fmt.Errorf("creating draft prerelease: %w", err)
 	}
 	fmt.Printf("✅ Created draft prerelease: %s\n", releaseURL)
+	return nil
 }
 
-func ensureBackportLabelForRC(ctx context.Context, client *gh.Client, info rcInfo) {
+func ensureBackportLabelForRC(ctx context.Context, client *gh.Client, info rcInfo) error {
 	majorMinor, err := version.MajorMinor(info.Version)
 	if err != nil {
-		log.Fatalf("Failed to parse major.minor from version %q: %v", info.Version, err)
+		return fmt.Errorf("parsing major.minor from version %q: %w", info.Version, err)
 	}
 	backportLabel := backportLabelPrefix + majorMinor
 	branchName := releaseBranchPrefix + majorMinor
@@ -184,13 +193,14 @@ func ensureBackportLabelForRC(ctx context.Context, client *gh.Client, info rcInf
 		Description: fmt.Sprintf("Backport to %s", branchName),
 	})
 	if err != nil {
-		log.Fatalf("Failed to ensure backport label: %v", err)
+		return fmt.Errorf("ensuring backport label: %w", err)
 	}
 	if created {
 		fmt.Printf("✅ Created backport label: %s\n", backportLabel)
 	} else {
 		fmt.Printf("Backport label %s already exists\n", backportLabel)
 	}
+	return nil
 }
 
 func findReleasePleasePR(ctx context.Context, client *gh.Client, baseBranch string) (*github.PullRequest, error) {
