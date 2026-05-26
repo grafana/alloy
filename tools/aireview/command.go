@@ -14,7 +14,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type Args struct {
+type aiReviewFlags struct {
 	Model      string
 	PromptFile string
 	Marker     string
@@ -24,7 +24,7 @@ type Args struct {
 }
 
 func Command() *cobra.Command {
-	var args Args
+	var args aiReviewFlags
 
 	cmd := &cobra.Command{
 		Use:   "ai-review",
@@ -44,7 +44,7 @@ func Command() *cobra.Command {
 	return cmd
 }
 
-func run(ctx context.Context, args Args) error {
+func run(ctx context.Context, args aiReviewFlags) error {
 	if args.PromptFile == "" {
 		return fmt.Errorf("--prompt-file is required")
 	}
@@ -132,4 +132,3 @@ func run(ctx context.Context, args Args) error {
 	log.Printf("Successfully posted AI review comment")
 	return nil
 }
-
