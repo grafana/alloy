@@ -1,6 +1,7 @@
 package helpers
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,10 +10,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type FileHelper struct {
-	// ScriptDir is the directory where the generate-module-dependencies code is located
-	ScriptDir string
+//go:embed replaces-mod.tpl
+var templateMod []byte
 
+//go:embed replaces-ocb.tpl
+var templateOCB []byte
+
+type FileHelper struct {
 	// ProjectRoot is the root directory of the Alloy project
 	ProjectRoot string
 
@@ -21,41 +25,26 @@ type FileHelper struct {
 }
 
 func NewFileHelper(pathToDependencyReplacements string, projectRoot string) (*FileHelper, error) {
-	scriptDir, err := os.Getwd()
-	if err != nil {
-		return nil, fmt.Errorf("Failed to resolve working directory: %v", err)
-	}
-
-	scriptDir, err = filepath.Abs(scriptDir)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to resolve script directory: %v", err)
-	}
-
 	absReplacesPath, err := filepath.Abs(pathToDependencyReplacements)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to resolve %s: %v", pathToDependencyReplacements, err)
 	}
 
 	return &FileHelper{
-		ScriptDir:           scriptDir,
 		ProjectRoot:         projectRoot,
 		ProjectReplacesPath: absReplacesPath,
 	}, nil
 }
 
-func (d *FileHelper) TemplatePath(fileType types.FileType) (string, error) {
-	var templateName string
-	var err error
-
+func (d *FileHelper) Template(fileType types.FileType) ([]byte, error) {
 	switch fileType {
 	case types.FileTypeMod:
-		templateName = "replaces-mod.tpl"
+		return templateMod, nil
 	case types.FileTypeOCB:
-		templateName = "replaces-ocb.tpl"
+		return templateOCB, nil
 	default:
-		err = fmt.Errorf("unknown file_type %q (expected %q or %q)", fileType, types.FileTypeMod, types.FileTypeOCB)
+		return nil, fmt.Errorf("unknown file_type %q (expected %q or %q)", fileType, types.FileTypeMod, types.FileTypeOCB)
 	}
-	return filepath.Join(d.ScriptDir, templateName), err
 }
 
 func (d *FileHelper) ModuleTargetPath(modulePath string) string {

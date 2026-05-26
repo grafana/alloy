@@ -3,8 +3,6 @@ package internal
 import (
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"strings"
 	"text/template"
 
@@ -36,13 +34,13 @@ func normalizeComments(entries []types.ReplaceEntry) {
 }
 
 func generateReplacesForFileType(dirs *helpers.FileHelper, projectReplaces *types.ProjectReplaces, fileType types.FileType) (*string, error) {
-	templatePath, err := dirs.TemplatePath(fileType)
+	tmplContent, err := dirs.Template(fileType)
 
 	if err != nil {
-		return nil, fmt.Errorf("could not get template path: %w", err)
+		return nil, fmt.Errorf("could not load template: %w", err)
 	}
 
-	str, err := generateFromTemplate(templatePath, projectReplaces.Replaces)
+	str, err := generateFromTemplate(string(fileType), tmplContent, projectReplaces.Replaces)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not execute template generation: %w", err)
@@ -51,13 +49,8 @@ func generateReplacesForFileType(dirs *helpers.FileHelper, projectReplaces *type
 	return str, nil
 }
 
-func generateFromTemplate(templatePath string, entries []types.ReplaceEntry) (*string, error) {
-	tmplContent, err := os.ReadFile(templatePath)
-	if err != nil {
-		return nil, fmt.Errorf("could not read template %s: %w", templatePath, err)
-	}
-
-	tmpl, err := template.New(filepath.Base(templatePath)).Parse(string(tmplContent))
+func generateFromTemplate(name string, tmplContent []byte, entries []types.ReplaceEntry) (*string, error) {
+	tmpl, err := template.New(name).Parse(string(tmplContent))
 
 	if err != nil {
 		return nil, fmt.Errorf("could not parse template: %w", err)

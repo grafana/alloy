@@ -83,9 +83,12 @@ Or invoke the CLI directly (what the Make target does):
 
 ```bash
 go run -C tools ./cmd generate module-dependencies \
-  --dependency-yaml=dependency-replacements.yaml \
-  --project-root=.
+  --dependency-yaml="$PWD/dependency-replacements.yaml" \
+  --project-root="$PWD"
 ```
+
+(Paths must be absolute or be relative to `tools/`, because `go run -C tools`
+changes the working directory before running the binary.)
 
 CI checks that the generated output matches what's committed. If you change
 `dependency-replacements.yaml`, run the Make target and commit the resulting
