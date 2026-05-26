@@ -136,7 +136,7 @@ endif
 
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
-VERSION      ?= $(shell bash ./tools/image-tag)
+VERSION      ?= $(shell bash ./scripts/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 BEYLA_MODULE  := $(shell go list -m -f '{{.Path}} {{.Version}}' github.com/grafana/beyla/v3 2>/dev/null)

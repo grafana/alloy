@@ -36,13 +36,13 @@ export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
 # If containers are being built from a GitHub Actions tag trigger, 
 # we force the version to come from the GitHub Actions tag name.
 #
-# Otherwise, we use the ./tools/image-tag script to determine the version.
+# Otherwise, we use the ./scripts/image-tag script to determine the version.
 if [ -n "$GITHUB_TAG" ]; then
   VERSION=$GITHUB_TAG
 else
-  # NOTE(rfratto): Do not use ./tools/image-tag-docker here, which doesn't
+  # NOTE(rfratto): Do not use ./scripts/image-tag-docker here, which doesn't
   # produce valid semver.
-  VERSION=$(./tools/image-tag)
+  VERSION=$(./scripts/image-tag)
 fi
 
 # DEFAULT_LATEST is the default tag to use for the "latest" tag.
@@ -51,7 +51,7 @@ BORINGCRYPTO_LATEST=boringcrypto
 
 # The TAG_VERSION is the version to use for the Docker tag. It is sanitized to
 # force it to be a valid Docker tag name (primarily by removing the +
-# characters that may have been emitted by ./tools/image-tag).
+# characters that may have been emitted by ./scripts/image-tag).
 TAG_VERSION=${VERSION//+/-}
 
 # We also need to know which "branch tag" to update. Branch tags are used as a

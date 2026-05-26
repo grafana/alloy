@@ -3,5 +3,5 @@ pkg/operator/crds/*.yaml linguist-generated=true
 *.txtar text eol=lf
 Makefile text eol=lf
 build-tools/make/*.mk text eol=lf
-tools/image-tag text eol=lf
-tools/publish-release-assets.sh text eol=lf
+scripts/image-tag text eol=lf
+scripts/publish-release-artifacts.sh text eol=lf

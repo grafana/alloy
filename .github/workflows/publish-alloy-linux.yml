@@ -36,7 +36,7 @@ jobs:
       # This step needs to run before "Checkout code".
       # That's because it generates a new file.
       # We don't want this file to end up in the repo directory.
-      # Then "tools/image-tag" would get confused because "git status" no longer reports a clean repo.
+      # Then "scripts/image-tag" would get confused because "git status" no longer reports a clean repo.
     - name: Login to DockerHub (from vault)
       uses: grafana/shared-workflows/actions/dockerhub-login@081a366728379fd0426b9cfef190e9a21c2d5418 # dockerhub-login/v1.0.3
 
@@ -48,7 +48,7 @@ jobs:
     - name: Tag dev
       if: ${{ inputs.dev }}
       run: |
-        ./tools/tag-dev
+        ./scripts/tag-dev
 
     - name: Set ownership
       # https://github.com/actions/runner/issues/2033#issuecomment-1204205989
@@ -65,7 +65,7 @@ jobs:
     - run: |
         docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
         docker buildx create --name multiarch-alloy-${IMG_NAME}-${GITHUB_SHA} --driver docker-container --use
-        ./tools/ci/docker-containers ${IMG_NAME}
+        ./scripts/docker-containers ${IMG_NAME}
         docker buildx rm multiarch-alloy-${IMG_NAME}-${GITHUB_SHA}
       env:
         PUSH_ALLOY_IMAGE: ${{ inputs.push }}

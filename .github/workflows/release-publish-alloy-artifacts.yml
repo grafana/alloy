@@ -290,7 +290,7 @@ jobs:
         RELEASE_TAG: ${{ env.RELEASE_TAG }}
 
     - name: Publish release artifacts
-      run: ./tools/publish-release-artifacts.sh
+      run: ./scripts/publish-release-artifacts.sh
       env:
         RELEASE_TAG: ${{ env.RELEASE_TAG }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
