@@ -2,8 +2,10 @@ package rules
 
 import (
 	"context"
+	"errors"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -27,8 +29,9 @@ import (
 )
 
 type fakeMimirClient struct {
-	rulesMut sync.RWMutex
-	rules    map[string][]client.MimirRuleGroup
+	rulesMut     sync.RWMutex
+	rules        map[string][]client.MimirRuleGroup
+	listFailures atomic.Int32
 }
 
 var _ client.RulerInterface = &fakeMimirClient{}
@@ -74,6 +77,9 @@ func (m *fakeMimirClient) deleteLocked(namespace, group string) {
 }
 
 func (m *fakeMimirClient) ListRules(_ context.Context, namespace string) (map[string][]client.MimirRuleGroup, error) {
+	if remaining := m.listFailures.Load(); remaining > 0 && m.listFailures.CompareAndSwap(remaining, remaining-1) {
+		return nil, errors.New("connection refused")
+	}
 	m.rulesMut.RLock()
 	defer m.rulesMut.RUnlock()
 	output := make(map[string][]client.MimirRuleGroup)

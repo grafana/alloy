@@ -11,9 +11,15 @@ import (
 	"github.com/go-kit/log"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
+	promFake "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned/fake"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+	"k8s.io/apimachinery/pkg/labels"
+	clientfeatures "k8s.io/client-go/features"
+	clientfeaturestesting "k8s.io/client-go/features/testing"
+	kubeFake "k8s.io/client-go/kubernetes/fake"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/service/cluster"
@@ -412,4 +418,61 @@ func TestIterationHandlesTick(t *testing.T) {
 
 	require.NoError(t, health.getErr())
 	require.True(t, state.syncStateCalled.Load())
+}
+
+// TestStartupWhenMimirIsDown verifies that the component starts in degraded mode when Mimir is unreachable during startup, and that it recovers to healthy once Mimir becomes reachable.
+func TestStartupWhenMimirIsDown(t *testing.T) {
+	// Fake clientsets don't drive the streaming watch-list bookmark protocol,
+	// so disable it for this test to avoid WaitForCacheSync hanging on the
+	// initial events bookmark.
+	clientfeaturestesting.SetFeatureDuringTest(t, clientfeatures.WatchListClient, false)
+
+	reg := prometheus.NewPedanticRegistry()
+	logger := log.NewNopLogger()
+
+	leader := &fakeLeadership{}
+	health := &fakeHealthReporter{}
+
+	c := newComponentForTesting(t, reg, logger)
+
+	// Wire fake k8s and prometheus-operator clients so startup() can build
+	// informers.
+	c.k8sClient = kubeFake.NewClientset()
+	c.promClient = promFake.NewSimpleClientset()
+
+	// Make the first few ListRules calls fail with a recoverable error,
+	// mimicking Mimir being unreachable while Alloy is starting up.
+	mimirClient := newFakeMimirClient()
+	mimirClient.listFailures.Store(6)
+	c.mimirClient = mimirClient
+
+	c.namespaceSelector = labels.Everything()
+	c.ruleSelector = labels.Everything()
+	c.leader = &fakeLeadership{leader: true}
+
+	require.NoError(t, c.startup(t.Context()), "startup must succeed even when the initial Mimir sync fails")
+
+	// Verify that the eventProcessor is running and consuming all erroring calls from our fake Mimir client.
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		assert.Equal(ct, int32(0), mimirClient.listFailures.Load(), "event loop should retry the queued sync until it reaches max retries")
+	}, 5*time.Second, 10*time.Millisecond)
+
+	// Verify that component report as unhealthy since the stat sync with Mimir failed.
+	require.Equal(t, component.HealthTypeUnhealthy, c.CurrentHealth().Health, "component should report as unhealthy since Mimir is unreachable")
+
+	// Trigger state re-sync.
+	c.ticker.Reset(time.Millisecond)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		require.NoError(t, c.iteration(t.Context(), leader, c, health))
+	}()
+	wg.Wait()
+
+	// Verify that the component report as healthy once the state re-sync is complete.
+	require.EventuallyWithT(t, func(ct *assert.CollectT) {
+		assert.Equal(ct, component.HealthTypeHealthy, c.CurrentHealth().Health, "component should report as healthy once Mimir is reachable")
+	}, 5*time.Second, 10*time.Millisecond)
 }
