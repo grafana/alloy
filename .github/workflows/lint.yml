@@ -40,9 +40,9 @@ jobs:
 
   govulncheck:
     name: Govulncheck
-    # xlarge: govulncheck's SSA call graph on the alloy/collector/alloyengine
-    # modules exceeds the 32 GB github-hosted runners.
-    runs-on: github-hosted-ubuntu-x64-xlarge
+    # xlarge (64 GB): govulncheck's SSA call graph on the
+    # alloy/collector/alloyengine modules exceeds smaller runners.
+    runs-on: ubuntu-x64-xlarge
 
     steps:
     - name: Checkout code
