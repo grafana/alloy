@@ -100,8 +100,8 @@ GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
 # renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
 GOVULNCHECK          		?= go run golang.org/x/vuln/cmd/govulncheck@v1.3.0
 # -tags converts GO_TAGS (space-separated) into govulncheck's comma form so
-# tag-gated code paths are analysed; -show verbose prints non-reachable findings.
-GOVULNCHECK_FLAGS    		?= -show verbose -tags=$(shell echo "$(GO_TAGS)" | tr ' ' ',')
+# tag-gated code paths are analysed.
+GOVULNCHECK_FLAGS    		?= -tags=$(shell echo "$(GO_TAGS)" | tr ' ' ',')
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
