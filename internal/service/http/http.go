@@ -36,8 +36,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 // ServiceName defines the name used for the HTTP service.
@@ -290,7 +288,10 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.PathPrefix(route.Base).Handler(route.Handler)
 	}
 
-	srv := &http.Server{Handler: h2c.NewHandler(r, &http2.Server{})}
+	protocols := new(http.Protocols)
+	protocols.SetHTTP1(true)
+	protocols.SetUnencryptedHTTP2(true)
+	srv := &http.Server{Handler: r, Protocols: protocols}
 
 	level.Info(s.log).Log("msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
 

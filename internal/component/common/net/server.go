@@ -8,7 +8,7 @@ import (
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"golang.org/x/net/http2/h2c"
+	"golang.org/x/net/http2/h2c" //nolint:staticcheck // h2c is deprecated, but migrating to http.Server.Protocols + http.HTTP2Config is a breaking change to the public `http2` config block: stdlib drops MaxHandlers/IdleTimeout/ReadIdleTimeout and renames MaxUploadBufferPer* to MaxReceiveBufferPer*. Tracked for a follow-up.
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -79,7 +79,7 @@ func (ts *TargetServer) MountAndRun(mountRoute func(router *mux.Router)) error {
 	ts.server = srv
 
 	if http2Server := ts.http2.Server(); http2Server != nil {
-		ts.server.HTTPServer.Handler = h2c.NewHandler(ts.server.HTTPServer.Handler, http2Server)
+		ts.server.HTTPServer.Handler = h2c.NewHandler(ts.server.HTTPServer.Handler, http2Server) //nolint:staticcheck // see import comment
 	}
 	mountRoute(ts.server.HTTP)
 
