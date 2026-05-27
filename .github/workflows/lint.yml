@@ -85,7 +85,10 @@ jobs:
         cache: false
 
     - name: Run govulncheck
-      run: GOVULNCHECK_MODULES="${{ matrix.module }}" make govulncheck
+      # GOVULNCHECK_TIME=1 wraps the scan in `/usr/bin/time -v` to log peak RSS
+      # — gives concrete memory data when diagnosing future runner kills on
+      # the heavier modules.
+      run: GOVULNCHECK_MODULES="${{ matrix.module }}" GOVULNCHECK_TIME=1 make govulncheck
 
   shellcheck:
     name: Shellcheck

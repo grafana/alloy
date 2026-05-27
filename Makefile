@@ -99,6 +99,10 @@ JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
 # renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
 GOVULNCHECK          		?= go run golang.org/x/vuln/cmd/govulncheck@v1.3.0
+# Extra flags passed to every govulncheck invocation. `-show verbose` lists
+# vulnerabilities found in dependencies that aren't reachable from the scanned
+# code (silenced by default) so reviewers can audit them in the build log.
+GOVULNCHECK_FLAGS    		?= -show verbose
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
@@ -208,11 +212,16 @@ govulncheck-modules:
 #
 # Set GOVULNCHECK_MODULES to a space-separated list of paths to scan a subset
 # (e.g. one module per matrix job in CI). Defaults to all modules.
+#
+# Set GOVULNCHECK_TIME=1 to wrap each scan in `/usr/bin/time -v` so the build
+# log surfaces peak resident set size — useful for diagnosing CI OOM kills on
+# the larger modules without changing scan behaviour.
 GOVULNCHECK_MODULES ?= $(shell $(MAKE) -s govulncheck-modules)
+GOVULNCHECK_RUN     := $(if $(filter 1,$(GOVULNCHECK_TIME)),/usr/bin/time -v ,)$(GOVULNCHECK)
 govulncheck:
 	@for dir in $(GOVULNCHECK_MODULES); do \
 		echo "==> govulncheck $$dir"; \
-		(cd $$dir && $(GOVULNCHECK) ./...) || exit 1;\
+		(cd $$dir && $(GOVULNCHECK_RUN) $(GOVULNCHECK_FLAGS) ./...) || exit 1;\
 	done
 
 test-packages:
