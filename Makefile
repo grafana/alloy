@@ -212,16 +212,11 @@ govulncheck-modules:
 #
 # Set GOVULNCHECK_MODULES to a space-separated list of paths to scan a subset
 # (e.g. one module per matrix job in CI). Defaults to all modules.
-#
-# Set GOVULNCHECK_TIME=1 to wrap each scan in `/usr/bin/time -v` so the build
-# log surfaces peak resident set size — useful for diagnosing CI OOM kills on
-# the larger modules without changing scan behaviour.
 GOVULNCHECK_MODULES ?= $(shell $(MAKE) -s govulncheck-modules)
-GOVULNCHECK_RUN     := $(if $(filter 1,$(GOVULNCHECK_TIME)),/usr/bin/time -v ,)$(GOVULNCHECK)
 govulncheck:
 	@for dir in $(GOVULNCHECK_MODULES); do \
 		echo "==> govulncheck $$dir"; \
-		(cd $$dir && $(GOVULNCHECK_RUN) $(GOVULNCHECK_FLAGS) ./...) || exit 1;\
+		(cd $$dir && $(GOVULNCHECK) $(GOVULNCHECK_FLAGS) ./...) || exit 1;\
 	done
 
 test-packages:

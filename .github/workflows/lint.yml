@@ -64,9 +64,9 @@ jobs:
     # One job per module so each gets its own memory budget: govulncheck
     # builds an SSA call graph in memory and the alloy + collector +
     # extension/alloyengine modules each pull in the full alloy dependency
-    # tree, which OOMs a shared runner when scanned sequentially. 8-core
-    # matches the test_linux runner size used elsewhere in the repo.
-    runs-on: ubuntu-latest-8-cores
+    # tree, which exceeded the 32 GB ubuntu-latest-8-cores runner. Step up
+    # to 16-cores (64 GB) for headroom.
+    runs-on: ubuntu-latest-16-cores
     strategy:
       fail-fast: false
       matrix:
@@ -85,10 +85,7 @@ jobs:
         cache: false
 
     - name: Run govulncheck
-      # GOVULNCHECK_TIME=1 wraps the scan in `/usr/bin/time -v` to log peak RSS
-      # — gives concrete memory data when diagnosing future runner kills on
-      # the heavier modules.
-      run: GOVULNCHECK_MODULES="${{ matrix.module }}" GOVULNCHECK_TIME=1 make govulncheck
+      run: GOVULNCHECK_MODULES="${{ matrix.module }}" make govulncheck
 
   shellcheck:
     name: Shellcheck
