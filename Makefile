@@ -99,10 +99,15 @@ JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
 # renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
 GOVULNCHECK          		?= go run golang.org/x/vuln/cmd/govulncheck@v1.3.0
-# Extra flags passed to every govulncheck invocation. `-show verbose` lists
-# vulnerabilities found in dependencies that aren't reachable from the scanned
-# code (silenced by default) so reviewers can audit them in the build log.
-GOVULNCHECK_FLAGS    		?= -show verbose
+# Extra flags passed to every govulncheck invocation:
+#  * -show verbose lists vulnerabilities found in dependencies that aren't
+#    reachable from the scanned code (silenced by default) so reviewers can
+#    audit them in the build log.
+#  * -tags is set from GO_TAGS (converted from space-separated to the
+#    comma-separated form govulncheck expects) so the call-graph analysis
+#    matches how Alloy is actually built — otherwise tag-gated code such as
+#    loki.secretfilter's gore2regex path is skipped.
+GOVULNCHECK_FLAGS    		?= -show verbose -tags=$(shell echo "$(GO_TAGS)" | tr ' ' ',')
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
