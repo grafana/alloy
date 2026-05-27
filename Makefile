@@ -17,6 +17,7 @@
 ##
 ##   test                  Run tests
 ##   lint                  Lint code
+##   govulncheck           Run govulncheck across all Go modules
 ##   integration-test      Run integration tests
 ##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
 ##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
@@ -96,6 +97,8 @@ BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
+# renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
+GOVULNCHECK          		?= go run golang.org/x/vuln/cmd/govulncheck@v1.3.0
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
@@ -188,6 +191,18 @@ test:
 	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
 		if echo "$$dir" | grep -qv testdata; then \
 			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
+		fi;\
+	done
+
+.PHONY: govulncheck
+# Run govulncheck (https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) across
+# every Go module in the repo (excluding testdata fixtures). Uses call-graph
+# analysis so only reachable vulnerabilities are reported.
+govulncheck:
+	@for dir in $$(find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \;); do \
+		if echo "$$dir" | grep -qv testdata; then \
+			echo "==> govulncheck $$dir"; \
+			(cd $$dir && $(GOVULNCHECK) ./...) || exit 1;\
 		fi;\
 	done
 
