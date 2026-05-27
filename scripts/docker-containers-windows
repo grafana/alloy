@@ -35,8 +35,9 @@ else
   exit 1
 fi
 
-export RELEASE_ALLOY_IMAGE=grafana/alloy
-export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
+GAR_MIRROR=us-docker.pkg.dev/grafanalabs-global/dockerhub-alloy-prod-mirror
+export RELEASE_ALLOY_IMAGE=$GAR_MIRROR/alloy
+export DEVEL_ALLOY_IMAGE=$GAR_MIRROR/alloy-dev
 
 # TODO: Unit test this script? Test cases:
 # * Input:  ALLOY_GO_VERSION=1.24 WINDOWS_VERSION=windows-2022 GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v1.8.0 ./scripts/docker-containers-windows alloy
