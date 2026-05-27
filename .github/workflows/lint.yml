@@ -40,7 +40,10 @@ jobs:
 
   govulncheck:
     name: Govulncheck
-    runs-on: ubuntu-latest
+    # Use a larger runner: govulncheck does SSA call-graph analysis on every
+    # package which exceeds the default 16 GB ubuntu-latest runner for the
+    # collector/ and root alloy modules. Matches the test_linux runner size.
+    runs-on: ubuntu-latest-8-cores
 
     steps:
     - name: Checkout code
