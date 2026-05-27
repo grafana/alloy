@@ -64,9 +64,11 @@ jobs:
     # One job per module so each gets its own memory budget: govulncheck
     # builds an SSA call graph in memory and the alloy + collector +
     # extension/alloyengine modules each pull in the full alloy dependency
-    # tree, which exceeded the 32 GB ubuntu-latest-8-cores runner. Step up
-    # to 16-cores (64 GB) for headroom.
-    runs-on: ubuntu-latest-16-cores
+    # tree, which exceeded the 32 GB ubuntu-latest-8-cores GitHub-hosted
+    # runner. Use the Grafana internal xlarge self-hosted runner (16 vCPU /
+    # 64 GB) — same naming scheme as github-hosted-ubuntu-x64-large used
+    # throughout this repo for memory-heavy jobs.
+    runs-on: github-hosted-ubuntu-x64-xlarge
     strategy:
       fail-fast: false
       matrix:
