@@ -203,26 +203,17 @@ test:
 		fi;\
 	done
 
-.PHONY: govulncheck-modules
-# Print the list of Go module directories that `make govulncheck` would scan,
-# one per line. Used by CI to fan out per-module matrix jobs and by anyone
-# wanting to script per-module scans.
-govulncheck-modules:
-	@find . -name go.mod -type f -exec sh -c 'dirname "$$1"' _ {} \; | grep -v testdata
-
 .PHONY: govulncheck
 # Run govulncheck (https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) across
 # every Go module in the repo (excluding testdata fixtures). Uses call-graph
-# analysis so only reachable vulnerabilities are reported.
-#
-# Set GOVULNCHECK_MODULES to a space-separated list of paths to scan a subset
-# (e.g. one module per matrix job in CI). Defaults to all modules.
-GOVULNCHECK_MODULES ?= $(shell $(MAKE) -s govulncheck-modules)
+# analysis so only reachable vulnerabilities are reported. Set
+# GOVULNCHECK_MODULES to override the list (e.g. to scan a subset locally).
+GOVULNCHECK_MODULES ?= $(shell find . -name go.mod -not -path '*/testdata/*' -exec dirname {} \;)
 govulncheck:
-	@for dir in $(GOVULNCHECK_MODULES); do \
+	@fail=0; for dir in $(GOVULNCHECK_MODULES); do \
 		echo "==> govulncheck $$dir"; \
-		(cd $$dir && $(GOVULNCHECK) $(GOVULNCHECK_FLAGS) ./...) || exit 1;\
-	done
+		(cd $$dir && $(GOVULNCHECK) $(GOVULNCHECK_FLAGS) ./...) || fail=1; \
+	done; exit $$fail
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)

@@ -38,41 +38,14 @@ jobs:
     - name: Run custom linters
       run: make run-alloylint
 
-  # Discover the Go modules to scan from the Makefile so the workflow doesn't
-  # need its own module list — keeps a single source of truth in the repo.
-  govulncheck_discover:
-    name: Govulncheck (discover modules)
-    runs-on: ubuntu-latest
-    outputs:
-      modules: ${{ steps.list.outputs.modules }}
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        persist-credentials: false
-
-    - name: List Go modules
-      id: list
-      run: |
-        modules=$(make -s govulncheck-modules | jq -R -s -c 'split("\n") | map(select(length > 0))')
-        echo "modules=$modules" >> "$GITHUB_OUTPUT"
-        echo "Discovered modules: $modules"
-
   govulncheck:
-    name: Govulncheck (${{ matrix.module }})
-    needs: govulncheck_discover
-    # One job per module so each gets its own memory budget: govulncheck
-    # builds an SSA call graph in memory and the alloy + collector +
-    # extension/alloyengine modules each pull in the full alloy dependency
-    # tree, which exceeded the 32 GB ubuntu-latest-8-cores GitHub-hosted
-    # runner. Use the Grafana internal xlarge self-hosted runner (16 vCPU /
-    # 64 GB) — same naming scheme as github-hosted-ubuntu-x64-large used
-    # throughout this repo for memory-heavy jobs.
+    name: Govulncheck
+    # 64 GB xlarge runner: govulncheck builds an SSA call graph in memory
+    # and the alloy / collector / extension/alloyengine modules each pull
+    # in the full alloy dependency tree, exceeding the 32 GB GitHub-hosted
+    # runners. Naming scheme matches github-hosted-ubuntu-x64-large used
+    # elsewhere in this repo for memory-heavy jobs.
     runs-on: github-hosted-ubuntu-x64-xlarge
-    strategy:
-      fail-fast: false
-      matrix:
-        module: ${{ fromJson(needs.govulncheck_discover.outputs.modules) }}
 
     steps:
     - name: Checkout code
@@ -87,7 +60,7 @@ jobs:
         cache: false
 
     - name: Run govulncheck
-      run: GOVULNCHECK_MODULES="${{ matrix.module }}" make govulncheck
+      run: make govulncheck
 
   shellcheck:
     name: Shellcheck
