@@ -40,11 +40,8 @@ jobs:
 
   govulncheck:
     name: Govulncheck
-    # 64 GB xlarge runner: govulncheck builds an SSA call graph in memory
-    # and the alloy / collector / extension/alloyengine modules each pull
-    # in the full alloy dependency tree, exceeding the 32 GB GitHub-hosted
-    # runners. Naming scheme matches github-hosted-ubuntu-x64-large used
-    # elsewhere in this repo for memory-heavy jobs.
+    # xlarge: govulncheck's SSA call graph on the alloy/collector/alloyengine
+    # modules exceeds the 32 GB github-hosted runners.
     runs-on: github-hosted-ubuntu-x64-xlarge
 
     steps:

@@ -99,14 +99,8 @@ JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
 # renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
 GOVULNCHECK          		?= go run golang.org/x/vuln/cmd/govulncheck@v1.3.0
-# Extra flags passed to every govulncheck invocation:
-#  * -show verbose lists vulnerabilities found in dependencies that aren't
-#    reachable from the scanned code (silenced by default) so reviewers can
-#    audit them in the build log.
-#  * -tags is set from GO_TAGS (converted from space-separated to the
-#    comma-separated form govulncheck expects) so the call-graph analysis
-#    matches how Alloy is actually built — otherwise tag-gated code such as
-#    loki.secretfilter's gore2regex path is skipped.
+# -tags converts GO_TAGS (space-separated) into govulncheck's comma form so
+# tag-gated code paths are analysed; -show verbose prints non-reachable findings.
 GOVULNCHECK_FLAGS    		?= -show verbose -tags=$(shell echo "$(GO_TAGS)" | tr ' ' ',')
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
@@ -204,10 +198,7 @@ test:
 	done
 
 .PHONY: govulncheck
-# Run govulncheck (https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck) across
-# every Go module in the repo (excluding testdata fixtures). Uses call-graph
-# analysis so only reachable vulnerabilities are reported. Set
-# GOVULNCHECK_MODULES to override the list (e.g. to scan a subset locally).
+# Set GOVULNCHECK_MODULES to scan a subset.
 GOVULNCHECK_MODULES ?= $(shell find . -name go.mod -not -path '*/testdata/*' -exec dirname {} \;)
 govulncheck:
 	@fail=0; for dir in $(GOVULNCHECK_MODULES); do \
