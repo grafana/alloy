@@ -41,9 +41,6 @@ RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_V
  && go install github.com/tcnksm/ghr@v0.15.0                                           \
  && go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1                \
  && go install github.com/google/go-jsonnet/cmd/jsonnet@v0.18.0                        \
- && go install github.com/golang/protobuf/protoc-gen-go@v1.3.1                         \
- && go install github.com/gogo/protobuf/protoc-gen-gogoslick@v1.3.0                    \
- && go install github.com/gogo/protobuf/gogoproto/...@v1.3.0                           \
  && go install github.com/ahmetb/gen-crd-api-reference-docs@v0.3.1-0.20220618162802-424739b250f5 \
  && go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.11.0
 
@@ -70,8 +67,7 @@ RUN apt-get update                                \
  && apt-get install -qy                           \
       build-essential file zip unzip gettext git  \
       jq musl libsystemd-dev nsis                 \
-      rpm ruby ruby-dev rubygems                  \
-      protobuf-compiler libprotobuf-dev yamllint  \
+      rpm ruby ruby-dev rubygems yamllint         \
  && gem install --no-document fpm                 \
  && rm -rf /var/lib/apt/lists/*
 
