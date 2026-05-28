@@ -48,16 +48,8 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Shellcheck
-      uses: Azbagheri/shell-linter@30a9cf3f6cf25c08fc98f10d7dc4167f7b5c0c00 # v0.8.0
-      with:
-        path: "\
-          packaging,\
-          production,\
-          tools/ci,\
-          tools/publish-release-assets.sh,\
-          docs/sources/tutorials/assets\
-          "
+    - name: Run shellcheck
+      run: make shellcheck
 
   lint_ui:
     name: Lint UI
