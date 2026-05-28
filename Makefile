@@ -196,9 +196,9 @@ test:
 	done
 
 .PHONY: govulncheck
-# Thin Go wrapper around govulncheck that streams its native text output and
-# adds a YAML-configurable ignore list (see .govulncheck.yaml and
-# tools/govulncheck/).
+# Thin Go wrapper around govulncheck: streams the tool's native text output
+# unchanged, parses `=== Symbol Results ===` for reachable OSV IDs, and
+# applies the YAML ignore list (see .govulncheck.yaml and tools/govulncheck/).
 govulncheck:
 	go run -C tools ./cmd govulncheck --root=$(CURDIR) --config=$(CURDIR)/.govulncheck.yaml --tags=$(GOVULNCHECK_TAGS)
 
