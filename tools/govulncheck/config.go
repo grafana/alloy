@@ -16,15 +16,14 @@ type Config struct {
 	Ignore []IgnoreEntry `yaml:"ignore"`
 }
 
-// IgnoreEntry suppresses one OSV ID. Reason is mandatory so the rationale
-// lives in git; the optional Expires forces re-evaluation when it passes.
+// IgnoreEntry suppresses one OSV ID.
 type IgnoreEntry struct {
 	ID      string    `yaml:"id"`
 	Reason  string    `yaml:"reason"`
 	Expires time.Time `yaml:"expires,omitempty"` // YAML accepts YYYY-MM-DD or RFC3339
 }
 
-var goIDRegexp = regexp.MustCompile(`^GO-\d{4}-\d+$`)
+var vulnIDRegexp = regexp.MustCompile(`^\S+$`)
 
 // loadConfig reads path. A missing file is treated as an empty config.
 func loadConfig(path string) (*Config, error) {
@@ -41,9 +40,8 @@ func loadConfig(path string) (*Config, error) {
 func parseConfig(data []byte) (*Config, error) {
 	var cfg Config
 	dec := yaml.NewDecoder(bytes.NewReader(data))
-	dec.KnownFields(true) // reject unknown fields so typos fail loud
-	// io.EOF means an empty or comment-only file, which is a valid
-	// "no ignores" config — not a parse error.
+	dec.KnownFields(true)
+	// io.EOF means empty input (including comment-only YAML).
 	if err := dec.Decode(&cfg); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("parse YAML: %w", err)
 	}
@@ -56,8 +54,8 @@ func parseConfig(data []byte) (*Config, error) {
 func (c *Config) validate() error {
 	seen := make(map[string]bool, len(c.Ignore))
 	for i, e := range c.Ignore {
-		if !goIDRegexp.MatchString(e.ID) {
-			return fmt.Errorf("ignore[%d]: id %q is not a valid GO-YYYY-NNNN identifier", i, e.ID)
+		if !validVulnID(e.ID) {
+			return fmt.Errorf("ignore[%d]: id %q must be non-empty and contain no whitespace", i, e.ID)
 		}
 		if seen[e.ID] {
 			return fmt.Errorf("ignore[%d]: duplicate id %q", i, e.ID)
@@ -68,6 +66,10 @@ func (c *Config) validate() error {
 		}
 	}
 	return nil
+}
+
+func validVulnID(id string) bool {
+	return vulnIDRegexp.MatchString(id)
 }
 
 // isIgnored returns the matching entry, or nil if not ignored or expired.

@@ -14,12 +14,14 @@ ignore:
     expires: 2027-01-01
   - id: GO-2026-4883
     reason: "plugin install not used"
+  - id: CVE-2026-4883
+    reason: "non-go advisory id is accepted"
 `
 	cfg, err := parseConfig([]byte(yaml))
 	if err != nil {
 		t.Fatalf("parseConfig: %v", err)
 	}
-	if got, want := len(cfg.Ignore), 2; got != want {
+	if got, want := len(cfg.Ignore), 3; got != want {
 		t.Fatalf("ignore count = %d, want %d", got, want)
 	}
 	wantExp := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -33,14 +35,14 @@ ignore:
 
 func TestParseConfig_Errors(t *testing.T) {
 	tests := []struct {
-		name        string
-		yaml        string
-		wantSubstr  string
+		name       string
+		yaml       string
+		wantSubstr string
 	}{
 		{
-			name:       "invalid id format",
-			yaml:       "ignore:\n  - id: CVE-2024-1234\n    reason: x\n",
-			wantSubstr: "is not a valid GO-YYYY-NNNN",
+			name:       "id with whitespace",
+			yaml:       "ignore:\n  - id: \"bad id\"\n    reason: x\n",
+			wantSubstr: "contain no whitespace",
 		},
 		{
 			name:       "missing reason",
@@ -112,9 +114,6 @@ func TestLoadConfig_MissingFileIsEmpty(t *testing.T) {
 }
 
 func TestParseConfig_EmptyAndCommentOnlyFilesAreValid(t *testing.T) {
-	// An empty or comment-only YAML file should be a valid "no ignores"
-	// config — yaml.Decoder.Decode returns io.EOF for these, which we
-	// intentionally treat as success.
 	for _, in := range []string{"", "# only a comment\n"} {
 		cfg, err := parseConfig([]byte(in))
 		if err != nil {

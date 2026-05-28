@@ -46,6 +46,36 @@ Vulnerability #1: GO-2026-9992
 			in:   "",
 			want: nil,
 		},
+		{
+			name: "accepts non-go advisory ids",
+			in: `
+=== Symbol Results ===
+
+Vulnerability #1: CVE-2026-5013
+Vulnerability #2: GHSA-abcd-efgh-ijkl
+`,
+			want: []string{"CVE-2026-5013", "GHSA-abcd-efgh-ijkl"},
+		},
+		{
+			name: "ignores findings when symbol section is absent",
+			in: `
+=== Package Results ===
+
+Vulnerability #1: GO-2026-9991
+`,
+			want: nil,
+		},
+		{
+			name: "ignores malformed vulnerability header lines",
+			in: `
+=== Symbol Results ===
+
+Vulnerability #1: GO-2026-5013 extra-text
+Vulnerability #2 GO-2026-5014
+Vulnerability #3: GO-2026-5015
+`,
+			want: []string{"GO-2026-5015"},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -79,5 +109,14 @@ func TestDedup(t *testing.T) {
 	want := []string{"GO-2026-1", "GO-2026-2"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %v, want %v", got, want)
+	}
+}
+
+func TestAdvisoryURL(t *testing.T) {
+	if got, want := advisoryURL("GO-2026-1234"), "https://pkg.go.dev/vuln/GO-2026-1234"; got != want {
+		t.Errorf("advisoryURL(go id) = %q, want %q", got, want)
+	}
+	if got := advisoryURL("CVE-2026-1234"); got != "" {
+		t.Errorf("advisoryURL(non-go id) = %q, want empty", got)
 	}
 }
