@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/tools/goversion"
+	"github.com/grafana/alloy/tools/govulncheck"
 )
 
 func main() {
@@ -17,6 +18,7 @@ func main() {
 	}
 	cmd.AddCommand(
 		goversion.Command(),
+		govulncheck.Command(),
 	)
 
 	if err := cmd.Execute(); err != nil {

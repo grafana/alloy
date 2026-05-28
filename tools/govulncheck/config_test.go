@@ -1,4 +1,4 @@
-package main
+package govulncheck
 
 import (
 	"strings"
@@ -108,5 +108,21 @@ func TestLoadConfig_MissingFileIsEmpty(t *testing.T) {
 	}
 	if len(cfg.Ignore) != 0 {
 		t.Errorf("empty config expected, got %d entries", len(cfg.Ignore))
+	}
+}
+
+func TestParseConfig_EmptyAndCommentOnlyFilesAreValid(t *testing.T) {
+	// An empty or comment-only YAML file should be a valid "no ignores"
+	// config — yaml.Decoder.Decode returns io.EOF for these, which we
+	// intentionally treat as success.
+	for _, in := range []string{"", "# only a comment\n"} {
+		cfg, err := parseConfig([]byte(in))
+		if err != nil {
+			t.Errorf("parseConfig(%q): unexpected error %v", in, err)
+			continue
+		}
+		if len(cfg.Ignore) != 0 {
+			t.Errorf("parseConfig(%q): want empty, got %d entries", in, len(cfg.Ignore))
+		}
 	}
 }

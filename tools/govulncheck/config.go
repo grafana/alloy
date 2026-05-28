@@ -1,9 +1,10 @@
-package main
+package govulncheck
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"time"
@@ -41,7 +42,9 @@ func parseConfig(data []byte) (*Config, error) {
 	var cfg Config
 	dec := yaml.NewDecoder(bytes.NewReader(data))
 	dec.KnownFields(true) // reject unknown fields so typos fail loud
-	if err := dec.Decode(&cfg); err != nil {
+	// io.EOF means an empty or comment-only file, which is a valid
+	// "no ignores" config — not a parse error.
+	if err := dec.Decode(&cfg); err != nil && !errors.Is(err, io.EOF) {
 		return nil, fmt.Errorf("parse YAML: %w", err)
 	}
 	if err := cfg.validate(); err != nil {

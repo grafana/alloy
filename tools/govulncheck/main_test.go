@@ -1,4 +1,4 @@
-package main
+package govulncheck
 
 import (
 	"reflect"

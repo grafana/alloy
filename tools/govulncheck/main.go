@@ -1,13 +1,12 @@
-// Command govulncheck runs golang.org/x/vuln/cmd/govulncheck across every Go
+// Package govulncheck runs golang.org/x/vuln/cmd/govulncheck across every Go
 // module in the repo and applies a YAML-configurable ignore list, so CI can
 // stay green on reviewed-and-accepted findings. govulncheck's native text
 // output is streamed through unchanged; we only post-process it to decide
 // the exit code. See .govulncheck.yaml for the ignore schema.
-package main
+package govulncheck
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -18,33 +17,51 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/spf13/cobra"
 )
 
 // renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
 const govulncheckPkg = "golang.org/x/vuln/cmd/govulncheck@v1.3.0"
 
-func main() {
-	root := flag.String("root", ".", "repo root to discover Go modules under")
-	configPath := flag.String("config", ".govulncheck.yaml", "path to YAML ignore-list config (optional)")
-	tags := flag.String("tags", "", "comma-separated build tags passed through to govulncheck")
-	flag.Parse()
-
-	exitCode, err := run(*root, *configPath, *tags, time.Now())
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "govulncheck wrapper:", err)
-		os.Exit(2)
+// Command returns the cobra command for tools/cmd to register.
+func Command() *cobra.Command {
+	var root, configPath, tags string
+	cmd := &cobra.Command{
+		Use:   "govulncheck",
+		Short: "Run govulncheck across every Go module and apply the YAML ignore list",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			actionable, err := run(root, configPath, tags, time.Now())
+			if err != nil {
+				return err
+			}
+			if actionable {
+				// Use SilenceUsage/SilenceErrors so cobra doesn't print
+				// usage on a "vulnerabilities found" exit — the findings
+				// themselves are already printed by govulncheck above.
+				cmd.SilenceUsage = true
+				cmd.SilenceErrors = true
+				os.Exit(1)
+			}
+			return nil
+		},
 	}
-	os.Exit(exitCode)
+	cmd.Flags().StringVar(&root, "root", ".", "repo root to discover Go modules under")
+	cmd.Flags().StringVar(&configPath, "config", ".govulncheck.yaml", "path to YAML ignore-list config (optional)")
+	cmd.Flags().StringVar(&tags, "tags", "", "comma-separated build tags passed through to govulncheck")
+	return cmd
 }
 
-func run(root, configPath, tags string, now time.Time) (int, error) {
+// run scans every discovered module and returns whether any actionable
+// (non-ignored) findings remain.
+func run(root, configPath, tags string, now time.Time) (bool, error) {
 	cfg, err := loadConfig(configPath)
 	if err != nil {
-		return 0, fmt.Errorf("load config: %w", err)
+		return false, fmt.Errorf("load config: %w", err)
 	}
 	modules, err := discoverModules(root)
 	if err != nil {
-		return 0, fmt.Errorf("discover modules: %w", err)
+		return false, fmt.Errorf("discover modules: %w", err)
 	}
 
 	var allActionable, allIgnored []string
@@ -57,7 +74,7 @@ func run(root, configPath, tags string, now time.Time) (int, error) {
 		// error or that the text format changed under us — never silently
 		// let findings through.
 		if gerr != nil && len(ids) == 0 {
-			return 0, fmt.Errorf("%s: govulncheck failed (%v) and parser found no Symbol findings — tool error or output format changed", mod, gerr)
+			return false, fmt.Errorf("%s: govulncheck failed (%v) and parser found no Symbol findings — tool error or output format changed", mod, gerr)
 		}
 
 		actionable, ignored := classify(ids, cfg, now)
@@ -66,10 +83,7 @@ func run(root, configPath, tags string, now time.Time) (int, error) {
 	}
 
 	printFilterReport(os.Stdout, cfg, dedup(allActionable), dedup(allIgnored), len(modules), now)
-	if len(allActionable) > 0 {
-		return 1, nil
-	}
-	return 0, nil
+	return len(allActionable) > 0, nil
 }
 
 // scan runs govulncheck in dir, tee-ing its native text output to stdout and

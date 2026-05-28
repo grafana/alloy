@@ -196,12 +196,11 @@ test:
 	done
 
 .PHONY: govulncheck
-# Thin Go wrapper around govulncheck that adds a YAML-configurable ignore
-# list (see .govulncheck.yaml and tools/govulncheck/). The wrapper discovers
-# every Go module in the repo (excluding testdata) and filters JSON output
-# against the ignore list before deciding the exit code.
+# Thin Go wrapper around govulncheck that streams its native text output and
+# adds a YAML-configurable ignore list (see .govulncheck.yaml and
+# tools/govulncheck/).
 govulncheck:
-	cd ./tools && go run ./govulncheck -root=$(CURDIR) -config=$(CURDIR)/.govulncheck.yaml -tags=$(GOVULNCHECK_TAGS)
+	go run -C tools ./cmd govulncheck --root=$(CURDIR) --config=$(CURDIR)/.govulncheck.yaml --tags=$(GOVULNCHECK_TAGS)
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
