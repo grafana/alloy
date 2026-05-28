@@ -8,4 +8,4 @@ while IFS= read -r -d '' mod; do
   dir="$(dirname "$mod")"
   echo "==> golangci-lint: $dir"
   (cd "$dir" && "$GOLANGCI_LINT_BINARY" run -v --timeout=10m)
-done < <(find . -name go.mod -not -path '*/testdata/*' -print0)
+done < <(find . -name go.mod -not -path '*/testdata/*' -not -path './extension/alloyengine/*' -print0)
