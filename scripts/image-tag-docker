@@ -4,4 +4,4 @@
 # for use in Docker image tags.
 
 TAG=$(/usr/bin/env bash ./scripts/image-tag)
-echo ${TAG//+/-}
+echo "${TAG//+/-}"

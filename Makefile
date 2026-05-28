@@ -180,6 +180,10 @@ lint: alloylint
 run-alloylint: alloylint
 	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
+.PHONY: shellcheck
+shellcheck:
+	./scripts/shellcheck
+
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
 # more for packages that exclude tests via //go:build !race due to known race detection issues. The

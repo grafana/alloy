@@ -8,4 +8,4 @@ if [ ! -z "${GITHUB_WORKSPACE}" ]; then
 fi
 
 TAG=$(scripts/image-tag)
-git tag $TAG -m "tag dev"
+git tag "$TAG" -m "tag dev"
