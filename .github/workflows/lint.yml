@@ -22,17 +22,20 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - name: Install golangci-lint
+    - name: Lint alloy module
       uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
       with:
         # renovate: datasource=github-releases packageName=golangci/golangci-lint
         version: v2.11.4
-        install-only: true
 
-    - name: Lint Go
-      run: make lint-go
+    - name: Lint syntax module
+      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+      with:
+        # renovate: datasource=github-releases packageName=golangci/golangci-lint
+        version: v2.11.4
+        working-directory: ./syntax/
 
-    - name: Run Alloy Lint
+    - name: Run custom linters
       run: make run-alloylint
 
   shellcheck:
