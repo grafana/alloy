@@ -6,11 +6,15 @@ import (
 	"time"
 )
 
-// Mini-fixture mirroring real govulncheck text output. Two symbol findings
-// (reachable), one package finding (importable but uncalled), one module
-// finding (declared in go.mod but uncalled). Only the symbol IDs should
-// come back from parseSymbolFindings.
-const fixture = `
+func TestParseSymbolFindings(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want []string
+	}{
+		{
+			name: "symbol findings only, ignoring package and module sections",
+			in: `
 === Symbol Results ===
 
 Vulnerability #1: GO-2026-5013
@@ -19,7 +23,6 @@ Vulnerability #1: GO-2026-5013
 
 Vulnerability #2: GO-2026-5018
     Other title
-  More info: https://example/GO-2026-5018
 
 === Package Results ===
 
@@ -30,33 +33,26 @@ Vulnerability #1: GO-2026-9991
 
 Vulnerability #1: GO-2026-9992
     module-only finding (not reachable)
-
-Your code is affected by 2 vulnerabilities from 1 module.
-`
-
-func TestParseSymbolFindings_OnlyReturnsSymbolSectionIDs(t *testing.T) {
-	got := parseSymbolFindings(fixture)
-	want := []string{"GO-2026-5013", "GO-2026-5018"}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("got %v, want %v", got, want)
+`,
+			want: []string{"GO-2026-5013", "GO-2026-5018"},
+		},
+		{
+			name: "no findings",
+			in:   "=== Symbol Results ===\n\nNo vulnerabilities found.\n",
+			want: nil,
+		},
+		{
+			name: "empty output",
+			in:   "",
+			want: nil,
+		},
 	}
-}
-
-func TestParseSymbolFindings_NoFindings(t *testing.T) {
-	out := `=== Symbol Results ===
-
-No vulnerabilities found.
-`
-	got := parseSymbolFindings(out)
-	if len(got) != 0 {
-		t.Errorf("got %v, want []", got)
-	}
-}
-
-func TestParseSymbolFindings_EmptyOutput(t *testing.T) {
-	got := parseSymbolFindings("")
-	if len(got) != 0 {
-		t.Errorf("got %v, want []", got)
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := parseSymbolFindings(tc.in); !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("got %v, want %v", got, tc.want)
+			}
+		})
 	}
 }
 

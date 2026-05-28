@@ -11,25 +11,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Config holds the parsed contents of .govulncheck.yaml.
 type Config struct {
 	Ignore []IgnoreEntry `yaml:"ignore"`
 }
 
-// IgnoreEntry suppresses a single OSV ID from failing the build. A reason is
-// mandatory so that the rationale lives next to the entry in git. An optional
-// expiry date forces periodic re-evaluation — once it passes, the entry stops
-// applying and CI fails again until the entry is renewed or removed.
+// IgnoreEntry suppresses one OSV ID. Reason is mandatory so the rationale
+// lives in git; the optional Expires forces re-evaluation when it passes.
 type IgnoreEntry struct {
 	ID      string    `yaml:"id"`
 	Reason  string    `yaml:"reason"`
-	Expires time.Time `yaml:"expires,omitempty"` // YAML parses YYYY-MM-DD and RFC3339 natively
+	Expires time.Time `yaml:"expires,omitempty"` // YAML accepts YYYY-MM-DD or RFC3339
 }
 
 var goIDRegexp = regexp.MustCompile(`^GO-\d{4}-\d+$`)
 
-// loadConfig reads the YAML file at path. A missing file is treated as an
-// empty config (no ignores). An invalid file is a fatal error.
+// loadConfig reads path. A missing file is treated as an empty config.
 func loadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -71,8 +67,7 @@ func (c *Config) validate() error {
 	return nil
 }
 
-// isIgnored returns the matching IgnoreEntry for id, or nil if id is not
-// ignored or its ignore has expired relative to now.
+// isIgnored returns the matching entry, or nil if not ignored or expired.
 func (c *Config) isIgnored(id string, now time.Time) *IgnoreEntry {
 	for i := range c.Ignore {
 		e := &c.Ignore[i]
