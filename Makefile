@@ -165,12 +165,6 @@ else
 GO_FLAGS := $(DEFAULT_FLAGS) $(DEBUG_GO_FLAGS)
 endif
 
-#
-# Targets for running tests
-#
-# These targets currently don't support proxying to a build container.
-#
-
 .PHONY: lint
 lint: lint-go run-alloylint lint-shell
 
@@ -185,6 +179,12 @@ lint-shell:
 .PHONY: run-alloylint
 run-alloylint: alloylint
 	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
+
+#
+# Targets for running tests
+#
+# These targets currently don't support proxying to a build container.
+#
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
