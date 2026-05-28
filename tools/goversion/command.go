@@ -18,8 +18,8 @@ import (
 
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update-go-version <command>",
-		Short: "go version update",
+		Use:   "goversion <command>",
+		Short: "command to update go version used",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Usage()
 		},
@@ -295,4 +295,3 @@ func replaceDockerGoVersion(content []byte, version string) []byte {
 	out := dockerGoVersionRE.ReplaceAllLiteral(content, []byte("golang:"+version))
 	return out
 }
-
