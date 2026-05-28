@@ -97,11 +97,9 @@ BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
-# renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
-GOVULNCHECK          		?= go run golang.org/x/vuln/cmd/govulncheck@v1.3.0
-# -tags converts GO_TAGS (space-separated) into govulncheck's comma form so
-# tag-gated code paths are analysed.
-GOVULNCHECK_FLAGS    		?= -tags=$(shell echo "$(GO_TAGS)" | tr ' ' ',')
+# GO_TAGS converted to govulncheck's comma form so tag-gated code paths are
+# analysed (the underlying govulncheck version is pinned in tools/govulncheck).
+GOVULNCHECK_TAGS    		?= $(shell echo "$(GO_TAGS)" | tr ' ' ',')
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
@@ -198,13 +196,12 @@ test:
 	done
 
 .PHONY: govulncheck
-# Set GOVULNCHECK_MODULES to scan a subset.
-GOVULNCHECK_MODULES ?= $(shell find . -name go.mod -not -path '*/testdata/*' -exec dirname {} \;)
+# Thin Go wrapper around govulncheck that adds a YAML-configurable ignore
+# list (see .govulncheck.yaml and tools/govulncheck/). The wrapper discovers
+# every Go module in the repo (excluding testdata) and filters JSON output
+# against the ignore list before deciding the exit code.
 govulncheck:
-	@fail=0; for dir in $(GOVULNCHECK_MODULES); do \
-		echo "==> govulncheck $$dir"; \
-		(cd $$dir && $(GOVULNCHECK) $(GOVULNCHECK_FLAGS) ./...) || fail=1; \
-	done; exit $$fail
+	cd ./tools && go run ./govulncheck -root=$(CURDIR) -config=$(CURDIR)/.govulncheck.yaml -tags=$(GOVULNCHECK_TAGS)
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
