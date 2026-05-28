@@ -36,7 +36,7 @@ jobs:
       run: make run-alloylint
 
   shellcheck:
-    name: Lint shell
+    name: Shellcheck
     runs-on: ubuntu-latest
 
     steps:
