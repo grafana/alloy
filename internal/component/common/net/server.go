@@ -79,8 +79,7 @@ func (ts *TargetServer) MountAndRun(mountRoute func(router *mux.Router)) error {
 	ts.server = srv
 
 	if http2Server := ts.http2.Server(); http2Server != nil {
-		// nolint:staticcheck // TODO: migrate to http.Server.Protocols.SetUnencryptedHTTP2 once we map all HTTP2Config fields.
-		ts.server.HTTPServer.Handler = h2c.NewHandler(ts.server.HTTPServer.Handler, http2Server)
+		ts.server.HTTPServer.Handler = h2c.NewHandler(ts.server.HTTPServer.Handler, http2Server) //nolint:staticcheck // TODO: migrate to http.Server.Protocols.SetUnencryptedHTTP2 once we map all HTTP2Config fields.
 	}
 	mountRoute(ts.server.HTTP)
 
