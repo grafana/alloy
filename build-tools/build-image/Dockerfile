@@ -39,7 +39,6 @@ ENV CONTROLLER_GEN_VERSION v0.9.2
 
 RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_VERSION \
  && go install github.com/tcnksm/ghr@v0.15.0                                           \
- && go install github.com/grafana/tanka/cmd/tk@v0.22.1                                 \
  && go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1                \
  && go install github.com/google/go-jsonnet/cmd/jsonnet@v0.18.0                        \
  && go install github.com/golang/protobuf/protoc-gen-go@v1.3.1                         \
