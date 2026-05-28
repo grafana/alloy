@@ -288,8 +288,9 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.PathPrefix(route.Base).Handler(route.Handler)
 	}
 
-	// Enable HTTP/1 plus unencrypted HTTP/2 (h2c) on the same listener.
-	// Replaces the deprecated golang.org/x/net/http2/h2c handler wrapping.
+	// Enable HTTP/1, HTTP/2, and unencrypted HTTP/2 (h2c) on the same listener.
+	// Replaces the deprecated golang.org/x/net/http2/h2c handler wrapping; HTTP/2
+	// over TLS is included for parity should a TLS listener be added later.
 	protos := new(http.Protocols)
 	protos.SetHTTP1(true)
 	protos.SetHTTP2(true)
