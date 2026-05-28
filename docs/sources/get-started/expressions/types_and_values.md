@@ -190,10 +190,18 @@ The symbol `null` represents the null value.
 
 ### Secrets
 
-A `secret` is a special type of string that's never displayed to the user.
+A `secret` is a special type of string that {{< param "PRODUCT_NAME" >}} never displays to the user.
 You can assign `string` values to an attribute expecting a `secret`, but not the inverse.
 You can use [`convert.nonsensitive`][nonsensitive] to convert a secret to a string.
 You can't assign a secret to an attribute expecting a string.
+
+{{< param "PRODUCT_NAME" >}} redacts `secret` values in the following places:
+
+- **{{< param "PRODUCT_NAME" >}} UI**: Alloy replaces `secret` values with `(secret)` in the component graph, **Arguments**, **Exports**, and **Debug info** sections.
+- **Component exports**: A component can't export a `secret` value as a `string`.
+
+Use the `secret` type for passwords, tokens, API keys, and other values you don't want to expose at runtime.
+When an attribute expects a `string`, call [`convert.nonsensitive`][nonsensitive] to make the conversion explicit in your configuration.
 
 ### Capsules
 
