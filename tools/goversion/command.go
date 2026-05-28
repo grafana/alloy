@@ -1,69 +1,86 @@
-package main
+package goversion
 
 import (
-	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/spf13/cobra"
+
+	"github.com/grafana/alloy/tools/internal/git"
 )
 
-func main() {
-	if len(os.Args) < 3 {
-		printUsage()
-		os.Exit(1)
+func Command() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "goversion <command>",
+		Short: "command to update go version used",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Usage()
+		},
 	}
 
-	command, version := os.Args[1], os.Args[2]
+	cmd.AddCommand(
+		pr1Command(),
+		pr2Command(),
+	)
 
-	root, err := gitRoot()
-	if err != nil {
-		log.Fatalf("failed to get root directory: %s", err)
-	}
+	return cmd
+}
 
-	switch command {
-	case "pr-1":
-		if err := updateBuildImage(root, version); err != nil {
-			log.Fatalf("failed to update build image version: %s", err)
-		}
-	case "pr-2":
-		if err := updateGoModFiles(root, version); err != nil {
-			log.Fatalf("failed to update go.mod files: %s", err)
-		}
-		if err := updateDockerFiles(root, version); err != nil {
-			log.Fatalf("failed to update Dockerfiles: %s", err)
-		}
-		if err := bumpBuildImage(root); err != nil {
-			log.Fatalf("failed to bump build image: %s", err)
-		}
+func pr1Command() *cobra.Command {
+	return &cobra.Command{
+		Use: "pr-1 <version>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("missing argument")
+			}
 
-	default:
-		printUsage()
-		os.Exit(1)
+			root, err := git.Root()
+			if err != nil {
+				return err
+			}
+
+			return updateBuildImage(root, args[0])
+		},
 	}
 }
 
-func printUsage() {
-	fmt.Fprintf(os.Stderr, "usage: <pr-1|pr-2> <version>\n")
-}
+func pr2Command() *cobra.Command {
+	return &cobra.Command{
+		Use: "pr-2 <version>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return errors.New("missing argument")
+			}
 
-func gitRoot() (string, error) {
-	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
+			root, err := git.Root()
+			if err != nil {
+				return err
+			}
 
-	err := cmd.Run()
-	if err != nil {
-		return "", fmt.Errorf("not a git repository: %v", err)
+			version := args[0]
+
+			if err := updateGoModFiles(root, version); err != nil {
+				log.Fatalf("failed to update go.mod files: %s", err)
+				return fmt.Errorf("error updating go.mod files: %w", err)
+			}
+			if err := updateDockerFiles(root, version); err != nil {
+				log.Fatalf("failed to update Dockerfiles: %s", err)
+				return fmt.Errorf("error updating Dockerfiles: %w", err)
+			}
+			if err := bumpBuildImage(root); err != nil {
+				return fmt.Errorf("error updating build image: %w", err)
+			}
+
+			return nil
+		},
 	}
-
-	return strings.TrimSpace(out.String()), nil
 }
 
 func updateBuildImage(root string, version string) error {
@@ -90,7 +107,7 @@ func updateBuildImage(root string, version string) error {
 }
 
 func updateGoModFiles(root, version string) error {
-	paths, err := getPaths(root, "go.mod", "tools/generate-module-dependencies/testdata")
+	paths, err := getPaths(root, "go.mod", "tools/generate/testdata")
 	if err != nil {
 		return err
 	}
