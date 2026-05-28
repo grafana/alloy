@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/sigil"
 )
 
 //TODO(thampiotr): Instead of metadata package reaching into registry, we'll migrate to using a YAML schema file that
@@ -84,12 +85,24 @@ var (
 		},
 	}
 
+	TypeSigilGenerationsReceiver = Type{
+		Name: "Sigil `GenerationsReceiver`",
+		existsInArgsFn: func(args component.Arguments) bool {
+			return hasFieldOfType(args, reflect.TypeOf([]sigil.GenerationsReceiver{}))
+		},
+		existsInExportsFn: func(exports component.Exports) bool {
+			var a *sigil.GenerationsReceiver = nil
+			return hasFieldOfType(exports, reflect.TypeOf(a).Elem())
+		},
+	}
+
 	AllTypes = []Type{
 		TypeTargets,
 		TypeLokiLogs,
 		TypePromMetricsReceiver,
 		TypePyroProfilesReceiver,
 		TypeOTELReceiver,
+		TypeSigilGenerationsReceiver,
 	}
 )
 

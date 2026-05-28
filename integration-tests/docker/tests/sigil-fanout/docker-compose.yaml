@@ -1,0 +1,47 @@
+services:
+  alloy:
+    image: alloy-integration-tests
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --stability.level=experimental
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy
+    ports:
+      - "1235:1234"
+      - "12342:12345"
+    depends_on:
+      - echo-a
+      - echo-b
+      - echo-c
+    networks:
+      - sigil-fanout-test
+
+  echo-a:
+    build:
+      context: ../sigil/echo-server
+    ports:
+      - "8891:8888"
+    networks:
+      - sigil-fanout-test
+
+  echo-b:
+    build:
+      context: ../sigil/echo-server
+    ports:
+      - "8892:8888"
+    networks:
+      - sigil-fanout-test
+
+  echo-c:
+    build:
+      context: ../sigil/echo-server
+    ports:
+      - "8893:8888"
+    networks:
+      - sigil-fanout-test
+
+networks:
+  sigil-fanout-test:
+    driver: bridge
