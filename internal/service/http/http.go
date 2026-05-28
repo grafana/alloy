@@ -36,8 +36,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 // ServiceName defines the name used for the HTTP service.
@@ -290,7 +288,12 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.PathPrefix(route.Base).Handler(route.Handler)
 	}
 
-	srv := &http.Server{Handler: h2c.NewHandler(r, &http2.Server{})}
+	// Enable HTTP/1 plus unencrypted HTTP/2 (h2c) on the same listener.
+	// Replaces the deprecated golang.org/x/net/http2/h2c handler wrapping.
+	protos := new(http.Protocols)
+	protos.SetHTTP1(true)
+	protos.SetUnencryptedHTTP2(true)
+	srv := &http.Server{Handler: r, Protocols: protos}
 
 	level.Info(s.log).Log("msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
 
