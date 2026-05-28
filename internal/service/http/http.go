@@ -292,6 +292,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	// Replaces the deprecated golang.org/x/net/http2/h2c handler wrapping.
 	protos := new(http.Protocols)
 	protos.SetHTTP1(true)
+	protos.SetHTTP2(true)
 	protos.SetUnencryptedHTTP2(true)
 	srv := &http.Server{Handler: r, Protocols: protos}
 
