@@ -100,7 +100,6 @@ func updateBuildImage(root string, version string) error {
 		if err := os.WriteFile(path, replaceDockerGoVersion(content, version), 0644); err != nil {
 			return fmt.Errorf("failed to update file: %w", err)
 		}
-
 	}
 
 	return nil

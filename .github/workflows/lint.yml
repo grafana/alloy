@@ -8,7 +8,7 @@ permissions:
 jobs:
   lint_go:
     name: Lint Go
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
 
     steps:
     - name: Checkout code
@@ -22,20 +22,17 @@ jobs:
         go-version-file: go.mod
         cache: false
 
-    - name: Lint alloy module
+    - name: Install golangci-lint
       uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
       with:
         # renovate: datasource=github-releases packageName=golangci/golangci-lint
         version: v2.11.4
+        install-only: true
 
-    - name: Lint syntax module
-      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
-      with:
-        # renovate: datasource=github-releases packageName=golangci/golangci-lint
-        version: v2.11.4
-        working-directory: ./syntax/
+    - name: Lint Go
+      run: make lint-go
 
-    - name: Run custom linters
+    - name: Run Alloy Lint
       run: make run-alloylint
 
   govulncheck:
@@ -69,16 +66,8 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Shellcheck
-      uses: Azbagheri/shell-linter@30a9cf3f6cf25c08fc98f10d7dc4167f7b5c0c00 # v0.8.0
-      with:
-        path: "\
-          packaging,\
-          production,\
-          tools/ci,\
-          tools/publish-release-assets.sh,\
-          docs/sources/tutorials/assets\
-          "
+    - name: Run shellcheck
+      run: make lint-shell
 
   lint_ui:
     name: Lint UI

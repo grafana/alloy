@@ -169,20 +169,26 @@ else
 GO_FLAGS := $(DEFAULT_FLAGS) $(DEBUG_GO_FLAGS)
 endif
 
+.PHONY: lint
+lint: lint-go run-alloylint lint-shell
+
+.PHONY: lint-go
+lint-go:
+	GOLANGCI_LINT_BINARY=$(GOLANGCI_LINT_BINARY) ./scripts/lint-go
+
+.PHONY: lint-shell
+lint-shell:
+	./scripts/lint-shell
+
+.PHONY: run-alloylint
+run-alloylint: alloylint
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
+
 #
 # Targets for running tests
 #
 # These targets currently don't support proxying to a build container.
 #
-
-.PHONY: lint
-lint: alloylint
-	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
-
-.PHONY: run-alloylint
-run-alloylint: alloylint
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+GOLANGCI_LINT_BINARY="${GOLANGCI_LINT_BINARY:-golangci-lint}"
+
+while IFS= read -r -d '' mod; do
+  dir="$(dirname "$mod")"
+  echo "==> golangci-lint: $dir"
+  (cd "$dir" && "$GOLANGCI_LINT_BINARY" run -v --timeout=10m)
+done < <(find . -name go.mod -not -path '*/testdata/*' -print0)

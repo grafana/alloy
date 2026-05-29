@@ -13,6 +13,7 @@ require (
 	go.opentelemetry.io/collector/component v1.53.0
 	go.opentelemetry.io/collector/component/componenttest v0.147.0
 	go.opentelemetry.io/collector/extension v1.53.0
+	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.27.1
 )
 
@@ -1000,7 +1001,6 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/dig v1.19.0 // indirect
 	go.uber.org/fx v1.24.0 // indirect
 	go.uber.org/goleak v1.3.0 // indirect
