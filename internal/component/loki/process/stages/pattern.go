@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/grafana/loki/v3/pkg/logql/log/pattern"
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/prometheus/common/model"
 )
 
