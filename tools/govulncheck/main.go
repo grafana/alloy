@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -137,7 +138,7 @@ func parseSymbolFindings(out string) []string {
 	}
 
 	var found []string
-	for _, raw := range strings.Split(section, "\n") {
+	for raw := range strings.SplitSeq(section, "\n") {
 		line := strings.TrimSpace(raw)
 		if !strings.HasPrefix(line, vulnHeader) {
 			continue
@@ -177,9 +178,9 @@ func classify(ids []string, cfg *Config, now time.Time) (actionable, ignored []s
 // printFilterReport writes a per-status summary after all govulncheck output,
 // listing each unique ID once with its URL (actionable) or reason (ignored).
 func printFilterReport(w io.Writer, cfg *Config, actionable, ignored []string, modules int, now time.Time) {
-	fmt.Fprintf(w, "\nwrapper summary across %d modules\n", modules)
+	_, _ = fmt.Fprintf(w, "\nwrapper summary across %d modules\n", modules)
 	if len(actionable) == 0 && len(ignored) == 0 {
-		fmt.Fprintln(w, "  no reachable vulnerabilities")
+		_, _ = fmt.Fprintln(w, "  no reachable vulnerabilities")
 		return
 	}
 	for _, id := range ignored {
@@ -187,16 +188,16 @@ func printFilterReport(w io.Writer, cfg *Config, actionable, ignored []string, m
 		if entry := cfg.isIgnored(id, now); entry != nil {
 			reason = oneLine(entry.Reason)
 		}
-		fmt.Fprintf(w, "  [IGN]  %s  %s\n", id, reason)
+		_, _ = fmt.Fprintf(w, "  [IGN]  %s  %s\n", id, reason)
 	}
 	for _, id := range actionable {
 		if url := advisoryURL(id); url != "" {
-			fmt.Fprintf(w, "  [FAIL] %s  %s\n", id, url)
+			_, _ = fmt.Fprintf(w, "  [FAIL] %s  %s\n", id, url)
 		} else {
-			fmt.Fprintf(w, "  [FAIL] %s\n", id)
+			_, _ = fmt.Fprintf(w, "  [FAIL] %s\n", id)
 		}
 	}
-	fmt.Fprintf(w, "  → %d actionable, %d ignored\n", len(actionable), len(ignored))
+	_, _ = fmt.Fprintf(w, "  → %d actionable, %d ignored\n", len(actionable), len(ignored))
 }
 
 func oneLine(s string) string { return strings.Join(strings.Fields(s), " ") }
@@ -240,10 +241,8 @@ func discoverModules(root string) ([]string, error) {
 			return nil
 		}
 		dir := filepath.Dir(path)
-		for _, part := range strings.Split(filepath.ToSlash(dir), "/") {
-			if part == "testdata" {
-				return nil
-			}
+		if slices.Contains(strings.Split(filepath.ToSlash(dir), "/"), "testdata") {
+			return nil
 		}
 		modules = append(modules, dir)
 		return nil
