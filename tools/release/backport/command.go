@@ -1,18 +1,23 @@
-package main
+package backport
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
 	"github.com/google/go-github/v57/github"
+	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/tools/release/internal/git"
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 )
+
+type flags struct {
+	prNumber int
+	label    string
+	dryRun   bool
+}
 
 // backportInfo holds all the data gathered during precondition checks that is
 // needed to perform the backport.
@@ -26,53 +31,46 @@ type backportInfo struct {
 	BackportBranch string
 }
 
-func main() {
-	var (
-		prNumber int
-		label    string
-		dryRun   bool
-	)
-	flag.IntVar(&prNumber, "pr", 0, "PR number to backport")
-	flag.StringVar(&label, "label", "", "Backport label (e.g., backport/v1.15)")
-	flag.BoolVar(&dryRun, "dry-run", false, "Dry run (do not create PR)")
-	flag.Parse()
+func Command() *cobra.Command {
+	var flags flags
 
-	if prNumber == 0 {
-		log.Fatal("PR number is required (use --pr flag)")
-	}
-	if label == "" {
-		log.Fatal("Label is required (use --label flag)")
+	cmd := &cobra.Command{
+		Use:   "backport",
+		Short: "Cherry-pick a merged PR to a release branch and open a backport PR",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(cmd.Context(), flags)
+		},
 	}
 
-	if err := run(prNumber, label, dryRun); err != nil {
-		log.Fatal(err)
-	}
+	cmd.Flags().IntVar(&flags.prNumber, "pr", 0, "PR number to backport")
+	cmd.Flags().StringVar(&flags.label, "label", "", "Backport label (e.g., backport/v1.15)")
+	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Dry run (do not create PR)")
+	_ = cmd.MarkFlagRequired("pr")
+	_ = cmd.MarkFlagRequired("label")
+
+	return cmd
 }
 
-// run performs the backport operation. It is broken out into a separate function to allow deferred
-// working copy cleanup.
-func run(prNumber int, label string, dryRun bool) (retErr error) {
-	version := strings.TrimPrefix(label, "backport/")
-	if version == label {
-		return fmt.Errorf("invalid backport label format: %s (expected backport/vX.Y)", label)
+func run(ctx context.Context, flags flags) (retErr error) {
+	version := strings.TrimPrefix(flags.label, "backport/")
+	if version == flags.label {
+		return fmt.Errorf("invalid backport label format: %s (expected backport/vX.Y)", flags.label)
 	}
 	if !strings.HasPrefix(version, "v") {
 		return fmt.Errorf("invalid version format: %s (expected vX.Y)", version)
 	}
 
 	targetBranch := fmt.Sprintf("release/%s", version)
-	backportBranch := fmt.Sprintf("backport/pr-%d-to-%s", prNumber, version)
+	backportBranch := fmt.Sprintf("backport/pr-%d-to-%s", flags.prNumber, version)
 
-	fmt.Printf("🍒 Backporting PR #%d to %s\n", prNumber, targetBranch)
-
-	ctx := context.Background()
+	fmt.Printf("🍒 Backporting PR #%d to %s\n", flags.prNumber, targetBranch)
 
 	client, err := gh.NewClientFromEnv(ctx)
 	if err != nil {
 		return err
 	}
 
-	info, err := resolveBackportInfo(ctx, client, prNumber, targetBranch, backportBranch)
+	info, err := resolveBackportInfo(ctx, client, flags.prNumber, targetBranch, backportBranch)
 	if err != nil {
 		return err
 	}
@@ -80,7 +78,7 @@ func run(prNumber int, label string, dryRun bool) (retErr error) {
 		return nil
 	}
 
-	if dryRun {
+	if flags.dryRun {
 		fmt.Println("\n🏃 DRY RUN - No changes made")
 		fmt.Printf("Would create backport branch: %s\n", info.BackportBranch)
 		fmt.Printf("Would cherry-pick commit: %s\n", info.CommitSHA)
