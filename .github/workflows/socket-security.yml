@@ -1,0 +1,51 @@
+name: Socket Security Scan
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: socket-security-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  socket-security:
+    name: Socket Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 2
+          persist-credentials: false
+
+      - name: Ensure Socket API key is configured
+        env:
+          SOCKET_API_TOKEN: ${{ secrets.SOCKET_SECURITY_API_KEY || secrets.SOCKET_API_KEY }}
+        run: |
+          if [ -z "$SOCKET_API_TOKEN" ]; then
+            echo "SOCKET_SECURITY_API_KEY or SOCKET_API_KEY must be configured as an Actions secret."
+            exit 1
+          fi
+
+      - name: Install Socket CLI
+        run: python3 -m pip install --upgrade socketsecurity
+
+      - name: Run Socket Security scan
+        env:
+          SOCKET_SECURITY_API_KEY: ${{ secrets.SOCKET_SECURITY_API_KEY || secrets.SOCKET_API_KEY }}
+          SOCKET_SECURITY_API_TOKEN: ${{ secrets.SOCKET_SECURITY_API_KEY || secrets.SOCKET_API_KEY }}
+          GH_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          socketcli \
+            --target-path "$GITHUB_WORKSPACE" \
+            --scm github \
+            --pr-number "${{ github.event.pull_request.number }}"
