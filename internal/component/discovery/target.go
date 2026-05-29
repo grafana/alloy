@@ -26,7 +26,7 @@ type Target struct {
 var (
 	seps = []byte{'\xff'}
 	// used in tests to simulate hash conflicts
-	labelSetEqualsFn  = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
+	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
 	stringSlicesPool = sync.Pool{New: func() any { return make([]string, 0, 20) }}
 
 	_ syntax.Capsule                = Target{}
