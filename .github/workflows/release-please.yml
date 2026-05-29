@@ -36,7 +36,7 @@ jobs:
 
       - name: Install dependencies 📦
         working-directory: build-tools/release-please-runner
-        run: npm install
+        run: npm ci
 
       - name: Run release-please 🚀
         working-directory: build-tools/release-please-runner

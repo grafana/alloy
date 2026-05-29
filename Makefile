@@ -365,7 +365,7 @@ ifeq ($(USE_CONTAINER),1)
 else ifeq ($(SKIP_UI_BUILD),1)
 	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
 else
-	cd ./internal/web/ui && npm install && npm run build
+	cd ./internal/web/ui && npm ci && npm run build
 endif
 
 generate-docs:
