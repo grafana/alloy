@@ -13,8 +13,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/grafana/alloy/tools/internal/git"
+	"github.com/grafana/alloy/tools/internal/cli"
 )
+
+type flags struct {
+	cli.RootFlag
+}
 
 func Command() *cobra.Command {
 	cmd := &cobra.Command{
@@ -34,14 +38,15 @@ func Command() *cobra.Command {
 }
 
 func pr1Command() *cobra.Command {
-	return &cobra.Command{
+	var f flags
+	cmd := &cobra.Command{
 		Use: "pr-1 <version>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
 				return errors.New("missing argument")
 			}
 
-			root, err := git.Root()
+			root, err := f.Root()
 			if err != nil {
 				return err
 			}
@@ -49,17 +54,22 @@ func pr1Command() *cobra.Command {
 			return updateBuildImage(root, args[0])
 		},
 	}
+
+	f.RootFlag.Register(cmd)
+
+	return cmd
 }
 
 func pr2Command() *cobra.Command {
-	return &cobra.Command{
+	var f flags
+	cmd := &cobra.Command{
 		Use: "pr-2 <version>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 1 {
 				return errors.New("missing argument")
 			}
 
-			root, err := git.Root()
+			root, err := f.Root()
 			if err != nil {
 				return err
 			}
@@ -81,6 +91,10 @@ func pr2Command() *cobra.Command {
 			return nil
 		},
 	}
+
+	f.RootFlag.Register(cmd)
+
+	return cmd
 }
 
 func updateBuildImage(root string, version string) error {

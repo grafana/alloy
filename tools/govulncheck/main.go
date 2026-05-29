@@ -17,25 +17,31 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/grafana/alloy/tools/internal/git"
+	"github.com/grafana/alloy/tools/internal/cli"
 )
 
 // renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
 const govulncheckPkg = "golang.org/x/vuln/cmd/govulncheck@v1.3.0"
 
+type flags struct {
+	cli.RootFlag
+	tags       string
+	configPath string
+}
+
 // Command returns the cobra command for tools/cmd to register.
 func Command() *cobra.Command {
-	var root, configPath, tags string
+	var f flags
 	cmd := &cobra.Command{
 		Use:   "govulncheck",
 		Short: "Run govulncheck across every Go module and apply the YAML ignore list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			root, err := resolveRoot(root)
+			root, err := f.Root()
 			if err != nil {
 				return err
 			}
 
-			actionable, err := run(root, resolveConfigPath(root, configPath), tags, time.Now())
+			actionable, err := run(root, resolveConfigPath(root, f.configPath), f.tags, time.Now())
 			if err != nil {
 				return err
 			}
@@ -48,21 +54,11 @@ func Command() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&root, "root", "", "repo root to discover Go modules under (default: git root)")
-	cmd.Flags().StringVar(&configPath, "config", ".govulncheck.yaml", "path to YAML ignore-list config (absolute or repo-root relative)")
-	cmd.Flags().StringVar(&tags, "tags", "", "comma-separated build tags passed through to govulncheck")
-	return cmd
-}
+	cmd.Flags().StringVar(&f.configPath, "config", ".govulncheck.yaml", "path to YAML ignore-list config (absolute or repo-root relative)")
+	cmd.Flags().StringVar(&f.tags, "tags", "", "comma-separated build tags passed through to govulncheck")
+	f.RootFlag.Register(cmd)
 
-func resolveRoot(root string) (string, error) {
-	if root == "" {
-		return git.Root()
-	}
-	abs, err := filepath.Abs(root)
-	if err != nil {
-		return "", fmt.Errorf("resolve root %q: %w", root, err)
-	}
-	return abs, nil
+	return cmd
 }
 
 func resolveConfigPath(root, configPath string) string {
