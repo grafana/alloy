@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/processor/groupbyattrs"
 	"github.com/grafana/alloy/syntax"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/groupbyattrsprocessor"
 	"github.com/stretchr/testify/require"
 )
