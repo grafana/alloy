@@ -448,9 +448,10 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 		{
 			name: "defaults set",
 			scrapeOptions: operator.ScrapeOptions{
-				DefaultScrapeInterval: 30 * time.Second,
-				DefaultScrapeTimeout:  5 * time.Second,
-				DefaultSampleLimit:    100,
+				DefaultScrapeInterval:  30 * time.Second,
+				DefaultScrapeTimeout:   5 * time.Second,
+				DefaultSampleLimit:     100,
+				ScrapeNativeHistograms: true,
 			},
 			expectedInterval:         30 * time.Second,
 			expectedTimeout:          5 * time.Second,
@@ -468,6 +469,7 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 			assert.Equal(t, model.Duration(tt.expectedTimeout), got.ScrapeTimeout)
 			assert.Equal(t, tt.expectedFallbackProtocol, got.ScrapeFallbackProtocol)
 			assert.Equal(t, tt.scrapeOptions.DefaultSampleLimit, got.SampleLimit)
+			assert.Equal(t, &tt.scrapeOptions.ScrapeNativeHistograms, got.ScrapeNativeHistograms)
 		})
 	}
 }
