@@ -37,7 +37,7 @@ You can use the following arguments with `database_observability.postgres`:
 | `exclude_databases`        | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 | `exclude_users`            | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
 | `exclude_current_user`     | `bool`               | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
-| `enable_query_fingerprint` | `bool`               | Compute a stable semantic `query_fingerprint` per observed query and emit it on versioned Loki ops alongside the queryid. | `false` | no       |
+| `enable_query_fingerprint` | `bool`               | Compute a stable semantic `query_fingerprint` per observed query and emit it on versioned Loki ops alongside the `queryid`. | `false` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
 
