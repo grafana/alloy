@@ -1,0 +1,32 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: localhost:4317
+
+exporters:
+  opensearch:
+    http:
+      endpoint: "http://opensearch:9200"
+    dataset: kubernetes
+    namespace: production
+    logs_index: alloy-logs
+    traces_index: alloy-traces
+    bulk_action: index
+    mapping:
+      mode: ecs
+      dedup: true
+      dedot: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 30s
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [opensearch]
+    traces:
+      receivers: [otlp]
+      exporters: [opensearch]
