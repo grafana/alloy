@@ -177,6 +177,8 @@ make generate-otel-collector-distro
 
 Commit the regenerated files under `collector/` alongside your change; a CI workflow fails if they're out of sync. For more detail, see the [Collector Distro README](../../collector/README.md).
 
+Also add the component to the included components list in `docs/sources/introduction/otel_alloy.md` so it shows up in the user-facing documentation.
+
 ## Build and use the component
 
 If you want to use the component for your personal or organizational use cases, you're done.
