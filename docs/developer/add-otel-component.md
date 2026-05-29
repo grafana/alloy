@@ -159,6 +159,35 @@ To do this, import the wrapper in the `internal/component/all.go` file.
 _ "github.com/grafana/alloy/internal/component/otelcol/processor/example"                 // Import otelcol.processor.example
 ```
 
+> **NOTE**: This only registers the component with Alloy's **Default Engine**. Alloy ships a second runtime, the **OTel Engine**, which has its own component set. To make the component available there too, follow [Add the component to the OTel engine](#add-the-component-to-the-otel-engine).
+
+## Add the component to the OTel engine
+
+The previous steps register the component with Alloy's **Default Engine**, the native Alloy runtime that uses Alloy configuration syntax.
+Alloy also ships an **OTel Engine**: an embedded OpenTelemetry Collector distribution that runs upstream YAML configuration through the `alloy otel` subcommand.
+The two engines maintain separate component sets, so a component wrapped for the Default Engine isn't automatically available in the OTel Engine.
+
+To make the component available in the OTel Engine, add it to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml` under the matching category (`receivers`, `processors`, `exporters`, `extensions`, or `connectors`):
+
+```yaml
+processors:
+  ...
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/exampleprocessor v0.147.0
+```
+
+The version must match the OpenTelemetry component version used by the rest of Alloy.
+Then regenerate the distro:
+
+```bash
+make generate-otel-collector-distro
+```
+
+This regenerates files under `collector/` (`main.go`, `components.go`, `go.mod`, and others) that you must commit alongside your change.
+A CI workflow verifies the checked-in generated files match the manifest, and will fail if they're out of sync.
+For more detail on the build process, refer to the [Collector Distro README](../../collector/README.md).
+
+## Build and use the component
+
 If you want to use the component for your personal or organizational use cases, you're done.
 The Alloy [Makefile](https://github.com/grafana/alloy/blob/main/Makefile) provides the various ways to build executables and container images for running Alloy in your environments.
 However, if you're looking to contribute back to the Alloy community, there's a few more steps you need to do
