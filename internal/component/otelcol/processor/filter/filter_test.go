@@ -3,10 +3,10 @@ package filter_test
 import (
 	"testing"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/filter"
 	"github.com/grafana/alloy/syntax"
-	"github.com/go-viper/mapstructure/v2"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/filterprocessor"
 	"github.com/stretchr/testify/require"
 )
