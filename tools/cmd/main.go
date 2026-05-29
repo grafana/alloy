@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/tools/aireview"
+	"github.com/grafana/alloy/tools/generate"
 	"github.com/grafana/alloy/tools/goversion"
 	"github.com/grafana/alloy/tools/govulncheck"
 	"github.com/grafana/alloy/tools/release"
@@ -20,6 +21,7 @@ func main() {
 	}
 	cmd.AddCommand(
 		aireview.Command(),
+		generate.Command(),
 		goversion.Command(),
 		govulncheck.Command(),
 		release.Command(),
