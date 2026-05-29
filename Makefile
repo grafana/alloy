@@ -17,6 +17,7 @@
 ##
 ##   test                  Run tests
 ##   lint                  Lint code
+##   govulncheck           Run govulncheck across all Go modules
 ##   integration-test      Run integration tests
 ##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
 ##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
@@ -96,6 +97,9 @@ BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
+# GO_TAGS converted to govulncheck's comma form so tag-gated code paths are
+# analysed (the underlying govulncheck version is pinned in tools/govulncheck).
+GOVULNCHECK_TAGS    		?= $(shell echo "$(GO_TAGS)" | tr ' ' ',')
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
@@ -190,6 +194,13 @@ test:
 			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
 		fi;\
 	done
+
+.PHONY: govulncheck
+# Thin Go wrapper around govulncheck: streams the tool's native text output
+# unchanged, parses `=== Symbol Results ===` for reachable OSV IDs, and
+# applies the YAML ignore list (see .govulncheck.yaml and tools/govulncheck/).
+govulncheck:
+	go run -C tools ./cmd govulncheck --tags=$(GOVULNCHECK_TAGS)
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
