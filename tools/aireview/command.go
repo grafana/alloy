@@ -145,4 +145,3 @@ func run(ctx context.Context, args aiReviewFlags) error {
 	log.Printf("Successfully posted AI review comment")
 	return nil
 }
-
