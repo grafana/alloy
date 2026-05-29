@@ -129,17 +129,17 @@ CI checks that the generated output matches what's committed. If you change
 `dependency-replacements.yaml`, run the Make target and commit the resulting
 diff.
 
-### `update-go-version`
+### `goversion`
 
 Bumps the Go toolchain version across the repository. Split into two steps that
 are intended to land as separate PRs.
 
 ```bash
 # PR 1: bump Go in the build images.
-go run -C tools ./cmd update-go-version pr-1 <version>
+go run -C tools ./cmd goversion pr-1 <version>
 
 # PR 2: bump Go in go.mod files, Dockerfiles, and the build image pin.
-go run -C tools ./cmd update-go-version pr-2 <version>
+go run -C tools ./cmd goversion pr-2 <version>
 ```
 
 ### `govulncheck`
