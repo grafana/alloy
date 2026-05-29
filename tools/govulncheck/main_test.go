@@ -1,6 +1,7 @@
 package govulncheck
 
 import (
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
@@ -118,5 +119,18 @@ func TestAdvisoryURL(t *testing.T) {
 	}
 	if got := advisoryURL("CVE-2026-1234"); got != "" {
 		t.Errorf("advisoryURL(non-go id) = %q, want empty", got)
+	}
+}
+
+func TestResolveConfigPath(t *testing.T) {
+	root := t.TempDir()
+	rel := ".govulncheck.yaml"
+	if got, want := resolveConfigPath(root, rel), filepath.Join(root, rel); got != want {
+		t.Errorf("resolveConfigPath(relative) = %q, want %q", got, want)
+	}
+
+	abs := filepath.Join(root, "config", "custom.yaml")
+	if got := resolveConfigPath(root, abs); got != abs {
+		t.Errorf("resolveConfigPath(absolute) = %q, want %q", got, abs)
 	}
 }

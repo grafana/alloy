@@ -24,6 +24,11 @@ go run -C tools ./cmd update-go-version pr-1 <version>
 go run -C tools ./cmd update-go-version pr-2 <version>
 ```
 
+### `govulncheck`
+
+Runs `govulncheck` across every `go.mod` module in the repo and fails when reachable, non-ignored findings remain.
+The command resolves the repository root via `git`, so it works from any subdirectory in the repo, and reads ignore rules from `.govulncheck.yaml` by default.
+
 ## Adding a new command
 
 1. Create a package under `tools/<area>/` (e.g. `tools/release/`).

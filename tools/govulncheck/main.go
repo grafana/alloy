@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/grafana/alloy/tools/internal/git"
 )
 
 // renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
@@ -27,7 +29,12 @@ func Command() *cobra.Command {
 		Use:   "govulncheck",
 		Short: "Run govulncheck across every Go module and apply the YAML ignore list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			actionable, err := run(root, configPath, tags, time.Now())
+			root, err := resolveRoot(root)
+			if err != nil {
+				return err
+			}
+
+			actionable, err := run(root, resolveConfigPath(root, configPath), tags, time.Now())
 			if err != nil {
 				return err
 			}
@@ -40,10 +47,28 @@ func Command() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&root, "root", ".", "repo root to discover Go modules under")
-	cmd.Flags().StringVar(&configPath, "config", ".govulncheck.yaml", "path to YAML ignore-list config (optional)")
+	cmd.Flags().StringVar(&root, "root", "", "repo root to discover Go modules under (default: git root)")
+	cmd.Flags().StringVar(&configPath, "config", ".govulncheck.yaml", "path to YAML ignore-list config (absolute or repo-root relative)")
 	cmd.Flags().StringVar(&tags, "tags", "", "comma-separated build tags passed through to govulncheck")
 	return cmd
+}
+
+func resolveRoot(root string) (string, error) {
+	if root == "" {
+		return git.Root()
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return "", fmt.Errorf("resolve root %q: %w", root, err)
+	}
+	return abs, nil
+}
+
+func resolveConfigPath(root, configPath string) string {
+	if filepath.IsAbs(configPath) {
+		return configPath
+	}
+	return filepath.Join(root, configPath)
 }
 
 // run scans every discovered module and returns whether any actionable

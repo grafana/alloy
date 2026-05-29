@@ -200,7 +200,7 @@ test:
 # unchanged, parses `=== Symbol Results ===` for reachable OSV IDs, and
 # applies the YAML ignore list (see .govulncheck.yaml and tools/govulncheck/).
 govulncheck:
-	go run -C tools ./cmd govulncheck --root=$(CURDIR) --config=$(CURDIR)/.govulncheck.yaml --tags=$(GOVULNCHECK_TAGS)
+	go run -C tools ./cmd govulncheck --tags=$(GOVULNCHECK_TAGS)
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
