@@ -25,4 +25,3 @@ func (r *RootFlag) Root() (string, error) {
 	}
 	return abs, nil
 }
-

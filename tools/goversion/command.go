@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/tools/internal/cli"
+	"github.com/grafana/alloy/tools/internal/discover"
 )
 
 type flags struct {
@@ -69,7 +70,7 @@ func pr2Command() *cobra.Command {
 				return errors.New("missing argument")
 			}
 
-			root, err := f.Root()
+			root, err := f.RootFlag.Root()
 			if err != nil {
 				return err
 			}
@@ -120,13 +121,13 @@ func updateBuildImage(root string, version string) error {
 }
 
 func updateGoModFiles(root, version string) error {
-	paths, err := getPaths(root, "go.mod", "tools/generate/testdata")
+	result, err := discover.GoModFiles(root)
 	if err != nil {
 		return err
 	}
 
 	re := regexp.MustCompile(`(?m)^go 1\.\d+(\.\d+)?\s*$`)
-	for _, path := range paths {
+	for _, path := range result.Files() {
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("read %s: %w", path, err)
@@ -143,12 +144,12 @@ func updateGoModFiles(root, version string) error {
 }
 
 func updateDockerFiles(root, version string) error {
-	paths, err := getPaths(root, "Dockerfile", "Dockerfile.windows", "build-tools/build-image")
+	result, err := discover.Files(root, "Dockerfile*", discover.WithSkipDirs("vendor", "build-tools"), discover.WithExclude("Dockerfile.windows"))
 	if err != nil {
 		return err
 	}
 
-	for _, path := range paths {
+	for _, path := range result.Files() {
 		content, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("read %s: %w", path, err)
@@ -265,41 +266,6 @@ func replaceBuildImageRefs(content []byte, refs *buildImageRefs) []byte {
 	out = buildImageWithDigestRE.ReplaceAllLiteral(out, []byte(refs.Default))
 	out = buildImageTagOnlyRE.ReplaceAll(out, []byte(refs.DefaultTag+"$1"))
 	return out
-}
-
-func getPaths(root, pattern string, exclude ...string) ([]string, error) {
-	var paths []string
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			if info.Name() == "vendor" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-
-		if !strings.HasPrefix(info.Name(), pattern) {
-			return nil
-		}
-
-		rel, err := filepath.Rel(root, path)
-		if err != nil {
-			return err
-		}
-
-		for _, ex := range exclude {
-			if rel == ex || strings.HasPrefix(rel, ex+string(filepath.Separator)) {
-				return nil
-			}
-		}
-
-		paths = append(paths, path)
-		return nil
-	})
-
-	return paths, err
 }
 
 var dockerGoVersionRE = regexp.MustCompile(`golang:1\.\d+(\.\d+)?`)

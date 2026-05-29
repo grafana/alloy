@@ -6,11 +6,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -18,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/tools/internal/cli"
+	"github.com/grafana/alloy/tools/internal/discover"
 )
 
 // renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
@@ -36,7 +35,7 @@ func Command() *cobra.Command {
 		Use:   "govulncheck",
 		Short: "Run govulncheck across every Go module and apply the YAML ignore list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			root, err := f.Root()
+			root, err := f.RootFlag.Root()
 			if err != nil {
 				return err
 			}
@@ -75,12 +74,18 @@ func run(root, configPath, tags string, now time.Time) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("load config: %w", err)
 	}
-	modules, err := discoverModules(root)
+
+	result, err := discover.GoModFiles(root)
 	if err != nil {
-		return false, fmt.Errorf("discover modules: %w", err)
+		return false, err
 	}
 
-	var allActionable, allIgnored []string
+	var (
+		allActionable []string
+		allIgnored    []string
+		modules       = result.Dirs()
+	)
+
 	for _, mod := range modules {
 		fmt.Printf("\n==> govulncheck %s\n", mod)
 		out, gerr := scan(mod, tags)
@@ -217,35 +222,4 @@ func dedup(in []string) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-// discoverModules returns Go module directories under root, excluding
-// testdata fixtures.
-func discoverModules(root string) ([]string, error) {
-	var modules []string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if d.Name() == ".git" || d.Name() == "node_modules" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if d.Name() != "go.mod" {
-			return nil
-		}
-		dir := filepath.Dir(path)
-		if slices.Contains(strings.Split(filepath.ToSlash(dir), "/"), "testdata") {
-			return nil
-		}
-		modules = append(modules, dir)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(modules)
-	return modules, nil
 }
