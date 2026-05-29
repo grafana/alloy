@@ -11,6 +11,44 @@ go run -C tools ./cmd <command> [args]
 
 ## Commands
 
+### `aireview`
+
+Analyzes a PR diff with OpenAI and posts the result as a PR comment.
+
+**GitHub mode** — fetch diff from a PR and post a comment:
+
+```bash
+go run -C tools ./cmd aireview \
+  --slug="owner/repo" \
+  --pr-number=123 \
+  --prompt-file=".github/ai-review-prompts/dependency-review.md" \
+  --marker="<!-- ai-review -->"
+```
+
+**GitHub mode, no comment** — fetch diff but print to stdout:
+
+```bash
+go run -C tools ./cmd aireview \
+  --slug="owner/repo" \
+  --pr-number=123 \
+  --prompt-file=".github/ai-review-prompts/dependency-review.md" \
+  --no-comment
+```
+
+**Stdin mode** — pipe a diff in and print the result:
+
+```bash
+git diff main | go run -C tools ./cmd aireview \
+  --prompt-file=".github/ai-review-prompts/dependency-review.md"
+```
+
+Requires `OPENAI_API_KEY`. GitHub mode additionally requires `GITHUB_TOKEN`.
+
+Each workflow that uses `aireview` should pass a unique `--marker` (e.g.
+`<!-- ai-deps -->`, `<!-- ai-security -->`) so its comments stay separate from
+other AI-review bots on the same PR. See
+`.github/workflows/ai-dependency-review.yml` for a working example.
+
 ### `update-go-version`
 
 Bumps the Go toolchain version across the repository. Split into two steps that

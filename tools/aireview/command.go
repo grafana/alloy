@@ -1,8 +1,7 @@
-package main
+package aireview
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -11,129 +10,126 @@ import (
 
 	"github.com/google/go-github/v57/github"
 	"github.com/openai/openai-go/v3"
+	"github.com/spf13/cobra"
 	"golang.org/x/oauth2"
 )
 
-func main() {
-	// Parse command-line flags
-	var (
-		model      = flag.String("model", openai.ChatModelGPT5, "OpenAI model to use")
-		promptFile = flag.String("prompt-file", "", "Path to file containing AI prompt/rules")
-		marker     = flag.String("marker", "<!-- ai-review -->", "HTML comment marker to identify bot comments")
-		slug       = flag.String("slug", "", "Repository slug (owner/repo) - required for GitHub mode")
-		prNumber   = flag.Int("pr-number", 0, "Pull request number - required for GitHub mode")
-		noComment  = flag.Bool("no-comment", false, "Fetch PR from GitHub but output to stdout instead of posting comment")
-	)
-	flag.Parse()
+type aiReviewFlags struct {
+	Model      string
+	PromptFile string
+	Marker     string
+	Slug       string
+	PRNumber   int
+	NoComment  bool
+}
 
-	// Validate required flags
-	if *promptFile == "" {
-		log.Fatal("--prompt-file is required")
+func Command() *cobra.Command {
+	var args aiReviewFlags
+
+	cmd := &cobra.Command{
+		Use:   "aireview",
+		Short: "Analyze a PR diff with OpenAI and post the result as a PR comment",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return run(cmd.Context(), args)
+		},
 	}
 
-	// Get required environment variables
-	openaiKey := os.Getenv("OPENAI_API_KEY")
-	if openaiKey == "" {
-		log.Fatal("OPENAI_API_KEY environment variable is required")
+	cmd.Flags().StringVar(&args.Model, "model", openai.ChatModelGPT5, "OpenAI model to use")
+	cmd.Flags().StringVar(&args.PromptFile, "prompt-file", "", "Path to file containing AI prompt/rules")
+	cmd.Flags().StringVar(&args.Marker, "marker", "<!-- ai-review -->", "HTML comment marker to identify bot comments")
+	cmd.Flags().StringVar(&args.Slug, "slug", "", "Repository slug (owner/repo) - required for GitHub mode")
+	cmd.Flags().IntVar(&args.PRNumber, "pr-number", 0, "Pull request number - required for GitHub mode")
+	cmd.Flags().BoolVar(&args.NoComment, "no-comment", false, "Fetch PR from GitHub but output to stdout instead of posting comment")
+
+	return cmd
+}
+
+func run(ctx context.Context, args aiReviewFlags) error {
+	if args.PromptFile == "" {
+		return fmt.Errorf("--prompt-file is required")
 	}
 
-	ctx := context.Background()
+	if os.Getenv("OPENAI_API_KEY") == "" {
+		return fmt.Errorf("OPENAI_API_KEY environment variable is required")
+	}
+
+	githubMode := args.Slug != "" && args.PRNumber > 0
+	if !githubMode && (args.Slug != "" || args.PRNumber > 0) {
+		return fmt.Errorf("both --slug and --pr-number must be provided together for GitHub mode, or neither for stdin mode")
+	}
 
 	var diffContent string
-	githubMode := *slug != "" && *prNumber > 0
 
-	// Mode 1: GitHub mode - fetch diff from GitHub
 	if githubMode {
-		if *slug == "" {
-			log.Fatal("--slug is required when using --pr-number")
-		}
-		if *prNumber == 0 {
-			log.Fatal("--pr-number is required when using --slug")
-		}
-
 		githubToken := os.Getenv("GITHUB_TOKEN")
 		if githubToken == "" {
-			log.Fatal("GITHUB_TOKEN environment variable is required in GitHub mode")
+			return fmt.Errorf("GITHUB_TOKEN environment variable is required in GitHub mode")
 		}
 
-		// Parse repository owner and name
-		parts := strings.Split(*slug, "/")
+		parts := strings.Split(args.Slug, "/")
 		if len(parts) != 2 {
-			log.Fatalf("Invalid --slug format: %s (expected: owner/repo)", *slug)
+			return fmt.Errorf("invalid --slug format: %s (expected: owner/repo)", args.Slug)
 		}
 		owner, repoName := parts[0], parts[1]
 
-		log.Printf("Fetching PR diff for %s/%s#%d", owner, repoName, *prNumber)
+		log.Printf("Fetching PR diff for %s/%s#%d", owner, repoName, args.PRNumber)
 
-		// Initialize GitHub client
 		ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
 		tc := oauth2.NewClient(ctx, ts)
 		githubClient := github.NewClient(tc)
 
-		// Get PR diff
 		var err error
-		diffContent, err = getPRDiff(ctx, githubClient, owner, repoName, *prNumber)
+		diffContent, err = getPRDiff(ctx, githubClient, owner, repoName, args.PRNumber)
 		if err != nil {
-			log.Fatalf("Failed to get PR diff: %v", err)
+			return fmt.Errorf("failed to get PR diff: %w", err)
 		}
 	} else {
 		log.Printf("Reading diff from stdin")
 
-		// Mode 2: Stdin mode - read diff from stdin
-		if *slug != "" || *prNumber > 0 {
-			log.Fatal("Both --slug and --pr-number must be provided together for GitHub mode, or neither for stdin mode")
-		}
-
 		diffBytes, err := io.ReadAll(os.Stdin)
 		if err != nil {
-			log.Fatalf("Failed to read diff from stdin: %v", err)
+			return fmt.Errorf("failed to read diff from stdin: %w", err)
 		}
 		diffContent = string(diffBytes)
 		if diffContent == "" {
-			log.Fatal("No diff content provided on stdin")
+			return fmt.Errorf("no diff content provided on stdin")
 		}
 	}
 
-	log.Printf("Reading prompt file %s", *promptFile)
-
-	// Read prompt file
-	promptContent, err := os.ReadFile(*promptFile)
+	log.Printf("Reading prompt file %s", args.PromptFile)
+	promptContent, err := os.ReadFile(args.PromptFile)
 	if err != nil {
-		log.Fatalf("Failed to read prompt file: %v", err)
+		return fmt.Errorf("failed to read prompt file: %w", err)
 	}
 	prompt := string(promptContent)
 
-	log.Printf("Calling OpenAI API with model %s", *model)
-
-	// Call OpenAI API
+	log.Printf("Calling OpenAI API with model %s", args.Model)
 	openaiClient := openai.NewClient()
-	aiResponse, err := analyzeWithAI(ctx, openaiClient, *model, prompt, diffContent)
+	aiResponse, err := analyzeWithAI(ctx, openaiClient, args.Model, prompt, diffContent)
 	if err != nil {
-		log.Fatalf("Failed to analyze with AI: %v", err)
+		return fmt.Errorf("failed to analyze with AI: %w", err)
 	}
 
-	// If in stdin mode or --no-comment flag is set, just output to stdout
-	if !githubMode || *noComment {
+	if !githubMode || args.NoComment {
 		fmt.Println(aiResponse)
-		return
+		return nil
 	}
 
-	// Otherwise, post/update comment on GitHub
 	githubToken := os.Getenv("GITHUB_TOKEN")
-	parts := strings.Split(*slug, "/")
+	parts := strings.Split(args.Slug, "/")
 	owner, repoName := parts[0], parts[1]
 
 	ts := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: githubToken})
 	tc := oauth2.NewClient(ctx, ts)
 	githubClient := github.NewClient(tc)
 
-	// Format the comment with marker
-	commentBody := fmt.Sprintf("%s\n\n%s", *marker, aiResponse)
+	commentBody := fmt.Sprintf("%s\n\n%s", args.Marker, aiResponse)
 
-	// Post or update comment on PR
-	if err := putComment(ctx, githubClient, owner, repoName, *prNumber, *marker, commentBody); err != nil {
-		log.Fatalf("Failed to post comment: %v", err)
+	if err := putComment(ctx, githubClient, owner, repoName, args.PRNumber, args.Marker, commentBody); err != nil {
+		return fmt.Errorf("failed to post comment: %w", err)
 	}
 
 	log.Printf("Successfully posted AI review comment")
+	return nil
 }
+
