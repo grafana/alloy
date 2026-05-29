@@ -1,4 +1,4 @@
-package main
+package aireview
 
 import (
 	"context"

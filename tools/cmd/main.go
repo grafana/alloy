@@ -5,6 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/grafana/alloy/tools/aireview"
 	"github.com/grafana/alloy/tools/goversion"
 )
 
@@ -16,6 +17,7 @@ func main() {
 		},
 	}
 	cmd.AddCommand(
+		aireview.Command(),
 		goversion.Command(),
 	)
 
