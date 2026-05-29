@@ -1,18 +1,43 @@
-package main
+package enrichreleasenotes
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"log"
 	"os"
 	"regexp"
 	"strings"
 	"unicode"
 
+	"github.com/spf13/cobra"
+
 	gh "github.com/grafana/alloy/tools/release/internal/github"
 	"github.com/grafana/alloy/tools/release/internal/version"
 )
+
+type flags struct {
+	tag        string
+	footerFile string
+	dryRun     bool
+}
+
+func Command() *cobra.Command {
+	var flags flags
+
+	cmd := &cobra.Command{
+		Use:   "enrich-release-notes",
+		Short: "Add contributor attribution and an optional footer to a release's notes",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return run(cmd.Context(), flags)
+		},
+	}
+
+	cmd.Flags().StringVar(&flags.tag, "tag", "", "Release tag to enrich (e.g., v1.15.0)")
+	cmd.Flags().StringVar(&flags.footerFile, "footer", "", "Path to footer template file (optional)")
+	cmd.Flags().BoolVar(&flags.dryRun, "dry-run", false, "Dry run (do not update release)")
+	_ = cmd.MarkFlagRequired("tag")
+
+	return cmd
+}
 
 // commitPattern matches a commit SHA in markdown link format: "([abc1234](https://github.com/.../commit/...))"
 // It captures the short SHA from the link text, regardless of surrounding context.
@@ -55,34 +80,18 @@ type commitAuthorsResponse struct {
 	} `json:"errors"`
 }
 
-func main() {
-	var (
-		tag        string
-		footerFile string
-		dryRun     bool
-	)
-	flag.StringVar(&tag, "tag", "", "Release tag to enrich (e.g., v1.15.0)")
-	flag.StringVar(&footerFile, "footer", "", "Path to footer template file (optional)")
-	flag.BoolVar(&dryRun, "dry-run", false, "Dry run (do not update release)")
-	flag.Parse()
-
-	if tag == "" {
-		log.Fatal("Release tag is required (use --tag flag)")
-	}
-
-	ctx := context.Background()
-
+func run(ctx context.Context, flags flags) error {
 	client, err := gh.NewClientFromEnv(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	fmt.Printf("📝 Enriching release notes for %s\n", tag)
+	fmt.Printf("📝 Enriching release notes for %s\n", flags.tag)
 
 	// Get the release by tag
-	release, err := client.GetReleaseByTag(ctx, tag)
+	release, err := client.GetReleaseByTag(ctx, flags.tag)
 	if err != nil {
-		log.Fatalf("Failed to get release: %v", err)
+		return fmt.Errorf("getting release: %w", err)
 	}
 
 	releaseBody := release.GetBody()
@@ -92,26 +101,26 @@ func main() {
 	newBody = addContributorInfo(ctx, client, newBody)
 
 	// Append the release notes footer if provided
-	if footerFile != "" {
-		newBody, err = appendFooter(newBody, tag, footerFile)
+	if flags.footerFile != "" {
+		newBody, err = appendFooter(newBody, flags.tag, flags.footerFile)
 		if err != nil {
-			log.Fatalf("Failed to append footer: %v", err)
+			return fmt.Errorf("appending footer: %w", err)
 		}
 	}
 
-	if dryRun {
+	if flags.dryRun {
 		fmt.Println("\n🏃 DRY RUN - No changes made")
 		fmt.Println("\n--- Updated release notes ---")
 		fmt.Println(newBody)
-		return
+		return nil
 	}
 
-	// Update the release
 	if err := client.UpdateReleaseBody(ctx, release.GetID(), newBody); err != nil {
-		log.Fatalf("Failed to update release: %v", err)
+		return fmt.Errorf("updating release: %w", err)
 	}
 
 	fmt.Println("✅ Release notes updated successfully")
+	return nil
 }
 
 // extractCommitSHA extracts a commit SHA from a changelog line.
