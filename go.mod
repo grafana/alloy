@@ -54,7 +54,6 @@ require (
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v1.0.0
 	github.com/google/cadvisor v0.54.1
 	github.com/google/dnsmasq_exporter v0.2.1-0.20230620100026-44b14480804a
@@ -1059,6 +1058,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.30.2 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gnostic v0.7.1 // indirect
 	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
