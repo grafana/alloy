@@ -23,17 +23,17 @@ type FileHelper struct {
 func NewFileHelper(pathToDependencyReplacements string, projectRoot string) (*FileHelper, error) {
 	scriptDir, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to resolve working directory: %v", err)
+		return nil, fmt.Errorf("failed to resolve working directory: %v", err)
 	}
 
 	scriptDir, err = filepath.Abs(scriptDir)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to resolve script directory: %v", err)
+		return nil, fmt.Errorf("failed to resolve script directory: %v", err)
 	}
 
 	absReplacesPath, err := filepath.Abs(pathToDependencyReplacements)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to resolve %s: %v", pathToDependencyReplacements, err)
+		return nil, fmt.Errorf("failed to resolve %s: %v", pathToDependencyReplacements, err)
 	}
 
 	return &FileHelper{
@@ -67,7 +67,7 @@ func (d *FileHelper) ModuleDir(modulePath string) (string, error) {
 	abs, err := filepath.Abs(moduleDir)
 
 	if err != nil {
-		return "", fmt.Errorf("Failed to resolve module directory %s: %v", moduleDir, err)
+		return "", fmt.Errorf("failed to resolve module directory %s: %v", moduleDir, err)
 	}
 
 	return abs, nil

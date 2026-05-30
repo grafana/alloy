@@ -8,9 +8,10 @@ Multi-module Go repo: root, `syntax/`, `collector/`, `extension/alloyengine/`, `
 ## Essential references
 
 - Contributing and PR workflow: [docs/developer/contributing.md](docs/developer/contributing.md)
-  - Specifically, make sure you use the conventional commit formats and PR titles as described in the contributing guide.
+  - Use the conventional commit formats and PR titles as described in the contributing guide. The description after the `type(scope):` prefix **must start with a capital letter** (e.g. `feat(loki.process): Add ...`, not `feat(loki.process): add ...`) — a CI check enforces this on PR titles, and squash-merge means the PR title is what lands in `main`.
+  - Don't edit `CHANGELOG.md` by hand. Release tooling generates entries from PR titles; manual edits conflict or get overwritten.
   - Verify the changes with `make lint` and run relevant tests before opening the PR.
-  - Note that we have some code generation steps that need to be run when the generated output is changed. See the contributing guide and Makefile help commands for more details.
+  - When touching `require` lines in any `go.mod` (root or submodule), regenerate the cross-module wiring before pushing — raw `go mod tidy` in one module isn't enough. Run `make generate-module-dependencies` and `make generate-otel-collector-distro`, then confirm zero additional diff. CI's `check` job fails otherwise.
 
 ## Documentation writing guidelines
 

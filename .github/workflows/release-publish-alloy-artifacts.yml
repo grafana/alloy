@@ -77,7 +77,7 @@ jobs:
 
   build_alloy:
     name: Build Alloy
-    container: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
+    container: grafana/alloy-build-image:v0.1.32@sha256:f9dd7a2db22b68d90f53fc190e5cd6a0b59dedd607e9d12dcb0182f1031f199d
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -157,7 +157,7 @@ jobs:
 
   build_alloy_windows_installer:
     name: Build Alloy Windows installer with signed executables
-    container: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
+    container: grafana/alloy-build-image:v0.1.32@sha256:f9dd7a2db22b68d90f53fc190e5cd6a0b59dedd607e9d12dcb0182f1031f199d
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -235,7 +235,7 @@ jobs:
 
   upload_release_artifacts:
     name: Upload release artifacts
-    container: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
+    container: grafana/alloy-build-image:v0.1.32@sha256:f9dd7a2db22b68d90f53fc190e5cd6a0b59dedd607e9d12dcb0182f1031f199d
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -290,7 +290,7 @@ jobs:
         RELEASE_TAG: ${{ env.RELEASE_TAG }}
 
     - name: Publish release artifacts
-      run: ./tools/publish-release-artifacts.sh
+      run: ./scripts/publish-release-artifacts.sh
       env:
         RELEASE_TAG: ${{ env.RELEASE_TAG }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
