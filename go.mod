@@ -78,7 +78,6 @@ require (
 	github.com/grafana/loki/v3 v3.6.5
 	github.com/grafana/pyroscope-go/godeltaprof v0.1.9
 	github.com/grafana/pyroscope/api v1.3.2-0.20260414051146-5eb4b919ec16
-	github.com/grafana/pyroscope/ebpf v0.4.11
 	github.com/grafana/pyroscope/lidia v0.0.2
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853
 	github.com/grafana/snowflake-prometheus-exporter v0.0.0-20260428133429-b41d19e3211f
