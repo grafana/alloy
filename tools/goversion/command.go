@@ -1,11 +1,10 @@
 package goversion
 
 import (
-	"encoding/json"
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -112,7 +111,12 @@ func updateBuildImage(root string, version string) error {
 			return fmt.Errorf("failed to read file: %w", err)
 		}
 
-		if err := os.WriteFile(path, replaceDockerGoVersion(content, version), 0644); err != nil {
+		out, err := replaceDockerGoVersion(content, version)
+		if err != nil {
+			return fmt.Errorf("update %s: %w", path, err)
+		}
+
+		if err := os.WriteFile(path, out, 0644); err != nil {
 			return fmt.Errorf("failed to update file: %w", err)
 		}
 	}
@@ -144,7 +148,7 @@ func updateGoModFiles(root, version string) error {
 }
 
 func updateDockerFiles(root, version string) error {
-	result, err := discover.Files(root, discover.MatchPatternFn("Dockerfile*"), discover.WithSkipDirs("vendor", "build-tools"), discover.WithExclude("Dockerfile.windows"))
+	result, err := discover.Files(root, discover.MatchPatternFn("Dockerfile*"), discover.WithSkipDirs("vendor", "build-tools"))
 	if err != nil {
 		return err
 	}
@@ -154,7 +158,13 @@ func updateDockerFiles(root, version string) error {
 		if err != nil {
 			return fmt.Errorf("read %s: %w", path, err)
 		}
-		if err := os.WriteFile(path, replaceDockerGoVersion(content, version), 0644); err != nil {
+
+		out, err := replaceDockerGoVersion(content, version)
+		if err != nil {
+			return fmt.Errorf("update %s: %w", path, err)
+		}
+
+		if err := os.WriteFile(path, out, 0644); err != nil {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
@@ -198,39 +208,6 @@ func bumpBuildImage(root string) error {
 	return nil
 }
 
-const dockerHubTagsURL = "https://hub.docker.com/v2/repositories/grafana/alloy-build-image/tags?page_size=2"
-
-type dockerTagsResponse struct {
-	Results []dockerTag `json:"results"`
-}
-
-type dockerTag struct {
-	Name   string `json:"name"`
-	Digest string `json:"digest"`
-}
-
-type buildImageRefs struct {
-	Default    string
-	Boring     string
-	DefaultTag string
-}
-
-func fetchBuildImageTags() (*dockerTagsResponse, error) {
-	resp, err := http.Get(dockerHubTagsURL)
-	if err != nil {
-		return nil, fmt.Errorf("fetch tags: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetch tags: %s", resp.Status)
-	}
-	var data dockerTagsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, fmt.Errorf("decode tags: %w", err)
-	}
-	return &data, nil
-}
-
 // buildImageRefsFromTags assumes 2 tags: one default, one boringcrypto.
 func buildImageRefsFromTags(data *dockerTagsResponse) (*buildImageRefs, error) {
 	if len(data.Results) != 2 {
@@ -268,9 +245,48 @@ func replaceBuildImageRefs(content []byte, refs *buildImageRefs) []byte {
 	return out
 }
 
-var dockerGoVersionRE = regexp.MustCompile(`golang:1\.\d+(\.\d+)?`)
+// dockerGoVersionRE matches a golang image reference: the version, an optional
+// variant suffix (e.g. -alpine, -windowsservercore-ltsc2022), and an optional
+// pinned digest. Submatch 1 is the suffix, submatch 2 is the @sha256 digest.
+var dockerGoVersionRE = regexp.MustCompile(`golang:1\.\d+(?:\.\d+)?(-[A-Za-z0-9._-]+)?(@sha256:[a-f0-9]+)?`)
 
-func replaceDockerGoVersion(content []byte, version string) []byte {
-	out := dockerGoVersionRE.ReplaceAllLiteral(content, []byte("golang:"+version))
-	return out
+// replaceDockerGoVersion rewrites golang image references to the given version.
+// When a reference is pinned by digest, the new tag's digest is resolved so the
+// pin stays consistent with the tag.
+func replaceDockerGoVersion(content []byte, version string) ([]byte, error) {
+	matches := dockerGoVersionRE.FindAllSubmatchIndex(content, -1)
+	if matches == nil {
+		return content, nil
+	}
+
+	var (
+		last int
+		out  bytes.Buffer
+	)
+
+	for _, m := range matches {
+		start, end := m[0], m[1]
+
+		suffix := ""
+		if m[2] >= 0 {
+			suffix = string(content[m[2]:m[3]])
+		}
+
+		hasDigest := m[4] >= 0
+		tag := version + suffix
+		replacement := "golang:" + tag
+		if hasDigest {
+			digest, err := resolveGolangDigest(tag)
+			if err != nil {
+				return nil, fmt.Errorf("resolve digest for golang:%s: %w", tag, err)
+			}
+			replacement += "@" + digest
+		}
+
+		out.Write(content[last:start])
+		out.WriteString(replacement)
+		last = end
+	}
+	out.Write(content[last:])
+	return out.Bytes(), nil
 }
