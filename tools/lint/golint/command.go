@@ -57,7 +57,7 @@ func run(f flags) error {
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
-			errs = append(errs, fmt.Errorf("lint %s", dir))
+			errs = append(errs, fmt.Errorf("lint %s: %w", dir, err))
 		}
 	}
 
