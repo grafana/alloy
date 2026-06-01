@@ -2,7 +2,6 @@ package shelllint
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -65,7 +64,7 @@ func run(f flags) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return errors.New("shellcheck failed")
+		return fmt.Errorf("shellcheck failed: %w", err)
 	}
 
 	return nil
