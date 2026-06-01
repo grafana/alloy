@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
+
 ### Bug fixes
 
 - Fix `templates/configmap.yaml` ignoring `alloy.configMap.key`. The pod template honors the value via the `alloy.config-map.key` helper, but the ConfigMap template hardcoded the data key as `config.alloy`, producing a key/expected-path mismatch that crash-looped Alloy when the value was set. (#6312)
