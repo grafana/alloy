@@ -48,6 +48,24 @@ offending line.
 All our issues are regularly tagged with labels so that you can also filter down the issues
 involving the components you want to work on.
 
+## Development tools
+
+We use [mise](https://mise.jdx.dev) to manage the versions of the tools used to build, lint, and test
+Alloy. The pinned versions live in the `[tools]` section of [`mise.toml`](../../mise.toml), so a
+single command installs the complete toolchain:
+
+1. [Install mise](https://mise.jdx.dev/installing-mise.html) and [activate it in your
+   shell](https://mise.jdx.dev/installing-mise.html#shells).
+2. From the repository root, run:
+
+   ```bash
+   mise install
+   ```
+
+mise puts the tools on your `PATH` whenever you're inside the repository, so `make lint`, `make test`,
+and the Helm chart targets run with the same versions as CI. See the `[tools]` section of
+[`mise.toml`](../../mise.toml) for the full list, and run `mise ls` to see what's installed.
+
 ## Compiling Alloy
 
 To build Alloy from source code, please install the following tools:
