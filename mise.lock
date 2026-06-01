@@ -71,6 +71,10 @@ checksum = "sha256:4932cfca5e75bf60fe1c576edf459e5e809e6644664a068185d64b84af3fa
 url = "https://github.com/golangci/golangci-lint/releases/download/v2.11.4/golangci-lint-2.11.4-windows-amd64.zip"
 provenance = "github-attestations"
 
+[[tools.govulncheck]]
+version = "1.3.0"
+backend = "go:golang.org/x/vuln/cmd/govulncheck"
+
 [[tools.helm]]
 version = "3.20.0"
 backend = "aqua:helm/helm"

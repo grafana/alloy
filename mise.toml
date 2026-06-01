@@ -10,3 +10,8 @@ shellcheck = "0.11.0"
 
 helm = "3.20.0"
 helm-docs = "1.14.2"
+
+govulncheck= "1.3.0"
+
+[tool_alias]
+govulncheck = "go:golang.org/x/vuln/cmd/govulncheck"

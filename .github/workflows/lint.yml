@@ -28,7 +28,6 @@ jobs:
       run: make run-alloylint
 
   govulncheck:
-    # FIXME(kalleep): install package through mise
     name: Govulncheck
     # xlarge (64 GB): govulncheck's SSA call graph on the
     # alloy/collector/alloyengine modules exceeds smaller runners.
@@ -43,7 +42,7 @@ jobs:
     - name: Setup tools
       uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        install_args: go
+        install_args: go govulncheck
 
     - name: Run govulncheck
       run: make govulncheck
