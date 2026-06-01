@@ -109,6 +109,17 @@
       "commitMessageTopic": "{{manager}} unstable dependency {{depName}}"
     },
     {
+      // These are updated in bulk via the key-deps process instead of Renovate.
+      "matchManagers": ["gomod"],
+      "matchPackageNames": [
+        "github.com/prometheus/prometheus",
+        "github.com/prometheus/prometheus/**",
+        "github.com/open-telemetry/**",
+        "go.opentelemetry.io/**"
+      ],
+      "enabled": false
+    },
+    {
       "matchManagers": ["helm-values"],
       "groupName": "helm-values dependencies",
       "enabled": true
