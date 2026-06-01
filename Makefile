@@ -174,7 +174,7 @@ lint: lint-go run-alloylint lint-shell
 
 .PHONY: lint-go
 lint-go:
-	GOLANGCI_LINT_BINARY=$(GOLANGCI_LINT_BINARY) ./scripts/lint-go
+	go run -C tools ./cmd lint go --binary=$(GOLANGCI_LINT_BINARY)
 
 .PHONY: lint-shell
 lint-shell:

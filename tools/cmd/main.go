@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"os"
 
 	"github.com/spf13/cobra"
 
@@ -9,12 +9,14 @@ import (
 	"github.com/grafana/alloy/tools/generate"
 	"github.com/grafana/alloy/tools/goversion"
 	"github.com/grafana/alloy/tools/govulncheck"
+	"github.com/grafana/alloy/tools/lint"
 	"github.com/grafana/alloy/tools/release"
 )
 
 func main() {
 	cmd := &cobra.Command{
-		Use: "tools",
+		Use:          "tools",
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Usage()
 		},
@@ -25,9 +27,10 @@ func main() {
 		goversion.Command(),
 		govulncheck.Command(),
 		release.Command(),
+		lint.Command(),
 	)
 
 	if err := cmd.Execute(); err != nil {
-		log.Fatalf("failed to run command: %v", err)
+		os.Exit(1)
 	}
 }

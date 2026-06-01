@@ -147,6 +147,28 @@ go run -C tools ./cmd goversion pr-2 <version>
 Runs `govulncheck` across every `go.mod` module in the repo and fails when reachable, non-ignored findings remain.
 The command resolves the repository root via `git`, so it works from any subdirectory in the repo, and reads ignore rules from `.govulncheck.yaml` by default.
 
+### `lint go`
+
+Runs `golangci-lint` across every `go.mod` module in the repo. Every module is
+linted regardless of earlier failures, and the command exits non-zero if any
+module reports findings. The repository root is resolved via `git`, so it works
+from any subdirectory.
+
+Run via the Make wrapper (preferred):
+
+```bash
+make lint-go
+```
+
+Or invoke the CLI directly:
+
+```bash
+go run -C tools ./cmd lint go
+```
+
+Pass `--binary=<path>` to use a specific `golangci-lint` binary (defaults to
+`golangci-lint` on `PATH`), and `--root=<path>` to override the repository root.
+
 ## Adding a new command
 
 1. Create a package under `tools/<area>/` (e.g. `tools/release/`).
