@@ -169,6 +169,21 @@ go run -C tools ./cmd lint go
 Pass `--binary=<path>` to use a specific `golangci-lint` binary (defaults to
 `golangci-lint` on `PATH`), and `--root=<path>` to override the repository root.
 
+### `lint shell`
+
+Runs `shellcheck` over the repo's shell scripts. It discovers candidate files by
+extension (`.sh`, `.bash`, or no extension) and then keeps only those whose first
+line is a `sh`/`bash` shebang, so extension-less scripts are covered. The
+repository root is resolved via `git`, so it works from any subdirectory, and the
+command exits non-zero if `shellcheck` reports findings.
+
+```bash
+go run -C tools ./cmd lint shell
+```
+
+Pass `--root=<path>` to override the repository root. Requires `shellcheck` on
+`PATH`.
+
 ## Adding a new command
 
 1. Create a package under `tools/<area>/` (e.g. `tools/release/`).
