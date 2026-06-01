@@ -13,7 +13,7 @@ tasks:
         {{- end -}}
     cmds:
       - find . -name go.mod | xargs dirname | xargs -I __dir__ sh -c 'cd __dir__ && {{.GOLANGCI_LINT_BINARY}} run -v --timeout=10m'
-      - GOFLAGS="-tags={{.LOCAL_TAGS}}" {{.ALLOYLINT_BINARY}} ./...
+      - GOFLAGS="-tags={{.LOCAL_TAGS}}" go run -tags='{{.LOCAL_TAGS}}' ./internal/cmd/alloylint ./...
 
   alloylint:
     desc: Run the alloylint linter.
@@ -25,4 +25,4 @@ tasks:
         {{ trim (printf "gore2regex %s" .GO_TAGS) }}
         {{- end -}}
     cmds:
-      - go run -tags={{.LOCAL_TAGS}} ./internal/cmd/alloylint ./...
+      - GOFLAGS="-tags={{.LOCAL_TAGS}}" go run -tags='{{.LOCAL_TAGS}}' ./internal/cmd/alloylint ./...
