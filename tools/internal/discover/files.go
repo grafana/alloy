@@ -60,9 +60,26 @@ func (r Result) Dirs() []string {
 	return dirs
 }
 
-// Files returns every file under root whose base name matches the glob
-// pattern (see filepath.Match), joined with root and sorted.
-func Files(root, pattern string, opts ...Option) (Result, error) {
+// MatchFn reports whether a file should be included.
+type MatchFn func(name string) (bool, error)
+
+// MatchPatternFn returns a MatchFn that matches names against a glob (see filepath.Match).
+func MatchPatternFn(pattern string) MatchFn {
+	return func(name string) (bool, error) {
+		return filepath.Match(pattern, name)
+	}
+}
+
+func MatchExtentions(extentions ...string) MatchFn {
+	return func(name string) (bool, error) {
+		ext := filepath.Ext(name)
+		return slices.Contains(extentions, ext), nil
+	}
+}
+
+// Files returns every file under root whose base name is selected by match,
+// joined with root and sorted.
+func Files(root string, match MatchFn, opts ...Option) (Result, error) {
 	var cfg config
 	for _, opt := range opts {
 		opt(&cfg)
@@ -80,7 +97,7 @@ func Files(root, pattern string, opts ...Option) (Result, error) {
 			return nil
 		}
 
-		ok, err := filepath.Match(pattern, d.Name())
+		ok, err := match(d.Name())
 		if err != nil {
 			return err
 		}

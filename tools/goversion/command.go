@@ -144,7 +144,7 @@ func updateGoModFiles(root, version string) error {
 }
 
 func updateDockerFiles(root, version string) error {
-	result, err := discover.Files(root, "Dockerfile*", discover.WithSkipDirs("vendor", "build-tools"), discover.WithExclude("Dockerfile.windows"))
+	result, err := discover.Files(root, discover.MatchPatternFn("Dockerfile*"), discover.WithSkipDirs("vendor", "build-tools"), discover.WithExclude("Dockerfile.windows"))
 	if err != nil {
 		return err
 	}
