@@ -1,9 +1,12 @@
 [tools]
 go = "1.26.3"
-kind = "0.24.0"
-node = "24.13.0"
-shellcheck = "0.11.0"
-golangci-lint = "2.11.4"
 task = "3.39.2"
-helm = "3.16.2"
+golangci-lint = "2.11.4"
+
+node = "24.13.0"
+
+kind = "0.24.0"
+shellcheck = "0.11.0"
+
+helm = "3.20.0"
 helm-docs = "1.14.2"
