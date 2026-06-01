@@ -148,3 +148,11 @@ func (mt mockTarget) Collect(_ context.Context, ch chan<- sql_exporter.Metric) {
 		ch <- m
 	}
 }
+
+func (mt mockTarget) Close() error {
+	return nil
+}
+
+func (mt mockTarget) JobGroup() string {
+	return ""
+}

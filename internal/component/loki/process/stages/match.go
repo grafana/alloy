@@ -193,3 +193,9 @@ func (m *matcherStage) Cleanup() {
 		m.pipeline.Cleanup()
 	}
 }
+
+func (m *matcherStage) Stop() {
+	if m.pipeline != nil { // nil for MatchActionDrop matchers, see Cleanup
+		m.pipeline.Stop()
+	}
+}

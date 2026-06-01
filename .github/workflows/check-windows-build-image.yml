@@ -3,7 +3,7 @@ name: Check Windows build image
 on:
   pull_request:
     paths:
-      - 'tools/build-image/windows/**'
+      - 'build-tools/build-image/windows/**'
 
 permissions:
   contents: read
@@ -24,4 +24,4 @@ jobs:
           tags: latest
           registry: docker.io
           pushImage: false
-          dockerfile: ./tools/build-image/windows/Dockerfile
+          dockerfile: ./build-tools/build-image/windows/Dockerfile

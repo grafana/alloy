@@ -4,11 +4,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
@@ -43,8 +45,15 @@ stage.limit {
 		rate  = 1
 		burst = 1
 		drop  = true
-		
+
 		by_label_name = "app"
+}`
+
+var testLimitWaitShutdownAlloy = `
+stage.limit {
+		rate  = 0.1
+		burst = 1
+		drop  = false
 }`
 
 var testNonAppLogLine = `
@@ -88,6 +97,37 @@ func TestLimitDropPipeline(t *testing.T) {
 	// Only the second line will go through.
 	assert.Len(t, out, 1)
 	assert.Equal(t, out[0].Line, testMatchLogLineApp1)
+}
+
+func assertPipelineStopsPromptly(t *testing.T, config string) {
+	pl, err := NewPipeline(logging.NewSlogNop(), loadConfig(config), prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	require.NoError(t, err)
+
+	in := make(chan loki.Entry)
+	out := make(chan loki.Entry, 1)
+	handler := pl.Start(in, out)
+
+	entry := loki.Entry{
+		Labels: model.LabelSet{"app": "loki"},
+		Entry:  push.Entry{Line: testMatchLogLineApp1, Timestamp: time.Now()},
+	}
+
+	in <- entry
+	<-out       // burst consumed; next Wait() will block
+	in <- entry // blocks the limit stage in rateLimiter.Wait
+
+	done := make(chan struct{})
+	go func() { defer close(done); handler.Stop() }()
+
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("EntryHandler.Stop() did not return within 2s")
+	}
+}
+
+func TestLimitWaitPipelineShutdown(t *testing.T) {
+	assertPipelineStopsPromptly(t, testLimitWaitShutdownAlloy)
 }
 
 // TestLimitByLabelPipeline is used to verify we properly parse the yaml config and create a working pipeline

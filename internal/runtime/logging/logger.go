@@ -126,9 +126,7 @@ func (l *Logger) Update(o Options) error {
 	l.format.Set(o.Format)
 
 	l.writer.SetInnerWriter(l.inner)
-	if len(o.WriteTo) > 0 {
-		l.writer.SetLokiWriter(&lokiWriter{o.WriteTo})
-	}
+	l.writer.SetLokiWriter(o.WriteTo)
 	l.bufferMut.Unlock()
 
 	// Build deferred handlers outside bufferMut to avoid a deadlock: concurrent
@@ -279,10 +277,14 @@ func (w *writerVar) SetInnerWriter(writer io.Writer) {
 	w.innerWriter = writer
 }
 
-func (w *writerVar) SetLokiWriter(writer *lokiWriter) {
+func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
-	w.lokiWriter = writer
+	if len(receivers) > 0 {
+		w.lokiWriter = &lokiWriter{receivers}
+	} else {
+		w.lokiWriter = nil
+	}
 }
 
 func (w *writerVar) Write(p []byte) (int, error) {

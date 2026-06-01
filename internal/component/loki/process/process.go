@@ -136,16 +136,17 @@ func (c *Component) Run(ctx context.Context) error {
 func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 
-	// Update fanout first in case anything else fails.
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
-
-	// Then update the pipeline itself.
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
+	// We always want to update fanout but it's important to do so
+	// after we have drained the existing pipeline in case one of the
+	// new receivers is not running yet. This behaviour will go away with
+	// https://github.com/grafana/alloy/issues/4953.
+	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
+
 	// We want to create a new pipeline if the config changed or if this is the
-	// first load. This will allow a component with no stages to function
-	// properly.
+	// first load. This will allow a component with no stages to function properly.
 	if stagesChanged(c.stages, newArgs.Stages) || c.stages == nil {
 		pipeline, err := stages.NewPipeline(c.opts.SLogger, newArgs.Stages, c.opts.Registerer, c.opts.MinStability)
 		if err != nil {

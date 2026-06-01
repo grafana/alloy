@@ -7,49 +7,39 @@ on:
       - 'release/v*'
 
 permissions:
-  contents: write
-  pull-requests: write
   id-token: write
+
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
 
 jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - name: Get GitHub app secrets 🔐
-        id: get-secrets
-        uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
-        with:
-          export_env: false
-          repo_secrets: |
-            ALLOYBOT_APP_ID=alloybot:app_id
-            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
-
       - name: Generate token 🔐
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
         id: app-token
         with:
-          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-          owner: grafana
-          repositories: alloy
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository 🛎️
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
+          token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
       - name: Setup Node.js 🏗️
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
-          node-version-file: tools/release/release-please-runner/.nvmrc
+          node-version-file: build-tools/release-please-runner/.nvmrc
           package-manager-cache: false
 
       - name: Install dependencies 📦
-        working-directory: tools/release/release-please-runner
+        working-directory: build-tools/release-please-runner
         run: npm install
 
       - name: Run release-please 🚀
-        working-directory: tools/release/release-please-runner
+        working-directory: build-tools/release-please-runner
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO_URL: ${{ github.repository }}

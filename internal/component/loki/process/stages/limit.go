@@ -42,10 +42,13 @@ func newLimitStage(logger *slog.Logger, cfg LimitConfig, registerer prometheus.R
 		cfg.MaxDistinctLabels = MinReasonableMaxDistinctLabels
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	r := &limitStage{
 		logger:    logger,
 		cfg:       cfg,
 		dropCount: getDropCountMetric(registerer),
+		ctx:       ctx,
+		cancel:    cancel,
 	}
 
 	if cfg.ByLabelName != "" {
@@ -79,6 +82,12 @@ type limitStage struct {
 	rateLimiterByLabel GenerationalMap[model.LabelValue, *rate.Limiter]
 	dropCount          *prometheus.CounterVec
 	dropCountByLabel   *prometheus.CounterVec
+	ctx                context.Context
+	cancel             context.CancelFunc
+}
+
+func (m *limitStage) Stop() {
+	m.cancel()
 }
 
 func (m *limitStage) Run(in chan Entry) chan Entry {
@@ -117,8 +126,7 @@ func (m *limitStage) shouldThrottle(labels model.LabelSet) bool {
 		m.dropCount.WithLabelValues(ratelimitDropReason).Inc()
 		return true
 	}
-	_ = m.rateLimiter.Wait(context.Background())
-	return false
+	return m.rateLimiter.Wait(m.ctx) != nil
 }
 
 // Cleanup implements Stage.

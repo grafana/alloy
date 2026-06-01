@@ -6,7 +6,7 @@ on:
       - Dockerfile
       - Dockerfile.windows
       - Makefile
-      - 'tools/make/*'
+      - 'build-tools/make/*'
 
 permissions:
   contents: read

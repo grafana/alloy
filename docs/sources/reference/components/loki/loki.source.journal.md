@@ -17,10 +17,21 @@ title: loki.source.journal
 You can specify multiple `loki.source.journal` components by giving them different labels.
 
 {{< admonition type="note" >}}
-Make sure that the `alloy` user is a member of the following groups:
+To read from the systemd journal, the `alloy` user must be a member of the `adm` and `systemd-journal` groups.
+Without this group membership, the component starts without error but collects no journal entries.
 
-* `adm`
-* `systemd-journal`
+To add the `alloy` user to both groups:
+
+```bash
+sudo usermod -aG adm,systemd-journal alloy
+```
+
+Restart {{< param "PRODUCT_NAME" >}} to apply the change:
+
+```bash
+sudo systemctl restart alloy
+```
+
 {{< /admonition >}}
 
 ## Usage

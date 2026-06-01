@@ -31,3 +31,15 @@ If `min_version` is provided, it must be set to one of the following strings:
 * `"TLS11"` (TLS 1.1)
 * `"TLS12"` (TLS 1.2)
 * `"TLS13"` (TLS 1.3)
+
+{{< admonition type="caution" >}}
+If you set `insecure_skip_verify` to `true`, you disable verification of the server's certificate chain and hostname.
+Alloy accepts any certificate the server presents, including expired, self-signed, or invalid certificates.
+
+You can use `insecure_skip_verify` for local development, self-signed certificates, or endpoints that use a private CA outside the system trust store.
+If the hostname doesn't match the certificate, set `server_name` instead of `insecure_skip_verify`.
+In production, use `ca_file` or `ca_pem` to trust a private CA instead of `insecure_skip_verify`.
+
+Set `insecure_skip_verify` to `true` only in isolated development or testing environments where you don't transmit sensitive data.
+Remove the setting before you deploy to production.
+{{< /admonition >}}

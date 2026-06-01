@@ -5,12 +5,12 @@ on:
       - main
     paths:
       - 'Dockerfile'
-      - 'tools/ci/docker-containers'
+      - 'scripts/docker-containers'
       - '.github/workflows/check-linux-container.yml'
   pull_request:
     paths:
       - 'Dockerfile'
-      - 'tools/ci/docker-containers'
+      - 'scripts/docker-containers'
       - '.github/workflows/check-linux-container.yml'
 
 permissions:
