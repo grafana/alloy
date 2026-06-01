@@ -78,6 +78,7 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 	m.requestDuration = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:                            "loki_write_request_duration_seconds",
 		Help:                            "Duration of send requests.",
+		Buckets:                         prometheus.DefBuckets,
 		NativeHistogramBucketFactor:     1.1,
 		NativeHistogramMaxBucketNumber:  100,
 		NativeHistogramMinResetDuration: 1 * time.Hour,

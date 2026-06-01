@@ -237,9 +237,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	r.Handle(
 		"/metrics",
-		promhttp.HandlerFor(s.gatherer, promhttp.HandlerOpts{
-			EnableOpenMetrics: true,
-		}),
+		promhttp.HandlerFor(s.gatherer, promhttp.HandlerOpts{}),
 	)
 	if s.opts.EnablePProf {
 		r.PathPrefix("/debug/pprof").Handler(http.DefaultServeMux)
