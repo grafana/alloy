@@ -3,7 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "packageManager": "npm@11.15.0",
+  "engines": {
+    "node": ">=24.16.0",
+    "npm": ">=11.13.0"
+  },
   "scripts": {
     "dev": "vite",
     "generate:fixtures": "tsx src/test/fixtures/writeFixture.ts",
