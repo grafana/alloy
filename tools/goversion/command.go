@@ -208,6 +208,12 @@ func bumpBuildImage(root string) error {
 	return nil
 }
 
+type buildImageRefs struct {
+	Default    string
+	Boring     string
+	DefaultTag string
+}
+
 // buildImageRefsFromTags assumes 2 tags: one default, one boringcrypto.
 func buildImageRefsFromTags(data *dockerTagsResponse) (*buildImageRefs, error) {
 	if len(data.Results) != 2 {

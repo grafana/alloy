@@ -40,7 +40,7 @@ func resolveGolangDigest(tag string) (string, error) {
 	return data.Digest, nil
 }
 
-const dockerHubTagsURL = "https://hub.docker.com/v2/repositories/grafana/alloy-build-image/tags?page_size=2"
+const alloyBuildImageTagsURL = "https://hub.docker.com/v2/repositories/grafana/alloy-build-image/tags?page_size=2"
 
 type dockerTagsResponse struct {
 	Results []dockerTag `json:"results"`
@@ -58,7 +58,7 @@ type buildImageRefs struct {
 }
 
 func fetchBuildImageTags() (*dockerTagsResponse, error) {
-	resp, err := http.Get(dockerHubTagsURL)
+	resp, err := http.Get(alloyBuildImageTagsURL)
 	if err != nil {
 		return nil, fmt.Errorf("fetch tags: %w", err)
 	}
