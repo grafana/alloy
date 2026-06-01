@@ -4,16 +4,30 @@ version: "3"
 tasks:
   default:
     desc: Run golangci-lint over every module and alloylint over the workspace.
-    vars:
-      LOCAL_TAGS: >-
-        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
-        {{.GO_TAGS}}
-        {{- else -}}
-        {{ trim (printf "gore2regex %s" .GO_TAGS) }}
-        {{- end -}}
     cmds:
-      - find . -name go.mod | xargs dirname | xargs -I __dir__ sh -c 'cd __dir__ && {{.GOLANGCI_LINT_BINARY}} run -v --timeout=10m'
-      - GOFLAGS="-tags={{.LOCAL_TAGS}}" go run -tags='{{.LOCAL_TAGS}}' ./internal/cmd/alloylint ./...
+      - task: golangci-lint
+        vars: { DIR: "." }
+      - task: golangci-lint
+        vars: { DIR: "./collector" }
+      - task: golangci-lint
+        vars: { DIR: "./extension/alloyengine" }
+      - task: golangci-lint
+        vars:
+          {
+            DIR: "./integration-tests/docker/tests/loki-cloudflare/logpullmock",
+          }
+      - task: golangci-lint
+        vars: { DIR: "./syntax" }
+      - task: golangci-lint
+        vars: { DIR: "./tools" }
+      - task: alloylint
+
+  golangci-lint:
+    desc: Run golangci-lint in the given module directory.
+    internal: true
+    dir: "{{.DIR}}"
+    cmds:
+      - mise exec -- golangci-lint run -v --timeout=10m ./...
 
   alloylint:
     desc: Run the alloylint linter.
