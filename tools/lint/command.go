@@ -1,8 +1,9 @@
 package lint
 
 import (
-	"github.com/grafana/alloy/tools/lint/golint"
 	"github.com/spf13/cobra"
+
+	"github.com/grafana/alloy/tools/lint/golint"
 )
 
 func Command() *cobra.Command {
