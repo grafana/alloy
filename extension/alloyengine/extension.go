@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"math"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
 	"github.com/grafana/alloy/flowcmd"
@@ -20,7 +20,7 @@ import (
 var _ extension.Extension = (*alloyEngineExtension)(nil)
 
 // running tracks whether any alloyengine instance is currently active.
-var running = &atomic.Bool{}
+var running = atomic.NewBool(false)
 
 type state int
 

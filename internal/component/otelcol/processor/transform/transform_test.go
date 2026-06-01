@@ -3,10 +3,10 @@ package transform_test
 import (
 	"testing"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/testutils"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/transform"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/transformprocessor"
 	"github.com/stretchr/testify/require"
 )

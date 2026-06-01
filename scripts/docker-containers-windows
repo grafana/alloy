@@ -35,12 +35,13 @@ else
   exit 1
 fi
 
-export RELEASE_ALLOY_IMAGE=grafana/alloy
-export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
+GAR_MIRROR=us-docker.pkg.dev/grafanalabs-global/dockerhub-alloy-prod-mirror
+export RELEASE_ALLOY_IMAGE=$GAR_MIRROR/alloy
+export DEVEL_ALLOY_IMAGE=$GAR_MIRROR/alloy-dev
 
 # TODO: Unit test this script? Test cases:
 # * Input:  ALLOY_GO_VERSION=1.24 WINDOWS_VERSION=windows-2022 GITHUB_REF_TYPE=tag GITHUB_REF_NAME=v1.8.0 ./scripts/docker-containers-windows alloy
-#   Output: docker build -t grafana/alloy:v1.8.0-windowsservercore-ltsc2022 -t grafana/alloy:windowsservercore-ltsc2022 --build-arg VERSION=v1.8.0 --build-arg RELEASE_BUILD=1 --build-arg BASE_IMAGE_GO=golang:1.24-windowsservercore-ltsc2022 --build-arg BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022 -f ./Dockerfile.windows .
+#   Output: docker build -t us-docker.pkg.dev/grafanalabs-global/dockerhub-alloy-prod-mirror/alloy:v1.8.0-windowsservercore-ltsc2022 -t us-docker.pkg.dev/grafanalabs-global/dockerhub-alloy-prod-mirror/alloy:windowsservercore-ltsc2022 --build-arg VERSION=v1.8.0 --build-arg RELEASE_BUILD=1 --build-arg BASE_IMAGE_GO=golang:1.24-windowsservercore-ltsc2022 --build-arg BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022 -f ./Dockerfile.windows .
 if [ -n "$GITHUB_TAG" ]; then
   VERSION=$GITHUB_TAG
 else

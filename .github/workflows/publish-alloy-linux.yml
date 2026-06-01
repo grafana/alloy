@@ -26,7 +26,7 @@ permissions:
 jobs:
   publish_linux_container:
     name: Publish Alloy Linux container
-    container: grafana/alloy-build-image:v0.1.31@sha256:9df765ac6d5d51afd0626ae9460f0f9b546baf32e1f4c3314a60c38654a44e60
+    container: grafana/alloy-build-image:v0.1.32@sha256:f9dd7a2db22b68d90f53fc190e5cd6a0b59dedd607e9d12dcb0182f1031f199d
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     permissions:
@@ -37,8 +37,10 @@ jobs:
       # That's because it generates a new file.
       # We don't want this file to end up in the repo directory.
       # Then "scripts/image-tag" would get confused because "git status" no longer reports a clean repo.
-    - name: Login to DockerHub (from vault)
-      uses: grafana/shared-workflows/actions/dockerhub-login@081a366728379fd0426b9cfef190e9a21c2d5418 # dockerhub-login/v1.0.3
+    - name: Login to Google Artifact Registry
+      uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
+      with:
+        registry: us-docker.pkg.dev
 
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

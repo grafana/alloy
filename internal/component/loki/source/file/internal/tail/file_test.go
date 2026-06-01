@@ -145,7 +145,6 @@ func TestFile(t *testing.T) {
 		verifyResult(t, file, &Line{Text: "h311o", Offset: 6}, nil)
 		verifyResult(t, file, &Line{Text: "w0r1d", Offset: 12}, nil)
 		verifyResult(t, file, &Line{Text: "endofworld", Offset: 23}, nil)
-
 	})
 
 	t.Run("stopped during wait", func(t *testing.T) {

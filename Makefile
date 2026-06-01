@@ -17,6 +17,7 @@
 ##
 ##   test                  Run tests
 ##   lint                  Lint code
+##   govulncheck           Run govulncheck across all Go modules
 ##   integration-test      Run integration tests
 ##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
 ##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
@@ -96,6 +97,9 @@ BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
+# GO_TAGS converted to govulncheck's comma form so tag-gated code paths are
+# analysed (the underlying govulncheck version is pinned in tools/govulncheck).
+GOVULNCHECK_TAGS    		?= $(shell echo "$(GO_TAGS)" | tr ' ' ',')
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
@@ -165,20 +169,26 @@ else
 GO_FLAGS := $(DEFAULT_FLAGS) $(DEBUG_GO_FLAGS)
 endif
 
+.PHONY: lint
+lint: lint-go run-alloylint lint-shell
+
+.PHONY: lint-go
+lint-go:
+	go run -C tools ./cmd lint go --binary=$(GOLANGCI_LINT_BINARY)
+
+.PHONY: lint-shell
+lint-shell:
+	./scripts/lint-shell
+
+.PHONY: run-alloylint
+run-alloylint: alloylint
+	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
+
 #
 # Targets for running tests
 #
 # These targets currently don't support proxying to a build container.
 #
-
-.PHONY: lint
-lint: alloylint
-	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
-
-.PHONY: run-alloylint
-run-alloylint: alloylint
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
@@ -190,6 +200,13 @@ test:
 			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
 		fi;\
 	done
+
+.PHONY: govulncheck
+# Thin Go wrapper around govulncheck: streams the tool's native text output
+# unchanged, parses `=== Symbol Results ===` for reachable OSV IDs, and
+# applies the YAML ignore list (see .govulncheck.yaml and tools/govulncheck/).
+govulncheck:
+	go run -C tools ./cmd govulncheck --tags=$(GOVULNCHECK_TAGS)
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
@@ -316,7 +333,7 @@ generate-module-dependencies:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	cd ./tools/generate-module-dependencies && $(GO_ENV) go generate
+	$(GO_ENV) go run -C tools ./cmd generate module-dependencies --dependency-yaml=$(CURDIR)/dependency-replacements.yaml
 endif
 
 generate-otel-collector-distro:
@@ -413,13 +430,13 @@ endif
 
 .PHONY: update-go-version-pr-1
 update-go-version-pr-1:
-	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-build-image VERSION=1.25.8)"; exit 1; fi
-	cd ./tools && go run ./go-version pr-1 $(VERSION)
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-version-pr-1 VERSION=1.25.8)"; exit 1; fi
+	go run -C ./tools ./cmd goversion pr-1 $(VERSION)
 
 .PHONY: update-go-version-pr-2
 update-go-version-pr-2:
-	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-mod VERSION=1.25.8)"; exit 1; fi
-	cd ./tools && go run ./go-version pr-2 $(VERSION)
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-version-pr-2 VERSION=1.25.8)"; exit 1; fi
+	go run -C ./tools ./cmd goversion pr-2 $(VERSION)
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache
