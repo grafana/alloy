@@ -178,7 +178,7 @@ lint-go:
 
 .PHONY: lint-shell
 lint-shell:
-	./scripts/lint-shell
+	go run -C tools ./cmd lint shell
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
