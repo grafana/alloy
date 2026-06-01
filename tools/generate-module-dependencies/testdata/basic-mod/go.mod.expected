@@ -1,6 +1,6 @@
 module test.example.com
 
-go 1.21
+go 1.26.3
 
 // BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
 // Test replace for example.com/package
@@ -10,4 +10,3 @@ replace example.com/package => example.com/fork v1.0.0
 replace github.com/test/dependency => github.com/test/fork v1.0.0
 
 // END GENERATED REPLACES
-
