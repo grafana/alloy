@@ -336,7 +336,7 @@ generate-module-dependencies:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	$(GO_ENV) go run -C tools ./cmd generate module-dependencies --dependency-yaml=$(CURDIR)/dependency-replacements.yaml
+	$(GO_ENV) GOOS= GOARCH= go run -C tools ./cmd generate module-dependencies --dependency-yaml=$(CURDIR)/dependency-replacements.yaml
 endif
 
 generate-source-code:
