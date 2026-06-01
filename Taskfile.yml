@@ -16,12 +16,3 @@ vars:
     {{- else -}}
     {{ trim (printf "gore2regex %s" .GO_TAGS_RAW) }}
     {{- end -}}
-
-  # golangci-lint resolution chain.
-  GOLANGCI_LINT_BINARY:
-    sh: |
-      if [ -n "${GOLANGCI_LINT_BINARY:-}" ]; then echo "$GOLANGCI_LINT_BINARY"; exit; fi
-      gobin="$(go env GOBIN)"; if [ -n "$gobin" ] && [ -x "$gobin/golangci-lint" ]; then echo "$gobin/golangci-lint"; exit; fi
-      gopath="$(go env GOPATH)"; if [ -x "$gopath/bin/golangci-lint" ]; then echo "$gopath/bin/golangci-lint"; exit; fi
-      if command -v golangci-lint >/dev/null 2>&1; then command -v golangci-lint; exit; fi
-      echo golangci-lint
