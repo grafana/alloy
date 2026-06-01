@@ -51,12 +51,6 @@ type dockerTag struct {
 	Digest string `json:"digest"`
 }
 
-type buildImageRefs struct {
-	Default    string
-	Boring     string
-	DefaultTag string
-}
-
 func fetchBuildImageTags() (*dockerTagsResponse, error) {
 	resp, err := http.Get(alloyBuildImageTagsURL)
 	if err != nil {
