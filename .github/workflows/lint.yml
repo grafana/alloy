@@ -11,21 +11,18 @@ jobs:
     runs-on: ubuntu-latest-8-cores
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        persist-credentials: false
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-    - name: Setup tools
-      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-      with:
-        install_args: go golangci-lint
+      - name: Setup tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install_args: go task golangci-lint
 
-    - name: Lint Go
-      run: make lint-go
-
-    - name: Run Alloy Lint
-      run: make run-alloylint
+      - name: Lint Go
+        run: task lint
 
   govulncheck:
     name: Govulncheck
@@ -34,36 +31,36 @@ jobs:
     runs-on: ubuntu-x64-xlarge
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        persist-credentials: false
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-    - name: Setup tools
-      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-      with:
-        install_args: go govulncheck
+      - name: Setup tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install_args: go govulncheck
 
-    - name: Run govulncheck
-      run: make govulncheck
+      - name: Run govulncheck
+        run: make govulncheck
 
   shellcheck:
     name: Shellcheck
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        persist-credentials: false
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-    - name: Setup tools
-      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-      with:
-        install_args: shellcheck
+      - name: Setup tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install_args: shellcheck
 
-    - name: Run shellcheck
-      run: make lint-shell
+      - name: Run shellcheck
+        run: make lint-shell
 
   lint_ui:
     name: Lint UI
@@ -73,21 +70,21 @@ jobs:
         working-directory: internal/web/ui
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        persist-credentials: false
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
-    - name: Setup tools
-      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
-      with:
-        install_args: node
+      - name: Setup tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install_args: node
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install dependencies
+        run: npm install
 
-    - name: Lint
-      run: npm run lint
+      - name: Lint
+        run: npm run lint
 
-    - name: Format
-      run: npm run format
+      - name: Format
+        run: npm run format
