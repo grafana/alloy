@@ -39,7 +39,7 @@ func run(f flags) error {
 
 	result, err := discover.Files(
 		root,
-		discover.MatchExtentionsFn(".sh", ".bash", ""),
+		discover.MatchExtensionsFn(".sh", ".bash", ""),
 		discover.WithSkipDirs("vendor", "node_modules"),
 	)
 	if err != nil {

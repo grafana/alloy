@@ -70,11 +70,11 @@ func MatchPatternFn(pattern string) MatchFn {
 	}
 }
 
-// MatchExtentionsFn returns a MatchFn that matches names whose extension is one of the given values
-func MatchExtentionsFn(extentions ...string) MatchFn {
+// MatchExtensionsFn returns a MatchFn that matches names whose extensions is one of the given values
+func MatchExtensionsFn(extensions ...string) MatchFn {
 	return func(name string) (bool, error) {
 		ext := filepath.Ext(name)
-		return slices.Contains(extentions, ext), nil
+		return slices.Contains(extensions, ext), nil
 	}
 }
 
