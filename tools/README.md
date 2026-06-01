@@ -84,17 +84,62 @@ published release's body, and optionally appends a footer template (with
 with a `/` like `syntax/v0.1.2`) skip the footer. Driven by
 `release-enrich-release-notes.yml` (fires on release publish).
 
-### `update-go-version`
+### `generate module-dependencies`
+
+Keeps Go module `replace` directives consistent across the repository from a
+single source of truth (`dependency-replacements.yaml` at the repo root).
+
+The tool reads the replacements, renders them through a template, and injects
+the rendered block into each target file between marker comments:
+
+```
+BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY ... END GENERATED REPLACES
+```
+
+**Do not edit anything between the markers** — update
+`dependency-replacements.yaml` instead; the next run overwrites manual changes.
+Local `replace` directives (pointing a dependency at a local path) belong
+outside the markers in the individual `go.mod` files, not in
+`dependency-replacements.yaml`.
+
+Supported `file_type` values in the config:
+
+- `mod` — Go module files (`go.mod`); `go mod tidy` runs after the update.
+- `ocb` — OpenTelemetry Collector Builder config YAML files.
+
+Run via the Make wrapper (preferred):
+
+```bash
+make generate-module-dependencies
+```
+
+Or invoke the CLI directly:
+
+```bash
+go run -C tools ./cmd generate module-dependencies \
+  --dependency-yaml="$PWD/dependency-replacements.yaml"
+```
+
+`--root` defaults to the git repo root, so it works from any subdirectory; pass
+`--root=<path>` to override. `--dependency-yaml` is resolved relative to the
+binary's working directory — `go run -C tools` runs from `tools/`, so use an
+absolute path or one relative to `tools/`.
+
+CI checks that the generated output matches what's committed. If you change
+`dependency-replacements.yaml`, run the Make target and commit the resulting
+diff.
+
+### `goversion`
 
 Bumps the Go toolchain version across the repository. Split into two steps that
 are intended to land as separate PRs.
 
 ```bash
 # PR 1: bump Go in the build images.
-go run -C tools ./cmd update-go-version pr-1 <version>
+go run -C tools ./cmd goversion pr-1 <version>
 
 # PR 2: bump Go in go.mod files, Dockerfiles, and the build image pin.
-go run -C tools ./cmd update-go-version pr-2 <version>
+go run -C tools ./cmd goversion pr-2 <version>
 ```
 
 ### `govulncheck`

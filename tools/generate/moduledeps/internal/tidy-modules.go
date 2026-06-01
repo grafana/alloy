@@ -5,8 +5,8 @@ import (
 	"log"
 	"os/exec"
 
-	"github.com/grafana/replace-generator/internal/helpers"
-	"github.com/grafana/replace-generator/internal/types"
+	"github.com/grafana/alloy/tools/generate/moduledeps/internal/helpers"
+	"github.com/grafana/alloy/tools/generate/moduledeps/internal/types"
 )
 
 func TidyModules(fileHelper *helpers.FileHelper, projectReplaces *types.ProjectReplaces) {

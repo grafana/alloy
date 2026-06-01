@@ -20,9 +20,7 @@ jobs:
           go-version-file: go.mod
 
       - name: Run tests
-        run: |
-          cd tools/generate-module-dependencies
-          go test -v .
+        run: go test -C tools -v ./generate/moduledeps/...
 
       - name: Run generate-module-dependencies
         run: |
