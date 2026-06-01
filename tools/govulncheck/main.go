@@ -6,36 +6,41 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 
-	"github.com/grafana/alloy/tools/internal/git"
+	"github.com/grafana/alloy/tools/internal/cli"
+	"github.com/grafana/alloy/tools/internal/discover"
 )
 
 // renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
 const govulncheckPkg = "golang.org/x/vuln/cmd/govulncheck@v1.3.0"
 
+type flags struct {
+	cli.RootFlag
+	tags       string
+	configPath string
+}
+
 // Command returns the cobra command for tools/cmd to register.
 func Command() *cobra.Command {
-	var root, configPath, tags string
+	var f flags
 	cmd := &cobra.Command{
 		Use:   "govulncheck",
 		Short: "Run govulncheck across every Go module and apply the YAML ignore list",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			root, err := resolveRoot(root)
+			root, err := f.RootFlag.Root()
 			if err != nil {
 				return err
 			}
 
-			actionable, err := run(root, resolveConfigPath(root, configPath), tags, time.Now())
+			actionable, err := run(root, resolveConfigPath(root, f.configPath), f.tags, time.Now())
 			if err != nil {
 				return err
 			}
@@ -48,21 +53,11 @@ func Command() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&root, "root", "", "repo root to discover Go modules under (default: git root)")
-	cmd.Flags().StringVar(&configPath, "config", ".govulncheck.yaml", "path to YAML ignore-list config (absolute or repo-root relative)")
-	cmd.Flags().StringVar(&tags, "tags", "", "comma-separated build tags passed through to govulncheck")
-	return cmd
-}
+	cmd.Flags().StringVar(&f.configPath, "config", ".govulncheck.yaml", "path to YAML ignore-list config (absolute or repo-root relative)")
+	cmd.Flags().StringVar(&f.tags, "tags", "", "comma-separated build tags passed through to govulncheck")
+	f.RootFlag.Register(cmd)
 
-func resolveRoot(root string) (string, error) {
-	if root == "" {
-		return git.Root()
-	}
-	abs, err := filepath.Abs(root)
-	if err != nil {
-		return "", fmt.Errorf("resolve root %q: %w", root, err)
-	}
-	return abs, nil
+	return cmd
 }
 
 func resolveConfigPath(root, configPath string) string {
@@ -79,12 +74,18 @@ func run(root, configPath, tags string, now time.Time) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("load config: %w", err)
 	}
-	modules, err := discoverModules(root)
+
+	result, err := discover.GoModFiles(root)
 	if err != nil {
-		return false, fmt.Errorf("discover modules: %w", err)
+		return false, err
 	}
 
-	var allActionable, allIgnored []string
+	var (
+		allActionable []string
+		allIgnored    []string
+		modules       = result.Dirs()
+	)
+
 	for _, mod := range modules {
 		fmt.Printf("\n==> govulncheck %s\n", mod)
 		out, gerr := scan(mod, tags)
@@ -221,35 +222,4 @@ func dedup(in []string) []string {
 	}
 	sort.Strings(out)
 	return out
-}
-
-// discoverModules returns Go module directories under root, excluding
-// testdata fixtures.
-func discoverModules(root string) ([]string, error) {
-	var modules []string
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			if d.Name() == ".git" || d.Name() == "node_modules" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		if d.Name() != "go.mod" {
-			return nil
-		}
-		dir := filepath.Dir(path)
-		if slices.Contains(strings.Split(filepath.ToSlash(dir), "/"), "testdata") {
-			return nil
-		}
-		modules = append(modules, dir)
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(modules)
-	return modules, nil
 }
