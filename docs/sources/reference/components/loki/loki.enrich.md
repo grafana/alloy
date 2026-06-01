@@ -50,7 +50,7 @@ You can use the following arguments with `loki.enrich`:
 | `labels_to_copy`     | `list(string)`        | List of labels to copy from discovered targets to logs. If empty, all labels are copied.     |                        | no       |
 | `logs_match_label`   | `string`              | The label from incoming logs to match against discovered targets, for example `"service_name"`.  |                        | no       |
 
-If not provided, the `logs_match_label` attribute will default to the value of `target_match_label`.
+If not provided, the `logs_match_label` attribute defaults to the value of `target_match_label`.
 
 ## Blocks
 
