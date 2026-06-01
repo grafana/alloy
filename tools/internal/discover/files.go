@@ -19,7 +19,14 @@ type Option func(*config)
 // WithExclude skips files whose path relative to root equals, or is nested
 // under, any of the given paths (e.g. "tools/generate/testdata").
 func WithExclude(paths ...string) Option {
-	return func(c *config) { c.exclude = append(c.exclude, paths...) }
+	cleaned := make([]string, 0, len(paths))
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		cleaned = append(cleaned, filepath.Clean(filepath.FromSlash(p)))
+	}
+	return func(c *config) { c.exclude = append(c.exclude, cleaned...) }
 }
 
 // WithSkipDirs skips any directory with one of the given names (e.g. "vendor", ".git", "node_modules").
