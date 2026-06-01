@@ -4,8 +4,6 @@ version: "3"
 tasks:
   default:
     desc: Run golangci-lint over every module and alloylint over the workspace.
-    deps:
-      - :build:alloylint
     vars:
       LOCAL_TAGS: >-
         {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
@@ -18,9 +16,7 @@ tasks:
       - GOFLAGS="-tags={{.LOCAL_TAGS}}" {{.ALLOYLINT_BINARY}} ./...
 
   alloylint:
-    desc: Run only the alloylint custom linter.
-    deps:
-      - :build:alloylint
+    desc: Run the alloylint linter.
     vars:
       LOCAL_TAGS: >-
         {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
@@ -29,4 +25,4 @@ tasks:
         {{ trim (printf "gore2regex %s" .GO_TAGS) }}
         {{- end -}}
     cmds:
-      - GOFLAGS="-tags={{.LOCAL_TAGS}}" {{.ALLOYLINT_BINARY}} ./...
+      - go run -tags={{.LOCAL_TAGS}} ./internal/cmd/alloylint ./...

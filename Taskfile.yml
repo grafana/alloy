@@ -3,3 +3,25 @@ version: "3"
 
 includes:
   lint: tools/task/lint.yml
+
+vars:
+  # Ensure gore2regex is present in GO_TAGS.
+  # NOTE: Only works for env-var overrides.
+  # CLI overrides (task foo GO_TAGS=bar) bypass global vars.
+  # Task evaluates them at load time, before CLI vars are merged (no equivalent of Makefile's `override`).  # Tasks use a LOCAL_TAGS var instead, which is evaluated at run time with CLI vars available.
+  GO_TAGS_RAW: '{{.GO_TAGS | default ""}}'
+  GO_TAGS: >-
+    {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS_RAW -}}
+    {{.GO_TAGS_RAW}}
+    {{- else -}}
+    {{ trim (printf "gore2regex %s" .GO_TAGS_RAW) }}
+    {{- end -}}
+
+  # golangci-lint resolution chain.
+  GOLANGCI_LINT_BINARY:
+    sh: |
+      if [ -n "${GOLANGCI_LINT_BINARY:-}" ]; then echo "$GOLANGCI_LINT_BINARY"; exit; fi
+      gobin="$(go env GOBIN)"; if [ -n "$gobin" ] && [ -x "$gobin/golangci-lint" ]; then echo "$gobin/golangci-lint"; exit; fi
+      gopath="$(go env GOPATH)"; if [ -x "$gopath/bin/golangci-lint" ]; then echo "$gopath/bin/golangci-lint"; exit; fi
+      if command -v golangci-lint >/dev/null 2>&1; then command -v golangci-lint; exit; fi
+      echo golangci-lint
