@@ -43,7 +43,7 @@ When introducing or modifying new github actions, consider the following securit
 ### Required rules
 
 1. **Secrets and Credentials:** For GitHub App tokens: use GATB (`grafana/shared-workflows/actions/create-github-app-token`). For all other secrets: fetch from Vault via `get-vault-secrets`. Never hardcode secrets or store them in GitHub Secrets.
-2. **PR / fork workflow safety:** `pull_request` workflows must be read-only (checkout, lint, test etc). Fork runs only get `id-token: read`, so OIDC will not allow access to write tokens.
+2. **PR / fork workflow safety:** `pull_request` workflows must be read-only (checkout, lint, test etc). OIDC requests will fail in forked repositories.
 3. **Commit SHAs:** Pin third-party actions to full commit SHAs, for example `uses: org/action@abcdef… # v1.2.3`
 4. **Least-privilege permissions** — Scope the workflow `permissions:` key, defaulting to `contents: read`; add `id-token: write` or write scopes only when the job actually needs OIDC/Vault or publishing.
 5. **`persist-credentials: false` on actions/checkout:** Unless later steps use git to push or commit (then pass a token to checkout and leave persistence enabled).
