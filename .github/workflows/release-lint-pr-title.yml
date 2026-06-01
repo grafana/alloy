@@ -9,7 +9,6 @@ on:
 
 permissions:
   pull-requests: read
-  id-token: write
 
 jobs:
   lint:

@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
 
+env:
+  UPDATER_APP_NAME: updater-for-ci
+  UPDATER_BOT_EMAIL: 119986603+updater-for-ci[bot]@users.noreply.github.com
+  UPDATER_BOT_NAME: updater-for-ci[bot]
+
 jobs:
   publish_linux_container:
     uses: ./.github/workflows/publish-alloy-linux.yml
@@ -46,13 +51,11 @@ jobs:
       id-token: write
     steps:
 
-    - name: Get Vault secrets
-      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
+    - name: Generate token 🔐
+      uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+      id: app-token
       with:
-        common_secrets: |
-          GITHUB_APP_ID=updater-app:app-id
-          GITHUB_APP_INSTALLATION_ID=updater-app:app-installation-id
-          GITHUB_APP_PRIVATE_KEY=updater-app:private-key
+        github_app: ${{ env.UPDATER_APP_NAME }}
 
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -71,8 +74,7 @@ jobs:
     - name: Log in to Google Artifact Registry
       uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
       with:
-        registry: "us-docker.pkg.dev"
-        environment: "prod"
+        registry: us-docker.pkg.dev
 
     - name: Update to latest image
       run: |
@@ -82,10 +84,10 @@ jobs:
 
         cat << EOF > config.json
         {
-          "git_committer_name": "updater-for-ci[bot]",
-          "git_author_name": "updater-for-ci[bot]",
-          "git_committer_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
-          "git_author_email": "119986603+updater-for-ci[bot]@users.noreply.github.com",
+          "git_committer_name": "${UPDATER_BOT_NAME}",
+          "git_author_name": "${UPDATER_BOT_NAME}",
+          "git_committer_email": "${UPDATER_BOT_EMAIL}",
+          "git_author_email": "${UPDATER_BOT_EMAIL}",
           "destination_branch": "master",
           "pull_request_branch_prefix": "auto-merge/updater/alloy",
           "pull_request_enabled": true,
@@ -104,9 +106,9 @@ jobs:
         EOF
 
         docker run --rm \
-          -e GITHUB_APP_ID \
-          -e GITHUB_APP_INSTALLATION_ID \
-          -e GITHUB_APP_PRIVATE_KEY \
+          -e GITHUB_TOKEN \
           -e CONFIG_JSON="$(cat config.json)" \
           -v ./.image-tag:/app/.image-tag \
           us-docker.pkg.dev/grafanalabs-global/docker-deployment-tools-prod/updater |& tee updater-output.log
+      env:
+        GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
