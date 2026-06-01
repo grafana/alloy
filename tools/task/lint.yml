@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+version: "3"
+
+tasks:
+  default:
+    desc: Run golangci-lint over every module and alloylint over the workspace.
+    deps:
+      - :build:alloylint
+    vars:
+      LOCAL_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{.GO_TAGS}}
+        {{- else -}}
+        {{ trim (printf "gore2regex %s" .GO_TAGS) }}
+        {{- end -}}
+    cmds:
+      - find . -name go.mod | xargs dirname | xargs -I __dir__ sh -c 'cd __dir__ && {{.GOLANGCI_LINT_BINARY}} run -v --timeout=10m'
+      - GOFLAGS="-tags={{.LOCAL_TAGS}}" {{.ALLOYLINT_BINARY}} ./...
+
+  alloylint:
+    desc: Run only the alloylint custom linter.
+    deps:
+      - :build:alloylint
+    vars:
+      LOCAL_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{.GO_TAGS}}
+        {{- else -}}
+        {{ trim (printf "gore2regex %s" .GO_TAGS) }}
+        {{- end -}}
+    cmds:
+      - GOFLAGS="-tags={{.LOCAL_TAGS}}" {{.ALLOYLINT_BINARY}} ./...
