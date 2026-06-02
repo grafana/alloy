@@ -1,7 +1,6 @@
 package cloudwatch_exporter
 
 import (
-	"bytes"
 	"testing"
 
 	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
@@ -12,7 +11,6 @@ import (
 
 func TestCloudwatchExporterIntegrationProperSetup(t *testing.T) {
 	givenName := "test_exporter"
-	var logbuff bytes.Buffer
 	givenLogger := util.TestAlloyLogger(t).Slog()
 	givenConfig := yaceModel.JobsConfig{
 		StsRegion:           "us-east-1",
@@ -26,7 +24,6 @@ func TestCloudwatchExporterIntegrationProperSetup(t *testing.T) {
 	e, err := NewCloudwatchExporter(givenName, givenLogger, givenConfig, givenFipsEnabled, givenLabelsSnakeCase)
 	require.NoError(t, err, "failed to construct cloudwatch exporter")
 
-	logbuff.Reset()
 	require.Equal(t, givenName, e.name, "exporter name should be set correctly")
 	require.Equal(t, givenLabelsSnakeCase, e.labelsSnakeCase, "labelsSnakeCase should be set correctly")
 	require.NotNil(t, e.logger, "logger should be initialized")
