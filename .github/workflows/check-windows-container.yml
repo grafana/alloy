@@ -5,7 +5,7 @@ on:
       - main
     paths:
       - 'Dockerfile.windows'
-      - 'tools/ci/docker-containers-windows'
+      - 'scripts/docker-containers-windows'
       - '.github/workflows/check-windows-container.yml'
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
@@ -14,7 +14,7 @@ on:
   pull_request:
     paths:
       - 'Dockerfile.windows'
-      - 'tools/ci/docker-containers-windows'
+      - 'scripts/docker-containers-windows'
       - '.github/workflows/check-windows-container.yml'
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'

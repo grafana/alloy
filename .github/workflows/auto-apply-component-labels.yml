@@ -16,8 +16,8 @@ jobs:
         with:
           persist-credentials: false
     
-      - name: Run apply-component-labels.sh
-        run: ./.github/workflows/scripts/apply-component-labels.sh
+      - name: Run apply-component-labels
+        run: ./.github/workflows/scripts/apply-component-labels
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE: ${{ github.event.issue.number }}

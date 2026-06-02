@@ -68,6 +68,10 @@ type Options struct {
 	// ResourceToTelemetryConversion controls whether to convert resource attributes to Prometheus-compatible datapoint attributes
 	ResourceToTelemetryConversion bool
 	HonorMetadata                 bool
+	// ConvertClassicHistogramsToNHCB controls whether OTel classic (explicit
+	// bounds) histograms are converted to Prometheus Native Histograms with
+	// Custom Buckets instead of being written as N+2 classic series.
+	ConvertClassicHistogramsToNHCB bool
 }
 
 var _ consumer.Metrics = (*Converter)(nil)
@@ -507,12 +511,19 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 		Help: m.Description(),
 	})
 
+	convertToNHCB := conv.getOpts().ConvertClassicHistogramsToNHCB
+
 	// Write series data first, so the series exists before we write metadata.
 	for dpcount := 0; dpcount < m.Histogram().DataPoints().Len(); dpcount++ {
 		dp := m.Histogram().DataPoints().At(dpcount)
 
 		if conv.getOpts().ResourceToTelemetryConversion {
 			joinAttributeMaps(resAttrs, dp.Attributes())
+		}
+
+		if convertToNHCB {
+			conv.writeClassicHistogramAsNHCB(app, memResource, memScope, metricName, dp)
+			continue
 		}
 
 		// Sum metric
@@ -628,6 +639,37 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
 			level.Warn(conv.log).Log("msg", "failed to write metric family metadata", "metric name", metricName, "err", err)
+		}
+	}
+}
+
+// writeClassicHistogramAsNHCB writes a single classic histogram data point as
+// a Prometheus Native Histogram with Custom Buckets, instead of the N+2
+// classic _bucket/_sum/_count series.
+func (conv *Converter) writeClassicHistogramAsNHCB(app storage.Appender, memResource *memorySeries, memScope *memorySeries, metricName string, dp pmetric.HistogramDataPoint) {
+	memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
+
+	ts := dp.Timestamp().AsTime()
+	if ts.Before(memSeries.Timestamp()) {
+		// Out-of-order; skip.
+		return
+	}
+	memSeries.SetTimestamp(ts)
+
+	h, err := explicitToCustomBucketsHistogram(dp)
+	if err != nil {
+		level.Error(conv.log).Log("msg", "failed to convert classic histogram to native histogram with custom buckets", "metric name", metricName, "err", err)
+		return
+	}
+
+	if err := memSeries.WriteNativeHistogramTo(app, ts, &h, nil); err != nil {
+		level.Error(conv.log).Log("msg", "failed to write native histogram with custom buckets", "metric name", metricName, "err", err)
+		return
+	}
+
+	for i := 0; i < dp.Exemplars().Len(); i++ {
+		if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
+			level.Error(conv.log).Log("msg", "failed to add exemplar", "metric name", metricName, "err", err)
 		}
 	}
 }

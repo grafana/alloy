@@ -20,6 +20,7 @@ type Arguments struct {
 	SyncInterval           time.Duration           `alloy:"sync_interval,attr,optional"`
 	LokiNameSpacePrefix    string                  `alloy:"loki_namespace_prefix,attr,optional"`
 	LokiNamespaceSeparator string                  `alloy:"loki_namespace_separator,attr,optional"`
+	ExternalLabels         map[string]string       `alloy:"external_labels,attr,optional"`
 	ExtraQueryMatchers     *ExtraQueryMatchers     `alloy:"extra_query_matchers,block,optional"`
 
 	RuleSelector          kubernetes.LabelSelector `alloy:"rule_selector,block,optional"`

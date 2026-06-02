@@ -3,7 +3,7 @@ name: Check Linux build image
 on:
   pull_request:
     paths:
-      - 'tools/build-image/*'
+      - 'build-tools/build-image/*'
       - '.github/workflows/check-linux-build-image.yml'
 
 permissions:
@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         build:
-          - runtime: golang:1.26.2-alpine3.23
-          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.26.2-bookworm
+          - runtime: golang:1.26.3-alpine3.23
+          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.26.3-bookworm
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout
@@ -41,7 +41,7 @@ jobs:
         uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           platforms: linux/amd64,linux/arm64
-          context: ./tools/build-image
+          context: ./build-tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |

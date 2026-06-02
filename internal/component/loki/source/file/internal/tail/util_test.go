@@ -2,7 +2,6 @@ package tail
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -89,14 +88,4 @@ func lastNewlineTest(t *testing.T, name string, encoder *encoding.Encoder, conte
 	got, err := lastNewline(f, nl)
 	require.NoError(t, err)
 	require.Equal(t, expectedPos, got)
-}
-
-// createTempFile creates a temp file with content and returns the open file (read-only seekable).
-func createTempFile(t *testing.T, content []byte) *os.File {
-	t.Helper()
-	path := filepath.Join(t.TempDir(), "seektest")
-	require.NoError(t, os.WriteFile(path, content, 0600))
-	f, err := os.Open(path)
-	require.NoError(t, err)
-	return f
 }

@@ -159,6 +159,28 @@ To do this, import the wrapper in the `internal/component/all.go` file.
 _ "github.com/grafana/alloy/internal/component/otelcol/processor/example"                 // Import otelcol.processor.example
 ```
 
+## Add the component to the OTel engine
+
+The steps above only register the component with Alloy's Default Engine. Alloy also ships an OTel Engine, an embedded OpenTelemetry Collector distribution run via `alloy otel`, with its own component set. To make the component available there too, add it to the OpenTelemetry Collector Builder (OCB) manifest at `collector/builder-config.yaml` under the matching category (`receivers`, `processors`, `exporters`, `extensions`, or `connectors`):
+
+```yaml
+processors:
+  ...
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/processor/exampleprocessor <OTEL_VERSION>
+```
+
+Use the same `<OTEL_VERSION>` as the other entries in the file. Then regenerate the distro:
+
+```bash
+make generate-otel-collector-distro
+```
+
+Commit the regenerated files under `collector/` alongside your change; a CI workflow fails if they're out of sync. For more detail, see the [Collector Distro README](../../collector/README.md).
+
+Also add the component to the included components list in `docs/sources/introduction/otel_alloy.md` so it shows up in the user-facing documentation.
+
+## Build and use the component
+
 If you want to use the component for your personal or organizational use cases, you're done.
 The Alloy [Makefile](https://github.com/grafana/alloy/blob/main/Makefile) provides the various ways to build executables and container images for running Alloy in your environments.
 However, if you're looking to contribute back to the Alloy community, there's a few more steps you need to do
