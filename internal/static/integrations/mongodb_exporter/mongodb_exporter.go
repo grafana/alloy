@@ -90,7 +90,6 @@ func init() {
 
 // New creates a new mongodb_exporter integration.
 func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
-
 	exp := exporter.New(&exporter.Opts{
 		URI:                    string(c.URI),
 		Logger:                 logger,
