@@ -1261,8 +1261,8 @@ github.com/grafana/pyroscope/lidia v0.0.2 h1:DsZiUjWfB+6w9wKGosEQQTFuDvkay7kUECw
 github.com/grafana/pyroscope/lidia v0.0.2/go.mod h1:4AxmVrn7RJPBStqSw+0erQN2kr+I6MW6LmaawOM8Nlo=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc h1:GN2Lv3MGO7AS6PrRoT6yV5+wkrOpcszoIsO4+4ds248=
 github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc/go.mod h1:+JKpmjMGhpgPL+rXZ5nsZieVzvarn86asRlBg4uNGnk=
-github.com/grafana/sigil-sdk/go v0.8.0 h1:JGQHWA8qo7rEeWuFmiRL28W3etFBZcong230N/Xxvp0=
-github.com/grafana/sigil-sdk/go v0.8.0/go.mod h1:FU3NKvn7gVWVyb6hMfZu6S1w9jO4xLo3Di2o5gtB+8Y=
+github.com/grafana/sigil-sdk/go v0.9.0 h1:RnVspeQYe7jL6b26Qzd8S5h/GY47fpi41yuCsXNi0AY=
+github.com/grafana/sigil-sdk/go v0.9.0/go.mod h1:FU3NKvn7gVWVyb6hMfZu6S1w9jO4xLo3Di2o5gtB+8Y=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3 h1:UPkAxuhlAcRmJT3/qd34OMTl+ZU7BLLfOO2+NXBlJpY=
 github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3/go.mod h1:iZiiwNT4HbtGRVqCQu7uJPEZCuEE5sfSSttcnePkDl4=
 github.com/grafana/snowflake-prometheus-exporter v0.0.0-20260428133429-b41d19e3211f h1:IGERXtIJz2SIOo633czigByviJXFlydtv+Iu5Pk4/Z0=
