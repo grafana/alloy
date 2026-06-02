@@ -22,10 +22,10 @@ var (
 	truncateExtractedField          = "extracted"
 )
 
-const (
-	errLimitMustBeGreaterThanZero = "limit must be greater than zero"
-	errSourcesForLine             = "sources cannot be set when source_type is 'line'"
-	errAtLeastOneRule             = "at least one truncate rule must be defined"
+var (
+	errTruncateLimit          = errors.New("limit must be greater than zero")
+	errTruncateSourcesForLine = errors.New("sources cannot be set when source_type is 'line'")
+	errTruncateSuffixLength   = errors.New("suffix length cannot be greater than or equal to limit")
 )
 
 // TruncateConfig contains the configuration for a truncateStage
@@ -38,61 +38,46 @@ type RuleConfig struct {
 	Suffix     string           `alloy:"suffix,attr,optional"`
 	Sources    []string         `alloy:"sources,attr,optional"`
 	SourceType SourceType       `alloy:"source_type,attr,optional"`
-
-	effectiveLimit units.Base2Bytes
 }
 
-// validateTruncateConfig validates the TruncateConfig for the truncateStage
-func validateTruncateConfig(cfg *TruncateConfig) error {
-	if len(cfg.Rules) == 0 {
-		return errors.New(errAtLeastOneRule)
+// SetToDefault implements syntax.Defaulter.
+func (r *RuleConfig) SetToDefault() {
+	*r = RuleConfig{SourceType: SourceTypeLine}
+}
+
+// Validate implements syntax.Validator.
+func (r *RuleConfig) Validate() error {
+	if r.Limit <= 0 {
+		return errTruncateLimit
 	}
-
-	for _, r := range cfg.Rules {
-		r.effectiveLimit = r.Limit
-
-		if r.Limit <= 0 {
-			return errors.New(errLimitMustBeGreaterThanZero)
-		}
-
-		if r.SourceType == "" {
-			r.SourceType = SourceTypeLine
-		}
-
-		if r.SourceType == SourceTypeLine && len(r.Sources) > 0 {
-			return errors.New(errSourcesForLine)
-		}
-
-		if len(r.Suffix) > 0 {
-			if len(r.Suffix) >= int(r.Limit) {
-				return errors.New("suffix length cannot be greater than or equal to limit")
-			}
-
-			r.effectiveLimit -= units.Base2Bytes(len(r.Suffix))
-		}
+	if r.SourceType == SourceTypeLine && len(r.Sources) > 0 {
+		return errTruncateSourcesForLine
 	}
-
+	if len(r.Suffix) > 0 && int(r.Limit) <= len(r.Suffix) {
+		return errTruncateSuffixLength
+	}
 	return nil
 }
 
-// newTruncateStage creates a TruncateStage from config
-func newTruncateStage(logger log.Logger, config TruncateConfig, registerer prometheus.Registerer) (Stage, error) {
-	err := validateTruncateConfig(&config)
-	if err != nil {
-		return nil, err
-	}
+// effectiveLimit returns the truncation threshold after accounting for the
+// suffix length. Computed on demand so RuleConfig stays a pure parse target.
+func (r *RuleConfig) effectiveLimit() units.Base2Bytes {
+	return r.Limit - units.Base2Bytes(len(r.Suffix))
+}
 
+// newTruncateStage creates a TruncateStage from config
+func newTruncateStage(logger log.Logger, cfg TruncateConfig, registerer prometheus.Registerer) Stage {
 	return &truncateStage{
 		logger:         log.With(logger, "component", "stage", "type", "truncate"),
-		cfg:            &config,
+		cfg:            cfg,
 		truncatedCount: getTruncateCountMetric(registerer),
-	}, nil
+	}
 }
 
 // truncateStage applies Label matchers to determine if the include stages should be run
 type truncateStage struct {
 	logger         log.Logger
-	cfg            *TruncateConfig
+	cfg            TruncateConfig
 	truncatedCount *prometheus.CounterVec
 }
 
@@ -105,12 +90,13 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 			for _, r := range m.cfg.Rules {
 				switch r.SourceType {
 				case SourceTypeLine:
-					if len(e.Line) > int(r.effectiveLimit) {
-						e.Line = e.Line[:r.effectiveLimit] + r.Suffix
+					limit := r.effectiveLimit()
+					if len(e.Line) > int(limit) {
+						e.Line = e.Line[:limit] + r.Suffix
 						markTruncated(m.truncatedCount, truncated, truncateLineField)
 
 						if Debug {
-							level.Debug(m.logger).Log("msg", "line has been truncated", "limit", r.effectiveLimit, "truncated_line", e.Line)
+							level.Debug(m.logger).Log("msg", "line has been truncated", "limit", limit, "truncated_line", e.Line)
 						}
 					}
 				case SourceTypeLabel:
@@ -172,34 +158,37 @@ func (m *truncateStage) Run(in chan Entry) chan Entry {
 }
 
 func (m *truncateStage) tryTruncateLabel(rule *RuleConfig, l model.LabelSet, name model.LabelName, val model.LabelValue, truncated map[string]struct{}) {
-	if len(val) > int(rule.effectiveLimit) {
-		l[name] = val[:rule.effectiveLimit] + model.LabelValue(rule.Suffix)
+	limit := rule.effectiveLimit()
+	if len(val) > int(limit) {
+		l[name] = val[:limit] + model.LabelValue(rule.Suffix)
 		markTruncated(m.truncatedCount, truncated, truncateLabelField)
 
 		if Debug {
-			level.Debug(m.logger).Log("msg", "label has been truncated", "limit", rule.effectiveLimit, "name", name, "truncated_value", l[name])
+			level.Debug(m.logger).Log("msg", "label has been truncated", "limit", limit, "name", name, "truncated_value", l[name])
 		}
 	}
 }
 
 func (m *truncateStage) tryTruncateExtracted(rule *RuleConfig, extracted map[string]any, name string, val any, truncated map[string]struct{}) {
-	if strVal, ok := val.(string); ok && len(strVal) > int(rule.effectiveLimit) {
-		extracted[name] = strVal[:rule.effectiveLimit] + rule.Suffix
+	limit := rule.effectiveLimit()
+	if strVal, ok := val.(string); ok && len(strVal) > int(limit) {
+		extracted[name] = strVal[:limit] + rule.Suffix
 		markTruncated(m.truncatedCount, truncated, truncateExtractedField)
 
 		if Debug {
-			level.Debug(m.logger).Log("msg", "extracted has been truncated", "limit", rule.effectiveLimit, "name", name, "truncated_value", extracted[name])
+			level.Debug(m.logger).Log("msg", "extracted has been truncated", "limit", limit, "name", name, "truncated_value", extracted[name])
 		}
 	}
 }
 
 func (m *truncateStage) tryTruncateStructuredMetadata(rule *RuleConfig, metadata push.LabelAdapter, truncated map[string]struct{}) push.LabelAdapter {
-	if len(metadata.Value) > int(rule.effectiveLimit) {
-		metadata.Value = metadata.Value[:rule.effectiveLimit] + rule.Suffix
+	limit := rule.effectiveLimit()
+	if len(metadata.Value) > int(limit) {
+		metadata.Value = metadata.Value[:limit] + rule.Suffix
 		markTruncated(m.truncatedCount, truncated, truncateStructuredMetadataField)
 
 		if Debug {
-			level.Debug(m.logger).Log("msg", "structured_metadata has been truncated", "limit", rule.effectiveLimit, "name", metadata.Name, "truncated_value", metadata.Value)
+			level.Debug(m.logger).Log("msg", "structured_metadata has been truncated", "limit", limit, "name", metadata.Name, "truncated_value", metadata.Value)
 		}
 	}
 	return metadata
