@@ -74,3 +74,18 @@ jobs:
         IMAGE: ${{ inputs.image }}
       run: |
         cosign sign --yes "${IMAGE}"
+
+    - name: Verify signature
+      # Fail the run if the just-written signature doesn't verify, so a broken
+      # signing job is caught before the draft release is published — with
+      # immutable releases the image can't be re-signed after publication. This
+      # checks the signature in GAR; propagation to Docker Hub via the mirror is
+      # verified separately (smoke test), since the mirror copies asynchronously.
+      env:
+        IMAGE: ${{ inputs.image }}
+        REPO: ${{ github.repository }}
+      run: |
+        cosign verify \
+          --certificate-identity-regexp "^https://github\.com/${REPO}/\.github/workflows/sign-and-attest\.yml@" \
+          --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+          "${IMAGE}"
