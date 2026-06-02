@@ -12,7 +12,7 @@ import (
 )
 
 // Integration is the process_exporter integration. On non-Linux platforms,
-// this integration does nothing and will print a warning if enabled.
+// this integrats nothing and will print a warning if enabled.
 type Integration struct {
 	c *Config
 }

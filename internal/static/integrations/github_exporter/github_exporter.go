@@ -109,7 +109,6 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	// Configure GitHub App authentication if required fields are present
 	if hasGitHubAppAuth {
 		logger.Debug("github authentication method", "method", "GitHub App")
-
 		conf.SetGitHubApp(true)
 		conf.SetGitHubAppKeyPath(c.GitHubAppKeyPath)
 		conf.SetGitHubAppId(c.GitHubAppID)

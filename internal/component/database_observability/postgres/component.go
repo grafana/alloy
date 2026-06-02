@@ -485,7 +485,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 				}))
 			}
 			col, err := pg_collector.NewPostgresCollector(
-				slogLogger,
+				c.opts.SLogger,
 				c.args.ExcludeDatabases,
 				dsn,
 				exporterArgs.EnabledCollectors,
