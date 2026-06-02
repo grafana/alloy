@@ -29,6 +29,9 @@ jobs:
       with:
         install_args: go
 
+    - name: Cache Go modules and build
+      uses: ./.github/actions/go-cache
+
     - name: Test
       run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
 
