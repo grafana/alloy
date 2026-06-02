@@ -9,23 +9,24 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	kitlog "github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 
-	kitlog "github.com/go-kit/log"
 	cmp "github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/grafana/loki/pkg/push"
 )
 
 func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error)) *Component {
@@ -33,6 +34,7 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	opts := cmp.Options{
 		ID:            "test",
 		Logger:        kitlog.NewNopLogger(),
+		SLogger:       logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
@@ -666,6 +668,7 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	opts := cmp.Options{
 		ID:            "test.postgres",
 		Logger:        kitlog.NewNopLogger(),
+		SLogger:       logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
@@ -870,6 +873,7 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 	opts := cmp.Options{
 		ID:         "test",
 		Logger:     kitlog.NewNopLogger(),
+		SLogger:    logging.NewSlogNop(),
 		Registerer: nil,
 		OnStateChange: func(e cmp.Exports) {
 			exports = e.(Exports)
@@ -903,6 +907,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test-component",
 			Logger:        kitlog.NewNopLogger(),
+			SLogger:       logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
@@ -936,6 +941,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test-component",
 			Logger:        kitlog.NewNopLogger(),
+			SLogger:       logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
@@ -1027,6 +1033,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
 			Logger:        kitlog.NewNopLogger(),
+			SLogger:       logging.NewSlogNop(),
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
 				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil

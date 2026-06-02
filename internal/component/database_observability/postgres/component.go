@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"path"
 	"slices"
@@ -29,7 +28,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
@@ -458,12 +456,11 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			c.args.PrometheusExporter = &d
 		}
 		exporterArgs := exporter_postgres.Arguments(*c.args.PrometheusExporter)
-		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
 		dsn := string(c.args.DataSourceName)
 
 		e := pg_exporter.NewExporter(
 			[]string{dsn},
-			slogLogger,
+			c.opts.SLogger,
 			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
 			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
 			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
