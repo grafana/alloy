@@ -24,7 +24,6 @@ var (
 var (
 	errTruncateLimit          = errors.New("limit must be greater than zero")
 	errTruncateSourcesForLine = errors.New("sources cannot be set when source_type is 'line'")
-	errTruncateAtLeastOneRule = errors.New("at least one truncate rule must be defined")
 	errTruncateSuffixLength   = errors.New("suffix length cannot be greater than or equal to limit")
 )
 
