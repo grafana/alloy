@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.16.2](https://github.com/grafana/alloy/compare/v1.16.1...v1.16.2) (2026-06-02)
+
+
+### Bug Fixes 🐛
+
+* **ci:** Bump build image to use go v1.26.3 ([#6334](https://github.com/grafana/alloy/issues/6334)) [backport] ([d379ce1](https://github.com/grafana/alloy/commit/d379ce1d9a15e0ff2e7c9a18a26c046ed4a2cfec))
+* **ci:** Update to go v1.26.3 ([#6337](https://github.com/grafana/alloy/issues/6337)) [backport] ([d379ce1](https://github.com/grafana/alloy/commit/d379ce1d9a15e0ff2e7c9a18a26c046ed4a2cfec))
+* **loki.process:** No longer mutate rules in stage.truncate causing every config update to reload pipeline when this stage is used [backport] ([#6394](https://github.com/grafana/alloy/issues/6394)) ([32c64cb](https://github.com/grafana/alloy/commit/32c64cb27f183cf56478f87eb85d81ffe5f0ab2b))
+* **loki.process:** Potential deadlock on update with stage and receiver changes [backport] ([#6290](https://github.com/grafana/alloy/issues/6290)) ([144e0e2](https://github.com/grafana/alloy/commit/144e0e276b1106f00c3c0d4d03e02d6da5dc2d76))
+* **otelcol.exporter.awss3:** Add missing `unique_key_func_name` attribute [backport] ([#6193](https://github.com/grafana/alloy/issues/6193)) ([928bb50](https://github.com/grafana/alloy/commit/928bb5052e3aaedc6a03a7c99bdbdf88562c4454))
+* **security:** Address Critical CVE's From Scanner ([#6232](https://github.com/grafana/alloy/issues/6232)) [backport] ([d379ce1](https://github.com/grafana/alloy/commit/d379ce1d9a15e0ff2e7c9a18a26c046ed4a2cfec))
+* **security:** Update module github.com/jackc/pgx/v5 to v5.9.2 [SECURITY] ([#6326](https://github.com/grafana/alloy/issues/6326)) [backport] ([d379ce1](https://github.com/grafana/alloy/commit/d379ce1d9a15e0ff2e7c9a18a26c046ed4a2cfec))
+* **security:** Update x/crypto and x/net for CVEs ([#6336](https://github.com/grafana/alloy/issues/6336)) [backport] ([d379ce1](https://github.com/grafana/alloy/commit/d379ce1d9a15e0ff2e7c9a18a26c046ed4a2cfec))
+* **ui:** Reduce UI dependencies ([#6349](https://github.com/grafana/alloy/issues/6349)) [backport] ([d379ce1](https://github.com/grafana/alloy/commit/d379ce1d9a15e0ff2e7c9a18a26c046ed4a2cfec))
+
 ## [1.16.1](https://github.com/grafana/alloy/compare/v1.16.0...v1.16.1) (2026-05-05)
 
 
