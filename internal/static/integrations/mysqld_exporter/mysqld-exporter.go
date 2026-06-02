@@ -7,17 +7,13 @@ import (
 	"log/slog"
 	"os"
 
-	config_util "github.com/prometheus/common/config"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/go-sql-driver/mysql"
+	config_util "github.com/prometheus/common/config"
+	"github.com/prometheus/mysqld_exporter/collector"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/prometheus/mysqld_exporter/collector"
 )
 
 // DefaultConfig holds the default settings for the mysqld_exporter integration.
@@ -107,7 +103,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -118,7 +114,7 @@ func init() {
 
 // New creates a new mysqld_exporter integration. The integration scrapes
 // metrics from a mysqld process.
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
+func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
 	dsn := c.DataSourceName
 	if len(dsn) == 0 {
 		dsn = config_util.Secret(os.Getenv("MYSQLD_EXPORTER_DATA_SOURCE_NAME"))
@@ -128,16 +124,15 @@ func New(log log.Logger, c *Config) (integrations.Integration, error) {
 	}
 
 	scrapers := GetScrapers(c)
-	logger := slog.New(logging.NewSlogGoKitHandler(log))
-	exporter := collector.New(context.Background(), string(dsn), scrapers, logger,
+	exporter := collector.New(context.Background(), string(dsn), scrapers, log,
 		collector.EnableLockWaitTimeout(c.EnableLockWaitTimeout),
 		collector.SetLockWaitTimeout(c.LockWaitTimeout),
 		collector.SetSlowLogFilter(c.LogSlowFilter),
 	)
 
-	level.Debug(log).Log("msg", "enabled mysqld_exporter scrapers")
+	log.Debug("enabled mysqld_exporter scrapers")
 	for _, scraper := range scrapers {
-		level.Debug(log).Log("scraper", scraper.Name())
+		log.Debug("scraper", scraper.Name())
 	}
 
 	return integrations.NewCollectorIntegration(
