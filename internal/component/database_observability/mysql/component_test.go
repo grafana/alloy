@@ -511,11 +511,11 @@ func TestMySQL_Reconnection(t *testing.T) {
 		c, err := New(opts, args)
 		require.NoError(t, err)
 
-		c.healthErr.Store("initial error")
+		c.target.healthErr.Store("initial error")
 
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.healthErr.Load())
+		assert.NotEmpty(t, c.target.healthErr.Load())
 	})
 
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
@@ -546,24 +546,27 @@ func TestMySQL_Reconnection(t *testing.T) {
 		mock1.ExpectPing().WillReturnError(assert.AnError)
 
 		c := &Component{
-			opts:      opts,
-			args:      args,
-			fanout:    loki.NewFanout(args.ForwardTo),
-			handler:   loki.NewLogsReceiver(),
-			registry:  prometheus.NewRegistry(),
-			healthErr: atomic.NewString(""),
-			openSQL:   func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+			opts:    opts,
+			args:    args,
+			fanout:  loki.NewFanout(args.ForwardTo),
+			handler: loki.NewLogsReceiver(),
+			openSQL: func(_ string, _ string) (*sql.DB, error) { return db1, nil },
+			target: &targetInstance{
+				dataSourceName: args.DataSourceName,
+				instanceKey:    "test-instance",
+				registry:       prometheus.NewRegistry(),
+				healthErr:      atomic.NewString(""),
+			},
 		}
-		c.instanceKey = "test-instance"
-		c.baseTarget = discovery.NewTargetFromMap(map[string]string{
-			"instance": c.instanceKey,
+		c.target.baseTarget = discovery.NewTargetFromMap(map[string]string{
+			"instance": c.target.instanceKey,
 			"job":      "database_observability",
 		})
 
 		// First attempt: connection fails
 		err = c.tryReconnect(context.Background())
 		assert.Error(t, err)
-		assert.NotEmpty(t, c.healthErr.Load())
+		assert.NotEmpty(t, c.target.healthErr.Load())
 
 		// Second mock: will succeed
 		db2, mock2, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
@@ -581,7 +584,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 		// Second attempt: connection succeeds and clears error
 		err = c.tryReconnect(context.Background())
 		assert.NoError(t, err)
-		assert.Empty(t, c.healthErr.Load())
+		assert.Empty(t, c.target.healthErr.Load())
 	})
 
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
