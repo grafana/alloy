@@ -115,7 +115,7 @@ To expose the UI to other machines, complete the following steps:
 
      To listen on all interfaces, replace _`<LISTEN_ADDR>`_ with `0.0.0.0`.
 
-## Harden the Windows service
+## Secure the Windows service
 
 For guidance on running {{< param "PRODUCT_NAME" >}} with a dedicated service account, configuring Windows security group membership, and setting filesystem permissions, refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][secure-windows].
 

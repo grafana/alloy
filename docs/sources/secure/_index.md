@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/secure/
-description: Harden Grafana Alloy for production by controlling process identity, network exposure, secrets, and component-level access
+description: Secure Grafana Alloy for production by controlling process identity, network exposure, secrets, and component-level access
 menuTitle: Secure Alloy
 title: Secure Grafana Alloy
 weight: 110
@@ -10,8 +10,6 @@ weight: 110
 
 {{< param "FULL_PRODUCT_NAME" >}} collects metrics, logs, traces, and profiles from your infrastructure.
 Depending on how you configure it, {{< param "PRODUCT_NAME" >}} reads host logs, accesses `/proc`, queries Kubernetes APIs, and holds credentials for your observability backends.
-This access makes {{< param "PRODUCT_NAME" >}} a high-value process from a security perspective.
-Harden it before you deploy to production.
 
 ## Security areas
 
@@ -20,7 +18,7 @@ Harden it before you deploy to production.
 Run {{< param "PRODUCT_NAME" >}} as a dedicated, unprivileged user wherever possible.
 OS-level restrictions limit what a compromised process can access on the host.
 
-- Refer to [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux] for systemd service hardening, file permissions, and the `alloy` user.
+- Refer to [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux] for systemd service, file permissions, and the `alloy` user.
 - Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes] for `securityContext`, non-root UID, and OpenShift Security Context Constraints.
 - Refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows] for service accounts, Windows security groups, and filesystem ACLs.
 

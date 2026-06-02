@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/secure/linux/
-description: Secure a standalone Grafana Alloy installation on Linux using the alloy system user, file permissions, and systemd service hardening options
+description: Secure a standalone Grafana Alloy installation on Linux using the alloy system user, file permissions, and systemd service security options
 menuTitle: Secure Linux
 title: Secure Grafana Alloy on Linux
 weight: 100
@@ -10,7 +10,7 @@ aliases:
 
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
-Apply these hardening measures when you install {{< param "PRODUCT_NAME" >}} as a system service on Linux using the deb or rpm package.
+Apply these security measures when you install {{< param "PRODUCT_NAME" >}} as a system service on Linux using the deb or rpm package.
 If you run {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes] instead.
 
 {{< admonition type="note" >}}
@@ -58,7 +58,7 @@ The `alloy` user needs read access to the configuration file and read/write acce
 It shouldn't have access to anything else.
 
 The package sets `/etc/alloy` and `/var/lib/alloy` to mode `770` at install time.
-You can apply tighter permissions for production hardening:
+You can apply tighter permissions for production:
 
 | Path                      | Owner         | Permissions | Notes                                         |
 | ------------------------- | ------------- | ----------- | --------------------------------------------- |
@@ -82,9 +82,9 @@ If your configuration file contains credentials, confirm it isn't world-readable
 stat /etc/alloy/config.alloy
 ```
 
-## Harden the systemd service
+## Secure the systemd service
 
-The systemd unit shipped with the {{< param "PRODUCT_NAME" >}} package doesn't include security hardening directives by default.
+The systemd unit in the {{< param "PRODUCT_NAME" >}} package doesn't include security directives by default.
 You can add them using a drop-in file without modifying the upstream unit, so they survive package upgrades.
 
 Create a drop-in file:
