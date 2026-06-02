@@ -23,5 +23,5 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 	common.WarningIfUsedInCluster(opts)
 	a := args.(Arguments)
 	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for unix exporter
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, a.Convert(), defaultInstanceKey)
 }

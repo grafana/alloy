@@ -12,7 +12,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/static/integrations"
 )
@@ -76,7 +75,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Unlock()
 			go func() {
 				if err := exporter.Run(newCtx); err != nil && err != context.Canceled {
-					level.Error(c.opts.Logger).Log("msg", "error running exporter", "err", err)
+					c.opts.SLogger.Error("error running exporter", "err", err)
 				}
 			}()
 		}
@@ -164,7 +163,7 @@ func newExporter(creator Creator, name string, targetBuilderFunc func(discovery.
 func (c *Component) getHttpHandler(integration integrations.Integration) http.Handler {
 	h, err := integration.MetricsHandler()
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to creating metrics handler", "err", err)
+		c.opts.SLogger.Error("failed to creating metrics handler", "err", err)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		})
