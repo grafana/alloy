@@ -22,9 +22,8 @@ func TestCloudwatchExporterIntegrationProperSetup(t *testing.T) {
 	}
 	givenFipsEnabled := false
 	givenLabelsSnakeCase := true
-	givenDebug := false
 
-	e, err := NewCloudwatchExporter(givenName, givenLogger, givenConfig, givenFipsEnabled, givenLabelsSnakeCase, givenDebug)
+	e, err := NewCloudwatchExporter(givenName, givenLogger, givenConfig, givenFipsEnabled, givenLabelsSnakeCase)
 	require.NoError(t, err, "failed to construct cloudwatch exporter")
 
 	logbuff.Reset()
@@ -32,9 +31,4 @@ func TestCloudwatchExporterIntegrationProperSetup(t *testing.T) {
 	require.Equal(t, givenLabelsSnakeCase, e.labelsSnakeCase, "labelsSnakeCase should be set correctly")
 	require.NotNil(t, e.logger, "logger should be initialized")
 	require.NotNil(t, e.cachingClientFactory, "cachingClientFactory should be initialized")
-
-	e.logger.Debug("debug")
-	if bytes.Contains(logbuff.Bytes(), []byte("debug")) != givenDebug {
-		t.Error("logger does not respect debug flag")
-	}
 }

@@ -127,7 +127,7 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		logger.Debug("github authentication method", "method", "API Token File")
 		err = conf.SetAPITokenFromFile(c.APITokenFile)
 		if err != nil {
-			logger.Debug("unable to load GitHub API token from file", "err", err)
+			logger.Error("unable to load GitHub API token from file", "err", err)
 			return nil, err
 		}
 	}

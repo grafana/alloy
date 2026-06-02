@@ -47,7 +47,6 @@ type Config struct {
 	FIPSDisabled    bool                  `yaml:"fips_disabled"`
 	Discovery       DiscoveryConfig       `yaml:"discovery"`
 	Static          []StaticJob           `yaml:"static"`
-	Debug           bool                  `yaml:"debug"`
 	DecoupledScrape DecoupledScrapeConfig `yaml:"decoupled_scraping"`
 
 	// UseAWSSDKVersion2 is deprecated and has no effect.
@@ -159,10 +158,10 @@ func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error
 		if v := c.DecoupledScrape.ScrapeInterval; v != nil {
 			scrapeInterval = *v
 		}
-		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, labelsSnakeCase, c.Debug)
+		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, labelsSnakeCase)
 	}
 
-	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, labelsSnakeCase, c.Debug)
+	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, labelsSnakeCase)
 }
 
 // getHash calculates the MD5 hash of the yaml representation of the config

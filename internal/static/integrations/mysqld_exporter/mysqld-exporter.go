@@ -132,7 +132,7 @@ func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
 
 	log.Debug("enabled mysqld_exporter scrapers")
 	for _, scraper := range scrapers {
-		log.Debug("scraper", scraper.Name())
+		log.Debug("scraper", "name", scraper.Name())
 	}
 
 	return integrations.NewCollectorIntegration(

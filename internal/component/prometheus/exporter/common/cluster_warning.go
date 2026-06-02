@@ -20,7 +20,6 @@ func WarningIfUsedInCluster(o component.Options) {
 
 	if !clusterData.Ready() || len(clusterData.Peers()) > 0 {
 		o.SLogger.Warn(
-			"msg",
 			"detected clustering is configured while using a host-specific exporter - please make sure your configuration is correct",
 			"exporter",
 			o.ID,

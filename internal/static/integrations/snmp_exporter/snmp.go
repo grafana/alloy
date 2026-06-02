@@ -106,9 +106,9 @@ func Handler(w http.ResponseWriter, r *http.Request, logger *slog.Logger, snmpCf
 		nmodules = append(nmodules, collector.NewNamedModule(moduleName, module))
 	}
 	if walkParams != "" {
-		logger = logger.With(logger, "module_param", moduleParam, "target", target, "walk_params", walkParams)
+		logger = logger.With("module_param", moduleParam, "target", target, "walk_params", walkParams)
 	} else {
-		logger = logger.With(logger, "module_param", moduleParam, "target", target)
+		logger = logger.With("module_param", moduleParam, "target", target)
 	}
 
 	auth, ok := (*snmpCfg).Auths[authName]

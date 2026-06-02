@@ -32,8 +32,7 @@ type exporter struct {
 }
 
 // NewCloudwatchExporter creates a new YACE wrapper, that implements Integration
-// FIXME(kalleep): we no longer need debug flag..
-func NewCloudwatchExporter(name string, logger *slog.Logger, conf yaceModel.JobsConfig, fipsEnabled, labelsSnakeCase, _ bool) (*exporter, error) {
+func NewCloudwatchExporter(name string, logger *slog.Logger, conf yaceModel.JobsConfig, fipsEnabled, labelsSnakeCase bool) (*exporter, error) {
 	var factory cachingFactory
 	var err error
 

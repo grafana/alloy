@@ -41,7 +41,7 @@ func New(log *slog.Logger, c *Config) (*Integration, error) {
 	}
 	sort.Strings(collectors)
 	for _, c := range collectors {
-		log.Info("collector", c)
+		log.Info("collector", "name", c)
 	}
 
 	return &Integration{
