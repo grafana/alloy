@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/go-kit/log"
 	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestCloudwatchExporterIntegrationProperSetup(t *testing.T) {
 	givenName := "test_exporter"
 	var logbuff bytes.Buffer
-	givenLogger := log.NewJSONLogger(&logbuff)
+	givenLogger := util.TestAlloyLogger(t).Slog()
 	givenConfig := yaceModel.JobsConfig{
 		StsRegion:           "us-east-1",
 		DiscoveryJobs:       []yaceModel.DiscoveryJob{},
