@@ -18,6 +18,13 @@ Unreleased
 
 - Fix `templates/configmap.yaml` ignoring `alloy.configMap.key`. The pod template honors the value via the `alloy.config-map.key` helper, but the ConfigMap template hardcoded the data key as `config.alloy`, producing a key/expected-path mismatch that crash-looped Alloy when the value was set. (#6312)
 
+1.8.3 (2026-06-02)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.16.2 (@kgeckhart)
+
 1.8.2 (2026-05-25)
 ----------
 
