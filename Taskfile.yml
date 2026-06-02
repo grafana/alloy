@@ -2,7 +2,7 @@
 version: "3"
 
 includes:
-  lint: tools/task/lint.yml
+  lint: build-tools/task/lint.yml
 
 vars:
   # Ensure gore2regex is present in GO_TAGS.
