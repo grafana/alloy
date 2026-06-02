@@ -1,30 +1,31 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/secure/linux/
-description: Secure a standalone Grafana Alloy installation on Linux using the alloy system user, file permissions, and systemd service security options
+description: Secure a Grafana Alloy installation on Linux using the alloy system user, file permissions, and systemd service security options
 menuTitle: Secure Linux
 title: Secure Grafana Alloy on Linux
 weight: 100
-aliases:
-  - ../harden-linux/ # /docs/alloy/latest/secure/harden-linux/
 ---
 
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
-Apply these security measures when you install {{< param "PRODUCT_NAME" >}} as a system service on Linux using the deb or rpm package.
-If you run {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes] instead.
+Install {{< param "PRODUCT_NAME" >}} from the DEB or RPM package to get the `alloy` system user and systemd unit file.
+For Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
+For Windows, refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows].
 
 {{< admonition type="note" >}}
-These steps assume you installed {{< param "PRODUCT_NAME" >}} using the official deb or rpm package.
-The package creates the `alloy` system user and the systemd unit file automatically.
-If you installed via binary, adapt the steps to match your installation paths.
+The DEB and RPM packages create the `alloy` user and systemd unit automatically.
+For binary installs, adapt paths to match your layout.
+Refer to [Install {{< param "PRODUCT_NAME" >}} on Linux][install-linux] for package and binary setup.
+
+[install-linux]: ../../set-up/install/linux/
 {{< /admonition >}}
 
 ## Run as the alloy user
 
-The {{< param "PRODUCT_NAME" >}} package creates a dedicated system user named `alloy` at install time.
-The systemd unit runs the process as this user by default.
+The package creates a dedicated system user named `alloy` at install time.
+The systemd unit runs the process as this user.
 
-To verify the service runs as the `alloy` user:
+Verify the service runs as the `alloy` user:
 
 ```shell
 ps aux | grep alloy
@@ -38,7 +39,7 @@ If the process runs as `root`, check the `User=` directive in the unit file:
 systemctl cat alloy | grep User
 ```
 
-If `User=alloy` isn't set, override it using a drop-in file rather than editing the unit directly:
+If `User=alloy` isn't set, override it with a drop-in file instead of editing the unit directly:
 
 ```shell
 sudo systemctl edit alloy
@@ -58,7 +59,7 @@ The `alloy` user needs read access to the configuration file and read/write acce
 It shouldn't have access to anything else.
 
 The package sets `/etc/alloy` and `/var/lib/alloy` to mode `770` at install time.
-You can apply tighter permissions for production:
+Tighter permissions for production:
 
 | Path                      | Owner         | Permissions | Notes                                         |
 | ------------------------- | ------------- | ----------- | --------------------------------------------- |
@@ -66,7 +67,7 @@ You can apply tighter permissions for production:
 | `/etc/alloy/`             | `root:alloy`  | `750`       | `alloy` can read directory contents           |
 | `/var/lib/alloy/`         | `alloy:alloy` | `750`       | Write-ahead log and data storage              |
 
-Apply these permissions after installation:
+Apply the permissions after installation:
 
 ```shell
 sudo chown -R root:alloy /etc/alloy
@@ -76,7 +77,7 @@ sudo chown -R alloy:alloy /var/lib/alloy
 sudo chmod 750 /var/lib/alloy
 ```
 
-If your configuration file contains credentials, confirm it isn't world-readable:
+If the configuration file contains credentials, confirm it isn't world-readable:
 
 ```shell
 stat /etc/alloy/config.alloy
@@ -84,10 +85,8 @@ stat /etc/alloy/config.alloy
 
 ## Secure the systemd service
 
-The systemd unit in the {{< param "PRODUCT_NAME" >}} package doesn't include security directives by default.
-You can add them using a drop-in file without modifying the upstream unit, so they survive package upgrades.
-
-Create a drop-in file:
+The systemd unit in the package doesn't include security directives by default.
+Add them with a drop-in file so they survive package upgrades:
 
 ```shell
 sudo systemctl edit alloy
@@ -126,29 +125,23 @@ ProtectKernelLogs=yes
 ReadWritePaths=/var/lib/alloy
 ```
 
-Reload and restart the service to apply the changes:
+Reload and restart the service:
 
 ```shell
 sudo systemctl daemon-reload
 sudo systemctl restart alloy
 ```
 
-Verify the service starts cleanly and check for permission errors in the logs:
+Make sure the service starts cleanly and review the logs for permission errors:
 
 ```shell
 sudo journalctl -u alloy -n 50
 ```
 
-{{< admonition type="note" >}}
-If you use `loki.source.journal` to collect systemd journal logs, add `/run/log/journal` and `/var/log/journal` to `ReadOnlyPaths` so the `alloy` user can read them.
-The `alloy` user also needs membership in the `adm` and `systemd-journal` groups.
-Refer to [Grant access to the systemd journal](#grant-access-to-the-systemd-journal).
-{{< /admonition >}}
-
 ## Grant access to the systemd journal
 
-If you use `loki.source.journal`, the `alloy` user needs membership in the `adm` and `systemd-journal` groups.
-The package installer adds the `alloy` user to both groups when they exist on the system.
+If you use [`loki.source.journal`][loki-source-journal], the `alloy` user needs membership in the `adm` and `systemd-journal` groups.
+The package installer adds the user to both groups when they exist on the system.
 If you installed via binary or removed the user from either group, add them back:
 
 ```shell
@@ -156,46 +149,56 @@ sudo usermod -aG adm,systemd-journal alloy
 sudo systemctl restart alloy
 ```
 
+When you use `ProtectSystem=strict`, add journal paths to `ReadOnlyPaths` in the systemd drop-in:
+
+```ini
+ReadOnlyPaths=/var/log/journal
+ReadOnlyPaths=/run/log/journal
+```
+
 ## Grant access to application log files
 
-If you use `loki.source.file` to tail log files owned by other users or services, grant read access using ACLs rather than broadening the `alloy` user's group membership:
+If you use [`loki.source.file`][loki-source-file] to read log files owned by other users or services, grant read access with ACLs instead of broadening the `alloy` user's group membership:
 
 ```shell
 sudo setfacl -R -m u:alloy:r /var/log/myapp
 sudo setfacl -R -d -m u:alloy:r /var/log/myapp
 ```
 
-The `-d` flag sets a default ACL so files created in the directory inherit the permission.
+The `-d` flag sets a default ACL so new files in the directory inherit the permission.
 
 ## Restrict the HTTP server
 
-By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:12345`, which is only reachable from the local machine.
-Change the bind address only when you need to expose the UI or metrics endpoint to other machines.
+By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:12345`.
+Only change the bind address when you need to expose the UI or metrics endpoint to other machines.
 
-If you need to expose the `/metrics` endpoint for Prometheus scraping without exposing the UI, place a reverse proxy in front of {{< param "PRODUCT_NAME" >}} and restrict access at the proxy level.
-
-For configuration options, refer to the [`http` block][http-block].
+To expose `/metrics` for Prometheus scraping without exposing the UI, put a reverse proxy in front of {{< param "PRODUCT_NAME" >}} and restrict access at the proxy.
+Refer to the [`http` block][http-block] for TLS and authentication options.
 
 ## Components that require elevated access
 
 Some components can't run as the unprivileged `alloy` user.
+Refer to [Components that require elevated access][elevated-access] for the full list.
 
-**`beyla.ebpf`** and **`pyroscope.ebpf`** require root or `CAP_SYS_ADMIN` for kernel-level eBPF access.
-If you need eBPF-based instrumentation, grant the necessary capability or run as root.
-Remove `NoNewPrivileges=yes` from the systemd drop-in when you run these components.
+**`beyla.ebpf`** and **`pyroscope.ebpf`** need root or additional Linux capabilities for kernel-level eBPF access.
+Grant the required capabilities or run as root, and remove `NoNewPrivileges=yes` from the systemd drop-in when you grant capabilities to the `alloy` user.
+Refer to the [beyla.ebpf component reference][beyla-ebpf].
 
 **`prometheus.exporter.unix`** reads from `/proc` and `/sys`.
-The `alloy` user can read most of these paths without elevated privileges on a typical Linux system.
-If you see permission errors, check the specific metric collector that causes the issue rather than running as root.
+The `alloy` user can read most of these paths on a typical Linux system without elevated privileges.
+If you see permission errors, check the metric collector that causes the issue instead of running as root.
 
 ## Next steps
 
-- [Secure {{< param "PRODUCT_NAME" >}}][secure]: overview of all security areas
+- [Secure {{< param "PRODUCT_NAME" >}}][secure]
 - [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]
 - [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows]
-- [`http` block][http-block]: TLS and authentication for the HTTP server
 
 [kubernetes]: ../kubernetes/
 [windows]: ../windows/
 [secure]: ../
+[elevated-access]: ../#components-that-require-elevated-access
 [http-block]: ../../reference/config-blocks/http/
+[loki-source-journal]: ../../reference/components/loki/loki.source.journal/
+[loki-source-file]: ../../reference/components/loki/loki.source.file/
+[beyla-ebpf]: ../../reference/components/beyla/beyla.ebpf/

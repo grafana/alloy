@@ -1,7 +1,5 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/secure/windows/
-aliases:
-  - ../harden-windows/ # /docs/alloy/latest/secure/harden-windows/
 description: Secure a Grafana Alloy installation on Windows by configuring a dedicated service account, security groups, and filesystem permissions
 menuTitle: Secure Windows
 title: Secure Grafana Alloy on Windows
@@ -10,48 +8,46 @@ weight: 300
 
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
-When {{< param "PRODUCT_NAME" >}} runs as a Windows Service, configure a dedicated service account, Windows security groups, and filesystem permissions to limit privilege.
-For general configuration tasks such as editing the configuration file, changing command-line arguments, and configuring environment variables, refer to [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows].
+Secure the {{< param "PRODUCT_NAME" >}} Windows Service with a dedicated account, security groups, and filesystem permissions.
+For Linux, refer to [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux].
+For Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
+For configuration file edits, command-line arguments, and environment variables, refer to [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows].
 
 ## Run as a dedicated service account
 
 By default, {{< param "PRODUCT_NAME" >}} runs as the `LOCAL SYSTEM` account after installation.
-`LOCAL SYSTEM` has broad access to the local machine and is more privileged than necessary for most {{< param "PRODUCT_NAME" >}} deployments.
+`LOCAL SYSTEM` has broad access to the local machine and exceeds what most deployments need.
 
-To reduce privilege, create a dedicated Windows service account and configure the {{< param "PRODUCT_NAME" >}} service to use it.
+Create a dedicated Windows service account and configure the {{< param "PRODUCT_NAME" >}} service to use it.
 
 ### Required user rights
 
-The service account must have the [`Log on as a service`](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/log-on-as-a-service) user right assigned.
+The service account needs the [`Log on as a service`](https://learn.microsoft.com/previous-versions/windows/it-pro/windows-10/security/threat-protection/security-policy-settings/log-on-as-a-service) user right.
 Windows requires this right for any account that runs a service.
 
-Assign this right using the Local Security Policy editor at `secpol.msc` under **Security Settings > Local Policies > User Rights Assignment**.
+Assign the right in the Local Security Policy editor at `secpol.msc` under **Security Settings > Local Policies > User Rights Assignment**.
 
 ## Windows security groups
 
 Add the service account to [Windows security groups](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups) based on what you collect:
 
 - **[Event Log Readers](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#event-log-readers)**: Read Application, System, Security, and custom event logs.
-  Required when your configuration collects Windows Event Log data.
+  Required for Windows Event Log collection.
 
 - **[Performance Monitor Users](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-monitor-users)**: Read performance counter data for CPU, memory, disk I/O, and network usage.
-  Required when your configuration collects Windows performance metrics.
+  Required for Windows performance metrics.
 
-- **[Performance Log Users](http://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-log-users)**: Schedule performance counter logging and manage Data Collector Sets.
-  Required for advanced or historical data collection with Windows Data Collector Sets.
+- **[Performance Log Users](http://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-log-users)**: Manage Data Collector Sets and performance counter logs.
+  Required for advanced or historical data collection.
 
 ## File system and network permissions
 
-Beyond group membership, the service account requires specific permissions.
+Grant read, write, and modify permissions on `%PROGRAMDATA%\GrafanaLabs\Alloy\data`, where {{< param "PRODUCT_NAME" >}} stores its write-ahead log and runtime data.
 
-Grant read, write, and modify permissions on `%PROGRAMDATA%\GrafanaLabs\Alloy\data`.
-This is where {{< param "PRODUCT_NAME" >}} stores its write-ahead log and other runtime data.
+If {{< param "PRODUCT_NAME" >}} reads application log files from disk, grant the service account read access to those files and their parent directories through [Access Control Lists][acl] or a custom group.
 
-If {{< param "PRODUCT_NAME" >}} reads application log files directly from disk, grant the service account read access to those files and their parent directories.
-Modify [Access Control Lists][acl] for those resources, or add the service account to a custom group that has read access.
-
-{{< param "PRODUCT_NAME" >}} needs outbound network connectivity to reach its configured telemetry endpoints, such as Prometheus remote write, Loki, and OTLP endpoints.
-Ensure firewall rules allow outbound connections from the host on the necessary ports.
+{{< param "PRODUCT_NAME" >}} needs outbound network access to its telemetry endpoints, such as Prometheus remote write, Loki, and OTLP.
+Allow outbound connections from the host on the ports your configuration uses.
 
 The service account may need read access to `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy` to read [environment variables][configure-windows] and [command-line arguments][configure-windows].
 Refer to [Registry key security and access rights][registry-security] for details.
@@ -59,22 +55,24 @@ Refer to [Registry key security and access rights][registry-security] for detail
 If you enable the {{< param "PRODUCT_NAME" >}} UI, the service account needs [permission to listen][firewall-rules] on the configured port.
 The default port is `12345`.
 
-Depending on the components and data processing you configure, {{< param "PRODUCT_NAME" >}} may need to create, read, and write temporary files in the system's designated temporary directories.
-
-If you use the process or service collectors within the integrated Windows Exporter, the service account needs permission to enumerate all running processes and services on the system.
+Some components write temporary files in the system temp directories.
+If you use the process or service collectors in the integrated Windows Exporter, the service account also needs permission to enumerate running processes and services.
 
 ## Restrict the HTTP server
 
-By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:12345`, which is only reachable from the local machine.
-Expose the endpoint only when you need remote access to the UI or metrics.
-Add authentication or TLS when you expose it.
+By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:12345`.
+Expose the endpoint only when you need remote access to the UI or metrics, and add authentication or TLS when you do.
+Refer to the [`http` block][http-block] for configuration options.
 
-For configuration options, refer to the [`http` block][http-block].
+## Components that require elevated access
+
+Windows deployments rarely need the elevated Linux capabilities described in [Components that require elevated access][elevated-access].
+Review that table if your configuration includes eBPF or host-level collectors on other platforms in the same fleet.
 
 ## Next steps
 
-- [Secure {{< param "PRODUCT_NAME" >}}][secure]: overview of all security areas
-- [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows]: general Windows configuration
+- [Secure {{< param "PRODUCT_NAME" >}}][secure]
+- [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows]
 - [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux]
 - [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]
 
@@ -82,6 +80,7 @@ For configuration options, refer to the [`http` block][http-block].
 [linux]: ../linux/
 [kubernetes]: ../kubernetes/
 [secure]: ../
+[elevated-access]: ../#components-that-require-elevated-access
 [http-block]: ../../reference/config-blocks/http/
 [acl]: https://learn.microsoft.com/windows/win32/secauthz/access-control-lists
 [registry-security]: https://learn.microsoft.com/windows/win32/sysinfo/registry-key-security-and-access-rights
