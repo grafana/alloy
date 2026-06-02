@@ -3,7 +3,14 @@ version: "3"
 
 tasks:
   default:
-    desc: Run golangci-lint over every module and alloylint over the workspace.
+    desc: Run linters.
+    cmds:
+      - task: go
+      - task: alloylint
+      - task: shellcheck
+
+  go:
+    desc: Run golangci-lint over every Go module.
     cmds:
       - task: golangci-lint
         vars: { DIR: "." }
@@ -20,7 +27,6 @@ tasks:
         vars: { DIR: "./syntax" }
       - task: golangci-lint
         vars: { DIR: "./tools" }
-      - task: alloylint
 
   golangci-lint:
     desc: Run golangci-lint in the given module directory.
@@ -28,6 +34,12 @@ tasks:
     dir: "{{.DIR}}"
     cmds:
       - mise exec -- golangci-lint run -v --timeout=10m ./...
+
+  shellcheck:
+    desc: Run shellcheck linter
+    dir: "tools"
+    cmds:
+      - mise exec -- go run ./cmd lint shell
 
   alloylint:
     desc: Run the alloylint linter.
