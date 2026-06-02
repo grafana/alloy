@@ -1,19 +1,19 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/secure/harden-kubernetes/
+canonical: https://grafana.com/docs/alloy/latest/secure/kubernetes/
 aliases:
   - ../configure/nonroot/ # /docs/alloy/latest/configure/nonroot/
   - ../../configure/nonroot/ # /docs/alloy/latest/configure/nonroot/
   - ../tasks/nonroot/ # /docs/alloy/latest/tasks/nonroot/
-description: Harden Grafana Alloy on Kubernetes using `securityContext`, non-root users, capability drops, and OpenShift Security Context Constraints
-menuTitle: Harden on Kubernetes
-title: Harden Grafana Alloy on Kubernetes
+  - ../harden-kubernetes/ # /docs/alloy/latest/secure/harden-kubernetes/
+description: Secure Grafana Alloy on Kubernetes using `securityContext`, non-root users, capability drops, and OpenShift Security Context Constraints
+menuTitle: Secure Kubernetes
+title: Secure Grafana Alloy on Kubernetes
 weight: 200
 ---
 
-# Harden {{% param "FULL_PRODUCT_NAME" %}} on Kubernetes
+# Secure {{% param "FULL_PRODUCT_NAME" %}} on Kubernetes
 
-This page describes how to run {{< param "PRODUCT_NAME" >}} with a hardened security posture on Kubernetes.
-It covers non-root configuration, `securityContext`, capability restrictions, and OpenShift-specific requirements.
+You can run {{< param "PRODUCT_NAME" >}} on Kubernetes with a non-root configuration, `securityContext`, capability restrictions, and OpenShift Security Context Constraints.
 
 ## Run as a non-root user
 
@@ -40,12 +40,11 @@ configReloader:
     runAsGroup: 65534
 ```
 
-This runs the {{< param "PRODUCT_NAME" >}} binary with UID `473` and GID `473` rather than root, and runs the `configReloader` sidecar as UID `65534`.
+This configuration runs the {{< param "PRODUCT_NAME" >}} binary with UID `473` and GID `473` rather than root, and runs the `configReloader` sidecar as UID `65534`.
 
 ## Apply a full security context
 
-Beyond the user, a complete `securityContext` configuration restricts what the container process can do even if an attacker compromises it.
-The following example shows a production-ready security context applied at both the Pod and container level:
+Set `securityContext` at the Pod and container level to limit filesystem writes, privilege escalation, and Linux capabilities:
 
 ```yaml
 spec:
@@ -64,16 +63,16 @@ spec:
             - ALL
 ```
 
-Each directive serves a specific purpose:
-
 - `runAsNonRoot: true` causes Kubernetes to reject the Pod if the image tries to run as root, which provides a safety net.
 - `readOnlyRootFilesystem: true` prevents the process from writing anywhere in the container filesystem except explicitly mounted volumes.
 - `allowPrivilegeEscalation: false` prevents the process from gaining more privileges than its parent, regardless of file capabilities or `setuid` bits.
 - `capabilities.drop: [ALL]` removes all Linux capabilities from the container.
 
 {{< admonition type="note" >}}
-If you use components that require elevated host access, such as `beyla.ebpf`, you can't apply `capabilities.drop: [ALL]` without also adding back the specific capabilities those components need.
-Refer to the component reference for its specific requirements.
+If you use components that require elevated host access, such as `beyla.ebpf`, add back the capabilities those components need instead of dropping all capabilities.
+Refer to the [beyla.ebpf][] component reference.
+
+[beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf/
 {{< /admonition >}}
 
 ## Restrict the HTTP server
@@ -84,19 +83,18 @@ The standalone binary binds to `127.0.0.1:12345` by default.
 
 For configuration options, refer to the [`http` block][http-block].
 
-## Is running as root a security risk?
+## Container root and host root
 
-Not inherently.
-The Linux kernel prevents Docker and Kubernetes containers from accessing host resources directly.
-Even if the user inside a container is `root`, it can't break out of the container sandbox under normal conditions.
+UID `0` inside a container isn't UID `0` on the node.
+The container runtime runs the process in an isolated namespace, so container `root` can't read host files or processes under normal operation.
 
-However, if a kernel vulnerability allowed container escape, root access would make exploitation easier.
-Running as a non-root user reduces the attack surface, even if the practical risk in a well-patched environment is low.
+Run as UID `473` anyway.
+A non-root UID limits damage on the node if a container escape bug appears in the kernel or runtime.
 
 ## Kubernetes RBAC
 
 {{< param "PRODUCT_NAME" >}} requires RBAC permissions to interact with Kubernetes APIs.
-The Helm chart creates a `ClusterRole` and `ClusterRoleBinding` with the minimum permissions needed for the default component set.
+The Helm chart creates a `ClusterRole` and `ClusterRoleBinding` with permissions for the default component set.
 
 Scope these permissions to what your specific configuration actually uses.
 If you aren't using Kubernetes service discovery or Pod log collection, review the generated RBAC rules and remove permissions for resources you don't need.
@@ -136,7 +134,7 @@ Adapt them to your local requirements.
 
 ### Example DaemonSet configuration
 
-The following example deploys {{< param "PRODUCT_NAME" >}} as a non-root user on OpenShift:
+Deploy {{< param "PRODUCT_NAME" >}} as a non-root user on OpenShift with a DaemonSet like the one below:
 
 ```yaml
 apiVersion: apps/v1
@@ -173,7 +171,7 @@ spec:
 Replace `<ALLOY_VERSION>` with the specific version you deploy, for example `v1.5.1`.
 
 {{< admonition type="note" >}}
-This example uses `emptyDir` for simplicity.
+`emptyDir` volumes don't persist data across node restarts.
 In production, use a persistent storage volume so data survives node restarts.
 Refer to [Using volumes to persist container data][ocp-volumes] in the OpenShift documentation.
 {{< /admonition >}}
@@ -215,8 +213,8 @@ Refer to [`SELinux` contexts][selinux] in the Red Hat documentation for more inf
 ## Next steps
 
 - [Secure {{< param "PRODUCT_NAME" >}}][secure]: overview of all security areas
-- [Harden {{< param "PRODUCT_NAME" >}} on Linux][harden-linux]
-- [Harden {{< param "PRODUCT_NAME" >}} on Windows][harden-windows]
+- [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux]
+- [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows]
 
 [image]: https://hub.docker.com/r/grafana/alloy
 [beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf/
@@ -228,5 +226,5 @@ Refer to [`SELinux` contexts][selinux] in the Red Hat documentation for more inf
 [ocp-volumes]: https://docs.openshift.com/container-platform/latest/nodes/containers/nodes-containers-volumes.html
 [selinux]: https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/6/html/security-enhanced_linux/chap-security-enhanced_linux-selinux_contexts
 [secure]: ../
-[harden-linux]: ../harden-linux/
-[harden-windows]: ../harden-windows/
+[linux]: ../linux/
+[windows]: ../windows/

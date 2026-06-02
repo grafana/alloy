@@ -1,16 +1,16 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/secure/harden-windows/
-description: Harden a Grafana Alloy installation on Windows by configuring a dedicated service account, security groups, and filesystem permissions
-menuTitle: Harden on Windows
-title: Harden Grafana Alloy on Windows
+canonical: https://grafana.com/docs/alloy/latest/secure/windows/
+aliases:
+  - ../harden-windows/ # /docs/alloy/latest/secure/harden-windows/
+description: Secure a Grafana Alloy installation on Windows by configuring a dedicated service account, security groups, and filesystem permissions
+menuTitle: Secure Windows
+title: Secure Grafana Alloy on Windows
 weight: 300
 ---
 
-# Harden {{% param "FULL_PRODUCT_NAME" %}} on Windows
+# Secure {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
-This page describes how to harden {{< param "PRODUCT_NAME" >}} running as a Windows Service.
-It covers the service account, Windows security groups, and filesystem permissions needed to run {{< param "PRODUCT_NAME" >}} with least-privilege access.
-
+When {{< param "PRODUCT_NAME" >}} runs as a Windows Service, configure a dedicated service account, Windows security groups, and filesystem permissions to limit privilege.
 For general configuration tasks such as editing the configuration file, changing command-line arguments, and configuring environment variables, refer to [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows].
 
 ## Run as a dedicated service account
@@ -29,17 +29,16 @@ Assign this right using the Local Security Policy editor at `secpol.msc` under *
 
 ## Windows security groups
 
-To collect common Windows telemetry, such as event logs and performance counters, add the service account to the appropriate [Windows security groups](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups).
-These groups provide the minimum required read access.
+Add the service account to [Windows security groups](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups) based on what you collect:
 
-Add the service account to [Event Log Readers](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#event-log-readers) if your configuration collects Windows Event Log data.
-This group allows reading data from local event logs including Application, System, Security, and custom logs.
+- **[Event Log Readers](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#event-log-readers)**: Read Application, System, Security, and custom event logs.
+  Required when your configuration collects Windows Event Log data.
 
-Add the service account to [Performance Monitor Users](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-monitor-users) if your configuration collects Windows performance metrics such as CPU, memory, disk I/O, and network usage.
-This group allows non-administrator users to access performance counter data.
+- **[Performance Monitor Users](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-monitor-users)**: Read performance counter data for CPU, memory, disk I/O, and network usage.
+  Required when your configuration collects Windows performance metrics.
 
-Add the service account to [Performance Log Users](http://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-log-users) if your configuration uses Windows Data Collector Sets for advanced or historical data collection.
-This group allows scheduling performance counter logging and managing performance alerts.
+- **[Performance Log Users](http://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-log-users)**: Schedule performance counter logging and manage Data Collector Sets.
+  Required for advanced or historical data collection with Windows Data Collector Sets.
 
 ## File system and network permissions
 
@@ -67,8 +66,8 @@ If you use the process or service collectors within the integrated Windows Expor
 ## Restrict the HTTP server
 
 By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:12345`, which is only reachable from the local machine.
-Don't expose this endpoint to the network unless you have a specific requirement.
-Apply authentication or TLS if you do expose it.
+Expose the endpoint only when you need remote access to the UI or metrics.
+Add authentication or TLS when you expose it.
 
 For configuration options, refer to the [`http` block][http-block].
 
@@ -76,12 +75,12 @@ For configuration options, refer to the [`http` block][http-block].
 
 - [Secure {{< param "PRODUCT_NAME" >}}][secure]: overview of all security areas
 - [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows]: general Windows configuration
-- [Harden {{< param "PRODUCT_NAME" >}} on Linux][harden-linux]
-- [Harden {{< param "PRODUCT_NAME" >}} on Kubernetes][harden-kubernetes]
+- [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux]
+- [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]
 
 [configure-windows]: ../../configure/windows/
-[harden-linux]: ../harden-linux/
-[harden-kubernetes]: ../harden-kubernetes/
+[linux]: ../linux/
+[kubernetes]: ../kubernetes/
 [secure]: ../
 [http-block]: ../../reference/config-blocks/http/
 [acl]: https://learn.microsoft.com/windows/win32/secauthz/access-control-lists

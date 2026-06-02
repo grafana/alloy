@@ -117,8 +117,8 @@ To expose the UI to other machines, complete the following steps:
 
 ## Harden the Windows service
 
-For guidance on running {{< param "PRODUCT_NAME" >}} with a dedicated service account, configuring Windows security group membership, and setting filesystem permissions, refer to [Harden {{< param "PRODUCT_NAME" >}} on Windows][harden-windows].
+For guidance on running {{< param "PRODUCT_NAME" >}} with a dedicated service account, configuring Windows security group membership, and setting filesystem permissions, refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][secure-windows].
 
 [UI]: ../../troubleshoot/debug/#alloy-ui
 [environment]: ../../reference/cli/environment-variables/
-[harden-windows]: ../../secure/harden-windows/
+[secure-windows]: ../../secure/windows/

@@ -1,15 +1,17 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/secure/harden-linux/
-description: Harden a standalone Grafana Alloy installation on Linux using the alloy system user, file permissions, and systemd service hardening options
-menuTitle: Harden on Linux
-title: Harden Grafana Alloy on Linux
+canonical: https://grafana.com/docs/alloy/latest/secure/linux/
+description: Secure a standalone Grafana Alloy installation on Linux using the alloy system user, file permissions, and systemd service hardening options
+menuTitle: Secure Linux
+title: Secure Grafana Alloy on Linux
 weight: 100
+aliases:
+  - ../harden-linux/ # /docs/alloy/latest/secure/harden-linux/
 ---
 
-# Harden {{% param "FULL_PRODUCT_NAME" %}} on Linux
+# Secure {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
-This page covers hardening measures for {{< param "PRODUCT_NAME" >}} installed as a system service on Linux using the deb or rpm package.
-If you run {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Harden {{< param "PRODUCT_NAME" >}} on Kubernetes][harden-kubernetes] instead.
+Apply these hardening measures when you install {{< param "PRODUCT_NAME" >}} as a system service on Linux using the deb or rpm package.
+If you run {{< param "PRODUCT_NAME" >}} on Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes] instead.
 
 {{< admonition type="note" >}}
 These steps assume you installed {{< param "PRODUCT_NAME" >}} using the official deb or rpm package.
@@ -56,7 +58,7 @@ The `alloy` user needs read access to the configuration file and read/write acce
 It shouldn't have access to anything else.
 
 The package sets `/etc/alloy` and `/var/lib/alloy` to mode `770` at install time.
-The following table shows tighter permissions you can apply for production hardening.
+You can apply tighter permissions for production hardening:
 
 | Path                      | Owner         | Permissions | Notes                                         |
 | ------------------------- | ------------- | ----------- | --------------------------------------------- |
@@ -168,7 +170,7 @@ The `-d` flag sets a default ACL so files created in the directory inherit the p
 ## Restrict the HTTP server
 
 By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:12345`, which is only reachable from the local machine.
-Don't change this unless you have a specific operational need to expose the UI or metrics endpoint to other machines.
+Change the bind address only when you need to expose the UI or metrics endpoint to other machines.
 
 If you need to expose the `/metrics` endpoint for Prometheus scraping without exposing the UI, place a reverse proxy in front of {{< param "PRODUCT_NAME" >}} and restrict access at the proxy level.
 
@@ -180,8 +182,7 @@ Some components can't run as the unprivileged `alloy` user.
 
 **`beyla.ebpf`** and **`pyroscope.ebpf`** require root or `CAP_SYS_ADMIN` for kernel-level eBPF access.
 If you need eBPF-based instrumentation, grant the necessary capability or run as root.
-This is incompatible with `NoNewPrivileges=yes`.
-Evaluate whether the operational benefit justifies relaxing the hardening.
+Remove `NoNewPrivileges=yes` from the systemd drop-in when you run these components.
 
 **`prometheus.exporter.unix`** reads from `/proc` and `/sys`.
 The `alloy` user can read most of these paths without elevated privileges on a typical Linux system.
@@ -190,11 +191,11 @@ If you see permission errors, check the specific metric collector that causes th
 ## Next steps
 
 - [Secure {{< param "PRODUCT_NAME" >}}][secure]: overview of all security areas
-- [Harden {{< param "PRODUCT_NAME" >}} on Kubernetes][harden-kubernetes]
-- [Harden {{< param "PRODUCT_NAME" >}} on Windows][harden-windows]
+- [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]
+- [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows]
 - [`http` block][http-block]: TLS and authentication for the HTTP server
 
-[harden-kubernetes]: ../harden-kubernetes/
-[harden-windows]: ../harden-windows/
+[kubernetes]: ../kubernetes/
+[windows]: ../windows/
 [secure]: ../
 [http-block]: ../../reference/config-blocks/http/

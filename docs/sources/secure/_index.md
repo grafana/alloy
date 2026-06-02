@@ -18,11 +18,11 @@ Harden it before you deploy to production.
 ### Process identity and privilege
 
 Run {{< param "PRODUCT_NAME" >}} as a dedicated, unprivileged user wherever possible.
-Restricting what the process can do at the OS level limits the blast radius of any exploit.
+OS-level restrictions limit what a compromised process can access on the host.
 
-- Refer to [Harden {{< param "PRODUCT_NAME" >}} on Linux][harden-linux] for systemd service hardening, file permissions, and the `alloy` user.
-- Refer to [Harden {{< param "PRODUCT_NAME" >}} on Kubernetes][harden-kubernetes] for `securityContext`, non-root UID, and OpenShift Security Context Constraints.
-- Refer to [Harden {{< param "PRODUCT_NAME" >}} on Windows][harden-windows] for service accounts, Windows security groups, and filesystem ACLs.
+- Refer to [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux] for systemd service hardening, file permissions, and the `alloy` user.
+- Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes] for `securityContext`, non-root UID, and OpenShift Security Context Constraints.
+- Refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows] for service accounts, Windows security groups, and filesystem ACLs.
 
 ### Network exposure
 
@@ -49,8 +49,7 @@ For how {{< param "PRODUCT_NAME" >}} handles `secret`-typed values at runtime an
 
 ### Components that require elevated access
 
-Some components require access that goes beyond what an unprivileged process can provide.
-Know which components you run and what they need before you apply a hardened process configuration.
+Some components need root, extra capabilities, or group membership.
 
 | Component                  | Requirement                        | Notes                                                       |
 | -------------------------- | ---------------------------------- | ----------------------------------------------------------- |
@@ -62,10 +61,10 @@ Know which components you run and what they need before you apply a hardened pro
 
 ## Pre-production checklist
 
-Use this checklist as a starting point before you deploy {{< param "PRODUCT_NAME" >}} to production.
+Complete these steps before you deploy {{< param "PRODUCT_NAME" >}} to production.
 
 1. Run {{< param "PRODUCT_NAME" >}} as a non-root user.
-   Refer to [Linux][harden-linux], [Kubernetes][harden-kubernetes], or [Windows][harden-windows] guidance.
+   Refer to [Linux][linux], [Kubernetes][kubernetes], or [Windows][windows] guidance.
 1. Restrict the HTTP server to `127.0.0.1` or a private network address.
    Refer to the [`http` block][http-block].
 1. Enable TLS for the HTTP server if you expose it beyond localhost.
@@ -76,18 +75,18 @@ Use this checklist as a starting point before you deploy {{< param "PRODUCT_NAME
    Refer to the [`tls` block][tls-block].
 1. Store credentials outside configuration files.
    Refer to [Types and values][types-values].
-1. Scope Kubernetes RBAC to the minimum required permissions.
-   Refer to [Harden {{< param "PRODUCT_NAME" >}} on Kubernetes][harden-kubernetes].
+1. Scope Kubernetes RBAC to the permissions your configuration uses.
+   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
 1. Set `readOnlyRootFilesystem: true` for container deployments.
-   Refer to [Harden {{< param "PRODUCT_NAME" >}} on Kubernetes][harden-kubernetes].
+   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
 1. Disable privilege escalation with `allowPrivilegeEscalation: false` for container deployments.
-   Refer to [Harden {{< param "PRODUCT_NAME" >}} on Kubernetes][harden-kubernetes].
+   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
 1. Avoid eBPF components unless your use case requires them.
    Refer to [Components that require elevated access](#components-that-require-elevated-access).
 
-[harden-linux]: ./harden-linux/
-[harden-kubernetes]: ./harden-kubernetes/
-[harden-windows]: ./harden-windows/
+[linux]: ./linux/
+[kubernetes]: ./kubernetes/
+[windows]: ./windows/
 [http-block]: ../reference/config-blocks/http/
 [tls-block]: ../shared/reference/components/tls-config-block/
 [remote-vault]: ../reference/components/remote/remote.vault/
