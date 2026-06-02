@@ -21,10 +21,11 @@ var (
 	truncateExtractedField          = "extracted"
 )
 
-const (
-	errLimitMustBeGreaterThanZero = "limit must be greater than zero"
-	errSourcesForLine             = "sources cannot be set when source_type is 'line'"
-	errAtLeastOneRule             = "at least one truncate rule must be defined"
+var (
+	errTruncateLimit          = errors.New("limit must be greater than zero")
+	errTruncateSourcesForLine = errors.New("sources cannot be set when source_type is 'line'")
+	errTruncateAtLeastOneRule = errors.New("at least one truncate rule must be defined")
+	errTruncateSuffixLength   = errors.New("suffix length cannot be greater than or equal to limit")
 )
 
 // TruncateConfig contains the configuration for a truncateStage
@@ -47,13 +48,13 @@ func (r *RuleConfig) SetToDefault() {
 // Validate implements syntax.Validator.
 func (r *RuleConfig) Validate() error {
 	if r.Limit <= 0 {
-		return errors.New(errLimitMustBeGreaterThanZero)
+		return errTruncateLimit
 	}
 	if r.SourceType == SourceTypeLine && len(r.Sources) > 0 {
-		return errors.New(errSourcesForLine)
+		return errTruncateSourcesForLine
 	}
 	if len(r.Suffix) > 0 && int(r.Limit) <= len(r.Suffix) {
-		return errors.New("suffix length cannot be greater than or equal to limit")
+		return errTruncateSuffixLength
 	}
 	return nil
 }
