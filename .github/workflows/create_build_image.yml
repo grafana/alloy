@@ -11,12 +11,6 @@ permissions:
 jobs:
   linux_build_image:
     name: Create a Linux build image
-    strategy:
-      matrix:
-        build:
-          - runtime: golang:1.26.3-alpine3.23
-          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.26.3-bookworm
-            suffix: "-boringcrypto"
     runs-on: ubuntu-latest-8-cores
     steps:
     - name: Checkout code
@@ -36,7 +30,7 @@ jobs:
       env:
         FULL_TAG: ${{ github.ref_name }}
       id: get_image_version
-      run: echo "image_tag=${FULL_TAG##*/}${{ matrix.build.suffix }}" >> $GITHUB_OUTPUT
+      run: echo "image_tag=${FULL_TAG##*/}" >> $GITHUB_OUTPUT
 
     - name: Login to Google Artifact Registry
       uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
@@ -57,4 +51,4 @@ jobs:
         push: true
         tags: us-docker.pkg.dev/grafanalabs-global/dockerhub-alloy-prod-mirror/alloy-build-image:${{ steps.get_image_version.outputs.image_tag }}
         build-args: |
-          GO_RUNTIME=${{ matrix.build.runtime }}
+          GO_RUNTIME=golang:1.26.3-alpine3.23

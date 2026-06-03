@@ -11,11 +11,6 @@ permissions:
 
 jobs:
   check-linux-build-image:
-    strategy:
-      matrix:
-        build:
-          - runtime: golang:1.26.3-alpine3.23
-          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.26.3-bookworm
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout
@@ -45,4 +40,4 @@ jobs:
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=${{ matrix.build.runtime }}
+            GO_RUNTIME=golang:1.26.3-alpine3.23
