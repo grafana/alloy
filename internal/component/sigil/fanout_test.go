@@ -13,9 +13,9 @@ type fanOutTestReceiver struct {
 	calls atomic.Int32
 }
 
-func (r *fanOutTestReceiver) ExportGenerations(context.Context, *GenerationsRequest) (*GenerationsResponse, error) {
+func (r *fanOutTestReceiver) ExportGenerations(context.Context, *GenerationsRequest) (*sigilv1.ExportGenerationsResponse, error) {
 	r.calls.Add(1)
-	return &GenerationsResponse{}, nil
+	return &sigilv1.ExportGenerationsResponse{}, nil
 }
 
 func TestFanOutRejectsNilReceiver(t *testing.T) {

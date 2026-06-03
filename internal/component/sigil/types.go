@@ -3,6 +3,7 @@ package sigil
 
 import (
 	"context"
+	"fmt"
 
 	sigilv1 "github.com/grafana/sigil-sdk/go/proto/sigil/v1"
 	"google.golang.org/protobuf/proto"
@@ -11,7 +12,7 @@ import (
 // GenerationsForwarder is the interface connecting sigil.receive to
 // sigil.write and any intermediate processors.
 type GenerationsForwarder interface {
-	ExportGenerations(ctx context.Context, req *GenerationsRequest) (*GenerationsResponse, error)
+	ExportGenerations(ctx context.Context, req *GenerationsRequest) (*sigilv1.ExportGenerationsResponse, error)
 }
 
 // GenerationsRequest carries a parsed Sigil export request and the metadata
@@ -38,11 +39,14 @@ func (r *GenerationsRequest) Clone() *GenerationsRequest {
 	}
 }
 
-// GenerationsResponse carries the upstream response back to the caller.
-type GenerationsResponse struct {
-	// StatusCode is the HTTP status to return. A zero value defaults to
-	// 202 Accepted.
+// WriteError is returned by a GenerationsForwarder when the upstream Sigil
+// endpoint responds with a non-2xx HTTP status. StatusCode carries that status
+// so the receiver can propagate it back to its own client.
+type WriteError struct {
 	StatusCode int
-	// Response may be nil for empty bodies.
-	Response *sigilv1.ExportGenerationsResponse
+	Message    string
+}
+
+func (e *WriteError) Error() string {
+	return fmt.Sprintf("sigil write error: status=%d msg=%s", e.StatusCode, e.Message)
 }

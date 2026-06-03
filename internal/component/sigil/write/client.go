@@ -14,6 +14,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/sigil"
 	"github.com/grafana/dskit/backoff"
+	sigilv1 "github.com/grafana/sigil-sdk/go/proto/sigil/v1"
 	"github.com/grafana/sigil-sdk/go/proto/sigil/wire"
 	promconfig "github.com/prometheus/common/config"
 )
@@ -57,7 +58,7 @@ func newEndpointClient(logger *slog.Logger, opts *EndpointOptions, m *metrics) (
 	}, nil
 }
 
-func (ec *endpointClient) send(ctx context.Context, req *sigil.GenerationsRequest) (*sigil.GenerationsResponse, error) {
+func (ec *endpointClient) send(ctx context.Context, req *sigil.GenerationsRequest) (*sigilv1.ExportGenerationsResponse, error) {
 	body, err := sigil.MarshalGenerationsRequest(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling request: %w", err)
@@ -99,7 +100,7 @@ func (ec *endpointClient) send(ctx context.Context, req *sigil.GenerationsReques
 	return nil, fmt.Errorf("failed to send to %s (%d retries): %w", ec.options.URL, bo.NumRetries(), lastErr)
 }
 
-func (ec *endpointClient) doRequest(ctx context.Context, req *sigil.GenerationsRequest, body []byte) (*sigil.GenerationsResponse, error) {
+func (ec *endpointClient) doRequest(ctx context.Context, req *sigil.GenerationsRequest, body []byte) (*sigilv1.ExportGenerationsResponse, error) {
 	ctx, cancel := context.WithTimeout(ctx, ec.options.RemoteTimeout)
 	defer cancel()
 
@@ -135,7 +136,7 @@ func (ec *endpointClient) doRequest(ctx context.Context, req *sigil.GenerationsR
 
 	if httpResp.StatusCode/100 != 2 {
 		errBody, _ := io.ReadAll(io.LimitReader(httpResp.Body, 2048))
-		return nil, &WriteError{
+		return nil, &sigil.WriteError{
 			StatusCode: httpResp.StatusCode,
 			Message:    string(errBody),
 		}
@@ -158,17 +159,14 @@ func (ec *endpointClient) doRequest(ctx context.Context, req *sigil.GenerationsR
 		return nil, fmt.Errorf("parsing response: %w", err)
 	}
 
-	return &sigil.GenerationsResponse{
-		StatusCode: httpResp.StatusCode,
-		Response:   parsed,
-	}, nil
+	return parsed, nil
 }
 
 // ExportGenerations sends the request to a single endpoint, recording
 // per-endpoint latency. It makes endpointClient implement
 // sigil.GenerationsForwarder so the shared FanOut helper can drive multi-
 // endpoint fanout from this package.
-func (ec *endpointClient) ExportGenerations(ctx context.Context, req *sigil.GenerationsRequest) (*sigil.GenerationsResponse, error) {
+func (ec *endpointClient) ExportGenerations(ctx context.Context, req *sigil.GenerationsRequest) (*sigilv1.ExportGenerationsResponse, error) {
 	start := time.Now()
 	resp, err := ec.send(ctx, req)
 	ec.metrics.latency.WithLabelValues(ec.label).Observe(time.Since(start).Seconds())
@@ -208,7 +206,7 @@ func newFanOutClient(logger *slog.Logger, config Arguments, m *metrics) (*fanOut
 	}, nil
 }
 
-func (f *fanOutClient) ExportGenerations(ctx context.Context, req *sigil.GenerationsRequest) (*sigil.GenerationsResponse, error) {
+func (f *fanOutClient) ExportGenerations(ctx context.Context, req *sigil.GenerationsRequest) (*sigilv1.ExportGenerationsResponse, error) {
 	return sigil.FanOut(ctx, req, f.receivers)
 }
 
@@ -217,7 +215,7 @@ func shouldRetry(ctx context.Context, err error) bool {
 		return false
 	}
 
-	var writeErr *WriteError
+	var writeErr *sigil.WriteError
 	if errors.As(err, &writeErr) {
 		return isRetryableStatus(writeErr.StatusCode)
 	}
@@ -233,14 +231,4 @@ func isRetryableStatus(status int) bool {
 	return status == http.StatusTooManyRequests ||
 		status == http.StatusRequestTimeout ||
 		status >= http.StatusInternalServerError
-}
-
-// WriteError represents an HTTP error from the upstream Sigil endpoint.
-type WriteError struct {
-	StatusCode int
-	Message    string
-}
-
-func (e *WriteError) Error() string {
-	return fmt.Sprintf("sigil write error: status=%d msg=%s", e.StatusCode, e.Message)
 }

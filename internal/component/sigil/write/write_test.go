@@ -44,7 +44,6 @@ func TestEndpointClient(t *testing.T) {
 		expectOrgID       string
 		expectCustom      string
 		expectContentType string
-		expectStatus      int
 		expectErr         bool
 		expectErrMaxLen   int
 	}{
@@ -58,7 +57,6 @@ func TestEndpointClient(t *testing.T) {
 			expectOrgID:       "tenant-1",
 			expectCustom:      "hello",
 			expectContentType: "application/json",
-			expectStatus:      http.StatusAccepted,
 		},
 		{
 			name:              "tenant_id config overrides request org ID",
@@ -67,7 +65,6 @@ func TestEndpointClient(t *testing.T) {
 			serverStatus:      http.StatusAccepted,
 			expectOrgID:       "config-tenant",
 			expectContentType: "application/json",
-			expectStatus:      http.StatusAccepted,
 		},
 		{
 			name:              "tenant_id config overrides endpoint header",
@@ -77,7 +74,6 @@ func TestEndpointClient(t *testing.T) {
 			serverStatus:      http.StatusAccepted,
 			expectOrgID:       "config-tenant",
 			expectContentType: "application/json",
-			expectStatus:      http.StatusAccepted,
 		},
 		{
 			name:              "endpoint tenant header overrides request org ID",
@@ -86,7 +82,6 @@ func TestEndpointClient(t *testing.T) {
 			serverStatus:      http.StatusAccepted,
 			expectOrgID:       "header-tenant",
 			expectContentType: "application/json",
-			expectStatus:      http.StatusAccepted,
 		},
 		{
 			name:         "no retry on 4xx",
@@ -104,7 +99,6 @@ func TestEndpointClient(t *testing.T) {
 			headers:           map[string]string{"Content-Type": "text/plain"},
 			serverStatus:      http.StatusAccepted,
 			expectContentType: "application/json",
-			expectStatus:      http.StatusAccepted,
 		},
 		{
 			name:            "large error body is truncated",
@@ -174,7 +168,6 @@ func TestEndpointClient(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.Equal(t, tc.expectStatus, resp.StatusCode)
 
 			require.Equal(t, wire.GenerationExportHTTPPath, gotPath)
 			if tc.expectOrgID != "" {
@@ -192,8 +185,8 @@ func TestEndpointClient(t *testing.T) {
 
 			// Round-trip the server body back into a parsed response.
 			if tc.serverBody != "" {
-				require.NotNil(t, resp.Response)
-				require.Len(t, resp.Response.Results, 1)
+				require.NotNil(t, resp)
+				require.Len(t, resp.Results, 1)
 			}
 		})
 	}
@@ -277,8 +270,8 @@ func TestEndpointClient_ParsesResponse(t *testing.T) {
 
 	resp, err := ec.send(context.Background(), testGenerationsRequest())
 	require.NoError(t, err)
-	require.NotNil(t, resp.Response)
-	require.True(t, proto.Equal(expectResp, resp.Response))
+	require.NotNil(t, resp)
+	require.True(t, proto.Equal(expectResp, resp))
 }
 
 func TestEndpointClient_RetriesOn5xx(t *testing.T) {
@@ -303,9 +296,8 @@ func TestEndpointClient_RetriesOn5xx(t *testing.T) {
 	ec, err := newEndpointClient(logging.NewSlogNop(), &opts, newMetrics(prometheus.NewRegistry()))
 	require.NoError(t, err)
 
-	resp, err := ec.send(context.Background(), testGenerationsRequest())
+	_, err = ec.send(context.Background(), testGenerationsRequest())
 	require.NoError(t, err)
-	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	require.Equal(t, int32(3), attempts.Load())
 }
 
@@ -338,9 +330,8 @@ func TestEndpointClient_RetriesOn429And408(t *testing.T) {
 
 			ec, err := newEndpointClient(logging.NewSlogNop(), &opts, newMetrics(prometheus.NewRegistry()))
 			require.NoError(t, err)
-			resp, err := ec.send(context.Background(), testGenerationsRequest())
+			_, err = ec.send(context.Background(), testGenerationsRequest())
 			require.NoError(t, err)
-			require.Equal(t, http.StatusAccepted, resp.StatusCode)
 			require.Equal(t, int32(2), attempts.Load())
 		})
 	}
@@ -375,23 +366,20 @@ func TestEndpointClient_RetriesRemoteTimeout(t *testing.T) {
 	ec, err := newEndpointClient(logging.NewSlogNop(), &opts, newMetrics(prometheus.NewRegistry()))
 	require.NoError(t, err)
 
-	resp, err := ec.send(context.Background(), testGenerationsRequest())
+	_, err = ec.send(context.Background(), testGenerationsRequest())
 	require.NoError(t, err)
-	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	require.Equal(t, int32(2), attempts.Load())
 }
 
 func TestFanOutClient(t *testing.T) {
 	tests := []struct {
-		name         string
-		statuses     []int
-		expectStatus int
-		expectErr    bool
+		name      string
+		statuses  []int
+		expectErr bool
 	}{
 		{
-			name:         "sends to multiple endpoints",
-			statuses:     []int{http.StatusAccepted, http.StatusAccepted},
-			expectStatus: http.StatusAccepted,
+			name:     "sends to multiple endpoints",
+			statuses: []int{http.StatusAccepted, http.StatusAccepted},
 		},
 		{
 			name:      "one endpoint fails returns error",
@@ -439,7 +427,6 @@ func TestFanOutClient(t *testing.T) {
 				require.Nil(t, resp)
 			} else {
 				require.NoError(t, err)
-				require.Equal(t, tc.expectStatus, resp.StatusCode)
 			}
 
 			for _, count := range counts {
@@ -490,17 +477,17 @@ func TestShouldRetry(t *testing.T) {
 		want bool
 	}{
 		{name: "context canceled", ctx: context.Background(), err: context.Canceled, want: false},
-		{name: "caller canceled", ctx: canceledCtx, err: &WriteError{StatusCode: 500}, want: false},
+		{name: "caller canceled", ctx: canceledCtx, err: &sigil.WriteError{StatusCode: 500}, want: false},
 		{name: "caller deadline exceeded", ctx: deadlineCtx, err: context.DeadlineExceeded, want: false},
 		{name: "remote timeout", ctx: context.Background(), err: context.DeadlineExceeded, want: true},
 		{name: "wrapped context canceled", ctx: context.Background(), err: fmt.Errorf("wrap: %w", context.Canceled), want: false},
-		{name: "3xx WriteError not retried", ctx: context.Background(), err: &WriteError{StatusCode: 300}, want: false},
-		{name: "4xx WriteError not retried", ctx: context.Background(), err: &WriteError{StatusCode: 400}, want: false},
-		{name: "401 WriteError not retried", ctx: context.Background(), err: &WriteError{StatusCode: 401}, want: false},
-		{name: "408 WriteError retried", ctx: context.Background(), err: &WriteError{StatusCode: http.StatusRequestTimeout}, want: true},
-		{name: "429 WriteError retried", ctx: context.Background(), err: &WriteError{StatusCode: http.StatusTooManyRequests}, want: true},
-		{name: "500 WriteError retried", ctx: context.Background(), err: &WriteError{StatusCode: 500}, want: true},
-		{name: "502 WriteError retried", ctx: context.Background(), err: &WriteError{StatusCode: 502}, want: true},
+		{name: "3xx WriteError not retried", ctx: context.Background(), err: &sigil.WriteError{StatusCode: 300}, want: false},
+		{name: "4xx WriteError not retried", ctx: context.Background(), err: &sigil.WriteError{StatusCode: 400}, want: false},
+		{name: "401 WriteError not retried", ctx: context.Background(), err: &sigil.WriteError{StatusCode: 401}, want: false},
+		{name: "408 WriteError retried", ctx: context.Background(), err: &sigil.WriteError{StatusCode: http.StatusRequestTimeout}, want: true},
+		{name: "429 WriteError retried", ctx: context.Background(), err: &sigil.WriteError{StatusCode: http.StatusTooManyRequests}, want: true},
+		{name: "500 WriteError retried", ctx: context.Background(), err: &sigil.WriteError{StatusCode: 500}, want: true},
+		{name: "502 WriteError retried", ctx: context.Background(), err: &sigil.WriteError{StatusCode: 502}, want: true},
 		{name: "plain error not retried", ctx: context.Background(), err: fmt.Errorf("decoding json response: bad input"), want: false},
 		{name: "network error retried", ctx: context.Background(), err: &fakeNetErr{}, want: true},
 	}

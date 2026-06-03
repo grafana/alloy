@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
+	sigilv1 "github.com/grafana/sigil-sdk/go/proto/sigil/v1"
 )
 
 // FanOut forwards req to every receiver in sequence and fails if any receiver
@@ -17,7 +19,7 @@ func FanOut(
 	ctx context.Context,
 	req *GenerationsRequest,
 	receivers []GenerationsForwarder,
-) (*GenerationsResponse, error) {
+) (*sigilv1.ExportGenerationsResponse, error) {
 
 	for i, recv := range receivers {
 		if recv == nil {
@@ -26,7 +28,7 @@ func FanOut(
 	}
 
 	var (
-		firstResp *GenerationsResponse
+		firstResp *sigilv1.ExportGenerationsResponse
 		errs      []error
 	)
 	for i, recv := range receivers {

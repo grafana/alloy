@@ -24,7 +24,7 @@ import (
 type mockReceiver struct {
 	calls    atomic.Int32
 	mu       atomicReq
-	response *sigil.GenerationsResponse
+	response *sigilv1.ExportGenerationsResponse
 	err      error
 }
 
@@ -32,16 +32,13 @@ type atomicReq struct {
 	last *sigil.GenerationsRequest
 }
 
-func (m *mockReceiver) ExportGenerations(_ context.Context, req *sigil.GenerationsRequest) (*sigil.GenerationsResponse, error) {
+func (m *mockReceiver) ExportGenerations(_ context.Context, req *sigil.GenerationsRequest) (*sigilv1.ExportGenerationsResponse, error) {
 	m.calls.Add(1)
 	m.mu.last = req
 	if m.response != nil || m.err != nil {
 		return m.response, m.err
 	}
-	return &sigil.GenerationsResponse{
-		StatusCode: http.StatusAccepted,
-		Response:   &sigilv1.ExportGenerationsResponse{},
-	}, nil
+	return &sigilv1.ExportGenerationsResponse{}, nil
 }
 
 func TestHandler(t *testing.T) {
@@ -320,12 +317,9 @@ func TestHandler_FanoutClonesRequest(t *testing.T) {
 
 func TestHandler_EncodesJSONResponse(t *testing.T) {
 	mock := &mockReceiver{
-		response: &sigil.GenerationsResponse{
-			StatusCode: http.StatusAccepted,
-			Response: &sigilv1.ExportGenerationsResponse{
-				Results: []*sigilv1.ExportGenerationResult{
-					{GenerationId: "g1", Accepted: true},
-				},
+		response: &sigilv1.ExportGenerationsResponse{
+			Results: []*sigilv1.ExportGenerationResult{
+				{GenerationId: "g1", Accepted: true},
 			},
 		},
 	}
@@ -342,39 +336,6 @@ func TestHandler_EncodesJSONResponse(t *testing.T) {
 	require.Len(t, parsed.Results, 1)
 	require.Equal(t, "g1", parsed.Results[0].GenerationId)
 	require.True(t, parsed.Results[0].Accepted)
-}
-
-func TestHandler_DefaultsInvalidResponseStatusCode(t *testing.T) {
-	tests := []struct {
-		name       string
-		statusCode int
-	}{
-		{name: "zero status", statusCode: 0},
-		{name: "too low", statusCode: 99},
-		{name: "too high", statusCode: 1000},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			mock := &mockReceiver{
-				response: &sigil.GenerationsResponse{
-					StatusCode: tc.statusCode,
-					Response:   &sigilv1.ExportGenerationsResponse{},
-				},
-			}
-
-			h := newHandler(logging.NewSlogNop(), []sigil.GenerationsForwarder{mock}, 50*1024*1024)
-
-			req := httptest.NewRequest(http.MethodPost, wire.GenerationExportHTTPPath, bytes.NewReader([]byte(`{}`)))
-			req.Header.Set("Content-Type", "application/json")
-			rr := httptest.NewRecorder()
-			require.NotPanics(t, func() {
-				h.ServeHTTP(rr, req)
-			})
-
-			require.Equal(t, http.StatusAccepted, rr.Code)
-		})
-	}
 }
 
 func TestHandler_Fanout(t *testing.T) {
@@ -408,6 +369,13 @@ func TestHandler_Fanout(t *testing.T) {
 			expectStatus: http.StatusBadGateway,
 		},
 		{
+			name: "downstream 4xx status is propagated to the client",
+			receivers: []*mockReceiver{
+				{err: &sigil.WriteError{StatusCode: http.StatusBadRequest}},
+			},
+			expectStatus: http.StatusBadRequest,
+		},
+		{
 			// A branch that returns both response and error is treated as a
 			// failure — the error takes precedence so that sibling fanouts
 			// stay consistent and a broken branch is never silently treated
@@ -415,11 +383,8 @@ func TestHandler_Fanout(t *testing.T) {
 			name: "branch returning response and error counts as failure",
 			receivers: []*mockReceiver{
 				{
-					response: &sigil.GenerationsResponse{
-						StatusCode: http.StatusAccepted,
-						Response:   &sigilv1.ExportGenerationsResponse{},
-					},
-					err: fmt.Errorf("downstream error"),
+					response: &sigilv1.ExportGenerationsResponse{},
+					err:      fmt.Errorf("downstream error"),
 				},
 			},
 			expectStatus: http.StatusBadGateway,

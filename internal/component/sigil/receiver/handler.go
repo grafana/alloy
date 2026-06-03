@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/internal/component/sigil"
-	sigilv1 "github.com/grafana/sigil-sdk/go/proto/sigil/v1"
 	"github.com/grafana/sigil-sdk/go/proto/sigil/wire"
 )
 
@@ -78,27 +77,24 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, fanErr := sigil.FanOut(r.Context(), req, forwardTo)
 
-	// If any downstream failed, return 502.
+	// On failure, propagate the upstream status when available; fall back to
+	// 502 for transport errors.
 	if fanErr != nil {
 		h.logger.Warn("failed to forward generations", "err", fanErr)
-		http.Error(w, "failed to forward", http.StatusBadGateway)
+		var writeErr *sigil.WriteError
+		if errors.As(fanErr, &writeErr) {
+			http.Error(w, http.StatusText(writeErr.StatusCode), writeErr.StatusCode)
+		} else {
+			http.Error(w, "failed to forward", http.StatusBadGateway)
+		}
 		return
 	}
 
-	statusCode := http.StatusAccepted
-	if resp != nil && resp.StatusCode != 0 {
-		if resp.StatusCode < 100 || resp.StatusCode > 999 {
-			h.logger.Warn("invalid downstream status code", "status_code", resp.StatusCode)
-		} else {
-			statusCode = resp.StatusCode
-		}
-	}
-
-	var respProto *sigilv1.ExportGenerationsResponse
-	if resp != nil {
-		respProto = resp.Response
-	}
-	respBody, marshalErr := sigil.MarshalGenerationsResponse(respProto)
+	// fanErr == nil means every downstream accepted the batch. Always respond
+	// 202 Accepted, matching the Sigil ingest API: partial success is reported
+	// per-generation in the body, not via the status code. Forward the
+	// downstream response.
+	respBody, marshalErr := sigil.MarshalGenerationsResponse(resp)
 	if marshalErr != nil {
 		h.logger.Warn("failed to marshal response", "err", marshalErr)
 		http.Error(w, "failed to marshal response", http.StatusInternalServerError)
@@ -106,6 +102,6 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", wire.ContentTypeJSON)
-	w.WriteHeader(statusCode)
+	w.WriteHeader(http.StatusAccepted)
 	_, _ = w.Write(respBody)
 }
