@@ -14,8 +14,8 @@ jobs:
     strategy:
       matrix:
         build:
-          - runtime: golang:1.26.3-alpine3.23
-          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.26.3-bookworm
+          - runtime: golang:1.26.4-alpine3.23
+          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.26.4-bookworm
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout
