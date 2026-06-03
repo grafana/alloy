@@ -15,13 +15,6 @@ tasks:
     cmds:
       - mise exec -- go run ./cmd lint shell
 
-  golangci-lint:
-    desc: Run golangci-lint in the given module directory.
-    internal: true
-    dir: "{{.DIR}}"
-    cmds:
-      - mise exec -- golangci-lint run -v --timeout=10m ./...
-
   shellcheck:
     desc: Run shellcheck linter
     dir: "tools"
