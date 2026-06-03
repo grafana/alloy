@@ -12,6 +12,8 @@ Unreleased
 
 ### Enhancements
 
+- Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (#6399)
+
 - Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
 
 ### Bug fixes
