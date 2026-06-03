@@ -125,34 +125,30 @@ func (fe *fieldEncoder) Close() error {
 }
 
 func (fe *fieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
-	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
-		enc := newArrayFieldEncoder()
-		err := marshaler.MarshalLogArray(enc)
-		if err != nil {
-			return err.Error()
-		}
-		b, err := enc.jsonMarshal()
-		if err != nil {
-			return err.Error()
-		}
-		return string(b)
-	}})
+	enc := newArrayFieldEncoder()
+	if err := marshaler.MarshalLogArray(enc); err != nil {
+		return err
+	}
+	b, err := enc.jsonMarshal()
+	if err != nil {
+		return err
+	}
+
+	fe.fields = append(fe.fields, fe.keyName(key), string(b))
 	return nil
 }
 
 func (fe *fieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
-	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
-		enc := newObjectFieldEncoder()
-		err := marshaler.MarshalLogObject(enc)
-		if err != nil {
-			return err.Error()
-		}
-		b, err := enc.jsonMarshal()
-		if err != nil {
-			return err.Error()
-		}
-		return string(b)
-	}})
+	enc := newObjectFieldEncoder()
+	if err := marshaler.MarshalLogObject(enc); err != nil {
+		return err
+	}
+	b, err := enc.jsonMarshal()
+	if err != nil {
+		return err
+	}
+
+	fe.fields = append(fe.fields, fe.keyName(key), string(b))
 	return nil
 }
 
@@ -470,12 +466,4 @@ func (fe *arrayFieldEncoder) AppendUintptr(value uintptr) {
 func (fe *arrayFieldEncoder) AppendReflected(value any) error {
 	fe.arr = append(fe.arr, value)
 	return nil
-}
-
-type lazyStringer struct {
-	f func() string
-}
-
-func (l lazyStringer) String() string {
-	return l.f()
 }
