@@ -121,7 +121,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		PodAssociations: c.PodAssociations,
 		NextConsumer:    tracesInterceptor,
 	}
-	consumer, err := promsdconsumer.NewConsumer(consumerOpts, o.Logger)
+	consumer, err := promsdconsumer.NewConsumer(consumerOpts, o.SLogger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a traces consumer due to error: %w", err)
 	}

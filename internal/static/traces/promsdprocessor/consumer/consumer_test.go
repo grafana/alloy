@@ -5,12 +5,12 @@ import (
 	"net"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	semconv "go.opentelemetry.io/otel/semconv/v1.5.0"
-	"gotest.tools/assert"
 
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/util"
@@ -75,7 +75,7 @@ func TestOperationType(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockProcessor := new(consumertest.TracesSink)
-			logger := util.TestLogger(t)
+			logger := util.TestAlloyLogger(t)
 			podAssociations := []string{
 				PodAssociationIPLabel,
 				PodAssociationOTelIPLabel,
@@ -93,7 +93,7 @@ func TestOperationType(t *testing.T) {
 				PodAssociations: podAssociations,
 				NextConsumer:    mockProcessor,
 			}
-			c, err := NewConsumer(consumerOpts, logger)
+			c, err := NewConsumer(consumerOpts, logger.Slog())
 			require.NoError(t, err)
 
 			attrMap := pcommon.NewMap()
@@ -253,7 +253,7 @@ func TestPodAssociation(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockProcessor := new(consumertest.TracesSink)
-			logger := util.TestLogger(t)
+			logger := util.TestAlloyLogger(t)
 
 			if len(tc.podAssociations) == 0 {
 				tc.podAssociations = []string{
@@ -272,7 +272,7 @@ func TestPodAssociation(t *testing.T) {
 				PodAssociations: tc.podAssociations,
 				NextConsumer:    mockProcessor,
 			}
-			c, err := NewConsumer(consumerOpts, logger)
+			c, err := NewConsumer(consumerOpts, logger.Slog())
 			require.NoError(t, err)
 
 			ip := c.getPodIP(tc.ctxFn(t), tc.attrMapFn(t))
