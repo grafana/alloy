@@ -22,7 +22,7 @@ jobs:
         install_args: go task golangci-lint
 
     - name: Lint Go
-      run: task lint
+      run: task lint:go
 
   govulncheck:
     name: Govulncheck
