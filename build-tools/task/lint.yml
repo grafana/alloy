@@ -10,13 +10,20 @@ tasks:
       - task: shellcheck
 
   go:
-    desc: Run golangci-lint over every Go module.
+    desc: Run Go linters.
+    cmds:
+      - task: golangci-lint
+      - task: alloylint
+
+  golangci-lint:
+    desc: Run golangci-lint.
+    internal: true
     dir: "tools"
     cmds:
       - mise exec -- go run ./cmd lint shell
 
   shellcheck:
-    desc: Run shellcheck linter
+    desc: Run shellcheck linter.
     dir: "tools"
     cmds:
       - mise exec -- go run ./cmd lint shell
