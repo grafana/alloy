@@ -1195,8 +1195,8 @@ func TestConverter(t *testing.T) {
 			var app testappender.Appender
 			app.HideTimestamps = !tc.showTimestamps
 
-			l := util.TestLogger(t)
-			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+			l := util.TestAlloyLogger(t)
+			conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
 				IncludeTargetInfo:             tc.includeTargetInfo,
 				IncludeScopeInfo:              tc.includeScopeInfo,
 				IncludeScopeLabels:            tc.includeScopeLabels,
@@ -1407,8 +1407,8 @@ func TestConverterExponentialHistograms(t *testing.T) {
 			require.NoError(t, err)
 
 			var app testappender.Appender
-			l := util.TestLogger(t)
-			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+			l := util.TestAlloyLogger(t)
+			conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
 				HonorMetadata: tc.honorMetadata,
 			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
@@ -1467,8 +1467,8 @@ func TestConverterClassicHistogramToNHCB(t *testing.T) {
 	require.NoError(t, err)
 
 	var app testappender.Appender
-	l := util.TestLogger(t)
-	conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+	l := util.TestAlloyLogger(t)
+	conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
 		ConvertClassicHistogramsToNHCB: true,
 	})
 	require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
@@ -1583,8 +1583,8 @@ func TestExplicitToCustomBucketsHistogram_Layout(t *testing.T) {
 			require.NoError(t, err)
 
 			var app testappender.Appender
-			l := util.TestLogger(t)
-			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+			l := util.TestAlloyLogger(t)
+			conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
 				ConvertClassicHistogramsToNHCB: true,
 			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
@@ -1669,11 +1669,11 @@ func TestMetadataWrittenAfterSeries(t *testing.T) {
 		metricFamilies: make(map[string]bool),
 	}
 
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	// With HonorMetadata enabled, there should be NO metadata errors because
 	// the series is now created before metadata is written.
-	conv := convert.New(l, appenderAppendable{Inner: app}, convert.Options{
+	conv := convert.New(l.Slog(), appenderAppendable{Inner: app}, convert.Options{
 		HonorMetadata: true,
 	})
 	err = conv.ConsumeMetrics(t.Context(), payload)
@@ -1691,7 +1691,7 @@ func TestMetadataWrittenAfterSeries(t *testing.T) {
 	}
 
 	// With HonorMetadata disabled, no metadata should be written at all
-	conv = convert.New(l, appenderAppendable{Inner: app}, convert.Options{
+	conv = convert.New(l.Slog(), appenderAppendable{Inner: app}, convert.Options{
 		HonorMetadata: false,
 	})
 	err = conv.ConsumeMetrics(t.Context(), payload)
