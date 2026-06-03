@@ -294,6 +294,107 @@ func TestExtraQueryMatchers(t *testing.T) {
 	}, time.Second, 10*time.Millisecond)
 }
 
+func TestExternalLabels(t *testing.T) {
+	nsIndexer := testNamespaceIndexer()
+	nsLister := testNamespaceLister(nsIndexer)
+	ruleIndexer := testRuleIndexer()
+	ruleLister := testRuleLister(ruleIndexer)
+
+	ns := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "namespace",
+			UID:  types.UID("33f8860c-bd06-4c0d-a0b1-a114d6b9937b"),
+		},
+	}
+
+	rule := &v1.PrometheusRule{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+			UID:       types.UID("64aab764-c95e-4ee9-a932-cd63ba57e6cf"),
+		},
+		Spec: v1.PrometheusRuleSpec{
+			Groups: []v1.RuleGroup{
+				{
+					Name: "group1",
+					Rules: []v1.Rule{
+						{
+							Alert: "alert1",
+							Expr:  intstr.FromString("{component=\"alloy\"}"),
+						},
+						{
+							Alert: "alert2",
+							Expr:  intstr.FromString("{component=\"alloy\"}"),
+							Labels: map[string]string{
+								// This label gets overridden by external_labels (same behavior as mimir.rules.kubernetes).
+								"alertsource": "custom",
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	component := Component{
+		log:               log.NewLogfmtLogger(os.Stdout),
+		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
+		namespaceLister:   nsLister,
+		namespaceSelector: labels.Everything(),
+		ruleLister:        ruleLister,
+		ruleSelector:      labels.Everything(),
+		lokiClient:        newFakeLokiClient(),
+		args: Arguments{
+			LokiNameSpacePrefix:    "alloy",
+			LokiNamespaceSeparator: "-",
+			ExternalLabels: map[string]string{
+				"k8s_cluster_name": "my-cluster",
+				"alertsource":      "loki",
+			},
+		},
+		metrics: newMetrics(),
+	}
+	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
+
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	go component.eventLoop(ctx)
+
+	// Add a namespace and rule to kubernetes
+	nsIndexer.Add(ns)
+	ruleIndexer.Add(rule)
+	eventHandler.OnAdd(rule, false)
+
+	// Wait for the rule to be added to loki and verify external labels are applied
+	require.Eventually(t, func() bool {
+		allRules, err := component.lokiClient.ListRules(ctx, "")
+		require.NoError(t, err)
+		if len(allRules) != 1 {
+			return false
+		}
+
+		ruleBuf, err := yaml.Marshal(allRules[lokiNamespaceForRuleCRD("alloy", "-", rule)])
+		require.NoError(t, err)
+
+		expectedRule := `- name: group1
+  rules:
+    - alert: alert1
+      expr: '{component="alloy"}'
+      labels:
+        k8s_cluster_name: my-cluster
+        alertsource: loki
+    - alert: alert2
+      expr: '{component="alloy"}'
+      labels:
+        k8s_cluster_name: my-cluster
+        alertsource: loki
+`
+		require.YAMLEq(t, expectedRule, string(ruleBuf))
+		return true
+	}, time.Second, 10*time.Millisecond)
+}
+
 func TestCustomNamespaceSeparator(t *testing.T) {
 	rule := &v1.PrometheusRule{
 		ObjectMeta: metav1.ObjectMeta{

@@ -19,9 +19,6 @@ import (
 	"github.com/grafana/alloy/tools/internal/discover"
 )
 
-// renovate: datasource=go packageName=golang.org/x/vuln/cmd/govulncheck
-const govulncheckPkg = "golang.org/x/vuln/cmd/govulncheck@v1.3.0"
-
 type flags struct {
 	cli.RootFlag
 	tags       string
@@ -108,12 +105,12 @@ func run(root, configPath, tags string, now time.Time) (bool, error) {
 // scan runs govulncheck in dir, tee-ing its native text output to stdout and
 // to a buffer. The returned error is non-nil on findings or tool failure.
 func scan(dir, tags string) (string, error) {
-	args := []string{"run", govulncheckPkg}
+	var args []string
 	if tags != "" {
 		args = append(args, "-tags="+tags)
 	}
 	args = append(args, "./...")
-	cmd := exec.Command("go", args...)
+	cmd := exec.Command("govulncheck", args...)
 	cmd.Dir = dir
 	cmd.Stderr = os.Stderr
 

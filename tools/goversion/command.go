@@ -1,12 +1,12 @@
 package goversion
 
 import (
-	"encoding/json"
+	"bytes"
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -77,14 +77,20 @@ func pr2Command() *cobra.Command {
 
 			version := args[0]
 
+			if err := updateMiseToml(root, version); err != nil {
+				return fmt.Errorf("error updating mise.toml: %w", err)
+			}
+
 			if err := updateGoModFiles(root, version); err != nil {
 				log.Fatalf("failed to update go.mod files: %s", err)
 				return fmt.Errorf("error updating go.mod files: %w", err)
 			}
+
 			if err := updateDockerFiles(root, version); err != nil {
 				log.Fatalf("failed to update Dockerfiles: %s", err)
 				return fmt.Errorf("error updating Dockerfiles: %w", err)
 			}
+
 			if err := bumpBuildImage(root); err != nil {
 				return fmt.Errorf("error updating build image: %w", err)
 			}
@@ -112,7 +118,12 @@ func updateBuildImage(root string, version string) error {
 			return fmt.Errorf("failed to read file: %w", err)
 		}
 
-		if err := os.WriteFile(path, replaceDockerGoVersion(content, version), 0644); err != nil {
+		out, err := replaceDockerGoVersion(content, version)
+		if err != nil {
+			return fmt.Errorf("update %s: %w", path, err)
+		}
+
+		if err := os.WriteFile(path, out, 0644); err != nil {
 			return fmt.Errorf("failed to update file: %w", err)
 		}
 	}
@@ -144,7 +155,7 @@ func updateGoModFiles(root, version string) error {
 }
 
 func updateDockerFiles(root, version string) error {
-	result, err := discover.Files(root, "Dockerfile*", discover.WithSkipDirs("vendor", "build-tools"), discover.WithExclude("Dockerfile.windows"))
+	result, err := discover.Files(root, discover.MatchPatternFn("Dockerfile*"), discover.WithSkipDirs("vendor", "build-tools"))
 	if err != nil {
 		return err
 	}
@@ -154,7 +165,13 @@ func updateDockerFiles(root, version string) error {
 		if err != nil {
 			return fmt.Errorf("read %s: %w", path, err)
 		}
-		if err := os.WriteFile(path, replaceDockerGoVersion(content, version), 0644); err != nil {
+
+		out, err := replaceDockerGoVersion(content, version)
+		if err != nil {
+			return fmt.Errorf("update %s: %w", path, err)
+		}
+
+		if err := os.WriteFile(path, out, 0644); err != nil {
 			return fmt.Errorf("write %s: %w", path, err)
 		}
 	}
@@ -198,37 +215,10 @@ func bumpBuildImage(root string) error {
 	return nil
 }
 
-const dockerHubTagsURL = "https://hub.docker.com/v2/repositories/grafana/alloy-build-image/tags?page_size=2"
-
-type dockerTagsResponse struct {
-	Results []dockerTag `json:"results"`
-}
-
-type dockerTag struct {
-	Name   string `json:"name"`
-	Digest string `json:"digest"`
-}
-
 type buildImageRefs struct {
 	Default    string
 	Boring     string
 	DefaultTag string
-}
-
-func fetchBuildImageTags() (*dockerTagsResponse, error) {
-	resp, err := http.Get(dockerHubTagsURL)
-	if err != nil {
-		return nil, fmt.Errorf("fetch tags: %w", err)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("fetch tags: %s", resp.Status)
-	}
-	var data dockerTagsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return nil, fmt.Errorf("decode tags: %w", err)
-	}
-	return &data, nil
 }
 
 // buildImageRefsFromTags assumes 2 tags: one default, one boringcrypto.
@@ -268,9 +258,81 @@ func replaceBuildImageRefs(content []byte, refs *buildImageRefs) []byte {
 	return out
 }
 
-var dockerGoVersionRE = regexp.MustCompile(`golang:1\.\d+(\.\d+)?`)
+// dockerGoVersionRE matches a golang image reference: the version, an optional
+// variant suffix (e.g. -alpine, -windowsservercore-ltsc2022), and an optional
+// pinned digest. Submatch 1 is the suffix, submatch 2 is the @sha256 digest.
+var dockerGoVersionRE = regexp.MustCompile(`golang:1\.\d+(?:\.\d+)?(-[A-Za-z0-9._-]+)?(@sha256:[a-f0-9]+)?`)
 
-func replaceDockerGoVersion(content []byte, version string) []byte {
-	out := dockerGoVersionRE.ReplaceAllLiteral(content, []byte("golang:"+version))
-	return out
+// replaceDockerGoVersion rewrites golang image references to the given version.
+// When a reference is pinned by digest, the new tag's digest is resolved so the
+// pin stays consistent with the tag.
+func replaceDockerGoVersion(content []byte, version string) ([]byte, error) {
+	matches := dockerGoVersionRE.FindAllSubmatchIndex(content, -1)
+	if matches == nil {
+		return content, nil
+	}
+
+	var (
+		last int
+		out  bytes.Buffer
+	)
+
+	for _, m := range matches {
+		start, end := m[0], m[1]
+
+		suffix := ""
+		if m[2] >= 0 {
+			suffix = string(content[m[2]:m[3]])
+		}
+
+		hasDigest := m[4] >= 0
+		tag := version + suffix
+		replacement := "golang:" + tag
+		if hasDigest {
+			digest, err := resolveGolangDigest(tag)
+			if err != nil {
+				return nil, fmt.Errorf("resolve digest for golang:%s: %w", tag, err)
+			}
+			replacement += "@" + digest
+		}
+
+		out.Write(content[last:start])
+		out.WriteString(replacement)
+		last = end
+	}
+	out.Write(content[last:])
+	return out.Bytes(), nil
+}
+
+// miseGoVersionRE matches the go tool line in mise.toml, e.g. `go = "1.26.3"`.
+var miseGoVersionRE = regexp.MustCompile(`(?m)^go\s*=\s*"[^"]*"`)
+
+// updateMiseToml bumps the go version in mise.toml and refreshes the lockfile
+// so the pinned checksums and URLs match the new version.
+func updateMiseToml(root, version string) error {
+	path := filepath.Join(root, "mise.toml")
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+
+	if !miseGoVersionRE.Match(content) {
+		return fmt.Errorf("no go version found in %s", path)
+	}
+
+	newContent := miseGoVersionRE.ReplaceAllLiteral(content, []byte(`go = "`+version+`"`))
+	if err := os.WriteFile(path, newContent, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+
+	cmd := exec.Command("mise", "lock", "go")
+	cmd.Dir = root
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("mise lock: %w", err)
+	}
+	return nil
 }

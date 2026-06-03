@@ -4,6 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/tools/lint/golint"
+	"github.com/grafana/alloy/tools/lint/shelllint"
 )
 
 func Command() *cobra.Command {
@@ -17,6 +18,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(
 		golint.Command(),
+		shelllint.Command(),
 	)
 
 	return cmd
