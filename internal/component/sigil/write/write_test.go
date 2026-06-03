@@ -343,14 +343,20 @@ func TestEndpointClient_RetriesOn429And408(t *testing.T) {
 func TestEndpointClient_RetriesRemoteTimeout(t *testing.T) {
 	var attempts atomic.Int32
 
+	// Hold the first attempt open without a fixed sleep so the client's
+	// RemoteTimeout fires and triggers a retry. released is closed before
+	// srv.Close so the parked handler never blocks server shutdown.
+	released := make(chan struct{})
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		if attempts.Add(1) == 1 {
-			time.Sleep(50 * time.Millisecond)
+			<-released
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
 	}))
 	defer srv.Close()
+	defer close(released)
 
 	opts := GetDefaultEndpointOptions()
 	opts.URL = srv.URL
