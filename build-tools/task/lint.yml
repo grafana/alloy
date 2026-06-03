@@ -8,6 +8,7 @@ tasks:
       - task: go
       - task: alloylint
       - task: shellcheck
+      - task: govulncheck
 
   go:
     desc: Run Go linters.
@@ -27,6 +28,21 @@ tasks:
     dir: "tools"
     cmds:
       - mise exec -- go run ./cmd lint shell
+
+  govulncheck:
+    desc: Run govulncheck.
+    dir: "tools"
+    vars:
+      # govulncheck's --tags expects a comma-delimited list, so convert the
+      # space-delimited GO_TAGS the same way the Makefile does (tr ' ' ',').
+      GOVULNCHECK_TAGS: >-
+        {{- if regexMatch "(^|\\s)gore2regex(\\s|$)" .GO_TAGS -}}
+        {{ regexReplaceAll "\\s+" (trim .GO_TAGS) "," }}
+        {{- else -}}
+        {{ regexReplaceAll "\\s+" (trim (printf "gore2regex %s" .GO_TAGS)) "," }}
+        {{- end -}}
+    cmds:
+      - mise exec -- go run ./cmd govulncheck --tags='{{.GOVULNCHECK_TAGS}}'
 
   alloylint:
     desc: Run the alloylint linter.
