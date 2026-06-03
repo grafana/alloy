@@ -2,11 +2,13 @@
 package snmp_exporter_v2
 
 import (
-	"github.com/go-kit/log"
+	"log/slog"
+
+	snmp_config "github.com/prometheus/snmp_exporter/config"
+
 	"github.com/grafana/alloy/internal/static/integrations/snmp_exporter"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
-	snmp_config "github.com/prometheus/snmp_exporter/config"
 )
 
 // DefaultConfig holds the default settings for the snmp_exporter integration.
@@ -45,7 +47,7 @@ func (c *Config) Identifier(globals integrations_v2.Globals) (string, error) {
 }
 
 // NewIntegration creates a new SNMP integration.
-func (c *Config) NewIntegration(log log.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
 	snmpCfg, err := snmp_exporter.LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, c.SnmpConfigMergeStrategy)
 	if err != nil {
 		return nil, err
@@ -54,7 +56,7 @@ func (c *Config) NewIntegration(log log.Logger, globals integrations_v2.Globals)
 	sh := &snmpHandler{
 		cfg:     c,
 		snmpCfg: snmpCfg,
-		log:     log,
+		log:     l,
 	}
 	return sh, nil
 }
