@@ -13,12 +13,14 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Setup tools
+        uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+        with:
+          install_args: helm-docs
+
       - name: Regenerate docs
         run: |
-          docker run --rm \
-            -v "$(pwd)/operations/helm/charts/alloy:/helm-docs" \
-            -u "$(id -u)" \
-            jnorwood/helm-docs
+          make generate-helm-docs
           if ! git diff --exit-code; then
             echo "Helm chart documentation is not up to date. Please run 'make generate-helm-docs' and commit changes!" >&2
             exit 1

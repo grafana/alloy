@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"path"
 	"regexp"
@@ -29,7 +28,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
@@ -488,8 +486,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
-		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
-		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger,
+		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, c.opts.SLogger,
 			mysqld_collector.EnableLockWaitTimeout(exporterCfg.EnableLockWaitTimeout),
 			mysqld_collector.SetLockWaitTimeout(exporterCfg.LockWaitTimeout),
 			mysqld_collector.SetSlowLogFilter(exporterCfg.LogSlowFilter),

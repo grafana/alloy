@@ -3,14 +3,11 @@ package catchpoint_exporter
 import (
 	"log/slog"
 
-	"github.com/go-kit/log"
+	collector "github.com/grafana/catchpoint-prometheus-exporter/collector"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-
-	collector "github.com/grafana/catchpoint-prometheus-exporter/collector"
 )
 
 // DefaultConfig is the default config for the catchpoint integration
@@ -58,10 +55,10 @@ func init() {
 }
 
 // NewIntegration creates a new integration from the config.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	exporterConfig := c.exporterConfig()
 
-	col := collector.NewCollector(slog.New(logging.NewSlogGoKitHandler(l)), exporterConfig)
+	col := collector.NewCollector(l, exporterConfig)
 	return integrations.NewCollectorIntegration(
 		c.Name(),
 		integrations.WithCollectors(col),

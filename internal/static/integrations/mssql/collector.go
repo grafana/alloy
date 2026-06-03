@@ -4,11 +4,10 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log/slog"
 
 	"github.com/burningalchemist/sql_exporter"
 	"github.com/burningalchemist/sql_exporter/config"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"gopkg.in/yaml.v3"
@@ -37,11 +36,11 @@ func init() {
 // targetCollectorAdapter adapts sql_exporter.Target to prometheus.Collector
 type targetCollectorAdapter struct {
 	target sql_exporter.Target
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // newTargetCollectorAdapter creates a new TargetCollectorAdapter
-func newTargetCollectorAdapter(t sql_exporter.Target, l log.Logger) targetCollectorAdapter {
+func newTargetCollectorAdapter(t sql_exporter.Target, l *slog.Logger) targetCollectorAdapter {
 	return targetCollectorAdapter{
 		target: t,
 		logger: l,
@@ -72,7 +71,7 @@ func (t targetCollectorAdapter) Describe(chan<- *prometheus.Desc) {}
 // sqlPrometheusMetricAdapter adapts sql_exporter.Metric to prometheus.Metric
 type sqlPrometheusMetricAdapter struct {
 	sql_exporter.Metric
-	logger log.Logger
+	logger *slog.Logger
 }
 
 // Write writes the sql_exporter.Metric to the prometheus metric pb
@@ -89,7 +88,7 @@ func (s sqlPrometheusMetricAdapter) Desc() *prometheus.Desc {
 		// nil desc indicates that this metric has an invalid descriptor.
 		// we can get the error using the Write function.
 		err := s.Metric.Write(nil)
-		level.Error(s.logger).Log("msg", "Invalid metric description.", "err", err)
+		s.logger.Error("Invalid metric description.", "err", err)
 		return prometheus.NewInvalidDesc(err)
 	}
 
