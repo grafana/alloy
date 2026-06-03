@@ -174,15 +174,15 @@ lint: lint-go run-alloylint lint-shell
 
 .PHONY: lint-go
 lint-go:
-	go run -C tools ./cmd lint go --binary=$(GOLANGCI_LINT_BINARY)
+	mise exec -- task lint:go
 
 .PHONY: lint-shell
 lint-shell:
-	go run -C tools ./cmd lint shell
+	mise exec -- task lint:shellcheck
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
+	mise exec -- task lint:alloylint
 
 #
 # Targets for running tests
