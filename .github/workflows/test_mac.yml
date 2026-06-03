@@ -27,6 +27,8 @@ jobs:
     - name: Setup tools
       uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
+        version: v2026.5.18
+        sha256: 998428f820e22301bab9273cba8b4e59d05a40f77a9a8411d75b2de85fbb0335
         install_args: go
 
     - name: Cache Go modules and build
@@ -51,6 +53,8 @@ jobs:
     - name: Setup tools
       uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
+        version: v2026.5.18
+        sha256: 998428f820e22301bab9273cba8b4e59d05a40f77a9a8411d75b2de85fbb0335
         install_args: go
 
     - run: cd collector && go build .
