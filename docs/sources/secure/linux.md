@@ -8,24 +8,18 @@ weight: 100
 
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
-Install {{< param "PRODUCT_NAME" >}} from the DEB or RPM package to get the `alloy` system user and systemd unit file.
-The package runs the process as `alloy` and adds the user to groups needed for journal and system log collection.
-Verify filesystem and network settings match what your configuration requires.
-For Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
-For Windows, refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows].
+{{< param "PRODUCT_NAME" >}} requires read access to `/proc`, `/sys`, the systemd journal, application log files, and credentials for observability backends.
+DEB and RPM packages for {{< param "PRODUCT_NAME" >}} provide a dedicated `alloy` user and systemd unit file.
+You can configure filesystem permissions, systemd security directives, and read access for the components in your configuration.
 
 {{< admonition type="note" >}}
-The DEB and RPM packages create the `alloy` user and systemd unit automatically.
-For binary installs, adapt paths to match your layout.
-Refer to [Install {{< param "PRODUCT_NAME" >}} on Linux][install-linux] for package and binary setup.
+If you installed from a binary instead of a package, create the `alloy` user and systemd unit yourself.
+Refer to [Install {{< param "PRODUCT_NAME" >}} on Linux][install-linux] for setup steps, and adapt paths to match your layout.
 
 [install-linux]: ../../set-up/install/linux/
 {{< /admonition >}}
 
-## Run as the alloy user
-
-The package creates a dedicated system user named `alloy` at install time.
-The systemd unit runs the process as this user.
+## Run as the `alloy` user
 
 Verify the service runs as the `alloy` user:
 
