@@ -1,26 +1,10 @@
 name: Sign release image
 
-# Reusable workflow that keyless-signs a pushed container image with cosign
-# (GitHub Actions OIDC), given its digest-pinned reference.
+# Keyless-signs a pushed container image with cosign via GitHub Actions OIDC.
+# Input is a digest-pinned image ref.
 #
-# Two deliberate choices, load-bearing enough to call out:
-#
-#   * Index-only signing. Alloy builds one multi-platform manifest via buildx,
-#     so `cosign sign <index-digest>` signs the manifest-list as a whole. We do
-#     NOT pass --recursive (which would also sign each per-arch child). This
-#     covers every consumer pulling by tag or by index digest; it does not cover
-#     pinning an individual arch's leaf digest, which we have no evidence Alloy
-#     consumers do. Matches Cilium and grafana/docker-otel-lgtm; flipping to
-#     --recursive later is a one-line change.
-#
-#   * Legacy tag-based signatures, not OCI 1.1 referrers. By default cosign
-#     writes the signature as a `sha256-<digest>.sig` tag on the same repo. That
-#     matters because release images push to GAR and the gar-image-mirror
-#     replicates to Docker Hub by copying tags for allowlisted images — so the
-#     .sig tag rides the mirror downstream for free. OCI 1.1 referrers are
-#     untagged and the mirror filters them out, so they would never reach Docker
-#     Hub. Switching to referrers requires BOTH --registry-referrers-mode=oci-1-1
-#     and COSIGN_EXPERIMENTAL=1; we set neither, so we get tag-based signatures.
+# The signer is this workflow, so consumers verify against a cert identity of:
+#   https://github.com/grafana/alloy/.github/workflows/sign-and-attest.yml@<ref>
 
 on:
   workflow_call:
@@ -61,26 +45,21 @@ jobs:
     - name: Install cosign
       uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       with:
-        # Pinned to v3.x: v4 defaults to OCI 1.1 referrers (untagged), which the
-        # GAR->Docker Hub mirror won't copy, silently leaving images unsigned.
-        # Don't bump until gar-image-mirror handles referrers.
         cosign-release: v3.0.6
 
     - name: Sign image
-      # Keyless signing uploads the signing event to the public Sigstore
-      # transparency log (Rekor) by default. That public record is what lets a
-      # short-lived signing cert be verified after it expires, so we keep it.
+      # Signs the image index only (no --recursive); that covers pulls by tag or
+      # index digest. Uploads to the public Rekor transparency log by default,
+      # which is what makes the short-lived cert verifiable after it expires.
       env:
         IMAGE: ${{ inputs.image }}
       run: |
         cosign sign --yes "${IMAGE}"
 
     - name: Verify signature
-      # Fail the run if the just-written signature doesn't verify, so a broken
-      # signing job is caught before the draft release is published — with
-      # immutable releases the image can't be re-signed after publication. This
-      # checks the signature in GAR; propagation to Docker Hub via the mirror is
-      # verified separately (smoke test), since the mirror copies asynchronously.
+      # Catch a broken signature before the draft release is published, since
+      # immutable releases can't be re-signed after publish. This checks the GAR
+      # copy; the mirror to Docker Hub is async, so it isn't verified here.
       env:
         IMAGE: ${{ inputs.image }}
         REPO: ${{ github.repository }}
