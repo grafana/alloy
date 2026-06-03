@@ -1,5 +1,4 @@
-// Package zapadapter allows github.com/go-kit/log to be used as a Zap core.
-package zapadapter
+package slogadapter
 
 import (
 	"encoding/json"

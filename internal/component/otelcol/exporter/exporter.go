@@ -21,7 +21,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/views"
 	otelcolutil "github.com/grafana/alloy/internal/component/otelcol/util"
-	"github.com/grafana/alloy/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 // Arguments is an extension of component.Arguments which contains necessary
@@ -183,7 +183,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	settings := otelexporter.Settings{
 		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         zapadapter.New(e.opts.Logger),
+			Logger:         slogadapter.New(e.opts.Logger),
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
 		},
