@@ -409,9 +409,10 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		}
 
 		serverStartTime := now - uptime
-		row.TimestampMilliseconds = calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
-		cpuTime := picosecondsToMilliseconds(row.CPUTime)
+		endMilliseconds := calculateWallTime(serverStartTime, row.TimerEndPicoseconds.Float64, uptime)
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
+		row.TimestampMilliseconds = endMilliseconds - elapsedTime
+		cpuTime := picosecondsToMilliseconds(row.CPUTime)
 		traceParent := tryExtractTraceParent(row.SQLText.String)
 
 		logMessage := fmt.Sprintf(

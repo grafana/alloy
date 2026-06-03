@@ -3,10 +3,11 @@ package integrations
 import (
 	"testing"
 
-	v1 "github.com/grafana/alloy/internal/static/integrations"
-	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
+
+	v1 "github.com/grafana/alloy/internal/static/integrations"
+	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 )
 
 func TestSubsystemOptions_Unmarshal(t *testing.T) {

@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 
 	v1 "github.com/grafana/alloy/internal/static/integrations"
@@ -77,7 +77,7 @@ func (s *ConfigShim) Identifier(g v2.Globals) (string, error) {
 	return s.Orig.InstanceKey(g.AgentIdentifier)
 }
 
-func (s *ConfigShim) NewIntegration(l log.Logger, g v2.Globals) (v2.Integration, error) {
+func (s *ConfigShim) NewIntegration(l *slog.Logger, g v2.Globals) (v2.Integration, error) {
 	v1Integration, err := s.Orig.NewIntegration(l)
 	if err != nil {
 		return nil, err

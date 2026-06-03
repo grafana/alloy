@@ -25,5 +25,5 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 		return nil, "", err
 	}
 	defaultInstanceKey := opts.ID // use component ID if there is no better option
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, cfg, defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, cfg, defaultInstanceKey)
 }

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/config"
 	promdiscovery "github.com/prometheus/prometheus/discovery"
@@ -21,7 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
-	util "github.com/grafana/alloy/internal/util/log"
 )
 
 type promServiceDiscoProcessor struct {
@@ -33,13 +30,13 @@ type promServiceDiscoProcessor struct {
 
 	consumer *promsdconsumer.Consumer
 
-	logger log.Logger
+	logger *slog.Logger
 }
 
 func newTraceProcessor(nextConsumer consumer.Traces, operationType string, podAssociations []string, scrapeConfigs []*config.ScrapeConfig) (processor.Traces, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	logger := log.With(util.Logger, "component", "traces service disco")
+	logger := logging.NewSlogNop()
 
 	// NOTE: Since this static mode code path is only used for converter code, we can safely use the default registerer.
 	discoveryManagerRegistry := prometheus.DefaultRegisterer
@@ -51,7 +48,7 @@ func newTraceProcessor(nextConsumer consumer.Traces, operationType string, podAs
 
 	mgr := promdiscovery.NewManager(
 		ctx,
-		slog.New(logging.NewSlogGoKitHandler(logger)),
+		logger,
 		discoveryManagerRegistry,
 		sdMetrics,
 		promdiscovery.Name("traces service disco"),
@@ -118,7 +115,7 @@ func (p *promServiceDiscoProcessor) Start(_ context.Context, _ component.Host) e
 	go func() {
 		err := p.discoveryMgr.Run()
 		if err != nil && err != context.Canceled {
-			level.Error(p.logger).Log("msg", "failed to start prom svc disco.  relabeling disabled", "err", err)
+			p.logger.Error("failed to start prom svc disco.  relabeling disabled", "err", err)
 		}
 	}()
 
@@ -139,7 +136,7 @@ func (p *promServiceDiscoProcessor) watchServiceDiscovery() {
 		select {
 		case targetGroups := <-p.discoveryMgr.SyncCh():
 			hostLabels := make(map[string]discovery.Target)
-			level.Debug(p.logger).Log("msg", "syncing target groups", "count", len(targetGroups))
+			p.logger.Debug("syncing target groups", "count", len(targetGroups))
 			for jobName, groups := range targetGroups {
 				p.syncGroups(jobName, groups, hostLabels)
 			}
@@ -151,31 +148,29 @@ func (p *promServiceDiscoProcessor) watchServiceDiscovery() {
 }
 
 func (p *promServiceDiscoProcessor) syncGroups(jobName string, groups []*targetgroup.Group, hostLabels map[string]discovery.Target) {
-	level.Debug(p.logger).Log("msg", "syncing target group", "jobName", jobName)
+	p.logger.Debug("syncing target group", "jobName", jobName)
 	for _, g := range groups {
 		p.syncTargets(jobName, g, hostLabels)
 	}
 }
 
 func (p *promServiceDiscoProcessor) syncTargets(jobName string, group *targetgroup.Group, hostLabels map[string]discovery.Target) {
-	level.Debug(p.logger).Log("msg", "syncing targets", "count", len(group.Targets))
+	p.logger.Debug("syncing targets", "count", len(group.Targets))
 
 	relabelConfig := p.relabelConfigs[jobName]
 	if relabelConfig == nil {
-		level.Warn(p.logger).Log("msg", "relabel config not found for job. skipping labeling", "jobName", jobName)
+		p.logger.Warn("relabel config not found for job. skipping labeling", "jobName", jobName)
 		return
 	}
 
 	for _, t := range group.Targets {
 		discoveredLabels := group.Labels.Merge(t)
 
-		level.Debug(p.logger).Log("discoveredLabels", discoveredLabels)
 		var labelMap = make(map[string]string)
 		for k, v := range discoveredLabels.Clone() {
 			labelMap[string(k)] = string(v)
 		}
 		processedLabels, keep := relabel.Process(labels.FromMap(labelMap), relabelConfig...)
-		level.Debug(p.logger).Log("processedLabels", processedLabels)
 		if !keep {
 			continue
 		}
@@ -183,11 +178,11 @@ func (p *promServiceDiscoProcessor) syncTargets(jobName string, group *targetgro
 		var labels = discovery.NewTargetFromModelLabels(processedLabels)
 		host, err := promsdconsumer.GetHostFromLabels(labels)
 		if err != nil {
-			level.Warn(p.logger).Log("msg", "ignoring target, unable to find address", "err", err)
+			p.logger.Warn("ignoring target, unable to find address", "err", err)
 			continue
 		}
 
-		level.Debug(p.logger).Log("msg", "adding host to hostLabels", "host", host)
+		p.logger.Debug("adding host to hostLabels", "host", host)
 		hostLabels[host] = promsdconsumer.NewTargetsWithNonInternalLabels(labels)
 	}
 }

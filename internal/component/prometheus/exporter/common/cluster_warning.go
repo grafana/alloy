@@ -2,26 +2,24 @@ package common
 
 import (
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 func WarningIfUsedInCluster(o component.Options) {
 	data, err := o.GetServiceData(cluster.ServiceName)
 	if err != nil { // this should never happen as all Alloy instances have clustering service.
-		level.Warn(o.Logger).Log("msg", "error getting clustering service data", "err", err)
+		o.SLogger.Warn("error getting clustering service data", "err", err)
 		return
 	}
 
 	clusterData := data.(cluster.Cluster)
 	if clusterData == nil { // this should also never happen, but adding a check just in case
-		level.Warn(o.Logger).Log("msg", "cluster data is nil", "component", o.ID)
+		o.SLogger.Warn("cluster data is nil", "component", o.ID)
 		return
 	}
 
 	if !clusterData.Ready() || len(clusterData.Peers()) > 0 {
-		level.Warn(o.Logger).Log(
-			"msg",
+		o.SLogger.Warn(
 			"detected clustering is configured while using a host-specific exporter - please make sure your configuration is correct",
 			"exporter",
 			o.ID,
