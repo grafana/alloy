@@ -242,7 +242,7 @@ func (conv *Converter) consumeScopeMetrics(app storage.Appender, memResource *me
 	if opts.IncludeScopeInfo {
 		// Write series data first, so the series exists before we write metadata.
 		if err := memScope.WriteTo(app, time.Now()); err != nil {
-			conv.log.Error("msg", "failed to write otel_scope_info metric", "err", err)
+			conv.log.Error("failed to write otel_scope_info metric", "err", err)
 		}
 		// Write metadata after series data, so the series exists in the appender.
 		if opts.HonorMetadata {
@@ -719,7 +719,7 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 
 		for i := 0; i < dp.Exemplars().Len(); i++ {
 			if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
-				conv.log.Error("msg", "failed to add exemplar", "metric name", metricName, "err", err)
+				conv.log.Error("failed to add exemplar", "metric name", metricName, "err", err)
 			}
 		}
 	}
@@ -783,7 +783,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			sumMetricVal := dp.Sum()
 
 			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
-				conv.log.Error("msg", "failed to write summary sum sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write summary sum sample", "metric name", metricName, "err", err)
 			}
 		}
 

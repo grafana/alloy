@@ -114,7 +114,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 
 // Run starts the Extension component.
 func (e *Extension) Run(ctx context.Context) error {
-	e.opts.Logger.Log("level", "info", "msg", "starting extension", "component", e.opts.ID)
+	e.opts.SLogger.Info("starting extension", "component", e.opts.ID)
 	defer e.cancel()
 	return e.sched.Run(ctx)
 }

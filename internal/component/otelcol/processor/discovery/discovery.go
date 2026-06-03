@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	promsdconsumer "github.com/grafana/alloy/internal/static/traces/promsdprocessor/consumer"
 	"github.com/grafana/alloy/syntax"
@@ -98,7 +97,7 @@ var (
 // New creates a new otelcol.exporter.discovery component.
 func New(o component.Options, c Arguments) (*Component, error) {
 	if c.Output.Logs != nil || c.Output.Metrics != nil {
-		level.Warn(o.Logger).Log("msg", "non-trace output detected; this component only works for traces")
+		o.SLogger.Warn("non-trace output detected; this component only works for traces")
 	}
 
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
