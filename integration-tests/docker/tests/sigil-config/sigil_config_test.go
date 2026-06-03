@@ -31,8 +31,9 @@ const (
 
 // TestSigilConfigWiring checks that endpoint configuration on sigil.write is
 // honored end-to-end: tenant_id overrides the inbound tenant header, custom
-// headers reach the upstream, and the upstream status code and response body
-// are propagated back through sigil.receive to the caller.
+// headers reach the upstream, and the upstream response body is propagated
+// back through sigil.receive to the caller. On success sigil.receive always
+// responds 202 Accepted regardless of the upstream status code.
 func TestSigilConfigWiring(t *testing.T) {
 	common.WaitForReady(t, "http://localhost:12343/-/ready", 30*time.Second)
 	common.WaitForReady(t, echoBaseURL+"/requests", 10*time.Second)
@@ -49,9 +50,10 @@ func TestSigilConfigWiring(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
-	// The upstream returns 200 with a populated result list; both must round
-	// trip back to the caller.
-	require.Equal(t, http.StatusOK, resp.StatusCode)
+	// The upstream returns 200 with a populated result list. sigil.receive
+	// responds 202 Accepted on success, and the result list must round trip
+	// back to the caller.
+	require.Equal(t, http.StatusAccepted, resp.StatusCode)
 	respBody, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	var decoded exportResponse
