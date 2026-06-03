@@ -316,7 +316,7 @@ func TestConsumeLogs(t *testing.T) {
 			promReg := prometheus.NewRegistry()
 			receiver := loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry, maxTestedLogEntries)))
 
-			converter := convert.New(logger, promReg, []loki.LogsReceiver{receiver})
+			converter := convert.New(logger.Slog(), promReg, []loki.LogsReceiver{receiver})
 
 			ctx := t.Context()
 

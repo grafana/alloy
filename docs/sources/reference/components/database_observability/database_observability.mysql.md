@@ -136,12 +136,14 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 
 ### `schema_details`
 
-| Name               | Type       | Description                                                           | Default | Required |
-|--------------------|------------|-----------------------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect information from database.                  | `"1m"`  | no       |
-| `cache_enabled`    | `boolean`  | Whether to enable caching of table definitions.                       | `true`  | no       |
-| `cache_size`       | `integer`  | Cache size.                                                           | `256`   | no       |
-| `cache_ttl`        | `duration` | Cache TTL.                                                            | `"10m"` | no       |
+| Name               | Type       | Description                                                 | Default | Required |
+|--------------------|------------|-------------------------------------------------------------|---------|----------|
+| `collect_interval` | `duration` | How frequently to collect information from database.        | `"1m"`  | no       |
+| `cache_enabled`    | `boolean`  | Deprecated. Whether to enable caching of table definitions. | `true`  | no       |
+| `cache_size`       | `integer`  | Deprecated. Cache size.                                     | `256`   | no       |
+| `cache_ttl`        | `duration` | Deprecated. Cache TTL.                                      | `"10m"` | no       |
+
+The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they are accepted for backward compatibility, but ignored.
 
 ### `explain_plans`
 

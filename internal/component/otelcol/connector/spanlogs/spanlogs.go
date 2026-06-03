@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 
+	"go.opentelemetry.io/collector/pdata/plog"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fanoutconsumer"
@@ -13,10 +15,8 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/lazyconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/syntax"
-	"go.opentelemetry.io/collector/pdata/plog"
 )
 
 func init() {
@@ -99,7 +99,7 @@ var (
 // New creates a new otelcol.exporter.spanlogs component.
 func New(o component.Options, c Arguments) (*Component, error) {
 	if c.Output.Traces != nil || c.Output.Metrics != nil {
-		level.Warn(o.Logger).Log("msg", "non-log output detected; this component only works for log outputs and trace inputs")
+		o.SLogger.Warn("non-log output detected; this component only works for log outputs and trace inputs")
 	}
 
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)

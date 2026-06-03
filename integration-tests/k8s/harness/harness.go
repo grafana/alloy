@@ -64,11 +64,7 @@ func Setup(t *testing.T, opts Options) *TestContext {
 	t.Cleanup(func() { ctx.cleanup(t) })
 
 	for _, dep := range opts.Dependencies {
-		err := util.Step("install dep "+dep.Name(), func() error { return dep.Install(ctx) })
-		if err != nil {
-			t.Fatalf("install dependency %q: %v", dep.Name(), err)
-		}
-		ctx.dependencies = append(ctx.dependencies, dep)
+		ctx.AddDependency(t, dep)
 	}
 
 	return ctx
@@ -100,6 +96,14 @@ func (ctx *TestContext) cleanup(t *testing.T) {
 			return nil
 		})
 	}
+}
+
+func (ctx *TestContext) AddDependency(t *testing.T, dep Dependency) {
+	err := util.Step("install dep "+dep.Name(), func() error { return dep.Install(ctx) })
+	if err != nil {
+		t.Fatalf("install dependency %q: %v", dep.Name(), err)
+	}
+	ctx.dependencies = append(ctx.dependencies, dep)
 }
 
 func (ctx *TestContext) AddDiagnosticHook(name string, fn func(context.Context) error) {

@@ -1,0 +1,27 @@
+# Ignore list for the govulncheck CI job.
+#
+# Every entry needs a `reason` so the rationale lives in git history.
+# The optional `expires` field forces periodic re-evaluation: once that
+# date passes, CI starts failing on the entry again until it's renewed
+# or removed. See tools/govulncheck/ for the wrapper that consumes this.
+
+ignore:
+  - id: GO-2026-4887
+    reason: |
+      Moby AuthZ plugin bypass (CVE-2026-34040). Reachable from Alloy only
+      because OTel components transitively import github.com/docker/docker.
+      The vulnerability is server-side (Docker daemon processing API
+      requests through an AuthZ plugin) — Alloy never runs as a Docker
+      daemon, only as a client. The fix exists in moby v2.0.0-beta.8 but
+      the legacy github.com/docker/docker module path will never get a
+      patched release; revisit once the OTel dep tree migrates to
+      github.com/moby/moby/v2.
+    expires: 2027-01-01
+
+  - id: GO-2026-4883
+    reason: |
+      Moby off-by-one in plugin privilege validation (CVE-2026-33997).
+      Vulnerable code path is `docker plugin install` on a Docker daemon
+      — Alloy never processes plugin installs. Same upstream-fix story
+      as GO-2026-4887 (only fixed in github.com/moby/moby/v2).
+    expires: 2027-01-01

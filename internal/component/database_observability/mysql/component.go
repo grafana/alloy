@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"path"
 	"regexp"
@@ -29,7 +28,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_mysql "github.com/grafana/alloy/internal/component/prometheus/exporter/mysql"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/static/integrations/mysqld_exporter"
@@ -106,10 +104,10 @@ type QueryDetailsArguments struct {
 }
 
 type SchemaDetailsArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
-	CacheSize       int           `alloy:"cache_size,attr,optional"`
-	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
+	CollectInterval time.Duration  `alloy:"collect_interval,attr,optional"`
+	CacheEnabled    *bool          `alloy:"cache_enabled,attr,optional"`
+	CacheSize       *int           `alloy:"cache_size,attr,optional"`
+	CacheTTL        *time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
 type SetupConsumersArguments struct {
@@ -175,9 +173,6 @@ func defaultArguments() Arguments {
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
 		},
 
 		SetupConsumersArguments: SetupConsumersArguments{
@@ -491,8 +486,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
-		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
-		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, slogLogger,
+		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, c.opts.SLogger,
 			mysqld_collector.EnableLockWaitTimeout(exporterCfg.EnableLockWaitTimeout),
 			mysqld_collector.SetLockWaitTimeout(exporterCfg.LockWaitTimeout),
 			mysqld_collector.SetSlowLogFilter(exporterCfg.LogSlowFilter),
@@ -587,13 +581,20 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 	}
 
 	if collectors[collector.SchemaDetailsCollector] {
+		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
+			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
+		}
+		if c.args.SchemaDetailsArguments.CacheSize != nil {
+			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
+		}
+		if c.args.SchemaDetailsArguments.CacheTTL != nil {
+			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
+		}
+
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:              c.dbConnection,
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
-			CacheEnabled:    c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:       c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:        c.args.SchemaDetailsArguments.CacheTTL,
 			EntryHandler:    entryHandler,
 			Logger:          c.opts.Logger,
 		})

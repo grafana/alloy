@@ -475,8 +475,8 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, state.EndAt)
 	ts := state.LastSeenAt.UnixNano()
-	if state.EndAt.Valid {
-		ts = state.EndAt.Time.UnixNano()
+	if state.LastRow.QueryStart.Valid {
+		ts = state.LastRow.QueryStart.Time.UnixNano()
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,

@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - ./.github/workflows/generate-component-labels.yml
-      - ./.github/workflows/scripts/generate-component-labels.sh
+      - ./.github/workflows/scripts/generate-component-labels
       # TODO - be more precise and only run if a new component readme file is created, this will also run on modifications
       - './docs/sources/reference/components/**/*.md'
       - '!./docs/sources/reference/components/**/_index.md'
@@ -24,6 +24,6 @@ jobs:
           persist-credentials: false
 
       - name: Generate component labels
-        run: ./.github/workflows/scripts/generate-component-labels.sh
+        run: ./.github/workflows/scripts/generate-component-labels
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

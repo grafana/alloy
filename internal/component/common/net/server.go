@@ -8,7 +8,7 @@ import (
 	dskit "github.com/grafana/dskit/server"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
-	"golang.org/x/net/http2/h2c"
+	"golang.org/x/net/http2/h2c" //nolint:staticcheck // TODO(#6347): migrate to http.Server.Protocols/HTTP2 once HTTP2Config field mapping (MaxHandlers, IdleTimeout, ReadIdleTimeout) is resolved.
 
 	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
@@ -79,7 +79,7 @@ func (ts *TargetServer) MountAndRun(mountRoute func(router *mux.Router)) error {
 	ts.server = srv
 
 	if http2Server := ts.http2.Server(); http2Server != nil {
-		ts.server.HTTPServer.Handler = h2c.NewHandler(ts.server.HTTPServer.Handler, http2Server)
+		ts.server.HTTPServer.Handler = h2c.NewHandler(ts.server.HTTPServer.Handler, http2Server) //nolint:staticcheck // TODO(#6347): migrate to http.Server.Protocols.SetUnencryptedHTTP2 once we map all HTTP2Config fields.
 	}
 	mountRoute(ts.server.HTTP)
 

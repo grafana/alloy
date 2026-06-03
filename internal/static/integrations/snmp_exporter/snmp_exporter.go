@@ -4,11 +4,11 @@ package snmp_exporter
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"maps"
 	"net/http"
 	"net/url"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/snmp_exporter/collector"
@@ -68,7 +68,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration creates a new SNMP integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -77,7 +77,7 @@ func init() {
 }
 
 // New creates a new snmp_exporter integration
-func New(log log.Logger, c *Config) (integrations.Integration, error) {
+func New(log *slog.Logger, c *Config) (integrations.Integration, error) {
 	snmpCfg, err := LoadSNMPConfig(c.SnmpConfigFile, &c.SnmpConfig, c.SnmpConfigMergeStrategy)
 	if err != nil {
 		return nil, err

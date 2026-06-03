@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/hashicorp/golang-lru/v2/expirable"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -25,6 +24,11 @@ const (
 	OP_TABLE_DETECTION     = "table_detection"
 	OP_CREATE_STATEMENT    = "create_statement"
 )
+
+// emitInterval is the minimum amount of time that must elapse between
+// successive OP_CREATE_STATEMENT emissions for the same table, regardless of
+// the configured collect_interval.
+const emitInterval = 30 * time.Minute
 
 const (
 	selectTablesTemplate = `
@@ -56,7 +60,7 @@ const (
 	FROM
 		information_schema.columns
 	WHERE
-		TABLE_SCHEMA = ?
+		TABLE_SCHEMA = ? AND TABLE_NAME IN %s
 	ORDER BY TABLE_NAME, ORDINAL_POSITION ASC`
 
 	selectIndexNames = `
@@ -72,7 +76,7 @@ const (
 		FROM
 			information_schema.statistics
 		WHERE
-			table_schema = ?
+			table_schema = ? AND table_name IN %s
 		ORDER BY table_name, index_name, seq_in_index`
 
 	// Ignore 'PRIMARY' constraints, as they're already covered by the query above
@@ -88,7 +92,7 @@ const (
 		WHERE
 			constraint_name <> 'PRIMARY'
 			AND referenced_table_schema is not null
-			AND table_schema = ?
+			AND table_schema = ? AND table_name IN %s
 		ORDER BY table_name, constraint_name, ordinal_position`
 )
 
@@ -97,10 +101,6 @@ type SchemaDetailsArguments struct {
 	CollectInterval time.Duration
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
-
-	CacheEnabled bool
-	CacheSize    int
-	CacheTTL     time.Duration
 
 	Logger log.Logger
 }
@@ -111,11 +111,13 @@ type SchemaDetails struct {
 	excludeSchemas  []string
 	entryHandler    loki.EntryHandler
 
-	// Cache of table definitions. Entries are removed after a configurable TTL.
-	// Key is a string of the form "schema.table@timestamp", where timestamp is
-	// the last update time of the table (this allows capturing schema changes
-	// at each scan, regardless of caching).
-	cache *expirable.LRU[string, *tableInfo]
+	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
+	// was last emitted for a "schema.table" key. Used to throttle logging
+	// to at most one per EmitInterval per table.
+	lastEmittedAt map[string]time.Time
+
+	// now allows overriding time.Now() in tests
+	now func() time.Time
 
 	logger  log.Logger
 	running *atomic.Bool
@@ -170,12 +172,10 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		collectInterval: args.CollectInterval,
 		excludeSchemas:  args.ExcludeSchemas,
 		entryHandler:    args.EntryHandler,
+		lastEmittedAt:   map[string]time.Time{},
+		now:             time.Now,
 		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
-	}
-
-	if args.CacheEnabled {
-		c.cache = expirable.NewLRU[string, *tableInfo](args.CacheSize, nil, args.CacheTTL)
 	}
 
 	return c, nil
@@ -235,7 +235,9 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	}
 	defer rs.Close()
 
+	now := c.now()
 	tables := []*tableInfo{}
+	seenTables := map[string]struct{}{}
 	for rs.Next() {
 		var schema, tableName, tableType string
 		var createTime, updateTime time.Time
@@ -252,6 +254,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			b64CreateStmt: "",
 			b64TableSpec:  "",
 		})
+		seenTables[fullyQualifiedName(schema, tableName)] = struct{}{}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
@@ -264,65 +267,74 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		return fmt.Errorf("failed to iterate over tables result set: %w", err)
 	}
 
+	// Cleanup: drop throttle entries for tables that no longer exist (e.g.
+	// tables dropped or renamed). Done before the empty-tables early return so
+	// the map is also pruned when every monitored table disappears.
+	for k := range c.lastEmittedAt {
+		if _, ok := seenTables[k]; !ok {
+			delete(c.lastEmittedAt, k)
+		}
+	}
+
 	if len(tables) == 0 {
 		level.Info(c.logger).Log("msg", "no tables detected from information_schema.tables")
 		return nil
 	}
 
-	// Group tables by schema, preserving the first-seen order so iteration is
-	// deterministic (the bulk tables query already orders by TABLE_SCHEMA).
-	tablesBySchema := map[string][]*tableInfo{}
-	seenSchemas := []string{}
+	// Compute the due set: tables that have never emitted OP_CREATE_STATEMENT
+	// or whose last emission is older than emitInterval.
+	// Group by schema to preserve the iteration order from the tables-list query.
+	dueBySchema := map[string][]*tableInfo{}
+	dueSchemas := []string{}
 	for _, t := range tables {
-		if _, seen := tablesBySchema[t.schema]; !seen {
-			seenSchemas = append(seenSchemas, t.schema)
+		k := fullyQualifiedName(t.schema, t.tableName)
+		if last, ok := c.lastEmittedAt[k]; ok && now.Sub(last) < emitInterval {
+			continue
 		}
-		tablesBySchema[t.schema] = append(tablesBySchema[t.schema], t)
+		if _, exists := dueBySchema[t.schema]; !exists {
+			dueSchemas = append(dueSchemas, t.schema)
+		}
+		dueBySchema[t.schema] = append(dueBySchema[t.schema], t)
 	}
 
-	for _, schema := range seenSchemas {
-		specs, err := c.fetchSchemaSpecs(ctx, schema)
+	if len(dueSchemas) == 0 {
+		return nil
+	}
+
+	for _, schema := range dueSchemas {
+		dueTables := dueBySchema[schema]
+		tableNames := make([]string, 0, len(dueTables))
+		for _, t := range dueTables {
+			tableNames = append(tableNames, t.tableName)
+		}
+
+		specs, err := c.fetchSchemaSpecs(ctx, schema, tableNames)
 		if err != nil {
 			level.Error(c.logger).Log("msg", "failed to fetch schema specs", "schema", schema, "err", err)
 			continue
 		}
 
-		for _, table := range tablesBySchema[schema] {
-			fullyQualifiedTable := fmt.Sprintf("`%s`.`%s`", table.schema, table.tableName)
-			cacheKey := fmt.Sprintf("%s@%d", fullyQualifiedTable, table.updateTime.Unix())
+		for _, table := range dueTables {
+			fullyQualifiedTable := fullyQualifiedName(table.schema, table.tableName)
 
-			cacheHit := false
-			if c.cache != nil {
-				if cached, ok := c.cache.Get(cacheKey); ok {
-					table = cached
-					cacheHit = true
-				}
+			if err := c.fetchCreateStatement(ctx, fullyQualifiedTable, table); err != nil {
+				level.Error(c.logger).Log("msg", "failed to get table create statement", "schema", table.schema, "table", table.tableName, "err", err)
+				continue
 			}
 
-			if !cacheHit {
-				if err := c.fetchCreateStatement(ctx, fullyQualifiedTable, table); err != nil {
-					level.Error(c.logger).Log("msg", "failed to get table create statement", "schema", table.schema, "table", table.tableName, "err", err)
-					continue
-				}
-
-				spec, ok := specs[table.tableName]
-				if !ok {
-					// This might happen if a table is dropped between the tables query and the metadata queries.
-					level.Warn(c.logger).Log("msg", "no bulk metadata rows for table", "schema", table.schema, "table", table.tableName)
-					continue
-				}
-
-				b64Spec, err := encodeTableSpec(spec)
-				if err != nil {
-					level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
-					continue
-				}
-				table.b64TableSpec = b64Spec
-
-				if c.cache != nil {
-					c.cache.Add(cacheKey, table)
-				}
+			spec, ok := specs[table.tableName]
+			if !ok {
+				// This might happen if a table is dropped between the tables query and the metadata queries.
+				level.Warn(c.logger).Log("msg", "no bulk metadata rows for table", "schema", table.schema, "table", table.tableName)
+				continue
 			}
+
+			b64Spec, err := encodeTableSpec(spec)
+			if err != nil {
+				level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
+				continue
+			}
+			table.b64TableSpec = b64Spec
 
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
@@ -332,6 +344,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 					table.schema, table.tableName, table.b64CreateStmt, table.b64TableSpec,
 				),
 			)
+			c.lastEmittedAt[fullyQualifiedName(table.schema, table.tableName)] = now
 		}
 	}
 
@@ -376,12 +389,16 @@ func encodeTableSpec(spec *tableSpec) (string, error) {
 	return base64.StdEncoding.EncodeToString(jsonSpec), nil
 }
 
-// fetchSchemaSpecs runs three separate queries for a given schema in bulk in order
-// to fetch columns, indexes and foreign keys for all tables in the schema. Then groups the rows by table name.
-// The returned map is keyed by table name; tables with no columns/indexes/FKs are
-// absent.
-func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string) (map[string]*tableSpec, error) {
+// fetchSchemaSpecs runs three queries scoped to (schema, tableNames) to fetch
+// columns, indexes and foreign keys for the given tables in bulk and groups
+// the rows by table name. The returned map is keyed by table name; tables
+// with no rows in any of the three result sets are absent.
+func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tableNames []string) (map[string]*tableSpec, error) {
 	specs := map[string]*tableSpec{}
+	if len(tableNames) == 0 {
+		return specs, nil
+	}
+
 	specOf := func(name string) *tableSpec {
 		s, ok := specs[name]
 		if !ok {
@@ -391,7 +408,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string) (ma
 		return s
 	}
 
-	colRS, err := c.dbConnection.QueryContext(ctx, selectColumnNames, schema)
+	colRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectColumnNames, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query schema columns", "schema", schema, "err", err)
 		return nil, err
@@ -431,7 +448,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string) (ma
 		return nil, err
 	}
 
-	idxRS, err := c.dbConnection.QueryContext(ctx, selectIndexNames, schema)
+	idxRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectIndexNames, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query schema indexes", "schema", schema, "err", err)
 		return nil, err
@@ -500,7 +517,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string) (ma
 		return nil, err
 	}
 
-	fkRS, err := c.dbConnection.QueryContext(ctx, selectForeignKeys, schema)
+	fkRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectForeignKeys, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
 		level.Error(c.logger).Log("msg", "failed to query schema foreign keys", "schema", schema, "err", err)
 		return nil, err
@@ -529,4 +546,8 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string) (ma
 	}
 
 	return specs, nil
+}
+
+func fullyQualifiedName(schema, table string) string {
+	return fmt.Sprintf("`%s`.`%s`", schema, table)
 }
