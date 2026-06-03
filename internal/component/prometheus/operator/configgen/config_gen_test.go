@@ -457,6 +457,42 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 			expectedTimeout:          5 * time.Second,
 			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
 		},
+		{
+			name: "scrape classic histograms",
+			scrapeOptions: operator.ScrapeOptions{
+				ScrapeClassicHistograms: true,
+			},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
+		},
+		{
+			name: "convert classic histograms to nhcb",
+			scrapeOptions: operator.ScrapeOptions{
+				ConvertClassicHistogramsToNHCB: true,
+			},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
+		},
+		{
+			name: "native histogram bucket limit",
+			scrapeOptions: operator.ScrapeOptions{
+				NativeHistogramBucketLimit: 100,
+			},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
+		},
+		{
+			name: "native histogram min bucket factor",
+			scrapeOptions: operator.ScrapeOptions{
+				NativeHistogramMinBucketFactor: 1.1,
+			},
+			expectedInterval:         1 * time.Minute,
+			expectedTimeout:          10 * time.Second,
+			expectedFallbackProtocol: promconfig.PrometheusText0_0_4,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -470,6 +506,10 @@ func TestGenerateDefaultScrapeConfig(t *testing.T) {
 			assert.Equal(t, tt.expectedFallbackProtocol, got.ScrapeFallbackProtocol)
 			assert.Equal(t, tt.scrapeOptions.DefaultSampleLimit, got.SampleLimit)
 			assert.Equal(t, &tt.scrapeOptions.ScrapeNativeHistograms, got.ScrapeNativeHistograms)
+			assert.Equal(t, &tt.scrapeOptions.ScrapeClassicHistograms, got.AlwaysScrapeClassicHistograms)
+			assert.Equal(t, &tt.scrapeOptions.ConvertClassicHistogramsToNHCB, got.ConvertClassicHistogramsToNHCB)
+			assert.Equal(t, tt.scrapeOptions.NativeHistogramBucketLimit, got.NativeHistogramBucketLimit)
+			assert.Equal(t, tt.scrapeOptions.NativeHistogramMinBucketFactor, got.NativeHistogramMinBucketFactor)
 		})
 	}
 }
