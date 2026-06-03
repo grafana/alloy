@@ -71,7 +71,7 @@ func Test(t *testing.T) {
 		})
 		for bo.Ongoing() {
 			if err := request(); err != nil {
-				l.Slog().Error("msg", "failed to send logs", "err", err)
+				l.Slog().Error("failed to send logs", "err", err)
 				bo.Wait()
 				continue
 			}

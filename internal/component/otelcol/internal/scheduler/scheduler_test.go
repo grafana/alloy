@@ -21,7 +21,7 @@ func TestScheduler(t *testing.T) {
 		var (
 			l  = util.TestAlloyLogger(t)
 			cs = scheduler.New(l.Slog())
-			h  = scheduler.NewHost(l)
+			h  = scheduler.NewHost()
 		)
 
 		// Run our scheduler in the background.
@@ -41,7 +41,7 @@ func TestScheduler(t *testing.T) {
 		var (
 			l  = util.TestAlloyLogger(t)
 			cs = scheduler.New(l.Slog())
-			h  = scheduler.NewHost(l)
+			h  = scheduler.NewHost()
 		)
 
 		// Run our scheduler in the background.
@@ -72,7 +72,7 @@ func TestScheduler(t *testing.T) {
 				func() { pauseCalls.Inc() },
 				func() { resumeCalls.Inc() },
 			)
-			h = scheduler.NewHost(l)
+			h = scheduler.NewHost()
 		)
 		ctx, cancel := context.WithCancel(t.Context())
 
@@ -125,7 +125,7 @@ func TestScheduler(t *testing.T) {
 		var (
 			l  = util.TestAlloyLogger(t)
 			cs = scheduler.New(l.Slog())
-			h  = scheduler.NewHost(l)
+			h  = scheduler.NewHost()
 		)
 
 		ctx, cancel := context.WithCancel(componenttest.TestContext(t))

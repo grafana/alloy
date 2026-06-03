@@ -333,14 +333,14 @@ func (conv *Converter) consumeGauge(app storage.Appender, memResource *memorySer
 
 		memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
 		if err := writeSeries(app, memSeries, dp, getNumberDataPointValue(dp)); err != nil {
-			conv.log.Error("failed to write metric sample", metricName, "err", err)
+			conv.log.Error("failed to write metric sample", "metric_name", metricName, "err", err)
 		}
 	}
 
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			conv.log.Warn("failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }
@@ -475,7 +475,7 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 
 		val := getNumberDataPointValue(dp)
 		if err := writeSeries(app, memSeries, dp, val); err != nil {
-			conv.log.Error("failed to write metric sample", metricName, "err", err)
+			conv.log.Error("failed to write metric sample", "metric_name", metricName, "err", err)
 		}
 
 		if convType == model.MetricTypeCounter {
@@ -490,7 +490,7 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			conv.log.Warn("failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }
