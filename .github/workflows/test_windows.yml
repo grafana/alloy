@@ -27,6 +27,8 @@ jobs:
     - name: Setup tools
       uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
+        version: v2026.5.18
+        sha256: 62aad5146848c6fb278eff90558940bd5685bb3ba7e34d64fd4e6ec9ed431f0d
         install_args: go
 
     - name: Test
