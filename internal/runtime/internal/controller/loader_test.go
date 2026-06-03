@@ -21,6 +21,8 @@ import (
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/parser"
 
+	_ "github.com/grafana/alloy/internal/component/sigil/receiver"        // Include sigil.receive
+	_ "github.com/grafana/alloy/internal/component/sigil/write"           // Include sigil.write
 	_ "github.com/grafana/alloy/internal/runtime/internal/testcomponents" // Include test components
 )
 
@@ -166,6 +168,36 @@ func TestLoader(t *testing.T) {
 		require.Equal(t, []string{"testcomponents.passthrough.pass", "testcomponents.passthrough.pass"}, one.GetDataFlowEdgesTo())
 		require.Equal(t, []string{"testcomponents.summation.sum"}, pass.GetDataFlowEdgesTo())
 		require.Empty(t, sum.GetDataFlowEdgesTo())
+	})
+
+	t.Run("Check data flow edges for sigil receiver signal", func(t *testing.T) {
+		// sigil.write exports a sigil.GenerationsReceiver. Data flows from
+		// sigil.receive towards sigil.write, so the edge must point against the
+		// reference direction, like other receiver-style signals.
+		file := `
+			sigil.write "default" {
+				endpoint {
+					url = "http://localhost:9999"
+				}
+			}
+
+			sigil.receive "default" {
+				http {
+					listen_port = 0
+				}
+				forward_to = [sigil.write.default.receiver]
+			}
+		`
+		l, err := controller.NewLoader(newLoaderOptionsWithStability(featuregate.StabilityExperimental))
+		require.NoError(t, err)
+		diags := applyFromContent(t, l, []byte(file), nil, nil)
+		require.NoError(t, diags.ErrorOrNil())
+		newGraph := l.Graph()
+
+		receive := newGraph.GetByID("sigil.receive.default").(controller.ComponentNode)
+		write := newGraph.GetByID("sigil.write.default").(controller.ComponentNode)
+		require.Equal(t, []string{"sigil.write.default"}, receive.GetDataFlowEdgesTo())
+		require.Empty(t, write.GetDataFlowEdgesTo())
 	})
 
 	t.Run("Copy existing components and delete stale ones", func(t *testing.T) {
