@@ -5,9 +5,9 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -17,7 +17,7 @@ import (
 type endpoint struct {
 	cfg     Config
 	metrics *metrics
-	logger  log.Logger
+	logger  *slog.Logger
 	entries chan loki.Entry
 
 	ctx    context.Context
@@ -27,8 +27,8 @@ type endpoint struct {
 	backoff *backoff.Backoff
 }
 
-func newEndpoint(metrics *metrics, cfg Config, logger log.Logger, markerHandler marker.Tracker) (*endpoint, error) {
-	logger = log.With(logger, "component", "endpoint", "host", cfg.URL.Host)
+func newEndpoint(metrics *metrics, cfg Config, logger *slog.Logger, markerHandler marker.Tracker) (*endpoint, error) {
+	logger = logger.With("component", "endpoint", "host", cfg.URL.Host)
 
 	shards, err := newShards(metrics, logger, markerHandler, cfg)
 	if err != nil {

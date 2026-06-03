@@ -10,21 +10,14 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/tsdb/record"
 	"github.com/prometheus/prometheus/tsdb/wlog"
 
 	"github.com/grafana/alloy/internal/component/common/loki/wal/internal"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
 	segmentCheckPeriod = 100 * time.Millisecond
-
-	// debug flag used for developing and testing the watcher code. Using this instead of level.Debug to avoid checking
-	// the log level inwards into the logger code, and just making the compiler omit this code.
-	debug = false
 )
 
 // Based in the implementation of prometheus WAL watcher
@@ -84,7 +77,7 @@ type Watcher struct {
 	done       chan struct{}
 	state      *internal.WatcherState
 	walDir     string
-	logger     log.Logger
+	logger     *slog.Logger
 	MaxSegment int
 
 	metrics      *WatcherMetrics
@@ -96,7 +89,7 @@ type Watcher struct {
 }
 
 // NewWatcher creates a new Watcher.
-func NewWatcher(walDir, id string, metrics *WatcherMetrics, writeTo WriteTo, logger log.Logger, config WatchConfig, marker Marker) *Watcher {
+func NewWatcher(walDir, id string, metrics *WatcherMetrics, writeTo WriteTo, logger *slog.Logger, config WatchConfig, marker Marker) *Watcher {
 	return &Watcher{
 		walDir:       walDir,
 		id:           id,
@@ -128,16 +121,16 @@ func (w *Watcher) mainLoop() {
 	for !w.state.IsStopping() {
 		if w.marker != nil {
 			w.savedSegment = w.marker.LastMarkedSegment()
-			level.Debug(w.logger).Log("msg", "last saved segment", "segment", w.savedSegment)
+			w.logger.Debug("last saved segment", "segment", w.savedSegment)
 		}
 
 		err := w.run()
 		if err != nil {
-			level.Error(w.logger).Log("msg", "error tailing WAL", "err", err)
+			w.logger.Error("error tailing WAL", "err", err)
 		}
 
 		if w.state.IsDraining() && errors.Is(err, os.ErrNotExist) {
-			level.Info(w.logger).Log("msg", "Reached non existing segment while draining, assuming end of WAL")
+			w.logger.Info("reached non existing segment while draining, assuming end of WAL")
 			// since we've reached the end of the WAL, and the Watcher is draining, promptly transition to stopping state
 			// so the watcher can stoppingSignal early
 			w.state.Transition(internal.StateStopping)
@@ -168,10 +161,10 @@ func (w *Watcher) run() error {
 		// a replay event
 		w.metrics.replaySegment.WithLabelValues(w.id).Set(float64(currentSegment))
 	} else {
-		level.Debug(w.logger).Log("msg", fmt.Sprintf("failed to find segment for marked index %d", w.savedSegment), "err", err)
+		w.logger.Debug("failed to find segment", "segment", w.savedSegment, "err", err)
 	}
 
-	level.Debug(w.logger).Log("msg", "Tailing WAL", "currentSegment", currentSegment, "lastSegment", lastSegment)
+	w.logger.Debug("tailing WAL", "currentSegment", currentSegment, "lastSegment", lastSegment)
 	for !w.state.IsStopping() {
 		w.metrics.currentSegment.WithLabelValues(w.id).Set(float64(currentSegment))
 
@@ -198,7 +191,7 @@ func (w *Watcher) run() error {
 // If tail is false, we know the segment we are "watching" over is closed (no further write will occur to it). Then, the
 // segment is read fully, any errors are logged as Warnings, and no error is returned.
 func (w *Watcher) watch(segmentNum int, tail bool) error {
-	level.Debug(w.logger).Log("msg", "Watching WAL segment", "currentSegment", segmentNum, "tail", tail)
+	w.logger.Debug("watching WAL segment", "currentSegment", segmentNum, "tail", tail)
 
 	segment, err := wlog.OpenReadSegment(wlog.SegmentName(w.walDir, segmentNum))
 	if err != nil {
@@ -206,7 +199,7 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 	}
 	defer segment.Close()
 
-	reader := wlog.NewLiveReader(slog.New(logging.NewSlogGoKitHandler(w.logger)), nil, segment)
+	reader := wlog.NewLiveReader(w.logger, nil, segment)
 
 	readTimer := newBackoffTimer(w.minReadFreq, w.maxReadFreq)
 
@@ -245,18 +238,15 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 			}
 
 			if w.state.IsDraining() {
-				level.Debug(w.logger).Log("msg", "Draining segment completely", "segment", segmentNum, "lastSegment", last)
+				w.logger.Debug("draining segment completely", "segment", segmentNum, "lastSegment", last)
 			}
 
-			// We now that there's either a new segment (last > segmentNum), or we are draining the WAL. Either case, read
+			// We know that there's either a new segment (last > segmentNum), or we are draining the WAL. Either case, read
 			// the remaining data from the segmentNum and return from `watch` to read the next one.
 			_, err = w.readSegment(reader, segmentNum)
-			if debug {
-				level.Warn(w.logger).Log("msg", "Error reading segment inside segmentTicker", "segment", segmentNum, "read", reader.Offset(), "err", err)
-			}
 
 			// io.EOF error are non-fatal since we are consuming the segment till the end
-			if errors.Unwrap(err) != io.EOF {
+			if !errors.Is(err, io.EOF) {
 				return err
 			}
 
@@ -267,34 +257,27 @@ func (w *Watcher) watch(segmentNum int, tail bool) error {
 		// https://github.com/golang/go/issues/23196#issuecomment-353169837
 		case <-readTimer.C:
 			w.metrics.segmentRead.WithLabelValues(w.id, "timer").Inc()
-			if debug {
-				level.Debug(w.logger).Log("msg", "Segment read triggered by backup timer", "segment", segmentNum)
-			}
 		case <-w.readNotify:
 			w.metrics.segmentRead.WithLabelValues(w.id, "notification").Inc()
 		}
 
 		// read from open segment routine
 		ok, err := w.readSegment(reader, segmentNum)
-		if debug {
-			level.Warn(w.logger).Log("msg", "Error reading segment inside read ticker or notification", "segment", segmentNum, "read", reader.Offset(), "err", err)
-		}
-
 		// Ignore all errors reading to end of segment whilst replaying the WAL. This is because when replaying not the
 		// last segment, we assume that segment is not written anymore (closed), and the call to readSegment will read
 		// to the end of it. If error, log a warning accordingly. After, error or no error, nil is returned so that the
 		// caller can continue to the following segment.
 		if !tail {
-			if err != nil && errors.Unwrap(err) != io.EOF {
-				level.Warn(w.logger).Log("msg", "Ignoring error reading to end of segment, may have dropped data", "segment", segmentNum, "err", err)
+			if err != nil && !errors.Is(err, io.EOF) {
+				w.logger.Warn("ignoring error reading to end of segment, may have dropped data", "segment", segmentNum, "err", err)
 			} else if reader.Offset() != size {
-				level.Warn(w.logger).Log("msg", "Expected to have read whole segment, may have dropped data", "segment", segmentNum, "read", reader.Offset(), "size", size)
+				w.logger.Warn("expected to have read whole segment, may have dropped data", "segment", segmentNum, "read", reader.Offset(), "size", size)
 			}
 			return nil
 		}
 
 		// io.EOF error are non-fatal since we are tailing the wal
-		if errors.Unwrap(err) != io.EOF {
+		if !errors.Is(err, io.EOF) {
 			return err
 		}
 
@@ -356,12 +339,12 @@ func (w *Watcher) decodeAndDispatch(b []byte, segmentNum int) (bool, error) {
 // attempt to read until the end of the last written segment. The calling routine of Drain will block until all data is
 // read, or a timeout occurs.
 func (w *Watcher) Drain() {
-	level.Info(w.logger).Log("msg", "Draining Watcher")
+	w.logger.Info("draining Watcher")
 	w.state.Transition(internal.StateDraining)
 	// wait for drain timeout, or stopping state, in case the Watcher does the transition itself promptly
 	select {
 	case <-time.NewTimer(w.drainTimeout).C:
-		level.Warn(w.logger).Log("msg", "Watcher drain timeout occurred, transitioning to Stopping")
+		w.logger.Warn("watcher drain timeout occurred, transitioning to Stopping")
 	case <-w.state.WaitForStopping():
 	}
 }
