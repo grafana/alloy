@@ -39,10 +39,10 @@ jobs:
     - name: Setup tools
       uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        install_args: go govulncheck
+        install_args: go govulncheck task
 
     - name: Run govulncheck
-      run: make govulncheck
+      run: task lint:govulncheck
 
   shellcheck:
     name: Shellcheck
@@ -57,10 +57,10 @@ jobs:
     - name: Setup tools
       uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        install_args: shellcheck
+        install_args: shellcheck task go
 
     - name: Run shellcheck
-      run: make lint-shell
+      run: task lint:shellcheck
 
   lint_ui:
     name: Lint UI
