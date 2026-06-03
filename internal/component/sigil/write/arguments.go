@@ -1,6 +1,7 @@
 package write
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -20,7 +21,7 @@ func (a *Arguments) SetToDefault() {
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if len(a.Endpoints) == 0 {
-		return fmt.Errorf("at least one endpoint block must be specified")
+		return errors.New("at least one endpoint block must be specified")
 	}
 	return nil
 }
@@ -58,7 +59,7 @@ func (e *EndpointOptions) SetToDefault() {
 // Validate implements syntax.Validator.
 func (e *EndpointOptions) Validate() error {
 	if e.URL == "" {
-		return fmt.Errorf("url must not be empty")
+		return errors.New("url must not be empty")
 	}
 	if _, err := wire.NormalizeGenerationExportURL(e.URL, e.Insecure); err != nil {
 		return fmt.Errorf("invalid url: %w", err)
@@ -67,7 +68,7 @@ func (e *EndpointOptions) Validate() error {
 		return fmt.Errorf("min_backoff_period (%s) must not exceed max_backoff_period (%s)", e.MinBackoff, e.MaxBackoff)
 	}
 	if e.MaxBackoffRetries < 0 {
-		return fmt.Errorf("max_backoff_retries must be non-negative")
+		return errors.New("max_backoff_retries must be non-negative")
 	}
 	if e.HTTPClientConfig != nil {
 		return e.HTTPClientConfig.Validate()

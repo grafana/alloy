@@ -1,6 +1,7 @@
 package receiver
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/alecthomas/units"
@@ -25,7 +26,7 @@ func (a *Arguments) SetToDefault() {
 // Validate implements syntax.Validator.
 func (a *Arguments) Validate() error {
 	if len(a.ForwardTo) == 0 {
-		return fmt.Errorf("forward_to must contain at least one receiver")
+		return errors.New("forward_to must contain at least one receiver")
 	}
 	for i, recv := range a.ForwardTo {
 		if recv == nil {
@@ -33,7 +34,7 @@ func (a *Arguments) Validate() error {
 		}
 	}
 	if a.MaxRequestBodySize <= 0 {
-		return fmt.Errorf("max_request_body_size must be greater than zero")
+		return errors.New("max_request_body_size must be greater than zero")
 	}
 	return nil
 }
