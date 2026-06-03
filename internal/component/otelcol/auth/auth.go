@@ -189,7 +189,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Auth
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.NewAuthExtensionScheduler(opts.Logger),
+		sched:     scheduler.NewAuthExtensionScheduler(opts.SLogger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
@@ -215,7 +215,6 @@ func (a *Auth) Update(args component.Arguments) error {
 	rargs := args.(Arguments)
 
 	host := scheduler.NewHost(
-		a.opts.Logger,
 		scheduler.WithHostExtensions(rargs.Extensions()),
 		scheduler.WithHostExporters(rargs.Exporters()),
 	)

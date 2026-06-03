@@ -13,9 +13,9 @@ import (
 func TestAuthExtensionScheduler(t *testing.T) {
 	t.Run("Scheduled components get started", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
+			l  = util.TestAlloyLogger(t)
 			h  = scheduler.NewHost(l)
-			cs = scheduler.NewAuthExtensionScheduler(l)
+			cs = scheduler.NewAuthExtensionScheduler(l.Slog())
 		)
 		defer cs.Stop()
 
@@ -26,9 +26,9 @@ func TestAuthExtensionScheduler(t *testing.T) {
 
 	t.Run("Unscheduled components get stopped", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
+			l  = util.TestAlloyLogger(t)
 			h  = scheduler.NewHost(l)
-			cs = scheduler.NewAuthExtensionScheduler(l)
+			cs = scheduler.NewAuthExtensionScheduler(l.Slog())
 		)
 		defer cs.Stop()
 
@@ -46,9 +46,9 @@ func TestAuthExtensionScheduler(t *testing.T) {
 
 	t.Run("Running components get stopped on shutdown", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
+			l  = util.TestAlloyLogger(t)
 			h  = scheduler.NewHost(l)
-			cs = scheduler.NewAuthExtensionScheduler(l)
+			cs = scheduler.NewAuthExtensionScheduler(l.Slog())
 		)
 
 		component, started, stopped := newTriggerComponent()

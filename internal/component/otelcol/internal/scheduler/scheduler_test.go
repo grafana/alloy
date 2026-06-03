@@ -19,8 +19,8 @@ import (
 func TestScheduler(t *testing.T) {
 	t.Run("Scheduled components get started", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
-			cs = scheduler.New(l)
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.New(l.Slog())
 			h  = scheduler.NewHost(l)
 		)
 
@@ -39,8 +39,8 @@ func TestScheduler(t *testing.T) {
 
 	t.Run("Unscheduled components get stopped", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
-			cs = scheduler.New(l)
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.New(l.Slog())
 			h  = scheduler.NewHost(l)
 		)
 
@@ -66,9 +66,9 @@ func TestScheduler(t *testing.T) {
 		var (
 			pauseCalls  = &atomic.Int32{}
 			resumeCalls = &atomic.Int32{}
-			l           = util.TestLogger(t)
+			l           = util.TestAlloyLogger(t)
 			cs          = scheduler.NewWithPauseCallbacks(
-				l,
+				l.Slog(),
 				func() { pauseCalls.Inc() },
 				func() { resumeCalls.Inc() },
 			)
@@ -123,8 +123,8 @@ func TestScheduler(t *testing.T) {
 
 	t.Run("Running components get stopped on shutdown", func(t *testing.T) {
 		var (
-			l  = util.TestLogger(t)
-			cs = scheduler.New(l)
+			l  = util.TestAlloyLogger(t)
+			cs = scheduler.New(l.Slog())
 			h  = scheduler.NewHost(l)
 		)
 

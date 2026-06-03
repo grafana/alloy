@@ -104,7 +104,7 @@ func New(opts component.Options, f otelreceiver.Factory, args Arguments) (*Recei
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.New(opts.SLogger),
 		collector: collector,
 
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
@@ -127,7 +127,6 @@ func (r *Receiver) Run(ctx context.Context) error {
 func (r *Receiver) Update(args component.Arguments) error {
 	r.args = args.(Arguments)
 	host := scheduler.NewHost(
-		r.opts.Logger,
 		scheduler.WithHostExtensions(r.args.Extensions()),
 		scheduler.WithHostExporters(r.args.Exporters()),
 	)

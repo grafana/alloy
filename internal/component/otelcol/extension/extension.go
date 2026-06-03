@@ -103,7 +103,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.New(opts.Logger),
+		sched:     scheduler.New(opts.SLogger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
@@ -126,7 +126,6 @@ func (e *Extension) Update(args component.Arguments) error {
 	rargs := args.(Arguments)
 
 	host := scheduler.NewHost(
-		e.opts.Logger,
 		scheduler.WithHostExtensions(rargs.Extensions()),
 		scheduler.WithHostExporters(rargs.Exporters()),
 	)

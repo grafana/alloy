@@ -5,15 +5,14 @@ package scheduler
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.uber.org/multierr"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Scheduler implements manages a set of OpenTelemetry Collector components.
@@ -29,7 +28,7 @@ import (
 // OpenTelemetry Collector component; this means that otlpreceiver and
 // jaegerreceiver should not share the same Scheduler.
 type Scheduler struct {
-	log log.Logger
+	log *slog.Logger
 
 	healthMut sync.RWMutex
 	health    component.Health
@@ -47,7 +46,7 @@ type Scheduler struct {
 
 // New creates a new unstarted Scheduler. Call Run to start it, and call
 // Schedule to schedule components to run.
-func New(l log.Logger) *Scheduler {
+func New(l *slog.Logger) *Scheduler {
 	return &Scheduler{
 		log:      l,
 		onPause:  func() {},
@@ -61,7 +60,7 @@ func New(l log.Logger) *Scheduler {
 // * onResume() is called after the scheduler starts the components.
 // The callbacks are used by the Schedule() and Run() functions.
 // The scheduler is assumed to start paused; Schedule() won't call onPause() if Run() was never ran.
-func NewWithPauseCallbacks(l log.Logger, onPause func(), onResume func()) *Scheduler {
+func NewWithPauseCallbacks(l *slog.Logger, onPause func(), onResume func()) *Scheduler {
 	return &Scheduler{
 		log:      l,
 		onPause:  onPause,
@@ -112,11 +111,11 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	updateConsumers()
 
 	// 4. Start the new components
-	level.Debug(cs.log).Log("msg", "scheduling otelcol components", "count", len(cc))
+	cs.log.Error("scheduling otelcol components", "count", len(cc))
 	var err error
 	cs.schedComponents, err = startComponents(ctx, cs.log, cs, h, cc...)
 	if err != nil {
-		level.Error(cs.log).Log("msg", "failed to start some scheduled components", "err", err)
+		cs.log.Error("failed to start some scheduled components", "err", err)
 	}
 	cs.host = h
 	//TODO: What if the trace component failed but the metrics one didn't? Should we resume all consumers?
@@ -171,10 +170,10 @@ func (cs *Scheduler) setHealth(h component.Health) {
 }
 
 // stopComponents stops all provided components from cc.
-func stopComponents(ctx context.Context, logger log.Logger, cc ...otelcomponent.Component) {
+func stopComponents(ctx context.Context, logger *slog.Logger, cc ...otelcomponent.Component) {
 	for _, c := range cc {
 		if err := c.Shutdown(ctx); err != nil {
-			level.Error(logger).Log("msg", "failed to stop scheduled component; future updates may fail", "err", err)
+			logger.Error("failed to stop scheduled component; future updates may fail", "err", err)
 		}
 	}
 }
@@ -185,10 +184,10 @@ type healthScheduler interface {
 
 // startComponent schedules the provided components from cc. It then returns
 // the list of components which started successfully.
-func startComponents(ctx context.Context, logger log.Logger, s healthScheduler, h otelcomponent.Host, cc ...otelcomponent.Component) (started []otelcomponent.Component, errs error) {
+func startComponents(ctx context.Context, logger *slog.Logger, s healthScheduler, h otelcomponent.Host, cc ...otelcomponent.Component) (started []otelcomponent.Component, errs error) {
 	for _, c := range cc {
 		if err := c.Start(ctx, h); err != nil {
-			level.Error(logger).Log("msg", "failed to start scheduled component", "err", err)
+			logger.Error("failed to start scheduled component", "err", err)
 			errs = multierr.Append(errs, err)
 		} else {
 			started = append(started, c)

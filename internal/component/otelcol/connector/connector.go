@@ -127,7 +127,7 @@ func New(opts component.Options, f otelconnector.Factory, args Arguments) (*Conn
 		consumer: consumer,
 
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
-		sched:              scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
+		sched:              scheduler.NewWithPauseCallbacks(opts.SLogger, consumer.Pause, consumer.Resume),
 		collector:          collector,
 	}
 	if err := p.Update(args); err != nil {
@@ -149,7 +149,6 @@ func (p *Connector) Update(args component.Arguments) error {
 	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
-		p.opts.Logger,
 		scheduler.WithHostExtensions(p.args.Extensions()),
 		scheduler.WithHostExporters(p.args.Exporters()),
 	)

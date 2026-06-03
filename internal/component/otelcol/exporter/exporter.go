@@ -135,7 +135,7 @@ func New(opts component.Options, f otelexporter.Factory, args Arguments, support
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
+		sched:     scheduler.NewWithPauseCallbacks(opts.SLogger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
 		supportedSignals: supportedSignals,
@@ -159,7 +159,6 @@ func (e *Exporter) Update(args component.Arguments) error {
 	eargs := args.(Arguments)
 
 	host := scheduler.NewHost(
-		e.opts.Logger,
 		scheduler.WithHostExtensions(eargs.Extensions()),
 		scheduler.WithHostExporters(eargs.Exporters()),
 	)
