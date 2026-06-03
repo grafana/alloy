@@ -57,12 +57,8 @@ func MarshalGenerationsRequest(req *GenerationsRequest) ([]byte, error) {
 	return wire.MarshalExportGenerationsJSON(req.Request)
 }
 
-// ParseGenerationsResponse decodes a JSON response body. An empty body
-// produces a nil ExportGenerationsResponse pointer.
+// ParseGenerationsResponse decodes a JSON response body.
 func ParseGenerationsResponse(body []byte) (*sigilv1.ExportGenerationsResponse, error) {
-	if len(body) == 0 {
-		return nil, nil
-	}
 	var resp sigilv1.ExportGenerationsResponse
 	if err := (protojson.UnmarshalOptions{DiscardUnknown: true}).Unmarshal(body, &resp); err != nil {
 		return nil, fmt.Errorf("decoding json response: %w", err)

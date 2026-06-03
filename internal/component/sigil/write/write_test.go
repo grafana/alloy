@@ -141,8 +141,11 @@ func TestEndpointClient(t *testing.T) {
 					w.Header().Set("Content-Type", tc.serverContentType)
 				}
 				w.WriteHeader(tc.serverStatus)
-				if tc.serverBody != "" {
+				switch {
+				case tc.serverBody != "":
 					_, _ = w.Write([]byte(tc.serverBody))
+				case tc.serverStatus/100 == 2:
+					_, _ = w.Write([]byte(`{}`))
 				}
 			}))
 			defer srv.Close()
@@ -232,6 +235,7 @@ func TestEndpointClient_AppendsGenerationExportPath(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 
@@ -286,6 +290,7 @@ func TestEndpointClient_RetriesOn5xx(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 
@@ -321,6 +326,7 @@ func TestEndpointClient_RetriesOn429And408(t *testing.T) {
 					return
 				}
 				w.WriteHeader(http.StatusAccepted)
+				_, _ = w.Write([]byte(`{}`))
 			}))
 			defer srv.Close()
 
@@ -354,6 +360,7 @@ func TestEndpointClient_RetriesRemoteTimeout(t *testing.T) {
 			return
 		}
 		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 	defer close(released)
@@ -410,6 +417,9 @@ func TestFanOutClient(t *testing.T) {
 				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 					count.Add(1)
 					w.WriteHeader(status)
+					if status/100 == 2 {
+						_, _ = w.Write([]byte(`{}`))
+					}
 				}))
 				t.Cleanup(srv.Close)
 
@@ -444,6 +454,7 @@ func TestFanOutClient_ClonesPerEndpoint(t *testing.T) {
 	// of sibling branches.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{}`))
 	}))
 	defer srv.Close()
 

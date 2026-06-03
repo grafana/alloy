@@ -157,18 +157,53 @@ func TestMarshalGenerationsResponse_Nil(t *testing.T) {
 	require.Empty(t, parsed.Results)
 }
 
-func TestParseGenerationsResponse_Empty(t *testing.T) {
-	parsed, err := ParseGenerationsResponse(nil)
-	require.NoError(t, err)
-	require.Nil(t, parsed)
-}
-
-func TestParseGenerationsResponse_UnknownFieldsTolerated(t *testing.T) {
-	body := []byte(`{"results":[{"generation_id":"g1","accepted":true,"extra":"value"}]}`)
-	parsed, err := ParseGenerationsResponse(body)
-	require.NoError(t, err)
-	require.Len(t, parsed.Results, 1)
-	require.Equal(t, "g1", parsed.Results[0].GenerationId)
+func TestParseGenerationsResponse(t *testing.T) {
+	tests := []struct {
+		name    string
+		body    []byte
+		wantErr bool
+		assert  func(t *testing.T, resp *sigilv1.ExportGenerationsResponse)
+	}{
+		{
+			name: "results body",
+			body: []byte(`{"results":[{"generation_id":"g1","accepted":true}]}`),
+			assert: func(t *testing.T, resp *sigilv1.ExportGenerationsResponse) {
+				require.Len(t, resp.Results, 1)
+				require.Equal(t, "g1", resp.Results[0].GenerationId)
+				require.True(t, resp.Results[0].Accepted)
+			},
+		},
+		{
+			name: "unknown fields are tolerated",
+			body: []byte(`{"results":[{"generation_id":"g1","accepted":true,"extra":"value"}]}`),
+			assert: func(t *testing.T, resp *sigilv1.ExportGenerationsResponse) {
+				require.Len(t, resp.Results, 1)
+				require.Equal(t, "g1", resp.Results[0].GenerationId)
+			},
+		},
+		{
+			name:    "empty body is an error",
+			body:    nil,
+			wantErr: true,
+		},
+		{
+			name:    "invalid json is an error",
+			body:    []byte(`{not-json`),
+			wantErr: true,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			resp, err := ParseGenerationsResponse(tc.body)
+			if tc.wantErr {
+				require.Error(t, err)
+				require.Nil(t, resp)
+				return
+			}
+			require.NoError(t, err)
+			tc.assert(t, resp)
+		})
+	}
 }
 
 func TestClone(t *testing.T) {
