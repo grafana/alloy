@@ -8,9 +8,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-// GenerationsReceiver is the interface connecting sigil.receive to
+// GenerationsForwarder is the interface connecting sigil.receive to
 // sigil.write and any intermediate processors.
-type GenerationsReceiver interface {
+type GenerationsForwarder interface {
 	ExportGenerations(ctx context.Context, req *GenerationsRequest) (*GenerationsResponse, error)
 }
 

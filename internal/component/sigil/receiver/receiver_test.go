@@ -147,7 +147,7 @@ func TestHandler(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mocks := make([]*mockReceiver, tc.receivers)
-			receivers := make([]sigil.GenerationsReceiver, tc.receivers)
+			receivers := make([]sigil.GenerationsForwarder, tc.receivers)
 			for i := range tc.receivers {
 				mocks[i] = &mockReceiver{}
 				receivers[i] = mocks[i]
@@ -209,7 +209,7 @@ func TestArguments_Validate(t *testing.T) {
 	validArgs := func() Arguments {
 		args := Arguments{}
 		args.SetToDefault()
-		args.ForwardTo = []sigil.GenerationsReceiver{&mockReceiver{}}
+		args.ForwardTo = []sigil.GenerationsForwarder{&mockReceiver{}}
 		return args
 	}
 
@@ -235,7 +235,7 @@ func TestArguments_Validate(t *testing.T) {
 			name: "nil receiver",
 			args: func() Arguments {
 				args := validArgs()
-				args.ForwardTo = []sigil.GenerationsReceiver{nil}
+				args.ForwardTo = []sigil.GenerationsForwarder{nil}
 				return args
 			}(),
 			wantErr: true,
@@ -270,7 +270,7 @@ func TestComponent_UpdateRestartsOnServerConfigChange(t *testing.T) {
 	args.Server.HTTP.ListenPort = 0
 	args.Server.GRPC.ListenAddress = "127.0.0.1"
 	args.Server.GRPC.ListenPort = 0
-	args.ForwardTo = []sigil.GenerationsReceiver{&mockReceiver{}}
+	args.ForwardTo = []sigil.GenerationsForwarder{&mockReceiver{}}
 
 	comp, err := New(component.Options{
 		SLogger:    logging.NewSlogNop(),
@@ -299,7 +299,7 @@ func TestHandler_FanoutClonesRequest(t *testing.T) {
 	// Each downstream receiver must observe an independently mutable request.
 	var (
 		mocks     = []*mockReceiver{{}, {}}
-		receivers = []sigil.GenerationsReceiver{mocks[0], mocks[1]}
+		receivers = []sigil.GenerationsForwarder{mocks[0], mocks[1]}
 	)
 	h := newHandler(logging.NewSlogNop(), receivers, 50*1024*1024)
 
@@ -329,7 +329,7 @@ func TestHandler_EncodesJSONResponse(t *testing.T) {
 			},
 		},
 	}
-	h := newHandler(logging.NewSlogNop(), []sigil.GenerationsReceiver{mock}, 50*1024*1024)
+	h := newHandler(logging.NewSlogNop(), []sigil.GenerationsForwarder{mock}, 50*1024*1024)
 
 	req := httptest.NewRequest(http.MethodPost, wire.GenerationExportHTTPPath, bytes.NewReader([]byte(`{"generations":[]}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -363,7 +363,7 @@ func TestHandler_DefaultsInvalidResponseStatusCode(t *testing.T) {
 				},
 			}
 
-			h := newHandler(logging.NewSlogNop(), []sigil.GenerationsReceiver{mock}, 50*1024*1024)
+			h := newHandler(logging.NewSlogNop(), []sigil.GenerationsForwarder{mock}, 50*1024*1024)
 
 			req := httptest.NewRequest(http.MethodPost, wire.GenerationExportHTTPPath, bytes.NewReader([]byte(`{}`)))
 			req.Header.Set("Content-Type", "application/json")
@@ -428,7 +428,7 @@ func TestHandler_Fanout(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			receivers := make([]sigil.GenerationsReceiver, len(tc.receivers))
+			receivers := make([]sigil.GenerationsForwarder, len(tc.receivers))
 			for i, receiver := range tc.receivers {
 				receivers[i] = receiver
 			}

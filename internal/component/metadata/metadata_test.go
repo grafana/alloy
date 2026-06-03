@@ -77,7 +77,7 @@ func Test_inferMetadata(t *testing.T) {
 		{
 			name: "sigil.receive",
 			expected: Metadata{
-				accepts: []Type{TypeSigilGenerationsReceiver},
+				accepts: []Type{TypeSigilGenerationsForwarder},
 				exports: []Type{},
 			},
 		},
@@ -85,7 +85,7 @@ func Test_inferMetadata(t *testing.T) {
 			name: "sigil.write",
 			expected: Metadata{
 				accepts: []Type{},
-				exports: []Type{TypeSigilGenerationsReceiver},
+				exports: []Type{TypeSigilGenerationsForwarder},
 			},
 		},
 	}

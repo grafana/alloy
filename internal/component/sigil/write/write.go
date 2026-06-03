@@ -25,7 +25,7 @@ func init() {
 
 // Exports are the set of fields exposed by the sigil.write component.
 type Exports struct {
-	Receiver sigil.GenerationsReceiver `alloy:"receiver,attr"`
+	Receiver sigil.GenerationsForwarder `alloy:"receiver,attr"`
 }
 
 // Component is the sigil.write component.

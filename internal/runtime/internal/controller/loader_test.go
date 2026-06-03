@@ -171,7 +171,7 @@ func TestLoader(t *testing.T) {
 	})
 
 	t.Run("Check data flow edges for sigil receiver signal", func(t *testing.T) {
-		// sigil.write exports a sigil.GenerationsReceiver. Data flows from
+		// sigil.write exports a sigil.GenerationsForwarder. Data flows from
 		// sigil.receive towards sigil.write, so the edge must point against the
 		// reference direction, like other receiver-style signals.
 		file := `

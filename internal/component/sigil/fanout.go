@@ -16,7 +16,7 @@ import (
 func FanOut(
 	ctx context.Context,
 	req *GenerationsRequest,
-	receivers []GenerationsReceiver,
+	receivers []GenerationsForwarder,
 ) (*GenerationsResponse, error) {
 
 	for i, recv := range receivers {

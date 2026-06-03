@@ -9,9 +9,9 @@ import (
 )
 
 type Arguments struct {
-	Server             *fnet.ServerConfig          `alloy:",squash"`
-	ForwardTo          []sigil.GenerationsReceiver `alloy:"forward_to,attr"`
-	MaxRequestBodySize units.Base2Bytes            `alloy:"max_request_body_size,attr,optional"`
+	Server             *fnet.ServerConfig           `alloy:",squash"`
+	ForwardTo          []sigil.GenerationsForwarder `alloy:"forward_to,attr"`
+	MaxRequestBodySize units.Base2Bytes             `alloy:"max_request_body_size,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.

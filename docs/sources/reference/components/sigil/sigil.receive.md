@@ -12,7 +12,7 @@ title: sigil.receive
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`sigil.receive` receives [Grafana AI Observability](https://grafana.com/docs/grafana-cloud/machine-learning/ai-observability/) generation export requests over HTTP and forwards them to `sigil.write` components or any other component that exposes a Sigil `GenerationsReceiver`.
+`sigil.receive` receives [Grafana AI Observability](https://grafana.com/docs/grafana-cloud/machine-learning/ai-observability/) generation export requests over HTTP and forwards them to `sigil.write` components or any other component that exposes a Sigil `GenerationsForwarder`.
 Clients such as the [Grafana AI Observability SDK](https://github.com/grafana/sigil-sdk) send these requests to record AI generations.
 
 The component starts an HTTP server that accepts `POST /api/v1/generations:export` requests with a JSON (`application/json`) body. It decodes the body into a typed Sigil `ExportGenerationsRequest` before forwarding so downstream components can inspect and modify it. Each downstream receiver in `forward_to` receives an independent clone of the request, which lets downstream components mutate the request safely without affecting sibling branches.
@@ -33,7 +33,7 @@ You can use the following arguments with `sigil.receive`:
 
 | Name            | Type                         | Description                                          | Default  | Required |
 | --------------- | ---------------------------- | ---------------------------------------------------- | -------- | -------- |
-| `forward_to`    | `list(GenerationsReceiver)`  | List of receivers to send generations to.            |          | yes      |
+| `forward_to`    | `list(GenerationsForwarder)`  | List of receivers to send generations to.            |          | yes      |
 | `max_request_body_size` | `string`               | Maximum allowed request body size (for example, `"20MiB"`).  | `"20MiB"`| no       |
 
 ## Blocks
@@ -115,7 +115,7 @@ sigil.write "default" {
 
 `sigil.receive` can accept arguments from the following components:
 
-- Components that export [Sigil `GenerationsReceiver`](../../../compatibility/#sigil-generationsreceiver-exporters)
+- Components that export [Sigil `GenerationsForwarder`](../../../compatibility/#sigil-generationsforwarder-exporters)
 
 
 {{< admonition type="note" >}}

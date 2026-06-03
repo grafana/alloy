@@ -16,11 +16,11 @@ type handler struct {
 	logger *slog.Logger
 
 	mu          sync.RWMutex
-	forwardTo   []sigil.GenerationsReceiver
+	forwardTo   []sigil.GenerationsForwarder
 	maxBodySize int64
 }
 
-func newHandler(logger *slog.Logger, forwardTo []sigil.GenerationsReceiver, maxBodySize int64) *handler {
+func newHandler(logger *slog.Logger, forwardTo []sigil.GenerationsForwarder, maxBodySize int64) *handler {
 	return &handler{
 		logger:      logger,
 		forwardTo:   forwardTo,
@@ -28,14 +28,14 @@ func newHandler(logger *slog.Logger, forwardTo []sigil.GenerationsReceiver, maxB
 	}
 }
 
-func (h *handler) update(forwardTo []sigil.GenerationsReceiver, maxBodySize int64) {
+func (h *handler) update(forwardTo []sigil.GenerationsForwarder, maxBodySize int64) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	h.forwardTo = forwardTo
 	h.maxBodySize = maxBodySize
 }
 
-func (h *handler) getConfig() ([]sigil.GenerationsReceiver, int64) {
+func (h *handler) getConfig() ([]sigil.GenerationsForwarder, int64) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.forwardTo, h.maxBodySize

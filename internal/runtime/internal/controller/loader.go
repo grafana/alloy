@@ -1015,7 +1015,7 @@ func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 	appendableType := reflect.TypeOf((*storage.Appendable)(nil)).Elem()
 	logsReceiverType := reflect.TypeOf((*loki.LogsReceiver)(nil)).Elem()
 	pyroscopeAppendableType := reflect.TypeOf((*pyroscope.Appendable)(nil)).Elem()
-	sigilGenerationsReceiverType := reflect.TypeOf((*sigil.GenerationsReceiver)(nil)).Elem()
+	sigilGenerationsForwarderType := reflect.TypeOf((*sigil.GenerationsForwarder)(nil)).Elem()
 	if cn, ok := n.(ComponentNode); ok {
 		for _, ref := range refs {
 			if tn, ok := ref.Target.(ComponentNode); ok {
@@ -1048,7 +1048,7 @@ func setDataFlowEdges(n dag.Node, refs []astutil.Reference) {
 				// For most export types, the data flow edge has the opposite direction of the reference.
 				if found {
 					switch field.Type {
-					case otelConsumerType, appendableType, logsReceiverType, pyroscopeAppendableType, sigilGenerationsReceiverType:
+					case otelConsumerType, appendableType, logsReceiverType, pyroscopeAppendableType, sigilGenerationsForwarderType:
 						cn.AddDataFlowEdgeTo(tn.NodeID())
 					default:
 						tn.AddDataFlowEdgeTo(cn.NodeID())

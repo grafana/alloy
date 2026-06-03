@@ -85,13 +85,13 @@ var (
 		},
 	}
 
-	TypeSigilGenerationsReceiver = Type{
-		Name: "Sigil `GenerationsReceiver`",
+	TypeSigilGenerationsForwarder = Type{
+		Name: "Sigil `GenerationsForwarder`",
 		existsInArgsFn: func(args component.Arguments) bool {
-			return hasFieldOfType(args, reflect.TypeOf([]sigil.GenerationsReceiver{}))
+			return hasFieldOfType(args, reflect.TypeOf([]sigil.GenerationsForwarder{}))
 		},
 		existsInExportsFn: func(exports component.Exports) bool {
-			var a *sigil.GenerationsReceiver = nil
+			var a *sigil.GenerationsForwarder = nil
 			return hasFieldOfType(exports, reflect.TypeOf(a).Elem())
 		},
 	}
@@ -102,7 +102,7 @@ var (
 		TypePromMetricsReceiver,
 		TypePyroProfilesReceiver,
 		TypeOTELReceiver,
-		TypeSigilGenerationsReceiver,
+		TypeSigilGenerationsForwarder,
 	}
 )
 

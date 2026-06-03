@@ -166,7 +166,7 @@ func (ec *endpointClient) doRequest(ctx context.Context, req *sigil.GenerationsR
 
 // ExportGenerations sends the request to a single endpoint, recording
 // per-endpoint latency. It makes endpointClient implement
-// sigil.GenerationsReceiver so the shared FanOut helper can drive multi-
+// sigil.GenerationsForwarder so the shared FanOut helper can drive multi-
 // endpoint fanout from this package.
 func (ec *endpointClient) ExportGenerations(ctx context.Context, req *sigil.GenerationsRequest) (*sigil.GenerationsResponse, error) {
 	start := time.Now()
@@ -181,7 +181,7 @@ func (ec *endpointClient) ExportGenerations(ctx context.Context, req *sigil.Gene
 // fanOutClient fans out generation requests to multiple endpoints.
 type fanOutClient struct {
 	endpoints []*endpointClient
-	receivers []sigil.GenerationsReceiver
+	receivers []sigil.GenerationsForwarder
 }
 
 func (f *fanOutClient) closeIdleConnections() {
@@ -192,7 +192,7 @@ func (f *fanOutClient) closeIdleConnections() {
 
 func newFanOutClient(logger *slog.Logger, config Arguments, m *metrics) (*fanOutClient, error) {
 	endpoints := make([]*endpointClient, 0, len(config.Endpoints))
-	receivers := make([]sigil.GenerationsReceiver, 0, len(config.Endpoints))
+	receivers := make([]sigil.GenerationsForwarder, 0, len(config.Endpoints))
 	for _, ep := range config.Endpoints {
 		ec, err := newEndpointClient(logger, ep, m)
 		if err != nil {
