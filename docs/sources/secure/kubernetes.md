@@ -23,9 +23,8 @@ The container runs the `alloy` binary as `root` by default because some componen
 
 The Grafana Helm chart doesn't set `runAsUser` or `runAsGroup` by default, so the container also runs as `root` until you add a `securityContext`.
 
-UID `0` inside a container isn't UID `0` on the node.
-The container runtime isolates the process, so container `root` can't read host files or processes under normal operation.
-Use UID `473` to limit damage on the node if a container escape bug appears in the kernel or runtime.
+The container runtime runs the process in an isolated namespace.
+Set `runAsUser` and `runAsGroup` to `473` to run Alloy as the `alloy` user defined in the image.
 
 {{< admonition type="note" >}}
 Components like [beyla.ebpf][beyla-ebpf-note] need root or additional Linux capabilities.
@@ -132,9 +131,9 @@ Configure these Security Context Constraints when you deploy {{< param "PRODUCT_
 
 ### OpenShift DaemonSet
 
-Deploy {{< param "PRODUCT_NAME" >}} as a non-root user on OpenShift with a DaemonSet like the one below.
-The example shows security context fields for OpenShift.
-Add ConfigMap, config, and storage mounts for a complete deployment.
+Deploy {{< param "PRODUCT_NAME" >}} as a non-root user on OpenShift with a DaemonSet.
+The following example shows security context fields for OpenShift.
+You can add `ConfigMap`, `config`, and `storage` mounts for a complete deployment.
 
 ```yaml
 apiVersion: apps/v1
