@@ -1,7 +1,7 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/secure/linux/
 description: Secure a Grafana Alloy installation on Linux using the alloy system user, file permissions, and systemd service security options
-menuTitle: Secure Linux
+menuTitle: Linux
 title: Secure Grafana Alloy on Linux
 weight: 100
 ---
@@ -9,6 +9,8 @@ weight: 100
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
 Install {{< param "PRODUCT_NAME" >}} from the DEB or RPM package to get the `alloy` system user and systemd unit file.
+The package runs the process as `alloy` and adds the user to groups needed for journal and system log collection.
+Verify filesystem and network settings match what your configuration requires.
 For Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
 For Windows, refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows].
 

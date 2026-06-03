@@ -5,14 +5,16 @@ aliases:
   - ../../configure/nonroot/ # /docs/alloy/latest/configure/nonroot/
   - ../tasks/nonroot/ # /docs/alloy/latest/tasks/nonroot/
 description: Secure Grafana Alloy on Kubernetes using `securityContext`, non-root users, capability drops, and OpenShift Security Context Constraints
-menuTitle: Secure Kubernetes
+menuTitle: Kubernetes
 title: Secure Grafana Alloy on Kubernetes
 weight: 200
 ---
 
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Kubernetes
 
-You can run {{< param "PRODUCT_NAME" >}} on Kubernetes with a non-root UID, `securityContext`, and scoped RBAC.
+Configure `securityContext`, RBAC, and network settings to match the components in your {{< param "PRODUCT_NAME" >}} configuration.
+The container image defines a non-root user named `alloy` with UID `473` and GID `473` for this purpose.
+
 For Linux, refer to [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux].
 For Windows, refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows].
 

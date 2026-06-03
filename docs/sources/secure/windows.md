@@ -1,22 +1,20 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/secure/windows/
 description: Secure a Grafana Alloy installation on Windows by configuring a dedicated service account, security groups, and filesystem permissions
-menuTitle: Secure Windows
+menuTitle: Windows
 title: Secure Grafana Alloy on Windows
 weight: 300
 ---
 
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
-Secure the {{< param "PRODUCT_NAME" >}} Windows Service with a dedicated account, security groups, and filesystem permissions.
+Configure a dedicated service account, security groups, and filesystem permissions for the {{< param "PRODUCT_NAME" >}} Windows Service.
+Grant the account access to the log paths, performance counters, and data directories your configuration uses.
 For Linux, refer to [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux].
 For Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
 For configuration file edits, command-line arguments, and environment variables, refer to [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows].
 
 ## Run as a dedicated service account
-
-By default, {{< param "PRODUCT_NAME" >}} runs as the `LOCAL SYSTEM` account after installation.
-`LOCAL SYSTEM` has broad access to the local machine and exceeds what most deployments need.
 
 Create a dedicated Windows service account and configure the {{< param "PRODUCT_NAME" >}} service to use it.
 
