@@ -4,7 +4,7 @@ aliases:
   - ../configure/nonroot/ # /docs/alloy/latest/configure/nonroot/
   - ../../configure/nonroot/ # /docs/alloy/latest/configure/nonroot/
   - ../tasks/nonroot/ # /docs/alloy/latest/tasks/nonroot/
-description: Secure Grafana Alloy on Kubernetes using `securityContext`, non-root users, capability drops, and OpenShift Security Context Constraints
+description: Secure Grafana Alloy on Kubernetes with `securityContext`, non-root users, capability drops, and OpenShift Security Context Constraints
 menuTitle: Kubernetes
 title: Secure Grafana Alloy on Kubernetes
 weight: 200
@@ -18,8 +18,10 @@ You can configure `securityContext`, RBAC, and network settings for the componen
 
 ## Run as a non-root user
 
-The [{{< param "PRODUCT_NAME" >}} Docker image][image] defines two users: `root` and a non-root user named `alloy` with UID `473` and GID `473`.
+The [{{< param "PRODUCT_NAME" >}} container image][image] defines two users: `root` and a non-root user named `alloy` with UID `473` and GID `473`.
 The container runs the `alloy` binary as `root` by default because some components, such as [beyla.ebpf][], need elevated privileges.
+
+The Grafana Helm chart doesn't set `runAsUser` or `runAsGroup` by default, so the container also runs as `root` until you add a `securityContext`.
 
 UID `0` inside a container isn't UID `0` on the node.
 The container runtime isolates the process, so container `root` can't read host files or processes under normal operation.
@@ -34,7 +36,7 @@ Refer to the [beyla.ebpf component reference][beyla-ebpf-note].
 {{< /admonition >}}
 
 Configure a [security context][security-context] for the {{< param "PRODUCT_NAME" >}} container to run as UID `473`.
-If you use the [Grafana Helm chart][], add to `values.yaml`:
+If you use the [Grafana Helm chart][], add this to `values.yaml`:
 
 ```yaml
 alloy:
@@ -42,14 +44,12 @@ alloy:
     runAsUser: 473
     runAsGroup: 473
 
-configReloader:
-  securityContext:
-    # UID of the "nobody" user that the config reloader image runs as
-    runAsUser: 65534
-    runAsGroup: 65534
+global:
+  podSecurityContext:
+    fsGroup: 473
 ```
 
-The Helm values run the {{< param "PRODUCT_NAME" >}} binary with UID `473` and GID `473`, and run the `configReloader` sidecar as UID `65534`.
+If you enable the config reloader sidecar and your cluster requires non-root Pods, set `configReloader.securityContext` to match the user in that image.
 
 ## Secure the container
 
@@ -73,12 +73,16 @@ spec:
 ```
 
 - `runAsNonRoot: true` causes Kubernetes to reject the Pod if the image tries to run as root.
-- `readOnlyRootFilesystem: true` prevents the process from writing anywhere in the container filesystem except mounted volumes.
-- `allowPrivilegeEscalation: false` prevents the process from gaining more privileges than its parent, regardless of file capabilities or `setuid` bits.
+- `readOnlyRootFilesystem: true` blocks writes to the container filesystem except on mounted volumes.
+- `allowPrivilegeEscalation: false` blocks privilege escalation beyond the parent process, regardless of file capabilities or `setuid` bits.
 - `capabilities.drop: [ALL]` removes all Linux capabilities from the container.
 
+The Helm chart sets `alloy.storagePath` to `/tmp/alloy` by default.
+When you set `readOnlyRootFilesystem: true`, mount a writable volume at that path or change `alloy.storagePath` to a mounted volume.
+
 {{< admonition type="note" >}}
-If you use components that need elevated host access, such as `beyla.ebpf`, add back the capabilities those components need instead of dropping all capabilities.
+If you use components that need elevated host access, such as `beyla.ebpf`, add back the capabilities those components need.
+Don't drop all capabilities when these components are in your configuration.
 Refer to the [beyla.ebpf component reference][beyla-ebpf-cap].
 
 [beyla-ebpf-cap]: ../../reference/components/beyla/beyla.ebpf/
@@ -88,13 +92,13 @@ Refer to the [beyla.ebpf component reference][beyla-ebpf-cap].
 
 The Grafana Helm chart sets `alloy.listenAddr` to `0.0.0.0` by default so other Pods can reach the container on port `12345`.
 Set `alloy.listenAddr` to `127.0.0.1` in `values.yaml` or restrict access with a NetworkPolicy when you don't need cross-Pod access to the UI or `/metrics` endpoint.
-The standalone binary binds to `127.0.0.1:12345` by default.
+The container image uses the binary default of `127.0.0.1:12345` when you don't pass `--server.http.listen-addr`.
 Refer to the [`http` block][http-block] for TLS and authentication options.
 
 ## Kubernetes RBAC
 
 {{< param "PRODUCT_NAME" >}} needs RBAC permissions to interact with Kubernetes APIs.
-The Helm chart creates a `ClusterRole` and `ClusterRoleBinding` with permissions for the default component set.
+The Helm chart creates a `ClusterRole` and `ClusterRoleBinding` with a fixed rule set in `values.yaml` when `rbac.create` is `true`.
 
 Remove permissions for resources your configuration doesn't use.
 If you don't use Kubernetes service discovery or Pod log collection, review the generated RBAC rules and trim what you don't need.
@@ -102,7 +106,7 @@ If you don't use Kubernetes service discovery or Pod log collection, review the 
 Review the RBAC resources the Helm chart creates:
 
 ```shell
-helm template grafana/alloy --show-only templates/rbac.yaml
+helm template alloy grafana/alloy --show-only templates/rbac.yaml
 ```
 
 ## Deploy on OpenShift
@@ -112,9 +116,9 @@ The standard Kubernetes `securityContext` settings work on OpenShift, but you mu
 
 ### Configure RBAC
 
-Download the [rbac.yaml][] configuration file, which defines the OpenShift verbs and permissions for {{< param "PRODUCT_NAME" >}}.
+Download the [rbac.yaml][] configuration file, which defines Kubernetes RBAC rules for {{< param "PRODUCT_NAME" >}}.
 Review and adapt it to your environment before you apply it.
-Refer to [Managing Role-based Access Control][rbac] in the OpenShift documentation.
+Refer to [Role-based access control][rbac] in the OpenShift documentation.
 
 ### Apply security context constraints
 
@@ -128,7 +132,9 @@ Configure these Security Context Constraints when you deploy {{< param "PRODUCT_
 
 ### OpenShift DaemonSet
 
-Deploy {{< param "PRODUCT_NAME" >}} as a non-root user on OpenShift with a DaemonSet like the one below:
+Deploy {{< param "PRODUCT_NAME" >}} as a non-root user on OpenShift with a DaemonSet like the one below.
+The example shows security context fields for OpenShift.
+Add ConfigMap, config, and storage mounts for a complete deployment.
 
 ```yaml
 apiVersion: apps/v1
@@ -154,9 +160,6 @@ spec:
           image: grafana/alloy:<ALLOY_VERSION>
           ports:
             - containerPort: 12345
-          securityContext:
-            readOnlyRootFilesystem: true
-            allowPrivilegeEscalation: false
       volumes:
         - name: log-volume
           emptyDir: {}
@@ -167,9 +170,9 @@ Replace `<ALLOY_VERSION>` with the version you deploy, for example `v1.5.1`.
 {{< admonition type="note" >}}
 `emptyDir` volumes don't persist data across node restarts.
 Use a persistent storage volume in production.
-Refer to [Using volumes to persist container data][ocp-volumes-note] in the OpenShift documentation.
+Refer to [Volumes][ocp-volumes-note] in the OpenShift documentation.
 
-[ocp-volumes-note]: https://docs.openshift.com/container-platform/latest/nodes/containers/nodes-containers-volumes.html
+[ocp-volumes-note]: https://docs.openshift.com/container-platform/latest/storage/understanding-persistent-storage.html
 {{< /admonition >}}
 
 ### Security Context Constraint on OpenShift
@@ -197,14 +200,15 @@ groups:
   - my-admin-group
 seLinuxContext:
   type: MustRunAs
-  user: <SYSTEM_USER>
-  role: <SYSTEM_ROLE>
-  type: <CONTAINER_TYPE>
-  level: <LEVEL>
+  seLinuxOptions:
+    user: system_u
+    role: object_r
+    type: container_t
+    level: s0
 ```
 
-Replace the `<SYSTEM_USER>`, `<SYSTEM_ROLE>`, `<CONTAINER_TYPE>`, and `<LEVEL>` placeholders with values for your `SELinux` context.
-Refer to [Security context constraints for pods and containers][selinux-ocp] in the OpenShift documentation.
+Replace the `seLinuxOptions` values with settings that match your `SELinux` policy.
+Refer to [Security context constraints][selinux-ocp] in the OpenShift documentation.
 
 ## Components that require elevated access
 

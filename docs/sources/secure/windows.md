@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/secure/windows/
-description: Secure a Grafana Alloy installation on Windows by configuring a dedicated service account, security groups, and filesystem permissions
+description: Secure a Grafana Alloy installation on Windows with a dedicated service account, security groups, and filesystem permissions
 menuTitle: Windows
 title: Secure Grafana Alloy on Windows
 weight: 300
@@ -14,7 +14,7 @@ You can configure a dedicated service account, security group membership, and fi
 
 ## Run as a dedicated service account
 
-Create a dedicated Windows service account and configure the {{< param "PRODUCT_NAME" >}} service to use it.
+Create a dedicated Windows service account and assign it to the {{< param "PRODUCT_NAME" >}} service.
 
 ### Required user rights
 
@@ -22,6 +22,36 @@ The service account needs the [`Log on as a service`](https://learn.microsoft.co
 Windows requires this right for any account that runs a service.
 
 Assign the right in the Local Security Policy editor at `secpol.msc` under **Security Settings > Local Policies > User Rights Assignment**.
+
+### Assign the service account
+
+Stop the service, assign the account, and start the service again.
+
+Run these commands in an elevated Command Prompt or PowerShell session:
+
+{{< code >}}
+
+```cmd
+sc stop Alloy
+sc config Alloy obj= "DOMAIN\username" password= "password"
+sc start Alloy
+```
+
+```powershell
+Stop-Service Alloy
+sc.exe config Alloy obj= "DOMAIN\username" password= "password"
+Start-Service Alloy
+```
+
+{{< /code >}}
+
+Replace `DOMAIN\username` and `password` with the service account credentials.
+For a local account, use `COMPUTERNAME\username` or `.\username`.
+
+You can also open **Services** (`services.msc`), open **Grafana Alloy** properties, select the **Log On** tab, and choose **This account**.
+
+If you haven't installed {{< param "PRODUCT_NAME" >}} yet, you can set the service account during a silent install with `/USERNAME` and `/PASSWORD`.
+Refer to [Install {{< param "PRODUCT_NAME" >}} on Windows][install-windows] for those options.
 
 ## Windows security groups
 
@@ -33,7 +63,7 @@ Add the service account to [Windows security groups](https://learn.microsoft.com
 - **[Performance Monitor Users](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-monitor-users)**: Read performance counter data for CPU, memory, disk I/O, and network usage.
   Required for Windows performance metrics.
 
-- **[Performance Log Users](http://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-log-users)**: Manage Data Collector Sets and performance counter logs.
+- **[Performance Log Users](https://learn.microsoft.com/windows-server/identity/ad-ds/manage/understand-security-groups#performance-log-users)**: Manage Data Collector Sets and performance counter logs.
   Required for advanced or historical data collection.
 
 ## File system and network permissions
@@ -52,7 +82,7 @@ If you enable the {{< param "PRODUCT_NAME" >}} UI, the service account needs [pe
 The default port is `12345`.
 
 Some components write temporary files in the system temp directories.
-If you use the process or service collectors in the integrated Windows Exporter, the service account also needs permission to enumerate running processes and services.
+If you use the process or service collectors in the integrated Windows Exporter, the service account also needs permission to enumerate processes and services.
 
 ## Restrict the HTTP server
 
@@ -72,6 +102,7 @@ Review that table if your configuration includes eBPF or host-level collectors o
 - [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux]
 - [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]
 
+[install-windows]: ../../set-up/install/windows/
 [configure-windows]: ../../configure/windows/
 [linux]: ../linux/
 [kubernetes]: ../kubernetes/

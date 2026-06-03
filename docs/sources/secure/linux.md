@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/secure/linux/
-description: Secure a Grafana Alloy installation on Linux using the alloy system user, file permissions, and systemd service security options
+description: Secure a Grafana Alloy installation on Linux with the alloy system user, file permissions, and systemd service security options
 menuTitle: Linux
 title: Secure Grafana Alloy on Linux
 weight: 100
@@ -35,13 +35,14 @@ If the process runs as `root`, check the `User=` directive in the unit file:
 systemctl cat alloy | grep User
 ```
 
-If `User=alloy` isn't set, override it with a drop-in file instead of editing the unit directly:
+The package sets `User=alloy` but doesn't set `Group=alloy`.
+If `User=alloy` isn't set, or you want to set the group explicitly, override the unit with a drop-in file rather than edit the unit directly:
 
 ```shell
 sudo systemctl edit alloy
 ```
 
-Add the following:
+Add this configuration:
 
 ```ini
 [Service]
@@ -49,13 +50,20 @@ User=alloy
 Group=alloy
 ```
 
+Reload and restart the service:
+
+```shell
+sudo systemctl daemon-reload
+sudo systemctl restart alloy
+```
+
 ## Restrict file and directory permissions
 
 The `alloy` user needs read access to the configuration file and read/write access to the data directory.
 It shouldn't have access to anything else.
 
-The package sets `/etc/alloy` and `/var/lib/alloy` to mode `770` at install time.
-Tighter permissions for production:
+The package sets `/etc/alloy` and `/var/lib/alloy` to mode `770` at install time when it creates those directories.
+Use tighter permissions for production:
 
 | Path                      | Owner         | Permissions | Notes                                         |
 | ------------------------- | ------------- | ----------- | --------------------------------------------- |
@@ -88,29 +96,29 @@ Add them with a drop-in file so they survive package upgrades:
 sudo systemctl edit alloy
 ```
 
-Add the following directives:
+Add these directives:
 
 ```ini
 [Service]
-# Prevent the process from gaining new privileges via setuid or capabilities
+# Block new privileges from setuid or capabilities
 NoNewPrivileges=yes
 
 # Make the entire filesystem read-only except for explicitly allowed paths
 ProtectSystem=strict
 
-# Prevent access to /home, /root, and /run/user
+# Block access to /home, /root, and /run/user
 ProtectHome=yes
 
 # Give the service a private /tmp, isolated from other services
 PrivateTmp=yes
 
-# Prevent the service from writing to kernel variables in /proc/sys and /sys
+# Block writes to kernel variables in /proc/sys and /sys
 ProtectKernelTunables=yes
 
-# Prevent loading kernel modules
+# Block kernel module loads
 ProtectKernelModules=yes
 
-# Protect kernel log from the service
+# Block access to the kernel log
 ProtectKernelLogs=yes
 
 # Give the service its own network namespace if it only needs to reach specific hosts
@@ -128,7 +136,7 @@ sudo systemctl daemon-reload
 sudo systemctl restart alloy
 ```
 
-Make sure the service starts cleanly and review the logs for permission errors:
+Confirm the service starts cleanly and review the logs for permission errors:
 
 ```shell
 sudo journalctl -u alloy -n 50
@@ -154,7 +162,8 @@ ReadOnlyPaths=/run/log/journal
 
 ## Grant access to application log files
 
-If you use [`loki.source.file`][loki-source-file] to read log files owned by other users or services, grant read access with ACLs instead of broadening the `alloy` user's group membership:
+If you use [`loki.source.file`][loki-source-file] for log files owned by other users or services, grant read access with ACLs.
+Don't expand the `alloy` user's group membership to reach those files.
 
 ```shell
 sudo setfacl -R -m u:alloy:r /var/log/myapp
@@ -166,9 +175,9 @@ The `-d` flag sets a default ACL so new files in the directory inherit the permi
 ## Restrict the HTTP server
 
 By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:12345`.
-Only change the bind address when you need to expose the UI or metrics endpoint to other machines.
+Change the bind address only when you need to expose the UI or metrics endpoint to other machines.
 
-To expose `/metrics` for Prometheus scraping without exposing the UI, put a reverse proxy in front of {{< param "PRODUCT_NAME" >}} and restrict access at the proxy.
+To expose `/metrics` for Prometheus scrape while you keep the UI private, put a reverse proxy in front of {{< param "PRODUCT_NAME" >}} and restrict access at the proxy.
 Refer to the [`http` block][http-block] for TLS and authentication options.
 
 ## Components that require elevated access
@@ -177,12 +186,12 @@ Some components can't run as the unprivileged `alloy` user.
 Refer to [Components that require elevated access][elevated-access] for the full list.
 
 **`beyla.ebpf`** and **`pyroscope.ebpf`** need root or additional Linux capabilities for kernel-level eBPF access.
-Grant the required capabilities or run as root, and remove `NoNewPrivileges=yes` from the systemd drop-in when you grant capabilities to the `alloy` user.
+Grant the required capabilities or use root, and remove `NoNewPrivileges=yes` from the systemd drop-in when you grant capabilities to the `alloy` user.
 Refer to the [beyla.ebpf component reference][beyla-ebpf].
 
 **`prometheus.exporter.unix`** reads from `/proc` and `/sys`.
 The `alloy` user can read most of these paths on a typical Linux system without elevated privileges.
-If you see permission errors, check the metric collector that causes the issue instead of running as root.
+If you see permission errors, check the metric collector that causes the issue rather than switch to root.
 
 ## Next steps
 

@@ -14,20 +14,26 @@ Your configuration determines which permissions {{< param "PRODUCT_NAME" >}} nee
 
 ## Security best practices
 
-1. Run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or [Windows][windows].
+1. Run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
 1. Restrict the HTTP server to `127.0.0.1` or a private network address with the [`http` block][http-block].
 1. Enable TLS for the HTTP server when you expose it beyond localhost with the [`http` block][http-block].
 1. Use TLS for all outbound remote write and OTLP connections with the [`tls` block][tls-block].
-1. Never set `insecure_skip_verify = true` in production. Refer to the [`tls` block][tls-block].
-1. Store credentials outside configuration files. Refer to [Types and values][types-values].
-1. Scope Kubernetes RBAC to the permissions your configuration uses. Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
-1. Set `readOnlyRootFilesystem: true` for container deployments. Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
-1. Disable privilege escalation with `allowPrivilegeEscalation: false` for container deployments. Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
-1. Avoid eBPF components unless your use case requires them. Refer to [Components that require elevated access](#components-that-require-elevated-access).
+1. Never set `insecure_skip_verify = true` in production.
+   Refer to the [`tls` block][tls-block].
+1. Store credentials outside configuration files.
+   Refer to [Types and values][types-values].
+1. Scope Kubernetes RBAC to the permissions your configuration uses.
+   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
+1. Set `readOnlyRootFilesystem: true` for container deployments.
+   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
+1. Set `allowPrivilegeEscalation: false` for container deployments.
+   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
+1. Don't use eBPF components unless your use case requires them.
+   Refer to [Components that require elevated access](#components-that-require-elevated-access).
 
 ## Process identity and privilege
 
-Set up a dedicated service account or user on your deployment platform:
+Create a dedicated service account or user on your deployment platform:
 
 - [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux]: systemd service, file permissions, and the `alloy` user
 - [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]: `securityContext`, non-root UID, and OpenShift Security Context Constraints
@@ -37,8 +43,8 @@ Set up a dedicated service account or user on your deployment platform:
 
 {{< param "PRODUCT_NAME" >}} runs an HTTP server for its UI, API, and `/metrics` endpoint.
 The binary binds to `127.0.0.1:12345` by default, which limits exposure to the local machine.
-The Grafana Helm chart binds to `0.0.0.0:12345` by default so other Pods can reach the container.
-Understand what you expose before you change either default.
+The Grafana Helm chart sets `alloy.listenAddr` to `0.0.0.0` by default so other Pods can reach the container on port `12345`.
+Review what you expose before you change either default.
 
 ## Secrets and credentials
 
