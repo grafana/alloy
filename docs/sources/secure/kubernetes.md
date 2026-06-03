@@ -12,11 +12,9 @@ weight: 200
 
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Kubernetes
 
-Configure `securityContext`, RBAC, and network settings to match the components in your {{< param "PRODUCT_NAME" >}} configuration.
-The container image defines a non-root user named `alloy` with UID `473` and GID `473` for this purpose.
-
-For Linux, refer to [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux].
-For Windows, refer to [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows].
+{{< param "PRODUCT_NAME" >}} requires read access to Kubernetes API resources, node and container telemetry, and credentials for observability backends.
+The {{< param "PRODUCT_NAME" >}} container image runs as `root` by default and defines a non-root `alloy` user with UID `473` and GID `473`.
+You can configure `securityContext`, RBAC, and network settings for the components in your configuration.
 
 ## Run as a non-root user
 

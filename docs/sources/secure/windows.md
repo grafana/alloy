@@ -8,11 +8,9 @@ weight: 300
 
 # Secure {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
-Configure a dedicated service account, security groups, and filesystem permissions for the {{< param "PRODUCT_NAME" >}} Windows Service.
-Grant the account access to the log paths, performance counters, and data directories your configuration uses.
-For Linux, refer to [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux].
-For Kubernetes, refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
-For configuration file edits, command-line arguments, and environment variables, refer to [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows].
+{{< param "PRODUCT_NAME" >}} requires read access to Windows Event Logs, performance counters, application log files, and credentials for observability backends.
+The Windows installer registers the {{< param "PRODUCT_NAME" >}} service to run as `LOCAL SYSTEM`.
+You can configure a dedicated service account, security group membership, and filesystem permissions for the components in your configuration.
 
 ## Run as a dedicated service account
 
