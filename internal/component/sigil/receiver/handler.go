@@ -12,24 +12,17 @@ import (
 	"github.com/grafana/sigil-sdk/go/proto/sigil/wire"
 )
 
-// fanOutMetrics adapts the package metrics to sigil.FanOutMetrics.
-func (h *handler) fanOutMetrics() sigil.FanOutMetrics {
-	return sigil.FanOutMetrics{PartialFailures: h.metrics.partialFailures}
-}
-
 type handler struct {
-	logger  *slog.Logger
-	metrics *metrics
+	logger *slog.Logger
 
 	mu          sync.RWMutex
 	forwardTo   []sigil.GenerationsReceiver
 	maxBodySize int64
 }
 
-func newHandler(logger *slog.Logger, m *metrics, forwardTo []sigil.GenerationsReceiver, maxBodySize int64) *handler {
+func newHandler(logger *slog.Logger, forwardTo []sigil.GenerationsReceiver, maxBodySize int64) *handler {
 	return &handler{
 		logger:      logger,
-		metrics:     m,
 		forwardTo:   forwardTo,
 		maxBodySize: maxBodySize,
 	}
@@ -83,10 +76,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, fanErr := sigil.FanOut(r.Context(), req, forwardTo, h.logger, h.fanOutMetrics())
+	resp, fanErr := sigil.FanOut(r.Context(), req, forwardTo)
 
-	// If every branch failed, return 502.
-	if resp == nil && fanErr != nil {
+	// If any downstream failed, return 502.
+	if fanErr != nil {
 		h.logger.Warn("failed to forward generations", "err", fanErr)
 		http.Error(w, "failed to forward", http.StatusBadGateway)
 		return

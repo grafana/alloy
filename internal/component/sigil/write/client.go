@@ -182,8 +182,6 @@ func (ec *endpointClient) ExportGenerations(ctx context.Context, req *sigil.Gene
 type fanOutClient struct {
 	endpoints []*endpointClient
 	receivers []sigil.GenerationsReceiver
-	metrics   *metrics
-	logger    *slog.Logger
 }
 
 func (f *fanOutClient) closeIdleConnections() {
@@ -207,13 +205,11 @@ func newFanOutClient(logger *slog.Logger, config Arguments, m *metrics) (*fanOut
 	return &fanOutClient{
 		endpoints: endpoints,
 		receivers: receivers,
-		metrics:   m,
-		logger:    logger,
 	}, nil
 }
 
 func (f *fanOutClient) ExportGenerations(ctx context.Context, req *sigil.GenerationsRequest) (*sigil.GenerationsResponse, error) {
-	return sigil.FanOut(ctx, req, f.receivers, f.logger, sigil.FanOutMetrics{PartialFailures: f.metrics.partialFailures})
+	return sigil.FanOut(ctx, req, f.receivers)
 }
 
 func shouldRetry(ctx context.Context, err error) bool {

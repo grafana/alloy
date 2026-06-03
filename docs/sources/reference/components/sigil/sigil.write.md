@@ -146,9 +146,8 @@ In those cases, exported fields are kept at their last healthy values.
 | `sigil_write_requests_total`                | Counter   | Total number of requests sent to Sigil endpoints.                     |
 | `sigil_write_retries_total`                 | Counter   | Total number of retries to Sigil endpoints.                           |
 | `sigil_write_latency`                       | Histogram | Write latency for sending generations to Sigil endpoints.             |
-| `sigil_write_fanout_partial_failures_total` | Counter   | Times fan-out had at least one failed endpoint but at least one success. |
 
-All metrics except `sigil_write_fanout_partial_failures_total` include an `endpoint` label identifying the endpoint. The label is the configured `name`, or the URL when `name` isn't set.
+All metrics include an `endpoint` label identifying the endpoint. The label is the configured `name`, or the URL when `name` isn't set.
 
 ## Example
 

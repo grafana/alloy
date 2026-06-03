@@ -42,8 +42,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	opts.Registerer.MustRegister(uncheckedCollector)
 
-	m := newMetrics(opts.Registerer)
-	h := newHandler(opts.SLogger, m, args.ForwardTo, int64(args.MaxRequestBodySize))
+	h := newHandler(opts.SLogger, args.ForwardTo, int64(args.MaxRequestBodySize))
 
 	c := &Component{
 		logger:             opts.SLogger,

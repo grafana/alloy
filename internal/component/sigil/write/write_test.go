@@ -381,9 +381,9 @@ func TestFanOutClient(t *testing.T) {
 			expectStatus: http.StatusAccepted,
 		},
 		{
-			name:         "partial success returns success",
-			statuses:     []int{http.StatusAccepted, http.StatusBadRequest},
-			expectStatus: http.StatusAccepted,
+			name:      "one endpoint fails returns error",
+			statuses:  []int{http.StatusAccepted, http.StatusBadRequest},
+			expectErr: true,
 		},
 		{
 			name:      "all fail returns error",

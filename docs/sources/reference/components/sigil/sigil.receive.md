@@ -84,7 +84,6 @@ The `tls` block configures TLS for the HTTP server.
 | `sigil_receive_http_request_duration_seconds`       | Histogram | Time spent serving HTTP requests, labeled by `method`, `route`, and `status_code`. |
 | `sigil_receive_http_tcp_connections`                | Gauge     | Current number of accepted TCP connections.                                       |
 | `sigil_receive_http_tcp_connections_limit`          | Gauge     | Maximum number of TCP connections that the server can accept. 0 means no limit.   |
-| `sigil_receive_fanout_partial_failures_total`       | Counter   | Times fan-out had at least one failed downstream branch but at least one success. |
 
 The HTTP server emits additional `sigil_receive_http_*` metrics for request size, in-flight requests, and connection limits.
 

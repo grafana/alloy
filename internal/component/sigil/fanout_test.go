@@ -23,7 +23,7 @@ func TestFanOutRejectsNilReceiver(t *testing.T) {
 		Request: &sigilv1.ExportGenerationsRequest{},
 	}
 
-	resp, err := FanOut(context.Background(), req, []GenerationsReceiver{nil}, nil, FanOutMetrics{})
+	resp, err := FanOut(context.Background(), req, []GenerationsReceiver{nil})
 	require.Error(t, err)
 	require.Nil(t, resp)
 }
@@ -34,7 +34,7 @@ func TestFanOutRejectsNilReceiverBeforeStartingBranches(t *testing.T) {
 		Request: &sigilv1.ExportGenerationsRequest{},
 	}
 
-	resp, err := FanOut(context.Background(), req, []GenerationsReceiver{recv, nil}, nil, FanOutMetrics{})
+	resp, err := FanOut(context.Background(), req, []GenerationsReceiver{recv, nil})
 	require.Error(t, err)
 	require.Nil(t, resp)
 	require.Equal(t, int32(0), recv.calls.Load())

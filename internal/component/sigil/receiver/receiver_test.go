@@ -157,8 +157,7 @@ func TestHandler(t *testing.T) {
 			if tc.maxBodySize > 0 {
 				maxBody = tc.maxBodySize
 			}
-			m := newMetrics(prometheus.NewRegistry())
-			h := newHandler(logging.NewSlogNop(), m, receivers, maxBody)
+			h := newHandler(logging.NewSlogNop(), receivers, maxBody)
 
 			var bodyReader *bytes.Reader
 			if tc.body != "" {
@@ -302,8 +301,7 @@ func TestHandler_FanoutClonesRequest(t *testing.T) {
 		mocks     = []*mockReceiver{{}, {}}
 		receivers = []sigil.GenerationsReceiver{mocks[0], mocks[1]}
 	)
-	m := newMetrics(prometheus.NewRegistry())
-	h := newHandler(logging.NewSlogNop(), m, receivers, 50*1024*1024)
+	h := newHandler(logging.NewSlogNop(), receivers, 50*1024*1024)
 
 	body := `{"generations":[{"id":"g1","tags":{"env":"prod"}}]}`
 	req := httptest.NewRequest(http.MethodPost, wire.GenerationExportHTTPPath, bytes.NewReader([]byte(body)))
@@ -331,8 +329,7 @@ func TestHandler_EncodesJSONResponse(t *testing.T) {
 			},
 		},
 	}
-	m := newMetrics(prometheus.NewRegistry())
-	h := newHandler(logging.NewSlogNop(), m, []sigil.GenerationsReceiver{mock}, 50*1024*1024)
+	h := newHandler(logging.NewSlogNop(), []sigil.GenerationsReceiver{mock}, 50*1024*1024)
 
 	req := httptest.NewRequest(http.MethodPost, wire.GenerationExportHTTPPath, bytes.NewReader([]byte(`{"generations":[]}`)))
 	req.Header.Set("Content-Type", "application/json")
@@ -366,8 +363,7 @@ func TestHandler_DefaultsInvalidResponseStatusCode(t *testing.T) {
 				},
 			}
 
-			m := newMetrics(prometheus.NewRegistry())
-			h := newHandler(logging.NewSlogNop(), m, []sigil.GenerationsReceiver{mock}, 50*1024*1024)
+			h := newHandler(logging.NewSlogNop(), []sigil.GenerationsReceiver{mock}, 50*1024*1024)
 
 			req := httptest.NewRequest(http.MethodPost, wire.GenerationExportHTTPPath, bytes.NewReader([]byte(`{}`)))
 			req.Header.Set("Content-Type", "application/json")
@@ -381,19 +377,19 @@ func TestHandler_DefaultsInvalidResponseStatusCode(t *testing.T) {
 	}
 }
 
-func TestHandler_PartialSuccess(t *testing.T) {
+func TestHandler_Fanout(t *testing.T) {
 	tests := []struct {
 		name         string
 		receivers    []*mockReceiver
 		expectStatus int
 	}{
 		{
-			name: "one fails, one succeeds — returns success",
+			name: "one fails, one succeeds — returns 502",
 			receivers: []*mockReceiver{
 				{err: fmt.Errorf("downstream error")},
 				{},
 			},
-			expectStatus: http.StatusAccepted,
+			expectStatus: http.StatusBadGateway,
 		},
 		{
 			name: "both succeed",
@@ -437,8 +433,7 @@ func TestHandler_PartialSuccess(t *testing.T) {
 				receivers[i] = receiver
 			}
 
-			m := newMetrics(prometheus.NewRegistry())
-			h := newHandler(logging.NewSlogNop(), m, receivers, 50*1024*1024)
+			h := newHandler(logging.NewSlogNop(), receivers, 50*1024*1024)
 
 			req := httptest.NewRequest(http.MethodPost, wire.GenerationExportHTTPPath, bytes.NewReader([]byte(`{}`)))
 			req.Header.Set("Content-Type", "application/json")

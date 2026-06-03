@@ -8,12 +8,11 @@ import (
 const endpointLabel = "endpoint"
 
 type metrics struct {
-	sentBytes       *prometheus.CounterVec
-	droppedBytes    *prometheus.CounterVec
-	requests        *prometheus.CounterVec
-	retries         *prometheus.CounterVec
-	latency         *prometheus.HistogramVec
-	partialFailures prometheus.Counter
+	sentBytes    *prometheus.CounterVec
+	droppedBytes *prometheus.CounterVec
+	requests     *prometheus.CounterVec
+	retries      *prometheus.CounterVec
+	latency      *prometheus.HistogramVec
 }
 
 func newMetrics(reg prometheus.Registerer) *metrics {
@@ -38,10 +37,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 			Name: "sigil_write_latency",
 			Help: "Write latency for sending generations to Sigil.",
 		}, []string{endpointLabel}),
-		partialFailures: prometheus.NewCounter(prometheus.CounterOpts{
-			Name: "sigil_write_fanout_partial_failures_total",
-			Help: "Number of times fan-out to upstream endpoints had at least one failure but at least one success.",
-		}),
 	}
 
 	if reg != nil {
@@ -50,7 +45,6 @@ func newMetrics(reg prometheus.Registerer) *metrics {
 		m.requests = util.MustRegisterOrGet(reg, m.requests).(*prometheus.CounterVec)
 		m.retries = util.MustRegisterOrGet(reg, m.retries).(*prometheus.CounterVec)
 		m.latency = util.MustRegisterOrGet(reg, m.latency).(*prometheus.HistogramVec)
-		m.partialFailures = util.MustRegisterOrGet(reg, m.partialFailures).(prometheus.Counter)
 	}
 
 	return m
