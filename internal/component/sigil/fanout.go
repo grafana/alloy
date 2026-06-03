@@ -19,10 +19,6 @@ func FanOut(
 	receivers []GenerationsReceiver,
 ) (*GenerationsResponse, error) {
 
-	if len(receivers) == 0 {
-		return nil, errors.New("no downstream receivers configured")
-	}
-
 	for i, recv := range receivers {
 		if recv == nil {
 			return nil, fmt.Errorf("downstream receiver %d is nil", i)
