@@ -3,7 +3,6 @@ package slogadapter
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log/slog"
 	"strings"
 	"sync"
@@ -255,17 +254,6 @@ func (fe *fieldEncoder) keyName(k string) string {
 		return k
 	}
 	return strings.Join(append(fe.namespace, k), ".")
-}
-
-type key []string
-
-var _ fmt.Stringer = (key)(nil)
-
-func (k key) String() string {
-	if len(k) == 1 {
-		return k[0]
-	}
-	return strings.Join(k, ".")
 }
 
 var _ zapcore.ObjectEncoder = (*objectFieldEncoder)(nil)

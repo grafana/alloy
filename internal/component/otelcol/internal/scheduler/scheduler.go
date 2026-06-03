@@ -111,7 +111,7 @@ func (cs *Scheduler) Schedule(ctx context.Context, updateConsumers func(), h ote
 	updateConsumers()
 
 	// 4. Start the new components
-	cs.log.Error("scheduling otelcol components", "count", len(cc))
+	cs.log.Debug("scheduling otelcol components", "count", len(cc))
 	var err error
 	cs.schedComponents, err = startComponents(ctx, cs.log, cs, h, cc...)
 	if err != nil {

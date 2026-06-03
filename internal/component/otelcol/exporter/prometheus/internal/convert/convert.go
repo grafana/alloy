@@ -532,7 +532,7 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			sumMetricVal := dp.Sum()
 
 			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
-				conv.log.Error("failed to write histogram sum sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write histogram sum sample", "metric_name", metricName, "err", err)
 			}
 		}
 
@@ -542,7 +542,7 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			countMetricVal := float64(dp.Count())
 
 			if err := writeSeries(app, countMetric, dp, countMetricVal); err != nil {
-				conv.log.Error("failed to write histogram count sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write histogram count sample", "metric_name", metricName, "err", err)
 			}
 		}
 
@@ -597,13 +597,13 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			bucketVal := float64(count)
 
 			if err := writeSeries(app, bucket, dp, bucketVal); err != nil {
-				conv.log.Error("failed to write histogram bucket sample", "metric name", metricName, "bucket", bucketLabel.Value, "err", err)
+				conv.log.Error("failed to write histogram bucket sample", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 			}
 
 			for ; exemplarInd < len(exemplars); exemplarInd++ {
 				if exemplars[exemplarInd].DoubleValue() < bound {
 					if err := conv.writeExemplar(app, bucket, exemplars[exemplarInd]); err != nil {
-						conv.log.Error("failed to add exemplar", "metric name", metricName, "bucket", bucketLabel.Value, "err", err)
+						conv.log.Error("failed to add exemplar", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 					}
 				} else {
 					break
@@ -623,13 +623,13 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			infBucketVal := float64(dp.Count())
 
 			if err := writeSeries(app, infBucket, dp, infBucketVal); err != nil {
-				conv.log.Error("failed to write histogram bucket sample", "metric name", metricName, "bucket", bucketLabel.Value, "err", err)
+				conv.log.Error("failed to write histogram bucket sample", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 			}
 
 			// Add remaining exemplars.
 			for ; exemplarInd < len(exemplars); exemplarInd++ {
 				if err := conv.writeExemplar(app, infBucket, exemplars[exemplarInd]); err != nil {
-					conv.log.Error("failed to add exemplar", "metric name", metricName, "bucket", bucketLabel.Value, "err", err)
+					conv.log.Error("failed to add exemplar", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 				}
 			}
 		}
@@ -638,7 +638,7 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			conv.log.Warn("failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }
@@ -658,18 +658,18 @@ func (conv *Converter) writeClassicHistogramAsNHCB(app storage.Appender, memReso
 
 	h, err := explicitToCustomBucketsHistogram(dp)
 	if err != nil {
-		conv.log.Error("failed to convert classic histogram to native histogram with custom buckets", "metric name", metricName, "err", err)
+		conv.log.Error("failed to convert classic histogram to native histogram with custom buckets", "metric_name", metricName, "err", err)
 		return
 	}
 
 	if err := memSeries.WriteNativeHistogramTo(app, ts, &h, nil); err != nil {
-		conv.log.Error("failed to write native histogram with custom buckets", "metric name", metricName, "err", err)
+		conv.log.Error("failed to write native histogram with custom buckets", "metric_name", metricName, "err", err)
 		return
 	}
 
 	for i := 0; i < dp.Exemplars().Len(); i++ {
 		if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
-			conv.log.Error("failed to add exemplar", "metric name", metricName, "err", err)
+			conv.log.Error("failed to add exemplar", "metric_name", metricName, "err", err)
 		}
 	}
 }
@@ -708,18 +708,18 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 		promHistogram, err := exponentialToNativeHistogram(dp)
 
 		if err != nil {
-			conv.log.Error("failed to convert exponential histogram to native histogram", "metric name", metricName, "err", err)
+			conv.log.Error("failed to convert exponential histogram to native histogram", "metric_name", metricName, "err", err)
 			continue
 		}
 
 		if err := memSeries.WriteNativeHistogramTo(app, ts, &promHistogram, nil); err != nil {
-			conv.log.Error("failed to write native histogram", "metric name", metricName, "err", err)
+			conv.log.Error("failed to write native histogram", "metric_name", metricName, "err", err)
 			continue
 		}
 
 		for i := 0; i < dp.Exemplars().Len(); i++ {
 			if err := conv.writeExemplar(app, memSeries, dp.Exemplars().At(i)); err != nil {
-				conv.log.Error("failed to add exemplar", "metric name", metricName, "err", err)
+				conv.log.Error("failed to add exemplar", "metric_name", metricName, "err", err)
 			}
 		}
 	}
@@ -727,7 +727,7 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			conv.log.Warn("failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }
@@ -783,7 +783,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			sumMetricVal := dp.Sum()
 
 			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
-				conv.log.Error("failed to write summary sum sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write summary sum sample", "metric_name", metricName, "err", err)
 			}
 		}
 
@@ -793,7 +793,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			countMetricVal := float64(dp.Count())
 
 			if err := writeSeries(app, countMetric, dp, countMetricVal); err != nil {
-				conv.log.Error("failed to write histogram count sample", "metric name", metricName, "err", err)
+				conv.log.Error("failed to write histogram count sample", "metric_name", metricName, "err", err)
 			}
 		}
 
@@ -810,7 +810,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			quantileVal := qp.Value()
 
 			if err := writeSeries(app, quantile, dp, quantileVal); err != nil {
-				conv.log.Error("failed to write histogram quantile sample", "metric name", metricName, "quantile", quantileLabel.Value, "err", err)
+				conv.log.Error("failed to write histogram quantile sample", "metric_name", metricName, "quantile", quantileLabel.Value, "err", err)
 			}
 		}
 	}
@@ -818,7 +818,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 	// Write metadata after series data, so the series exists in the appender.
 	if conv.getOpts().HonorMetadata {
 		if err := metricMD.WriteTo(app, time.Now()); err != nil {
-			conv.log.Warn("failed to write metric family metadata", "metric name", metricName, "err", err)
+			conv.log.Warn("failed to write metric family metadata", "metric_name", metricName, "err", err)
 		}
 	}
 }
