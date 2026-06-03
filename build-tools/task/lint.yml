@@ -11,22 +11,9 @@ tasks:
 
   go:
     desc: Run golangci-lint over every Go module.
+    dir: "tools"
     cmds:
-      - task: golangci-lint
-        vars: { DIR: "." }
-      - task: golangci-lint
-        vars: { DIR: "./collector" }
-      - task: golangci-lint
-        vars: { DIR: "./extension/alloyengine" }
-      - task: golangci-lint
-        vars:
-          {
-            DIR: "./integration-tests/docker/tests/loki-cloudflare/logpullmock",
-          }
-      - task: golangci-lint
-        vars: { DIR: "./syntax" }
-      - task: golangci-lint
-        vars: { DIR: "./tools" }
+      - mise exec -- go run ./cmd lint shell
 
   golangci-lint:
     desc: Run golangci-lint in the given module directory.
