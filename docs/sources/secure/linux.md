@@ -36,7 +36,8 @@ systemctl cat alloy | grep User
 ```
 
 The package sets `User=alloy` but doesn't set `Group=alloy`.
-If `User=alloy` isn't set, or you want to set the group explicitly, override the unit with a drop-in file rather than edit the unit directly:
+If `User=alloy` isn't set, or you want to set the group explicitly, create a drop-in file.
+Don't edit the unit file directly.
 
 ```shell
 sudo systemctl edit alloy
@@ -191,7 +192,8 @@ Refer to the [beyla.ebpf component reference][beyla-ebpf].
 
 **`prometheus.exporter.unix`** reads from `/proc` and `/sys`.
 The `alloy` user can read most of these paths on a typical Linux system without elevated privileges.
-If you see permission errors, check the metric collector that causes the issue rather than switch to root.
+If you see permission errors, check the metric collector that causes the issue.
+Don't switch the service to root.
 
 ## Next steps
 
