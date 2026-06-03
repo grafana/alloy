@@ -13,10 +13,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// New returns a new zap.Logger instance which will forward logs to the
-// provided log.Logger. The github.com/go-kit/log/level package will be used
-// for specifying log levels.
-func New(l *slog.Logger) *zap.Logger {
+// NewZap returns a new zap.Logger instance which will forward logs to the
+// provided *slog.Logger.
+func NewZap(l *slog.Logger) *zap.Logger {
 	return zap.New(&slogCore{inner: l})
 }
 
@@ -30,8 +29,6 @@ var _ zapcore.Core = (*slogCore)(nil)
 // With implements zapcore.Core, returning a new logger core with ff appended
 // to the list of fields.
 func (lc *slogCore) With(ff []zapcore.Field) zapcore.Core {
-	// Encode all the fields so that they're go-kit compatible and create a
-	// new logger from it.
 	enc := newFieldEncoder()
 	defer func() { _ = enc.Close() }()
 
@@ -60,7 +57,7 @@ func (lc *slogCore) Check(e zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.Ch
 }
 
 // Write serializes e with the provided list of fields, writing them to the
-// underlying github.com/go-kit/log.Logger instance.
+// underlying *slog.Logger instance.
 func (lc *slogCore) Write(e zapcore.Entry, ff []zapcore.Field) error {
 	enc := newFieldEncoder()
 	defer func() { _ = enc.Close() }()
@@ -91,10 +88,9 @@ func zapToSlogLevel(level zapcore.Level) slog.Level {
 }
 
 // fieldEncoder implements zapcore.ObjectEncoder. It enables converting a
-// zapcore.Field into a value which will be written as a github.com/go-kit/log
-// keypair.
+// zapcore.Field into a value which will be written as slog keypair.
 type fieldEncoder struct {
-	// fields are the list of fields that will be passed to log.Logger.Log.
+	// fields are the list of fields that will be passed to *slog.Logger.
 	fields []any
 
 	// namespace is used to prefix keys before appending to fields. When a

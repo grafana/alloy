@@ -160,7 +160,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	settings := otelprocessor.Settings{
 		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         slogadapter.New(p.opts.SLogger),
+			Logger:         slogadapter.NewZap(p.opts.SLogger),
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
 		},

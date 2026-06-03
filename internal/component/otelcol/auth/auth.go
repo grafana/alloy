@@ -232,7 +232,7 @@ func (a *Auth) Update(args component.Arguments) error {
 	settings := otelextension.Settings{
 		ID: otelcomponent.NewIDWithName(a.factory.Type(), a.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         slogadapter.New(a.opts.SLogger),
+			Logger:         slogadapter.NewZap(a.opts.SLogger),
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  mp,
 		},

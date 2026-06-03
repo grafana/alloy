@@ -119,7 +119,7 @@ func TestZap(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			zapLogger := slogadapter.New(inner.Slog())
+			zapLogger := slogadapter.NewZap(inner.Slog())
 			zapLogger.Info("Hello, world!", tc.field...)
 
 			require.Contains(t, strings.TrimSpace(buf.String()), tc.expect)
@@ -167,7 +167,7 @@ func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
 	})
 	require.NoError(b, err)
 
-	zapLogger := slogadapter.New(innerLogger.Slog())
+	zapLogger := slogadapter.NewZap(innerLogger.Slog())
 
 	b.Run(name+" enabled", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
