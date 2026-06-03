@@ -131,7 +131,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	settings := otelreceiver.Settings{
 		ID: otelcomponent.NewIDWithName(otelcomponent.MustNewType("prometheus"), c.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger: slogadapter.New(c.opts.Logger),
+			Logger: slogadapter.New(c.opts.SLogger),
 			// TODO(tpaschalis): expose tracing and logging statistics.
 			TracerProvider: traceNoop.NewTracerProvider(),
 			MeterProvider:  mp,

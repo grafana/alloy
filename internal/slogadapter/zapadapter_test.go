@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -17,7 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/slogadapter"
 )
 
-func Test(t *testing.T) {
+func TestZap(t *testing.T) {
 	tt := []struct {
 		name   string
 		field  []zap.Field
@@ -48,9 +47,10 @@ func Test(t *testing.T) {
 			expect: `level=info msg="Hello, world!" error="something went wrong"`,
 		},
 		{
-			name:   "Float32",
+			name: "Float32",
+			// slog always converts float32 to float64.
 			field:  []zap.Field{zap.Float32("key", 123.45)},
-			expect: `level=info msg="Hello, world!" key=123.45`,
+			expect: `level=info msg="Hello, world!" key=123.44999694824219`,
 		},
 		{
 			name:   "Float64",
@@ -72,7 +72,8 @@ func Test(t *testing.T) {
 			field: []zap.Field{
 				zap.Time("key", time.Date(2022, 12, 1, 1, 1, 1, 1, time.UTC)),
 			},
-			expect: `level=info msg="Hello, world!" key=2022-12-01T01:01:01.000000001Z`,
+			// slog text and JSON handlers truncate time to millisecond precision.
+			expect: `level=info msg="Hello, world!" key=2022-12-01T01:01:01.000Z`,
 		},
 		{
 			name: "Namespace",
@@ -112,17 +113,21 @@ func Test(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			var buf bytes.Buffer
 
-			inner := log.NewLogfmtLogger(log.NewSyncWriter(&buf))
+			inner, err := logging.New(&buf, logging.Options{
+				Level:  logging.LevelDebug,
+				Format: logging.FormatLogfmt,
+			})
+			require.NoError(t, err)
 
-			zapLogger := slogadapter.New(inner)
+			zapLogger := slogadapter.New(inner.Slog())
 			zapLogger.Info("Hello, world!", tc.field...)
 
-			require.Equal(t, tc.expect, strings.TrimSpace(buf.String()))
+			require.Contains(t, strings.TrimSpace(buf.String()), tc.expect)
 		})
 	}
 }
 
-func Benchmark(b *testing.B) {
+func BenchmarkZap(b *testing.B) {
 	// Benchmark various fields that may be commonly printed.
 
 	runBenchmark(b, "No fields")
@@ -157,12 +162,12 @@ func Benchmark(b *testing.B) {
 }
 
 func runBenchmark(b *testing.B, name string, fields ...zap.Field) {
-	innerLogger, err := logging.NewDeferred(io.Discard)
-	require.NoError(b, err)
-	err = innerLogger.Update(logging.Options{Level: logging.LevelInfo, Format: logging.FormatLogfmt})
+	innerLogger, err := logging.New(io.Discard, logging.Options{
+		Level: logging.LevelInfo, Format: logging.FormatLogfmt,
+	})
 	require.NoError(b, err)
 
-	zapLogger := slogadapter.New(innerLogger)
+	zapLogger := slogadapter.New(innerLogger.Slog())
 
 	b.Run(name+" enabled", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {

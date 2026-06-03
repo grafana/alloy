@@ -143,7 +143,7 @@ func (e *Extension) Update(args component.Arguments) error {
 	settings := otelextension.Settings{
 		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         slogadapter.New(e.opts.Logger),
+			Logger:         slogadapter.New(e.opts.SLogger),
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
 		},

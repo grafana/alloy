@@ -112,7 +112,7 @@ func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error
 
 	return Exporter{
 		cfg:               *c,
-		logger:            slogadapter.Zap(l).Sugar(),
+		logger:            slogadapter.New(l).Sugar(),
 		ConcurrencyConfig: concurrencyConfig,
 	}, nil
 }
