@@ -5,6 +5,7 @@ package reporter
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strconv"
@@ -25,6 +26,8 @@ import (
 	"go.opentelemetry.io/ebpf-profiler/reporter/samples"
 	"go.opentelemetry.io/ebpf-profiler/support"
 )
+
+var vdsoPathName = libpf.Intern(process.VdsoPathName)
 
 type PPROF struct {
 	Raw    []byte
@@ -111,21 +114,23 @@ func (p *PPROFReporter) ReportTraceEvent(trace *libpf.Trace, meta *samples.Trace
 	}
 
 	sampleKey := samples.SampleKey{
-		Hash: trace.Hash,
-		Comm: meta.Comm,
-		TID:  int64(meta.TID),
-		CPU:  int64(meta.CPU),
+		Hash:    trace.Hash,
+		Comm:    meta.Comm,
+		TID:     int64(meta.TID),
+		CPU:     int64(meta.CPU),
+		SpanID:  meta.SpanID,
+		TraceID: meta.TraceID,
 	}
 	if events, exists := rtp.Events[meta.Origin][sampleKey]; exists {
 		events.Timestamps = append(events.Timestamps, uint64(meta.Timestamp))
-		events.OffTimes = append(events.OffTimes, meta.OffTime)
+		events.Values = append(events.Values, meta.Value)
 		return nil
 	}
 
 	rtp.Events[meta.Origin][sampleKey] = &samples.TraceEvents{
 		Frames:     trace.Frames,
 		Timestamps: []uint64{uint64(meta.Timestamp)},
-		OffTimes:   []int64{meta.OffTime},
+		Values:     []int64{meta.Value},
 		Labels:     trace.CustomLabels,
 	}
 	return nil
@@ -212,6 +217,12 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin li
 		if p.cfg.PIDLabel {
 			sampleLabels["pid"] = []string{strconv.FormatInt(resourceKey.PID, 10)}
 		}
+		if sampleKey.SpanID != libpf.InvalidAPMSpanID {
+			sampleLabels["span_id"] = []string{hex.EncodeToString(sampleKey.SpanID[:])}
+		}
+		if sampleKey.TraceID != libpf.InvalidAPMTraceID {
+			sampleLabels["trace_id"] = []string{hex.EncodeToString(sampleKey.TraceID[:])}
+		}
 		if len(sampleLabels) > 0 {
 			s.Label = sampleLabels
 		}
@@ -221,7 +232,7 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin li
 			b.AddValue(int64(len(traceInfo.Timestamps)), s)
 		case support.TraceOriginOffCPU:
 			sum := int64(0)
-			for _, t := range traceInfo.OffTimes {
+			for _, t := range traceInfo.Values {
 				sum += t
 			}
 			b.AddValue(sum, s)
@@ -347,7 +358,7 @@ func (p *PPROFReporter) symbolizeNativeFrame(
 		return
 	}
 	mappingFile := fr.Mapping.Value().File.Value()
-	if mappingFile.FileName == process.VdsoPathName {
+	if mappingFile.FileName == vdsoPathName {
 		return
 	}
 	if p.symbols == nil {

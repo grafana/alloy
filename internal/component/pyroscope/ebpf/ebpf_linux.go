@@ -349,22 +349,24 @@ func (c *Component) reportExecutableForDebugInfoUpload(args *reporter2.Executabl
 // NewDefaultArguments create the default settings for a scrape job.
 func NewDefaultArguments() Arguments {
 	return Arguments{
-		CollectInterval: 15 * time.Second,
-		SampleRate:      19,
-		Demangle:        "none",
-		PythonEnabled:   true,
-		PerlEnabled:     true,
-		PHPEnabled:      true,
-		HotspotEnabled:  true,
-		RubyEnabled:     true,
-		V8Enabled:       true,
-		DotNetEnabled:   true,
-		OffCPUThreshold: 0,
-		GoEnabled:       true,
-		LoadProbe:       false,
-		UProbeLinks:     []string{},
-		VerboseMode:     false,
-		LazyMode:        false,
+		CollectInterval:          15 * time.Second,
+		SampleRate:               19,
+		Demangle:                 "none",
+		PythonEnabled:            true,
+		PerlEnabled:              true,
+		PHPEnabled:               true,
+		HotspotEnabled:           true,
+		RubyEnabled:              true,
+		V8Enabled:                true,
+		DotNetEnabled:            true,
+		OffCPUThreshold:          0,
+		BPFFSRoot:                "/sys/fs/bpf/",
+		OBIProcessContextEnabled: true,
+		GoEnabled:                true,
+		LoadProbe:                false,
+		ProbeLinks:               []string{},
+		VerboseMode:              false,
+		LazyMode:                 false,
 
 		Comm:         string(rargs.CommModeNone),
 		KernelFrames: true,
@@ -404,10 +406,19 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	cfg.SamplesPerSecond = args.SampleRate
 	cfg.Tracers = args.tracers()
 	cfg.OffCPUThreshold = args.OffCPUThreshold
+	cfg.BPFFSRoot = args.BPFFSRoot
+	cfg.OBIProcessCtx = args.OBIProcessContextEnabled
 	cfg.LoadProbe = args.LoadProbe
-	cfg.ProbeLinks = args.UProbeLinks
+	cfg.ProbeLinks = args.probeLinks()
 	cfg.VerboseMode = args.VerboseMode
 	return cfg, nil
+}
+
+func (args *Arguments) probeLinks() []string {
+	if len(args.ProbeLinks) > 0 {
+		return args.ProbeLinks
+	}
+	return args.DeprecatedArguments.UProbeLinks
 }
 
 func (args *Arguments) tracers() string {
