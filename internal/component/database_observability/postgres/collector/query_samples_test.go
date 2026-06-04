@@ -238,6 +238,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			Level:  logging.LevelDebug,
 			Format: logging.FormatLogfmt,
 		})
+		require.NoError(t, err)
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -293,6 +294,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			Level:  logging.LevelDebug,
 			Format: logging.FormatLogfmt,
 		})
+		require.NoError(t, err)
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -348,6 +350,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			Level:  logging.LevelDebug,
 			Format: logging.FormatLogfmt,
 		})
+		require.NoError(t, err)
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
