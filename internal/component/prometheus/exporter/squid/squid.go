@@ -3,13 +3,14 @@ package squid
 import (
 	"net"
 
+	"github.com/prometheus/common/config"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/static/integrations"
 	"github.com/grafana/alloy/internal/static/integrations/squid_exporter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-	"github.com/prometheus/common/config"
 )
 
 func init() {
@@ -26,7 +27,7 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
 	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, a.Convert(), defaultInstanceKey)
 }
 
 // Arguments controls the squid exporter.

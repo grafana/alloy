@@ -13,5 +13,4 @@ func Root() (string, error) {
 		return "", fmt.Errorf("resolving git root: %w", err)
 	}
 	return strings.TrimSpace(string(out)), nil
-
 }

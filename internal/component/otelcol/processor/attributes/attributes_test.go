@@ -6,13 +6,13 @@ import (
 	"net"
 	"testing"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/attributes"
 	"github.com/grafana/alloy/internal/component/otelcol/processor/processortest"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/processor/attributesprocessor"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/client"
@@ -112,7 +112,7 @@ func testRunProcessor(t *testing.T, processorConfig string, testSignal processor
 }
 
 func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorConfig string, testSignal processortest.Signal) {
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.processor.attributes")
 	require.NoError(t, err)
@@ -129,7 +129,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 		Args:       args,
 		TestSignal: testSignal,
 		Ctrl:       ctrl,
-		L:          l,
+		L:          l.Slog(),
 	}
 	processortest.TestRunProcessor(prc)
 }

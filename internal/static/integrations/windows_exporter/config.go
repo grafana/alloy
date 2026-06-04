@@ -1,9 +1,8 @@
 package windows_exporter
 
 import (
+	"log/slog"
 	"time"
-
-	"github.com/go-kit/log"
 
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
@@ -55,7 +54,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration creates an integration based on the given configuration
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 

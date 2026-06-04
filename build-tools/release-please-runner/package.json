@@ -4,10 +4,14 @@
   "description": "Custom release-please runner with minor-only versioning strategy",
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": ">=24.16.0",
+    "npm": ">=11.13.0"
+  },
   "scripts": {
     "release-please": "node index.js"
   },
   "dependencies": {
-    "release-please": "^17.3.0"
+    "release-please": "^17.6.1"
   }
 }

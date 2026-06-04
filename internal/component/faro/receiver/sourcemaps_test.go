@@ -13,7 +13,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	alloyutil "github.com/grafana/alloy/internal/util"
-	"github.com/grafana/pyroscope/ebpf/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
@@ -911,7 +910,7 @@ func TestSourceMapsStoreImpl_CleanCachedErrors(t *testing.T) {
 		},
 	}
 
-	logger := util.TestLogger(t)
+	logger := alloyutil.TestLogger(t)
 
 	for _, tc := range tt {
 		reg := prometheus.NewRegistry()
@@ -994,7 +993,7 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 		},
 	}
 
-	logger := util.TestLogger(t)
+	logger := alloyutil.TestLogger(t)
 
 	for _, tc := range tt {
 		reg := prometheus.NewRegistry()

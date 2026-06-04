@@ -5,15 +5,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
+
+	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 func TestBadAlloyConfig(t *testing.T) {
@@ -448,7 +448,7 @@ func TestTraceProcessing(t *testing.T) {
     }
   `
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.processor.tail_sampling")
 	require.NoError(t, err)
@@ -481,7 +481,7 @@ func TestTraceProcessing(t *testing.T) {
 		for bo.Ongoing() {
 			err := exports.Input.ConsumeTraces(ctx, createTestTraces())
 			if err != nil {
-				level.Error(l).Log("msg", "failed to send traces", "err", err)
+				l.Slog().Error("failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}

@@ -1,8 +1,8 @@
 import { faDiagramProject } from '@fortawesome/free-solid-svg-icons';
-import { Slider } from '@grafana/ui';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 
+import SliderInput from '../components/SliderInput';
 import ComponentGraph from '../features/graph/ComponentGraph';
 import { Legend } from '../features/graph/Legend';
 import Page from '../features/layout/Page';
@@ -10,6 +10,8 @@ import { useComponentInfo } from '../hooks/componentInfo';
 import styles from './LiveDebugging.module.css';
 
 const DEFAULT_WINDOW = 5;
+const MIN_WINDOW = 1;
+const MAX_WINDOW = 60;
 
 function Graph() {
   const { '*': id } = useParams();
@@ -18,7 +20,6 @@ function Graph() {
   const [window, setWindow] = useState(DEFAULT_WINDOW);
   const [sliderWindow, setSliderWindow] = useState(DEFAULT_WINDOW);
   const [enabled, setEnabled] = useState(true);
-  const windowSliderInputId = useId();
 
   // Reset component state when moduleID changes
   useEffect(() => {
@@ -29,12 +30,8 @@ function Graph() {
     }, 200);
   }, [moduleID, setComponents]);
 
-  function handleWindowChange(value?: number) {
-    setSliderWindow(value ? value : DEFAULT_WINDOW);
-  }
-
-  function handleWindowChangeComplete(value?: number) {
-    setWindow(value ? value : DEFAULT_WINDOW);
+  function handleWindowChangeComplete(value: number) {
+    setWindow(value);
     if (enabled) {
       setEnabled(false);
       setTimeout(() => setEnabled(true), 200);
@@ -43,19 +40,15 @@ function Graph() {
 
   const controls = (
     <>
-      <div className={styles.slider}>
-        <span className={styles.sliderLabel}>Window</span>
-        <Slider
-          inputId={windowSliderInputId}
-          included
-          min={1}
-          max={60}
-          value={sliderWindow}
-          orientation="horizontal"
-          onChange={handleWindowChange}
-          onAfterChange={handleWindowChangeComplete}
-        />
-      </div>
+      <SliderInput
+        label="Window"
+        min={MIN_WINDOW}
+        max={MAX_WINDOW}
+        value={sliderWindow}
+        defaultValue={DEFAULT_WINDOW}
+        onChange={setSliderWindow}
+        onCommit={handleWindowChangeComplete}
+      />
       <Legend></Legend>
     </>
   );

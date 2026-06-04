@@ -101,7 +101,6 @@ func (r *reader) next() (string, error) {
 		// the read position. If we did not find a full line or got ErrBufferFull, loop and call again.
 		if err != nil && !errors.Is(err, bufio.ErrBufferFull) {
 			return "", err
-
 		}
 	}
 }

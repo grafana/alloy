@@ -38,7 +38,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 )
 
@@ -818,21 +817,21 @@ func (c *Component) loadConfig() (*beyla.Config, error) {
 func (c *Component) Run(ctx context.Context) error {
 	// Add deprecation warnings at the start of Run
 	if c.args.Port != "" {
-		level.Warn(c.opts.Logger).Log("msg", "The 'open_port' field is deprecated. Use 'discovery.services' instead.")
+		c.opts.SLogger.Warn("The 'open_port' field is deprecated. Use 'discovery.services' instead.")
 	}
 	if c.args.ExecutableName != "" {
-		level.Warn(c.opts.Logger).Log("msg", "The 'executable_name' field is deprecated. Use 'discovery.services' instead.")
+		c.opts.SLogger.Warn("The 'executable_name' field is deprecated. Use 'discovery.services' instead.")
 	}
 
 	// Add deprecation warnings for legacy discovery fields
 	if len(c.args.Discovery.Services) > 0 {
-		level.Warn(c.opts.Logger).Log("msg", "discovery.services is deprecated, use discovery.instrument instead")
+		c.opts.SLogger.Warn("discovery.services is deprecated, use discovery.instrument instead")
 	}
 	if len(c.args.Discovery.ExcludeServices) > 0 {
-		level.Warn(c.opts.Logger).Log("msg", "discovery.exclude_services is deprecated, use discovery.exclude_instrument instead")
+		c.opts.SLogger.Warn("discovery.exclude_services is deprecated, use discovery.exclude_instrument instead")
 	}
 	if len(c.args.Discovery.DefaultExcludeServices) > 0 {
-		level.Warn(c.opts.Logger).Log("msg", "discovery.default_exclude_services is deprecated, use discovery.default_exclude_instrument instead")
+		c.opts.SLogger.Warn("discovery.default_exclude_services is deprecated, use discovery.default_exclude_instrument instead")
 	}
 
 	var cancel context.CancelFunc
@@ -847,21 +846,21 @@ func (c *Component) Run(ctx context.Context) error {
 			if cancel != nil {
 				// cancel any previously running Beyla instance
 				cancel()
-				level.Info(c.opts.Logger).Log("msg", "waiting for Beyla to terminate")
+				c.opts.SLogger.Info("waiting for Beyla to terminate")
 				if err := cancelG.Wait(); err != nil {
-					level.Error(c.opts.Logger).Log("msg", "Beyla terminated with error", "err", err)
+					c.opts.SLogger.Error("Beyla terminated with error", "err", err)
 					c.reportUnhealthy(err)
 				}
 			}
 
-			level.Info(c.opts.Logger).Log("msg", "starting Beyla component")
+			c.opts.SLogger.Info("starting Beyla component")
 
 			newCtx, cancelFunc := context.WithCancel(ctx)
 			cancel = cancelFunc
 
 			cfg, err := c.loadConfig()
 			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to load config", "err", err)
+				c.opts.SLogger.Error("failed to load config", "err", err)
 				c.reportUnhealthy(err)
 				continue
 			}
@@ -872,7 +871,7 @@ func (c *Component) Run(ctx context.Context) error {
 			g.Go(func() error {
 				err := components.RunBeyla(launchCtx, cfg)
 				if err != nil {
-					level.Error(c.opts.Logger).Log("msg", "failed to run Beyla", "err", err)
+					c.opts.SLogger.Error("failed to run Beyla", "err", err)
 					c.reportUnhealthy(err)
 				}
 				return err

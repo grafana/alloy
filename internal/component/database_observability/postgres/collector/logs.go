@@ -3,18 +3,17 @@ package collector
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -41,14 +40,14 @@ var supportedSeverities = map[string]struct{}{
 type LogsArguments struct {
 	Receiver         loki.LogsReceiver
 	EntryHandler     loki.EntryHandler
-	Logger           log.Logger
+	Logger           *slog.Logger
 	Registry         *prometheus.Registry
 	ExcludeDatabases []string
 	ExcludeUsers     []string
 }
 
 type Logs struct {
-	logger       log.Logger
+	logger       *slog.Logger
 	entryHandler loki.EntryHandler
 	registry     *prometheus.Registry
 
@@ -76,7 +75,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:           log.With(args.Logger, "collector", LogsCollector),
+		logger:           args.Logger.With("collector", LogsCollector),
 		entryHandler:     args.EntryHandler,
 		registry:         args.Registry,
 		receiver:         args.Receiver,
@@ -127,7 +126,7 @@ func (l *Logs) Receiver() loki.LogsReceiver {
 }
 
 func (l *Logs) Start(ctx context.Context) error {
-	level.Debug(l.logger).Log("msg", "collector started")
+	l.logger.Debug("collector started")
 
 	l.wg.Go(l.run)
 
@@ -148,17 +147,17 @@ func (l *Logs) Stopped() bool {
 }
 
 func (l *Logs) run() {
-	level.Debug(l.logger).Log("msg", "collector running, waiting for log entries")
+	l.logger.Debug("collector running, waiting for log entries")
 
 	for {
 		select {
 		case <-l.ctx.Done():
-			level.Debug(l.logger).Log("msg", "collector stopping")
+			l.logger.Debug("collector stopping")
 			return
 		case entry := <-l.receiver.Chan():
 			if err := l.parseTextLog(entry); err != nil {
-				level.Warn(l.logger).Log(
-					"msg", "failed to process log line",
+				l.logger.Warn(
+					"failed to process log line",
 					"error", err,
 					"line_preview", truncateString(entry.Entry.Line, 100),
 				)
@@ -326,8 +325,8 @@ func (l *Logs) trackInvalidFormat() {
 	now := time.Now()
 	if now.Sub(l.lastFormatWarning) >= time.Minute {
 		if l.validLogsThisMinute == 0 && l.invalidLogsThisMinute > 0 {
-			level.Warn(l.logger).Log(
-				"msg", "all PostgreSQL error logs in the last minute had invalid format",
+			l.logger.Warn(
+				"all PostgreSQL error logs in the last minute had invalid format",
 				"invalid_count", l.invalidLogsThisMinute,
 				"expected_format", expectedLogLinePrefix,
 				"hint", "ensure log_line_prefix is set correctly on PostgreSQL server",

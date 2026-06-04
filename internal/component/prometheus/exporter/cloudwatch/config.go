@@ -34,7 +34,6 @@ var defaults = Arguments{
 type Arguments struct {
 	STSRegion             string                `alloy:"sts_region,attr"`
 	FIPSDisabled          bool                  `alloy:"fips_disabled,attr,optional"`
-	Debug                 bool                  `alloy:"debug,attr,optional"`
 	DiscoveryExportedTags TagsPerNamespace      `alloy:"discovery_exported_tags,attr,optional"`
 	Discovery             []DiscoveryJob        `alloy:"discovery,block,optional"`
 	Static                []StaticJob           `alloy:"static,block,optional"`
@@ -44,6 +43,9 @@ type Arguments struct {
 
 	// UseAWSSDKVersion2 is deprecated and has no effect.
 	UseAWSSDKVersion2 bool `alloy:"aws_sdk_version_v2,attr,optional"`
+
+	// Debug is deprecated and has no effect.
+	Debug bool `alloy:"debug,attr,optional"`
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.
