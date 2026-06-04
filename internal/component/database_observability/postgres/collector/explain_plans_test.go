@@ -2293,6 +2293,7 @@ func TestNewExplainPlan(t *testing.T) {
 	t.Run("version with trailing characters from docker image", func(t *testing.T) {
 		args := ExplainPlansArguments{
 			DBVersion: "16.10 (Debian 16.10-1.pgdg13+1)",
+			Logger:    logger,
 		}
 
 		ep, err := NewExplainPlan(args)
@@ -2306,6 +2307,7 @@ func TestNewExplainPlan(t *testing.T) {
 	t.Run("version with trailing characters from percona helm", func(t *testing.T) {
 		args := ExplainPlansArguments{
 			DBVersion: "17.7 - Percona Server for PostgreSQL 17.7.1",
+			Logger:    logger,
 		}
 
 		ep, err := NewExplainPlan(args)

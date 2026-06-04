@@ -2837,7 +2837,7 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -2856,7 +2856,7 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -3524,7 +3524,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
