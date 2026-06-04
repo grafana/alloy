@@ -570,9 +570,11 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
 	}
 
-	traceparent := database_observability.TryExtractTraceParent(state.LastRow.Query.String)
-	if traceparent != "" {
-		labels = fmt.Sprintf(`%s traceparent=%s`, labels, strconv.Quote(traceparent))
+	if state.LastRow.Query.Valid {
+		traceparent := database_observability.TryExtractTraceParent(state.LastRow.Query.String)
+		if traceparent != "" {
+			labels = fmt.Sprintf(`%s traceparent=%s`, labels, strconv.Quote(traceparent))
+		}
 	}
 
 	return labels
