@@ -5,13 +5,11 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/lib/pq"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -19,6 +17,8 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -42,7 +42,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/books_store",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -149,7 +149,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/books_store",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -355,7 +355,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/postgres",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				switch dsn {
 				case "postgres://user:pass@localhost:5432/db1":
@@ -451,7 +451,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -559,12 +559,18 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
 			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:          logger.Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -622,7 +628,7 @@ func Test_Postgres_SchemaDetails(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -733,7 +739,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -839,7 +845,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -946,7 +952,7 @@ func Test_Postgres_SchemaDetails_collector_detects_auto_increment_column(t *test
 			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -1055,7 +1061,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 			CacheSize:       256,
 			CacheTTL:        10 * time.Minute,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -1184,7 +1190,7 @@ func Test_Postgres_SchemaDetails_caching(t *testing.T) {
 			CollectInterval: time.Millisecond,
 			CacheEnabled:    false,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -1286,7 +1292,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 					RowError(0, fmt.Errorf("row iteration error")))
 
 		collector := &SchemaDetails{
-			logger:            log.NewNopLogger(),
+			logger:            logging.NewSlogNop(),
 			initialConnection: db,
 		}
 		_, err = collector.getAllDatabases(context.Background())
@@ -1309,7 +1315,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 					RowError(0, fmt.Errorf("schema iteration error")))
 
 		collector := &SchemaDetails{
-			logger: log.NewNopLogger(),
+			logger: logging.NewSlogNop(),
 		}
 
 		err = collector.extractSchemas(context.Background(), "testdb", db)
@@ -1327,7 +1333,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").
 			WillReturnError(fmt.Errorf("column query error"))
 
-		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		collector := &SchemaDetails{logger: logging.NewSlogNop()}
 		_, err = collector.fetchTableDefinitions(context.Background(), &tableInfo{
 			database:  "testdb",
 			schema:    "public",
@@ -1346,7 +1352,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		defer db.Close()
 
 		collector := &SchemaDetails{
-			logger: log.NewNopLogger(),
+			logger: logging.NewSlogNop(),
 		}
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").
@@ -1366,7 +1372,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		defer db.Close()
 
 		collector := &SchemaDetails{
-			logger: log.NewNopLogger(),
+			logger: logging.NewSlogNop(),
 		}
 
 		mock.ExpectQuery(selectColumnNames).WithArgs("public", "test_table").RowsWillBeClosed().
@@ -1391,7 +1397,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 					AddRow("id", "integer", true, nil, "", true).
 					RowError(0, fmt.Errorf("result set error")))
 
-		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		collector := &SchemaDetails{logger: logging.NewSlogNop()}
 		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
 
 		require.Error(t, err)
@@ -1410,7 +1416,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		mock.ExpectQuery(selectIndexes).WithArgs("public", "test_table").
 			WillReturnError(fmt.Errorf("index query error"))
 
-		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		collector := &SchemaDetails{logger: logging.NewSlogNop()}
 		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
 
 		require.Error(t, err)
@@ -1430,7 +1436,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"index_name", "index_type", "unique", "column_names", "expressions"}).
 				AddRow("idx_test", "btree", true, pq.StringArray{"id"}, pq.StringArray{}))
 
-		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		collector := &SchemaDetails{logger: logging.NewSlogNop()}
 		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
 
 		require.Error(t, err)
@@ -1452,7 +1458,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 					AddRow("idx_test", "btree", true, pq.StringArray{"id"}, pq.StringArray{}, false).
 					RowError(0, fmt.Errorf("result set error")))
 
-		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		collector := &SchemaDetails{logger: logging.NewSlogNop()}
 		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
 
 		require.Error(t, err)
@@ -1474,7 +1480,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		mock.ExpectQuery(selectForeignKeys).WithArgs("public", "test_table").
 			WillReturnError(fmt.Errorf("foreign key query error"))
 
-		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		collector := &SchemaDetails{logger: logging.NewSlogNop()}
 		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
 
 		require.Error(t, err)
@@ -1497,7 +1503,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"constraint_name", "column_name", "referenced_table_name"}).
 				AddRow("fk_test", "author_id", "authors"))
 
-		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		collector := &SchemaDetails{logger: logging.NewSlogNop()}
 		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
 
 		require.Error(t, err)
@@ -1521,7 +1527,7 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 					AddRow("fk_test", "author_id", "authors", "id").
 					RowError(0, fmt.Errorf("result set error")))
 
-		collector := &SchemaDetails{logger: log.NewNopLogger()}
+		collector := &SchemaDetails{logger: logging.NewSlogNop()}
 		_, err = collector.fetchColumnsDefinitions(context.Background(), "testdb", "public", "test_table", db)
 
 		require.Error(t, err)
@@ -1846,7 +1852,7 @@ func Test_SchemaDetails_populates_TableRegistry(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/testdb",
 			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -1969,7 +1975,7 @@ func Test_Postgres_SchemaDetails_ExcludeDatabases(t *testing.T) {
 		ExcludeDatabases: []string{"excluded_database"},
 		EntryHandler:     lokiClient,
 		CacheEnabled:     false,
-		Logger:           log.NewLogfmtLogger(os.Stderr),
+		Logger:           util.TestAlloyLogger(t).Slog(),
 		dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 			return db, nil
 		},

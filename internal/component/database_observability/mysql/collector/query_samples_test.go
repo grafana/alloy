@@ -4,14 +4,12 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"math"
-	"os"
 	"regexp"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
@@ -21,6 +19,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -279,6 +279,12 @@ func TestQuerySamples(t *testing.T) {
 			defer db.Close()
 
 			logBuffer := syncbuffer.Buffer{}
+			logger, err := logging.New(&logBuffer, logging.Options{
+				Level:  logging.LevelDebug,
+				Format: logging.FormatLogfmt,
+			})
+			require.NoError(t, err)
+
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQuerySamples(QuerySamplesArguments{
@@ -286,7 +292,7 @@ func TestQuerySamples(t *testing.T) {
 				EngineVersion:   latestCompatibleVersion,
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				Logger:          logger.Slog(),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -395,7 +401,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -508,7 +514,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -621,7 +627,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -833,7 +839,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -979,7 +985,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			DisableQueryRedaction: true,
 		})
 		require.NoError(t, err)
@@ -1107,7 +1113,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:        latestCompatibleVersion,
 			CollectInterval:      time.Second,
 			EntryHandler:         lokiClient,
-			Logger:               log.NewLogfmtLogger(os.Stderr),
+			Logger:               util.TestAlloyLogger(t).Slog(),
 			WaitEventMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1219,7 +1225,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:        latestCompatibleVersion,
 			CollectInterval:      time.Second,
 			EntryHandler:         lokiClient,
-			Logger:               log.NewLogfmtLogger(os.Stderr),
+			Logger:               util.TestAlloyLogger(t).Slog(),
 			WaitEventMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1334,7 +1340,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1444,7 +1450,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:                 latestCompatibleVersion,
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
-			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			Logger:                        util.TestAlloyLogger(t).Slog(),
 			EnablePreClassifiedWaitEvents: true,
 		})
 		require.NoError(t, err)
@@ -1562,7 +1568,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:        latestCompatibleVersion,
 			CollectInterval:      time.Second,
 			EntryHandler:         lokiClient,
-			Logger:               log.NewLogfmtLogger(os.Stderr),
+			Logger:               util.TestAlloyLogger(t).Slog(),
 			WaitEventMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1675,7 +1681,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 			EngineVersion:     latestCompatibleVersion,
 			CollectInterval:   time.Second,
 			EntryHandler:      lokiClient,
-			Logger:            log.NewLogfmtLogger(os.Stderr),
+			Logger:            util.TestAlloyLogger(t).Slog(),
 			SampleMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1752,7 +1758,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 			EngineVersion:     latestCompatibleVersion,
 			CollectInterval:   time.Second,
 			EntryHandler:      lokiClient,
-			Logger:            log.NewLogfmtLogger(os.Stderr),
+			Logger:            util.TestAlloyLogger(t).Slog(),
 			SampleMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1867,7 +1873,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			DisableQueryRedaction: true,
 		})
 		require.NoError(t, err)
@@ -1991,7 +1997,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			DisableQueryRedaction: false,
 		})
 		require.NoError(t, err)
@@ -2324,7 +2330,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				EngineVersion:   semver.MustParse(tc.mysqlVersion),
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				Logger:          util.TestAlloyLogger(t).Slog(),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -2393,7 +2399,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -2539,7 +2545,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -2692,7 +2698,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -2831,7 +2837,7 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -2850,7 +2856,7 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -2946,7 +2952,7 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
 			entryHandler:  lokiClient,
-			logger:        log.NewLogfmtLogger(os.Stderr),
+			logger:        util.TestAlloyLogger(t).Slog(),
 		}
 
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
@@ -3051,7 +3057,7 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 			dbConnection:                  db,
 			engineVersion:                 latestCompatibleVersion,
 			entryHandler:                  lokiClient,
-			logger:                        log.NewLogfmtLogger(os.Stderr),
+			logger:                        util.TestAlloyLogger(t).Slog(),
 			enablePreClassifiedWaitEvents: true,
 		}
 
@@ -3155,7 +3161,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			timerBookmark: 1e12,
 			lastUptime:    4,
 			entryHandler:  lokiClient,
-			logger:        log.NewLogfmtLogger(os.Stderr),
+			logger:        util.TestAlloyLogger(t).Slog(),
 		}
 
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
@@ -3233,7 +3239,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			engineVersion: latestCompatibleVersion,
 			timerBookmark: 1e12,
 			lastUptime:    4,
-			logger:        log.NewLogfmtLogger(os.Stderr),
+			logger:        util.TestAlloyLogger(t).Slog(),
 		}
 
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
@@ -3518,7 +3524,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
@@ -3615,7 +3621,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
 			timerBookmark: 2e12,
-			logger:        log.NewLogfmtLogger(os.Stderr),
+			logger:        util.TestAlloyLogger(t).Slog(),
 		}
 
 		mockParser.On("CleanTruncatedText", "SELECT * FROM users").Return("SELECT * FROM users", nil)
@@ -3691,7 +3697,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 			EngineVersion:               latestCompatibleVersion,
 			CollectInterval:             time.Second,
 			EntryHandler:                lokiClient,
-			Logger:                      log.NewLogfmtLogger(os.Stderr),
+			Logger:                      util.TestAlloyLogger(t).Slog(),
 			AutoEnableSetupConsumers:    true,
 			SetupConsumersCheckInterval: time.Second,
 		})
@@ -3818,7 +3824,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 			EngineVersion:               latestCompatibleVersion,
 			CollectInterval:             time.Second,
 			EntryHandler:                lokiClient,
-			Logger:                      log.NewLogfmtLogger(os.Stderr),
+			Logger:                      util.TestAlloyLogger(t).Slog(),
 			AutoEnableSetupConsumers:    true,
 			SetupConsumersCheckInterval: time.Second,
 		})
@@ -3871,7 +3877,7 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 		CollectInterval: time.Millisecond,
 		ExcludeSchemas:  []string{"excluded_schema"},
 		EntryHandler:    lokiClient,
-		Logger:          log.NewLogfmtLogger(os.Stderr),
+		Logger:          util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
 
@@ -3914,7 +3920,7 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
 			Registry:                      registry,
-			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			Logger:                        util.TestAlloyLogger(t).Slog(),
 			EnablePreClassifiedWaitEvents: true,
 		})
 		require.NoError(t, err)
@@ -4025,7 +4031,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 			EngineVersion:                 latestCompatibleVersion,
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
-			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			Logger:                        util.TestAlloyLogger(t).Slog(),
 			EnablePreClassifiedWaitEvents: false,
 		})
 		require.NoError(t, err)
@@ -4092,7 +4098,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 			EngineVersion:                 latestCompatibleVersion,
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
-			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			Logger:                        util.TestAlloyLogger(t).Slog(),
 			EnablePreClassifiedWaitEvents: true,
 		})
 		require.NoError(t, err)

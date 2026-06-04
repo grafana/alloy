@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestLogsCollector_ParseRDSFormat(t *testing.T) {
@@ -23,7 +23,7 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -130,7 +130,7 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -181,7 +181,7 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -283,7 +283,7 @@ func TestLogsCollector_InvalidFormat(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -321,7 +321,7 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -386,7 +386,7 @@ func TestLogsCollector_StartStop(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     prometheus.NewRegistry(),
 	})
 	require.NoError(t, err)
@@ -450,7 +450,7 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -563,7 +563,7 @@ func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -634,7 +634,7 @@ func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -680,7 +680,7 @@ func TestLogsCollector_ExcludeDatabases(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:         loki.NewLogsReceiver(),
 		EntryHandler:     entryHandler,
-		Logger:           log.NewNopLogger(),
+		Logger:           logging.NewSlogNop(),
 		Registry:         registry,
 		ExcludeDatabases: []string{"excluded_db"},
 	})
@@ -727,7 +727,7 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 		ExcludeUsers: []string{"excluded_user"},
 	})

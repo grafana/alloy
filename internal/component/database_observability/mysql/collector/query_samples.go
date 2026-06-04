@@ -4,20 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -112,7 +111,7 @@ type QuerySamplesArguments struct {
 	WaitEventMinDuration          time.Duration
 	EnablePreClassifiedWaitEvents bool
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type QuerySamples struct {
@@ -130,7 +129,7 @@ type QuerySamples struct {
 	waitEventCounter              *prometheus.CounterVec
 	enablePreClassifiedWaitEvents bool
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -153,7 +152,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		sampleMinDuration:             args.SampleMinDuration,
 		waitEventMinDuration:          args.WaitEventMinDuration,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
-		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		logger:                        args.Logger.With("collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 	}
 
@@ -176,9 +175,9 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+		c.logger.Warn("collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
+		c.logger.Debug("collector started")
 	}
 
 	c.running.Store(true)
@@ -203,7 +202,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -238,7 +237,7 @@ func (c *QuerySamples) runSetupConsumersCheck() {
 
 	for {
 		if err := c.updateSetupConsumersSettings(c.ctx); err != nil {
-			level.Error(c.logger).Log("msg", "error with performance_schema.setup_consumers check", "err", err)
+			c.logger.Error("error with performance_schema.setup_consumers check", "err", err)
 		}
 
 		select {
@@ -400,12 +399,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 		err := rs.Scan(scanArgs...)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan history table samples", "err", err)
+			c.logger.Error("failed to scan history table samples", "err", err)
 			continue
 		}
 
 		if !row.TimerEndPicoseconds.Valid {
-			level.Debug(c.logger).Log("msg", "skipping query with invalid timer end timestamp", "schema", row.Schema.String, "digest", row.Digest.String, "timer_end", row.TimerEndPicoseconds.Float64)
+			c.logger.Debug("skipping query with invalid timer end timestamp", "schema", row.Schema.String, "digest", row.Digest.String, "timer_end", row.TimerEndPicoseconds.Float64)
 			continue
 		}
 
@@ -544,7 +543,7 @@ func (c *QuerySamples) updateSetupConsumersSettings(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get rows affected from performance_schema.setup_consumers: %w", err)
 	}
-	level.Debug(c.logger).Log("msg", "updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
+	c.logger.Debug("updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
 
 	return nil
 }
