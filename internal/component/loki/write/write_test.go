@@ -22,6 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/featuregate"
 	loki_util "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 )
@@ -167,7 +168,7 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	alterConfig(&args)
 
 	// Set up and start the component.
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.write")
+	tc, err := componenttest.NewControllerFromID(util.TestAlloyLogger(t), "loki.write")
 	require.NoError(t, err)
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args)
@@ -331,6 +332,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = New(component.Options{
+			SLogger:       logging.NewSlogNop(),
 			MinStability:  featuregate.StabilityGenerallyAvailable,
 			OnStateChange: func(e component.Exports) {},
 		}, args)
@@ -350,6 +352,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = New(component.Options{
+			SLogger:       logging.NewSlogNop(),
 			MinStability:  featuregate.StabilityGenerallyAvailable,
 			OnStateChange: func(e component.Exports) {},
 		}, args)
@@ -370,6 +373,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = New(component.Options{
+			SLogger:       logging.NewSlogNop(),
 			MinStability:  featuregate.StabilityExperimental,
 			OnStateChange: func(e component.Exports) {},
 		}, args)

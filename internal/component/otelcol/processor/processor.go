@@ -28,7 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/scheduler"
 	otelcolutil "github.com/grafana/alloy/internal/component/otelcol/util"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	"github.com/grafana/alloy/internal/util/zapadapter"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 // Arguments is an extension of component.Arguments which contains necessary
@@ -117,7 +117,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
+		sched:     scheduler.NewWithPauseCallbacks(opts.SLogger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
@@ -143,7 +143,6 @@ func (p *Processor) Update(args component.Arguments) error {
 	p.args = args.(Arguments)
 
 	host := scheduler.NewHost(
-		p.opts.Logger,
 		scheduler.WithHostExtensions(p.args.Extensions()),
 		scheduler.WithHostExporters(p.args.Exporters()),
 	)
@@ -160,7 +159,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	settings := otelprocessor.Settings{
 		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         zapadapter.New(p.opts.Logger),
+			Logger:         slogadapter.NewZap(p.opts.SLogger),
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
 		},

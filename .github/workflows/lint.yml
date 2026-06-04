@@ -16,24 +16,16 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Set up Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        go-version-file: go.mod
-        cache: false
-
-    - name: Install golangci-lint
-      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
-      with:
-        # renovate: datasource=github-releases packageName=golangci/golangci-lint
-        version: v2.11.4
-        install-only: true
+        install_args: go task golangci-lint
 
     - name: Lint Go
-      run: make lint-go
+      run: task lint:go
 
     - name: Run Alloy Lint
-      run: make run-alloylint
+      run: task lint:alloylint 
 
   govulncheck:
     name: Govulncheck
@@ -47,14 +39,13 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Set up Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        go-version-file: go.mod
-        cache: false
+        install_args: go govulncheck task
 
     - name: Run govulncheck
-      run: make govulncheck
+      run: task lint:govulncheck
 
   shellcheck:
     name: Shellcheck
@@ -66,8 +57,13 @@ jobs:
       with:
         persist-credentials: false
 
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
+      with:
+        install_args: shellcheck task go
+
     - name: Run shellcheck
-      run: make lint-shell
+      run: task lint:shellcheck
 
   lint_ui:
     name: Lint UI
@@ -82,10 +78,10 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Set up Node.js
-      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        node-version-file: internal/web/ui/.nvmrc
+        install_args: node
 
     - name: Install dependencies
       run: npm install

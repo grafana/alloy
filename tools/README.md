@@ -84,23 +84,105 @@ published release's body, and optionally appends a footer template (with
 with a `/` like `syntax/v0.1.2`) skip the footer. Driven by
 `release-enrich-release-notes.yml` (fires on release publish).
 
-### `update-go-version`
+### `generate module-dependencies`
+
+Keeps Go module `replace` directives consistent across the repository from a
+single source of truth (`dependency-replacements.yaml` at the repo root).
+
+The tool reads the replacements, renders them through a template, and injects
+the rendered block into each target file between marker comments:
+
+```
+BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY ... END GENERATED REPLACES
+```
+
+**Do not edit anything between the markers** — update
+`dependency-replacements.yaml` instead; the next run overwrites manual changes.
+Local `replace` directives (pointing a dependency at a local path) belong
+outside the markers in the individual `go.mod` files, not in
+`dependency-replacements.yaml`.
+
+Supported `file_type` values in the config:
+
+- `mod` — Go module files (`go.mod`); `go mod tidy` runs after the update.
+- `ocb` — OpenTelemetry Collector Builder config YAML files.
+
+Run via the Make wrapper (preferred):
+
+```bash
+make generate-module-dependencies
+```
+
+Or invoke the CLI directly:
+
+```bash
+go run -C tools ./cmd generate module-dependencies \
+  --dependency-yaml="$PWD/dependency-replacements.yaml"
+```
+
+`--root` defaults to the git repo root, so it works from any subdirectory; pass
+`--root=<path>` to override. `--dependency-yaml` is resolved relative to the
+binary's working directory — `go run -C tools` runs from `tools/`, so use an
+absolute path or one relative to `tools/`.
+
+CI checks that the generated output matches what's committed. If you change
+`dependency-replacements.yaml`, run the Make target and commit the resulting
+diff.
+
+### `goversion`
 
 Bumps the Go toolchain version across the repository. Split into two steps that
 are intended to land as separate PRs.
 
 ```bash
 # PR 1: bump Go in the build images.
-go run -C tools ./cmd update-go-version pr-1 <version>
+go run -C tools ./cmd goversion pr-1 <version>
 
 # PR 2: bump Go in go.mod files, Dockerfiles, and the build image pin.
-go run -C tools ./cmd update-go-version pr-2 <version>
+go run -C tools ./cmd goversion pr-2 <version>
 ```
 
 ### `govulncheck`
 
 Runs `govulncheck` across every `go.mod` module in the repo and fails when reachable, non-ignored findings remain.
 The command resolves the repository root via `git`, so it works from any subdirectory in the repo, and reads ignore rules from `.govulncheck.yaml` by default.
+
+### `lint go`
+
+Runs `golangci-lint` across every `go.mod` module in the repo. Every module is
+linted regardless of earlier failures, and the command exits non-zero if any
+module reports findings. The repository root is resolved via `git`, so it works
+from any subdirectory.
+
+Run via the Make wrapper (preferred):
+
+```bash
+make lint-go
+```
+
+Or invoke the CLI directly:
+
+```bash
+go run -C tools ./cmd lint go
+```
+
+Pass `--binary=<path>` to use a specific `golangci-lint` binary (defaults to
+`golangci-lint` on `PATH`), and `--root=<path>` to override the repository root.
+
+### `lint shell`
+
+Runs `shellcheck` over the repo's shell scripts. It discovers candidate files by
+extension (`.sh`, `.bash`, or no extension) and then keeps only those whose first
+line is a `sh`/`bash` shebang, so extension-less scripts are covered. The
+repository root is resolved via `git`, so it works from any subdirectory, and the
+command exits non-zero if `shellcheck` reports findings.
+
+```bash
+go run -C tools ./cmd lint shell
+```
+
+Pass `--root=<path>` to override the repository root. Requires `shellcheck` on
+`PATH`.
 
 ## Adding a new command
 

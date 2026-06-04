@@ -26,7 +26,7 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
 	defaultInstanceKey := opts.ID // default to component ID if no better instance key can be found
-	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.convert(opts.ID), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, a.convert(opts.ID), defaultInstanceKey)
 }
 
 // DefaultArguments holds the default arguments for the prometheus.exporter.postgres

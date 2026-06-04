@@ -2859,6 +2859,213 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 	})
 }
 
+func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
+	t.Run("query_sample and legacy wait_event", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"now",
+				"uptime",
+			}).AddRow(
+				10,
+				10,
+			),
+		)
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			float64(0), // initial timerBookmark
+			10e12,      // uptime of 10 seconds in picoseconds
+		).WillReturnRows(sqlmock.NewRows([]string{
+			"statements.CURRENT_SCHEMA",
+			"statements.THREAD_ID",
+			"statements.EVENT_ID",
+			"statements.END_EVENT_ID",
+			"statements.DIGEST",
+			"statements.SQL_TEXT",
+			"statements.TIMER_END",
+			"statements.TIMER_WAIT",
+			"statements.ROWS_EXAMINED",
+			"statements.ROWS_SENT",
+			"statements.ROWS_AFFECTED",
+			"statements.ERRORS",
+			"waits.event_id",
+			"waits.end_event_id",
+			"waits.event_name",
+			"waits.object_name",
+			"waits.object_type",
+			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
+			"statements.CPU_TIME",
+			"statements.MAX_CONTROLLED_MEMORY",
+			"statements.MAX_TOTAL_MEMORY",
+		}).
+			AddRow(
+				"test_schema",
+				890,
+				123,
+				234,
+				"some digest",
+				nil,
+				4e12, // timer_end
+				1e12, // elapsed time
+				1000,
+				100,
+				0,
+				0,
+				"124",
+				"125",
+				"wait/io/file/innodb/innodb_data_file",
+				"wait_object_name",
+				"wait_object_type",
+				100000000,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"some_user",
+				"some_host",
+				555555,
+				1048576,
+				2097152,
+			),
+		)
+
+		lokiClient := loki.NewCollectingHandler()
+		c := &QuerySamples{
+			dbConnection:  db,
+			engineVersion: latestCompatibleVersion,
+			entryHandler:  lokiClient,
+			logger:        log.NewLogfmtLogger(os.Stderr),
+		}
+
+		require.NoError(t, c.fetchQuerySamples(t.Context()))
+
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+		require.Len(t, lokiClient.Received(), 2)
+
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
+		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[0].Timestamp) // timer_end - elapsed time = timer_start
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiClient.Received()[1].Labels)
+		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[1].Timestamp) // timer_end - elapsed time = timer_start
+	})
+
+	t.Run("wait_event v2", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"now",
+				"uptime",
+			}).AddRow(
+				10,
+				10,
+			),
+		)
+
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			float64(0), // initial timerBookmark
+			10e12,      // uptime of 10 seconds in picoseconds
+		).WillReturnRows(sqlmock.NewRows([]string{
+			"statements.CURRENT_SCHEMA",
+			"statements.THREAD_ID",
+			"statements.EVENT_ID",
+			"statements.END_EVENT_ID",
+			"statements.DIGEST",
+			"statements.SQL_TEXT",
+			"statements.TIMER_END",
+			"statements.TIMER_WAIT",
+			"statements.ROWS_EXAMINED",
+			"statements.ROWS_SENT",
+			"statements.ROWS_AFFECTED",
+			"statements.ERRORS",
+			"waits.event_id",
+			"waits.end_event_id",
+			"waits.event_name",
+			"waits.object_name",
+			"waits.object_type",
+			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
+			"statements.CPU_TIME",
+			"statements.MAX_CONTROLLED_MEMORY",
+			"statements.MAX_TOTAL_MEMORY",
+		}).
+			AddRow(
+				"schema_X",
+				"1",
+				"10",
+				"11",
+				"digest_A",
+				"sql1",
+				4e12, // timer_end
+				1e12, // elapsed time
+				"5",
+				"5",
+				"0",
+				"0",
+				"100",
+				"101",
+				"wait/io/file/x",
+				"obj",
+				"typ",
+				"100000000",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"u",
+				"h",
+				"1000",
+				"1",
+				"1",
+			),
+		)
+
+		lokiClient := loki.NewCollectingHandler()
+		c := &QuerySamples{
+			dbConnection:                  db,
+			engineVersion:                 latestCompatibleVersion,
+			entryHandler:                  lokiClient,
+			logger:                        log.NewLogfmtLogger(os.Stderr),
+			enablePreClassifiedWaitEvents: true,
+		}
+
+		require.NoError(t, c.fetchQuerySamples(t.Context()))
+
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 100*time.Millisecond)
+
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiClient.Received()[1].Labels)
+		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[1].Timestamp) // timer_end - elapsed time = timer_start
+	})
+}
+
 func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 	t.Run("selects query sample summary: first run uses initialized timerBookmark and uptime limit", func(t *testing.T) {
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))

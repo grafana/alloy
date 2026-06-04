@@ -3,16 +3,15 @@ package squid_exporter
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/netip"
 	"strconv"
 
 	se "github.com/boynux/squid-exporter/collector"
-	"github.com/go-kit/log"
 	config_util "github.com/prometheus/common/config"
 
 	"github.com/grafana/alloy/internal/static/integrations"
-
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 )
@@ -84,7 +83,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration returns the Squid Exporter Integration
-func (c *Config) NewIntegration(log log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(_ *slog.Logger) (integrations.Integration, error) {
 	return New(c)
 }
 
