@@ -1524,20 +1524,12 @@ func TestQuerySamples_WaitEventBoundedByPriorScrape(t *testing.T) {
 	xactStart := t0.Add(-1 * time.Hour)
 	backendStart := t0.Add(-2 * time.Hour)
 
-	columns := []string{
-		"now", "datname", "pid", "leader_pid",
-		"usename", "application_name", "client_addr", "client_port",
-		"backend_type", "backend_start", "backend_xid", "backend_xmin",
-		"xact_start", "state", "state_change", "wait_event_type",
-		"wait_event", "blocked_by_pids", "query_start", "query_id",
-	}
-
 	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 	require.NoError(t, err)
 	defer db.Close()
 
 	// Scrape 1 at t0: active, no wait. Sample stored; state.LastSeenAt = t0.
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(columns).AddRow(
 			t0, "testdb", 710, sql.NullInt64{},
 			"testuser", "testapp", "127.0.0.1", 5432,
@@ -1545,11 +1537,12 @@ func TestQuerySamples_WaitEventBoundedByPriorScrape(t *testing.T) {
 			xactStart, "active", stateChange, sql.NullString{},
 			sql.NullString{}, nil, queryStart,
 			sql.NullInt64{Int64: 8888, Valid: true},
+			"SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'",
 		))
 	// Scrape 2 at t0+5s: now Lock:relation. stateAge from state_change would be
 	// 1h+5s; boundedStart picks priorLastSeen=t0 instead, so the emitted
 	// wait_time is the 5s gap.
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(columns).AddRow(
 			t1, "testdb", 710, sql.NullInt64{},
 			"testuser", "testapp", "127.0.0.1", 5432,
@@ -1557,9 +1550,10 @@ func TestQuerySamples_WaitEventBoundedByPriorScrape(t *testing.T) {
 			xactStart, "waiting", stateChange, sql.NullString{String: "Lock", Valid: true},
 			sql.NullString{String: "relation", Valid: true}, pq.Int64Array{}, queryStart,
 			sql.NullInt64{Int64: 8888, Valid: true},
+			"SELECT * FROM users WHERE id = 123 AND email = 'test@example.com'",
 		))
 	// Scrape 3: disappear, finalize.
-	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, "", exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
+	mock.ExpectQuery(fmt.Sprintf(selectPgStatActivity, exclusionClause, excludeCurrentUserClause, "")).RowsWillBeClosed().
 		WillReturnRows(sqlmock.NewRows(columns))
 
 	lokiClient := loki.NewCollectingHandler()
