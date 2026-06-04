@@ -23,7 +23,7 @@ const (
 	selectLogTimezone     = `SELECT setting FROM pg_settings WHERE name = 'log_timezone';`
 )
 
-// log_timezone is sighup-reloadable; poll for changes.
+// log_timezone is a sighup-reloadable Postgres setting so we periodically poll for changes
 const logTimezoneRefreshInterval = time.Hour
 
 // Postgres log format regex
@@ -49,8 +49,7 @@ type LogsArguments struct {
 	Registry         *prometheus.Registry
 	ExcludeDatabases []string
 	ExcludeUsers     []string
-	// DB, if non-nil, is polled for log_timezone to resolve non-UTC log abbreviations.
-	DB *sql.DB
+	DB               *sql.DB
 }
 
 type Logs struct {
