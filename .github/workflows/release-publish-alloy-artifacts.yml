@@ -77,7 +77,7 @@ jobs:
 
   build_alloy:
     name: Build Alloy
-    container: grafana/alloy-build-image:v0.1.32@sha256:f9dd7a2db22b68d90f53fc190e5cd6a0b59dedd607e9d12dcb0182f1031f199d
+    container: grafana/alloy-build-image:v0.1.33@sha256:dbdecbfbad6c9ed0b315a7a6da25ef066b795ffc57e887125333b1a352907155
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -150,7 +150,7 @@ jobs:
 
   build_alloy_windows_installer:
     name: Build Alloy Windows installer with signed executables
-    container: grafana/alloy-build-image:v0.1.32@sha256:f9dd7a2db22b68d90f53fc190e5cd6a0b59dedd607e9d12dcb0182f1031f199d
+    container: grafana/alloy-build-image:v0.1.33@sha256:dbdecbfbad6c9ed0b315a7a6da25ef066b795ffc57e887125333b1a352907155
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
@@ -222,7 +222,7 @@ jobs:
 
   upload_release_artifacts:
     name: Upload release artifacts
-    container: grafana/alloy-build-image:v0.1.32@sha256:f9dd7a2db22b68d90f53fc190e5cd6a0b59dedd607e9d12dcb0182f1031f199d
+    container: grafana/alloy-build-image:v0.1.33@sha256:dbdecbfbad6c9ed0b315a7a6da25ef066b795ffc57e887125333b1a352907155
     runs-on:
       labels: github-hosted-ubuntu-x64-large
     needs:
