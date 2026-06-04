@@ -167,8 +167,6 @@ func (l *Logs) refreshLogTimezone(ctx context.Context) {
 
 	var tzName string
 	if err := l.db.QueryRowContext(queryCtx, selectLogTimezone).Scan(&tzName); err != nil {
-		// Keep any previously cached Location: a transient query failure
-		// doesn't mean PG's setting changed.
 		level.Debug(l.logger).Log("msg", "failed to query log_timezone", "err", err)
 		return
 	}
