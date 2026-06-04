@@ -1116,9 +1116,7 @@ replace github.com/grafana/regexp => github.com/grafana/regexp v0.0.0-2024051813
 
 replace github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
 
-replace github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.311.4-0.20260512134559-54d4f527a0a3
-
-replace github.com/prometheus-community/prom-label-proxy => github.com/kgeckhart/prom-label-proxy v0.12.2-0.20260512163335-8ff1e5db70a4
+replace github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.312.0-rc.0
 
 replace github.com/prometheus-operator/prometheus-operator => github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253
 
