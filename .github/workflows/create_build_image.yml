@@ -51,4 +51,4 @@ jobs:
         push: true
         tags: us-docker.pkg.dev/grafanalabs-global/dockerhub-alloy-prod-mirror/alloy-build-image:${{ steps.get_image_version.outputs.image_tag }}
         build-args: |
-          GO_RUNTIME=golang:1.26.3-alpine3.23
+          GO_RUNTIME=golang:1.26.4-alpine3.23
