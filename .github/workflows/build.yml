@@ -35,7 +35,7 @@ jobs:
   build_linux_boringcrypto:
     name: Build on Linux (boringcrypto)
     runs-on: github-hosted-ubuntu-x64-large
-    container: grafana/alloy-build-image:v0.1.33-boringcrypto@sha256:46e9f3900f0f4ada7afb2da758b98fd08f2c46ef2c3c5a7acc278f2d9ad6d2f7
+    container: grafana/alloy-build-image:v0.1.33@sha256:dbdecbfbad6c9ed0b315a7a6da25ef066b795ffc57e887125333b1a352907155
     strategy:
       matrix:
         os: [linux]
@@ -50,11 +50,6 @@ jobs:
       run: |
           # this is to fix GIT not liking owner of the checkout dir
           chown -R $(id -u):$(id -g) $PWD
-    - name: Set up Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
-      with:
-        go-version-file: go.mod
-        cache: false
     - run: GO_TAGS="embedalloyui promtail_journal_enabled" GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} GOARM= GOEXPERIMENT=boringcrypto make alloy
 
   build_mac_intel:
