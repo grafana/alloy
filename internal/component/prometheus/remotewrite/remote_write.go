@@ -21,7 +21,6 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/static/metrics/wal"
@@ -50,7 +49,6 @@ func init() {
 
 // Component is the prometheus.remote_write component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	walStore    *wal.Storage
@@ -77,8 +75,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	oldDataPath := filepath.Join(o.DataPath, "wal", o.ID)
 	_ = os.RemoveAll(oldDataPath)
 
-	walLogger := log.With(o.Logger, "subcomponent", "wal")
-	walStorage, err := wal.NewStorage(walLogger, o.Registerer, o.DataPath)
+	walStorage, err := wal.NewStorage(o.SLogger.With("subcomponent", "wal"), o.Registerer, o.DataPath)
 	if err != nil {
 		return nil, err
 	}
@@ -108,17 +105,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	fanoutLogger := slog.New(
-		logging.NewSlogGoKitHandler(
-			log.With(o.Logger, "subcomponent", "fanout"),
-		),
-	)
 	res := &Component{
-		log:                o.Logger,
 		opts:               o,
 		walStore:           walStorage,
 		remoteStore:        remoteStore,
-		storage:            storage.NewFanout(fanoutLogger, walStorage, remoteStore),
+		storage:            storage.NewFanout(o.SLogger.With("subcomponent", "fanout"), walStorage, remoteStore),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -144,11 +135,11 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.exited.Store(true)
 
-		level.Debug(c.log).Log("msg", "closing storage")
+		c.opts.SLogger.Debug("closing storage")
 		err := c.storage.Close()
-		level.Debug(c.log).Log("msg", "storage closed")
+		c.opts.SLogger.Debug("storage closed")
 		if err != nil {
-			level.Error(c.log).Log("msg", "error when closing storage", "err", err)
+			c.opts.SLogger.Error("error when closing storage", "err", err)
 		}
 	}()
 
@@ -192,17 +183,17 @@ func (c *Component) Run(ctx context.Context) error {
 			}
 
 			if ts == lastTs {
-				level.Debug(c.log).Log("msg", "not truncating the WAL, remote_write timestamp is unchanged", "ts", ts)
+				c.opts.SLogger.Debug("not truncating the WAL, remote_write timestamp is unchanged", "ts", ts)
 				continue
 			}
 			lastTs = ts
 
-			level.Debug(c.log).Log("msg", "truncating the WAL", "ts", ts)
+			c.opts.SLogger.Debug("truncating the WAL", "ts", ts)
 			err := c.walStore.Truncate(ts)
 			if err != nil {
 				// The only issue here is larger disk usage and a greater replay time,
 				// so we'll only log this as a warning.
-				level.Warn(c.log).Log("msg", "could not truncate WAL", "err", err)
+				c.opts.SLogger.Warn("could not truncate WAL", "err", err)
 			}
 		}
 	}

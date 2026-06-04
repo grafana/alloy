@@ -14,8 +14,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/exemplar"
 	"github.com/prometheus/prometheus/model/histogram"
@@ -30,7 +28,6 @@ import (
 	"github.com/prometheus/prometheus/util/zeropool"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -200,7 +197,7 @@ type Storage struct {
 
 	path   string
 	wal    *wlog.WL
-	logger log.Logger
+	logger *slog.Logger
 
 	appenderPool sync.Pool
 	bufPool      sync.Pool
@@ -229,11 +226,8 @@ type Storage struct {
 var stripeSeriesSize = 4096
 
 // NewStorage makes a new Storage.
-func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string) (*Storage, error) {
-	// Convert go-kit logger to slog logger
-	slogLogger := slog.New(logging.NewSlogGoKitHandler(logger))
-
-	w, err := wlog.NewSize(slogLogger, registerer, SubDirectory(path), wlog.DefaultSegmentSize, compression.Snappy)
+func NewStorage(logger *slog.Logger, registerer prometheus.Registerer, path string) (*Storage, error) {
+	w, err := wlog.NewSize(logger, registerer, SubDirectory(path), wlog.DefaultSegmentSize, compression.Snappy)
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +260,7 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 	}
 
 	if err := storage.replayWAL(); err != nil {
-		level.Warn(storage.logger).Log("msg", "encountered WAL read error, attempting repair", "err", err)
+		storage.logger.Warn("encountered WAL read error, attempting repair", "err", err)
 
 		var ce *wlog.CorruptionErr
 		if ok := errors.As(err, &ce); !ok {
@@ -274,9 +268,9 @@ func NewStorage(logger log.Logger, registerer prometheus.Registerer, path string
 		}
 		if err := w.Repair(ce); err != nil {
 			// if repair fails, truncate everything in WAL
-			level.Warn(storage.logger).Log("msg", "WAL repair failed, truncating!", "err", err)
+			storage.logger.Warn("WAL repair failed, truncating!", "err", err)
 			if e := w.Truncate(math.MaxInt); e != nil {
-				level.Error(storage.logger).Log("msg", "WAL truncate failure", "err", e)
+				storage.logger.Error("WAL truncate failure", "err", e)
 				return nil, fmt.Errorf("truncate corrupted WAL: %w", e)
 			}
 			if e := wlog.DeleteCheckpoints(w.Dir(), math.MaxInt); e != nil {
@@ -299,7 +293,7 @@ func (w *Storage) replayWAL() error {
 		return ErrWALClosed
 	}
 
-	level.Info(w.logger).Log("msg", "replaying WAL, this may take a while", "dir", w.wal.Dir())
+	w.logger.Info("msg", "replaying WAL, this may take a while", "dir", w.wal.Dir())
 	dir, startFrom, err := wlog.LastCheckpoint(w.wal.Dir())
 	if err != nil && !errors.Is(err, record.ErrNotFound) {
 		return fmt.Errorf("find last checkpoint: %w", err)
@@ -313,7 +307,7 @@ func (w *Storage) replayWAL() error {
 		}
 		defer func() {
 			if err := sr.Close(); err != nil {
-				level.Warn(w.logger).Log("msg", "error while closing the wal segments reader", "err", err)
+				w.logger.Warn("error while closing the wal segments reader", "err", err)
 			}
 		}()
 
@@ -323,7 +317,7 @@ func (w *Storage) replayWAL() error {
 			return fmt.Errorf("backfill checkpoint: %w", err)
 		}
 		startFrom++
-		level.Info(w.logger).Log("msg", "WAL checkpoint loaded")
+		w.logger.Info("WAL checkpoint loaded")
 	}
 
 	// Find the last segment.
@@ -342,12 +336,12 @@ func (w *Storage) replayWAL() error {
 		sr := wlog.NewSegmentBufReader(s)
 		err = w.loadWAL(wlog.NewReader(sr), duplicateRefToValidRef, i)
 		if err := sr.Close(); err != nil {
-			level.Warn(w.logger).Log("msg", "error while closing the wal segments reader", "err", err)
+			w.logger.Warn("error while closing the wal segments reader", "err", err)
 		}
 		if err != nil {
 			return err
 		}
-		level.Info(w.logger).Log("msg", "WAL segment loaded", "segment", i, "maxSegment", lastSegment)
+		w.logger.Info("WAL segment loaded", "segment", i, "maxSegment", lastSegment)
 	}
 
 	walReplayDuration := time.Since(start)
@@ -370,7 +364,7 @@ func (w *Storage) resetWALReplayResources() {
 func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.HeadSeriesRef]chunks.HeadSeriesRef, currentSegmentOrCheckpoint int) (err error) {
 	var (
 		syms    = labels.NewSymbolTable() // One table for the whole WAL.
-		dec     = record.NewDecoder(syms, slog.New(logging.NewSlogGoKitHandler(w.logger)))
+		dec     = record.NewDecoder(syms, w.logger)
 		lastRef = chunks.HeadSeriesRef(w.nextRef.Load())
 
 		decoded = make(chan any, 10)
@@ -560,7 +554,7 @@ func (w *Storage) loadWAL(r *wlog.Reader, duplicateRefToValidRef map[chunks.Head
 	}
 
 	if v := nonExistentSeriesRefs.Load(); v > 0 {
-		level.Warn(w.logger).Log("msg", "found sample referencing non-existing series", "skipped_series", v)
+		w.logger.Warn("found sample referencing non-existing series", "skipped_series", v)
 	}
 
 	w.nextRef.Store(uint64(lastRef))
@@ -612,7 +606,7 @@ func (w *Storage) Truncate(mint int64) error {
 
 	// Garbage collect series that haven't received an update since mint.
 	w.gc(mint)
-	level.Info(w.logger).Log("msg", "series GC completed", "duration", time.Since(start))
+	w.logger.Info("series GC completed", "duration", time.Since(start))
 
 	first, last, err := wlog.Segments(w.wal.Dir())
 	if err != nil {
@@ -647,13 +641,10 @@ func (w *Storage) Truncate(mint int64) error {
 		return ok && seg > last
 	}
 
-	// Convert go-kit logger to slog logger
-	slogLogger := slog.New(logging.NewSlogGoKitHandler(w.logger))
-
 	w.metrics.checkpointCreationTotal.Inc()
 
 	// TODO(x1unix): pass EnableSTStorage when Prometheus will be upgraded
-	if _, err = wlog.Checkpoint(slogLogger, w.wal, first, last, keep, mint); err != nil {
+	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint); err != nil {
 		w.metrics.checkpointCreationFail.Inc()
 		var cerr *wlog.CorruptionErr
 		if errors.As(err, &cerr) {
@@ -665,7 +656,7 @@ func (w *Storage) Truncate(mint int64) error {
 		// If truncating fails, we'll just try again at the next checkpoint.
 		// Leftover segments will just be ignored in the future if there's a checkpoint
 		// that supersedes them.
-		level.Error(w.logger).Log("msg", "truncating segments failed", "err", err)
+		w.logger.Error("truncating segments failed", "err", err)
 	}
 
 	// The checkpoint is written and segments before it is truncated, so we no
@@ -683,13 +674,13 @@ func (w *Storage) Truncate(mint int64) error {
 		// Leftover old checkpoints do not cause problems down the line beyond
 		// occupying disk space.
 		// They will just be ignored since a higher checkpoint exists.
-		level.Error(w.logger).Log("msg", "delete old checkpoints", "err", err)
+		w.logger.Error("delete old checkpoints", "err", err)
 		w.metrics.checkpointDeleteFail.Inc()
 	}
 
 	w.metrics.walTruncateDuration.Observe(time.Since(start).Seconds())
 
-	level.Info(w.logger).Log("msg", "WAL checkpoint complete",
+	w.logger.Info("WAL checkpoint complete",
 		"first", first, "last", last, "duration", time.Since(start))
 	return nil
 }
