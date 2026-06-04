@@ -37,6 +37,17 @@ type handler struct {
 	currentFormat Format
 	inner         slog.Handler
 	replacer      func(groups []string, a slog.Attr) slog.Attr
+
+	eventLogPool sync.Pool
+}
+
+// eventLogScratch bundles a reusable buffer with a slog handler that
+// writes into it. format records which Format the cached handler was
+// built for, so a runtime format change triggers a rebuild.
+type eventLogScratch struct {
+	buf    *bytes.Buffer
+	hdlr   slog.Handler
+	format Format
 }
 
 // nesting is used since attrs and groups need to be nested in the order they were entered.
@@ -78,26 +89,37 @@ func (h *handler) Handle(ctx context.Context, r slog.Record) error {
 // which knows about the event log and the record level. Only used when
 // the event log destination is active.
 func (h *handler) handleWithEventLog(ctx context.Context, r slog.Record) error {
-	buf := bytesPool.Get().(*bytes.Buffer)
-	buf.Reset()
+	// A pool (rather than buildHandler's single shared handler) because this
+	// path reads buf.Bytes() back after Handle to pass them plus the level to Dispatch.
+	s := h.getEventLogScratch()
 	defer func() {
-		buf.Reset()
-		bytesPool.Put(buf)
+		s.buf.Reset()
+		h.eventLogPool.Put(s)
 	}()
 
-	if err := h.newSlogHandler(buf).Handle(ctx, r); err != nil {
+	if err := s.hdlr.Handle(ctx, r); err != nil {
 		return err
 	}
-	if buf.Len() == 0 {
+	if s.buf.Len() == 0 {
 		return nil // No need to dispatch empty log entries.
 	}
-	return h.w.Dispatch(buf.Bytes(), &r.Level)
+	return h.w.Dispatch(s.buf.Bytes(), &r.Level)
 }
 
-// bytesPool reuses bytes.Buffer instances across event-log slow-path
-// calls to avoid an allocation per record.
-var bytesPool = sync.Pool{
-	New: func() any { return new(bytes.Buffer) },
+// getEventLogScratch returns scratch space whose cached handler matches
+// the current format, rebuilding the handler only when the format
+// changed (or on first use). The returned buffer is already empty.
+func (h *handler) getEventLogScratch() *eventLogScratch {
+	expectFormat := h.formatter.Format()
+	s, _ := h.eventLogPool.Get().(*eventLogScratch)
+	if s == nil {
+		s = &eventLogScratch{buf: new(bytes.Buffer)}
+	}
+	if s.hdlr == nil || s.format != expectFormat {
+		s.hdlr = h.newSlogHandler(s.buf)
+		s.format = expectFormat
+	}
+	return s
 }
 
 // newSlogHandler constructs a fresh slog handler writing into w, with the
