@@ -24,9 +24,6 @@ jobs:
     - name: Lint Go
       run: task lint:go
 
-    - name: Lint Go
-      run: task lint:go
-
     - name: Run Alloy Lint
       run: task lint:alloylint 
 
