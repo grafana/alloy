@@ -13,17 +13,15 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: networking
 spec:
-  type: ClusterIP
+  type: NodePort
   selector:
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: alloy
   internalTrafficPolicy: Cluster
+  externalTrafficPolicy: Local
   ports:
     - name: http-metrics
+      nodePort: 31128
       port: 12345
       targetPort: 12345
       protocol: "TCP"
-    - name: jaeger-thrift
-      port: 14268
-      targetPort: 14268
-      protocol: TCP

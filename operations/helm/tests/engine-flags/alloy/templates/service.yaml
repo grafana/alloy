@@ -18,7 +18,6 @@ spec:
     app.kubernetes.io/name: alloy
     app.kubernetes.io/instance: alloy
   internalTrafficPolicy: Cluster
-  externalTrafficPolicy: Cluster
   ports:
     - name: http-metrics
       port: 24680
