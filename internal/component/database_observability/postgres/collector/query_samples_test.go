@@ -1540,7 +1540,7 @@ func TestQuerySamples_WaitEventBoundedByPriorScrape(t *testing.T) {
 		DB:                 db,
 		CollectInterval:    time.Millisecond,
 		EntryHandler:       lokiClient,
-		Logger:             log.NewNopLogger(),
+		Logger:             logging.NewSlogNop(),
 		ExcludeCurrentUser: true,
 	})
 	require.NoError(t, err)
