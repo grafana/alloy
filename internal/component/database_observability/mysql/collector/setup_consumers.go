@@ -4,14 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -22,7 +20,7 @@ type SetupConsumersArguments struct {
 	DB       *sql.DB
 	Registry *prometheus.Registry
 
-	Logger          log.Logger
+	Logger          *slog.Logger
 	CollectInterval time.Duration
 }
 
@@ -32,7 +30,7 @@ type SetupConsumers struct {
 	collectInterval      time.Duration
 	setupConsumersMetric *prometheus.GaugeVec
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -53,7 +51,7 @@ func NewSetupConsumers(args SetupConsumersArguments) (*SetupConsumers, error) {
 		registry:             args.Registry,
 		setupConsumersMetric: setupConsumerMetric,
 		running:              &atomic.Bool{},
-		logger:               log.With(args.Logger, "collector", SetupConsumersCollector),
+		logger:               args.Logger.With("collector", SetupConsumersCollector),
 		collectInterval:      args.CollectInterval,
 	}, nil
 }
@@ -63,7 +61,7 @@ func (c *SetupConsumers) Name() string {
 }
 
 func (c *SetupConsumers) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 	c.running.Store(true)
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -78,7 +76,7 @@ func (c *SetupConsumers) Start(ctx context.Context) error {
 
 		for {
 			if err := c.getSetupConsumers(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -117,7 +115,7 @@ const (
 func (c *SetupConsumers) getSetupConsumers(ctx context.Context) error {
 	rs, err := c.dbConnection.QueryContext(ctx, selectSetupConsumers)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query selectSetupConsumers", "err", err)
+		c.logger.Error("failed to query selectSetupConsumers", "err", err)
 		return err
 	}
 	defer rs.Close()
