@@ -3,7 +3,7 @@ canonical: https://grafana.com/docs/alloy/latest/access_permissions/
 description: Set access and permissions for Grafana Alloy through process identity, network exposure, secrets, and component-level access
 menuTitle: Access and permissions
 title: Access and permissions for Grafana Alloy
-weight: 110
+weight: 95
 ---
 
 # Access and permissions for {{% param "FULL_PRODUCT_NAME" %}}
