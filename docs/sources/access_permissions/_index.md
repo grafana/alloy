@@ -1,18 +1,18 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/secure/
-description: Secure Grafana Alloy for production through process identity, network exposure, secrets, and component-level access
-menuTitle: Secure Alloy
-title: Secure Grafana Alloy
+canonical: https://grafana.com/docs/alloy/latest/access_permissions/
+description: Set access and permissions for Grafana Alloy through process identity, network exposure, secrets, and component-level access
+menuTitle: Access and permissions
+title: Access and permissions for Grafana Alloy
 weight: 110
 ---
 
-# Secure {{% param "FULL_PRODUCT_NAME" %}}
+# Access and permissions for {{% param "FULL_PRODUCT_NAME" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} collects telemetry from hosts, containers, and APIs, then forwards it to observability backends.
 That work requires read access to logs, process data, and cluster resources, plus credentials for remote write and similar endpoints.
 Your configuration determines which permissions {{< param "PRODUCT_NAME" >}} needs, and your deployment platform determines how you enforce them.
 
-## Security best practices
+## Access and permissions
 
 1. Run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
 1. Restrict the HTTP server to `127.0.0.1` or a private network address with the [`http` block][http-block].
@@ -23,11 +23,11 @@ Your configuration determines which permissions {{< param "PRODUCT_NAME" >}} nee
 1. Store credentials outside configuration files.
    Refer to [Types and values][types-values].
 1. Scope Kubernetes RBAC to the permissions your configuration uses.
-   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
+   Refer to [Access and permissions on Kubernetes][kubernetes].
 1. Set `readOnlyRootFilesystem: true` for container deployments.
-   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
+   Refer to [Access and permissions on Kubernetes][kubernetes].
 1. Set `allowPrivilegeEscalation: false` for container deployments.
-   Refer to [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes].
+   Refer to [Access and permissions on Kubernetes][kubernetes].
 1. Don't use eBPF components unless your use case requires them.
    Refer to [Components that require elevated access](#components-that-require-elevated-access).
 
@@ -35,9 +35,9 @@ Your configuration determines which permissions {{< param "PRODUCT_NAME" >}} nee
 
 Create a dedicated service account or user on your deployment platform:
 
-- [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux]: systemd service, file permissions, and the `alloy` user
-- [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]: `securityContext`, non-root UID, and OpenShift Security Context Constraints
-- [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows]: service accounts, Windows security groups, and filesystem ACLs
+- [Access and permissions on Linux][linux]: systemd service, file permissions, and the `alloy` user
+- [Access and permissions on Kubernetes][kubernetes]: `securityContext`, non-root UID, and RBAC
+- [Access and permissions on Windows][windows]: service accounts, Windows security groups, and filesystem ACLs
 
 ## Network exposure
 

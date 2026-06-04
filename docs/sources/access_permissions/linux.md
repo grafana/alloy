@@ -1,16 +1,16 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/secure/linux/
-description: Secure a Grafana Alloy installation on Linux with the alloy system user, file permissions, and systemd service security options
+canonical: https://grafana.com/docs/alloy/latest/access_permissions/linux/
+description: Set access and permissions for a Grafana Alloy installation on Linux with the alloy system user, file permissions, and systemd service options
 menuTitle: Linux
-title: Secure Grafana Alloy on Linux
+title: Access and permissions for Grafana Alloy on Linux
 weight: 100
 ---
 
-# Secure {{% param "FULL_PRODUCT_NAME" %}} on Linux
+# Access and permissions for {{% param "FULL_PRODUCT_NAME" %}} on Linux
 
 {{< param "PRODUCT_NAME" >}} requires read access to `/proc`, `/sys`, the systemd journal, application log files, and credentials for observability backends.
 DEB and RPM packages for {{< param "PRODUCT_NAME" >}} provide a dedicated `alloy` user and systemd unit file.
-You can configure filesystem permissions, systemd security directives, and read access for the components in your configuration.
+Set filesystem permissions, systemd restrictions, and read access to match the components in your configuration.
 
 {{< admonition type="note" >}}
 If you installed from a binary instead of a package, create the `alloy` user and systemd unit yourself.
@@ -88,7 +88,7 @@ If the configuration file contains credentials, confirm it isn't world-readable:
 stat /etc/alloy/config.alloy
 ```
 
-## Secure the systemd service
+## Set systemd service permissions
 
 The systemd unit in the package doesn't include security directives by default.
 Add them with a drop-in file so they survive package upgrades:
@@ -197,13 +197,13 @@ Don't switch the service to root.
 
 ## Next steps
 
-- [Secure {{< param "PRODUCT_NAME" >}}][secure]
-- [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]
-- [Secure {{< param "PRODUCT_NAME" >}} on Windows][windows]
+- [Access and permissions for {{< param "PRODUCT_NAME" >}}][access]
+- [Access and permissions on Kubernetes][kubernetes]
+- [Access and permissions on Windows][windows]
 
 [kubernetes]: ../kubernetes/
 [windows]: ../windows/
-[secure]: ../
+[access]: ../
 [elevated-access]: ../#components-that-require-elevated-access
 [http-block]: ../../reference/config-blocks/http/
 [loki-source-journal]: ../../reference/components/loki/loki.source.journal/

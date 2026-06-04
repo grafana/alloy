@@ -1,16 +1,16 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/secure/windows/
-description: Secure a Grafana Alloy installation on Windows with a dedicated service account, security groups, and filesystem permissions
+canonical: https://grafana.com/docs/alloy/latest/access_permissions/windows/
+description: Set access and permissions for a Grafana Alloy installation on Windows with a dedicated service account, security groups, and filesystem permissions
 menuTitle: Windows
-title: Secure Grafana Alloy on Windows
+title: Access and permissions for Grafana Alloy on Windows
 weight: 300
 ---
 
-# Secure {{% param "FULL_PRODUCT_NAME" %}} on Windows
+# Access and permissions for {{% param "FULL_PRODUCT_NAME" %}} on Windows
 
 {{< param "PRODUCT_NAME" >}} requires read access to Windows Event Logs, performance counters, application log files, and credentials for observability backends.
 The Windows installer registers the {{< param "PRODUCT_NAME" >}} service to run as `LOCAL SYSTEM`.
-You can configure a dedicated service account, security group membership, and filesystem permissions for the components in your configuration.
+Set the service account, security group membership, and filesystem permissions to match the components in your configuration.
 
 ## Run as a dedicated service account
 
@@ -97,16 +97,16 @@ Review that table if your configuration includes eBPF or host-level collectors o
 
 ## Next steps
 
-- [Secure {{< param "PRODUCT_NAME" >}}][secure]
+- [Access and permissions for {{< param "PRODUCT_NAME" >}}][access]
 - [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows]
-- [Secure {{< param "PRODUCT_NAME" >}} on Linux][linux]
-- [Secure {{< param "PRODUCT_NAME" >}} on Kubernetes][kubernetes]
+- [Access and permissions on Linux][linux]
+- [Access and permissions on Kubernetes][kubernetes]
 
 [install-windows]: ../../set-up/install/windows/
 [configure-windows]: ../../configure/windows/
 [linux]: ../linux/
 [kubernetes]: ../kubernetes/
-[secure]: ../
+[access]: ../
 [elevated-access]: ../#components-that-require-elevated-access
 [http-block]: ../../reference/config-blocks/http/
 [acl]: https://learn.microsoft.com/windows/win32/secauthz/access-control-lists
