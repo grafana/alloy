@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -27,11 +28,9 @@ const (
 )
 
 const (
-	queryTextClause     = ", s.query"
 	stateActive         = "active"
 	stateIdle           = "idle"
 	stateIdleTxnAborted = "idle in transaction (aborted)"
-	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -55,8 +54,8 @@ const selectPgStatActivity = `
 		s.wait_event,
 		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
-		s.query_id
-		%s
+		s.query_id,
+		s.query
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
@@ -296,11 +295,6 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	queryTextField := ""
-	if c.disableQueryRedaction {
-		queryTextField = queryTextClause
-	}
-
 	excludeCurrentUserClauseField := ""
 	if c.excludeCurrentUser {
 		excludeCurrentUserClauseField = excludeCurrentUserClause
@@ -308,7 +302,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
 	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "s.usename")
-	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
+	query := fmt.Sprintf(selectPgStatActivity, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
@@ -392,9 +386,7 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
-	}
-	if c.disableQueryRedaction {
-		scanArgs = append(scanArgs, &sample.Query)
+		&sample.Query,
 	}
 	err := rows.Scan(scanArgs...)
 	return sample, err
@@ -409,10 +401,8 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 }
 
 func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
-	if c.disableQueryRedaction {
-		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
-			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
-		}
+	if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
+		return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
 	}
 
 	if !sample.DatabaseName.Valid {
@@ -579,6 +569,14 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
 		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
 	}
+
+	if state.LastRow.Query.Valid {
+		traceparent := database_observability.TryExtractTraceParent(state.LastRow.Query.String)
+		if traceparent != "" {
+			labels = fmt.Sprintf(`%s traceparent=%s`, labels, strconv.Quote(traceparent))
+		}
+	}
+
 	return labels
 }
 

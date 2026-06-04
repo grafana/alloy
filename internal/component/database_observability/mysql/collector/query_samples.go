@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -412,7 +413,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 		row.TimestampMilliseconds = endMilliseconds - elapsedTime
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
-		traceParent := tryExtractTraceParent(row.SQLText.String)
+		traceParent := database_observability.TryExtractTraceParent(row.SQLText.String)
 
 		logMessage := fmt.Sprintf(
 			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
@@ -430,7 +431,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			elapsedTime,
 		)
 		if traceParent != "" {
-			logMessage += fmt.Sprintf(` traceparent="%s"`, traceParent)
+			logMessage += fmt.Sprintf(` traceparent=%s`, strconv.Quote(traceParent))
 		}
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
@@ -618,55 +619,4 @@ func classifyMySQLWaitEventType(waitEventName string) string {
 		return "Engine Wait"
 	}
 	return "Other Wait"
-}
-
-// tryExtractTraceParent attempts to extract a W3C traceparent value added at the end of SQL text as a trailing
-// block comment, e.g. "/*traceparent='00-<traceid>-<spanid>-<flags>'*/".
-// It returns the traceparent string when matched, otherwise an empty string.
-func tryExtractTraceParent(sqlText string) string {
-	if strings.HasSuffix(sqlText, "...") {
-		return ""
-	}
-
-	// Find the last comment: strip out /* and */
-	start := strings.LastIndex(sqlText, "/*")
-	if start < 0 {
-		return ""
-	}
-	body := sqlText[start+2:]
-	end := strings.Index(body, "*/")
-	if end < 0 {
-		return ""
-	}
-
-	body = body[:end]
-	body = strings.TrimSpace(body)
-	if body == "" {
-		return ""
-	}
-
-	// Split the comment by comma into key value pairs
-	pairs := strings.Split(body, ",")
-	for _, pair := range pairs {
-		pair = strings.TrimSpace(pair)
-		key, val, ok := strings.Cut(pair, "=")
-		if !ok {
-			continue
-		}
-
-		if !strings.EqualFold(strings.TrimSpace(key), "traceparent") {
-			continue
-		}
-
-		// SQL unescape: trim ' or " at beginning and end of value
-		if strings.HasPrefix(val, "'") || strings.HasPrefix(val, `"`) {
-			quote := string(val[0])
-			val = strings.TrimPrefix(val, quote)
-			val = strings.TrimSuffix(val, quote)
-		}
-
-		return strings.TrimSpace(val)
-	}
-
-	return ""
 }
