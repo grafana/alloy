@@ -1080,11 +1080,8 @@ replace github.com/grafana/regexp => github.com/grafana/regexp v0.0.0-2024051813
 // Replace memberlist with Grafana fork which includes unmerged upstream fixes
 replace github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
 
-// Pin Prometheus to the latest main-branch snapshot (v3.12-bound). Released v0.311.x has the old discovery API and is incompatible with otel-contrib v0.151+ prom-touching packages; MVS would select it otherwise via prom-operator's requirement. Tracking the latest main accumulates bugfixes while v3.12.0 is still pending — swap to v3.12.0-rc.0 or GA once tagged. Removal: when otel-contrib pins a released Prometheus tag.
-replace github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.311.4-0.20260512134559-54d4f527a0a3
-
-// Personal fork of prom-label-proxy v0.13.0 that no-ops WithPromqlDurationExpressionParsing. Prometheus v3.12 main (commit 1463a5bb5a6f, "Promote duration expressions as stable") removed parser.Options.ExperimentalDurationExpr; the upstream v0.13.0 source still references the field and fails to compile against any post-Apr-24 prom main commit. Removal: when upstream prom-label-proxy ships a release built against prom v3.12.
-replace github.com/prometheus-community/prom-label-proxy => github.com/kgeckhart/prom-label-proxy v0.12.2-0.20260512163335-8ff1e5db70a4
+// Pin Prometheus to the v3.12.0-rc.0 tag — the last tagged cut before GA (v0.312.0) pulled the OTel stack to v0.153 via a CVE-driven `go get -u`. rc.0 keeps deltatocumulative at v0.151 and collector core at v1.57, matching our otel-contrib pin, so MVS drags nothing up. MVS would otherwise select released v0.311.x via prom-operator's requirement, whose old discovery API is incompatible with otel-contrib v0.151+. Removal: when otel-contrib pins a released Prometheus tag (post-v3.12.0 GA).
+replace github.com/prometheus/prometheus => github.com/prometheus/prometheus v0.312.0-rc.0
 
 // Personal fork of prometheus-operator v0.91.0 with a one-line patch adding nil *slog.Logger 5th arg to rulefmt.Parse in pkg/operator/rules.go to match the new Prometheus main API (commit a6ffcaa352cf, April 9 2026). Upstream prom-operator main is still on prom v0.311.3 released, so this fork is needed only because we're riding a prom main-branch snapshot. Fork branch: github.com/kgeckhart/prometheus-operator @ kgeckhart/v0.91.0-rulefmt-slog Removal: when upstream prom-operator ships a release that bumps prom to v3.12+.
 replace github.com/prometheus-operator/prometheus-operator => github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253

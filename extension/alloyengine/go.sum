@@ -1593,8 +1593,6 @@ github.com/kevinburke/ssh_config v1.2.0 h1:x584FjTGwHzMwvHx18PXxbBVzfnxogHaAReU4
 github.com/kevinburke/ssh_config v1.2.0/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
 github.com/keybase/go-keychain v0.0.1 h1:way+bWYa6lDppZoZcgMbYsvC7GxljxrskdNInRtuthU=
 github.com/keybase/go-keychain v0.0.1/go.mod h1:PdEILRW3i9D8JcdM+FmY6RwkHGnhHxXwkPPMeUgOK1k=
-github.com/kgeckhart/prom-label-proxy v0.12.2-0.20260512163335-8ff1e5db70a4 h1:ccf/uylEjZHB+oykyWb4wLOajQ/771xXdu3z8YyH75U=
-github.com/kgeckhart/prom-label-proxy v0.12.2-0.20260512163335-8ff1e5db70a4/go.mod h1:T5Z6OtsxvjFbbhvQ7wyrJu+CBdGBQeWcNkC8SSy4WUU=
 github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253 h1:07JX4vP+dfMyNxuJxWMOthUKVfKE/JhwMEz7wP4k7AI=
 github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253/go.mod h1:z+KVSl/9Oh8y0mvQwpIc5HnrNLUqPl6qEiq9pHwfQaU=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
@@ -2170,6 +2168,8 @@ github.com/prometheus-community/elasticsearch_exporter v1.5.0 h1:1k8CK7aPMdmJ/Lc
 github.com/prometheus-community/elasticsearch_exporter v1.5.0/go.mod h1:ZITzMapK/TzzsaKOBlNCatKGcCfp/6xIQg2ucoLHA5c=
 github.com/prometheus-community/go-runit v0.1.0 h1:uTWEj/Fn2RoLdfg/etSqwzgYNOYPrARx1BHUN052tGA=
 github.com/prometheus-community/go-runit v0.1.0/go.mod h1:AvJ9Jo3gAFu2lbM4+qfjdpq30FfiLDJZKbQ015u08IQ=
+github.com/prometheus-community/prom-label-proxy v0.13.0 h1:SD27XYzzLbw1TL9Jv/W2yAWJ9pCz2EsUTyhjya87Ndg=
+github.com/prometheus-community/prom-label-proxy v0.13.0/go.mod h1:T5Z6OtsxvjFbbhvQ7wyrJu+CBdGBQeWcNkC8SSy4WUU=
 github.com/prometheus-community/stackdriver_exporter v0.18.0 h1:nB7JwloiBziunaujql5XEjB06WOo0ePgBTCJxFeaOhY=
 github.com/prometheus-community/stackdriver_exporter v0.18.0/go.mod h1:f7T7XXRVc390sVc7rk2yNflf+RkClE4mlfsaSsW2K5Q=
 github.com/prometheus-community/windows_exporter v0.31.3 h1:v5HRhiSL/AgFtp96GjUATrtRMedNhjaMHogJBecgFSE=
@@ -2236,8 +2236,8 @@ github.com/prometheus/procfs v0.6.0/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1
 github.com/prometheus/procfs v0.7.3/go.mod h1:cz+aTbrPOrUb4q7XlbU9ygM+/jj0fzG6c1xBZuNvfVA=
 github.com/prometheus/procfs v0.20.1 h1:XwbrGOIplXW/AU3YhIhLODXMJYyC1isLFfYCsTEycfc=
 github.com/prometheus/procfs v0.20.1/go.mod h1:o9EMBZGRyvDrSPH1RqdxhojkuXstoe4UlK79eF5TGGo=
-github.com/prometheus/prometheus v0.311.4-0.20260512134559-54d4f527a0a3 h1:oaVid3XySx40mXoB99yoJlro4kEKmOGlDuvwC0R/5U4=
-github.com/prometheus/prometheus v0.311.4-0.20260512134559-54d4f527a0a3/go.mod h1:orN7+39ySpDpDwh+EbN7UYpMHYNXrl0rabkpVMfMN4g=
+github.com/prometheus/prometheus v0.312.0-rc.0 h1:TjK2to/7snbt8irzzjEt7TXlACRcKpZIbMvazYgwY3I=
+github.com/prometheus/prometheus v0.312.0-rc.0/go.mod h1:orN7+39ySpDpDwh+EbN7UYpMHYNXrl0rabkpVMfMN4g=
 github.com/prometheus/sigv4 v0.4.1 h1:EIc3j+8NBea9u1iV6O5ZAN8uvPq2xOIUPcqCTivHuXs=
 github.com/prometheus/sigv4 v0.4.1/go.mod h1:eu+ZbRvsc5TPiHwqh77OWuCnWK73IdkETYY46P4dXOU=
 github.com/prometheus/snmp_exporter v0.29.0 h1:COShgBj1tmWvA5pAkWQgO/lB3+bL/MFqUIqOELSZaBw=
