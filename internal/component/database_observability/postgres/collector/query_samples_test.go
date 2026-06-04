@@ -117,7 +117,8 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" app="testapp" client="127.0.0.1:5432" backend_type="client backend" state="waiting" xid="0" xmin="0" xact_time="2m0s" query_time="30s" queryid="124"`,
 				`level="info" datname="testdb" pid="102" leader_pid="" user="testuser" backend_type="client backend" state="waiting" xid="0" xmin="0" wait_time="10s" wait_event_type="Lock" wait_event="relation" wait_event_name="Lock:relation" blocked_by_pids="[103 104]" queryid="124"`,
 			},
-			expectedTimestamps: []time.Time{queryStartTime, now},
+			// Both sample and wait_event collapse to query_start.
+			expectedTimestamps: []time.Time{queryStartTime, queryStartTime},
 		},
 		{
 			name: "query with redaction disabled",
@@ -1369,7 +1370,7 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, entries[0].Labels)
 		require.True(t, now.Add(-30*time.Second).Equal(time.Unix(0, entries[0].Timestamp.UnixNano())))
 		require.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, entries[1].Labels)
-		require.True(t, now.Equal(time.Unix(0, entries[1].Timestamp.UnixNano())))
+		require.True(t, now.Add(-30*time.Second).Equal(time.Unix(0, entries[1].Timestamp.UnixNano())))
 		// The wait_event_v2 entry must contain the classified wait_event_type
 		require.Contains(t, entries[1].Line, `wait_event_type="IO Wait"`)
 		// Must not contain a raw "IO" as wait_event_type value
