@@ -102,8 +102,7 @@ jobs:
         cache: false
 
     - name: Build
-      run: |
-        RELEASE_BUILD=1 make -j4 dist
+      run: RELEASE_BUILD=1 SKIP_CODE_GENERATION=1 make -j4 dist
       env:
         VERSION: ${{ env.RELEASE_TAG }}
 
