@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	kitlog "github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -33,7 +32,6 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	t.Helper()
 	opts := cmp.Options{
 		ID:            "test",
-		Logger:        kitlog.NewNopLogger(),
 		SLogger:       logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
@@ -667,7 +665,6 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
 	opts := cmp.Options{
 		ID:            "test.postgres",
-		Logger:        kitlog.NewNopLogger(),
 		SLogger:       logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
@@ -872,7 +869,6 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 	var exports Exports
 	opts := cmp.Options{
 		ID:         "test",
-		Logger:     kitlog.NewNopLogger(),
 		SLogger:    logging.NewSlogNop(),
 		Registerer: nil,
 		OnStateChange: func(e cmp.Exports) {
@@ -906,7 +902,6 @@ func Test_connectAndStartCollectors(t *testing.T) {
 	t.Run("returns error when database connection fails", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test-component",
-			Logger:        kitlog.NewNopLogger(),
 			SLogger:       logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
@@ -940,7 +935,6 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		// an existing connection before attempting a new one
 		opts := cmp.Options{
 			ID:            "test-component",
-			Logger:        kitlog.NewNopLogger(),
 			SLogger:       logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
@@ -1032,7 +1026,6 @@ func TestPostgres_Reconnection(t *testing.T) {
 	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
-			Logger:        kitlog.NewNopLogger(),
 			SLogger:       logging.NewSlogNop(),
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {

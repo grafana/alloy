@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
@@ -17,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -108,7 +107,7 @@ type QuerySamplesArguments struct {
 	ExcludeDatabases              []string
 	ExcludeUsers                  []string
 	EntryHandler                  loki.EntryHandler
-	Logger                        log.Logger
+	Logger                        *slog.Logger
 	DisableQueryRedaction         bool
 	ExcludeCurrentUser            bool
 	EnablePreClassifiedWaitEvents bool
@@ -124,7 +123,7 @@ type QuerySamples struct {
 	excludeCurrentUser            bool
 	enablePreClassifiedWaitEvents bool
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -239,7 +238,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		excludeCurrentUser:            args.ExcludeCurrentUser,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
-		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		logger:                        args.Logger.With("collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 		samples:                       map[SampleKey]*SampleState{},
 		idleEmitted:                   expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
@@ -252,9 +251,9 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+		c.logger.Warn("collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
+		c.logger.Debug("collector started")
 	}
 
 	c.running.Store(true)
@@ -270,7 +269,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySample(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -322,13 +321,13 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	for rows.Next() {
 		sample, scanErr := c.scanRow(rows)
 		if scanErr != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", scanErr)
+			c.logger.Error("failed to scan pg_stat_activity", "err", scanErr)
 			continue
 		}
 
 		key, procErr := c.processRow(sample)
 		if procErr != nil {
-			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
+			c.logger.Debug("invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
 			continue
 		}
 
@@ -356,7 +355,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	}
 
 	if err := rows.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
+		c.logger.Error("failed to iterate pg_stat_activity rows", "err", err)
 		return err
 	}
 

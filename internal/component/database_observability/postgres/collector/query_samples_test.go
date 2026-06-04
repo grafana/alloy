@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/lib/pq"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -156,6 +156,12 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 			defer db.Close()
 
 			logBuffer := syncbuffer.Buffer{}
+			logger, err := logging.New(&logBuffer, logging.Options{
+				Level:  logging.LevelDebug,
+				Format: logging.FormatLogfmt,
+			})
+			require.NoError(t, err)
+
 			lokiClient := loki.NewCollectingHandler()
 			defer lokiClient.Stop()
 
@@ -163,7 +169,7 @@ func TestQuerySamples_FetchQuerySamples(t *testing.T) {
 				DB:                    db,
 				CollectInterval:       time.Millisecond,
 				EntryHandler:          lokiClient,
-				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				Logger:                logger.Slog(),
 				DisableQueryRedaction: tc.disableQueryRedaction,
 				ExcludeCurrentUser:    true,
 			})
@@ -275,6 +281,12 @@ func TestQuerySamples_FetchQuerySamples_ErrorCases(t *testing.T) {
 			defer db.Close()
 
 			logBuffer := syncbuffer.Buffer{}
+			logger, err := logging.New(&logBuffer, logging.Options{
+				Level:  logging.LevelDebug,
+				Format: logging.FormatLogfmt,
+			})
+			require.NoError(t, err)
+
 			lokiClient := loki.NewCollectingHandler()
 			defer lokiClient.Stop()
 
@@ -282,7 +294,7 @@ func TestQuerySamples_FetchQuerySamples_ErrorCases(t *testing.T) {
 				DB:                    db,
 				CollectInterval:       time.Millisecond,
 				EntryHandler:          lokiClient,
-				Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				Logger:                logger.Slog(),
 				DisableQueryRedaction: tc.disableQueryRedaction,
 				ExcludeCurrentUser:    true,
 			})
@@ -344,6 +356,12 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -351,7 +369,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -402,6 +420,12 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -409,7 +433,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -469,6 +493,12 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -476,7 +506,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -537,6 +567,12 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -544,7 +580,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -605,6 +641,12 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -612,7 +654,7 @@ func TestQuerySamples_FinalizationScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -702,6 +744,12 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -709,7 +757,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -768,6 +816,12 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -775,7 +829,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -841,6 +895,12 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -848,7 +908,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -914,6 +974,12 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -921,7 +987,7 @@ func TestQuerySamples_IdleScenarios(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -1052,6 +1118,12 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 			defer db.Close()
 
 			logBuffer := syncbuffer.Buffer{}
+			logger, err := logging.New(&logBuffer, logging.Options{
+				Level:  logging.LevelDebug,
+				Format: logging.FormatLogfmt,
+			})
+			require.NoError(t, err)
+
 			lokiClient := loki.NewCollectingHandler()
 			defer lokiClient.Stop()
 
@@ -1059,7 +1131,7 @@ func TestQuerySamples_ExcludeCurrentUser(t *testing.T) {
 				DB:                 db,
 				CollectInterval:    time.Millisecond,
 				EntryHandler:       lokiClient,
-				Logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				Logger:             logger.Slog(),
 				ExcludeCurrentUser: tc.excludeCurrentUser,
 			})
 			require.NoError(t, err)
@@ -1123,6 +1195,12 @@ func TestQuerySamples_ExcludeDatabases(t *testing.T) {
 	defer db.Close()
 
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
@@ -1132,7 +1210,7 @@ func TestQuerySamples_ExcludeDatabases(t *testing.T) {
 		CollectInterval:  time.Millisecond,
 		ExcludeDatabases: []string{"excluded_db"},
 		EntryHandler:     lokiClient,
-		Logger:           log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		Logger:           logger.Slog(),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, sampleCollector)
@@ -1203,6 +1281,12 @@ func TestQuerySamples_ExcludeUsers(t *testing.T) {
 	defer db.Close()
 
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
@@ -1211,7 +1295,7 @@ func TestQuerySamples_ExcludeUsers(t *testing.T) {
 		CollectInterval: time.Millisecond,
 		ExcludeUsers:    []string{"excluded_user"},
 		EntryHandler:    lokiClient,
-		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		Logger:          logger.Slog(),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, sampleCollector)
@@ -1276,6 +1360,12 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -1283,7 +1373,7 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 			DB:                            db,
 			CollectInterval:               time.Millisecond,
 			EntryHandler:                  lokiClient,
-			Logger:                        log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                        logger.Slog(),
 			ExcludeCurrentUser:            true,
 			EnablePreClassifiedWaitEvents: false,
 		})
@@ -1333,6 +1423,12 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 		defer db.Close()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -1340,7 +1436,7 @@ func TestQuerySamples_WaitEvents_PreClassifiedFlag(t *testing.T) {
 			DB:                            db,
 			CollectInterval:               time.Millisecond,
 			EntryHandler:                  lokiClient,
-			Logger:                        log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                        logger.Slog(),
 			ExcludeCurrentUser:            true,
 			EnablePreClassifiedWaitEvents: true,
 		})
@@ -1444,7 +1540,7 @@ func TestQuerySamples_WaitEventBoundedByPriorScrape(t *testing.T) {
 		DB:                 db,
 		CollectInterval:    time.Millisecond,
 		EntryHandler:       lokiClient,
-		Logger:             log.NewNopLogger(),
+		Logger:             logging.NewSlogNop(),
 		ExcludeCurrentUser: true,
 	})
 	require.NoError(t, err)
