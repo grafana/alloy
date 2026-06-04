@@ -16,15 +16,14 @@ weight: 200
 The {{< param "PRODUCT_NAME" >}} container image runs as `root` by default and defines a non-root `alloy` user with UID `473` and GID `473`.
 Set `securityContext`, RBAC, and network settings to match the components in your configuration.
 
-## Run as a non-root user
+The [{{< param "PRODUCT_NAME" >}} Docker container image][image] defines two users:
 
-The [{{< param "PRODUCT_NAME" >}} container image][image] defines two users: `root` and a non-root user named `alloy` with UID `473` and GID `473`.
-The container runs the `alloy` binary as `root` by default because some components, such as [beyla.ebpf][], need elevated privileges.
+- A `root` user.
+- A non-root user named `alloy` with UID `473` and GID `473`.
 
-The Grafana Helm chart doesn't set `runAsUser` or `runAsGroup` by default, so the container also runs as `root` until you add a `securityContext`.
+By default, the `alloy` binary runs as `root` because some components, such as [beyla.ebpf][], need elevated privileges.
 
-The container runtime runs the process in an isolated namespace.
-Set `runAsUser` and `runAsGroup` to `473` to run Alloy as the `alloy` user defined in the image.
+You can configure a non-root user when you deploy Alloy in Kubernetes.
 
 {{< admonition type="note" >}}
 Components like [beyla.ebpf][beyla-ebpf-note] need root or additional Linux capabilities.
@@ -34,7 +33,9 @@ Refer to the [beyla.ebpf component reference][beyla-ebpf-note].
 [beyla-ebpf-note]: ../../reference/components/beyla/beyla.ebpf/
 {{< /admonition >}}
 
-Configure a [security context][security-context] for the {{< param "PRODUCT_NAME" >}} container to run as UID `473`.
+## Run as a non-root user
+
+To run {{< param "PRODUCT_NAME" >}} as a non-root user, configure a [security context][security-context] for the {{< param "PRODUCT_NAME" >}} container.
 If you use the [Grafana Helm chart][], add this to `values.yaml`:
 
 ```yaml
@@ -55,7 +56,7 @@ configReloader:
 ```
 
 This configuration runs the {{< param "PRODUCT_NAME" >}} binary with UID `473` and GID `473` instead of as `root`.
-It also runs the config reloader sidecar as UID `65534` and GID `65534`.
+It also runs the `config reloader` sidecar as UID `65534` and GID `65534`.
 
 ## Set container permissions
 

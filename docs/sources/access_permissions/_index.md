@@ -48,7 +48,7 @@ Review what you expose before you change either default.
 
 ## Secrets and credentials
 
-{{< param "PRODUCT_NAME" >}} loads secrets at runtime through several patterns:
+You can load secrets at runtime through several patterns:
 
 - `sys.env()` in configuration to reference environment variables
 - [`remote.vault`][remote-vault] to load secrets from HashiCorp Vault
@@ -60,14 +60,7 @@ For `secret`-typed values at runtime and protection from exposure in the UI and 
 ## Components that require elevated access
 
 Some components need root, extra capabilities, or group membership.
-
-| Component                  | Requirement                        | Notes                                                        |
-| -------------------------- | ---------------------------------- | ------------------------------------------------------------ |
-| `beyla.ebpf`               | Root or Linux capabilities         | Kernel-level eBPF. Incompatible with strict non-root setups. |
-| `prometheus.exporter.unix` | Read access to `/proc`, `/sys`     | Usually satisfied by the `alloy` user on Linux.              |
-| `loki.source.journal`      | `adm` and `systemd-journal` groups | The package installer adds the `alloy` user to both groups.  |
-| `loki.source.file`         | Read access to target log paths    | Grant per-path ACLs instead of broad permissions.            |
-| `pyroscope.ebpf`           | Root or Linux capabilities         | Same constraint as `beyla.ebpf`.                             |
+Refer to [Components][components] for details.
 
 [linux]: ./linux/
 [kubernetes]: ./kubernetes/
@@ -78,3 +71,4 @@ Some components need root, extra capabilities, or group membership.
 [remote-k8s-secret]: ../reference/components/remote/remote.kubernetes.secret/
 [remote-s3]: ../reference/components/remote/remote.s3/
 [types-values]: ../get-started/expressions/types_and_values/
+[components]: ../reference/components/
