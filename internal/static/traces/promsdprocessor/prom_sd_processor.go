@@ -170,12 +170,13 @@ func (p *promServiceDiscoProcessor) syncTargets(jobName string, group *targetgro
 		for k, v := range discoveredLabels.Clone() {
 			labelMap[string(k)] = string(v)
 		}
-		processedLabels, keep := relabel.Process(labels.FromMap(labelMap), relabelConfig...)
+		lb := labels.NewBuilder(labels.FromMap(labelMap))
+		keep := relabel.ProcessBuilder(lb, relabelConfig...)
 		if !keep {
 			continue
 		}
 
-		var labels = discovery.NewTargetFromModelLabels(processedLabels)
+		var labels = discovery.NewTargetFromModelLabels(lb.Labels())
 		host, err := promsdconsumer.GetHostFromLabels(labels)
 		if err != nil {
 			p.logger.Warn("ignoring target, unable to find address", "err", err)
