@@ -3,7 +3,6 @@ package scrape
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/url"
 	"reflect"
 	"slices"
@@ -26,7 +25,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
@@ -492,7 +490,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.appendable.UpdateChildren(newArgs.ForwardTo)
 
-	promConfig, err := config.Load("", slog.New(logging.NewSlogGoKitHandler(c.opts.Logger)))
+	promConfig, err := config.Load("", c.opts.SLogger)
 	if err != nil {
 		return fmt.Errorf("error loading blank prometheus config: %w", err)
 	}
