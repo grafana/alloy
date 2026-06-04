@@ -1791,6 +1791,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnect
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0/go.mod h1:ZahpYOCbNPsiMP0wn40OGFR3M7qgHMJGpxCgoyvE5do=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0 h1:DSjPFExBfNpQnn0Q+5+wMdaWh1BTMAzZgtnmGCCyZZY=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0/go.mod h1:QDDGksgIYqE7vCxwFXEyInyAjcqJCM0rfGEG41aGsjw=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.147.0 h1:PImp8hkd9VzJBIAK++0K48rWl6HA37gjObu1QLXSyVE=
+github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.147.0/go.mod h1:uhDlKK6lSkzh8NuG3ptpqhtOs5OBxkxF+xC09vxp8e0=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.147.0 h1:sAjARhiJxByhuUz0JTUPthqetNp6rxACW6KMEDd6K3c=
 github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.147.0/go.mod h1:nAEpAXAz41JmUxHcHeXpg6tMwe9JL5RxpX+pGa9yJP0=
 github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.147.0 h1:KAYlWOt44ycKvemDrYvBpx/5c7YUEctffUeXSl+yzCI=

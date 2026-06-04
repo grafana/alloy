@@ -101,6 +101,7 @@ The following sections list all included components:
 - [count](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/countconnector/README.md)
 - [grafanacloud](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/grafanacloudconnector/README.md)
 - [servicegraph](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/servicegraphconnector/README.md)
+- [signaltometrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/signaltometricsconnector/README.md)
 - [spanmetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/spanmetricsconnector/README.md)
 - [forward](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/connector/forwardconnector/README.md)
 

@@ -629,6 +629,7 @@ require (
 	github.com/open-telemetry/opamp-go v0.23.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.147.0 // indirect

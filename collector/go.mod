@@ -10,6 +10,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.147.0
