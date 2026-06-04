@@ -680,7 +680,7 @@ func TestLogsCollector_NonUTCLogTimezone(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -727,7 +727,7 @@ func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -770,7 +770,7 @@ func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
@@ -814,7 +814,7 @@ func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
 	collector, err := NewLogs(LogsArguments{
 		Receiver:     loki.NewLogsReceiver(),
 		EntryHandler: entryHandler,
-		Logger:       log.NewNopLogger(),
+		Logger:       logging.NewSlogNop(),
 		Registry:     registry,
 	})
 	require.NoError(t, err)
