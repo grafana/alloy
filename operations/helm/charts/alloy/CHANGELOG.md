@@ -12,9 +12,6 @@ Unreleased
 ### Enhancements
 
 - Allow configuring of the alloy service externalTrafficPolicy (@at-blacknight)
-
-### Enhancements
-
 - Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
 
 ### Bug fixes
