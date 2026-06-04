@@ -112,7 +112,7 @@ depending on the nature of the reload error.
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return r.run(cmd, args[0])
+			return r.runCommand(cmd, args[0])
 		},
 	}
 
@@ -203,6 +203,8 @@ type ExtensionModeParams struct {
 }
 
 type alloyRun struct {
+	extMode ExtensionModeParams
+
 	inMemoryAddr                 string
 	httpListenAddr               string
 	storagePath                  string
@@ -261,16 +263,85 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 	return nil
 }
 
-func (fr *alloyRun) run(cmd *cobra.Command, configPath string) error {
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
-	ctx, cancel := interruptContext(cmd.Context())
-	defer cancel()
-
+func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
 	if configPath == "" {
 		return fmt.Errorf("path argument not provided")
 	}
+
+	rp := runParams{
+		newReloadSignal: func() chan os.Signal {
+			reloadSignal := make(chan os.Signal, 1)
+			signal.Notify(reloadSignal, syscall.SIGHUP)
+			return reloadSignal
+		},
+		newRemoteConfigService: func(l *logging.Logger, reg prometheus.Registerer) (service.Service, error) {
+			return remotecfgservice.New(remotecfgservice.Options{
+				Logger:      log.With(l, "service", "remotecfg"),
+				ConfigPath:  configPath,
+				StoragePath: fr.storagePath,
+				Metrics:     reg,
+			})
+		},
+		loadConfig: func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
+			sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
+			if err != nil {
+				instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
+				return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
+			}
+
+			alloySource, err := alloy_runtime.ParseSources(sources)
+			defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
+			if err != nil {
+				return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
+			}
+
+			httpSvc.SetSources(alloySource.SourceFiles())
+			if err := rt.LoadSource(alloySource, nil, configPath); err != nil {
+				return sources, fmt.Errorf("error during the initial load: %w", err)
+			}
+
+			return sources, nil
+		},
+	}
+
+	return fr.run(cmd.Context(), cmd.Flags(), rp)
+}
+
+// getEnabledComponentsFunc returns a function that gets the current enabled components
+func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]any {
+	return func() map[string]any {
+		components := component.GetAllComponents(f, component.InfoOptions{})
+		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
+			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
+		}
+		componentNames := map[string]struct{}{}
+		for _, c := range components {
+			if c.Type != component.TypeBuiltin {
+				continue
+			}
+			componentNames[c.ComponentName] = struct{}{}
+		}
+		return map[string]any{"enabled-components": maps.Keys(componentNames)}
+	}
+}
+
+type runParams struct {
+	// newReloadSignal constructs and returns a new load signal channel.
+	newReloadSignal func() chan os.Signal
+
+	// newRemoteConfigService constructs remote configuration service.
+	newRemoteConfigService func(l *logging.Logger, regs prometheus.Registerer) (service.Service, error)
+
+	// loadConfig is config reloader function.
+	loadConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error)
+}
+
+func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runParams) error {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	ctx, cancel := interruptContext(ctx)
+	defer cancel()
 
 	if err := fr.checkExperimentalFlags(); err != nil {
 		return err
@@ -380,7 +451,7 @@ func (fr *alloyRun) run(cmd *cobra.Command, configPath string) error {
 
 	runtimeFlags := []string{}
 	if !fr.disableSupportBundle {
-		cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		fset.VisitAll(func(f *pflag.Flag) {
 			runtimeFlags = append(runtimeFlags, fmt.Sprintf("%s=%s", f.Name, f.Value.String()))
 		})
 	}
@@ -406,12 +477,7 @@ func (fr *alloyRun) run(cmd *cobra.Command, configPath string) error {
 		},
 	})
 
-	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(l, "service", "remotecfg"),
-		ConfigPath:  configPath,
-		StoragePath: fr.storagePath,
-		Metrics:     reg,
-	})
+	remoteCfgService, err := params.newRemoteConfigService(l, reg)
 	if err != nil {
 		return fmt.Errorf("failed to create the remotecfg service: %w", err)
 	}
@@ -462,34 +528,13 @@ func (fr *alloyRun) run(cmd *cobra.Command, configPath string) error {
 
 	ready = f.Ready
 	reload = func() (map[string][]byte, error) {
-		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		if err != nil {
-			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
-			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
-		}
-
-		alloySource, err := alloy_runtime.ParseSources(sources)
-		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
-		if err != nil {
-			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
-		}
-
-		httpService.SetSources(alloySource.SourceFiles())
-		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
-			return sources, fmt.Errorf("error during the initial load: %w", err)
-		}
-
-		return sources, nil
+		return params.loadConfig(f, httpService)
 	}
 
 	// Alloy controller
-	{
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			f.Run(ctx)
-		}()
-	}
+	wg.Go(func() {
+		f.Run(ctx)
+	})
 
 	// Report usage of enabled components
 	if !fr.disableReporting {
@@ -509,8 +554,8 @@ func (fr *alloyRun) run(cmd *cobra.Command, configPath string) error {
 	// that /metric and pprof endpoints are available while the Alloy controller
 	// is loading.
 	if source, err := reload(); err != nil {
-		var diags diag.Diagnostics
-		if errors.As(err, &diags) {
+		// TODO: map diagnostics positions to actual positions in YAML config of otel collector.
+		if diags, ok := errors.AsType[diag.Diagnostics](err); ok {
 			p := diag.NewPrinter(diag.PrinterConfig{
 				Color:              !color.NoColor,
 				ContextLinesBefore: 1,
@@ -544,8 +589,7 @@ func (fr *alloyRun) run(cmd *cobra.Command, configPath string) error {
 
 	level.Info(l).Log("msg", `{^_^} Alloy is running`)
 
-	reloadSignal := make(chan os.Signal, 1)
-	signal.Notify(reloadSignal, syscall.SIGHUP)
+	reloadSignal := params.newReloadSignal()
 	defer signal.Stop(reloadSignal)
 
 	for {
@@ -559,24 +603,6 @@ func (fr *alloyRun) run(cmd *cobra.Command, configPath string) error {
 				level.Info(l).Log("msg", "config reloaded")
 			}
 		}
-	}
-}
-
-// getEnabledComponentsFunc returns a function that gets the current enabled components
-func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]any {
-	return func() map[string]any {
-		components := component.GetAllComponents(f, component.InfoOptions{})
-		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
-			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
-		}
-		componentNames := map[string]struct{}{}
-		for _, c := range components {
-			if c.Type != component.TypeBuiltin {
-				continue
-			}
-			componentNames[c.ComponentName] = struct{}{}
-		}
-		return map[string]any{"enabled-components": maps.Keys(componentNames)}
 	}
 }
 
@@ -638,6 +664,10 @@ func loadSourceFiles(path string, converterSourceFormat string, converterBypassE
 }
 
 func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
+	if len(sources) == 0 {
+		return [sha256.Size]byte{}
+	}
+
 	// Combined hash of all the sources.
 	hash := sha256.New()
 
