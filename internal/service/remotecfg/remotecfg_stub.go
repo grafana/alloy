@@ -25,21 +25,16 @@ type ServiceStub struct {
 	systemAttrs map[string]string
 	metrics     *metrics
 	ctrl        service.Controller
-
-	getConfig func() *ast.File
 }
 
 // NewStub returns a new remote config service stub.
-//
-// Passed config getter is used to provide Alloy config for support bundles.
-func NewStub(opts Options, configGetter func() *ast.File) *ServiceStub {
+func NewStub(opts Options) *ServiceStub {
 	metrics := registerMetrics(opts.Metrics)
 
 	return &ServiceStub{
 		opts:        opts,
 		systemAttrs: getSystemAttributes(),
 		metrics:     metrics,
-		getConfig:   configGetter,
 	}
 }
 
@@ -82,9 +77,6 @@ func (s *ServiceStub) Data() any {
 }
 
 func (s *ServiceStub) GetCachedAstFile() *ast.File {
-	if s.getConfig != nil {
-		return s.getConfig()
-	}
-
+	// Nothing to return as no config is managed.
 	return nil
 }
