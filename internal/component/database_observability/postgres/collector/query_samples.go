@@ -208,8 +208,8 @@ type WaitEventOccurrence struct {
 	WaitEvent     string
 	BlockedByPIDs []int64 // normalized set (sorted, unique)
 	LastState     string
-	LastTimestamp time.Time // scrape time of the most recent observation
-	waitStartedAt time.Time // wait_time anchor: max(state_change, priorLastSeen at first observation)
+	LastTimestamp time.Time
+	waitStartedAt time.Time
 }
 
 // WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
