@@ -167,7 +167,7 @@ func (l *Logs) refreshLogTimezone(ctx context.Context) {
 
 	var tzName string
 	if err := l.db.QueryRowContext(queryCtx, selectLogTimezone).Scan(&tzName); err != nil {
-		level.Debug(l.logger).Log("msg", "failed to query log_timezone", "err", err)
+		l.logger.Debug("failed to query log_timezone", "err", err)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (l *Logs) refreshLogTimezone(ctx context.Context) {
 	if err != nil {
 		// PG accepts POSIX specs (e.g. 'EST5EDT,M3.2.0,M11.1.0') that Go's tzdata can't load.
 		if prev := l.lastLogTimezone.Load(); prev == nil || *prev != tzName {
-			level.Warn(l.logger).Log("msg", "PostgreSQL log_timezone is not a Go-loadable IANA name; logs collector will skip its historical-log filter. Consider setting log_timezone to an IANA name (e.g. 'America/New_York') in postgresql.conf.", "log_timezone", tzName, "err", err)
+			l.logger.Warn("PostgreSQL log_timezone is not a Go-loadable IANA name; logs collector will skip its historical-log filter. Consider setting log_timezone to an IANA name (e.g. 'America/New_York') in postgresql.conf.", "log_timezone", tzName, "err", err)
 			l.lastLogTimezone.Store(&tzName)
 		}
 		l.logTimezone.Store(nil)
