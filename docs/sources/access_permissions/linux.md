@@ -167,8 +167,8 @@ If you use [`loki.source.file`][loki-source-file] for log files owned by other u
 Don't expand the `alloy` user's group membership to reach those files.
 
 ```shell
-sudo setfacl -R -m u:alloy:r /var/log/myapp
-sudo setfacl -R -d -m u:alloy:r /var/log/myapp
+sudo setfacl -R -m u:alloy:rx /var/log/myapp
+sudo setfacl -R -d -m u:alloy:rx /var/log/myapp
 ```
 
 The `-d` flag sets a default ACL so new files in the directory inherit the permission.
