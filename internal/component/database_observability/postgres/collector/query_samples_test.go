@@ -234,6 +234,10 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows(columns))
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -241,7 +245,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			DB:                 db,
 			CollectInterval:    time.Millisecond,
 			EntryHandler:       lokiClient,
-			Logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:             logger.Slog(),
 			ExcludeCurrentUser: true,
 		})
 		require.NoError(t, err)
@@ -285,6 +289,10 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows(columns))
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -292,7 +300,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
@@ -336,6 +344,10 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows(columns))
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
 		lokiClient := loki.NewCollectingHandler()
 		defer lokiClient.Stop()
 
@@ -343,7 +355,7 @@ func TestQuerySamples_with_traceparent_comments(t *testing.T) {
 			DB:                    db,
 			CollectInterval:       time.Millisecond,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:                logger.Slog(),
 			DisableQueryRedaction: true,
 			ExcludeCurrentUser:    true,
 		})
