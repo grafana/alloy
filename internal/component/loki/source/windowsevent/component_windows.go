@@ -48,7 +48,7 @@ type Component struct {
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:   o,
-		fanout: loki.NewFanout(args.ForwardTo),
+		fanout: loki.NewFanout(args.ForwardTo, o.Registerer),
 		handle: loki.NewLogsReceiver(),
 		args:   args,
 	}

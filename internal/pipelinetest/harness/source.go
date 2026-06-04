@@ -41,7 +41,7 @@ func NewSource(opts component.Options, args SourceArguments) (*Source, error) {
 	s := &Source{
 		opts: opts,
 
-		lokiFanout: loki.NewFanout(args.ForwardTo.Logs),
+		lokiFanout: loki.NewFanout(args.ForwardTo.Logs, opts.Registerer),
 	}
 
 	s.opts.OnStateChange(SourceExports{})

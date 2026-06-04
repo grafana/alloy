@@ -253,7 +253,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	c := &Component{
 		opts:         opts,
 		args:         args,
-		fanout:       loki.NewFanout(args.ForwardTo),
+		fanout:       loki.NewFanout(args.ForwardTo, opts.Registerer),
 		handler:      loki.NewLogsReceiver(),
 		registry:     prometheus.NewRegistry(),
 		healthErr:    atomic.NewString(""),

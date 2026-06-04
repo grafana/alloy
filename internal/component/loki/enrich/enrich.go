@@ -64,7 +64,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		args:         args,
 		targetsCache: make(map[string]model.LabelSet),
 		receiver:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
-		fanout:       loki.NewFanout(args.ForwardTo),
+		fanout:       loki.NewFanout(args.ForwardTo, opts.Registerer),
 	}
 
 	opts.OnStateChange(Exports{Receiver: c.receiver})

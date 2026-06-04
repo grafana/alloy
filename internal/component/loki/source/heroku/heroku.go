@@ -67,7 +67,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		metrics:       newMetrics(o.Registerer),
 		mut:           sync.RWMutex{},
 		args:          Arguments{},
-		fanout:        loki.NewFanout(args.ForwardTo),
+		fanout:        loki.NewFanout(args.ForwardTo, o.Registerer),
 		handler:       loki.NewLogsBatchReceiver(),
 		serverMetrics: util.NewUncheckedCollector(nil),
 	}

@@ -63,7 +63,7 @@ func TestDefaultRate_Unmarshalled(t *testing.T) {
 // Valid custom config file loading (and [extend] useDefault) is tested in the
 // extend package so it runs in a separate process and avoids gitleaks global state.
 func TestGitleaksConfig_InvalidPath(t *testing.T) {
-	opts := newTestOptions(t, nil)
+	opts := newTestOptions(t, prometheus.DefaultRegisterer)
 	args := Arguments{
 		ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
 		GitleaksConfig: filepath.Join(t.TempDir(), "nonexistent.gitleaks.toml"),
@@ -344,7 +344,7 @@ func FuzzProcessEntry(f *testing.F) {
 		f.Add(testLog.Log)
 	}
 
-	opts := newTestOptions(f, nil)
+	opts := newTestOptions(f, prometheus.DefaultRegisterer)
 	ch1 := loki.NewLogsReceiver()
 
 	// Create component with default config

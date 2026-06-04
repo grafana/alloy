@@ -52,7 +52,7 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	c := &Component{
 		opts:         opts,
 		args:         args,
-		fanout:       loki.NewFanout(args.ForwardTo),
+		fanout:       loki.NewFanout(args.ForwardTo, opts.Registerer),
 		handler:      loki.NewLogsReceiver(),
 		registry:     prometheus.NewRegistry(),
 		healthErr:    atomic.NewString(""),

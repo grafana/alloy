@@ -102,7 +102,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cluster:   data.(cluster.Cluster),
 		opts:      o,
 		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanout(args.ForwardTo, o.Registerer),
 		positions: positionsFile,
 	}
 	if err := c.Update(args); err != nil {

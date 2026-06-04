@@ -101,7 +101,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		maxCacheSize:       args.MaxCacheSize,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 		builder:            labels.NewScratchBuilder(0),
-		fanout:             loki.NewFanout(args.ForwardTo),
+		fanout:             loki.NewFanout(args.ForwardTo, o.Registerer),
 	}
 
 	// Create and immediately export the receiver which remains the same for
