@@ -181,6 +181,19 @@ depending on the nature of the reload error.
 	return cmd
 }
 
+// ExtensionModeParams contains parameters for Alloy when running inside OTel extension.
+//
+// In extension mode:
+//   - Certain features like remote config are disabled.
+//   - Alloy config contents passed directly, instead of file path cli argument.
+type ExtensionModeParams struct {
+	// IsExtension identifies whetner Alloy is running inside OTel extension.
+	IsExtension bool
+
+	// ConfigContents contains config contents passed by extension.
+	ConfigContents []byte
+}
+
 type alloyRun struct {
 	inMemoryAddr                 string
 	httpListenAddr               string
