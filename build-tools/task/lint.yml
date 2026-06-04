@@ -11,17 +11,10 @@ tasks:
       - task: govulncheck
 
   go:
-    desc: Run Go linters.
-    cmds:
-      - task: golangci-lint
-      - task: alloylint
-
-  golangci-lint:
     desc: Run golangci-lint.
-    internal: true
     dir: "tools"
     cmds:
-      - mise exec -- go run ./cmd lint shell
+      - mise exec -- go run ./cmd lint go 
 
   shellcheck:
     desc: Run shellcheck linter.

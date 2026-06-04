@@ -483,7 +483,9 @@ func (s *Service) Update(newConfig any) error {
 		var tlsConfig *tls.Config
 		var err error
 		if newArgs.TLS.WindowsFilter != nil {
+			//nolint:staticcheck // updateWindowsCertificateFilter always errors on non-Windows build.
 			err = s.updateWindowsCertificateFilter(newArgs.TLS)
+			//nolint:staticcheck // updateWindowsCertificateFilter always errors on non-Windows build.
 			if err != nil {
 				return err
 			}

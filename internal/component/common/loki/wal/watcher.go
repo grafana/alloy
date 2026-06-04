@@ -305,7 +305,12 @@ func (w *Watcher) readSegment(r *wlog.LiveReader, segmentNum int) (bool, error) 
 			return readData, fmt.Errorf("error decoding record: %w", err)
 		}
 	}
-	return readData, fmt.Errorf("segment %d: %w", segmentNum, r.Err())
+
+	if r.Err() != nil {
+		return readData, fmt.Errorf("segment %d: %w", segmentNum, r.Err())
+	}
+
+	return readData, nil
 }
 
 // decodeAndDispatch first decodes a WAL record. Upon reading either Series or Entries from the WAL record, call the
