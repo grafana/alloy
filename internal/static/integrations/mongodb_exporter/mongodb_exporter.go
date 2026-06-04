@@ -46,7 +46,7 @@ type LogLevel struct {
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler.
-func (l *LogLevel) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (l *LogLevel) UnmarshalYAML(unmarshal func(any) error) error {
 	var s string
 	if err := unmarshal(&s); err != nil {
 		return err
