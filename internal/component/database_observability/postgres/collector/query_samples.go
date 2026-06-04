@@ -496,9 +496,6 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		return
 	}
 	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, state.EndAt)
-	// Anchor on query_start so the entry timestamp lines up with the
-	// trace span's start on the timeline; application traces stamp their
-	// span at query start, and the DB O11y app navigates to that point.
 	ts := state.LastSeenAt.UnixNano()
 	if state.LastRow.QueryStart.Valid {
 		ts = state.LastRow.QueryStart.Time.UnixNano()
