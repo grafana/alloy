@@ -48,11 +48,6 @@ func NewGraphQLClient(endpoint string) *GraphQLClient {
 	}
 }
 
-// SetHeader sets a custom header (useful for future auth support)
-func (c *GraphQLClient) SetHeader(key, value string) {
-	c.headers.Set(key, value)
-}
-
 // Execute sends a GraphQL query and returns the parsed response.
 func (c *GraphQLClient) Execute(query string) (*GraphQLResponse, error) {
 	reqBody := GraphQLRequest{Query: query}

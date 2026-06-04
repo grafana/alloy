@@ -3,6 +3,7 @@ package alloycli
 import (
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -12,12 +13,14 @@ import (
 )
 
 type alloyGql struct {
-	httpAddr string
+	endpoint string
 }
+
+var operationRegex = regexp.MustCompile(`^((query|mutation|subscription)(\s|\{)|(\{))`)
 
 func gqlCommand() *cobra.Command {
 	g := &alloyGql{
-		httpAddr: "http://127.0.0.1:12345/graphql",
+		endpoint: "http://127.0.0.1:12345/graphql",
 	}
 
 	cmd := &cobra.Command{
@@ -41,9 +44,9 @@ with caution in production.
 	}
 
 	cmd.Flags().StringVar(
-		&g.httpAddr,
+		&g.endpoint,
 		"endpoint",
-		g.httpAddr,
+		g.endpoint,
 		"Address of the GraphQL endpoint",
 	)
 
@@ -51,9 +54,14 @@ with caution in production.
 }
 
 func (g *alloyGql) Run(query string, out io.Writer) error {
-	c := client.NewGraphQLClient(g.httpAddr)
+	c := client.NewGraphQLClient(g.endpoint)
 
-	response, err := c.Execute(formatGraphQLQuery(query))
+	formattedQuery, err := formatGraphQLQuery(query)
+	if err != nil {
+		return fmt.Errorf("format GraphQL query: %w", err)
+	}
+
+	response, err := c.Execute(formattedQuery)
 	if err != nil {
 		return fmt.Errorf("execute GraphQL query: %w", err)
 	}
@@ -67,22 +75,18 @@ func (g *alloyGql) Run(query string, out io.Writer) error {
 	return nil
 }
 
-func formatGraphQLQuery(query string) string {
+func formatGraphQLQuery(query string) (string, error) {
 	trimmedQuery := strings.TrimSpace(query)
 
-	for _, prefix := range []string{
-		"{",
-		"query ",
-		"mutation ",
-		"subscription ",
-		"query{",
-		"mutation{",
-		"subscription{",
-	} {
-		if strings.HasPrefix(trimmedQuery, prefix) {
-			return query
-		}
+	firstParen := strings.Index(trimmedQuery, "(")
+	firstCurly := strings.Index(trimmedQuery, "{")
+	if firstParen >= 0 && (firstCurly == -1 || firstParen < firstCurly) {
+		return "", fmt.Errorf("query parameters are not supported")
 	}
 
-	return "query { " + query + " }"
+	if operationRegex.MatchString(trimmedQuery) {
+		return query, nil
+	}
+
+	return "query { " + query + " }", nil
 }

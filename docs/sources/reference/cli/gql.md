@@ -41,7 +41,7 @@ To enable it, start {{< param "PRODUCT_NAME" >}} with the `--stability.level=exp
 alloy run --stability.level=experimental --feature.graphql.enabled <CONFIG_PATH>
 ```
 
-Replace _`<PATH_NAME>`_ with the {{< param "PRODUCT_NAME" >}} configuration file or directory path.
+Replace _`<CONFIG_PATH>`_ with the {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 
 ## Query formats
 

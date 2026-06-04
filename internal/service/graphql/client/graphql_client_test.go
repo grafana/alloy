@@ -20,7 +20,6 @@ func TestExecuteReturnsResponseBodyForNonOKStatus(t *testing.T) {
 	c := NewGraphQLClient(server.URL)
 	_, err := c.Execute("{ alloy {")
 
-	require.Error(t, err)
 	require.ErrorContains(t, err, "400 Bad Request")
 	require.ErrorContains(t, err, "bad query")
 }
@@ -51,6 +50,5 @@ func TestExecuteReturnsErrorForOversizedResponse(t *testing.T) {
 	c := NewGraphQLClient(server.URL)
 	_, err := c.Execute("{ alloy { isReady } }")
 
-	require.Error(t, err)
 	require.ErrorContains(t, err, "response body exceeds 5242880 bytes")
 }

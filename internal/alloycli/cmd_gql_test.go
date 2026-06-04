@@ -28,7 +28,7 @@ func TestAlloyGqlRunExecutesQuery(t *testing.T) {
 	}))
 	defer server.Close()
 
-	g := &alloyGql{httpAddr: server.URL}
+	g := &alloyGql{endpoint: server.URL}
 	var output bytes.Buffer
 	require.NoError(t, g.Run("alloy { isReady }", &output))
 
@@ -50,12 +50,129 @@ func TestAlloyGqlRunLeavesCompleteQueryUnchanged(t *testing.T) {
 	}))
 	defer server.Close()
 
-	g := &alloyGql{httpAddr: server.URL}
+	g := &alloyGql{endpoint: server.URL}
 	var output bytes.Buffer
 	require.NoError(t, g.Run("{ alloy { version } }", &output))
 
 	require.Equal(t, "{ alloy { version } }", receivedQuery)
 	require.JSONEq(t, `{"data":{"alloy":{"version":"dev"}}}`, output.String())
+}
+
+func TestFormatGraphQLQuery(t *testing.T) {
+	tests := []struct {
+		name    string
+		query   string
+		want    string
+		wantErr string
+	}{
+		{
+			name:  "wraps field selection",
+			query: "alloy { isReady }",
+			want:  "query { alloy { isReady } }",
+		},
+		{
+			name: "leaves shorthand query unchanged",
+			query: `{
+	alloy {
+		isReady
+	}
+}`,
+			want: `{
+	alloy {
+		isReady
+	}
+}`,
+		},
+		{
+			name:  "leaves compact shorthand query unchanged",
+			query: "{alloy{version}}",
+			want:  "{alloy{version}}",
+		},
+		{
+			name:  "leaves compact operation unchanged",
+			query: "query{ alloy { isReady } }",
+			want:  "query{ alloy { isReady } }",
+		},
+		{
+			name: "leaves operation with newline before selection unchanged",
+			query: `query
+{
+	alloy {
+		isReady
+	}
+}`,
+			want: `query
+{
+	alloy {
+		isReady
+	}
+}`,
+		},
+		{
+			name: "leaves named operation with multiline selection unchanged",
+			query: `query GetAlloy
+{
+	alloy {
+		isReady
+	}
+}`,
+			want: `query GetAlloy
+{
+	alloy {
+		isReady
+	}
+}`,
+		},
+		{
+			name:  "leaves mutation with tab before selection unchanged",
+			query: "mutation\t{ reload { success } }",
+			want:  "mutation\t{ reload { success } }",
+		},
+		{
+			name: "leaves subscription with newline before selection unchanged",
+			query: `subscription
+{
+	events {
+		id
+	}
+}`,
+			want: `subscription
+{
+	events {
+		id
+	}
+}`,
+		},
+		{
+			name:    "rejects parameterized operation",
+			query:   `query($componentID: String!) { component(id: $componentID) { id } }`,
+			wantErr: "query parameters are not supported",
+		},
+		{
+			name:    "rejects named parameterized operation",
+			query:   `query GetComponent($componentID: String!) { component(id: $componentID) { id } }`,
+			wantErr: "query parameters are not supported",
+		},
+		{
+			name:    "rejects field selection with arguments before selection",
+			query:   `component(id: "local.file") { id }`,
+			wantErr: "query parameters are not supported",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := formatGraphQLQuery(tt.query)
+
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
 }
 
 func TestAlloyGqlRunReturnsErrorForGraphQLErrors(t *testing.T) {
@@ -66,7 +183,7 @@ func TestAlloyGqlRunReturnsErrorForGraphQLErrors(t *testing.T) {
 	}))
 	defer server.Close()
 
-	g := &alloyGql{httpAddr: server.URL}
+	g := &alloyGql{endpoint: server.URL}
 	var output bytes.Buffer
 	runErr := g.Run("{ alloy {", &output)
 
