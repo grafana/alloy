@@ -94,21 +94,19 @@ func (c *Component) Appender(ctx context.Context) storage.Appender {
 	c.mut.RUnlock()
 
 	return &echoAppender{
-		logger:      c.opts.SLogger,
-		componentID: c.opts.ID,
-		format:      format,
-		samples:     make(map[string]sample),
-		exemplars:   make(map[string]seriesExemplar),
-		histograms:  make(map[string]seriesHistogram),
-		metadata:    make(map[string]metadata.Metadata),
+		logger:     c.opts.SLogger,
+		format:     format,
+		samples:    make(map[string]sample),
+		exemplars:  make(map[string]seriesExemplar),
+		histograms: make(map[string]seriesHistogram),
+		metadata:   make(map[string]metadata.Metadata),
 	}
 }
 
 type echoAppender struct {
-	logger      *slog.Logger
-	componentID string
-	format      string
-	mut         sync.Mutex
+	logger *slog.Logger
+	format string
+	mut    sync.Mutex
 
 	samples    map[string]sample
 	exemplars  map[string]seriesExemplar
@@ -252,7 +250,7 @@ func (a *echoAppender) Commit() error {
 		}
 	}
 
-	a.logger.Info("recieved metrics", "metrics", buf.String())
+	a.logger.Info("received metrics", "metrics", buf.String())
 	a.clearStorage()
 
 	return nil

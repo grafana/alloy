@@ -3,14 +3,12 @@ package remotewrite
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/model/timestamp"
 	"github.com/prometheus/prometheus/storage"
 	"github.com/prometheus/prometheus/storage/remote"
@@ -20,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/static/metrics/wal"
@@ -80,13 +77,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	remoteLogger := slog.New(
-		logging.NewSlogGoKitHandler(
-			log.With(o.Logger, "subcomponent", "rw"),
-		),
-	)
 	// TODO: Expose the option to enable type and unit labels: https://github.com/grafana/alloy/issues/4659
-	remoteStore := remote.NewStorage(remoteLogger, o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
+	remoteStore := remote.NewStorage(o.SLogger.With("subcomponent", "rw"), o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
 
