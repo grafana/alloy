@@ -689,7 +689,11 @@ func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
 		return nil, fmt.Errorf("failed to get the remotecfg service")
 	}
 
-	return printFileRedacted(svc.(*remotecfg.Service).GetCachedAstFile())
+	rsvc, ok := svc.(remotecfg.RemoteConfigService)
+	if !ok {
+		return nil, fmt.Errorf("remotecfg service does not support config access")
+	}
+	return printFileRedacted(rsvc.GetCachedAstFile())
 }
 
 func printFileRedacted(f *ast.File) ([]byte, error) {
