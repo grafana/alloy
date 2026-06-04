@@ -12,21 +12,23 @@ weight: 110
 That work requires read access to logs, process data, and cluster resources, plus credentials for remote write and similar endpoints.
 Your configuration determines which permissions {{< param "PRODUCT_NAME" >}} needs, and your deployment platform determines how you enforce them.
 
-## Access and permissions
+The following settings are common permission options.
+Not every item applies to every configuration or platform.
+Use only what matches your components and environment.
 
-1. Run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
-1. Restrict the HTTP server to `127.0.0.1` or a private network address with the [`http` block][http-block].
-1. Enable TLS for the HTTP server when you expose it beyond localhost with the [`http` block][http-block].
-1. Use TLS for all outbound remote write and OTLP connections with the [`tls` block][tls-block].
-1. Never set `insecure_skip_verify = true` in production.
+1. When your components allow it, run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
+1. If you don't need remote access to the UI or `/metrics`, restrict the HTTP server to `127.0.0.1` or a private network address with the [`http` block][http-block].
+1. When you expose the HTTP server beyond localhost, enable TLS with the [`http` block][http-block].
+1. Use TLS for outbound remote write and OTLP connections with the [`tls` block][tls-block].
+1. Avoid `insecure_skip_verify = true` in production.
    Refer to the [`tls` block][tls-block].
-1. Store credentials outside configuration files.
+1. Store credentials outside configuration files when you can.
    Refer to [Types and values][types-values].
-1. Scope Kubernetes RBAC to the permissions your configuration uses.
+1. On Kubernetes, set RBAC to the permissions your configuration uses.
    Refer to [Access and permissions on Kubernetes][kubernetes].
-1. Set `readOnlyRootFilesystem: true` for container deployments.
+1. For container deployments, set `readOnlyRootFilesystem: true` when your volume mounts and components allow it.
    Refer to [Access and permissions on Kubernetes][kubernetes].
-1. Set `allowPrivilegeEscalation: false` for container deployments.
+1. For container deployments, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
    Refer to [Access and permissions on Kubernetes][kubernetes].
 1. Don't use eBPF components unless your use case requires them.
    Refer to [Components that require elevated access](#components-that-require-elevated-access).
