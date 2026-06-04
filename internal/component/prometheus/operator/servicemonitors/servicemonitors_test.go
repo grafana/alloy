@@ -46,6 +46,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 		name           string
 		honorMetadata  bool
 		expectMetadata bool
+		scrapeOptions  operator.ScrapeOptions
 	}{
 		{
 			name:           "honor_metadata_enabled",
@@ -56,6 +57,18 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			name:           "honor_metadata_disabled",
 			honorMetadata:  false,
 			expectMetadata: false,
+		},
+		{
+			name:           "native_histogram_options",
+			honorMetadata:  false,
+			expectMetadata: false,
+			scrapeOptions: operator.ScrapeOptions{
+				ScrapeNativeHistograms:         true,
+				ScrapeClassicHistograms:        true,
+				ConvertClassicHistogramsToNHCB: true,
+				NativeHistogramBucketLimit:     100,
+				NativeHistogramMinBucketFactor: 1.1,
+			},
 		},
 	}
 
@@ -114,6 +127,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			args.SetToDefault()
 			args.ForwardTo = []storage.Appendable{mockAppendable}
 			args.Namespaces = []string{"monitoring"}
+			args.Scrape = tc.scrapeOptions
 			args.Scrape.HonorMetadata = tc.honorMetadata
 
 			// Create the component
@@ -188,6 +202,15 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 				}
 				return false
 			}, 10*time.Second, 100*time.Millisecond, "Expected generated ServiceMonitor job to appear")
+
+			// Verify native histogram options were applied to the generated scrape config
+			sc := testFactory.GetScrapeConfigForJob(jobName)
+			require.NotNil(t, sc)
+			assert.Equal(t, &tc.scrapeOptions.ScrapeNativeHistograms, sc.ScrapeNativeHistograms)
+			assert.Equal(t, &tc.scrapeOptions.ScrapeClassicHistograms, sc.AlwaysScrapeClassicHistograms)
+			assert.Equal(t, &tc.scrapeOptions.ConvertClassicHistogramsToNHCB, sc.ConvertClassicHistogramsToNHCB)
+			assert.Equal(t, tc.scrapeOptions.NativeHistogramBucketLimit, sc.NativeHistogramBucketLimit)
+			assert.Equal(t, tc.scrapeOptions.NativeHistogramMinBucketFactor, sc.NativeHistogramMinBucketFactor)
 
 			require.EventuallyWithT(t, func(ct *assert.CollectT) {
 				ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
