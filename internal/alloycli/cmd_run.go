@@ -56,8 +56,8 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-func RunCommand() *cobra.Command {
-	r := &alloyRun{
+func newAlloyRun() *alloyRun {
+	return &alloyRun{
 		inMemoryAddr:          "alloy.internal:12345",
 		httpListenAddr:        "127.0.0.1:12345",
 		storagePath:           "data-alloy/",
@@ -73,6 +73,10 @@ func RunCommand() *cobra.Command {
 		windowsPriority:       windowspriority.PriorityNormal,
 		taskShutdownDeadline:  10 * time.Minute,
 	}
+}
+
+func RunCommand() *cobra.Command {
+	r := newAlloyRun()
 
 	cmd := &cobra.Command{
 		Use:   "run [flags] path",
@@ -108,77 +112,81 @@ depending on the nature of the reload error.
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return r.Run(cmd, args[0])
+			return r.run(cmd, args[0])
 		},
 	}
 
+	mountRunFlags(r, cmd.Flags())
+	return cmd
+}
+
+func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	// Server flags
-	cmd.Flags().
+	fset.
 		StringVar(&r.httpListenAddr, "server.http.listen-addr", r.httpListenAddr, "Address to listen for HTTP traffic on")
-	cmd.Flags().StringVar(&r.inMemoryAddr, "server.http.memory-addr", r.inMemoryAddr, "Address to listen for in-memory HTTP traffic on. Change if it collides with a real address")
-	cmd.Flags().StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to serve the HTTP UI at")
-	cmd.Flags().
+	fset.StringVar(&r.inMemoryAddr, "server.http.memory-addr", r.inMemoryAddr, "Address to listen for in-memory HTTP traffic on. Change if it collides with a real address")
+	fset.StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to serve the HTTP UI at")
+	fset.
 		BoolVar(&r.enablePprof, "server.http.enable-pprof", r.enablePprof, "Enable /debug/pprof profiling endpoints.")
-	cmd.Flags().
+	fset.
 		BoolVar(&r.disableSupportBundle, "server.http.disable-support-bundle", r.disableSupportBundle, "Disable /-/support support bundle retrieval.")
 
 	// Cluster flags
-	cmd.Flags().
+	fset.
 		BoolVar(&r.clusterEnabled, "cluster.enabled", r.clusterEnabled, "Start in clustered mode")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterNodeName, "cluster.node-name", r.clusterNodeName, "The name to use for this node")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterAdvAddr, "cluster.advertise-address", r.clusterAdvAddr, "Address to advertise to the cluster")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterJoinAddr, "cluster.join-addresses", r.clusterJoinAddr, "Comma-separated list of addresses to join the cluster at")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterDiscoverPeers, "cluster.discover-peers", r.clusterDiscoverPeers, "List of key-value tuples for discovering peers")
-	cmd.Flags().
+	fset.
 		StringSliceVar(&r.clusterAdvInterfaces, "cluster.advertise-interfaces", r.clusterAdvInterfaces, "List of interfaces used to infer an address to advertise")
-	cmd.Flags().
+	fset.
 		DurationVar(&r.clusterRejoinInterval, "cluster.rejoin-interval", r.clusterRejoinInterval, "How often to rejoin the list of peers")
-	cmd.Flags().
+	fset.
 		IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
-	cmd.Flags().
+	fset.
 		BoolVar(&r.clusterEnableTLS, "cluster.enable-tls", r.clusterEnableTLS, "Specifies whether TLS should be used for communication between peers")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterTLSCAPath, "cluster.tls-ca-path", r.clusterTLSCAPath, "Path to the CA certificate file")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterTLSCertPath, "cluster.tls-cert-path", r.clusterTLSCertPath, "Path to the certificate file")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
-	cmd.Flags().
+	fset.
 		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled")
-	cmd.Flags().
+	fset.
 		DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
 
 	// Config flags
-	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
-	cmd.Flags().BoolVar(&r.configBypassConversionErrors, "config.bypass-conversion-errors", r.configBypassConversionErrors, "Enable bypassing errors when converting")
-	cmd.Flags().StringVar(&r.configExtraArgs, "config.extra-args", r.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
+	fset.StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
+	fset.BoolVar(&r.configBypassConversionErrors, "config.bypass-conversion-errors", r.configBypassConversionErrors, "Enable bypassing errors when converting")
+	fset.StringVar(&r.configExtraArgs, "config.extra-args", r.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
 
 	// Misc flags
-	cmd.Flags().
+	fset.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
-	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
-	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
+	fset.StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
+	fset.Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	if runtime.GOOS == "windows" {
-		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
+		fset.StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 
 	// Feature flags
-	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
-	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
-	cmd.Flags().BoolVar(&r.enableGraphQL, "feature.graphql.enabled", r.enableGraphQL, "Enable the GraphQL API")
-	cmd.Flags().BoolVar(&r.enableGraphQLPlayground, "feature.graphql-playground.enabled", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
-	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
+	fset.BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+	fset.DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
+	fset.BoolVar(&r.enableGraphQL, "feature.graphql.enabled", r.enableGraphQL, "Enable the GraphQL API")
+	fset.BoolVar(&r.enableGraphQLPlayground, "feature.graphql-playground.enabled", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
+	fset.BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
-	addDeprecatedFlags(cmd)
-	return cmd
+	addDeprecatedFlags(fset)
 }
 
 // ExtensionModeParams contains parameters for Alloy when running inside OTel extension.
@@ -253,7 +261,7 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 	return nil
 }
 
-func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
+func (fr *alloyRun) run(cmd *cobra.Command, configPath string) error {
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
@@ -644,17 +652,17 @@ func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
 }
 
 // addDeprecatedFlags adds flags that are deprecated, have no effect, but we keep them for backwards compatibility.
-func addDeprecatedFlags(cmd *cobra.Command) {
-	deprecateFlagByName := func(cmd *cobra.Command, name string) {
+func addDeprecatedFlags(fset *pflag.FlagSet) {
+	deprecateFlagByName := func(fset *pflag.FlagSet, name string) {
 		msg := "This flag is deprecated and has no effect."
-		_ = cmd.Flags().Bool(name, false, msg)
-		err := cmd.Flags().MarkDeprecated(name, msg)
+		_ = fset.Bool(name, false, msg)
+		err := fset.MarkDeprecated(name, msg)
 		if err != nil { // this should never fail
 			panic(err)
 		}
 	}
-	deprecateFlagByName(cmd, "cluster.use-discovery-v1")
-	deprecateFlagByName(cmd, "feature.prometheus.metric-validation-scheme")
+	deprecateFlagByName(fset, "cluster.use-discovery-v1")
+	deprecateFlagByName(fset, "feature.prometheus.metric-validation-scheme")
 }
 
 func interruptContext(parent context.Context) (context.Context, context.CancelFunc) {
