@@ -84,7 +84,7 @@ jobs:
         install_args: node
 
     - name: Install dependencies
-      run: npm ci
+      run: npm ci --no-audit --no-fund
 
     - name: Lint
       run: npm run lint

@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-//go:generate npm ci
+//go:generate npm ci --no-audit --no-fund
 //go:generate npm run build
 
 //go:embed dist
