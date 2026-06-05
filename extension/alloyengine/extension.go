@@ -2,6 +2,7 @@ package alloyengine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -109,8 +110,13 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		modulePath = cwd
 	}
 
+	alloyCfg := e.config.AlloyConfig.Content
+	if alloyCfg == "" {
+		return errors.New("empty alloy config")
+	}
+
 	runCommand := e.runCommandFactory(modulePath, map[string][]byte{
-		"config.alloy": []byte(e.config.AlloyConfig.Content),
+		"config.alloy": []byte(alloyCfg),
 	})
 
 	if err := runCommand.ParseFlags(e.config.flagsAsSlice()); err != nil {
