@@ -140,6 +140,8 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 
 {{< docs/shared lookup="reference/components/azuread-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+You must configure exactly one of the [`managed_identity`][managed_identity], [`oauth`][oauth], [`sdk`][sdk], or [`workload_identity`][workload_identity] blocks.
+
 ### `managed_identity`
 
 {{< badge text="Required" >}}
