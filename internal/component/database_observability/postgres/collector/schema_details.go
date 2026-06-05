@@ -484,36 +484,43 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 	scanComplete := true
 
 	for _, schemaName := range schemas {
-		rs, err := dbConnection.QueryContext(ctx, selectTableNames, schemaName)
-		if err != nil {
-			c.logger.Error("failed to query tables", "datname", dbName, "schema", schemaName, "err", err)
+		complete := func() bool {
+			rs, err := dbConnection.QueryContext(ctx, selectTableNames, schemaName)
+			if err != nil {
+				c.logger.Error("failed to query tables", "datname", dbName, "schema", schemaName, "err", err)
+				return false
+			}
+			defer rs.Close()
+
+			for rs.Next() {
+				var tableName string
+				if err := rs.Scan(&tableName); err != nil {
+					c.logger.Error("failed to scan tables", "datname", dbName, "schema", schemaName, "err", err)
+					return false
+				}
+				tables = append(tables, &tableInfo{
+					database:  db,
+					schema:    schema(schemaName),
+					tableName: table(tableName),
+				})
+
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+					logging.LevelInfo,
+					OP_TABLE_DETECTION,
+					fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
+				)
+			}
+
+			if err := rs.Err(); err != nil {
+				c.logger.Error("failed to iterate over tables result set", "datname", dbName, "schema", schemaName, "err", err)
+				return false
+			}
+			return true
+		}()
+
+		if !complete {
 			scanComplete = false
 			break
-		}
-		defer rs.Close()
-
-		for rs.Next() {
-			var tableName string
-			if err := rs.Scan(&tableName); err != nil {
-				c.logger.Error("failed to scan tables", "datname", dbName, "schema", schemaName, "err", err)
-				scanComplete = false
-				break
-			}
-			tables = append(tables, &tableInfo{
-				database:  db,
-				schema:    schema(schemaName),
-				tableName: table(tableName),
-			})
-
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_TABLE_DETECTION,
-				fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
-			)
-		}
-
-		if err := rs.Err(); err != nil {
-			return fmt.Errorf("failed to iterate over tables result set for database %q schema %q: %w", dbName, schemaName, err)
 		}
 	}
 

@@ -1059,11 +1059,10 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 
 		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
-			DB:              db,
-			DSN:             "postgres://user:pass@localhost:5432/throttle_test_db",
-			CollectInterval: time.Hour, // unused; extractNames is invoked manually
-			EntryHandler:    lokiClient,
-			Logger:          util.TestAlloyLogger(t).Slog(),
+			DB:           db,
+			DSN:          "postgres://user:pass@localhost:5432/throttle_test_db",
+			EntryHandler: lokiClient,
+			Logger:       util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -1438,28 +1437,62 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		require.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	t.Run("extractSchemas returns error when there is an error iterating over pg_namespace result set", func(t *testing.T) {
+	t.Run("extractSchemas preserves registry and throttle when a schema's table query fails", func(t *testing.T) {
 		t.Parallel()
 
 		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
 		require.NoError(t, err)
 		defer db.Close()
 
-		mock.ExpectQuery(selectSchemaNames).
-			WillReturnRows(
-				sqlmock.NewRows([]string{"nspname"}).
-					AddRow("public").
-					RowError(0, fmt.Errorf("schema iteration error")))
+		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
+		fakeNow := time.Date(2024, 5, 1, 12, 0, 0, 0, time.UTC)
 		collector := &SchemaDetails{
-			logger: logging.NewSlogNop(),
-			now:    time.Now,
+			logger:        logging.NewSlogNop(),
+			now:           func() time.Time { return fakeNow },
+			lastEmittedAt: map[database]map[string]time.Time{},
+			tableRegistry: NewTableRegistry(),
+			entryHandler:  lokiClient,
 		}
+		// Pre-seed state from a previous successful scrape so the metadata
+		// fetch is throttled (no per-table queries needed) and we can verify
+		// the registry/throttle survive a partial read of the current sweep.
+		collector.lastEmittedAt[database("testdb")] = map[string]time.Time{
+			schemaTableKey("schema_a", "table_a"): fakeNow,
+		}
+		collector.tableRegistry.SetTablesForDatabase("testdb", []*tableInfo{
+			{database: "testdb", schema: "schema_a", tableName: "previous_table"},
+		})
+
+		mock.ExpectQuery(selectSchemaNames).
+			WillReturnRows(sqlmock.NewRows([]string{"schema_name"}).
+				AddRow("schema_a").
+				AddRow("schema_b").
+				AddRow("schema_c"))
+		mock.ExpectQuery(selectTableNames).WithArgs("schema_a").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"table_name"}).AddRow("table_a"))
+		mock.ExpectQuery(selectTableNames).WithArgs("schema_b").
+			WillReturnError(fmt.Errorf("transient tables query failure"))
 
 		err = collector.extractSchemas(context.Background(), "testdb", db)
-
-		require.Error(t, err)
+		require.NoError(t, err, "per-schema query failure should not propagate")
 		require.NoError(t, mock.ExpectationsWereMet())
+
+		require.Contains(t, collector.lastEmittedAt[database("testdb")], schemaTableKey("schema_a", "table_a"),
+			"throttle entries must survive a partial schemas sweep")
+
+		resolved, ok := collector.tableRegistry.IsValid("testdb", "previous_table")
+		require.True(t, ok, "tableRegistry must not be overwritten by a partial schemas sweep")
+		require.Equal(t, "previous_table", resolved)
+		_, ok = collector.tableRegistry.IsValid("testdb", "table_a")
+		require.False(t, ok, "tableRegistry must not be partially overwritten with the in-progress sweep")
+
+		// schema_a.table_a is still detected and emitted before schema_b fails.
+		entries := lokiClient.Received()
+		require.Len(t, entries, 1)
+		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+		require.Equal(t, `level="info" datname="testdb" schema="schema_a" table="table_a"`, entries[0].Line)
 	})
 
 	t.Run("fetchTableDefinitions returns error when selectColumnNames query fails", func(t *testing.T) {
