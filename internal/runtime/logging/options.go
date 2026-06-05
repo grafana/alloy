@@ -49,21 +49,26 @@ func defaultDestination() LogDestination {
 	return LogDestinationStderr
 }
 
-// DefaultOptions holds defaults for creating a Logger.
-var DefaultOptions = Options{
-	Level:       LevelDefault,
-	Format:      FormatDefault,
-	Destination: defaultDestination(),
+// defaultOptions builds a fresh set of Logger defaults, evaluating the
+// platform-appropriate destination at call time.
+func defaultOptions() Options {
+	return Options{
+		Level:       LevelDefault,
+		Format:      FormatDefault,
+		Destination: defaultDestination(),
+	}
 }
+
+// DefaultOptions holds defaults for creating a Logger.
+var DefaultOptions = defaultOptions()
 
 var _ syntax.Defaulter = (*Options)(nil)
 
-// SetToDefault implements syntax.Defaulter. Destination is re-evaluated so
-// tests that stub isWindowsService after package init still observe the
-// expected default.
+// SetToDefault implements syntax.Defaulter. It re-evaluates the defaults at
+// call time (rather than reusing DefaultOptions) so that tests which stub
+// isWindowsService after package init still observe the expected destination.
 func (o *Options) SetToDefault() {
-	*o = DefaultOptions
-	o.Destination = defaultDestination()
+	*o = defaultOptions()
 }
 
 // Level represents how verbose logging should be.
