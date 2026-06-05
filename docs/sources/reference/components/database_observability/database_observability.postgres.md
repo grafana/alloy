@@ -151,7 +151,9 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 | `cache_enabled`            | `boolean`  | Whether to enable caching of table definitions.                       | `true`  | no       |
 | `cache_size`               | `integer`  | Cache size.                                                           | `256`   | no       |
 | `cache_ttl`                | `duration` | Cache TTL.                                                            | `"10m"` | no       |
-| `skip_extension_internals` | `boolean`  | Hide schemas owned by detected Postgres extensions (such as TimescaleDB's `_timescaledb_*` catalog schemas and `timescaledb_information`/`timescaledb_experimental` metadata views) from schema reports. Has no effect when no recognized extension is present. | `true`  | no       |
+| `skip_extension_internals` | `boolean`  | Hide schemas owned by detected PostgreSQL extensions from schema reports. Has no effect when no recognized extension is present. | `true`  | no       |
+
+Examples of extensions that `skip_extension_internals` can detect include TimescaleDB's `_timescaledb_*` catalog schemas and `timescaledb_information`/`timescaledb_experimental` metadata views.
 
 ### `explain_plans`
 
