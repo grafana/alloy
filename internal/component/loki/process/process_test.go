@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -940,7 +939,7 @@ func assertEntriesUnordered(t *testing.T, expected, actual []loki.Entry) {
 }
 
 func TestComponent_UpdateInvalidConfig(t *testing.T) {
-	ctrl, err := componenttest.NewControllerFromID(log.NewNopLogger(), "loki.process")
+	ctrl, err := componenttest.NewControllerFromID(util.TestAlloyLogger(t), "loki.process")
 	require.NoError(t, err)
 
 	collector := loki.NewCollectingHandler()
