@@ -197,13 +197,13 @@ Don't switch the service to root.
 
 ## Next steps
 
-- [Access and permissions for {{< param "PRODUCT_NAME" >}}][access]
-- [Access and permissions on Kubernetes][kubernetes]
-- [Access and permissions on Windows][windows]
+- [Configure {{< param "PRODUCT_NAME" >}} on Linux][configure-linux]
+- [Monitor Linux servers with {{< param "PRODUCT_NAME" >}}][monitor-linux]
+- [Collect and forward data][collect]
 
-[kubernetes]: ../kubernetes/
-[windows]: ../windows/
-[access]: ../
+[configure-linux]: ../../configure/linux/
+[monitor-linux]: ../../monitor/monitor-linux/
+[collect]: ../../collect/
 [elevated-access]: ../#components-that-require-elevated-access
 [http-block]: ../../reference/config-blocks/http/
 [loki-source-journal]: ../../reference/components/loki/loki.source.journal/

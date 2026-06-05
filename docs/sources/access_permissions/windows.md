@@ -97,16 +97,14 @@ Review that table if your configuration includes eBPF or host-level collectors o
 
 ## Next steps
 
-- [Access and permissions for {{< param "PRODUCT_NAME" >}}][access]
 - [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows]
-- [Access and permissions on Linux][linux]
-- [Access and permissions on Kubernetes][kubernetes]
+- [Monitor Windows with {{< param "PRODUCT_NAME" >}}][monitor-windows]
+- [Collect and forward data][collect]
 
 [install-windows]: ../../set-up/install/windows/
 [configure-windows]: ../../configure/windows/
-[linux]: ../linux/
-[kubernetes]: ../kubernetes/
-[access]: ../
+[monitor-windows]: ../../monitor/monitor-windows/
+[collect]: ../../collect/
 [elevated-access]: ../#components-that-require-elevated-access
 [http-block]: ../../reference/config-blocks/http/
 [acl]: https://learn.microsoft.com/windows/win32/secauthz/access-control-lists

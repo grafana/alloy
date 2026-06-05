@@ -84,7 +84,6 @@ spec:
 - `allowPrivilegeEscalation: false` blocks privilege escalation beyond the parent process, regardless of file capabilities or `setuid` bits.
 - `capabilities.drop: [ALL]` removes all Linux capabilities from the container.
 
-The Helm chart sets `alloy.storagePath` to `/tmp/alloy` by default.
 When you set `readOnlyRootFilesystem: true`, mount a writable volume at that path or change `alloy.storagePath` to a mounted volume.
 
 {{< admonition type="note" >}}
@@ -105,10 +104,13 @@ Refer to the [`http` block][http-block] for TLS and authentication options.
 ## Kubernetes RBAC
 
 {{< param "PRODUCT_NAME" >}} needs RBAC permissions to interact with Kubernetes APIs.
-The Helm chart creates a `ClusterRole` and `ClusterRoleBinding` with a fixed rule set in `values.yaml` when `rbac.create` is `true`.
+The Helm chart creates a `ClusterRole` and `ClusterRoleBinding` when `rbac.create` is `true`.
+The Helm chart sets `rbac.rules` and `rbac.clusterRules` in `values.yaml`.
+Refer to the [Grafana Helm chart][] `values.yaml` or README for the default rule blocks and the components each one supports.
 
-Remove permissions for resources your configuration doesn't use.
-If you don't use Kubernetes service discovery or Pod log collection, review the generated RBAC rules and trim what you don't need.
+To limit permissions, set `rbac.rules` and `rbac.clusterRules` to only the rule blocks your configuration uses.
+Helm replaces each array in full, so copy the defaults and remove the blocks you don't need.
+Set `rbac.create` to `false` if you manage RBAC outside the chart.
 
 Review the RBAC resources the Helm chart creates:
 
@@ -123,9 +125,9 @@ Refer to [Components that require elevated access][elevated-access] for the full
 
 ## Next steps
 
-- [Access and permissions for {{< param "PRODUCT_NAME" >}}][access]
-- [Access and permissions on Linux][linux]
-- [Access and permissions on Windows][windows]
+- [Configure {{< param "PRODUCT_NAME" >}} on Kubernetes][configure-kubernetes]
+- [Monitor Kubernetes logs with {{< param "PRODUCT_NAME" >}}][monitor-kubernetes-logs]
+- [Collect and forward data][collect]
 
 [image]: https://hub.docker.com/r/grafana/alloy
 [beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf/
@@ -134,6 +136,6 @@ Refer to [Components that require elevated access][elevated-access] for the full
 [Grafana Helm chart]: ../../configure/kubernetes/#configure-the-helm-chart
 [http-block]: ../../reference/config-blocks/http/
 [elevated-access]: ../#components-that-require-elevated-access
-[access]: ../
-[linux]: ../linux/
-[windows]: ../windows/
+[configure-kubernetes]: ../../configure/kubernetes/
+[monitor-kubernetes-logs]: ../../monitor/monitor-kubernetes-logs/
+[collect]: ../../collect/

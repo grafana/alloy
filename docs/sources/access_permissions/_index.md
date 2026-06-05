@@ -30,16 +30,16 @@ Use only what matches your components and environment.
    Refer to [Access and permissions on Kubernetes][kubernetes].
 1. For container deployments, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
    Refer to [Access and permissions on Kubernetes][kubernetes].
-1. Don't use eBPF components unless your use case requires them.
+1. Use a dedicated {{< param "PRODUCT_NAME" >}} instance for components that require elevated access.
    Refer to [Components that require elevated access](#components-that-require-elevated-access).
 
 ## Process identity and privilege
 
 Create a dedicated service account or user on your deployment platform:
 
-- [Access and permissions on Linux][linux]: systemd service, file permissions, and the `alloy` user
-- [Access and permissions on Kubernetes][kubernetes]: `securityContext`, non-root UID, and RBAC
-- [Access and permissions on Windows][windows]: service accounts, Windows security groups, and filesystem ACLs
+- [Linux][linux]: systemd service, file permissions, and the `alloy` user
+- [Kubernetes][kubernetes]: `securityContext`, non-root UID, and RBAC
+- [Windows][windows]: service accounts, Windows security groups, and filesystem ACLs
 
 ## Network exposure
 
