@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/grafana/beyla/v3/pkg/beyla"
 	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
+	"github.com/grafana/beyla/v3/pkg/webhook/configmap"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/obi/pkg/appolly/services"
 	"go.opentelemetry.io/obi/pkg/export"
@@ -187,7 +187,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, []string{"TCP", "UDP"}, cfg.NetworkFlows.Protocols)
 	require.Equal(t, []string{"ICMP"}, cfg.NetworkFlows.ExcludeProtocols)
 	require.Equal(t, 1, cfg.NetworkFlows.Sampling)
-	require.Equal(t, "10.0.0.0/8", cfg.NetworkFlows.CIDRs[0])
+	require.Equal(t, "10.0.0.0/8", cfg.NetworkFlows.CIDRs[0].CIDR)
 	require.Equal(t, 8000, cfg.NetworkFlows.CacheMaxFlows)
 	require.Equal(t, 10*time.Second, cfg.NetworkFlows.CacheActiveTimeout)
 	require.Equal(t, "ingress", cfg.NetworkFlows.Direction)
@@ -230,7 +230,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
 	require.False(t, cfg.EBPF.BpfDebug)
 	require.False(t, cfg.EBPF.ProtocolDebug)
-	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.OpenAI.Enabled)
+	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
 	require.Len(t, cfg.Filters.Application, 1)
 	require.Len(t, cfg.Filters.Network, 1)
 	require.Equal(t, filter.MatchDefinition{NotMatch: "UDP"}, cfg.Filters.Application["transport"])
@@ -737,11 +737,12 @@ func TestConvert_Attributes(t *testing.T) {
 
 	expectedConfig := beyla.Attributes{
 		Kubernetes: transform.KubernetesDecorator{
-			Enable:                kubeflags.EnableFlag(args.Kubernetes.Enable),
-			InformersSyncTimeout:  15 * time.Second,
-			InformersResyncPeriod: 30 * time.Minute,
-			ResourceLabels:        beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
-			MetaCacheAddress:      "localhost:9090",
+			Enable:                   kubeflags.EnableFlag(args.Kubernetes.Enable),
+			InformersSyncTimeout:     15 * time.Second,
+			InformersResyncPeriod:    30 * time.Minute,
+			ReconnectInitialInterval: beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval,
+			ResourceLabels:           beyla.DefaultConfig().Attributes.Kubernetes.ResourceLabels,
+			MetaCacheAddress:         "localhost:9090",
 		},
 		HostID: beyla.HostIDConfig{},
 		Select: attributes.Selection{
@@ -887,7 +888,9 @@ func TestConvert_Network(t *testing.T) {
 	expectedConfig.ExcludeProtocols = args.ExcludeProtocols
 	expectedConfig.Sampling = 1
 	expectedConfig.Print = false
-	expectedConfig.CIDRs = args.CIDRs
+	if len(args.CIDRs) > 0 {
+		_ = expectedConfig.CIDRs.UnmarshalText([]byte(strings.Join(args.CIDRs, ",")))
+	}
 
 	config := args.Convert()
 
@@ -907,7 +910,9 @@ func TestConvert_Stats(t *testing.T) {
 	expectedConfig.AgentIP = args.AgentIP
 	expectedConfig.AgentIPIface = obi.AgentTypeIface(args.AgentIPIface)
 	expectedConfig.AgentIPType = args.AgentIPType
-	expectedConfig.CIDRs = args.CIDRs
+	if len(args.CIDRs) > 0 {
+		_ = expectedConfig.CIDRs.UnmarshalText([]byte(strings.Join(args.CIDRs, ",")))
+	}
 	expectedConfig.Print = args.Print
 
 	config := args.Convert()
@@ -941,7 +946,7 @@ func TestConvert_EBPF(t *testing.T) {
 	expectedConfig.ContextPropagation = obiCfg.ContextPropagationTCP
 	expectedConfig.BpfDebug = true
 	expectedConfig.ProtocolDebug = true
-	expectedConfig.PayloadExtraction.HTTP.OpenAI.Enabled = true
+	expectedConfig.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = true
 
 	config, err := args.Convert()
 	require.NoError(t, err)
@@ -995,22 +1000,12 @@ func TestConvert_Filters(t *testing.T) {
 }
 
 func TestConvert_InjectorWebhook(t *testing.T) {
-	port := 8443
-	timeout := 30 * time.Second
 	args := InjectorWebhook{
-		Enable:   true,
-		Port:     &port,
-		CertPath: "/etc/certs/tls.crt",
-		KeyPath:  "/etc/certs/tls.key",
-		Timeout:  &timeout,
+		ExternalWebhook: "beyla-controller",
 	}
 
 	expectedConfig := beyla.DefaultConfig().Injector.Webhook
-	expectedConfig.Enable = true
-	expectedConfig.Port = 8443
-	expectedConfig.CertPath = "/etc/certs/tls.crt"
-	expectedConfig.KeyPath = "/etc/certs/tls.key"
-	expectedConfig.Timeout = 30 * time.Second
+	expectedConfig.ExternalWebhook = "beyla-controller"
 
 	config := args.Convert()
 	require.Equal(t, expectedConfig, config)
@@ -1026,7 +1021,7 @@ func TestConvert_InjectorSDKExport(t *testing.T) {
 		Logs:    &logs,
 	}
 
-	expectedConfig := beyla.DefaultConfig().Injector.Export
+	expectedConfig := beyla.DefaultConfig().Injector.ExportedSignals
 	expectedConfig.Traces = &traces
 	expectedConfig.Metrics = &metrics
 	expectedConfig.Logs = &logs
@@ -1037,16 +1032,19 @@ func TestConvert_InjectorSDKExport(t *testing.T) {
 
 func TestConvert_InjectorSDKResource(t *testing.T) {
 	addK8s := true
+	addK8sIP := true
 	useLabels := false
 	args := InjectorSDKResource{
 		Attributes:                     map[string]string{"environment": "dev"},
 		AddK8sUIDAttributes:            &addK8s,
+		AddK8sIPAttribute:              &addK8sIP,
 		UseLabelsForResourceAttributes: &useLabels,
 	}
 
 	expectedConfig := beyla.DefaultConfig().Injector.Resources
 	expectedConfig.Attributes = map[string]string{"environment": "dev"}
 	expectedConfig.AddK8sUIDAttributes = true
+	expectedConfig.AddK8sIPAttribute = true
 	expectedConfig.UseLabelsForResourceAttributes = false
 
 	config := args.Convert()
@@ -1054,20 +1052,11 @@ func TestConvert_InjectorSDKResource(t *testing.T) {
 }
 
 func TestConvert_Injector(t *testing.T) {
-	noAutoRestart := true
-	manageSDKVersions := false
-	debug := true
 	args := Injector{
-		OTELEndpoint:      "http://otel-collector:4318",
-		NoAutoRestart:     &noAutoRestart,
-		HostPathVolumeDir: "/var/beyla",
-		SDKPkgVersion:     "1.0.0",
-		HostMountPath:     "/host",
-		ManageSDKVersions: &manageSDKVersions,
-		Propagators:       []string{"tracecontext", "baggage"},
-		EnabledSDKs:       []string{"java", "dotnet"},
-		Debug:             &debug,
-		DefaultSampler:    SamplerConfig{Name: "always_on"},
+		ImageVersion:   "1.0.0",
+		Propagators:    []string{"tracecontext", "baggage"},
+		EnabledSDKs:    []string{"java", "dotnet"},
+		DefaultSampler: SamplerConfig{Name: "always_on"},
 	}
 
 	javaSDK := beylaSvc.InstrumentableType{}
@@ -1077,16 +1066,11 @@ func TestConvert_Injector(t *testing.T) {
 
 	expectedConfig := beyla.DefaultConfig().Injector
 	expectedConfig.Webhook = InjectorWebhook{}.Convert()
-	expectedConfig.Export = InjectorSDKExport{}.Convert()
+	expectedConfig.ExportedSignals = InjectorSDKExport{}.Convert()
 	expectedConfig.Resources = InjectorSDKResource{}.Convert()
-	expectedConfig.NoAutoRestart = true
-	expectedConfig.HostPathVolumeDir = "/var/beyla"
-	expectedConfig.SDKPkgVersion = "1.0.0"
-	expectedConfig.HostMountPath = "/host"
-	expectedConfig.ManageSDKVersions = false
+	expectedConfig.ImageVersion = "1.0.0"
 	expectedConfig.Propagators = []string{"tracecontext", "baggage"}
 	expectedConfig.EnabledSDKs = []beylaSvc.InstrumentableType{javaSDK, dotnetSDK}
-	expectedConfig.Debug = true
 	s := SamplerConfig{Name: "always_on"}.Convert()
 	expectedConfig.DefaultSampler = &s
 
@@ -1095,7 +1079,7 @@ func TestConvert_Injector(t *testing.T) {
 	require.Equal(t, expectedConfig, config)
 }
 
-func TestInjector_Validate(t *testing.T) {
+func TestConvert_Injector_Errors(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    Injector
@@ -1104,34 +1088,9 @@ func TestInjector_Validate(t *testing.T) {
 		{
 			name: "valid injector config",
 			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:   true,
-					CertPath: "/etc/certs/tls.crt",
-					KeyPath:  "/etc/certs/tls.key",
-				},
-				EnabledSDKs:  []string{"java", "dotnet"},
-				OTELEndpoint: "http://otel-collector:4318",
+				Webhook:     InjectorWebhook{ExternalWebhook: "beyla-controller"},
+				EnabledSDKs: []string{"java", "dotnet"},
 			},
-		},
-		{
-			name: "missing webhook cert path",
-			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:  true,
-					KeyPath: "/etc/certs/tls.key",
-				},
-			},
-			wantErr: "injector.webhook.cert_path must be set",
-		},
-		{
-			name: "missing webhook key path",
-			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:   true,
-					CertPath: "/etc/certs/tls.crt",
-				},
-			},
-			wantErr: "injector.webhook.key_path must be set",
 		},
 		{
 			name: "invalid enabled sdk",
@@ -1140,25 +1099,11 @@ func TestInjector_Validate(t *testing.T) {
 			},
 			wantErr: "injector.enabled_sdks:",
 		},
-		{
-			name: "invalid otel endpoint",
-			args: Injector{
-				OTELEndpoint: "not-a-url",
-			},
-			wantErr: fmt.Sprintf("injector.otel_endpoint: URL %q must have a scheme and a host", "not-a-url"),
-		},
-		{
-			name: "malformed otel endpoint",
-			args: Injector{
-				OTELEndpoint: "http://[::1",
-			},
-			wantErr: "injector.otel_endpoint:",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
+			_, err := tt.args.Convert()
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErr)
@@ -1473,26 +1418,6 @@ func TestArguments_Validate(t *testing.T) {
 				},
 			},
 			wantErr: "invalid sampler configuration in discovery.services[0]: sampler \"traceidratio\" requires an arg parameter",
-		},
-		{
-			name: "invalid injector webhook configuration",
-			args: Arguments{
-				Injector: Injector{
-					Webhook: InjectorWebhook{
-						Enable: true,
-					},
-				},
-			},
-			wantErr: "injector.webhook.cert_path must be set when injector.webhook.enable is true",
-		},
-		{
-			name: "invalid injector otel endpoint configuration",
-			args: Arguments{
-				Injector: Injector{
-					OTELEndpoint: (&url.URL{Path: "missing-host"}).String(),
-				},
-			},
-			wantErr: `injector.otel_endpoint: URL "missing-host" must have a scheme and a host`,
 		},
 	}
 
@@ -1840,4 +1765,186 @@ func TestSurveyEnabled(t *testing.T) {
 	require.True(t, cfg.Discovery.SurveyEnabled())
 	require.Equal(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
 	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
+}
+
+// globPtr returns a pointer to a GlobAttr compiled from the given pattern, for
+// building the pointer-valued maps in services.GlobAttributes.
+func globPtr(pattern string) *services.GlobAttr {
+	g := services.NewGlob(pattern)
+	return &g
+}
+
+func TestSelectorFromGlob(t *testing.T) {
+	tests := []struct {
+		name     string
+		attrs    services.GlobAttributes
+		expected configmap.K8sSelector
+	}{
+		{
+			name:     "empty attributes produce an empty selector",
+			attrs:    services.GlobAttributes{},
+			expected: configmap.K8sSelector{},
+		},
+		{
+			// Port-based criteria are a process-level match and have no
+			// Kubernetes selector equivalent, so they are ignored here.
+			name: "open ports only produce an empty selector",
+			attrs: services.GlobAttributes{
+				OpenPorts: services.IntEnum{Ranges: []services.IntRange{{Start: 80}, {Start: 443}}},
+			},
+			expected: configmap.K8sSelector{},
+		},
+		{
+			name: "namespace only",
+			attrs: services.GlobAttributes{
+				Metadata: services.MetadataGlobMap{
+					services.AttrNamespace: globPtr("default"),
+				},
+			},
+			expected: configmap.K8sSelector{
+				Namespaces: []services.GlobAttr{services.NewGlob("default")},
+			},
+		},
+		{
+			name: "generic owner name sets no owner kind",
+			attrs: services.GlobAttributes{
+				Metadata: services.MetadataGlobMap{
+					services.AttrOwnerName: globPtr("my-app"),
+				},
+			},
+			expected: configmap.K8sSelector{
+				OwnerNames: []services.GlobAttr{services.NewGlob("my-app")},
+			},
+		},
+		{
+			name: "specific kind sets both owner name and kind",
+			attrs: services.GlobAttributes{
+				Metadata: services.MetadataGlobMap{
+					services.AttrDeploymentName: globPtr("web"),
+				},
+			},
+			expected: configmap.K8sSelector{
+				OwnerNames: []services.GlobAttr{services.NewGlob("web")},
+				OwnerKinds: []string{"Deployment"},
+			},
+		},
+		{
+			name: "owner name takes precedence over a specific kind",
+			attrs: services.GlobAttributes{
+				Metadata: services.MetadataGlobMap{
+					services.AttrOwnerName:      globPtr("my-app"),
+					services.AttrDeploymentName: globPtr("web"),
+				},
+			},
+			expected: configmap.K8sSelector{
+				OwnerNames: []services.GlobAttr{services.NewGlob("my-app")},
+			},
+		},
+		{
+			name: "pod labels and annotations",
+			attrs: services.GlobAttributes{
+				PodLabels: map[string]*services.GlobAttr{
+					"app": globPtr("frontend"),
+				},
+				PodAnnotations: map[string]*services.GlobAttr{
+					"team": globPtr("backend"),
+				},
+			},
+			expected: configmap.K8sSelector{
+				PodLabels:      map[string]services.GlobAttr{"app": services.NewGlob("frontend")},
+				PodAnnotations: map[string]services.GlobAttr{"team": services.NewGlob("backend")},
+			},
+		},
+		{
+			name: "all fields combined",
+			attrs: services.GlobAttributes{
+				Metadata: services.MetadataGlobMap{
+					services.AttrNamespace:       globPtr("prod"),
+					services.AttrStatefulSetName: globPtr("db"),
+				},
+				PodLabels: map[string]*services.GlobAttr{
+					"tier": globPtr("data"),
+				},
+				PodAnnotations: map[string]*services.GlobAttr{
+					"owner": globPtr("team-a"),
+				},
+			},
+			expected: configmap.K8sSelector{
+				Namespaces:     []services.GlobAttr{services.NewGlob("prod")},
+				OwnerNames:     []services.GlobAttr{services.NewGlob("db")},
+				OwnerKinds:     []string{"StatefulSet"},
+				PodLabels:      map[string]services.GlobAttr{"tier": services.NewGlob("data")},
+				PodAnnotations: map[string]services.GlobAttr{"owner": services.NewGlob("team-a")},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := selectorFromGlob(&tt.attrs, configmap.ModeInstall)
+			require.Equal(t, tt.expected, got)
+		})
+	}
+}
+
+// TestSelectorFromGlob_OwnerKinds verifies that each supported k8s owner
+// metadata key maps to the expected OwnerKind.
+func TestSelectorFromGlob_OwnerKinds(t *testing.T) {
+	cases := []struct {
+		attr string
+		kind string
+	}{
+		{services.AttrDeploymentName, "Deployment"},
+		{services.AttrDaemonSetName, "DaemonSet"},
+		{services.AttrReplicaSetName, "ReplicaSet"},
+		{services.AttrStatefulSetName, "StatefulSet"},
+		{services.AttrJobName, "Job"},
+		{services.AttrCronJobName, "CronJob"},
+		{services.AttrPodName, "Pod"},
+	}
+
+	for _, c := range cases {
+		t.Run(c.kind, func(t *testing.T) {
+			attrs := services.GlobAttributes{
+				Metadata: services.MetadataGlobMap{
+					c.attr: globPtr("name-*"),
+				},
+			}
+			got := selectorFromGlob(&attrs, configmap.ModeInstall)
+			require.Equal(t, []services.GlobAttr{services.NewGlob("name-*")}, got.OwnerNames)
+			require.Equal(t, []string{c.kind}, got.OwnerKinds)
+		})
+	}
+}
+
+func TestSelectorsFromInstrument(t *testing.T) {
+	t.Run("filters out empty selectors", func(t *testing.T) {
+		g := services.GlobDefinitionCriteria{
+			{
+				Metadata: services.MetadataGlobMap{
+					services.AttrNamespace: globPtr("default"),
+				},
+			},
+			{}, // no selectable criteria, should be skipped
+			{
+				PodLabels: map[string]*services.GlobAttr{
+					"app": globPtr("api"),
+				},
+			},
+		}
+
+		got := selectorsFromInstrument(g)
+		require.Len(t, got, 2)
+		require.Equal(t, []services.GlobAttr{services.NewGlob("default")}, got[0].Namespaces)
+		require.Equal(t, map[string]services.GlobAttr{"app": services.NewGlob("api")}, got[1].PodLabels)
+	})
+
+	t.Run("all-empty criteria return nil", func(t *testing.T) {
+		g := services.GlobDefinitionCriteria{{}, {}}
+		require.Nil(t, selectorsFromInstrument(g))
+	})
+
+	t.Run("nil criteria return nil", func(t *testing.T) {
+		require.Nil(t, selectorsFromInstrument(nil))
+	})
 }

@@ -181,27 +181,18 @@ type Filters struct {
 
 type Injector struct {
 	Instrument        Services            `alloy:"instrument,block,optional"`
+	ExcludeInstrument Services            `alloy:"exclude_instrument,block,optional"`
 	Webhook           InjectorWebhook     `alloy:"webhook,block,optional"`
-	OTELEndpoint      string              `alloy:"otel_endpoint,attr,optional"`
-	NoAutoRestart     *bool               `alloy:"disable_auto_restart,attr,optional"`
-	HostPathVolumeDir string              `alloy:"host_path_volume,attr,optional"`
-	SDKPkgVersion     string              `alloy:"sdk_package_version,attr,optional"`
-	HostMountPath     string              `alloy:"host_mount_path,attr,optional"`
-	ManageSDKVersions *bool               `alloy:"manage_sdk_versions,attr,optional"`
+	ImageVersion      string              `alloy:"image_version,attr,optional"`
 	DefaultSampler    SamplerConfig       `alloy:"sampler,block,optional"`
 	Propagators       []string            `alloy:"propagators,attr,optional"`
-	Export            InjectorSDKExport   `alloy:"export,block,optional"`
+	ExportedSignals   InjectorSDKExport   `alloy:"otel_exported_signals,block,optional"`
 	Resources         InjectorSDKResource `alloy:"resources,block,optional"`
 	EnabledSDKs       []string            `alloy:"enabled_sdks,attr,optional"`
-	Debug             *bool               `alloy:"debug,attr,optional"`
 }
 
 type InjectorWebhook struct {
-	Enable   bool           `alloy:"enable,attr,optional"`
-	Port     *int           `alloy:"port,attr,optional"`
-	CertPath string         `alloy:"cert_path,attr,optional"`
-	KeyPath  string         `alloy:"key_path,attr,optional"`
-	Timeout  *time.Duration `alloy:"timeout,attr,optional"`
+	ExternalWebhook string `alloy:"external_deployment_name,attr,optional"`
 }
 
 type InjectorSDKExport struct {
@@ -215,13 +206,19 @@ type InjectorSDKResource struct {
 	// For example environment: dev
 	Attributes map[string]string `alloy:"attributes,attr,optional"`
 	// AddK8sUIDAttributes defines whether K8s UID attr should be collected (e.g. k8s.deployment.uid).
-	AddK8sUIDAttributes *bool `alloy:"add_k8s_attributes,attr,optional"`
+	AddK8sUIDAttributes *bool `alloy:"add_k8s_uid_attributes,attr,optional"`
+	// AddK8sIPAttribute defines whether the k8s.pod.ip resource attribute should be set
+	// from the Kubernetes downward API (status.podIP). Useful for environments where the
+	// OTel k8sattributesprocessor cannot infer the pod IP from the connection source
+	// (e.g. clusters behind a NAT gateway).
+	// +optional
+	AddK8sIPAttribute *bool `alloy:"add_k8s_ip_attribute,attr,optional"`
 	// UseLabelsForResourceAttributes defines whether to use common labels for resource attributes:
 	// Note: first entry wins:
 	//   - `app.kubernetes.io/instance` becomes `service.name`
 	//   - `app.kubernetes.io/name` becomes `service.name`
 	//   - `app.kubernetes.io/version` becomes `service.version`
-	UseLabelsForResourceAttributes *bool `alloy:"use_labels,attr,optional"`
+	UseLabelsForResourceAttributes *bool `alloy:"use_k8s_labels_for_resource_attributes,attr,optional"`
 }
 
 type Stats struct {

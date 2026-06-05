@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/beyla/v3/pkg/beyla"
 	"github.com/grafana/beyla/v3/pkg/components"
 	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
+	"github.com/grafana/beyla/v3/pkg/webhook/configmap"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
@@ -532,7 +533,9 @@ func (args Network) Convert() obi.NetworkConfig {
 	networks.Protocols = args.Protocols
 	networks.ExcludeProtocols = args.ExcludeProtocols
 	networks.Sampling = args.Sampling
-	networks.CIDRs = args.CIDRs
+	if len(args.CIDRs) > 0 {
+		_ = networks.CIDRs.UnmarshalText([]byte(strings.Join(args.CIDRs, ",")))
+	}
 	return networks
 }
 
@@ -548,7 +551,9 @@ func (args Stats) Convert() obi.StatsConfig {
 		stats.AgentIPType = args.AgentIPType
 	}
 	if args.CIDRs != nil {
-		stats.CIDRs = args.CIDRs
+		if len(args.CIDRs) > 0 {
+			_ = stats.CIDRs.UnmarshalText([]byte(strings.Join(args.CIDRs, ",")))
+		}
 	}
 	stats.Print = args.Print
 	return stats
@@ -578,7 +583,7 @@ func (args EBPF) Convert() (*obiCfg.EBPFTracer, error) {
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
 	ebpf.BpfDebug = args.BpfDebug
 	ebpf.ProtocolDebug = args.ProtocolDebug
-	ebpf.PayloadExtraction.HTTP.OpenAI.Enabled = args.PayloadExtraction.HTTP.OpenAI.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = args.PayloadExtraction.HTTP.OpenAI.Enabled
 	return &ebpf, nil
 }
 
@@ -604,25 +609,13 @@ func (args Filters) Convert() filter.AttributesConfig {
 
 func (args InjectorWebhook) Convert() beyla.WebhookConfig {
 	w := beyla.DefaultConfig().Injector.Webhook
-	w.Enable = args.Enable
-	if args.CertPath != "" {
-		w.CertPath = args.CertPath
-	}
-	if args.KeyPath != "" {
-		w.KeyPath = args.KeyPath
-	}
-	if args.Port != nil {
-		w.Port = *args.Port
-	}
-	if args.Timeout != nil {
-		w.Timeout = *args.Timeout
-	}
+	w.ExternalWebhook = args.ExternalWebhook
 
 	return w
 }
 
-func (args InjectorSDKExport) Convert() beyla.SDKExport {
-	w := beyla.DefaultConfig().Injector.Export
+func (args InjectorSDKExport) Convert() configmap.SDKExportedSignals {
+	w := beyla.DefaultConfig().Injector.ExportedSignals
 	if args.Traces != nil {
 		w.Traces = args.Traces
 	}
@@ -636,7 +629,7 @@ func (args InjectorSDKExport) Convert() beyla.SDKExport {
 	return w
 }
 
-func (args InjectorSDKResource) Convert() beyla.SDKResource {
+func (args InjectorSDKResource) Convert() configmap.SDKResource {
 	w := beyla.DefaultConfig().Injector.Resources
 	if args.Attributes != nil {
 		w.Attributes = args.Attributes
@@ -644,11 +637,92 @@ func (args InjectorSDKResource) Convert() beyla.SDKResource {
 	if args.AddK8sUIDAttributes != nil {
 		w.AddK8sUIDAttributes = *args.AddK8sUIDAttributes
 	}
+	if args.AddK8sIPAttribute != nil {
+		w.AddK8sIPAttribute = *args.AddK8sIPAttribute
+	}
 	if args.UseLabelsForResourceAttributes != nil {
 		w.UseLabelsForResourceAttributes = *args.UseLabelsForResourceAttributes
 	}
 
 	return w
+}
+
+func selectorFromGlob(a *services.GlobAttributes, mode configmap.Mode) configmap.K8sSelector {
+	var podLabels map[string]services.GlobAttr
+	if len(a.PodLabels) > 0 {
+		podLabels = make(map[string]services.GlobAttr, len(a.PodLabels))
+		for k, v := range a.PodLabels {
+			podLabels[k] = *v
+		}
+	}
+
+	var podAnnotations map[string]services.GlobAttr
+	if len(a.PodAnnotations) > 0 {
+		podAnnotations = make(map[string]services.GlobAttr, len(a.PodAnnotations))
+		for k, v := range a.PodAnnotations {
+			podAnnotations[k] = *v
+		}
+	}
+
+	metaGlob := func(name string) []services.GlobAttr {
+		if g := a.Metadata[name]; g != nil {
+			return []services.GlobAttr{*g}
+		}
+		return nil
+	}
+
+	// First check to see if the user used k8s_owner_name
+	ownerNames := metaGlob(services.AttrOwnerName)
+	var kinds []string
+	// If no owner name, then we check the specific types of definitions.
+	// In this case we set both the owner name and the kind to match the new
+	// service definition format.
+	if ownerNames == nil {
+		for _, owner := range []struct {
+			metadataKey string
+			kind        string
+		}{
+			{metadataKey: services.AttrDeploymentName, kind: "Deployment"},
+			{metadataKey: services.AttrDaemonSetName, kind: "DaemonSet"},
+			{metadataKey: services.AttrReplicaSetName, kind: "ReplicaSet"},
+			{metadataKey: services.AttrStatefulSetName, kind: "StatefulSet"},
+			{metadataKey: services.AttrJobName, kind: "Job"},
+			{metadataKey: services.AttrCronJobName, kind: "CronJob"},
+			{metadataKey: services.AttrPodName, kind: "Pod"},
+		} {
+			if names := metaGlob(owner.metadataKey); names != nil {
+				ownerNames = names
+				kinds = []string{owner.kind}
+				break
+			}
+		}
+	}
+
+	return configmap.K8sSelector{
+		Namespaces:     metaGlob(services.AttrNamespace),
+		OwnerNames:     ownerNames,
+		OwnerKinds:     kinds,
+		PodLabels:      podLabels,
+		PodAnnotations: podAnnotations,
+	}
+}
+
+func selectorsFromInstrument(g services.GlobDefinitionCriteria) []configmap.K8sSelector {
+	var selectors []configmap.K8sSelector
+
+	for i := range g {
+		sel := selectorFromGlob(&g[i], configmap.ModeInstall)
+		// TODO: replace this with sel.IsEmpty() when we upgrade to 3.22+
+		if len(sel.Namespaces) == 0 && len(sel.OwnerNames) == 0 &&
+			len(sel.OwnerKinds) == 0 && len(sel.PodLabels) == 0 &&
+			len(sel.PodAnnotations) == 0 {
+			continue
+		}
+
+		selectors = append(selectors, sel)
+	}
+
+	return selectors
 }
 
 func (args Injector) Convert() (beyla.SDKInject, error) {
@@ -659,11 +733,19 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		if err != nil {
 			return i, err
 		}
-		i.Instrument = instrument
+		i.Instrument = selectorsFromInstrument(instrument)
+	}
+
+	if len(args.ExcludeInstrument) > 0 {
+		exclude, err := args.ExcludeInstrument.ConvertGlob()
+		if err != nil {
+			return i, err
+		}
+		i.ExcludeInstrument = selectorsFromInstrument(exclude)
 	}
 
 	i.Webhook = args.Webhook.Convert()
-	i.Export = args.Export.Convert()
+	i.ExportedSignals = args.ExportedSignals.Convert()
 	i.Resources = args.Resources.Convert()
 
 	if args.DefaultSampler.Name != "" || args.DefaultSampler.Arg != "" {
@@ -671,24 +753,8 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		i.DefaultSampler = &s
 	}
 
-	if args.NoAutoRestart != nil {
-		i.NoAutoRestart = *args.NoAutoRestart
-	}
-
-	if args.HostMountPath != "" {
-		i.HostMountPath = args.HostMountPath
-	}
-
-	if args.HostPathVolumeDir != "" {
-		i.HostPathVolumeDir = args.HostPathVolumeDir
-	}
-
-	if args.SDKPkgVersion != "" {
-		i.SDKPkgVersion = args.SDKPkgVersion
-	}
-
-	if args.ManageSDKVersions != nil {
-		i.ManageSDKVersions = *args.ManageSDKVersions
+	if args.ImageVersion != "" {
+		i.ImageVersion = args.ImageVersion
 	}
 
 	if len(args.Propagators) > 0 {
@@ -707,41 +773,7 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		i.EnabledSDKs = sdks
 	}
 
-	if args.Debug != nil {
-		i.Debug = *args.Debug
-	}
-
 	return i, nil
-}
-
-func (args Injector) Validate() error {
-	if args.Webhook.Enable {
-		if args.Webhook.CertPath == "" {
-			return fmt.Errorf("injector.webhook.cert_path must be set when injector.webhook.enable is true")
-		}
-		if args.Webhook.KeyPath == "" {
-			return fmt.Errorf("injector.webhook.key_path must be set when injector.webhook.enable is true")
-		}
-	}
-
-	for _, sdk := range args.EnabledSDKs {
-		var it beylaSvc.InstrumentableType
-		if err := it.UnmarshalText([]byte(sdk)); err != nil {
-			return fmt.Errorf("injector.enabled_sdks: %w", err)
-		}
-	}
-
-	if args.OTELEndpoint != "" {
-		endpoint, err := url.Parse(args.OTELEndpoint)
-		if err != nil {
-			return fmt.Errorf("injector.otel_endpoint: %w", err)
-		}
-		if endpoint.Scheme == "" || endpoint.Host == "" {
-			return fmt.Errorf("injector.otel_endpoint: URL %q must have a scheme and a host", args.OTELEndpoint)
-		}
-	}
-
-	return nil
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -962,13 +994,6 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		return nil, err
 	}
 
-	if a.Injector.OTELEndpoint != "" {
-		endpoint := a.Injector.OTELEndpoint
-		cfg.Traces.OTLPEndpointProvider = func() (string, bool) {
-			return endpoint, true
-		}
-	}
-
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging
 		lvl := slog.LevelVar{}
@@ -995,10 +1020,6 @@ func (args *Arguments) Validate() error {
 	}
 
 	if err := args.Traces.Validate(); err != nil {
-		return err
-	}
-
-	if err := args.Injector.Validate(); err != nil {
 		return err
 	}
 
