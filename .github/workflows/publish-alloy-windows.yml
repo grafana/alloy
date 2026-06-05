@@ -22,6 +22,10 @@ on:
         required: false
         type: string
         default: ""
+    outputs:
+      image:
+        description: "Digest-pinned ref of the pushed image (e.g. <repo>@sha256:...). Empty when not pushed or when the build target isn't configured for signing."
+        value: ${{ jobs.publish_windows_container.outputs.image }}
 
 permissions:
   contents: read
@@ -30,13 +34,12 @@ permissions:
 jobs:
   publish_windows_container:
     name: Publish Alloy Windows container
-    strategy:
-      matrix:
-        os: [windows-2022]
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-2022
     permissions:
       contents: read
       id-token: write
+    outputs:
+      image: ${{ steps.build.outputs.image }}
     steps:
     - name: Ensure Docker is running (Docker issue workaround)
       id: docker-workaround
@@ -83,9 +86,10 @@ jobs:
         "alloy_go_version=$go_short_version" >> $env:GITHUB_OUTPUT
 
     - name: Build and publish the container
+      id: build
       # TODO: Run "make alloy-image-windows" instead?
       run: |
-        & "C:/Program Files/git/bin/bash.exe" -c 'PUSH_ALLOY_IMAGE=${SHOULD_PUSH_ALLOY_IMAGE} WINDOWS_VERSION=${{matrix.os}} ALLOY_GO_VERSION=${GO_VERSION} ./scripts/docker-containers-windows ${IMG_NAME}'
+        & "C:/Program Files/git/bin/bash.exe" -c 'PUSH_ALLOY_IMAGE=${SHOULD_PUSH_ALLOY_IMAGE} WINDOWS_VERSION=windows-2022 ALLOY_GO_VERSION=${GO_VERSION} ./scripts/docker-containers-windows ${IMG_NAME}'
       env:
         SHOULD_PUSH_ALLOY_IMAGE: ${{ inputs.push }}
         IMG_NAME: ${{ inputs.img-name }}
