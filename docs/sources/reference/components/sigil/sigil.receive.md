@@ -19,6 +19,8 @@ The component starts an HTTP server that accepts `POST /api/v1/generations:expor
 
 `sigil.receive` returns `400 Bad Request` when it cannot decode the request body, and `415 Unsupported Media Type` when the `Content-Type` header is set to anything other than `application/json`. An empty `Content-Type` is accepted and the body is parsed as JSON.
 
+When `forward_to` contains more than one receiver, `sigil.receive` forwards the request to each receiver and merges their per-generation results into a single response. A generation is reported as accepted only if every receiver that reports it accepted it. If any receiver rejects a generation, it's reported as failed and the response carries the distinct errors returned for it by the rejecting receivers, joined with `; `. If a receiver fails at the transport level, for example a network error or a non-2xx response after retries, the whole request fails and `sigil.receive` returns an error status. The client is expected to retry the batch.
+
 ## Usage
 
 ```alloy
