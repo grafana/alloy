@@ -129,4 +129,37 @@ prometheus.remote_write "default" {
 			cloud = "AzureGovernment"
 		}
 	}
+
+	endpoint {
+		name = "remote7_azuread_workload_identity"
+		url  = "http://localhost:9012/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+
+		azuread {
+			workload_identity {
+				client_id       = "00000000-0000-0000-0000-000000000000"
+				tenant_id       = "00000000-0000-0000-0000-000000000001"
+				token_file_path = "/var/run/secrets/azure/tokens/azure-identity-token"
+			}
+		}
+	}
+
+	endpoint {
+		name = "remote8_azuread_scope"
+		url  = "http://localhost:9012/api/prom/push"
+
+		queue_config { }
+
+		metadata_config { }
+
+		azuread {
+			managed_identity {
+				client_id = "00000000-0000-0000-0000-000000000000"
+			}
+			scope = "api://alloy-gateway/.default"
+		}
+	}
 }
