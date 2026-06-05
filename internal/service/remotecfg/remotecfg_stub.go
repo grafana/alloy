@@ -2,12 +2,14 @@ package remotecfg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/grafana/alloy/internal/featuregate"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/syntax/ast"
 )
@@ -19,8 +21,6 @@ var _ service.Service = (*ServiceStub)(nil)
 // Used instead of [Service] in OTel extension mode, where OpAMP already handles config management.
 // The stub doesn't do config management but still provides a minimal implementation needed for support bundles and other services.
 type ServiceStub struct {
-	opts Options
-
 	mut         sync.RWMutex
 	systemAttrs map[string]string
 	metrics     *metrics
@@ -28,11 +28,10 @@ type ServiceStub struct {
 }
 
 // NewStub returns a new remote config service stub.
-func NewStub(opts Options) *ServiceStub {
-	metrics := registerMetrics(opts.Metrics)
+func NewStub(reg prometheus.Registerer) *ServiceStub {
+	metrics := registerMetrics(reg)
 
 	return &ServiceStub{
-		opts:        opts,
 		systemAttrs: getSystemAttributes(),
 		metrics:     metrics,
 	}
@@ -60,8 +59,8 @@ func (s *ServiceStub) Run(ctx context.Context, host service.Host) error {
 }
 
 func (s *ServiceStub) Update(_ any) error {
-	level.Warn(s.opts.Logger).Log("msg", "Alloy remote config management is not available in OTel mode")
-	return nil
+	// TODO: check whether returning an error crashes Alloy
+	return errors.New("remote config management is not available in OTel mode")
 }
 
 func (s *ServiceStub) Data() any {
