@@ -2,6 +2,7 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -19,7 +20,11 @@ import (
 const (
 	LogsCollector         = "logs"
 	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
+	selectLogTimezone     = `SELECT setting FROM pg_settings WHERE name = 'log_timezone';`
 )
+
+// log_timezone is a sighup-reloadable Postgres setting so we periodically poll for changes
+const logTimezoneRefreshInterval = time.Hour
 
 // Postgres log format regex
 var logFormatRegex = regexp.MustCompile(
@@ -44,6 +49,7 @@ type LogsArguments struct {
 	Registry         *prometheus.Registry
 	ExcludeDatabases []string
 	ExcludeUsers     []string
+	DB               *sql.DB
 }
 
 type Logs struct {
@@ -54,6 +60,10 @@ type Logs struct {
 	receiver         loki.LogsReceiver
 	excludeDatabases []string
 	excludeUsers     []string
+
+	db              *sql.DB
+	logTimezone     atomic.Pointer[time.Location]
+	lastLogTimezone atomic.Pointer[string]
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -81,6 +91,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		receiver:         args.Receiver,
 		excludeDatabases: args.ExcludeDatabases,
 		excludeUsers:     args.ExcludeUsers,
+		db:               args.DB,
 		ctx:              ctx,
 		cancel:           cancel,
 		stopped:          atomic.NewBool(false),
@@ -128,9 +139,50 @@ func (l *Logs) Receiver() loki.LogsReceiver {
 func (l *Logs) Start(ctx context.Context) error {
 	l.logger.Debug("collector started")
 
+	if l.db != nil {
+		l.refreshLogTimezone(l.ctx)
+		l.wg.Go(l.logTimezoneRefreshLoop)
+	}
 	l.wg.Go(l.run)
 
 	return nil
+}
+
+func (l *Logs) logTimezoneRefreshLoop() {
+	ticker := time.NewTicker(logTimezoneRefreshInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-l.ctx.Done():
+			return
+		case <-ticker.C:
+			l.refreshLogTimezone(l.ctx)
+		}
+	}
+}
+
+func (l *Logs) refreshLogTimezone(ctx context.Context) {
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var tzName string
+	if err := l.db.QueryRowContext(queryCtx, selectLogTimezone).Scan(&tzName); err != nil {
+		l.logger.Debug("failed to query log_timezone", "err", err)
+		return
+	}
+
+	loc, err := time.LoadLocation(tzName)
+	if err != nil {
+		// PG accepts POSIX specs (e.g. 'EST5EDT,M3.2.0,M11.1.0') that Go's tzdata can't load.
+		if prev := l.lastLogTimezone.Load(); prev == nil || *prev != tzName {
+			l.logger.Warn("PostgreSQL log_timezone is not a Go-loadable IANA name; logs collector will skip its historical-log filter. Consider setting log_timezone to an IANA name (e.g. 'America/New_York') in postgresql.conf.", "log_timezone", tzName, "err", err)
+			l.lastLogTimezone.Store(&tzName)
+		}
+		l.logTimezone.Store(nil)
+		return
+	}
+	l.lastLogTimezone.Store(nil)
+	l.logTimezone.Store(loc)
 }
 
 func (l *Logs) Stop() {
@@ -199,10 +251,11 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 			} {
 				logTimestamp, err := time.Parse(layout, timestampStr)
 				if err == nil {
-					if !logTimestamp.After(l.startTime) {
+					absolute, ok := l.resolveAbsolute(logTimestamp)
+					if ok && !absolute.After(l.startTime) {
 						return nil // Skip historical log
 					}
-					break // Found valid timestamp, continue processing
+					break
 				}
 			}
 		}
@@ -266,6 +319,31 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	).Inc()
 
 	return nil
+}
+
+// resolveAbsolute returns a trustworthy UTC instant. time.Parse fabricates a
+// zero-offset Location for unknown abbreviations (PST, PDT, EDT, ...); we
+// recover the real instant via the configured log_timezone, trusting the
+// recovery only when its abbreviation matches the log line's.
+func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
+	name, offset := parsed.Zone()
+	if offset != 0 || name == "UTC" || name == "GMT" {
+		return parsed, true
+	}
+
+	loc := l.logTimezone.Load()
+	if loc == nil {
+		return time.Time{}, false
+	}
+
+	y, mo, d := parsed.Date()
+	h, mi, s := parsed.Clock()
+	reconstructed := time.Date(y, mo, d, h, mi, s, parsed.Nanosecond(), loc)
+	reconstructedName, _ := reconstructed.Zone()
+	if reconstructedName != name {
+		return time.Time{}, false
+	}
+	return reconstructed, true
 }
 
 // isContinuationLine checks if a line is part of a multi-line PostgreSQL error

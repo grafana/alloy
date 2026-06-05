@@ -718,6 +718,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
 		ExcludeUsers:     effectiveExcludeUsers,
+		DB:               c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
