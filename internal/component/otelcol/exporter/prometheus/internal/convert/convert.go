@@ -213,9 +213,9 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 	keepIdentifying := conv.getOpts().KeepIdentifyingResourceAttributes
 
 	attrs.Range(func(k string, v pcommon.Value) bool {
-		// Skip service.name/namespace/instance.id only when opted out.
-		// Default keeps them on target_info per the OTel service resource
-		// semantic conventions.
+		// Skip service.name/namespace/instance.id unless
+		// KeepIdentifyingResourceAttributes is set; they are already
+		// represented as the job/instance labels.
 		if !keepIdentifying &&
 			(k == string(semconv.ServiceNameKey) ||
 				k == string(semconv.ServiceNamespaceKey) ||
