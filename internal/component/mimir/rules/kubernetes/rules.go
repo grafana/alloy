@@ -372,7 +372,7 @@ func (c *Component) init() error {
 
 	httpClient := c.args.HTTPClientConfig.Convert()
 
-	c.mimirClient, err = mimirClient.New(c.log, mimirClient.Config{
+	c.mimirClient, err = mimirClient.New(c.opts.SLogger, mimirClient.Config{
 		ID:                   c.args.TenantID,
 		Address:              c.args.Address,
 		UseLegacyRoutes:      c.args.UseLegacyRoutes,

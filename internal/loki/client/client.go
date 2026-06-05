@@ -7,18 +7,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
 
-	log "github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/loki/client/internal"
-	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/user"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/model/rulefmt"
+
+	"github.com/grafana/alloy/internal/loki/client/internal"
+	"github.com/grafana/alloy/internal/useragent"
 )
 
 const (
@@ -52,11 +53,11 @@ type LokiClient struct {
 	endpoint *url.URL
 	client   internal.Requester
 	apiPath  string
-	logger   log.Logger
+	logger   *slog.Logger
 }
 
 // New returns a new LokiClient.
-func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec) (*LokiClient, error) {
+func New(cfg Config, timingHistogram *prometheus.HistogramVec) (*LokiClient, error) {
 	endpoint, err := url.Parse(cfg.Address)
 	if err != nil {
 		return nil, err
@@ -79,7 +80,6 @@ func New(logger log.Logger, cfg Config, timingHistogram *prometheus.HistogramVec
 		endpoint: endpoint,
 		client:   timedClient,
 		apiPath:  path,
-		logger:   logger,
 	}, nil
 }
 

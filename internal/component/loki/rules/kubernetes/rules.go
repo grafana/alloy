@@ -263,7 +263,7 @@ func (c *Component) init() error {
 
 	httpClient := c.args.HTTPClientConfig.Convert()
 
-	c.lokiClient, err = lokiClient.New(c.log, lokiClient.Config{
+	c.lokiClient, err = lokiClient.New(lokiClient.Config{
 		ID:               c.args.TenantID,
 		Address:          c.args.Address,
 		UseLegacyRoutes:  c.args.UseLegacyRoutes,
