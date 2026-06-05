@@ -2,11 +2,11 @@ package common
 
 import (
 	"context"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus/common/model"
@@ -50,7 +50,7 @@ func NewFakeK8sFactory(k8sClient kubernetes.Interface) *FakeK8sFactory {
 }
 
 // New returns the fake Kubernetes client and a cache factory that creates FakeCaches.
-func (f *FakeK8sFactory) New(_ commonk8s.ClientArguments, _ log.Logger) (kubernetes.Interface, CacheFactory, error) {
+func (f *FakeK8sFactory) New(_ commonk8s.ClientArguments, _ *slog.Logger) (kubernetes.Interface, CacheFactory, error) {
 	cacheFactory := func(opts cache.Options) (cache.Cache, error) {
 		return &FakeCache{
 			factory: f,
@@ -229,7 +229,7 @@ type TestCrdManagerFactory struct {
 }
 
 // New implements crdManagerFactory.
-func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
+func (f *TestCrdManagerFactory) New(opts component.Options, cluster cluster.Cluster, logger *slog.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) crdManagerInterface {
 	m := newCrdManager(opts, cluster, logger, args, kind, ls)
 
 	// Create and inject the FakeK8sFactory

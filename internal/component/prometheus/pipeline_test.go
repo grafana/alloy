@@ -366,7 +366,7 @@ func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
 type clearCacheFunc = func()
 
 func newRemoteWritePipeline(t testing.TB, logger *logging.Logger, numberOfRemoteWriteComponents int, destination storage.Appender, config refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
-	ls := labelstore.New(logger, promclient.DefaultRegisterer, config.useLabelStore)
+	ls := labelstore.New(logger.Slog(), promclient.DefaultRegisterer, config.useLabelStore)
 
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
 
@@ -385,7 +385,7 @@ func newRemoteWritePipeline(t testing.TB, logger *logging.Logger, numberOfRemote
 }
 
 func newRelabelPipeline(t testing.TB, logger *logging.Logger, destination storage.Appender, config refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
-	ls := labelstore.New(logger, promclient.DefaultRegisterer, config.useLabelStore)
+	ls := labelstore.New(logger.Slog(), promclient.DefaultRegisterer, config.useLabelStore)
 
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
 	rwAppendable := newRemoteWriteComponent(t, logger.Slog(), ls, destAppendable)

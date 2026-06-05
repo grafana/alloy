@@ -1,11 +1,11 @@
 package common
 
 import (
+	"log/slog"
 	"testing"
 
 	"golang.org/x/exp/maps"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/service/cluster"
@@ -24,10 +24,10 @@ import (
 )
 
 func TestClearConfigsSameNsSamePrefix(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.DiscardHandler)
 	m := newCrdManager(
 		component.Options{
-			Logger:         logger,
+			SLogger:        logger,
 			GetServiceData: func(name string) (any, error) { return nil, nil },
 		},
 		cluster.Mock(),
@@ -89,10 +89,10 @@ func TestClearConfigsSameNsSamePrefix(t *testing.T) {
 }
 
 func TestClearConfigsProbe(t *testing.T) {
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.DiscardHandler)
 	m := newCrdManager(
 		component.Options{
-			Logger:         logger,
+			SLogger:        logger,
 			GetServiceData: func(name string) (any, error) { return nil, nil },
 		},
 		cluster.Mock(),
