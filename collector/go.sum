@@ -1960,6 +1960,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbrecei
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.147.0/go.mod h1:ypujVyGJGyZAeiO0QRzIVplk4nkRgvzuB/mcZrmBWZc=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.147.0 h1:4Fxs1MC5uedffj72Cbsp4PGYlS2QwYzzFMsnWqKrvXI=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.147.0/go.mod h1:KPxcGM9KYv+4l3fTYpVA/tAX0Tmh3e9LFVvMRXaCcwk=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver v0.147.0 h1:TSkY7SYRq/QBhlOHjH2muxGEVJD29kQeiI1u35IKwf0=
+github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver v0.147.0/go.mod h1:kb+SCNJ6s/un+k+eoauReqCS4acx574V+OqMCMZ3ysY=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.147.0 h1:ob+fYpUcMdbYhnPkuJltixwRPKsyT4tNkhPm9fMIRrE=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.147.0/go.mod h1:xX6W98pK33nW+MPCh3fZs0vjYgwRbR6hrjMlZf0lV/c=
 github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.147.0 h1:F8jGKEu7VRz/tFE1onoklGtfcPcYLzoTTc1yqRZdwBA=

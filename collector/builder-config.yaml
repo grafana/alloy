@@ -12,6 +12,7 @@ extensions:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.147.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/k8sleaderelector v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.147.0
@@ -70,6 +71,7 @@ receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.147.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.147.0
