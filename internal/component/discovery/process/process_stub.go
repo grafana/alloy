@@ -8,7 +8,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -25,7 +24,7 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
-	_ = level.Warn(opts.Logger).Log("msg", "the discovery.process component only works on linux; enabling it otherwise will do nothing")
+	opts.SLogger.Warn("the discovery.process component only works on linux; enabling it otherwise will do nothing")
 	return &Component{}, nil
 }
 
