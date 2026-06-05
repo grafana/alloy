@@ -39,6 +39,27 @@ type handler struct {
 	scratchPool sync.Pool
 }
 
+func newHandler(
+	w *writerVar,
+	leveler slog.Leveler,
+	formatter formatter,
+	replacer func(groups []string, a slog.Attr) slog.Attr,
+	nested []nesting,
+) *handler {
+	return &handler{
+		w:         w,
+		leveler:   leveler,
+		formatter: formatter,
+		replacer:  replacer,
+		nested:    nested,
+		scratchPool: sync.Pool{
+			New: func() any {
+				return &scratch{lw: &leveledWriter{w: w}}
+			},
+		},
+	}
+}
+
 type scratch struct {
 	// Carries the record's level.
 	lw *leveledWriter
@@ -80,10 +101,7 @@ func (h *handler) Handle(ctx context.Context, r slog.Record) error {
 // format, rebuilding the handler only when the format changed (or on first use).
 func (h *handler) getScratch() *scratch {
 	expectFormat := h.formatter.Format()
-	s, _ := h.scratchPool.Get().(*scratch)
-	if s == nil {
-		s = &scratch{lw: &leveledWriter{w: h.w}}
-	}
+	s := h.scratchPool.Get().(*scratch)
 	if s.hdlr == nil || s.format != expectFormat {
 		s.hdlr = h.buildHandler(s.lw)
 		s.format = expectFormat
@@ -128,14 +146,7 @@ func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		attrs: attrs,
 	})
 
-	return &handler{
-		w:         h.w,
-		leveler:   h.leveler,
-		formatter: h.formatter,
-
-		nested:   newNest,
-		replacer: h.replacer,
-	}
+	return newHandler(h.w, h.leveler, h.formatter, h.replacer, newNest)
 }
 
 func (h *handler) WithGroup(name string) slog.Handler {
@@ -144,14 +155,7 @@ func (h *handler) WithGroup(name string) slog.Handler {
 	newNest = append(newNest, nesting{
 		group: name,
 	})
-	return &handler{
-		w:         h.w,
-		leveler:   h.leveler,
-		formatter: h.formatter,
-
-		nested:   newNest,
-		replacer: h.replacer,
-	}
+	return newHandler(h.w, h.leveler, h.formatter, h.replacer, newNest)
 }
 
 var unsafeKeyCharReplacer = strings.NewReplacer(

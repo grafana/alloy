@@ -84,12 +84,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		innerWriter:    w,
 		eventLogOpener: eventlog.GetEventLogOpener(),
 	}
-	bh := &handler{
-		w:         writer,
-		leveler:   &leveler,
-		formatter: &format,
-		replacer:  replace,
-	}
+	bh := newHandler(writer, &leveler, &format, replace, nil)
 
 	l := &Logger{
 		buffer:       []*bufferedItem{},
