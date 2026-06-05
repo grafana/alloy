@@ -532,7 +532,7 @@ func (l *componentLeadership) update() (bool, error) {
 	}
 
 	isLeader := peers[0].Self
-	l.logger.Error("checked leadership of component", "is_leader", isLeader)
+	l.logger.Info("checked leadership of component", "is_leader", isLeader)
 	return l.leader.Swap(isLeader) != isLeader, nil
 }
 
