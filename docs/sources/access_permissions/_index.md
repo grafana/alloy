@@ -20,9 +20,9 @@ Use only what matches your components and environment.
 1. If you don't need remote access to the UI or `/metrics`, restrict the HTTP server to `127.0.0.1` or a private network address with the [`http` block][http-block].
 1. When you expose the HTTP server beyond localhost, enable TLS with the [`http` block][http-block].
 1. Use TLS for outbound connections.
-   Refer to the component you're configuring, for example [`prometheus.remote_write`][prometheus-remote-write] for remote write and [`otelcol.exporter.otlp`][otelcol-exporter-otlp] for OTLP.
+   Refer to the [component][components] you're configuring, for example [`prometheus.remote_write`][prometheus-remote-write] for remote write and [`otelcol.exporter.otlp`][otelcol-exporter-otlp] for OTLP.
 1. Avoid `insecure_skip_verify = true` in production.
-   Refer to the TLS settings in that component's reference, for example [`prometheus.remote_write`][prometheus-remote-write].
+   Refer to the TLS settings in the [component][components] reference, for example [`prometheus.remote_write`][prometheus-remote-write].
 1. Store credentials outside configuration files when you can.
    Refer to [Types and values][types-values].
 1. On Kubernetes, set RBAC to the permissions your configuration uses.
@@ -32,7 +32,7 @@ Use only what matches your components and environment.
 1. For container deployments, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
    Refer to [Access and permissions on Kubernetes][kubernetes].
 1. Use a dedicated {{< param "PRODUCT_NAME" >}} instance for components that require elevated access.
-   Refer to [Components][components] for details.
+   Refer to the [component][components] you're configuring for details.
 
 ## Process identity and privilege
 
@@ -53,7 +53,7 @@ Review what you expose before you change either default.
 
 You can load secrets at runtime through several patterns:
 
-- `sys.env()` in configuration to reference environment variables
+- [`sys.env()`][sys-env] in configuration to reference environment variables
 - [`remote.vault`][remote-vault] to load secrets from HashiCorp Vault
 - Secrets from the cluster: [remote.kubernetes.secret][remote-k8s-secret]
 - [`remote.s3`][remote-s3] to load configuration or secrets from AWS S3
@@ -67,6 +67,7 @@ For `secret`-typed values at runtime and protection from exposure in the UI and 
 [prometheus-remote-write]: ../reference/components/prometheus/prometheus.remote_write/
 [otelcol-exporter-otlp]: ../reference/components/otelcol/otelcol.exporter.otlp/
 [remote-vault]: ../reference/components/remote/remote.vault/
+[sys-env]: ../reference/stdlib/sys/#sys.env
 [remote-k8s-secret]: ../reference/components/remote/remote.kubernetes.secret/
 [remote-s3]: ../reference/components/remote/remote.s3/
 [types-values]: ../get-started/expressions/types_and_values/
