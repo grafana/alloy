@@ -34,6 +34,7 @@ func TestConverter(t *testing.T) {
 		addMetricSuffixes             bool
 		enableOpenMetrics             bool
 		resourceToTelemetryConversion bool
+		stripIdentifyingResourceAttrs bool
 	}{
 		{
 			name: "Gauge with metadata",
@@ -470,9 +471,92 @@ func TestConverter(t *testing.T) {
 			expect: `
 				# HELP target_info Target metadata
 				# TYPE target_info gauge
-				target_info{instance="instance",job="myservice",custom_attr="test"} 1.0
+				target_info{instance="instance",service_instance_id="instance",job="myservice",service_name="myservice",custom_attr="test"} 1.0
 				# TYPE test_metric_seconds gauge
 				test_metric_seconds{instance="instance",job="myservice"} 1234.56
+			`,
+			enableOpenMetrics: true,
+		},
+		{
+			name: "Target info metric, identifying attributes stripped",
+			input: `{
+				"resource_metrics": [{
+					"resource": {
+						"attributes": [{
+							"key": "service.name",
+							"value": { "stringValue": "myservice" }
+						}, {
+							"key": "service.namespace",
+							"value": { "stringValue": "myns" }
+						}, {
+							"key": "service.instance.id",
+							"value": { "stringValue": "instance" }
+						}, {
+							"key": "custom_attr",
+							"value": { "stringValue": "test" }
+						}]
+					},
+					"scope_metrics": [{
+						"metrics": [{
+							"name": "test_metric_seconds",
+							"gauge": {
+								"data_points": [{
+									"as_double": 1234.56
+								}]
+							}
+						}]
+					}]
+				}]
+			}`,
+			includeTargetInfo:             true,
+			stripIdentifyingResourceAttrs: true,
+			expect: `
+				# HELP target_info Target metadata
+				# TYPE target_info gauge
+				target_info{instance="instance",job="myns/myservice",custom_attr="test"} 1.0
+				# TYPE test_metric_seconds gauge
+				test_metric_seconds{instance="instance",job="myns/myservice"} 1234.56
+			`,
+			enableOpenMetrics: true,
+		},
+		{
+			name: "Target info metric with service.namespace",
+			input: `{
+				"resource_metrics": [{
+					"resource": {
+						"attributes": [{
+							"key": "service.name",
+							"value": { "stringValue": "myservice" }
+						}, {
+							"key": "service.namespace",
+							"value": { "stringValue": "myns" }
+						}, {
+							"key": "service.instance.id",
+							"value": { "stringValue": "instance" }
+						}, {
+							"key": "custom_attr",
+							"value": { "stringValue": "test" }
+						}]
+					},
+					"scope_metrics": [{
+						"metrics": [{
+							"name": "test_metric_seconds",
+							"gauge": {
+								"data_points": [{
+									"as_double": 1234.56
+								}]
+							}
+						}]
+					}]
+				}]
+			}`,
+			includeTargetInfo: true,
+			expect: `
+				# HELP target_info Target metadata
+				# TYPE target_info gauge
+				target_info{instance="instance",service_instance_id="instance",service_namespace="myns",job="myns/myservice",service_name="myservice",custom_attr="test"} 1.0
+				# TYPE test_metric_seconds gauge
+				test_metric_seconds{instance="instance",job="myns/myservice"} 1234.56
 			`,
 			enableOpenMetrics: true,
 		},
@@ -1197,12 +1281,13 @@ func TestConverter(t *testing.T) {
 
 			l := util.TestAlloyLogger(t)
 			conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
-				IncludeTargetInfo:             tc.includeTargetInfo,
-				IncludeScopeInfo:              tc.includeScopeInfo,
-				IncludeScopeLabels:            tc.includeScopeLabels,
-				AddMetricSuffixes:             tc.addMetricSuffixes,
-				ResourceToTelemetryConversion: tc.resourceToTelemetryConversion,
-				HonorMetadata:                 true,
+				IncludeTargetInfo:                 tc.includeTargetInfo,
+				IncludeScopeInfo:                  tc.includeScopeInfo,
+				IncludeScopeLabels:                tc.includeScopeLabels,
+				AddMetricSuffixes:                 tc.addMetricSuffixes,
+				ResourceToTelemetryConversion:     tc.resourceToTelemetryConversion,
+				HonorMetadata:                     true,
+				KeepIdentifyingResourceAttributes: !tc.stripIdentifyingResourceAttrs,
 			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 

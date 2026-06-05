@@ -72,6 +72,14 @@ type Options struct {
 	// bounds) histograms are converted to Prometheus Native Histograms with
 	// Custom Buckets instead of being written as N+2 classic series.
 	ConvertClassicHistogramsToNHCB bool
+	// KeepIdentifyingResourceAttributes preserves service.name,
+	// service.namespace, and service.instance.id as labels on target_info
+	// in addition to mapping them to job and instance. Defaults to true to
+	// remain compliant with the OpenTelemetry service resource semantic
+	// conventions (https://opentelemetry.io/docs/specs/semconv/resource/service/),
+	// which define these as standard resource attributes. Only affects
+	// target_info; regular metric series are unchanged.
+	KeepIdentifyingResourceAttributes bool
 }
 
 var _ consumer.Metrics = (*Converter)(nil)
@@ -203,12 +211,16 @@ func (conv *Converter) getOrCreateResource(res pcommon.Resource) *memorySeries {
 	lb.Set(model.JobLabel, jobLabel)
 	lb.Set(model.InstanceLabel, instanceLabel)
 
+	keepIdentifying := conv.getOpts().KeepIdentifyingResourceAttributes
+
 	attrs.Range(func(k string, v pcommon.Value) bool {
-		// Skip attributes that we used for determining the job and instance
-		// labels.
-		if k == string(semconv.ServiceNameKey) ||
-			k == string(semconv.ServiceNamespaceKey) ||
-			k == string(semconv.ServiceInstanceIDKey) {
+		// Skip service.name/namespace/instance.id only when opted out.
+		// Default keeps them on target_info per the OTel service resource
+		// semantic conventions.
+		if !keepIdentifying &&
+			(k == string(semconv.ServiceNameKey) ||
+				k == string(semconv.ServiceNamespaceKey) ||
+				k == string(semconv.ServiceInstanceIDKey)) {
 
 			return true
 		}
