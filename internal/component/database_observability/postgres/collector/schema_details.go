@@ -764,10 +764,6 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 	return tblSpec, nil
 }
 
-func fullyQualifiedName(db database, sch schema, tbl table) string {
-	return fmt.Sprintf("%s.%s.%s", db, sch, tbl)
-}
-
 func schemaTableKey(sch schema, tbl table) string {
 	return fmt.Sprintf("%s.%s", sch, tbl)
 }
