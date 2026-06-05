@@ -36,7 +36,6 @@ import (
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -73,9 +72,7 @@ type K8sFactory interface {
 type realK8sFactory struct{}
 
 func (realK8sFactory) New(clientConfig commonk8s.ClientArguments, logger *slog.Logger) (kubernetes.Interface, CacheFactory, error) {
-	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use kubernetes.ClientArguments
-	// to slog. Part of https://github.com/grafana/alloy/issues/4813.
-	restConfig, err := clientConfig.BuildRESTConfig(slogadapter.GoKit(logger.Handler()))
+	restConfig, err := clientConfig.BuildRESTConfig(logger)
 	if err != nil {
 		return nil, nil, fmt.Errorf("creating rest config: %w", err)
 	}

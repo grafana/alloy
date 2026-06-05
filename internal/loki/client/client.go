@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -53,7 +52,6 @@ type LokiClient struct {
 	endpoint *url.URL
 	client   internal.Requester
 	apiPath  string
-	logger   *slog.Logger
 }
 
 // New returns a new LokiClient.
