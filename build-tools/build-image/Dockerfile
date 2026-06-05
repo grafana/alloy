@@ -4,8 +4,8 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-# NOTE: The GO_RUNTIME is used to switch between the default Google go runtime and mcr.microsoft.com/oss/go/microsoft/golang:1.22.7-bullseye which is a Microsoft
-# fork of go that allows using windows crypto instead of boring crypto. Details at https://github.com/microsoft/go/tree/microsoft/main/eng/doc/fips
+# NOTE: GO_RUNTIME pins the Go toolchain image that provides the bundled Go and
+# Go-based tools. It's supplied by the build-image workflow; there's no in-tree default.
 ARG GO_RUNTIME=mustoverride
 
 #

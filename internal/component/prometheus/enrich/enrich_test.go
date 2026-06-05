@@ -181,8 +181,8 @@ func TestEnricher(t *testing.T) {
 			var entry storage.Appendable
 			tt.args.ForwardTo = []storage.Appendable{fanout}
 			_, err := New(component.Options{
-				ID:     "1",
-				Logger: util.TestAlloyLogger(t),
+				ID:      "1",
+				SLogger: util.TestAlloyLogger(t).Slog(),
 				OnStateChange: func(e component.Exports) {
 					newE := e.(Exports)
 					entry = newE.Receiver

@@ -206,7 +206,7 @@ func TestSend(t *testing.T) {
 			// Create our component and wait for it to start running, so we can write
 			// metrics to the WAL.
 			args := testArgs(t, cfg)
-			tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "prometheus.remote_write")
+			tc, err := componenttest.NewControllerFromID(util.TestAlloyLogger(t), "prometheus.remote_write")
 			require.NoError(t, err)
 
 			promRegistry := prometheus.NewRegistry()
@@ -308,7 +308,7 @@ func TestMetadataResend_V2(t *testing.T) {
 	// Create our component and wait for it to start running, so we can write
 	// metrics to the WAL.
 	args := testArgs(t, cfg)
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "prometheus.remote_write")
+	tc, err := componenttest.NewControllerFromID(util.TestAlloyLogger(t), "prometheus.remote_write")
 	require.NoError(t, err)
 
 	promRegistry := prometheus.NewRegistry()
@@ -400,7 +400,7 @@ func TestUpdate(t *testing.T) {
 		}
 	}
 `, srv.URL))
-	tc, err := componenttest.NewControllerFromID(util.TestLogger(t), "prometheus.remote_write")
+	tc, err := componenttest.NewControllerFromID(util.TestAlloyLogger(t), "prometheus.remote_write")
 	require.NoError(t, err)
 	go func() {
 		err = tc.Run(componenttest.TestContext(t), args)

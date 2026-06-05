@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
@@ -17,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -28,11 +28,9 @@ const (
 )
 
 const (
-	queryTextClause     = ", s.query"
 	stateActive         = "active"
 	stateIdle           = "idle"
 	stateIdleTxnAborted = "idle in transaction (aborted)"
-	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -56,8 +54,8 @@ const selectPgStatActivity = `
 		s.wait_event,
 		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
-		s.query_id
-		%s
+		s.query_id,
+		s.query
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
@@ -108,7 +106,7 @@ type QuerySamplesArguments struct {
 	ExcludeDatabases              []string
 	ExcludeUsers                  []string
 	EntryHandler                  loki.EntryHandler
-	Logger                        log.Logger
+	Logger                        *slog.Logger
 	DisableQueryRedaction         bool
 	ExcludeCurrentUser            bool
 	EnablePreClassifiedWaitEvents bool
@@ -124,7 +122,7 @@ type QuerySamples struct {
 	excludeCurrentUser            bool
 	enablePreClassifiedWaitEvents bool
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -239,7 +237,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		excludeCurrentUser:            args.ExcludeCurrentUser,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
-		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		logger:                        args.Logger.With("collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 		samples:                       map[SampleKey]*SampleState{},
 		idleEmitted:                   expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
@@ -252,9 +250,9 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+		c.logger.Warn("collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
+		c.logger.Debug("collector started")
 	}
 
 	c.running.Store(true)
@@ -270,7 +268,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySample(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -297,11 +295,6 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	queryTextField := ""
-	if c.disableQueryRedaction {
-		queryTextField = queryTextClause
-	}
-
 	excludeCurrentUserClauseField := ""
 	if c.excludeCurrentUser {
 		excludeCurrentUserClauseField = excludeCurrentUserClause
@@ -309,7 +302,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
 	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "s.usename")
-	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
+	query := fmt.Sprintf(selectPgStatActivity, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
@@ -322,13 +315,13 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	for rows.Next() {
 		sample, scanErr := c.scanRow(rows)
 		if scanErr != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", scanErr)
+			c.logger.Error("failed to scan pg_stat_activity", "err", scanErr)
 			continue
 		}
 
 		key, procErr := c.processRow(sample)
 		if procErr != nil {
-			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
+			c.logger.Debug("invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
 			continue
 		}
 
@@ -356,7 +349,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	}
 
 	if err := rows.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
+		c.logger.Error("failed to iterate pg_stat_activity rows", "err", err)
 		return err
 	}
 
@@ -393,9 +386,7 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
-	}
-	if c.disableQueryRedaction {
-		scanArgs = append(scanArgs, &sample.Query)
+		&sample.Query,
 	}
 	err := rows.Scan(scanArgs...)
 	return sample, err
@@ -410,10 +401,8 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 }
 
 func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
-	if c.disableQueryRedaction {
-		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
-			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
-		}
+	if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
+		return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
 	}
 
 	if !sample.DatabaseName.Valid {
@@ -580,6 +569,14 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
 		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
 	}
+
+	if state.LastRow.Query.Valid {
+		traceparent := database_observability.TryExtractTraceParent(state.LastRow.Query.String)
+		if traceparent != "" {
+			labels = fmt.Sprintf(`%s traceparent=%s`, labels, strconv.Quote(traceparent))
+		}
+	}
+
 	return labels
 }
 
