@@ -32,9 +32,9 @@ alloy run --server.http.enable-graphql config.alloy
 After you enable the API, the `/graphql` endpoint becomes available on the {{< param "PRODUCT_NAME" >}} HTTP server.
 By default, this is `http://localhost:12345/graphql`.
 
-## GraphQL playground
+## GraphQL Playground
 
-{{< param "PRODUCT_NAME" >}} includes an optional interactive GraphQL playground that you can use to explore the schema and run queries.
+{{< param "PRODUCT_NAME" >}} includes an optional interactive GraphQL Playground that you can use to explore the schema and run queries.
 To enable the playground, use the `--server.http.enable-graphql-playground` flag:
 
 ```sh
