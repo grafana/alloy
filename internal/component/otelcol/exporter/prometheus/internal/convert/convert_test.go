@@ -34,7 +34,7 @@ func TestConverter(t *testing.T) {
 		addMetricSuffixes             bool
 		enableOpenMetrics             bool
 		resourceToTelemetryConversion bool
-		keepIdentifyingResourceAttrs bool
+		keepIdentifyingResourceAttrs  bool
 	}{
 		{
 			name: "Gauge with metadata",
