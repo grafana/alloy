@@ -118,9 +118,11 @@ type QueryDetailsArguments struct {
 
 type SchemaDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
-	CacheSize       int           `alloy:"cache_size,attr,optional"`
-	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
+
+	// Deprecated settings
+	CacheEnabled *bool          `alloy:"cache_enabled,attr,optional"`
+	CacheSize    *int           `alloy:"cache_size,attr,optional"`
+	CacheTTL     *time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
 func defaultArguments() Arguments {
@@ -138,9 +140,6 @@ func defaultArguments() Arguments {
 		},
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
 		},
 		ExplainPlansArguments: ExplainPlansArguments{
 			CollectInterval: 1 * time.Minute,
@@ -581,14 +580,21 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.SchemaDetailsCollector] {
+		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
+			c.opts.SLogger.Warn("schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
+		}
+		if c.args.SchemaDetailsArguments.CacheSize != nil {
+			c.opts.SLogger.Warn("schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
+		}
+		if c.args.SchemaDetailsArguments.CacheTTL != nil {
+			c.opts.SLogger.Warn("schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
+		}
+
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:               c.dbConnection,
 			DSN:              string(c.args.DataSourceName),
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeDatabases: c.args.ExcludeDatabases,
-			CacheEnabled:     c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:        c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:         c.args.SchemaDetailsArguments.CacheTTL,
 			EntryHandler:     entryHandler,
 			Logger:           c.opts.SLogger,
 		})
