@@ -19,9 +19,10 @@ Use only what matches your components and environment.
 1. When your components allow it, run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
 1. If you don't need remote access to the UI or `/metrics`, restrict the HTTP server to `127.0.0.1` or a private network address with the [`http` block][http-block].
 1. When you expose the HTTP server beyond localhost, enable TLS with the [`http` block][http-block].
-1. Use TLS for outbound remote write and OTLP connections with the [`tls` block][tls-block].
+1. Use TLS for outbound connections.
+   Refer to the component you're configuring, for example [`prometheus.remote_write`][prometheus-remote-write] for remote write and [`otelcol.exporter.otlp`][otelcol-exporter-otlp] for OTLP.
 1. Avoid `insecure_skip_verify = true` in production.
-   Refer to the [`tls` block][tls-block].
+   Refer to the TLS settings in that component's reference, for example [`prometheus.remote_write`][prometheus-remote-write].
 1. Store credentials outside configuration files when you can.
    Refer to [Types and values][types-values].
 1. On Kubernetes, set RBAC to the permissions your configuration uses.
@@ -68,7 +69,8 @@ Refer to [Components][components] for details.
 [kubernetes]: ./kubernetes/
 [windows]: ./windows/
 [http-block]: ../reference/config-blocks/http/
-[tls-block]: ../shared/reference/components/tls-config-block/
+[prometheus-remote-write]: ../reference/components/prometheus/prometheus.remote_write/
+[otelcol-exporter-otlp]: ../reference/components/otelcol/otelcol.exporter.otlp/
 [remote-vault]: ../reference/components/remote/remote.vault/
 [remote-k8s-secret]: ../reference/components/remote/remote.kubernetes.secret/
 [remote-s3]: ../reference/components/remote/remote.s3/
