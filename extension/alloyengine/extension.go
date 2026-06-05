@@ -9,13 +9,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/extension"
-	"go.uber.org/zap"
+	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/flowcmd"
 	"github.com/grafana/alloy/internal/readyctx"
-	"github.com/spf13/cobra"
+
+	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/collector/extension"
+	"go.uber.org/zap"
 )
 
 var _ extension.Extension = (*alloyEngineExtension)(nil)
@@ -73,7 +74,7 @@ type alloyEngineExtension struct {
 	config            *Config
 	settings          component.TelemetrySettings
 	runExited         chan struct{}
-	runCommandFactory func() *cobra.Command
+	runCommandFactory func(modulePath string, configs map[string][]byte) *cobra.Command
 
 	stateMutex sync.Mutex
 	state      state
@@ -86,7 +87,7 @@ func newAlloyEngineExtension(config *Config, settings component.TelemetrySetting
 		config:            config,
 		settings:          settings,
 		state:             stateNotStarted,
-		runCommandFactory: flowcmd.RunCommand,
+		runCommandFactory: flowcmd.RunAsExtensionCommand,
 	}
 }
 
@@ -99,20 +100,25 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		return fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
 	}
 
-	runCommand := e.runCommandFactory()
-	configPath, cleanupConfig, err := e.writeInlineConfigFile()
-	if err != nil {
-		return err
+	modulePath := e.config.AlloyConfig.ModulePath
+	if modulePath == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("cannot get current working directory: %w", err)
+		}
+		modulePath = cwd
 	}
-	runCommand.SetArgs([]string{configPath})
+
+	runCommand := e.runCommandFactory(modulePath, map[string][]byte{
+		"config.alloy": []byte(e.config.AlloyConfig.Content),
+	})
+
 	if err := runCommand.ParseFlags(e.config.flagsAsSlice()); err != nil {
-		cleanupConfig()
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
 
 	// Here we check if another extension instance is already running, if so we return an error
 	if !running.CompareAndSwap(false, true) {
-		cleanupConfig()
 		return fmt.Errorf("only one alloyengine extension can be active per process; an instance is already running")
 	}
 
@@ -129,7 +135,6 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 	go func() {
 		defer func() {
 			running.Store(false)
-			cleanupConfig()
 			close(e.runExited)
 		}()
 
@@ -145,32 +150,6 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		}
 	}()
 	return nil
-}
-
-func (e *alloyEngineExtension) writeInlineConfigFile() (string, func(), error) {
-	configFile, err := os.CreateTemp("", "alloyengine-*.alloy")
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create temporary alloy config file: %w", err)
-	}
-
-	configPath := configFile.Name()
-	cleanup := func() {
-		if err := os.Remove(configPath); err != nil && !os.IsNotExist(err) {
-			e.settings.Logger.Warn("failed to remove temporary alloy config file", zap.String("path", configPath), zap.Error(err))
-		}
-	}
-
-	if _, err := configFile.WriteString(e.config.AlloyConfig.Content); err != nil {
-		_ = configFile.Close()
-		cleanup()
-		return "", nil, fmt.Errorf("failed to write temporary alloy config file: %w", err)
-	}
-	if err := configFile.Close(); err != nil {
-		cleanup()
-		return "", nil, fmt.Errorf("failed to close temporary alloy config file: %w", err)
-	}
-
-	return configPath, cleanup, nil
 }
 
 func (e *alloyEngineExtension) runWithBackoffRetry(runCommand *cobra.Command, ctx context.Context) error {

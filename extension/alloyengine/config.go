@@ -11,6 +11,10 @@ type Config struct {
 
 // AlloyConfig represents the incoming format of the Alloy configuration.
 type AlloyConfig struct {
+	// ModulePath is value to be resolved for "module_path" alloy config keyword.
+	ModulePath string `mapstructure:"module_path"`
+
+	// Content is config contents.
 	Content string `mapstructure:"content"`
 }
 
