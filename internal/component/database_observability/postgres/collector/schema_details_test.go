@@ -5,13 +5,11 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/kit/log"
 	"github.com/lib/pq"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -1207,7 +1205,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/throttle_test_db",
 			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},
@@ -1282,7 +1280,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/db_a",
 			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				if strings.Contains(dsn, "db_a") {
 					return dbA, nil
@@ -1354,7 +1352,7 @@ func Test_Postgres_SchemaDetails_throttling(t *testing.T) {
 			DSN:             "postgres://user:pass@localhost:5432/db_a",
 			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			dbConnectionFactory: func(dsn string) (*sql.DB, error) {
 				return db, nil
 			},

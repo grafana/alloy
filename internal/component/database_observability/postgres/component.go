@@ -581,13 +581,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.SchemaDetailsCollector] {
 		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
-			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.SLogger.Warn("schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
 		}
 		if c.args.SchemaDetailsArguments.CacheSize != nil {
-			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.SLogger.Warn("schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
 		}
 		if c.args.SchemaDetailsArguments.CacheTTL != nil {
-			level.Warn(c.opts.Logger).Log("msg", "schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.SLogger.Warn("schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
 		}
 
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
