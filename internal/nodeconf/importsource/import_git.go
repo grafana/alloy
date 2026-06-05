@@ -9,11 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/equality"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/vcs"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/vm"
@@ -23,7 +20,6 @@ import (
 // There are currently no remote.git component, the logic is implemented here.
 type ImportGit struct {
 	opts            component.Options
-	log             log.Logger
 	eval            *vm.Evaluator
 	mut             sync.RWMutex
 	repo            *vcs.GitRepo
@@ -80,7 +76,6 @@ func (args *GitArguments) SetToDefault() {
 func NewImportGit(managedOpts component.Options, eval *vm.Evaluator, onContentChange func(map[string]string)) *ImportGit {
 	return &ImportGit{
 		opts:            managedOpts,
-		log:             managedOpts.Logger,
 		eval:            eval,
 		argsChanged:     make(chan struct{}, 1),
 		onContentChange: onContentChange,
@@ -125,14 +120,14 @@ func (im *ImportGit) Run(ctx context.Context) error {
 			ticker, tickerC = im.updateTicker(pullFrequency, ticker, tickerC)
 
 		case <-tickerC:
-			level.Info(im.log).Log("msg", "updating repository")
+			im.opts.SLogger.Info("updating repository")
 			im.tickPollFile(ctx)
 		}
 	}
 }
 
 func (im *ImportGit) updateTicker(pullFrequency time.Duration, ticker *time.Ticker, tickerC <-chan time.Time) (*time.Ticker, <-chan time.Time) {
-	level.Info(im.log).Log("msg", "updating repository pull frequency, next pull attempt will be done according to the pullFrequency", "new_frequency", pullFrequency)
+	im.opts.SLogger.Info("updating repository pull frequency, next pull attempt will be done according to the pullFrequency", "new_frequency", pullFrequency)
 
 	if pullFrequency > 0 {
 		if ticker == nil {
@@ -159,7 +154,7 @@ func (im *ImportGit) tickPollFile(ctx context.Context) {
 	im.updateHealth(err)
 
 	if err != nil {
-		level.Error(im.log).Log("msg", "failed to update repository", "pullFrequency", pullFrequency, "err", err)
+		im.opts.SLogger.Error("failed to update repository", "pullFrequency", pullFrequency, "err", err)
 	}
 }
 
@@ -212,7 +207,7 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 		r, err := vcs.NewGitRepo(context.Background(), im.repoPath, repoOpts)
 		if err != nil {
 			if errors.As(err, &vcs.UpdateFailedError{}) {
-				level.Error(im.log).Log("msg", "failed to update repository", "err", err)
+				im.opts.SLogger.Error("failed to update repository", "err", err)
 				if im.repo == nil && r == nil {
 					return err
 				}
@@ -227,7 +222,7 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 
 	if err = im.pollFile(context.Background(), newArgs); err != nil {
 		if errors.As(err, &vcs.UpdateFailedError{}) {
-			level.Error(im.log).Log("msg", "failed to poll file from repository", "err", err)
+			im.opts.SLogger.Error("failed to poll file from repository", "err", err)
 			// We don't update the health here because it will be updated via the defer call.
 			// This is not very good because if we reassign the err before exiting the function it will not update the health correctly.
 			// TODO improve the error  health handling.
