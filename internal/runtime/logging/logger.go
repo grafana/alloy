@@ -347,31 +347,6 @@ func (w *writerVar) SwitchToInnerOnly() error {
 	return err
 }
 
-// FastPathFlags returns whether any sink is active and whether the event
-// log sink in particular is attached.
-//
-// io.Discard is treated as "no sink": tests and benchmarks pass it as
-// the underlying writer when they want to measure the logger path
-// without actually consuming bytes, and the bytes handler should skip
-// formatting in that case.
-func (w *writerVar) FastPathFlags() (hasSink, hasEventLog bool) {
-	w.mut.RLock()
-	defer w.mut.RUnlock()
-	hasEventLog = w.eventLog != nil
-	hasSink = hasEventLog ||
-		(w.innerWriter != nil && w.innerWriter != io.Discard && !w.suppressInner) ||
-		w.lokiWriter != nil ||
-		w.tmpWriter != nil
-	return
-}
-
-// HasSink reports whether any active sink will accept bytes. Kept for
-// callers that don't need to distinguish the event-log case.
-func (w *writerVar) HasSink() bool {
-	hasSink, _ := w.FastPathFlags()
-	return hasSink
-}
-
 // Dispatch is the canonical write entry point. It fans p out to every
 // active sink: innerWriter (unless suppressed), lokiWriter, tmpWriter,
 // and, when attached, the event log.
@@ -435,6 +410,22 @@ func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 // write is handled when the event log is attached.
 func (w *writerVar) Write(p []byte) (int, error) {
 	if err := w.Dispatch(p, nil); err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
+// leveledWriter is an io.Writer that remembers the slog level of the record
+// currently being formatted, so writerVar.Dispatch can route it to the event
+// log's Info/Warning/Error API. It is the event-log counterpart of
+// writerVar.Write, which carries no level (fast/stderr path).
+type leveledWriter struct {
+	w     *writerVar
+	level slog.Level
+}
+
+func (lw *leveledWriter) Write(p []byte) (int, error) {
+	if err := lw.w.Dispatch(p, &lw.level); err != nil {
 		return 0, err
 	}
 	return len(p), nil

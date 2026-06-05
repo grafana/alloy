@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -23,29 +22,32 @@ import (
 // JSON or logfmt, and create a new inner handler if needed.
 
 type handler struct {
-	// w owns every sink (innerWriter, lokiWriter, tmpWriter, and the optional event log).
-	// It also implements io.Writer so it can be passed straight into slog.NewTextHandler
-	// and slog.JSONHandler on the fast path. The slow path (event log attached) uses
-	// *writerVar's Dispatch method directly.
+	// w owns every sink: innerWriter (stderr), lokiWriter, tmpWriter, and the
+	// optional Windows event log. Records are formatted through a pooled slog
+	// handler that writes into a leveledWriter, which forwards the bytes plus
+	// the record's level to w.Dispatch.
 	w         *writerVar
 	leveler   slog.Leveler
 	formatter formatter
+	replacer  func(groups []string, a slog.Attr) slog.Attr
 
 	nested []nesting
 
-	mut           sync.RWMutex
-	currentFormat Format
-	inner         slog.Handler
-	replacer      func(groups []string, a slog.Attr) slog.Attr
-
-	eventLogPool sync.Pool
+	// scratchPool holds per-call scratch (a cached slog handler + leveledWriter).
+	// It's per handler instance so each scratch's cached handler matches this
+	// handler's nested attrs/groups, and pooled (rather than a single shared
+	// handler) because the per-call level on the leveledWriter is mutable state
+	// that can't be shared across goroutines.
+	scratchPool sync.Pool
 }
 
-// eventLogScratch bundles a reusable buffer with a slog handler that
-// writes into it. format records which Format the cached handler was
-// built for, so a runtime format change triggers a rebuild.
-type eventLogScratch struct {
-	buf    *bytes.Buffer
+// scratch bundles a leveledWriter with a slog handler that writes through it.
+// The slog handler formats the record and writes the bytes straight to the
+// configured sinks via the leveledWriter, which carries the record's level.
+// format records which Format the cached handler was built for, so a runtime
+// format change triggers a rebuild.
+type scratch struct {
+	lw     *leveledWriter
 	hdlr   slog.Handler
 	format Format
 }
@@ -63,69 +65,41 @@ type formatter interface {
 var _ slog.Handler = (*handler)(nil)
 
 func (h *handler) Enabled(ctx context.Context, l slog.Level) bool {
-	// Bypass the cache and check the underlying leveler directly.
+	// Check the underlying leveler directly rather than going through a handler.
 	return l >= h.leveler.Level()
 }
 
 func (h *handler) Handle(ctx context.Context, r slog.Record) error {
-	hasSink, hasEventLog := h.w.FastPathFlags()
-	if !hasSink {
-		// Skip formatting entirely when no sink is listening.
-		return nil
-	}
-	if !hasEventLog {
-		// Stderr happy path.
-		// The cached slog handler writes directly into writerVar via
-		// the io.Writer interface, no buffer, no per-call rebuild.
-		return h.buildHandler().Handle(ctx, r)
-	}
-	// Event log attached: format once into a buffer so we can hand both
-	// the bytes and the record level to writerVar.Dispatch.
-	return h.handleWithEventLog(ctx, r)
+	// Record the level on the leveledWriter, then let the cached slog handler
+	// format the record and write straight through to writerVar.Dispatch. The
+	// level lets Dispatch pick the event log's Info/Warning/Error API when one
+	// is attached; the stderr/loki/tmp sinks ignore it. Dispatch fans out to
+	// whichever sinks are active (writing nowhere if none are), so there's no
+	// separate "is anything listening?" pre-check here.
+	s := h.getScratch()
+	defer h.scratchPool.Put(s)
+
+	s.lw.level = r.Level
+	return s.hdlr.Handle(ctx, r)
 }
 
-// handleWithEventLog formats the record into a per-call buffer using a
-// freshly-built slog handler, then dispatches via writerVar.Dispatch
-// which knows about the event log and the record level. Only used when
-// the event log destination is active.
-func (h *handler) handleWithEventLog(ctx context.Context, r slog.Record) error {
-	// A pool (rather than buildHandler's single shared handler) because this
-	// path reads buf.Bytes() back after Handle to pass them plus the level to Dispatch.
-	s := h.getEventLogScratch()
-	defer func() {
-		s.buf.Reset()
-		h.eventLogPool.Put(s)
-	}()
-
-	if err := s.hdlr.Handle(ctx, r); err != nil {
-		return err
-	}
-	if s.buf.Len() == 0 {
-		return nil // No need to dispatch empty log entries.
-	}
-	return h.w.Dispatch(s.buf.Bytes(), &r.Level)
-}
-
-// getEventLogScratch returns scratch space whose cached handler matches
-// the current format, rebuilding the handler only when the format
-// changed (or on first use). The returned buffer is already empty.
-func (h *handler) getEventLogScratch() *eventLogScratch {
+// getScratch returns scratch space whose cached handler matches the current
+// format, rebuilding the handler only when the format changed (or on first use).
+func (h *handler) getScratch() *scratch {
 	expectFormat := h.formatter.Format()
-	s, _ := h.eventLogPool.Get().(*eventLogScratch)
+	s, _ := h.scratchPool.Get().(*scratch)
 	if s == nil {
-		s = &eventLogScratch{buf: new(bytes.Buffer)}
+		s = &scratch{lw: &leveledWriter{w: h.w}}
 	}
 	if s.hdlr == nil || s.format != expectFormat {
-		s.hdlr = h.newSlogHandler(s.buf)
+		s.hdlr = h.newSlogHandler(s.lw)
 		s.format = expectFormat
 	}
 	return s
 }
 
 // newSlogHandler constructs a fresh slog handler writing into w, with the
-// current format and the WithAttrs/WithGroup chain applied. Used by both
-// buildHandler (which caches the result for the fast path) and the
-// event-log slow path (which can't cache because the writer is per-call).
+// current format and the WithAttrs/WithGroup chain applied.
 func (h *handler) newSlogHandler(w io.Writer) slog.Handler {
 	handlerOpts := slog.HandlerOptions{
 		AddSource: false,
@@ -152,31 +126,6 @@ func (h *handler) newSlogHandler(w io.Writer) slog.Handler {
 		}
 	}
 	return hdlr
-}
-
-// buildHandler returns a cached slog handler bound to h.w. Used by the
-// fast path (no event log) so each Log call avoids the cost of
-// reconstructing the WithAttrs/WithGroup chain.
-func (h *handler) buildHandler() slog.Handler {
-	// Get the expected format for the duration of this call. It's possible
-	// that this will be stale by the time the call returns, but it will be
-	// correct on the next call.
-	expectFormat := h.formatter.Format()
-
-	// Fast path: if our cached handler is still valid, immediately return it.
-	h.mut.RLock()
-	if h.currentFormat == expectFormat && h.inner != nil {
-		defer h.mut.RUnlock()
-		return h.inner
-	}
-	h.mut.RUnlock()
-
-	// Slow path: build a new handler and cache it.
-	h.mut.Lock()
-	defer h.mut.Unlock()
-	h.inner = h.newSlogHandler(h.w)
-	h.currentFormat = expectFormat
-	return h.inner
 }
 
 func (h *handler) WithAttrs(attrs []slog.Attr) slog.Handler {

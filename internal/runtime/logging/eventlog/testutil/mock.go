@@ -38,6 +38,13 @@ func (m *MockEventLog) Close() error {
 	return nil
 }
 
+// Closed reports whether Close has been called.
+func (m *MockEventLog) Closed() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.closed
+}
+
 // reset clears recorded messages for reuse in subtests.
 func (m *MockEventLog) Reset() {
 	m.mu.Lock()

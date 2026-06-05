@@ -138,8 +138,7 @@ func TestLogger_EventLog_TransitionToStderrClosesHandle(t *testing.T) {
 		Format:      FormatLogfmt,
 		Destination: LogDestinationStderr,
 	}))
-	_, hasEL := l.writer.FastPathFlags()
-	require.False(t, hasEL, "event_log → stderr should close the event log handle")
+	require.True(t, mock.Closed(), "event_log → stderr should close the event log handle")
 
 	mock.Reset()
 	require.NoError(t, l.Log("msg", "stderr-only"))
