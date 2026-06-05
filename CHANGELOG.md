@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.3](https://github.com/grafana/alloy/compare/v1.16.2...v1.16.3) (2026-06-05)
+
+
+### Bug Fixes 🐛
+
+* **cluster:** Fix nodes failing to join the cluster when TLS is enabled [backport] ([#6438](https://github.com/grafana/alloy/issues/6438)) ([4920e69](https://github.com/grafana/alloy/commit/4920e698823c8d574bb10334dfe5edec574aa255))
+
 ## [1.16.2](https://github.com/grafana/alloy/compare/v1.16.1...v1.16.2) (2026-06-02)
 
 
