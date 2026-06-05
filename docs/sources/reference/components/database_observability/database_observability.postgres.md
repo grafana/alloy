@@ -161,7 +161,9 @@ Examples of extensions that `skip_extension_internals` can detect include Timesc
 |----------------------------|----------------|------------------------------------------------------|---------|----------|
 | `collect_interval`         | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
 | `per_collect_ratio`        | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
-| `skip_extension_internals` | `boolean`      | Skip running `EXPLAIN` on queries against detected Postgres extensions' internal schemas. When TimescaleDB is detected, statements that reference `_timescaledb_catalog`, `_timescaledb_internal`, `_timescaledb_functions`, `_timescaledb_config`, `_timescaledb_cache`, or `_timescaledb_debug` are skipped, since their text in `pg_stat_statements` is emitted by SPI invocations and cannot be re-prepared standalone (resulting in `PREPARE`/`EXPLAIN` errors logged by Postgres). Has no effect when no recognized extension is present. | `true`  | no       |
+| `skip_extension_internals` | `boolean`      | Skip running `EXPLAIN` on queries against detected PostgreSQL extensions' internal schemas.  Has no effect when no recognized extension is present. | `true`  | no       |
+
+When TimescaleDB is detected, statements that reference `_timescaledb_catalog`, `_timescaledb_internal`, `_timescaledb_functions`, `_timescaledb_config`, `_timescaledb_cache`, or `_timescaledb_debug` are skipped, since their text in `pg_stat_statements` is emitted by SPI invocations and cannot be re-prepared standalone, resulting in `PREPARE`/`EXPLAIN` errors logged by PostgreSQL.
 
 ### `health_check`
 
