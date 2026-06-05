@@ -252,9 +252,6 @@ func (c *Component) configureDetector() error {
 		})
 	}
 
-	var p sync.Pool
-	p.Get()
-
 	return err
 }
 
