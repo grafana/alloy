@@ -37,8 +37,6 @@ type Logger struct {
 	// the optional Windows Event Log.
 	handler      *handler
 	deferredSlog *deferredSlogHandler // Buffers slog output until config is loaded, then delegates to handler.
-
-	eventLogOpener eventlog.EventLogOpener // Opens the Windows event log; set in NewDeferred, overridable in tests.
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -80,9 +78,12 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		format  formatVar
 	)
 	// innerWriter is stable for the life of the Logger; destinations that
-	// want to suppress it (windows_event_log) flip writerVar.suppressInner
-	// instead of swapping the writer.
-	writer := &writerVar{innerWriter: w}
+	// want to suppress it (windows_event_log) lazily open an event log via
+	// the writer's own opener instead of swapping the writer.
+	writer := &writerVar{
+		innerWriter:    w,
+		eventLogOpener: eventlog.GetEventLogOpener(),
+	}
 	bh := &handler{
 		w:         writer,
 		leveler:   &leveler,
@@ -94,11 +95,10 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		buffer:       []*bufferedItem{},
 		hasLogFormat: false,
 
-		level:          &leveler,
-		format:         &format,
-		writer:         writer,
-		handler:        bh,
-		eventLogOpener: eventlog.GetEventLogOpener(),
+		level:   &leveler,
+		format:  &format,
+		writer:  writer,
+		handler: bh,
 	}
 	l.deferredSlog = newDeferredHandler(l)
 
@@ -134,7 +134,7 @@ func (l *Logger) Update(o Options) error {
 	l.bufferMut.Lock()
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
-	if err := l.applyDestination(o.Destination); err != nil {
+	if err := l.writer.SetDestination(o.Destination); err != nil {
 		l.bufferMut.Unlock()
 		return err
 	}
@@ -149,19 +149,6 @@ func (l *Logger) Update(o Options) error {
 	}
 	l.flushBuffer()
 	return nil
-}
-
-// applyDestination toggles state on l.writer to match the new destination.
-// Must be called with l.bufferMut held by the caller.
-func (l *Logger) applyDestination(d LogDestination) error {
-	if d == LogDestinationWindowsEventLog {
-		el, err := l.eventLogOpener("Alloy")
-		if err != nil {
-			return fmt.Errorf("failed to open Windows Event Log: %w", err)
-		}
-		return l.writer.SwitchToEventLog(el)
-	}
-	return l.writer.SwitchToInnerOnly()
 }
 
 // flushBuffer drains and replays any logs that were buffered before
@@ -282,12 +269,21 @@ type writerVar struct {
 
 	// Inner writer is stderr on the production path.
 	// Tests may set it to something else.
-	innerWriter   io.Writer
-	suppressInner bool // when true, Write() and Dispatch() skip innerWriter
+	innerWriter io.Writer
 
 	lokiWriter *lokiWriter
 	tmpWriter  io.Writer
-	eventLog   eventlog.EventLog
+
+	// eventLogOpener lazily creates the Windows Event Log handle the first
+	// time SetDestination enters event-log mode. Set in NewDeferred,
+	// overridable in tests.
+	eventLogOpener eventlog.EventLogOpener
+
+	// eventLog is the single switch between the two primary-sink modes:
+	// when nil, Dispatch writes to innerWriter (stderr); when non-nil,
+	// innerWriter is suppressed and Dispatch routes to the event log
+	// instead. lokiWriter and tmpWriter are always written to regardless.
+	eventLog eventlog.EventLog
 }
 
 func (w *writerVar) SetTemporaryWriter(writer io.Writer) {
@@ -312,33 +308,22 @@ func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
 	}
 }
 
-// SwitchToEventLog atomically installs el as the event log sink and
-// flips suppressInner=true. If an event log was already attached, it is
-// closed first. The write lock is held across the close + install +
-// flip, so no Dispatch ever observes the mid-state where suppressInner
-// and eventLog disagree about whether bytes belong on stderr or the
-// event log.
-func (w *writerVar) SwitchToEventLog(el eventlog.EventLog) error {
+func (w *writerVar) SetDestination(d LogDestination) error {
 	w.mut.Lock()
 	defer w.mut.Unlock()
-	var closeErr error
-	if w.eventLog != nil {
-		closeErr = w.eventLog.Close()
-	}
-	w.eventLog = el
-	w.suppressInner = true
-	return closeErr
-}
 
-// SwitchToInnerOnly atomically flips suppressInner=false and closes any
-// attached event log. The write lock is held across both state changes
-// and the Close, so Dispatch never observes the mid-state where
-// suppressInner=false and eventLog!=nil (which would double-deliver to
-// stderr and the event log). Idempotent.
-func (w *writerVar) SwitchToInnerOnly() error {
-	w.mut.Lock()
-	defer w.mut.Unlock()
-	w.suppressInner = false
+	if d == LogDestinationWindowsEventLog {
+		if w.eventLog != nil {
+			return nil // already open; reuse the handle
+		}
+		el, err := w.eventLogOpener("Alloy")
+		if err != nil {
+			return fmt.Errorf("failed to open Windows Event Log: %w", err)
+		}
+		w.eventLog = el
+		return nil
+	}
+
 	if w.eventLog == nil {
 		return nil
 	}
@@ -351,15 +336,15 @@ func (w *writerVar) SwitchToInnerOnly() error {
 // active sink: innerWriter (unless suppressed), lokiWriter, tmpWriter,
 // and, when attached, the event log.
 //
-// SwitchToEventLog / SwitchToInnerOnly hold the write lock across every
-// state change they make, so any Dispatch RLock observes one of two states:
-// 1. (suppressInner=false, eventLog=nil) — stderr mode.
-// 2. (suppressInner=true, eventLog!=nil) — event_log mode.
+// SetDestination holds the write lock across the swap it makes, so any
+// Dispatch RLock observes one of two states:
+// 1. eventLog=nil — stderr mode.
+// 2. eventLog!=nil — event_log mode.
 func (w *writerVar) Dispatch(p []byte, eventLogLevel *slog.Level) error {
 	w.mut.RLock()
 	defer w.mut.RUnlock()
 
-	if !w.suppressInner && w.innerWriter != nil {
+	if w.eventLog == nil && w.innerWriter != nil {
 		if _, err := w.innerWriter.Write(p); err != nil {
 			return err
 		}

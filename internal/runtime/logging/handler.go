@@ -22,10 +22,8 @@ import (
 // JSON or logfmt, and create a new inner handler if needed.
 
 type handler struct {
-	// w owns every sink: innerWriter (stderr), lokiWriter, tmpWriter, and the
-	// optional Windows event log. Records are formatted through a pooled slog
-	// handler that writes into a leveledWriter, which forwards the bytes plus
-	// the record's level to w.Dispatch.
+	// w owns every sink: innerWriter (stderr), lokiWriter, tmpWriter,
+	// and the optional Windows event log.
 	w         *writerVar
 	leveler   slog.Leveler
 	formatter formatter
@@ -41,14 +39,15 @@ type handler struct {
 	scratchPool sync.Pool
 }
 
-// scratch bundles a leveledWriter with a slog handler that writes through it.
-// The slog handler formats the record and writes the bytes straight to the
-// configured sinks via the leveledWriter, which carries the record's level.
-// format records which Format the cached handler was built for, so a runtime
-// format change triggers a rebuild.
 type scratch struct {
-	lw     *leveledWriter
-	hdlr   slog.Handler
+	// Carries the record's level.
+	lw *leveledWriter
+
+	// Formats the record and writes the bytes straight to the configured sinks.
+	hdlr slog.Handler
+
+	// Records which format the cached handler was built for,
+	// so a runtime format change triggers a rebuild.
 	format Format
 }
 
@@ -70,12 +69,6 @@ func (h *handler) Enabled(ctx context.Context, l slog.Level) bool {
 }
 
 func (h *handler) Handle(ctx context.Context, r slog.Record) error {
-	// Record the level on the leveledWriter, then let the cached slog handler
-	// format the record and write straight through to writerVar.Dispatch. The
-	// level lets Dispatch pick the event log's Info/Warning/Error API when one
-	// is attached; the stderr/loki/tmp sinks ignore it. Dispatch fans out to
-	// whichever sinks are active (writing nowhere if none are), so there's no
-	// separate "is anything listening?" pre-check here.
 	s := h.getScratch()
 	defer h.scratchPool.Put(s)
 
@@ -92,15 +85,15 @@ func (h *handler) getScratch() *scratch {
 		s = &scratch{lw: &leveledWriter{w: h.w}}
 	}
 	if s.hdlr == nil || s.format != expectFormat {
-		s.hdlr = h.newSlogHandler(s.lw)
+		s.hdlr = h.buildHandler(s.lw)
 		s.format = expectFormat
 	}
 	return s
 }
 
-// newSlogHandler constructs a fresh slog handler writing into w, with the
+// buildHandler constructs a fresh slog handler writing into w, with the
 // current format and the WithAttrs/WithGroup chain applied.
-func (h *handler) newSlogHandler(w io.Writer) slog.Handler {
+func (h *handler) buildHandler(w io.Writer) slog.Handler {
 	handlerOpts := slog.HandlerOptions{
 		AddSource: false,
 		Level:     h.leveler,

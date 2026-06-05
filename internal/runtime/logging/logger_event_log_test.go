@@ -26,7 +26,7 @@ func TestLogger_EventLog_LevelReloadTakesEffect(t *testing.T) {
 	var inner bytes.Buffer
 	l, err := NewDeferred(&inner)
 	require.NoError(t, err)
-	l.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
+	l.writer.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
 		return mock, nil
 	}
 
@@ -61,6 +61,34 @@ func TestLogger_EventLog_LevelReloadTakesEffect(t *testing.T) {
 	require.Contains(t, mock.Infos[0], "debug-after")
 }
 
+// TestLogger_EventLog_ReloadDoesNotReopenHandle verifies that a config
+// reload which keeps the windows_event_log destination reuses the existing
+// handle: the opener is called exactly once and the handle is never closed.
+// Reopening on every reload would churn the Event Log source registration.
+func TestLogger_EventLog_ReloadDoesNotReopenHandle(t *testing.T) {
+	mock := &testutil.MockEventLog{}
+	var inner bytes.Buffer
+	l, err := NewDeferred(&inner)
+	require.NoError(t, err)
+
+	var opens int
+	l.writer.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
+		opens++
+		return mock, nil
+	}
+
+	for i := 0; i < 3; i++ {
+		require.NoError(t, l.Update(Options{
+			Level:       LevelInfo,
+			Format:      FormatLogfmt,
+			Destination: LogDestinationWindowsEventLog,
+		}))
+	}
+
+	require.Equal(t, 1, opens, "event log handle should be opened once, not reopened on every reload")
+	require.False(t, mock.Closed(), "the handle must not be closed while staying on windows_event_log")
+}
+
 // TestLogger_EventLog_RespectsFormatChoice is the whole point of routing
 // the event log through the shared handler: the message that lands in the
 // Windows Event Log is the same formatted line that goes to stderr/
@@ -90,7 +118,7 @@ func TestLogger_EventLog_RespectsFormatChoice(t *testing.T) {
 			var inner bytes.Buffer
 			l, err := NewDeferred(&inner)
 			require.NoError(t, err)
-			l.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
+			l.writer.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
 				return mock, nil
 			}
 
@@ -123,7 +151,7 @@ func TestLogger_EventLog_TransitionToStderrClosesHandle(t *testing.T) {
 	var inner bytes.Buffer
 	l, err := NewDeferred(&inner)
 	require.NoError(t, err)
-	l.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
+	l.writer.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
 		return mock, nil
 	}
 
@@ -149,16 +177,15 @@ func TestLogger_EventLog_TransitionToStderrClosesHandle(t *testing.T) {
 
 // TestDispatch_FastPathRaceRoutesToEventLogAsInfo locks in the loss-prevention
 // behavior for the fast-path race: when a Write(p) arrives with eventLogLevel=nil
-// in state B (suppressInner=true, eventLog!=nil), Dispatch defaults to Info on
-// the event log instead of misrouting to stderr. This preserves the operator's
-// destination choice across a destination switch.
+// in state B (eventLog!=nil), Dispatch defaults to Info on the event log
+// instead of misrouting to stderr. This preserves the operator's destination
+// choice across a destination switch.
 func TestDispatch_FastPathRaceRoutesToEventLogAsInfo(t *testing.T) {
 	mock := &testutil.MockEventLog{}
 	var inner bytes.Buffer
 	w := &writerVar{
-		innerWriter:   &inner,
-		eventLog:      mock,
-		suppressInner: true,
+		innerWriter: &inner,
+		eventLog:    mock,
 	}
 
 	require.NoError(t, w.Dispatch([]byte("fast-path race bytes\n"), nil))
@@ -172,7 +199,7 @@ func TestDispatch_FastPathRaceRoutesToEventLogAsInfo(t *testing.T) {
 // TestUpdate_NoLossDuringConcurrentDestinationFlips is a stress test that runs
 // many Handle calls in parallel with rapid destination switches between
 // stderr and windows_event_log. With Dispatch's loss-prevention fallback AND
-// atomic destination transitions (SwitchToEventLog / SwitchToInnerOnly), every
+// atomic destination transitions (SetDestination), every
 // record lands on exactly one of inner or the event log: never dropped, never
 // duplicated. We assert strict equality.
 func TestUpdate_NoLossDuringConcurrentDestinationFlips(t *testing.T) {
@@ -190,7 +217,7 @@ func TestUpdate_NoLossDuringConcurrentDestinationFlips(t *testing.T) {
 	inner := &countingWriter{}
 	l, err := NewDeferred(inner)
 	require.NoError(t, err)
-	l.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
+	l.writer.eventLogOpener = func(_ string) (eventlog.EventLog, error) {
 		// Re-use the same mock across reopens so cumulative counts make sense.
 		return mock, nil
 	}
