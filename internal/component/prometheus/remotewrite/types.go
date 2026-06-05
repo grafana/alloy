@@ -329,9 +329,42 @@ func (c *SDKConfig) toPrometheusType() *azuread.SDKConfig {
 	}
 }
 
+// WorkloadIdentityConfig is used to store azure workload identity config values.
+type WorkloadIdentityConfig struct {
+	// ClientID is the clientId of the Microsoft Entra application or user-assigned managed identity.
+	ClientID string `alloy:"client_id,attr"`
+
+	// TenantID is the tenantId of the Microsoft Entra application or user-assigned managed identity.
+	TenantID string `alloy:"tenant_id,attr"`
+
+	// TokenFilePath is the path to the projected service account token file.
+	// Defaults to azuread.DefaultWorkloadIdentityTokenPath when unset.
+	TokenFilePath string `alloy:"token_file_path,attr,optional"`
+}
+
+func (c *WorkloadIdentityConfig) toPrometheusType() *azuread.WorkloadIdentityConfig {
+	if c == nil {
+		return nil
+	}
+
+	tokenFilePath := c.TokenFilePath
+	if tokenFilePath == "" {
+		tokenFilePath = azuread.DefaultWorkloadIdentityTokenPath
+	}
+
+	return &azuread.WorkloadIdentityConfig{
+		ClientID:      c.ClientID,
+		TenantID:      c.TenantID,
+		TokenFilePath: tokenFilePath,
+	}
+}
+
 type AzureADConfig struct {
 	// ManagedIdentity is the managed identity that is being used to authenticate.
 	ManagedIdentity *ManagedIdentityConfig `alloy:"managed_identity,block,optional"`
+
+	// WorkloadIdentity is the workload identity that is being used to authenticate.
+	WorkloadIdentity *WorkloadIdentityConfig `alloy:"workload_identity,block,optional"`
 
 	// OAuth is the oauth config that is being used to authenticate.
 	OAuth *OAuthConfig `alloy:"oauth,block,optional"`
@@ -341,6 +374,10 @@ type AzureADConfig struct {
 
 	// Cloud is the Azure cloud in which the service is running. Example: AzurePublic/AzureGovernment/AzureChina.
 	Cloud string `alloy:"cloud,attr,optional"`
+
+	// Scope is the custom OAuth 2.0 scope (audience) to request when acquiring tokens.
+	// When empty, the per-cloud Azure Monitor ingestion audience is used.
+	Scope string `alloy:"scope,attr,optional"`
 }
 
 func (a *AzureADConfig) Validate() error {
@@ -348,20 +385,25 @@ func (a *AzureADConfig) Validate() error {
 		return fmt.Errorf("must provide a cloud in the Azure AD config")
 	}
 
-	if a.ManagedIdentity == nil && a.OAuth == nil && a.SDK == nil {
-		return fmt.Errorf("must provide an Azure Managed Identity, Azure OAuth or Azure SDK in the Azure AD config")
+	authenticators := 0
+	if a.ManagedIdentity != nil {
+		authenticators++
+	}
+	if a.WorkloadIdentity != nil {
+		authenticators++
+	}
+	if a.OAuth != nil {
+		authenticators++
+	}
+	if a.SDK != nil {
+		authenticators++
 	}
 
-	if a.ManagedIdentity != nil && a.OAuth != nil {
-		return fmt.Errorf("cannot provide both Azure Managed Identity and Azure OAuth in the Azure AD config")
+	if authenticators == 0 {
+		return fmt.Errorf("must provide an Azure Managed Identity, Azure Workload Identity, Azure OAuth or Azure SDK in the Azure AD config")
 	}
-
-	if a.ManagedIdentity != nil && a.SDK != nil {
-		return fmt.Errorf("cannot provide both Azure Managed Identity and Azure SDK in the Azure AD config")
-	}
-
-	if a.OAuth != nil && a.SDK != nil {
-		return fmt.Errorf("cannot provide both Azure OAuth and Azure SDK in the Azure AD config")
+	if authenticators > 1 {
+		return fmt.Errorf("cannot provide multiple authentication methods in the Azure AD config")
 	}
 
 	if a.ManagedIdentity != nil {
@@ -369,9 +411,24 @@ func (a *AzureADConfig) Validate() error {
 			return fmt.Errorf("must provide an Azure Managed Identity client_id in the Azure AD config")
 		}
 
-		_, err := uuid.Parse(a.ManagedIdentity.ClientID)
-		if err != nil {
+		if _, err := uuid.Parse(a.ManagedIdentity.ClientID); err != nil {
 			return fmt.Errorf("the provided Azure Managed Identity client_id is invalid")
+		}
+	}
+
+	if a.WorkloadIdentity != nil {
+		if a.WorkloadIdentity.ClientID == "" {
+			return fmt.Errorf("must provide an Azure Workload Identity client_id in the Azure AD config")
+		}
+		if a.WorkloadIdentity.TenantID == "" {
+			return fmt.Errorf("must provide an Azure Workload Identity tenant_id in the Azure AD config")
+		}
+
+		if _, err := uuid.Parse(a.WorkloadIdentity.ClientID); err != nil {
+			return fmt.Errorf("the provided Azure Workload Identity client_id is invalid")
+		}
+		if _, err := uuid.Parse(a.WorkloadIdentity.TenantID); err != nil {
+			return fmt.Errorf("the provided Azure Workload Identity tenant_id is invalid")
 		}
 	}
 
@@ -386,25 +443,25 @@ func (a *AzureADConfig) Validate() error {
 			return fmt.Errorf("must provide an Azure OAuth tenant_id in the Azure AD config")
 		}
 
-		var err error
-		_, err = uuid.Parse(a.OAuth.ClientID)
-		if err != nil {
+		if _, err := uuid.Parse(a.OAuth.ClientID); err != nil {
 			return fmt.Errorf("the provided Azure OAuth client_id is invalid")
 		}
-		_, err = regexp.MatchString("^[0-9a-zA-Z-.]+$", a.OAuth.TenantID)
-		if err != nil {
+		if _, err := regexp.MatchString("^[0-9a-zA-Z-.]+$", a.OAuth.TenantID); err != nil {
 			return fmt.Errorf("the provided Azure OAuth tenant_id is invalid")
 		}
 	}
 
 	if a.SDK != nil {
-		var err error
-
 		if a.SDK.TenantID != "" {
-			_, err = regexp.MatchString("^[0-9a-zA-Z-.]+$", a.SDK.TenantID)
-			if err != nil {
-				return fmt.Errorf("the provided Azure OAuth tenant_id is invalid")
+			if _, err := regexp.MatchString("^[0-9a-zA-Z-.]+$", a.SDK.TenantID); err != nil {
+				return fmt.Errorf("the provided Azure SDK tenant_id is invalid")
 			}
+		}
+	}
+
+	if a.Scope != "" {
+		if matched, err := regexp.MatchString(`^[\w\s:/.\-]+$`, a.Scope); err != nil || !matched {
+			return fmt.Errorf("the provided Azure scope contains invalid characters")
 		}
 	}
 
@@ -424,10 +481,12 @@ func (a *AzureADConfig) toPrometheusType() *azuread.AzureADConfig {
 	}
 
 	return &azuread.AzureADConfig{
-		ManagedIdentity: a.ManagedIdentity.toPrometheusType(),
-		OAuth:           a.OAuth.toPrometheusType(),
-		SDK:             a.SDK.toPrometheusType(),
-		Cloud:           a.Cloud,
+		ManagedIdentity:  a.ManagedIdentity.toPrometheusType(),
+		WorkloadIdentity: a.WorkloadIdentity.toPrometheusType(),
+		OAuth:            a.OAuth.toPrometheusType(),
+		SDK:              a.SDK.toPrometheusType(),
+		Cloud:            a.Cloud,
+		Scope:            a.Scope,
 	}
 }
 
