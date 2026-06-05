@@ -817,7 +817,6 @@ func TestComponent(t *testing.T) {
 			args.ForwardTo = []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()}
 
 			opts := component.Options{
-				Logger:         log.NewNopLogger(),
 				SLogger:        logging.NewSlogNop(),
 				Registerer:     prometheus.NewRegistry(),
 				OnStateChange:  func(component.Exports) {},
@@ -1045,7 +1044,6 @@ func TestJSONLabelsStage(t *testing.T) {
 	// Create and run the component, so that it can process and forwards logs.
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger,
 		SLogger:        logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
@@ -1272,7 +1270,6 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger,
 		SLogger:        logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
@@ -1631,7 +1628,6 @@ func newTester(t *testing.T) *tester {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger,
 		SLogger:        logger.Slog(),
 		Registerer:     reg,
 		OnStateChange:  func(e component.Exports) {},
