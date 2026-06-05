@@ -26,21 +26,23 @@ type Target struct {
 var (
 	seps = []byte{'\xff'}
 	// used in tests to simulate hash conflicts
-	labelSetEqualsFn  = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
-	stringSlicesPool  = sync.Pool{New: func() any { return make([]string, 0, 20) }}
-	borrowLabelsSlice = func() []string {
-		return stringSlicesPool.Get().([]string)
-	}
-	releaseLabelsSlice = func(labels []string) {
-		// We can ignore linter warning here, because slice headers are small and the underlying array will be reused.
-		stringSlicesPool.Put(labels[:0]) //nolint:staticcheck // SA6002
-	}
+	labelSetEqualsFn = func(l1, l2 commonlabels.LabelSet) bool { return &l1 == &l2 || l1.Equal(l2) }
+	stringSlicesPool = sync.Pool{New: func() any { return make([]string, 0, 20) }}
 
 	_ syntax.Capsule                = Target{}
 	_ syntax.ConvertibleIntoCapsule = Target{}
 	_ syntax.ConvertibleFromCapsule = &Target{}
 	_ equality.CustomEquality       = Target{}
 )
+
+func borrowLabelsSlice() []string {
+	return stringSlicesPool.Get().([]string)
+}
+
+func releaseLabelsSlice(labels []string) {
+	// We can ignore linter warning here, because slice headers are small and the underlying array will be reused.
+	stringSlicesPool.Put(labels[:0]) //nolint:staticcheck // SA6002
+}
 
 var EmptyTarget = Target{
 	group: commonlabels.LabelSet{},
@@ -292,7 +294,7 @@ func (t Target) SpecificLabelsHash(labelNames []string) uint64 {
 func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
 	labelsInOrder := borrowLabelsSlice()
-	defer releaseLabelsSlice(labelsInOrder)
+	defer func() { releaseLabelsSlice(labelsInOrder) }()
 	t.ForEachLabel(func(key string, value string) bool {
 		if pred(key) {
 			labelsInOrder = append(labelsInOrder, key)
@@ -306,7 +308,7 @@ func (t Target) HashLabelsWithPredicate(pred func(key string) bool) uint64 {
 func (t Target) groupLabelsHash() uint64 {
 	// For hash to be deterministic, we need labels order to be deterministic too. Figure this out first.
 	labelsInOrder := borrowLabelsSlice()
-	defer releaseLabelsSlice(labelsInOrder)
+	defer func() { releaseLabelsSlice(labelsInOrder) }()
 
 	for name := range t.group {
 		labelsInOrder = append(labelsInOrder, string(name))

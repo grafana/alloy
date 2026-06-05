@@ -36,8 +36,6 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/h2c"
 )
 
 // ServiceName defines the name used for the HTTP service.
@@ -290,7 +288,14 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		r.PathPrefix(route.Base).Handler(route.Handler)
 	}
 
-	srv := &http.Server{Handler: h2c.NewHandler(r, &http2.Server{})}
+	// Enable HTTP/1, HTTP/2, and unencrypted HTTP/2 (h2c) on the same listener.
+	// Replaces the deprecated golang.org/x/net/http2/h2c handler wrapping; HTTP/2
+	// over TLS is included for parity should a TLS listener be added later.
+	protos := new(http.Protocols)
+	protos.SetHTTP1(true)
+	protos.SetHTTP2(true)
+	protos.SetUnencryptedHTTP2(true)
+	srv := &http.Server{Handler: r, Protocols: protos}
 
 	level.Info(s.log).Log("msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
 
@@ -478,7 +483,9 @@ func (s *Service) Update(newConfig any) error {
 		var tlsConfig *tls.Config
 		var err error
 		if newArgs.TLS.WindowsFilter != nil {
+			//nolint:staticcheck // updateWindowsCertificateFilter always errors on non-Windows build.
 			err = s.updateWindowsCertificateFilter(newArgs.TLS)
+			//nolint:staticcheck // updateWindowsCertificateFilter always errors on non-Windows build.
 			if err != nil {
 				return err
 			}

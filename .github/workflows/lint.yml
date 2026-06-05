@@ -8,7 +8,7 @@ permissions:
 jobs:
   lint_go:
     name: Lint Go
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-8-cores
 
     steps:
     - name: Checkout code
@@ -16,27 +16,36 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Set up Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        go-version-file: go.mod
-        cache: false
+        install_args: go task golangci-lint
 
-    - name: Lint alloy module
-      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+    - name: Lint Go
+      run: task lint:go
+
+    - name: Run Alloy Lint
+      run: task lint:alloylint 
+
+  govulncheck:
+    name: Govulncheck
+    # xlarge (64 GB): govulncheck's SSA call graph on the
+    # alloy/collector/alloyengine modules exceeds smaller runners.
+    runs-on: ubuntu-x64-xlarge
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
-        # renovate: datasource=github-releases packageName=golangci/golangci-lint
-        version: v2.11.4
+        persist-credentials: false
 
-    - name: Lint syntax module
-      uses: golangci/golangci-lint-action@1e7e51e771db61008b38414a730f564565cf7c20 # v9.2.0
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        # renovate: datasource=github-releases packageName=golangci/golangci-lint
-        version: v2.11.4
-        working-directory: ./syntax/
+        install_args: go govulncheck task
 
-    - name: Run custom linters
-      run: make run-alloylint
+    - name: Run govulncheck
+      run: task lint:govulncheck
 
   shellcheck:
     name: Shellcheck
@@ -48,16 +57,13 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Shellcheck
-      uses: Azbagheri/shell-linter@30a9cf3f6cf25c08fc98f10d7dc4167f7b5c0c00 # v0.8.0
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        path: "\
-          packaging,\
-          production,\
-          tools/ci,\
-          tools/publish-release-assets.sh,\
-          docs/sources/tutorials/assets\
-          "
+        install_args: shellcheck task go
+
+    - name: Run shellcheck
+      run: task lint:shellcheck
 
   lint_ui:
     name: Lint UI
@@ -72,10 +78,10 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: Set up Node.js
-      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        node-version-file: internal/web/ui/.nvmrc
+        install_args: node
 
     - name: Install dependencies
       run: npm install

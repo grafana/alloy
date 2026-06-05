@@ -7,16 +7,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/dskit/backoff"
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/collector/pdata/plog"
+
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver/tcplog"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/grafana/dskit/backoff"
-	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/collector/pdata/plog"
 )
 
 // Test performs a basic integration test which runs the otelcol.receiver.tcplog
@@ -25,7 +25,7 @@ func Test(t *testing.T) {
 	addr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.tcplog")
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func Test(t *testing.T) {
 		})
 		for bo.Ongoing() {
 			if err := request(); err != nil {
-				level.Error(l).Log("msg", "failed to send logs", "err", err)
+				l.Slog().Error("failed to send logs", "err", err)
 				bo.Wait()
 				continue
 			}

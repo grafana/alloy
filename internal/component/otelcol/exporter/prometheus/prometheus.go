@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/prometheus/storage"
 
 	"github.com/grafana/alloy/internal/component"
@@ -34,14 +33,15 @@ func init() {
 
 // Arguments configures the otelcol.exporter.prometheus component.
 type Arguments struct {
-	IncludeTargetInfo             bool                 `alloy:"include_target_info,attr,optional"`
-	IncludeScopeInfo              bool                 `alloy:"include_scope_info,attr,optional"`
-	IncludeScopeLabels            bool                 `alloy:"include_scope_labels,attr,optional"`
-	GCFrequency                   time.Duration        `alloy:"gc_frequency,attr,optional"`
-	ForwardTo                     []storage.Appendable `alloy:"forward_to,attr"`
-	AddMetricSuffixes             bool                 `alloy:"add_metric_suffixes,attr,optional"`
-	ResourceToTelemetryConversion bool                 `alloy:"resource_to_telemetry_conversion,attr,optional"`
-	HonorMetadata                 bool                 `alloy:"honor_metadata,attr,optional"`
+	IncludeTargetInfo              bool                 `alloy:"include_target_info,attr,optional"`
+	IncludeScopeInfo               bool                 `alloy:"include_scope_info,attr,optional"`
+	IncludeScopeLabels             bool                 `alloy:"include_scope_labels,attr,optional"`
+	GCFrequency                    time.Duration        `alloy:"gc_frequency,attr,optional"`
+	ForwardTo                      []storage.Appendable `alloy:"forward_to,attr"`
+	AddMetricSuffixes              bool                 `alloy:"add_metric_suffixes,attr,optional"`
+	ResourceToTelemetryConversion  bool                 `alloy:"resource_to_telemetry_conversion,attr,optional"`
+	HonorMetadata                  bool                 `alloy:"honor_metadata,attr,optional"`
+	ConvertClassicHistogramsToNHCB bool                 `alloy:"convert_classic_histograms_to_nhcb,attr,optional"`
 }
 
 // DefaultArguments holds defaults values.
@@ -71,7 +71,6 @@ func (args *Arguments) Validate() error {
 
 // Component is the otelcol.exporter.prometheus component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	fanout    *prometheus.Fanout
@@ -85,6 +84,10 @@ var _ component.Component = (*Component)(nil)
 
 // New creates a new otelcol.exporter.prometheus component.
 func New(o component.Options, c Arguments) (*Component, error) {
+	if err := validateStabilityLevel(o, c); err != nil {
+		return nil, err
+	}
+
 	service, err := o.GetServiceData(labelstore.ServiceName)
 	if err != nil {
 		return nil, err
@@ -92,10 +95,9 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	ls := service.(labelstore.LabelStore)
 	fanout := prometheus.NewFanout(nil, o.ID, o.Registerer, ls)
 
-	converter := convert.New(o.Logger, fanout, convertArgumentsToConvertOptions(c))
+	converter := convert.New(o.SLogger, fanout, convertArgumentsToConvertOptions(c))
 
 	res := &Component{
-		log:  o.Logger,
 		opts: o,
 
 		fanout:    fanout,
@@ -144,6 +146,9 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	defer c.mut.Unlock()
 
 	cfg := newConfig.(Arguments)
+	if err := validateStabilityLevel(c.opts, cfg); err != nil {
+		return err
+	}
 	c.cfg = cfg
 
 	c.fanout.UpdateChildren(cfg.ForwardTo)
@@ -158,12 +163,20 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	return nil
 }
 
+func validateStabilityLevel(o component.Options, args Arguments) error {
+	if args.ConvertClassicHistogramsToNHCB && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("convert_classic_histograms_to_nhcb is experimental and requires setting the stability.level flag to experimental")
+	}
+	return nil
+}
+
 func convertArgumentsToConvertOptions(args Arguments) convert.Options {
 	return convert.Options{
-		IncludeTargetInfo:             args.IncludeTargetInfo,
-		IncludeScopeInfo:              args.IncludeScopeInfo,
-		AddMetricSuffixes:             args.AddMetricSuffixes,
-		ResourceToTelemetryConversion: args.ResourceToTelemetryConversion,
-		HonorMetadata:                 args.HonorMetadata,
+		IncludeTargetInfo:              args.IncludeTargetInfo,
+		IncludeScopeInfo:               args.IncludeScopeInfo,
+		AddMetricSuffixes:              args.AddMetricSuffixes,
+		ResourceToTelemetryConversion:  args.ResourceToTelemetryConversion,
+		HonorMetadata:                  args.HonorMetadata,
+		ConvertClassicHistogramsToNHCB: args.ConvertClassicHistogramsToNHCB,
 	}
 }

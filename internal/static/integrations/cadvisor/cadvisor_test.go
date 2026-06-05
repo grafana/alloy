@@ -20,7 +20,7 @@ func TestConfig_DockerOnly(t *testing.T) {
 		err := yaml.Unmarshal([]byte(defaultCfg), &cfg)
 		require.NoError(t, err)
 
-		ig, err := cfg.NewIntegration(util.TestLogger(t))
+		ig, err := cfg.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.NoError(t, err)
 
 		ctx, cancel := context.WithCancel(t.Context())

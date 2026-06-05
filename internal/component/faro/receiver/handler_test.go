@@ -35,7 +35,7 @@ func TestMultipleExportersAllSucceed(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -58,7 +58,7 @@ func TestMultipleExportersOneFails(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -81,7 +81,7 @@ func TestMultipleExportersAllFail(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", true, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -104,7 +104,7 @@ func TestPayloadWithinLimit(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -130,7 +130,7 @@ func TestPayloadTooLarge(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -156,7 +156,7 @@ func TestMissingAPIKey(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -182,7 +182,7 @@ func TestInvalidAPIKey(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -209,7 +209,7 @@ func TestValidAPIKey(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -236,7 +236,7 @@ func TestCORSPreflightWithDisallowedHeader(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -273,7 +273,7 @@ func TestCORSPreflightWithAllowedHeader(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -316,7 +316,7 @@ func TestRateLimiter(t *testing.T) {
 		exporter2 = &testExporter{"exporter2", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1, exporter2},
 		)
@@ -395,7 +395,7 @@ func TestHandler_RateLimitingPerApp(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh handler for each test to avoid interference
-			handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+			handler := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{})
 
 			args := ServerArguments{
 				RateLimiting: RateLimitingArguments{
@@ -436,7 +436,7 @@ func TestHandler_RateLimitingPerApp(t *testing.T) {
 
 func TestHandler_RateLimitingGlobal(t *testing.T) {
 	// Create a test handler with global rate limiting (per-app disabled)
-	handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+	handler := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{})
 
 	args := ServerArguments{
 		RateLimiting: RateLimitingArguments{
@@ -570,7 +570,7 @@ func TestHandler_RateLimitingPerApp_EmptyMetadata(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a fresh handler for each test
-			handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+			handler := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{})
 
 			args := ServerArguments{
 				RateLimiting: RateLimitingArguments{
@@ -597,7 +597,7 @@ func TestHandler_RateLimitingPerApp_EmptyMetadata(t *testing.T) {
 
 func TestHandler_RateLimitingPerApp_MultipleAppsWithoutMetadata(t *testing.T) {
 	// This test verifies that multiple apps without metadata share the same rate limiter (':' - empty app and env)
-	handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+	handler := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{})
 
 	args := ServerArguments{
 		RateLimiting: RateLimitingArguments{
@@ -634,7 +634,7 @@ func TestHandler_RateLimitingPerApp_MultipleAppsWithoutMetadata(t *testing.T) {
 
 func TestHandler_RateLimitingPerApp_ProperMetadataNotAffectedByUnknown(t *testing.T) {
 	// This test verifies that apps with proper metadata are not affected by apps without metadata
-	handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+	handler := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{})
 
 	args := ServerArguments{
 		RateLimiting: RateLimitingArguments{
@@ -701,7 +701,7 @@ func TestHandler_RateLimitingPerApp_ProperMetadataNotAffectedByUnknown(t *testin
 }
 
 func TestHandler_ExtractAppEnv(t *testing.T) {
-	handler := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+	handler := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{})
 
 	tests := []struct {
 		name        string
@@ -766,7 +766,7 @@ func TestHandler_ExtractAppEnv(t *testing.T) {
 // TestHandler_Update_PreservesAppRateLimiterState verifies that calling Update multiple times
 // with per_app strategy doesn't recreate the AppRateLimitingConfig, preserving existing state.
 func TestHandler_Update_PreservesAppRateLimiterState(t *testing.T) {
-	h := newHandler(util.TestLogger(t), prometheus.NewRegistry(), []exporter{})
+	h := newHandler(util.TestAlloyLogger(t).Slog(), prometheus.NewRegistry(), []exporter{})
 
 	// First Update with per_app strategy
 	h.Update(ServerArguments{
@@ -832,7 +832,7 @@ func TestGzipCompressedPayload(t *testing.T) {
 		exporter1 = &testExporter{"exporter1", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1},
 		)
@@ -851,7 +851,7 @@ func TestGzipCompressedPayload(t *testing.T) {
 
 func TestGzipInvalidBody(t *testing.T) {
 	h := newHandler(
-		util.TestLogger(t),
+		util.TestAlloyLogger(t).Slog(),
 		prometheus.NewRegistry(),
 		[]exporter{},
 	)
@@ -871,7 +871,7 @@ func TestUncompressedPayloadStillWorks(t *testing.T) {
 		exporter1 = &testExporter{"exporter1", false, nil}
 
 		h = newHandler(
-			util.TestLogger(t),
+			util.TestAlloyLogger(t).Slog(),
 			prometheus.NewRegistry(),
 			[]exporter{exporter1},
 		)
@@ -889,7 +889,7 @@ func TestUncompressedPayloadStillWorks(t *testing.T) {
 
 func TestCORSPreflightWithContentEncoding(t *testing.T) {
 	h := newHandler(
-		util.TestLogger(t),
+		util.TestAlloyLogger(t).Slog(),
 		prometheus.NewRegistry(),
 		[]exporter{},
 	)

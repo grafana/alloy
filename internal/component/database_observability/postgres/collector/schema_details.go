@@ -6,19 +6,17 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -26,6 +24,11 @@ const (
 	OP_TABLE_DETECTION     = "table_detection"
 	OP_CREATE_STATEMENT    = "create_statement"
 )
+
+// emitInterval is the minimum amount of time that must elapse between
+// successive OP_CREATE_STATEMENT emissions for the same table, regardless of
+// the configured collect_interval.
+const emitInterval = 30 * time.Minute
 
 const (
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
@@ -187,7 +190,6 @@ type tableInfo struct {
 	database     database
 	schema       schema
 	tableName    table
-	updateTime   time.Time
 	b64TableSpec string
 }
 
@@ -327,11 +329,7 @@ type SchemaDetailsArguments struct {
 	DetectedExtensions     DetectedExtensions
 	SkipExtensionInternals bool
 
-	CacheEnabled bool
-	CacheSize    int
-	CacheTTL     time.Duration
-
-	Logger log.Logger
+	Logger *slog.Logger
 
 	dbConnectionFactory databaseConnectionFactory
 }
@@ -346,14 +344,18 @@ type SchemaDetails struct {
 	detectedExtensions     DetectedExtensions
 	skipExtensionInternals bool
 
-	// Cache of table definitions. Entries are removed after a configurable TTL.
-	// Key is a string of the form "database.schema.table".
-	// (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed; relying on TTL only
-	cache *expirable.LRU[string, *tableInfo]
+	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
+	// was last emitted for a table. The outer key is the database name and
+	// the inner key is "schema.table". Used to throttle logging to at most
+	// one per emitInterval per table.
+	lastEmittedAt map[database]map[string]time.Time
+
+	// now allows overriding time.Now() in tests
+	now func() time.Time
 
 	tableRegistry *TableRegistry
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -375,13 +377,11 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		entryHandler:           args.EntryHandler,
 		detectedExtensions:     args.DetectedExtensions,
 		skipExtensionInternals: args.SkipExtensionInternals,
+		lastEmittedAt:          map[database]map[string]time.Time{},
+		now:                    time.Now,
 		tableRegistry:          NewTableRegistry(),
-		logger:                 log.With(args.Logger, "collector", SchemaDetailsCollector),
+		logger:                 args.Logger.With("collector", SchemaDetailsCollector),
 		running:                &atomic.Bool{},
-	}
-
-	if args.CacheEnabled {
-		c.cache = expirable.NewLRU[string, *tableInfo](args.CacheSize, nil, args.CacheTTL)
 	}
 
 	return c, nil
@@ -396,7 +396,7 @@ func (c *SchemaDetails) GetTableRegistry() *TableRegistry {
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -411,7 +411,7 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 
 		for {
 			if err := c.extractNames(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -441,7 +441,7 @@ func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
 	query := fmt.Sprintf(selectAllDatabases, buildExcludedDatabasesClause(c.excludeDatabases))
 	rows, err := c.initialConnection.QueryContext(ctx, query)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to discover databases", "err", err)
+		c.logger.Error("failed to discover databases", "err", err)
 		return nil, fmt.Errorf("failed to discover databases: %w", err)
 	}
 	defer rows.Close()
@@ -450,14 +450,14 @@ func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
 	for rows.Next() {
 		var datname string
 		if err := rows.Scan(&datname); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan database name", "err", err)
+			c.logger.Error("failed to scan database name", "err", err)
 			continue
 		}
 		databases = append(databases, datname)
 	}
 
 	if err := rows.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error iterating database rows", "err", err)
+		c.logger.Error("error iterating database rows", "err", err)
 		return nil, fmt.Errorf("error iterating database rows: %w", err)
 	}
 
@@ -471,6 +471,10 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 		excluded = append(excluded, TimescaleDBMetadataSchemas()...)
 	}
 	selectSchemaNames := fmt.Sprintf(selectSchemaNamesTemplate, database_observability.BuildExclusionClause(excluded))
+
+	now := c.now()
+	db := database(dbName)
+
 	schemaRs, err := dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_namespace for database %s: %w", dbName, err)
@@ -481,7 +485,7 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 	for schemaRs.Next() {
 		var schema string
 		if err := schemaRs.Scan(&schema); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_namespace", "datname", dbName, "err", err)
+			c.logger.Error("failed to scan pg_namespace", "datname", dbName, "err", err)
 			break
 		}
 		schemas = append(schemas, schema)
@@ -492,72 +496,83 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 	}
 
 	if len(schemas) == 0 {
-		level.Info(c.logger).Log("msg", "no schema detected from pg_namespace", "datname", dbName)
+		c.logger.Info("no schema detected from pg_namespace", "datname", dbName)
+		c.pruneDatabaseThrottle(db, nil)
 		return nil
 	}
 
 	tables := []*tableInfo{}
+	// scanComplete tracks whether we managed to iterate every schema's
+	// tables without bailing out early. If false, we have a partial view of
+	// the database and must skip cleanup to avoid evicting throttle entries
+	// for tables we simply didn't get to scan this round.
+	scanComplete := true
 
 	for _, schemaName := range schemas {
-		rs, err := dbConnection.QueryContext(ctx, selectTableNames, schemaName)
-		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to query tables", "datname", dbName, "schema", schemaName, "err", err)
-			break
-		}
-		defer rs.Close()
-
-		for rs.Next() {
-			var tableName string
-			if err := rs.Scan(&tableName); err != nil {
-				level.Error(c.logger).Log("msg", "failed to scan tables", "datname", dbName, "schema", schemaName, "err", err)
-				break
+		complete := func() bool {
+			rs, err := dbConnection.QueryContext(ctx, selectTableNames, schemaName)
+			if err != nil {
+				c.logger.Error("failed to query tables", "datname", dbName, "schema", schemaName, "err", err)
+				return false
 			}
-			tables = append(tables, &tableInfo{
-				database:   database(dbName),
-				schema:     schema(schemaName),
-				tableName:  table(tableName),
-				updateTime: time.Now(),
-			})
+			defer rs.Close()
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_TABLE_DETECTION,
-				fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
-			)
-		}
+			for rs.Next() {
+				var tableName string
+				if err := rs.Scan(&tableName); err != nil {
+					c.logger.Error("failed to scan tables", "datname", dbName, "schema", schemaName, "err", err)
+					return false
+				}
+				tables = append(tables, &tableInfo{
+					database:  db,
+					schema:    schema(schemaName),
+					tableName: table(tableName),
+				})
 
-		if err := rs.Err(); err != nil {
-			return fmt.Errorf("failed to iterate over tables result set for database %q schema %q: %w", dbName, schemaName, err)
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+					logging.LevelInfo,
+					OP_TABLE_DETECTION,
+					fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
+				)
+			}
+
+			if err := rs.Err(); err != nil {
+				c.logger.Error("failed to iterate over tables result set", "datname", dbName, "schema", schemaName, "err", err)
+				return false
+			}
+			return true
+		}()
+
+		if !complete {
+			scanComplete = false
+			break
 		}
 	}
 
-	c.tableRegistry.SetTablesForDatabase(database(dbName), tables)
+	if scanComplete {
+		c.tableRegistry.SetTablesForDatabase(db, tables)
+	}
 
 	if len(tables) == 0 {
-		level.Info(c.logger).Log("msg", "no tables detected from pg_tables", "datname", dbName)
+		c.logger.Info("no tables detected from pg_tables", "datname", dbName)
+		if scanComplete {
+			c.pruneDatabaseThrottle(db, nil)
+		}
 		return nil
 	}
 
 	for _, table := range tables {
-		cacheKey := fmt.Sprintf("%s.%s.%s", table.database, table.schema, table.tableName)
-
-		cacheHit := false
-		if c.cache != nil {
-			if cached, ok := c.cache.Get(cacheKey); ok {
-				table = cached
-				cacheHit = true
+		key := schemaTableKey(table.schema, table.tableName)
+		if inner := c.lastEmittedAt[db]; inner != nil {
+			if last, ok := inner[key]; ok && now.Sub(last) < emitInterval {
+				continue
 			}
 		}
 
-		if !cacheHit {
-			table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
-			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
-				continue
-			}
-			if c.cache != nil {
-				c.cache.Add(cacheKey, table)
-			}
+		table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
+		if err != nil {
+			c.logger.Error("failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
+			continue
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
@@ -568,33 +583,64 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
+		if c.lastEmittedAt[db] == nil {
+			c.lastEmittedAt[db] = map[string]time.Time{}
+		}
+		c.lastEmittedAt[db][key] = now
+	}
+
+	if scanComplete {
+		c.pruneDatabaseThrottle(db, tables)
 	}
 
 	return nil
 }
 
+// pruneDatabaseThrottle removes entries in c.lastEmittedAt[db] whose
+// schema.table key is not present in the given tables. If the resulting
+// inner map is empty, the outer entry is also deleted. Must only be called
+// after a complete scan of the database's tables.
+func (c *SchemaDetails) pruneDatabaseThrottle(db database, tables []*tableInfo) {
+	if _, ok := c.lastEmittedAt[db]; !ok {
+		return
+	}
+
+	currentKeys := make(map[string]struct{}, len(tables))
+	for _, t := range tables {
+		currentKeys[schemaTableKey(t.schema, t.tableName)] = struct{}{}
+	}
+	for k := range c.lastEmittedAt[db] {
+		if _, ok := currentKeys[k]; !ok {
+			delete(c.lastEmittedAt[db], k)
+		}
+	}
+	if len(c.lastEmittedAt[db]) == 0 {
+		delete(c.lastEmittedAt, db)
+	}
+}
+
 func (c *SchemaDetails) extractNames(ctx context.Context) error {
 	databases, err := c.getAllDatabases(ctx)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to discover databases", "err", err)
+		c.logger.Error("failed to discover databases", "err", err)
 		return fmt.Errorf("failed to discover databases: %w", err)
 	}
 
 	for _, dbName := range databases {
 		databaseDSN, err := replaceDatabaseNameInDSN(c.dbDSN, dbName)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to create DSN for database", "datname", dbName, "err", err)
+			c.logger.Error("failed to create DSN for database", "datname", dbName, "err", err)
 			continue
 		}
 
 		conn, err := c.dbConnectionFactory(databaseDSN)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to create connection to database", "datname", dbName, "err", err)
+			c.logger.Error("failed to create connection to database", "datname", dbName, "err", err)
 			continue
 		}
 
 		if err := c.extractSchemas(ctx, dbName, conn); err != nil {
-			level.Error(c.logger).Log("msg", "failed to collect schema from database", "datname", dbName, "err", err)
+			c.logger.Error("failed to collect schema from database", "datname", dbName, "err", err)
 			if conn != c.initialConnection {
 				conn.Close()
 			}
@@ -603,8 +649,21 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 
 		if conn != c.initialConnection {
 			if err := conn.Close(); err != nil {
-				level.Warn(c.logger).Log("msg", "failed to close database connection", "datname", dbName, "err", err)
+				c.logger.Warn("failed to close database connection", "datname", dbName, "err", err)
 			}
+		}
+	}
+
+	// Drop throttle entries for databases that getAllDatabases no longer
+	// returns (dropped, CONNECT revoked, added to exclude list). Per-table
+	// cleanup within a still-present database is handled by extractSchemas.
+	seenDatabases := make(map[database]struct{}, len(databases))
+	for _, dbName := range databases {
+		seenDatabases[database(dbName)] = struct{}{}
+	}
+	for db := range c.lastEmittedAt {
+		if _, ok := seenDatabases[db]; !ok {
+			delete(c.lastEmittedAt, db)
 		}
 	}
 
@@ -614,13 +673,13 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableInfo, dbConnection *sql.DB) (*tableInfo, error) {
 	spec, err := c.fetchColumnsDefinitions(ctx, table.database, table.schema, table.tableName, dbConnection)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to analyze table spec", "datname", table.database, "schema", table.schema, "table", table.tableName, "err", err)
+		c.logger.Error("failed to analyze table spec", "datname", table.database, "schema", table.schema, "table", table.tableName, "err", err)
 		return table, err
 	}
 
 	jsonSpec, err := json.Marshal(spec)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to marshal table spec", "datname", table.database, "schema", table.schema, "table", table.tableName, "err", err)
+		c.logger.Error("failed to marshal table spec", "datname", table.database, "schema", table.schema, "table", table.tableName, "err", err)
 		return table, err
 	}
 	table.b64TableSpec = base64.StdEncoding.EncodeToString(jsonSpec)
@@ -631,7 +690,7 @@ func (c *SchemaDetails) fetchTableDefinitions(ctx context.Context, table *tableI
 func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseName database, schemaName schema, tableName table, dbConnection *sql.DB) (*tableSpec, error) {
 	colRS, err := dbConnection.QueryContext(ctx, selectColumnNames, schemaName, tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		c.logger.Error("failed to query table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer colRS.Close()
@@ -643,7 +702,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 		var columnDefault sql.NullString
 		var notNullable, isPrimaryKey bool
 		if err := colRS.Scan(&columnName, &columnType, &notNullable, &columnDefault, &identityGeneration, &isPrimaryKey); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+			c.logger.Error("failed to scan table columns", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
@@ -668,13 +727,13 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 	}
 
 	if err := colRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over table columns result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		c.logger.Error("failed to iterate over table columns result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
 	indexesRS, err := dbConnection.QueryContext(ctx, selectIndexes, schemaName, tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		c.logger.Error("failed to query indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer indexesRS.Close()
@@ -685,7 +744,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 		var columns, expressions pq.StringArray
 
 		if err := indexesRS.Scan(&indexName, &indexType, &unique, &columns, &expressions, &hasNullableColumn); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+			c.logger.Error("failed to scan indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
@@ -703,13 +762,13 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 	}
 
 	if err := indexesRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "error during iterating over indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		c.logger.Error("error during iterating over indexes", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
 	fkRS, err := dbConnection.QueryContext(ctx, selectForeignKeys, schemaName, tableName)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		c.logger.Error("failed to query foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 	defer fkRS.Close()
@@ -717,7 +776,7 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 	for fkRS.Next() {
 		var constraintName, columnName, referencedTableName, referencedColumnName string
 		if err := fkRS.Scan(&constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+			c.logger.Error("failed to scan foreign keys", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 			return nil, err
 		}
 
@@ -730,9 +789,13 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 	}
 
 	if err := fkRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over foreign keys result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
+		c.logger.Error("failed to iterate over foreign keys result set", "datname", databaseName, "schema", schemaName, "table", tableName, "err", err)
 		return nil, err
 	}
 
 	return tblSpec, nil
+}
+
+func schemaTableKey(sch schema, tbl table) string {
+	return fmt.Sprintf("%s.%s", sch, tbl)
 }
