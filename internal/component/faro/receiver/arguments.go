@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
+
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/syntax"
