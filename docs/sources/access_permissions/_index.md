@@ -32,7 +32,7 @@ Use only what matches your components and environment.
 1. For container deployments, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
    Refer to [Access and permissions on Kubernetes][kubernetes].
 1. Use a dedicated {{< param "PRODUCT_NAME" >}} instance for components that require elevated access.
-   Refer to [Components that require elevated access](#components-that-require-elevated-access).
+   Refer to [Components][components] for details.
 
 ## Process identity and privilege
 
@@ -59,11 +59,6 @@ You can load secrets at runtime through several patterns:
 - [`remote.s3`][remote-s3] to load configuration or secrets from AWS S3
 
 For `secret`-typed values at runtime and protection from exposure in the UI and component exports, refer to [Types and values][types-values].
-
-## Components that require elevated access
-
-Some components need root, extra capabilities, or group membership.
-Refer to [Components][components] for details.
 
 [linux]: ./linux/
 [kubernetes]: ./kubernetes/
