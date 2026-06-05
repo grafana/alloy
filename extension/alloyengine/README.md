@@ -23,6 +23,7 @@ Currently, the extension supports inline Alloy configuration.
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `content` | string | Yes | - | The inline Alloy configuration to run. |
+| `module_path` | string | No | - | Value resolved for the `module_path` Alloy config keyword. |
 
 ### Example Configuration
 
