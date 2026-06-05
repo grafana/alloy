@@ -126,7 +126,8 @@ type Component interface {
 // component. ComponentBlock is intended to be exposed as a block called
 // "clustering".
 type ComponentBlock struct {
-	Enabled bool `alloy:"enabled,attr"`
+	Enabled   bool `alloy:"enabled,attr"`
+	ZoneAware bool `alloy:"zone_aware,attr,optional"`
 }
 
 var (

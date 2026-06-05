@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -13,6 +15,7 @@ import (
 	promk8s "github.com/prometheus/prometheus/discovery/kubernetes"
 
 	"github.com/go-kit/log"
+	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/grafana/dskit/backoff"
 	promopv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
@@ -22,6 +25,7 @@ import (
 	"github.com/prometheus/prometheus/discovery"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/prometheus/prometheus/scrape"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -124,6 +128,41 @@ type crdManager struct {
 	k8sFactory K8sFactory
 
 	kind string
+
+	// localZone is the availability zone of the local node, used for zone-aware
+	// clustering. It is determined at startup by reading the topology zone
+	// label from the Kubernetes node object.
+	localZone string
+
+	// localZoneRing is a consistent hash ring containing only the peers that
+	// are in the same availability zone as the local node. When zone-aware
+	// clustering is active, targets whose zone matches localZone are distributed
+	// using this ring instead of the global cluster ring, ensuring that only
+	// same-zone peers can own same-zone targets.
+	localZoneRing shard.Sharder
+
+	// localZonePeerNames stores the names of peers in the local zone ring,
+	// for debug info purposes.
+	localZonePeerNames []string
+
+	// nodeToZone maps Kubernetes node names to their availability zones.
+	// Built from the topology.kubernetes.io/zone label on each node.
+	// Used for zone detection via __meta_kubernetes_pod_node_name on targets.
+	nodeToZone map[string]string
+
+	// lastFilterStats holds the most recent target filtering statistics,
+	// updated after each call to filterTargets.
+	lastFilterStats filterStats
+}
+
+// filterStats tracks statistics from a filterTargets call for debug info.
+type filterStats struct {
+	total    int // total targets seen
+	sameZone int // targets in the same zone as this node
+	diffZone int // targets in a different zone (dropped)
+	noZone   int // targets with no zone info
+	kept     int // targets kept (assigned to this node)
+	dropped  int // targets dropped (assigned to another node or cross-zone)
 }
 
 const (
@@ -131,6 +170,20 @@ const (
 	KindServiceMonitor string = "serviceMonitor"
 	KindProbe          string = "probe"
 	KindScrapeConfig   string = "scrapeConfig"
+
+	// nodeNameEnvVar is the environment variable used to determine the
+	// Kubernetes node name this instance is running on. This is set by the
+	// default Alloy Helm chart via the Kubernetes downward API.
+	nodeNameEnvVar = "K8S_NODE_NAME"
+
+	// topologyZoneLabel is the well-known Kubernetes node label for
+	// availability zone information.
+	topologyZoneLabel = "topology.kubernetes.io/zone"
+
+	// metaPodNodeName is the Kubernetes SD meta label for the node name of the
+	// pod backing a target. It is available on all roles that resolve pods
+	// (endpoint, endpointslice, pod) and does not require attach_metadata.node.
+	metaPodNodeName = "__meta_kubernetes_pod_node_name"
 )
 
 func newCrdManager(opts component.Options, cluster cluster.Cluster, logger log.Logger, args *operator.Arguments, kind string, ls labelstore.LabelStore) *crdManager {
@@ -211,6 +264,16 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}
 	level.Info(c.logger).Log("msg", "informers started")
 
+	// Determine local zone for zone-aware clustering if enabled.
+	if c.args.Clustering.Enabled && c.args.Clustering.ZoneAware {
+		c.localZone = c.lookupLocalZone(ctx)
+		if c.localZone != "" {
+			c.rebuildLocalZoneRing(ctx)
+		} else {
+			level.Warn(c.logger).Log("msg", "zone_aware clustering is enabled but local zone could not be determined; all targets will use the global hash ring")
+		}
+	}
+
 	var cachedTargets map[string][]*targetgroup.Group
 	// Start the target discovery loop to update the scrape manager with new targets.
 	for {
@@ -220,13 +283,38 @@ func (c *crdManager) Run(ctx context.Context) error {
 		case m := <-c.discoveryManager.SyncCh():
 			cachedTargets = m
 			if c.args.Clustering.Enabled {
-				m = filterTargets(m, c.cluster)
+				// Refresh the nodeToZone map on every sync to catch new Kubernetes nodes
+				// that may have been added to the cluster. This ensures targets on newly
+				// added nodes are correctly routed via the local zone ring.
+				if c.localZone != "" {
+					c.nodeToZone = c.buildNodeToZoneMap(ctx)
+				}
+				var stats filterStats
+				m, stats = filterTargets(m, c.cluster, c.localZone, c.localZoneRing, c.nodeToZone)
+				c.mut.Lock()
+				c.lastFilterStats = stats
+				c.mut.Unlock()
+				level.Debug(c.logger).Log("msg", "target filtering complete",
+					"total", stats.total, "kept", stats.kept, "dropped", stats.dropped,
+					"same_zone", stats.sameZone, "diff_zone", stats.diffZone, "no_zone", stats.noZone,
+					"local_zone", c.localZone, "zone_aware", c.args.Clustering.ZoneAware)
 			}
 			targetSetsChan <- m
 		case <-c.clusteringUpdated:
 			// if clustering updates while running, just re-filter the targets and pass them
 			// into scrape manager again, instead of reloading everything
-			targetSetsChan <- filterTargets(cachedTargets, c.cluster)
+			if c.localZone != "" {
+				c.rebuildLocalZoneRing(ctx)
+			}
+			filtered, stats := filterTargets(cachedTargets, c.cluster, c.localZone, c.localZoneRing, c.nodeToZone)
+			c.mut.Lock()
+			c.lastFilterStats = stats
+			c.mut.Unlock()
+			level.Info(c.logger).Log("msg", "target filtering complete (cluster change)",
+				"total", stats.total, "kept", stats.kept, "dropped", stats.dropped,
+				"same_zone", stats.sameZone, "diff_zone", stats.diffZone, "no_zone", stats.noZone,
+				"local_zone", c.localZone, "zone_aware", c.args.Clustering.ZoneAware)
+			targetSetsChan <- filtered
 		}
 	}
 }
@@ -238,11 +326,160 @@ func (c *crdManager) ClusteringUpdated() {
 	}
 }
 
+// lookupLocalZone determines the availability zone of the local Kubernetes node
+// by reading the topology.kubernetes.io/zone label from the node object.
+// It requires the K8S_NODE_NAME environment variable to be set (typically via
+// the Kubernetes downward API). Returns an empty string if the zone cannot be
+// determined.
+func (c *crdManager) lookupLocalZone(ctx context.Context) string {
+	nodeName := os.Getenv(nodeNameEnvVar)
+	if nodeName == "" {
+		level.Warn(c.logger).Log("msg", "zone_aware clustering enabled but K8S_NODE_NAME environment variable is not set; set it via the Kubernetes downward API to enable zone-aware target filtering")
+		return ""
+	}
+
+	node, err := c.client.CoreV1().Nodes().Get(ctx, nodeName, metav1.GetOptions{})
+	if err != nil {
+		level.Warn(c.logger).Log("msg", "zone_aware clustering enabled but failed to look up local node; zone-aware filtering will be disabled", "node", nodeName, "err", err)
+		return ""
+	}
+
+	zone, ok := node.Labels[topologyZoneLabel]
+	if !ok || zone == "" {
+		level.Warn(c.logger).Log("msg", "zone_aware clustering enabled but local node does not have a topology zone label", "node", nodeName, "label", topologyZoneLabel)
+		return ""
+	}
+
+	level.Info(c.logger).Log("msg", "zone_aware clustering enabled, local availability zone determined", "node", nodeName, "zone", zone)
+	return zone
+}
+
+// rebuildLocalZoneRing builds a consistent hash ring containing only the cluster
+// peers that are in the same availability zone as the local node. It queries
+// the Kubernetes API to determine each peer's zone by mapping peer IP -> Pod ->
+// Node -> topology zone label. It also refreshes the nodeToZone map used for
+// target zone lookups.
+func (c *crdManager) rebuildLocalZoneRing(ctx context.Context) {
+	// Refresh the nodeToZone map — used both for peer zone resolution and for
+	// target zone detection via __meta_kubernetes_pod_node_name.
+	c.nodeToZone = c.buildNodeToZoneMap(ctx)
+
+	peers := c.cluster.Peers()
+	peerZones := c.lookupPeerZones(ctx, peers)
+
+	// Build a sub-ring with only the peers in the local zone.
+	var localZonePeers []peer.Peer
+	var peerNames []string
+	for _, p := range peers {
+		zone, ok := peerZones[p.Name]
+		if ok && zone == c.localZone {
+			localZonePeers = append(localZonePeers, p)
+			peerNames = append(peerNames, p.Name)
+		} else if p.Self {
+			// Always include self even if lookup failed.
+			localZonePeers = append(localZonePeers, p)
+			peerNames = append(peerNames, p.Name)
+		}
+	}
+
+	ring := shard.Ring(512)
+	ring.SetPeers(localZonePeers)
+	c.mut.Lock()
+	c.localZoneRing = ring
+	c.localZonePeerNames = peerNames
+	c.mut.Unlock()
+
+	level.Info(c.logger).Log("msg", "rebuilt local zone ring", "local_zone", c.localZone, "total_peers", len(peers), "local_zone_peers", len(localZonePeers), "local_zone_peer_names", strings.Join(peerNames, ","), "nodes_with_zone", len(c.nodeToZone))
+}
+
+// buildNodeToZoneMap lists all Kubernetes nodes and builds a map of node name
+// to availability zone from the topology.kubernetes.io/zone label.
+func (c *crdManager) buildNodeToZoneMap(ctx context.Context) map[string]string {
+	nodeList, err := c.client.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		level.Warn(c.logger).Log("msg", "failed to list nodes for zone-aware clustering", "err", err)
+		return nil
+	}
+	nodeToZone := make(map[string]string, len(nodeList.Items))
+	for _, node := range nodeList.Items {
+		if zone, ok := node.Labels[topologyZoneLabel]; ok && zone != "" {
+			nodeToZone[node.Name] = zone
+		}
+	}
+	return nodeToZone
+}
+
+// lookupPeerZones determines the availability zone for each peer by querying the
+// Kubernetes API. It maps peer address (IP) -> Pod -> Node -> zone label.
+// Returns a map of peer name -> zone. Peers whose zone cannot be determined are
+// omitted from the map. Uses c.nodeToZone which must be populated before calling.
+func (c *crdManager) lookupPeerZones(ctx context.Context, peers []peer.Peer) map[string]string {
+	if c.nodeToZone == nil {
+		return nil
+	}
+
+	// For each peer, find the pod by IP and resolve its node's zone.
+	peerZones := make(map[string]string, len(peers))
+	for _, p := range peers {
+		// Extract IP from peer address (host:port).
+		peerIP, _, err := net.SplitHostPort(p.Addr)
+		if err != nil {
+			level.Warn(c.logger).Log("msg", "failed to parse peer address", "peer", p.Name, "addr", p.Addr, "err", err)
+			continue
+		}
+
+		podList, err := c.client.CoreV1().Pods("").List(ctx, metav1.ListOptions{
+			FieldSelector: "status.podIP=" + peerIP,
+		})
+		if err != nil {
+			level.Warn(c.logger).Log("msg", "failed to list pods for peer IP", "peer", p.Name, "ip", peerIP, "err", err)
+			continue
+		}
+		if len(podList.Items) == 0 {
+			level.Warn(c.logger).Log("msg", "no pod found for peer IP", "peer", p.Name, "ip", peerIP)
+			continue
+		}
+
+		nodeName := podList.Items[0].Spec.NodeName
+		if zone, ok := c.nodeToZone[nodeName]; ok {
+			peerZones[p.Name] = zone
+			level.Debug(c.logger).Log("msg", "resolved peer zone", "peer", p.Name, "ip", peerIP, "node", nodeName, "zone", zone)
+		} else {
+			level.Warn(c.logger).Log("msg", "peer node has no topology zone label", "peer", p.Name, "ip", peerIP, "node", nodeName)
+		}
+	}
+
+	return peerZones
+}
+
+// resolveTargetZone determines the availability zone of a target by looking up
+// __meta_kubernetes_pod_node_name in the nodeToZone map. The pod node name is
+// available at the target level for endpoint and endpointslice roles, and at
+// the group level for the pod role. Returns an empty string if the zone cannot
+// be determined.
+func resolveTargetZone(target, groupLabels model.LabelSet, nodeToZone map[string]string) string {
+	if nodeToZone == nil {
+		return ""
+	}
+	if nodeName := string(target[metaPodNodeName]); nodeName != "" {
+		if zone, ok := nodeToZone[nodeName]; ok {
+			return zone
+		}
+	}
+	if nodeName := string(groupLabels[metaPodNodeName]); nodeName != "" {
+		if zone, ok := nodeToZone[nodeName]; ok {
+			return zone
+		}
+	}
+	return ""
+}
+
 // TODO: merge this code with the code in prometheus.scrape. This is a copy of that code, mostly because
 // we operate on slightly different data structures.
-func filterTargets(m map[string][]*targetgroup.Group, c cluster.Cluster) map[string][]*targetgroup.Group {
+func filterTargets(m map[string][]*targetgroup.Group, c cluster.Cluster, localZone string, localZoneRing shard.Sharder, nodeToZone map[string]string) (map[string][]*targetgroup.Group, filterStats) {
+	var stats filterStats
 	if !c.Ready() { // if cluster not ready, we don't take any traffic locally
-		return make(map[string][]*targetgroup.Group)
+		return make(map[string][]*targetgroup.Group), stats
 	}
 	// the key in the map is the job name.
 	// the targetGroups have zero or more targets inside them.
@@ -261,19 +498,52 @@ func filterTargets(m map[string][]*targetgroup.Group, c cluster.Cluster) map[str
 			// We should not need to include the group's common labels, as long
 			// as each node does this consistently.
 			for _, t := range group.Targets {
-				peers, err := c.Lookup(shard.StringKey(nonMetaLabelString(t)), 1, shard.OpReadWrite)
-				if len(peers) == 0 || err != nil {
-					// If the cluster found no peers or returned an error, we fall
-					// back to owning the target ourselves.
+				stats.total++
+				targetKey := shard.StringKey(nonMetaLabelString(t))
+
+				// When zone-aware clustering is active, targets in the local zone
+				// are distributed using the local-zone-only ring so that only
+				// same-zone peers can own them. Targets in a different zone are
+				// skipped (peers in that zone will handle them via their own
+				// local ring). Targets with unknown zone use the global ring.
+				if localZone != "" && localZoneRing != nil {
+					tZone := resolveTargetZone(t, group.Labels, nodeToZone)
+					if tZone != "" && tZone != localZone {
+						// Target is in a different zone; skip it. The peers
+						// in that zone will pick it up using their own ring.
+						stats.diffZone++
+						stats.dropped++
+						continue
+					}
+					if tZone == localZone {
+						// Use local zone ring for targets in the same zone.
+						peers, err := localZoneRing.Lookup(targetKey, 1, shard.OpReadWrite)
+						if len(peers) == 0 || err != nil || peers[0].Self {
+							g2.Targets = append(g2.Targets, t)
+							stats.kept++
+						} else {
+							stats.dropped++
+						}
+						stats.sameZone++
+						continue
+					}
+					// Target zone is unknown; fall through to global ring.
+					stats.noZone++
+				}
+
+				// Use global ring for targets with unknown zone or when zone-aware clustering is disabled.
+				peers, err := c.Lookup(targetKey, 1, shard.OpReadWrite)
+				if len(peers) == 0 || err != nil || peers[0].Self {
 					g2.Targets = append(g2.Targets, t)
-				} else if peers[0].Self {
-					g2.Targets = append(g2.Targets, t)
+					stats.kept++
+				} else {
+					stats.dropped++
 				}
 			}
 			m2[k][i] = g2
 		}
 	}
-	return m2
+	return m2, stats
 }
 
 // nonMetaLabelString returns a string representation of the given label set, excluding meta labels.
@@ -302,6 +572,29 @@ func (c *crdManager) DebugInfo() any {
 	if c.scrapeManager != nil {
 		info.Targets = compscrape.BuildTargetStatuses(c.scrapeManager.TargetsActive())
 	}
+
+	// Populate clustering debug info if clustering is enabled.
+	if c.args.Clustering.Enabled {
+		totalPeers := 0
+		if c.cluster != nil {
+			totalPeers = len(c.cluster.Peers())
+		}
+		clusterInfo := &operator.ClusteringDebugInfo{
+			Enabled:         true,
+			ZoneAware:       c.args.Clustering.ZoneAware,
+			LocalZone:       c.localZone,
+			LocalZonePeers:  c.localZonePeerNames,
+			TotalPeers:      totalPeers,
+			TargetsTotal:    c.lastFilterStats.total,
+			TargetsSameZone: c.lastFilterStats.sameZone,
+			TargetsDiffZone: c.lastFilterStats.diffZone,
+			TargetsNoZone:   c.lastFilterStats.noZone,
+			TargetsKept:     c.lastFilterStats.kept,
+			TargetsDropped:  c.lastFilterStats.dropped,
+		}
+		info.ClusteringInfo = clusterInfo
+	}
+
 	return info
 }
 
