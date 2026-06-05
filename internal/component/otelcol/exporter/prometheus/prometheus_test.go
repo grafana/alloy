@@ -31,7 +31,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ForwardTo:                         []storage.Appendable{},
 				ResourceToTelemetryConversion:     false,
 				HonorMetadata:                     false,
-				KeepIdentifyingResourceAttributes: true,
+				KeepIdentifyingResourceAttributes: false,
 			},
 		},
 		{
@@ -44,7 +44,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					add_metric_suffixes = false
 					resource_to_telemetry_conversion = true
 					honor_metadata = true
-					keep_identifying_resource_attributes = false
+					keep_identifying_resource_attributes = true
 					forward_to = []
 				`,
 			expected: prometheus.Arguments{
@@ -56,7 +56,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ForwardTo:                         []storage.Appendable{},
 				ResourceToTelemetryConversion:     true,
 				HonorMetadata:                     true,
-				KeepIdentifyingResourceAttributes: false,
+				KeepIdentifyingResourceAttributes: true,
 			},
 		},
 		{

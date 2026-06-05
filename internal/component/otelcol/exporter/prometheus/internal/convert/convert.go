@@ -74,11 +74,10 @@ type Options struct {
 	ConvertClassicHistogramsToNHCB bool
 	// KeepIdentifyingResourceAttributes preserves service.name,
 	// service.namespace, and service.instance.id as labels on target_info
-	// in addition to mapping them to job and instance. Defaults to true to
-	// remain compliant with the OpenTelemetry service resource semantic
-	// conventions (https://opentelemetry.io/docs/specs/semconv/resource/service/),
-	// which define these as standard resource attributes. Only affects
-	// target_info; regular metric series are unchanged.
+	// in addition to mapping them to job and instance, keeping target_info
+	// compliant with the OpenTelemetry service resource semantic conventions
+	// (https://opentelemetry.io/docs/specs/semconv/resource/service/).
+	// Only affects target_info; regular metric series are unchanged.
 	KeepIdentifyingResourceAttributes bool
 }
 

@@ -54,7 +54,7 @@ var DefaultArguments = Arguments{
 	AddMetricSuffixes:                 true,
 	ResourceToTelemetryConversion:     false,
 	HonorMetadata:                     false,
-	KeepIdentifyingResourceAttributes: true,
+	KeepIdentifyingResourceAttributes: false,
 }
 
 // SetToDefault implements syntax.Defaulter.
