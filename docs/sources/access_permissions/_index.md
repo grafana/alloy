@@ -31,8 +31,8 @@ Use only what matches your components and environment.
    Refer to [Access and permissions on Kubernetes][kubernetes].
 1. For container deployments, set `allowPrivilegeEscalation: false` when your components don't need privilege escalation.
    Refer to [Access and permissions on Kubernetes][kubernetes].
-1. Use a dedicated {{< param "PRODUCT_NAME" >}} instance for components that require elevated access.
-   Refer to the [component][components] you're configuring for details.
+1. Use a dedicated {{< param "PRODUCT_NAME" >}} instance for components that require elevated access, for example [`beyla.ebpf`][beyla-ebpf] and [`pyroscope.ebpf`][pyroscope-ebpf].
+   Refer to each component reference for required capabilities and privileges.
 
 ## Process identity and privilege
 
@@ -72,3 +72,5 @@ For `secret`-typed values at runtime and protection from exposure in the UI and 
 [remote-s3]: ../reference/components/remote/remote.s3/
 [types-values]: ../get-started/expressions/types_and_values/
 [components]: ../reference/components/
+[beyla-ebpf]: ../reference/components/beyla/beyla.ebpf/
+[pyroscope-ebpf]: ../reference/components/pyroscope/pyroscope.ebpf/

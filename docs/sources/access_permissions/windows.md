@@ -72,7 +72,7 @@ Grant read, write, and modify permissions on `%PROGRAMDATA%\GrafanaLabs\Alloy\da
 
 If {{< param "PRODUCT_NAME" >}} reads application log files from disk, grant the service account read access to those files and their parent directories through [Access Control Lists][acl] or a custom group.
 
-{{< param "PRODUCT_NAME" >}} needs outbound network access to its telemetry endpoints, such as Prometheus remote write, Loki, and OTLP.
+{{< param "PRODUCT_NAME" >}} needs outbound network access to its telemetry endpoints, for example Prometheus remote write, Loki, and OTLP.
 Allow outbound connections from the host on the ports your configuration uses.
 
 The service account may need read access to `HKEY_LOCAL_MACHINE\SOFTWARE\GrafanaLabs\Alloy` to read [environment variables][configure-windows] and [command-line arguments][configure-windows].
@@ -90,11 +90,6 @@ By default, {{< param "PRODUCT_NAME" >}} binds its HTTP server to `127.0.0.1:123
 Expose the endpoint only when you need remote access to the UI or metrics, and add authentication or TLS when you do.
 Refer to the [`http` block][http-block] for configuration options.
 
-## Components that require elevated access
-
-Windows deployments rarely need the elevated Linux capabilities described in [Components that require elevated access][elevated-access].
-Review that table if your configuration includes eBPF or host-level collectors on other platforms in the same fleet.
-
 ## Next steps
 
 - [Configure {{< param "PRODUCT_NAME" >}} on Windows][configure-windows]
@@ -105,7 +100,6 @@ Review that table if your configuration includes eBPF or host-level collectors o
 [configure-windows]: ../../configure/windows/
 [monitor-windows]: ../../monitor/monitor-windows/
 [collect]: ../../collect/
-[elevated-access]: ../#components-that-require-elevated-access
 [http-block]: ../../reference/config-blocks/http/
 [acl]: https://learn.microsoft.com/windows/win32/secauthz/access-control-lists
 [registry-security]: https://learn.microsoft.com/windows/win32/sysinfo/registry-key-security-and-access-rights

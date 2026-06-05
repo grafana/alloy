@@ -91,7 +91,8 @@ stat /etc/alloy/config.alloy
 ## Set systemd service permissions
 
 The systemd unit in the package doesn't include security directives by default.
-Add them with a drop-in file so they survive package upgrades:
+Add them with a drop-in file so they survive package upgrades.
+If you use eBPF components, for example [`beyla.ebpf`][beyla-ebpf] or [`pyroscope.ebpf`][pyroscope-ebpf], check their component references before you set `NoNewPrivileges=yes` or run as the `alloy` user.
 
 ```shell
 sudo systemctl edit alloy
@@ -181,20 +182,6 @@ Change the bind address only when you need to expose the UI or metrics endpoint 
 To expose `/metrics` for Prometheus scrape while you keep the UI private, put a reverse proxy in front of {{< param "PRODUCT_NAME" >}} and restrict access at the proxy.
 Refer to the [`http` block][http-block] for TLS and authentication options.
 
-## Components that require elevated access
-
-Some components can't run as the unprivileged `alloy` user.
-Refer to [Components that require elevated access][elevated-access] for the full list.
-
-**`beyla.ebpf`** and **`pyroscope.ebpf`** need root or additional Linux capabilities for kernel-level eBPF access.
-Grant the required capabilities or use root, and remove `NoNewPrivileges=yes` from the systemd drop-in when you grant capabilities to the `alloy` user.
-Refer to the [beyla.ebpf component reference][beyla-ebpf].
-
-**`prometheus.exporter.unix`** reads from `/proc` and `/sys`.
-The `alloy` user can read most of these paths on a typical Linux system without elevated privileges.
-If you see permission errors, check the metric collector that causes the issue.
-Don't switch the service to root.
-
 ## Next steps
 
 - [Configure {{< param "PRODUCT_NAME" >}} on Linux][configure-linux]
@@ -204,8 +191,8 @@ Don't switch the service to root.
 [configure-linux]: ../../configure/linux/
 [monitor-linux]: ../../monitor/monitor-linux/
 [collect]: ../../collect/
-[elevated-access]: ../#components-that-require-elevated-access
 [http-block]: ../../reference/config-blocks/http/
 [loki-source-journal]: ../../reference/components/loki/loki.source.journal/
 [loki-source-file]: ../../reference/components/loki/loki.source.file/
 [beyla-ebpf]: ../../reference/components/beyla/beyla.ebpf/
+[pyroscope-ebpf]: ../../reference/components/pyroscope/pyroscope.ebpf/

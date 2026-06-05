@@ -21,16 +21,15 @@ The [{{< param "PRODUCT_NAME" >}} Docker container image][image] defines two use
 - A `root` user.
 - A non-root user named `alloy` with UID `473` and GID `473`.
 
-By default, the `alloy` binary runs as `root` because some components, such as [beyla.ebpf][], need elevated privileges.
-
 You can configure a non-root user when you deploy Alloy in Kubernetes.
 
 {{< admonition type="note" >}}
-Components like [beyla.ebpf][beyla-ebpf-note] need root or additional Linux capabilities.
+Components like [beyla.ebpf][beyla-ebpf-note] and [pyroscope.ebpf][pyroscope-ebpf-note] need root or additional Linux capabilities.
 Don't set `capabilities.drop: [ALL]` when these components are in your configuration.
-Refer to the [beyla.ebpf component reference][beyla-ebpf-note].
+Refer to the component references for required capabilities and Pod settings.
 
 [beyla-ebpf-note]: ../../reference/components/beyla/beyla.ebpf/
+[pyroscope-ebpf-note]: ../../reference/components/pyroscope/pyroscope.ebpf/
 {{< /admonition >}}
 
 ## Run as a non-root user
@@ -87,11 +86,12 @@ spec:
 When you set `readOnlyRootFilesystem: true`, mount a writable volume at that path or change `alloy.storagePath` to a mounted volume.
 
 {{< admonition type="note" >}}
-If you use components that need elevated host access, such as `beyla.ebpf`, add back the capabilities those components need.
+If you use components that need elevated host access, for example [`beyla.ebpf`][beyla-ebpf-cap] or [`pyroscope.ebpf`][pyroscope-ebpf-cap], add the capabilities those components need.
 Don't drop all capabilities when these components are in your configuration.
-Refer to the [beyla.ebpf component reference][beyla-ebpf-cap].
+Refer to the component references for required capabilities and volume mounts.
 
 [beyla-ebpf-cap]: ../../reference/components/beyla/beyla.ebpf/
+[pyroscope-ebpf-cap]: ../../reference/components/pyroscope/pyroscope.ebpf/
 {{< /admonition >}}
 
 ## Restrict the HTTP server
@@ -118,11 +118,6 @@ Review the RBAC resources the Helm chart creates:
 helm template alloy grafana/alloy --show-only templates/rbac.yaml
 ```
 
-## Components that require elevated access
-
-Some components need root or additional Linux capabilities.
-Refer to [Components that require elevated access][elevated-access] for the full list and the [beyla.ebpf component reference][beyla-ebpf] for capability requirements on Kubernetes.
-
 ## Next steps
 
 - [Configure {{< param "PRODUCT_NAME" >}} on Kubernetes][configure-kubernetes]
@@ -131,11 +126,10 @@ Refer to [Components that require elevated access][elevated-access] for the full
 
 [image]: https://hub.docker.com/r/grafana/alloy
 [beyla.ebpf]: ../../reference/components/beyla/beyla.ebpf/
-[beyla-ebpf]: ../../reference/components/beyla/beyla.ebpf/
+[pyroscope-ebpf]: ../../reference/components/pyroscope/pyroscope.ebpf/
 [security-context]: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/
 [Grafana Helm chart]: ../../configure/kubernetes/#configure-the-helm-chart
 [http-block]: ../../reference/config-blocks/http/
-[elevated-access]: ../#components-that-require-elevated-access
 [configure-kubernetes]: ../../configure/kubernetes/
 [monitor-kubernetes-logs]: ../../monitor/monitor-kubernetes-logs/
 [collect]: ../../collect/
