@@ -70,7 +70,7 @@ func TestNil(t *testing.T) {
 	}))
 	relabeller, err := New(component.Options{
 		ID:             "1",
-		Logger:         util.TestAlloyLogger(t),
+		SLogger:        util.TestAlloyLogger(t).Slog(),
 		OnStateChange:  func(e component.Exports) {},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,
@@ -152,7 +152,7 @@ func TestCacheSizeMetric(t *testing.T) {
 			}
 			relabeller, err := New(component.Options{
 				ID:             "1",
-				Logger:         util.TestAlloyLogger(t),
+				SLogger:        util.TestAlloyLogger(t).Slog(),
 				OnStateChange:  func(e component.Exports) {},
 				Registerer:     reg,
 				GetServiceData: getServiceData,
@@ -197,8 +197,8 @@ func BenchmarkCacheParallel(b *testing.B) {
 	}))
 	var entry storage.Appendable
 	_, err := New(component.Options{
-		ID:     "1",
-		Logger: util.TestAlloyLogger(b),
+		ID:      "1",
+		SLogger: util.TestAlloyLogger(b).Slog(),
 		OnStateChange: func(e component.Exports) {
 			newE := e.(Exports)
 			entry = newE.Receiver
@@ -237,8 +237,8 @@ func BenchmarkCache(b *testing.B) {
 	}))
 	var entry storage.Appendable
 	_, err := New(component.Options{
-		ID:     "1",
-		Logger: util.TestAlloyLogger(b),
+		ID:      "1",
+		SLogger: util.TestAlloyLogger(b).Slog(),
 		OnStateChange: func(e component.Exports) {
 			newE := e.(Exports)
 			entry = newE.Receiver
@@ -297,8 +297,8 @@ func BenchmarkCacheModes(b *testing.B) {
 			}
 			var entry storage.Appendable
 			_, err := New(component.Options{
-				ID:     "1",
-				Logger: util.TestAlloyLogger(b),
+				ID:      "1",
+				SLogger: util.TestAlloyLogger(b).Slog(),
 				OnStateChange: func(e component.Exports) {
 					entry = e.(Exports).Receiver
 				},
@@ -338,7 +338,7 @@ func generateRelabelWithArgs(t *testing.T, args Arguments) *Component {
 	}
 	relabeller, err := New(component.Options{
 		ID:             "1",
-		Logger:         util.TestAlloyLogger(t),
+		SLogger:        util.TestAlloyLogger(t).Slog(),
 		OnStateChange:  func(e component.Exports) {},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,

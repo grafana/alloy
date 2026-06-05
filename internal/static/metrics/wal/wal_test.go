@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -25,13 +24,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 )
 
 func TestStorage_InvalidSeries(t *testing.T) {
 	walDir := t.TempDir()
 
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, s.Close())
@@ -74,7 +74,7 @@ func TestStorage(t *testing.T) {
 	onNotify := util.NewWaitTrigger()
 	notifier := &fakeNotifier{NotitfyFunc: onNotify.Trigger}
 
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, s.Close())
@@ -127,7 +127,7 @@ func TestStorage_RepeatedCommitWithMetadata(t *testing.T) {
 	notifier := &fakeNotifier{NotitfyFunc: onNotify.Trigger}
 
 	reg := prometheus.NewRegistry()
-	s, err := NewStorage(log.NewNopLogger(), reg, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), reg, walDir)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, s.Close())
@@ -236,7 +236,7 @@ prometheus_remote_write_wal_samples_appended_total 40
 
 func TestStorage_Rollback(t *testing.T) {
 	walDir := t.TempDir()
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, s.Close())
@@ -266,7 +266,7 @@ func TestStorage_Rollback(t *testing.T) {
 func TestStorage_DuplicateExemplarsIgnored(t *testing.T) {
 	walDir := t.TempDir()
 
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, s.Close())
@@ -312,7 +312,7 @@ func TestStorage_DuplicateExemplarsIgnored(t *testing.T) {
 func TestStorage_ExistingWAL(t *testing.T) {
 	walDir := t.TempDir()
 
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 
 	app := s.Appender(t.Context())
@@ -331,7 +331,7 @@ func TestStorage_ExistingWAL(t *testing.T) {
 	time.Sleep(time.Millisecond * 150)
 
 	// Create a new storage, write the other half of samples.
-	s, err = NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err = NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, s.Close())
@@ -373,11 +373,11 @@ func TestStorage_ExistingWAL(t *testing.T) {
 }
 
 func TestStorage_ExistingWAL_RefID(t *testing.T) {
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	walDir := t.TempDir()
 
-	s, err := NewStorage(l, nil, walDir)
+	s, err := NewStorage(l.Slog(), nil, walDir)
 	require.NoError(t, err)
 
 	app := s.Appender(t.Context())
@@ -394,7 +394,7 @@ func TestStorage_ExistingWAL_RefID(t *testing.T) {
 	require.NoError(t, s.Close())
 
 	// Create a new storage and see what the ref ID is initialized to.
-	s, err = NewStorage(l, nil, walDir)
+	s, err = NewStorage(l.Slog(), nil, walDir)
 	require.NoError(t, err)
 	defer require.NoError(t, s.Close())
 
@@ -408,7 +408,7 @@ func TestStorage_Truncate(t *testing.T) {
 	// then read data back in. Expect to only get the latter half of data.
 	walDir := t.TempDir()
 
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, s.Close())
@@ -469,7 +469,7 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 	// Ensure the WAL can handle duplicate SeriesRefs by hash when being loaded.
 	walDir := t.TempDir()
 
-	s, err := NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 
 	app := s.Appender(t.Context())
@@ -524,7 +524,7 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 	// Close the WAL before we have a chance to remove the first RefIDs
 	require.NoError(t, s.Close())
 
-	s, err = NewStorage(log.NewLogfmtLogger(os.Stdout), nil, walDir)
+	s, err = NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 
 	// There should only be 4 active series after we reload the WAL
@@ -545,7 +545,7 @@ func TestStorage_HandlesDuplicateSeriesRefsByHash(t *testing.T) {
 func TestStorage_TruncateAfterClose(t *testing.T) {
 	walDir := t.TempDir()
 
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 
 	require.NoError(t, s.Close())
@@ -562,7 +562,7 @@ func TestStorage_Corruption(t *testing.T) {
 	require.NoError(t, err)
 
 	// The storage should be initialized correctly anyway.
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 	require.NotNil(t, s)
 
@@ -572,7 +572,7 @@ func TestStorage_Corruption(t *testing.T) {
 func TestGlobalReferenceID_Normal(t *testing.T) {
 	walDir := t.TempDir()
 
-	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, _ := NewStorage(logging.NewSlogNop(), nil, walDir)
 	defer s.Close()
 	app := s.Appender(t.Context())
 	l := labels.New(labels.Label{
@@ -599,7 +599,7 @@ func TestGlobalReferenceID_Normal(t *testing.T) {
 func TestDBAllowOOOSamples(t *testing.T) {
 	walDir := t.TempDir()
 
-	s, err := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, s.Close())
@@ -625,7 +625,7 @@ func TestDBAllowOOOSamples(t *testing.T) {
 func BenchmarkAppendExemplar(b *testing.B) {
 	walDir := b.TempDir()
 
-	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, _ := NewStorage(logging.NewSlogNop(), nil, walDir)
 	defer s.Close()
 	app := s.Appender(b.Context())
 	sRef, _ := app.Append(0, labels.FromStrings("a", "1"), 0, 0)
@@ -645,7 +645,7 @@ func BenchmarkAppendExemplar(b *testing.B) {
 func BenchmarkCreateSeries(b *testing.B) {
 	walDir := b.TempDir()
 
-	s, _ := NewStorage(log.NewNopLogger(), nil, walDir)
+	s, _ := NewStorage(logging.NewSlogNop(), nil, walDir)
 	defer s.Close()
 
 	app := s.Appender(b.Context()).(*appender)
