@@ -33,16 +33,16 @@ func init() {
 
 // Arguments configures the otelcol.exporter.prometheus component.
 type Arguments struct {
-	IncludeTargetInfo                bool                 `alloy:"include_target_info,attr,optional"`
-	IncludeScopeInfo                 bool                 `alloy:"include_scope_info,attr,optional"`
-	IncludeScopeLabels               bool                 `alloy:"include_scope_labels,attr,optional"`
-	GCFrequency                      time.Duration        `alloy:"gc_frequency,attr,optional"`
-	ForwardTo                        []storage.Appendable `alloy:"forward_to,attr"`
-	AddMetricSuffixes                bool                 `alloy:"add_metric_suffixes,attr,optional"`
-	ResourceToTelemetryConversion    bool                 `alloy:"resource_to_telemetry_conversion,attr,optional"`
-	HonorMetadata                    bool                 `alloy:"honor_metadata,attr,optional"`
-	ConvertClassicHistogramsToNHCB   bool                 `alloy:"convert_classic_histograms_to_nhcb,attr,optional"`
-	KeepIdentifyingResourceAttributes bool                `alloy:"keep_identifying_resource_attributes,attr,optional"`
+	IncludeTargetInfo                 bool                 `alloy:"include_target_info,attr,optional"`
+	IncludeScopeInfo                  bool                 `alloy:"include_scope_info,attr,optional"`
+	IncludeScopeLabels                bool                 `alloy:"include_scope_labels,attr,optional"`
+	GCFrequency                       time.Duration        `alloy:"gc_frequency,attr,optional"`
+	ForwardTo                         []storage.Appendable `alloy:"forward_to,attr"`
+	AddMetricSuffixes                 bool                 `alloy:"add_metric_suffixes,attr,optional"`
+	ResourceToTelemetryConversion     bool                 `alloy:"resource_to_telemetry_conversion,attr,optional"`
+	HonorMetadata                     bool                 `alloy:"honor_metadata,attr,optional"`
+	ConvertClassicHistogramsToNHCB    bool                 `alloy:"convert_classic_histograms_to_nhcb,attr,optional"`
+	KeepIdentifyingResourceAttributes bool                 `alloy:"keep_identifying_resource_attributes,attr,optional"`
 }
 
 // DefaultArguments holds defaults values.
