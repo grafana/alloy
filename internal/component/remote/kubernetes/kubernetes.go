@@ -8,14 +8,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	client_go "k8s.io/client-go/kubernetes"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/syntax/alloytypes"
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	client_go "k8s.io/client-go/kubernetes"
 )
 
 type ResourceType string
@@ -65,7 +64,6 @@ type Exports struct {
 
 // Component implements the remote.kubernetes.* component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	mut  sync.Mutex
@@ -89,9 +87,7 @@ var (
 // New returns a new, unstarted remote.kubernetes.* component.
 func New(opts component.Options, args Arguments, rType ResourceType) (*Component, error) {
 	c := &Component{
-		log:  opts.Logger,
 		opts: opts,
-
 		kind: rType,
 		health: component.Health{
 			Health:     component.HealthTypeUnknown,
@@ -232,7 +228,9 @@ func (c *Component) Update(args component.Arguments) (err error) {
 	newArgs := args.(Arguments)
 	c.args = newArgs
 
-	restConfig, err := c.args.Client.BuildRESTConfig(c.log)
+	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use kubernetes.ClientArguments
+	// to slog. Part of https://github.com/grafana/alloy/issues/4813.
+	restConfig, err := c.args.Client.BuildRESTConfig(slogadapter.GoKit(c.opts.SLogger.Handler()))
 	if err != nil {
 		return err
 	}
