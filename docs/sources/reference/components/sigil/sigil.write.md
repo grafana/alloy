@@ -17,7 +17,8 @@ The records use the wire format produced by the [Grafana AI Observability SDK](h
 
 Each request is serialized as JSON and POSTed to the generation export path on the configured endpoint.
 If `url` does not include a path, `sigil.write` appends `/api/v1/generations:export` automatically so a base URL such as `https://sigil.grafana.net` is sufficient.
-When multiple `endpoint` blocks are provided, generation records are concurrently forwarded to all configured locations and each endpoint sees an independent copy of the request.
+When multiple `endpoint` blocks are provided, generation records are forwarded to each configured location in sequence and each endpoint sees an independent copy of the request.
+If any endpoint fails after exhausting its retries, the whole request fails and the client is expected to retry, so endpoints that already succeeded may receive the batch again. Delivery is at-least-once per endpoint.
 
 You can specify multiple `sigil.write` components by giving them different labels.
 
