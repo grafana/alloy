@@ -97,28 +97,23 @@ func TestLogsCollector_ParseRDSFormat(t *testing.T) {
 				},
 			}
 
-			time.Sleep(100 * time.Millisecond)
-
-			mfs, _ := registry.Gather()
-			found := false
-			for _, mf := range mfs {
-				if mf.GetName() == "database_observability_pg_errors_total" {
-					for _, metric := range mf.GetMetric() {
-						labels := make(map[string]string)
-						for _, label := range metric.GetLabel() {
-							labels[label.GetName()] = label.GetValue()
-						}
-						if labels["user"] == tt.wantUser && labels["datname"] == tt.wantDB && labels["severity"] == tt.wantSev && labels["sqlstate"] == tt.wantSQLState {
-							require.Equal(t, tt.wantSev, labels["severity"])
-							require.Equal(t, tt.wantSQLState, labels["sqlstate"])
-							require.Equal(t, tt.wantSQLState[:2], labels["sqlstate_class"])
-							found = true
-							break
+			require.Eventuallyf(t, func() bool {
+				mfs, _ := registry.Gather()
+				for _, mf := range mfs {
+					if mf.GetName() == "database_observability_pg_errors_total" {
+						for _, metric := range mf.GetMetric() {
+							labels := make(map[string]string)
+							for _, label := range metric.GetLabel() {
+								labels[label.GetName()] = label.GetValue()
+							}
+							if labels["user"] == tt.wantUser && labels["datname"] == tt.wantDB && labels["severity"] == tt.wantSev && labels["sqlstate"] == tt.wantSQLState {
+								return labels["sqlstate_class"] == tt.wantSQLState[:2]
+							}
 						}
 					}
 				}
-			}
-			require.True(t, found, "metric not found for %s", tt.name)
+				return false
+			}, 2*time.Second, 5*time.Millisecond, "metric not found for %s", tt.name)
 		})
 	}
 }
@@ -135,14 +130,9 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	startTime := collector.startTime
-	err = collector.Start(context.Background())
-	require.NoError(t, err)
-	defer collector.Stop()
-
 	// Build INFO and LOG lines with timestamps AFTER collector start, so they would pass the
 	// historical filter if they reached it. They are skipped for severity (not ERROR/FATAL/PANIC).
-	ts := startTime.Add(10 * time.Second).UTC()
+	ts := collector.startTime.Add(10 * time.Second).UTC()
 	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 
@@ -155,15 +145,8 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	}
 
 	for _, logLine := range skipLogs {
-		collector.Receiver().Chan() <- loki.Entry{
-			Entry: push.Entry{
-				Line:      logLine,
-				Timestamp: time.Now(),
-			},
-		}
+		require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: logLine}}))
 	}
-
-	time.Sleep(100 * time.Millisecond)
 
 	// Should have 0 metrics since all were skipped
 	mfs, _ := registry.Gather()
@@ -237,41 +220,41 @@ func TestLogsCollector_MetricSumming(t *testing.T) {
 		}
 	}
 
-	time.Sleep(200 * time.Millisecond)
-
-	// Verify metrics
-	mfs, _ := registry.Gather()
-	var errorMetrics *dto.MetricFamily
-	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_errors_total" {
-			errorMetrics = mf
-			break
-		}
-	}
-
-	require.NotNil(t, errorMetrics)
-	require.Equal(t, 2, len(errorMetrics.GetMetric()), "should have 2 unique label combinations")
-
-	// Check counts
 	type metricKey struct {
 		user string
 		db   string
 		sev  string
 	}
-	counts := make(map[metricKey]float64)
-	for _, metric := range errorMetrics.GetMetric() {
-		labels := make(map[string]string)
-		for _, label := range metric.GetLabel() {
-			labels[label.GetName()] = label.GetValue()
+
+	gatherCounts := func() map[metricKey]float64 {
+		mfs, _ := registry.Gather()
+		counts := make(map[metricKey]float64)
+		for _, mf := range mfs {
+			if mf.GetName() == "database_observability_pg_errors_total" {
+				for _, metric := range mf.GetMetric() {
+					labels := make(map[string]string)
+					for _, label := range metric.GetLabel() {
+						labels[label.GetName()] = label.GetValue()
+					}
+					counts[metricKey{
+						user: labels["user"],
+						db:   labels["datname"],
+						sev:  labels["severity"],
+					}] = metric.GetCounter().GetValue()
+				}
+			}
 		}
-		key := metricKey{
-			user: labels["user"],
-			db:   labels["datname"],
-			sev:  labels["severity"],
-		}
-		counts[key] = metric.GetCounter().GetValue()
+		return counts
 	}
 
+	require.Eventually(t, func() bool {
+		counts := gatherCounts()
+		return counts[metricKey{user: "user1", db: "db1", sev: "ERROR"}] == 3 &&
+			counts[metricKey{user: "user2", db: "db2", sev: "FATAL"}] == 1
+	}, 2*time.Second, 5*time.Millisecond, "expected counters did not reach target values")
+
+	counts := gatherCounts()
+	require.Len(t, counts, 2, "should have 2 unique label combinations")
 	require.Equal(t, float64(3), counts[metricKey{user: "user1", db: "db1", sev: "ERROR"}], "user1@db1:ERROR should have count of 3")
 	require.Equal(t, float64(1), counts[metricKey{user: "user2", db: "db2", sev: "FATAL"}], "user2@db2:FATAL should have count of 1")
 }
@@ -300,18 +283,15 @@ func TestLogsCollector_InvalidFormat(t *testing.T) {
 		},
 	}
 
-	time.Sleep(100 * time.Millisecond)
-
-	// Check parse errors counter was incremented
-	mfs, _ := registry.Gather()
-	found := false
-	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_error_log_parse_failures_total" {
-			found = true
-			require.Greater(t, mf.GetMetric()[0].GetCounter().GetValue(), 0.0)
+	require.Eventually(t, func() bool {
+		mfs, _ := registry.Gather()
+		for _, mf := range mfs {
+			if mf.GetName() == "database_observability_pg_error_log_parse_failures_total" {
+				return mf.GetMetric()[0].GetCounter().GetValue() > 0
+			}
 		}
-	}
-	require.True(t, found, "parse error metric should exist")
+		return false
+	}, 2*time.Second, 5*time.Millisecond, "parse error metric should be incremented")
 }
 
 func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
@@ -344,9 +324,16 @@ func TestLogsCollector_EmptyUserAndDatabase(t *testing.T) {
 		},
 	}
 
-	time.Sleep(200 * time.Millisecond)
+	require.Eventually(t, func() bool {
+		mfs, _ := registry.Gather()
+		for _, mf := range mfs {
+			if mf.GetName() == "database_observability_pg_errors_total" && len(mf.GetMetric()) == 1 {
+				return mf.GetMetric()[0].GetCounter().GetValue() == 1
+			}
+		}
+		return false
+	}, 2*time.Second, 5*time.Millisecond, "expected one FATAL metric with count 1")
 
-	// Verify metric was created with empty user and database labels
 	mfs, _ := registry.Gather()
 	var errorMetrics *dto.MetricFamily
 	for _, mf := range mfs {
@@ -531,27 +518,24 @@ func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 				},
 			}
 
-			time.Sleep(100 * time.Millisecond)
-
-			mfs, _ := registry.Gather()
-			found := false
-			for _, mf := range mfs {
-				if mf.GetName() == "database_observability_pg_errors_total" {
-					for _, metric := range mf.GetMetric() {
-						labels := make(map[string]string)
-						for _, label := range metric.GetLabel() {
-							labels[label.GetName()] = label.GetValue()
-						}
-						if labels["sqlstate"] == tt.wantSQLState {
-							require.Equal(t, tt.wantSQLStateClass, labels["sqlstate_class"], "sqlstate_class should match")
-							require.Equal(t, tt.wantSeverity, labels["severity"], "severity should match")
-							found = true
-							break
+			require.Eventuallyf(t, func() bool {
+				mfs, _ := registry.Gather()
+				for _, mf := range mfs {
+					if mf.GetName() == "database_observability_pg_errors_total" {
+						for _, metric := range mf.GetMetric() {
+							labels := make(map[string]string)
+							for _, label := range metric.GetLabel() {
+								labels[label.GetName()] = label.GetValue()
+							}
+							if labels["sqlstate"] == tt.wantSQLState {
+								return labels["sqlstate_class"] == tt.wantSQLStateClass &&
+									labels["severity"] == tt.wantSeverity
+							}
 						}
 					}
 				}
-			}
-			require.True(t, found, "metric with sqlstate=%s not found for %s", tt.wantSQLState, tt.name)
+				return false
+			}, 2*time.Second, 5*time.Millisecond, "metric with sqlstate=%s not found for %s", tt.wantSQLState, tt.name)
 		})
 	}
 }
@@ -568,48 +552,22 @@ func TestLogsCollector_SkipsHistoricalLogs(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	startTime := collector.startTime
+	historicalTime := collector.startTime.Add(-1 * time.Hour)
+	recentTime := collector.startTime.Add(10 * time.Second)
 
-	err = collector.Start(context.Background())
-	require.NoError(t, err)
-	defer collector.Stop()
-
-	// Create timestamps relative to start time
-	historicalTime := startTime.Add(-1 * time.Hour)
-	recentTime := startTime.Add(10 * time.Second)
-
-	// Send historical log (1 hour before start) with timestamp in log line
 	historicalLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test historical error",
 		historicalTime.Format("2006-01-02 15:04:05.000 MST"),
 		historicalTime.Format("2006-01-02 15:04:05 MST"))
 	t.Logf("Historical line: %s", historicalLine)
 
-	historicalEntry := loki.Entry{
-		Entry: push.Entry{
-			Timestamp: time.Now(),
-			Line:      historicalLine,
-		},
-	}
-
-	// Send recent log (after start) with timestamp in log line
 	recentLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test recent error",
 		recentTime.Format("2006-01-02 15:04:05.000 MST"),
 		recentTime.Format("2006-01-02 15:04:05 MST"))
 	t.Logf("Recent line: %s", recentLine)
 
-	recentEntry := loki.Entry{
-		Entry: push.Entry{
-			Timestamp: time.Now(),
-			Line:      recentLine,
-		},
-	}
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: historicalLine}}))
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: recentLine}}))
 
-	// Process both
-	collector.Receiver().Chan() <- historicalEntry
-	collector.Receiver().Chan() <- recentEntry
-	time.Sleep(200 * time.Millisecond)
-
-	// Verify only recent log incremented counter
 	mfs, err := registry.Gather()
 	require.NoError(t, err)
 
@@ -639,26 +597,13 @@ func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	startTime := collector.startTime
-	err = collector.Start(context.Background())
-	require.NoError(t, err)
-	defer collector.Stop()
-
-	// Send ONLY historical logs (valid ERROR format, but timestamp before collector start)
-	historicalTime := startTime.Add(-1 * time.Hour)
+	historicalTime := collector.startTime.Add(-1 * time.Hour)
 	historicalLine := fmt.Sprintf("%s:[local]:user@database:[1234]:1:28000:%s:1/1:0:000000.0::psqlERROR:  test historical error",
 		historicalTime.Format("2006-01-02 15:04:05.000 MST"),
 		historicalTime.Format("2006-01-02 15:04:05 MST"))
 
-	collector.Receiver().Chan() <- loki.Entry{
-		Entry: push.Entry{
-			Line:      historicalLine,
-			Timestamp: time.Now(),
-		},
-	}
-	time.Sleep(200 * time.Millisecond)
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: historicalLine}}))
 
-	// Verify 0 metrics - historical logs must be skipped
 	mfs, err := registry.Gather()
 	require.NoError(t, err)
 
@@ -703,18 +648,18 @@ func TestLogsCollector_NonUTCLogTimezone(t *testing.T) {
 		},
 	}
 
-	time.Sleep(200 * time.Millisecond)
-
-	mfs, _ := registry.Gather()
-	var totalCount float64
-	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_errors_total" {
-			for _, metric := range mf.GetMetric() {
-				totalCount += metric.GetCounter().GetValue()
+	require.Eventually(t, func() bool {
+		mfs, _ := registry.Gather()
+		var totalCount float64
+		for _, mf := range mfs {
+			if mf.GetName() == "database_observability_pg_errors_total" {
+				for _, metric := range mf.GetMetric() {
+					totalCount += metric.GetCounter().GetValue()
+				}
 			}
 		}
-	}
-	require.Equal(t, float64(1), totalCount, "log with non-UTC abbreviation timezone must be counted")
+		return totalCount == 1
+	}, 2*time.Second, 5*time.Millisecond, "log with non-UTC abbreviation timezone must be counted")
 }
 
 func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
@@ -746,18 +691,19 @@ func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
 
 	logLine := ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
 	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: logLine, Timestamp: time.Now()}}
-	time.Sleep(200 * time.Millisecond)
 
-	mfs, _ := registry.Gather()
-	var totalCount float64
-	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_errors_total" {
-			for _, metric := range mf.GetMetric() {
-				totalCount += metric.GetCounter().GetValue()
+	require.Eventually(t, func() bool {
+		mfs, _ := registry.Gather()
+		var totalCount float64
+		for _, mf := range mfs {
+			if mf.GetName() == "database_observability_pg_errors_total" {
+				for _, metric := range mf.GetMetric() {
+					totalCount += metric.GetCounter().GetValue()
+				}
 			}
 		}
-	}
-	require.Equal(t, float64(1), totalCount, "recent non-UTC log must be counted when log_timezone Location is supplied")
+		return totalCount == 1
+	}, 2*time.Second, 5*time.Millisecond, "recent non-UTC log must be counted when log_timezone Location is supplied")
 }
 
 func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
@@ -776,20 +722,14 @@ func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
 	require.NoError(t, err)
 	collector.logTimezone.Store(loc)
 
-	startTime := collector.startTime
-	err = collector.Start(context.Background())
-	require.NoError(t, err)
-	defer collector.Stop()
-
-	abs := startTime.Add(-1 * time.Hour)
+	abs := collector.startTime.Add(-1 * time.Hour)
 	inLoc := abs.In(loc)
 	abbrev, _ := inLoc.Zone()
 	ts1 := inLoc.Format("2006-01-02 15:04:05.000") + " " + abbrev
 	ts2 := inLoc.Add(-1*time.Second).Format("2006-01-02 15:04:05") + " " + abbrev
 
 	logLine := ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
-	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: logLine, Timestamp: time.Now()}}
-	time.Sleep(200 * time.Millisecond)
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: logLine}}))
 
 	mfs, _ := registry.Gather()
 	var totalCount float64
@@ -831,18 +771,19 @@ func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
 
 	logLine := ts1 + ":[local]:app-user@books_store:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
 	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: logLine, Timestamp: time.Now()}}
-	time.Sleep(200 * time.Millisecond)
 
-	mfs, _ := registry.Gather()
-	var totalCount float64
-	for _, mf := range mfs {
-		if mf.GetName() == "database_observability_pg_errors_total" {
-			for _, metric := range mf.GetMetric() {
-				totalCount += metric.GetCounter().GetValue()
+	require.Eventually(t, func() bool {
+		mfs, _ := registry.Gather()
+		var totalCount float64
+		for _, mf := range mfs {
+			if mf.GetName() == "database_observability_pg_errors_total" {
+				for _, metric := range mf.GetMetric() {
+					totalCount += metric.GetCounter().GetValue()
+				}
 			}
 		}
-	}
-	require.Equal(t, float64(1), totalCount, "stale/mismatched log_timezone must fall back to counting the log, not silently drop it")
+		return totalCount == 1
+	}, 2*time.Second, 5*time.Millisecond, "stale/mismatched log_timezone must fall back to counting the log, not silently drop it")
 }
 
 func TestLogsCollector_ExcludeDatabases(t *testing.T) {
@@ -858,22 +799,15 @@ func TestLogsCollector_ExcludeDatabases(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	startTime := collector.startTime
-	err = collector.Start(context.Background())
-	require.NoError(t, err)
-	defer collector.Stop()
-
-	ts := startTime.Add(10 * time.Second).UTC()
+	ts := collector.startTime.Add(10 * time.Second).UTC()
 	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 
 	excludedLog := ts1 + ":10.0.1.5(12345):app-user@excluded_db:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
 	allowedLog := ts1 + ":10.0.1.5(12345):app-user@allowed_db:[9113]:5:57014:" + ts2 + ":25/113:0:693c34cb.2399::psqlERROR:  canceling statement"
 
-	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: excludedLog, Timestamp: time.Now()}}
-	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: allowedLog, Timestamp: time.Now()}}
-
-	time.Sleep(200 * time.Millisecond)
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: excludedLog}}))
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: allowedLog}}))
 
 	mfs, _ := registry.Gather()
 	var totalCount float64
@@ -905,22 +839,15 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	startTime := collector.startTime
-	err = collector.Start(context.Background())
-	require.NoError(t, err)
-	defer collector.Stop()
-
-	ts := startTime.Add(10 * time.Second).UTC()
+	ts := collector.startTime.Add(10 * time.Second).UTC()
 	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
 	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
 
 	excludedLog := ts1 + ":10.0.1.5(12345):excluded_user@testdb:[9112]:4:57014:" + ts2 + ":25/112:0:693c34cb.2398::psqlERROR:  canceling statement"
 	allowedLog := ts1 + ":10.0.1.5(12345):allowed_user@testdb:[9113]:5:57014:" + ts2 + ":25/113:0:693c34cb.2399::psqlERROR:  canceling statement"
 
-	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: excludedLog, Timestamp: time.Now()}}
-	collector.Receiver().Chan() <- loki.Entry{Entry: push.Entry{Line: allowedLog, Timestamp: time.Now()}}
-
-	time.Sleep(200 * time.Millisecond)
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: excludedLog}}))
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: allowedLog}}))
 
 	mfs, _ := registry.Gather()
 	var totalCount float64
