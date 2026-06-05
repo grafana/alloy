@@ -108,6 +108,7 @@ func resolveModuleTarget(root string, dirs []string, target string) (string, str
 	if err != nil {
 		return "", "", fmt.Errorf("resolve target %q relative to module %q: %w", target, dir, err)
 	}
+	moduleTarget = "./" + filepath.ToSlash(moduleTarget)
 	return dir, moduleTarget, nil
 }
 
