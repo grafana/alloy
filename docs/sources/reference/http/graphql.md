@@ -19,14 +19,14 @@ You can use the GraphQL API to retrieve build metadata, readiness status, and co
 Before you begin, ensure you have the following:
 
 - A running {{< param "PRODUCT_NAME" >}} instance.
-- The `--feature.graphql.enabled` flag set to `true` when starting {{< param "PRODUCT_NAME" >}}.
+- The `--server.http.enable-graphql` flag set to `true` when starting {{< param "PRODUCT_NAME" >}}.
 
 ## Enable the GraphQL API
 
-The GraphQL API is disabled by default. To enable it, start {{< param "PRODUCT_NAME" >}} with the `--feature.graphql.enabled` flag:
+The GraphQL API is disabled by default. To enable it, start {{< param "PRODUCT_NAME" >}} with the `--server.http.enable-graphql` flag:
 
 ```sh
-alloy run --feature.graphql.enabled config.alloy
+alloy run --server.http.enable-graphql config.alloy
 ```
 
 After you enable the API, the `/graphql` endpoint becomes available on the {{< param "PRODUCT_NAME" >}} HTTP server.
@@ -35,10 +35,10 @@ By default, this is `http://localhost:12345/graphql`.
 ## GraphQL playground
 
 {{< param "PRODUCT_NAME" >}} includes an optional interactive GraphQL playground that you can use to explore the schema and run queries.
-To enable the playground, use the `--feature.graphql-playground.enabled` flag:
+To enable the playground, use the `--server.http.enable-graphql-playground` flag:
 
 ```sh
-alloy run --feature.graphql.enabled --feature.graphql-playground.enabled config.alloy
+alloy run --server.http.enable-graphql --server.http.enable-graphql-playground config.alloy
 ```
 
 After you enable the playground, it's available at `/graphql/playground` on the {{< param "PRODUCT_NAME" >}} HTTP server.
