@@ -120,6 +120,61 @@ depending on the nature of the reload error.
 	return cmd
 }
 
+type ExtensionModeParams struct {
+	// ConfigContents is a set of config file names and contents.
+	Configs map[string][]byte
+
+	// ModulePath is a value that will be used as "module_path" keyword value in Alloy config.
+	ModulePath string
+}
+
+// NewRunAsExtensionCommand returns a standalone cobra command to run Alloy inside OTel collector as an extension.
+//
+// In extension mode:
+//   - Certain features like remote config are disabled.
+//   - Config reload on NOHUP signal is disabled.
+//   - Alloy config contents passed directly, instead of file path cli argument.
+func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
+	r := newAlloyRun()
+	r.isExtension = true
+
+	cmd := &cobra.Command{
+		SilenceUsage: true,
+		Args:         cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			rp := runParams{
+				newReloadSignal: func() chan os.Signal {
+					// SIGHUP is reserved by otel collector. Thus, use nop.
+					return nil
+				},
+				newRemoteConfigService: func(_ *logging.Logger, reg prometheus.Registerer) (service.Service, error) {
+					// Otel uses OpAMP, thus remote config management is disabled.
+					return remotecfgservice.NewStub(reg), nil
+				},
+				loadConfig: func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
+					alloySource, err := alloy_runtime.ParseSources(params.Configs)
+					defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(params.Configs), r.clusterName)
+					if err != nil {
+						return params.Configs, fmt.Errorf("failed to parse config: %w", err)
+					}
+
+					httpSvc.SetSources(alloySource.SourceFiles())
+
+					if err := rt.LoadSource(alloySource, nil, params.ModulePath); err != nil {
+						return params.Configs, fmt.Errorf("error during the initial load: %w", err)
+					}
+
+					return params.Configs, nil
+				},
+			}
+
+			return r.run(cmd.Context(), cmd.Flags(), rp)
+		},
+	}
+
+	return cmd
+}
+
 func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	// Server flags
 	fset.
@@ -189,22 +244,7 @@ func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	addDeprecatedFlags(fset)
 }
 
-// ExtensionModeParams contains parameters for Alloy when running inside OTel extension.
-//
-// In extension mode:
-//   - Certain features like remote config are disabled.
-//   - Alloy config contents passed directly, instead of file path cli argument.
-type ExtensionModeParams struct {
-	// IsExtension identifies whetner Alloy is running inside OTel extension.
-	IsExtension bool
-
-	// ConfigContents contains config contents passed by extension.
-	ConfigContents []byte
-}
-
 type alloyRun struct {
-	extMode ExtensionModeParams
-
 	inMemoryAddr                 string
 	httpListenAddr               string
 	storagePath                  string
@@ -239,6 +279,9 @@ type alloyRun struct {
 	enableDirectFanout      bool
 	enableGraphQL           bool
 	enableGraphQLPlayground bool
+
+	// reserved for otel mode
+	isExtension bool
 }
 
 func (fr *alloyRun) checkExperimentalFlags() error {
@@ -590,7 +633,9 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	level.Info(l).Log("msg", `{^_^} Alloy is running`)
 
 	reloadSignal := params.newReloadSignal()
-	defer signal.Stop(reloadSignal)
+	if reloadSignal != nil {
+		defer signal.Stop(reloadSignal)
+	}
 
 	for {
 		select {
