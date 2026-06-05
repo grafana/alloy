@@ -60,7 +60,7 @@ func (tg *scrapePool) sync(groups []*targetgroup.Group) {
 	for _, group := range groups {
 		targets, err := targetsFromGroup(group, tg.config, allTargets)
 		if err != nil {
-			tg.logger.Info("creating targets failed", "err", err)
+			tg.logger.Error("creating targets failed", "err", err)
 			continue
 		}
 		if actives == nil {
