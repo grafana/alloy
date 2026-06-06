@@ -45,6 +45,23 @@ type Attributes struct {
 	Kubernetes KubernetesDecorator `alloy:"kubernetes,block"`
 	InstanceID InstanceIDConfig    `alloy:"instance_id,block,optional"`
 	Select     Selections          `alloy:"select,block,optional"`
+
+	RenameUnresolvedHosts         *string       `alloy:"rename_unresolved_hosts,attr,optional"`
+	RenameUnresolvedHostsOutgoing *string       `alloy:"rename_unresolved_hosts_outgoing,attr,optional"`
+	RenameUnresolvedHostsIncoming *string       `alloy:"rename_unresolved_hosts_incoming,attr,optional"`
+	MetricSpanNamesLimit          int           `alloy:"metric_span_names_limit,attr,optional"`
+	HostID                        HostIDConfig  `alloy:"host_id,block,optional"`
+	MetadataRetry                 MetadataRetry `alloy:"metadata_retry,block,optional"`
+}
+
+type HostIDConfig struct {
+	Override string `alloy:"override,attr,optional"`
+}
+
+type MetadataRetry struct {
+	Timeout       time.Duration `alloy:"timeout,attr,optional"`
+	StartInterval time.Duration `alloy:"start_interval,attr,optional"`
+	MaxInterval   time.Duration `alloy:"max_interval,attr,optional"`
 }
 
 type KubernetesDecorator struct {
@@ -55,6 +72,12 @@ type KubernetesDecorator struct {
 	DisableInformers      []string      `alloy:"disable_informers,attr,optional"`
 	MetaRestrictLocalNode bool          `alloy:"meta_restrict_local_node,attr,optional"`
 	MetaCacheAddress      string        `alloy:"meta_cache_address,attr,optional"`
+
+	KubeconfigPath           string              `alloy:"kubeconfig_path,attr,optional"`
+	ReconnectInitialInterval time.Duration       `alloy:"reconnect_initial_interval,attr,optional"`
+	DropExternal             bool                `alloy:"drop_external,attr,optional"`
+	ServiceNameTemplate      string              `alloy:"service_name_template,attr,optional"`
+	ResourceLabels           map[string][]string `alloy:"resource_labels,attr,optional"`
 }
 
 type InstanceIDConfig struct {
@@ -83,6 +106,8 @@ type Service struct {
 	OpenPorts      string            `alloy:"open_ports,attr,optional"`
 	Path           string            `alloy:"exe_path,attr,optional"`
 	CmdArgs        string            `alloy:"cmd_args,attr,optional"`
+	Languages      string            `alloy:"languages,attr,optional"`
+	PIDs           []uint32          `alloy:"target_pids,attr,optional"`
 	Kubernetes     KubernetesService `alloy:"kubernetes,block,optional"`
 	ContainersOnly bool              `alloy:"containers_only,attr,optional"`
 	ExportModes    []string          `alloy:"exports,attr,optional"`
@@ -115,16 +140,41 @@ type Discovery struct {
 
 	SkipGoSpecificTracers           bool `alloy:"skip_go_specific_tracers,attr,optional"`
 	ExcludeOTelInstrumentedServices bool `alloy:"exclude_otel_instrumented_services,attr,optional"`
+
+	PollInterval                               time.Duration `alloy:"poll_interval,attr,optional"`
+	MinProcessAge                              time.Duration `alloy:"min_process_age,attr,optional"`
+	DefaultOtlpGRPCPort                        int           `alloy:"default_otlp_grpc_port,attr,optional"`
+	ExcludeOTelInstrumentedServicesSpanMetrics bool          `alloy:"exclude_otel_instrumented_services_span_metrics,attr,optional"`
 }
 
 type Metrics struct {
-	Features                        []string `alloy:"features,attr,optional"`
-	Instrumentations                []string `alloy:"instrumentations,attr,optional"`
-	AllowServiceGraphSelfReferences bool     `alloy:"allow_service_graph_self_references,attr,optional"`
-	Network                         Network  `alloy:"network,block,optional"`
-	ExtraResourceLabels             []string `alloy:"extra_resource_labels,attr,optional"`
-	ExtraSpanResourceLabels         []string `alloy:"extra_span_resource_labels,attr,optional"`
-	NativeHistograms                bool     `alloy:"native_histograms,attr,optional"`
+	Features                        []string        `alloy:"features,attr,optional"`
+	Instrumentations                []string        `alloy:"instrumentations,attr,optional"`
+	AllowServiceGraphSelfReferences bool            `alloy:"allow_service_graph_self_references,attr,optional"`
+	Network                         Network         `alloy:"network,block,optional"`
+	ExtraResourceLabels             []string        `alloy:"extra_resource_labels,attr,optional"`
+	ExtraSpanResourceLabels         []string        `alloy:"extra_span_resource_labels,attr,optional"`
+	NativeHistograms                bool            `alloy:"native_histograms,attr,optional"`
+	ExemplarFilter                  string          `alloy:"exemplar_filter,attr,optional"`
+	TTL                             time.Duration   `alloy:"ttl,attr,optional"`
+	SpanServiceCacheSize            int             `alloy:"span_service_cache_size,attr,optional"`
+	NativeHistogram                 NativeHistogram `alloy:"native_histogram,block,optional"`
+	Buckets                         Buckets         `alloy:"buckets,block,optional"`
+}
+
+type NativeHistogram struct {
+	BucketFactor     float64       `alloy:"bucket_factor,attr,optional"`
+	MaxBucketNumber  uint32        `alloy:"max_bucket_number,attr,optional"`
+	MinResetDuration time.Duration `alloy:"min_reset_duration,attr,optional"`
+}
+
+type Buckets struct {
+	DurationHistogram            []float64 `alloy:"duration_histogram,attr,optional"`
+	RequestSizeHistogram         []float64 `alloy:"request_size_histogram,attr,optional"`
+	ResponseSizeHistogram        []float64 `alloy:"response_size_histogram,attr,optional"`
+	GenAITokenUsageHistogram     []float64 `alloy:"gen_ai_token_usage_histogram,attr,optional"`
+	GenAIClientDurationHistogram []float64 `alloy:"gen_ai_client_duration_histogram,attr,optional"`
+	StatTCPRttHistogram          []float64 `alloy:"stat_tcp_rtt_histogram,attr,optional"`
 }
 
 type Traces struct {
@@ -148,18 +198,40 @@ type Network struct {
 	Direction          string        `alloy:"direction,attr,optional"`
 	Sampling           int           `alloy:"sampling,attr,optional"`
 	CIDRs              []string      `alloy:"cidrs,attr,optional"`
+	Deduper            string        `alloy:"deduper,attr,optional"`
+	DeduperFCTTL       time.Duration `alloy:"deduper_fc_ttl,attr,optional"`
+	GuessPorts         string        `alloy:"guess_ports,attr,optional"`
+	ListenInterfaces   string        `alloy:"listen_interfaces,attr,optional"`
+	ListenPollPeriod   time.Duration `alloy:"listen_poll_period,attr,optional"`
+	PrintFlows         bool          `alloy:"print_flows,attr,optional"`
+	GeoIP              GeoIP         `alloy:"geo_ip,block,optional"`
+	ReverseDNS         ReverseDNS    `alloy:"reverse_dns,block,optional"`
 }
 
 type EBPF struct {
-	WakeupLen           int               `alloy:"wakeup_len,attr,optional"`
-	TrackRequestHeaders bool              `alloy:"track_request_headers,attr,optional"`
-	HTTPRequestTimeout  time.Duration     `alloy:"http_request_timeout,attr,optional"`
-	ContextPropagation  string            `alloy:"context_propagation,attr,optional"`
-	HighRequestVolume   bool              `alloy:"high_request_volume,attr,optional"`
-	HeuristicSQLDetect  bool              `alloy:"heuristic_sql_detect,attr,optional"`
-	BpfDebug            bool              `alloy:"bpf_debug,attr,optional"`
-	ProtocolDebug       bool              `alloy:"protocol_debug_print,attr,optional"`
-	PayloadExtraction   PayloadExtraction `alloy:"payload_extraction,block,optional"`
+	WakeupLen             int               `alloy:"wakeup_len,attr,optional"`
+	TrackRequestHeaders   bool              `alloy:"track_request_headers,attr,optional"`
+	HTTPRequestTimeout    time.Duration     `alloy:"http_request_timeout,attr,optional"`
+	ContextPropagation    string            `alloy:"context_propagation,attr,optional"`
+	HighRequestVolume     bool              `alloy:"high_request_volume,attr,optional"`
+	HeuristicSQLDetect    bool              `alloy:"heuristic_sql_detect,attr,optional"`
+	BpfDebug              bool              `alloy:"bpf_debug,attr,optional"`
+	ProtocolDebug         bool              `alloy:"protocol_debug_print,attr,optional"`
+	PayloadExtraction     PayloadExtraction `alloy:"payload_extraction,block,optional"`
+	InstrumentCuda        string            `alloy:"instrument_cuda,attr,optional"`
+	TrafficControlBackend string            `alloy:"traffic_control_backend,attr,optional"`
+	MaxTransactionTime    time.Duration     `alloy:"max_transaction_time,attr,optional"`
+	DNSRequestTimeout     time.Duration     `alloy:"dns_request_timeout,attr,optional"`
+	BufferSizes           BufferSizes       `alloy:"buffer_sizes,block,optional"`
+}
+
+type BufferSizes struct {
+	HTTP     uint32 `alloy:"http,attr,optional"`
+	MySQL    uint32 `alloy:"mysql,attr,optional"`
+	Kafka    uint32 `alloy:"kafka,attr,optional"`
+	Postgres uint32 `alloy:"postgres,attr,optional"`
+	MSSQL    uint32 `alloy:"mssql,attr,optional"`
+	TCP      uint32 `alloy:"tcp,attr,optional"`
 }
 
 type PayloadExtraction struct {
@@ -167,11 +239,65 @@ type PayloadExtraction struct {
 }
 
 type HTTPPayloadExtraction struct {
-	OpenAI OpenAIPayloadExtraction `alloy:"openai,block,optional"`
+	GraphQL       ProtocolToggle `alloy:"graphql,block,optional"`
+	Elasticsearch ProtocolToggle `alloy:"elasticsearch,block,optional"`
+	AWS           ProtocolToggle `alloy:"aws,block,optional"`
+	JSONRPC       ProtocolToggle `alloy:"jsonrpc,block,optional"`
+	SQLPP         SQLPP          `alloy:"sqlpp,block,optional"`
+	GenAI         GenAI          `alloy:"genai,block,optional"`
+	Enrichment    Enrichment     `alloy:"enrichment,block,optional"`
 }
 
-type OpenAIPayloadExtraction struct {
+type ProtocolToggle struct {
 	Enabled bool `alloy:"enabled,attr,optional"`
+}
+
+type SQLPP struct {
+	Enabled          bool     `alloy:"enabled,attr,optional"`
+	EndpointPatterns []string `alloy:"endpoint_patterns,attr,optional"`
+}
+
+type GenAI struct {
+	OpenAI    ProtocolToggle `alloy:"openai,block,optional"`
+	Anthropic ProtocolToggle `alloy:"anthropic,block,optional"`
+	Gemini    ProtocolToggle `alloy:"gemini,block,optional"`
+	Qwen      ProtocolToggle `alloy:"qwen,block,optional"`
+	Bedrock   ProtocolToggle `alloy:"bedrock,block,optional"`
+	MCP       ProtocolToggle `alloy:"mcp,block,optional"`
+	Embedding ProtocolToggle `alloy:"embedding,block,optional"`
+	Rerank    ProtocolToggle `alloy:"rerank,block,optional"`
+	Retrieval ProtocolToggle `alloy:"retrieval,block,optional"`
+}
+
+type Enrichment struct {
+	Enabled bool             `alloy:"enabled,attr,optional"`
+	Policy  EnrichmentPolicy `alloy:"policy,block,optional"`
+	Rules   []EnrichmentRule `alloy:"rule,block,optional"`
+}
+
+type EnrichmentPolicy struct {
+	DefaultAction     EnrichmentDefaultAction `alloy:"default_action,block,optional"`
+	ObfuscationString string                  `alloy:"obfuscation_string,attr,optional"`
+}
+
+type EnrichmentDefaultAction struct {
+	Headers string `alloy:"headers,attr,optional"`
+	Body    string `alloy:"body,attr,optional"`
+}
+
+type EnrichmentRule struct {
+	Action string          `alloy:"action,attr,optional"`
+	Type   string          `alloy:"type,attr,optional"`
+	Scope  string          `alloy:"scope,attr,optional"`
+	Match  EnrichmentMatch `alloy:"match,block,optional"`
+}
+
+type EnrichmentMatch struct {
+	Patterns             []string `alloy:"patterns,attr,optional"`
+	CaseSensitive        bool     `alloy:"case_sensitive,attr,optional"`
+	ObfuscationJSONPaths []string `alloy:"obfuscation_json_paths,attr,optional"`
+	URLPathPatterns      []string `alloy:"url_path_patterns,attr,optional"`
+	Methods              []string `alloy:"methods,attr,optional"`
 }
 
 type Filters struct {
@@ -222,17 +348,39 @@ type InjectorSDKResource struct {
 }
 
 type Stats struct {
-	AgentIP      string   `alloy:"agent_ip,attr,optional"`
-	AgentIPIface string   `alloy:"agent_ip_iface,attr,optional"`
-	AgentIPType  string   `alloy:"agent_ip_type,attr,optional"`
-	CIDRs        []string `alloy:"cidrs,attr,optional"`
-	Print        bool     `alloy:"print_stats,attr,optional"`
+	AgentIP      string     `alloy:"agent_ip,attr,optional"`
+	AgentIPIface string     `alloy:"agent_ip_iface,attr,optional"`
+	AgentIPType  string     `alloy:"agent_ip_type,attr,optional"`
+	CIDRs        []string   `alloy:"cidrs,attr,optional"`
+	Print        bool       `alloy:"print_stats,attr,optional"`
+	GeoIP        GeoIP      `alloy:"geo_ip,block,optional"`
+	ReverseDNS   ReverseDNS `alloy:"reverse_dns,block,optional"`
+}
+
+type GeoIP struct {
+	IPInfoPath         string        `alloy:"ipinfo_path,attr,optional"`
+	MaxMindCountryPath string        `alloy:"maxmind_country_path,attr,optional"`
+	MaxMindASNPath     string        `alloy:"maxmind_asn_path,attr,optional"`
+	CacheLen           int           `alloy:"cache_len,attr,optional"`
+	CacheTTL           time.Duration `alloy:"cache_ttl,attr,optional"`
+}
+
+type ReverseDNS struct {
+	Type     string        `alloy:"type,attr,optional"`
+	CacheLen int           `alloy:"cache_len,attr,optional"`
+	CacheTTL time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
 type AttributeFamilies []AttributeFamily
 
 type AttributeFamily struct {
-	Attr     string `alloy:"attr,attr"`
-	Match    string `alloy:"match,attr,optional"`
-	NotMatch string `alloy:"not_match,attr,optional"`
+	Attr          string `alloy:"attr,attr"`
+	Match         string `alloy:"match,attr,optional"`
+	NotMatch      string `alloy:"not_match,attr,optional"`
+	GreaterThan   *int   `alloy:"greater_than,attr,optional"`
+	GreaterEquals *int   `alloy:"greater_equals,attr,optional"`
+	Equals        *int   `alloy:"equals,attr,optional"`
+	NotEquals     *int   `alloy:"not_equals,attr,optional"`
+	LessEquals    *int   `alloy:"less_equals,attr,optional"`
+	LessThan      *int   `alloy:"less_than,attr,optional"`
 }

@@ -136,8 +136,10 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			protocol_debug_print = false
 			payload_extraction {
 				http {
-					openai {
-						enabled = true
+					genai {
+						openai {
+							enabled = true
+						}
 					}
 				}
 			}
@@ -931,8 +933,8 @@ func TestConvert_EBPF(t *testing.T) {
 		ProtocolDebug:       true,
 		PayloadExtraction: PayloadExtraction{
 			HTTP: HTTPPayloadExtraction{
-				OpenAI: OpenAIPayloadExtraction{
-					Enabled: true,
+				GenAI: GenAI{
+					OpenAI: ProtocolToggle{Enabled: true},
 				},
 			},
 		},
@@ -998,6 +1000,24 @@ func TestConvert_Filters(t *testing.T) {
 
 	require.Equal(t, expectedConfig, config)
 }
+
+func TestConvert_Filters_NumericOps(t *testing.T) {
+	gt, eq := 200, 404
+	args := Filters{
+		Application: AttributeFamilies{
+			{Attr: "http_response_status_code", GreaterThan: &gt, Equals: &eq},
+		},
+		Network: AttributeFamilies{
+			{Attr: "dst_port", LessThan: intptr(8080)},
+		},
+	}
+	cfg := args.Convert()
+	require.Equal(t, &gt, cfg.Application["http_response_status_code"].GreaterThan)
+	require.Equal(t, &eq, cfg.Application["http_response_status_code"].Equals)
+	require.Equal(t, 8080, *cfg.Network["dst_port"].LessThan)
+}
+
+func intptr(i int) *int { return &i }
 
 func TestConvert_InjectorWebhook(t *testing.T) {
 	args := InjectorWebhook{
@@ -1947,4 +1967,335 @@ func TestSelectorsFromInstrument(t *testing.T) {
 	t.Run("nil criteria return nil", func(t *testing.T) {
 		require.Nil(t, selectorsFromInstrument(nil))
 	})
+}
+
+func strptr(s string) *string { return &s }
+
+func TestConvert_EBPF_NewScalars(t *testing.T) {
+	args := EBPF{
+		InstrumentCuda:        "on",
+		TrafficControlBackend: "tcx",
+		MaxTransactionTime:    5 * time.Second,
+		DNSRequestTimeout:     time.Second,
+		BufferSizes:           BufferSizes{HTTP: 1024, MySQL: 512},
+	}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, obiCfg.CudaModeOn, cfg.InstrumentCuda)
+	require.Equal(t, obiCfg.TCBackendTCX, cfg.TCBackend)
+	require.Equal(t, 5*time.Second, cfg.MaxTransactionTime)
+	require.Equal(t, time.Second, cfg.DNSRequestTimeout)
+	require.Equal(t, uint32(1024), cfg.BufferSizes.HTTP)
+	require.Equal(t, uint32(512), cfg.BufferSizes.MySQL)
+}
+
+func TestValidate_EBPF_Enums(t *testing.T) {
+	bad := Arguments{EBPF: EBPF{InstrumentCuda: "bogus"}}
+	require.ErrorContains(t, bad.Validate(), "ebpf.instrument_cuda")
+
+	badTC := Arguments{EBPF: EBPF{TrafficControlBackend: "bogus"}}
+	require.ErrorContains(t, badTC.Validate(), "ebpf.traffic_control_backend")
+
+	badBuf := Arguments{EBPF: EBPF{BufferSizes: BufferSizes{HTTP: 70000}}}
+	require.ErrorContains(t, badBuf.Validate(), "ebpf.buffer_sizes")
+}
+
+func TestConvert_Attributes_NewScalars(t *testing.T) {
+	args := Attributes{
+		Kubernetes:                    KubernetesDecorator{Enable: "true"},
+		RenameUnresolvedHosts:         strptr("unknown"),
+		RenameUnresolvedHostsOutgoing: strptr("out"),
+		RenameUnresolvedHostsIncoming: strptr("in"),
+		MetricSpanNamesLimit:          50,
+		HostID:                        HostIDConfig{Override: "my-host"},
+		MetadataRetry: MetadataRetry{
+			Timeout:       10 * time.Second,
+			StartInterval: time.Second,
+			MaxInterval:   2 * time.Second,
+		},
+	}
+	cfg := args.Convert()
+	require.Equal(t, "unknown", cfg.RenameUnresolvedHosts)
+	require.Equal(t, "out", cfg.RenameUnresolvedHostsOutgoing)
+	require.Equal(t, "in", cfg.RenameUnresolvedHostsIncoming)
+	require.Equal(t, 50, cfg.MetricSpanNameAggregationLimit)
+	require.Equal(t, "my-host", cfg.HostID.Override)
+	require.Equal(t, 10*time.Second, cfg.MetadataRetry.Timeout)
+	require.Equal(t, time.Second, cfg.MetadataRetry.StartInterval)
+	require.Equal(t, 2*time.Second, cfg.MetadataRetry.MaxInterval)
+}
+
+func TestConvert_Attributes_RenameUnresolvedHostsDisable(t *testing.T) {
+	empty := ""
+	args := Attributes{
+		Kubernetes:            KubernetesDecorator{Enable: "true"},
+		RenameUnresolvedHosts: &empty,
+	}
+	cfg := args.Convert()
+	require.Equal(t, "", cfg.RenameUnresolvedHosts)
+}
+
+func TestConvert_Attributes_RenameUnresolvedHostsDefault(t *testing.T) {
+	args := Attributes{
+		Kubernetes: KubernetesDecorator{Enable: "true"},
+	}
+	cfg := args.Convert()
+	require.Equal(t, beyla.DefaultConfig().Attributes.RenameUnresolvedHosts, cfg.RenameUnresolvedHosts)
+	require.NotEmpty(t, cfg.RenameUnresolvedHosts)
+}
+
+func TestConvert_Attributes_Kubernetes(t *testing.T) {
+	args := Attributes{
+		Kubernetes: KubernetesDecorator{
+			Enable:                   "true",
+			KubeconfigPath:           "/etc/kube/config",
+			ReconnectInitialInterval: 3 * time.Second,
+			DropExternal:             true,
+			ServiceNameTemplate:      "{{.Namespace}}/{{.Name}}",
+			ResourceLabels:           map[string][]string{"service.name": {"app.kubernetes.io/name"}},
+		},
+	}
+	cfg := args.Convert()
+	require.Equal(t, "/etc/kube/config", cfg.Kubernetes.KubeconfigPath)
+	require.Equal(t, 3*time.Second, cfg.Kubernetes.ReconnectInitialInterval)
+	require.True(t, cfg.Kubernetes.DropExternal)
+	require.Equal(t, "{{.Namespace}}/{{.Name}}", cfg.Kubernetes.ServiceNameTemplate)
+	require.Equal(t, map[string][]string{"service.name": {"app.kubernetes.io/name"}}, map[string][]string(cfg.Kubernetes.ResourceLabels))
+}
+
+func TestConvert_Discovery_NewScalars(t *testing.T) {
+	args := Discovery{
+		PollInterval:        5 * time.Second,
+		MinProcessAge:       2 * time.Second,
+		DefaultOtlpGRPCPort: 4319,
+		ExcludeOTelInstrumentedServicesSpanMetrics: true,
+	}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, 5*time.Second, cfg.PollInterval)
+	require.Equal(t, 2*time.Second, cfg.MinProcessAge)
+	require.Equal(t, 4319, cfg.DefaultOtlpGRPCPort)
+	require.True(t, cfg.ExcludeOTelInstrumentedServicesSpanMetrics)
+}
+
+func TestConvert_PayloadExtraction_Protocols(t *testing.T) {
+	args := EBPF{
+		PayloadExtraction: PayloadExtraction{
+			HTTP: HTTPPayloadExtraction{
+				GraphQL:       ProtocolToggle{Enabled: true},
+				Elasticsearch: ProtocolToggle{Enabled: true},
+				AWS:           ProtocolToggle{Enabled: true},
+				JSONRPC:       ProtocolToggle{Enabled: true},
+				SQLPP:         SQLPP{Enabled: true, EndpointPatterns: []string{"/query"}},
+				GenAI: GenAI{
+					OpenAI:    ProtocolToggle{Enabled: true},
+					Anthropic: ProtocolToggle{Enabled: true},
+					Gemini:    ProtocolToggle{Enabled: true},
+					Qwen:      ProtocolToggle{Enabled: true},
+					Bedrock:   ProtocolToggle{Enabled: true},
+					MCP:       ProtocolToggle{Enabled: true},
+					Embedding: ProtocolToggle{Enabled: true},
+					Rerank:    ProtocolToggle{Enabled: true},
+					Retrieval: ProtocolToggle{Enabled: true},
+				},
+			},
+		},
+	}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	h := cfg.PayloadExtraction.HTTP
+	require.True(t, h.GraphQL.Enabled)
+	require.True(t, h.Elasticsearch.Enabled)
+	require.True(t, h.AWS.Enabled)
+	require.True(t, h.JSONRPC.Enabled)
+	require.True(t, h.SQLPP.Enabled)
+	require.Equal(t, []string{"/query"}, h.SQLPP.EndpointPatterns)
+	require.True(t, h.GenAI.OpenAI.Enabled)
+	require.True(t, h.GenAI.Anthropic.Enabled)
+	require.True(t, h.GenAI.Gemini.Enabled)
+	require.True(t, h.GenAI.Qwen.Enabled)
+	require.True(t, h.GenAI.Bedrock.Enabled)
+	require.True(t, h.GenAI.MCP.Enabled)
+	require.True(t, h.GenAI.Embedding.Enabled)
+	require.True(t, h.GenAI.Rerank.Enabled)
+	require.True(t, h.GenAI.Retrieval.Enabled)
+}
+
+func TestConvert_Enrichment(t *testing.T) {
+	args := Enrichment{
+		Enabled: true,
+		Policy: EnrichmentPolicy{
+			DefaultAction:     EnrichmentDefaultAction{Headers: "exclude", Body: "exclude"},
+			ObfuscationString: "***",
+		},
+		Rules: []EnrichmentRule{
+			{
+				Action: "obfuscate", Type: "headers", Scope: "request",
+				Match: EnrichmentMatch{
+					Patterns:        []string{"authorization", "x-*"},
+					CaseSensitive:   false,
+					URLPathPatterns: []string{"/api/*"},
+					Methods:         []string{"POST"},
+				},
+			},
+			{
+				Action: "obfuscate", Type: "body", Scope: "all",
+				Match: EnrichmentMatch{ObfuscationJSONPaths: []string{"$.password"}},
+			},
+		},
+	}
+	got, err := args.Convert()
+	require.NoError(t, err)
+	require.True(t, got.Enabled)
+	require.Equal(t, obiCfg.HTTPParsingActionExclude, got.Policy.DefaultAction.Headers)
+	require.Equal(t, obiCfg.HTTPParsingActionExclude, got.Policy.DefaultAction.Body)
+	require.Equal(t, "***", got.Policy.ObfuscationString)
+	require.Len(t, got.Rules, 2)
+	require.Equal(t, obiCfg.HTTPParsingActionObfuscate, got.Rules[0].Action)
+	require.Equal(t, obiCfg.HTTPParsingRuleTypeHeaders, got.Rules[0].Type)
+	require.Equal(t, obiCfg.HTTPParsingScopeRequest, got.Rules[0].Scope)
+	require.Len(t, got.Rules[0].Match.Patterns, 2)
+	require.True(t, got.Rules[0].Match.Patterns[0].IsSet())
+	require.Len(t, got.Rules[0].Match.URLPathPatterns, 1)
+	require.Equal(t, []obiCfg.HTTPMethod{obiCfg.HTTPMethodPOST}, got.Rules[0].Match.Methods)
+	require.Equal(t, []string{"$.password"}, jsonPathsToStrings(got.Rules[1].Match.ObfuscationJSONPaths))
+}
+
+func jsonPathsToStrings(in []obiCfg.JSONPathExpr) []string {
+	out := make([]string, len(in))
+	for i := range in {
+		out[i] = in[i].String()
+	}
+	return out
+}
+
+func TestConvert_Enrichment_InvalidGlob(t *testing.T) {
+	args := Enrichment{
+		Enabled: true,
+		Rules: []EnrichmentRule{
+			{Action: "obfuscate", Type: "headers", Scope: "all",
+				Match: EnrichmentMatch{Patterns: []string{"[invalid"}}},
+		},
+	}
+	_, err := args.Convert()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "patterns")
+}
+
+func TestValidate_Enrichment_Enums(t *testing.T) {
+	bad := Arguments{EBPF: EBPF{PayloadExtraction: PayloadExtraction{HTTP: HTTPPayloadExtraction{
+		Enrichment: Enrichment{Rules: []EnrichmentRule{{Action: "bogus", Type: "headers", Scope: "all"}}},
+	}}}}
+	require.ErrorContains(t, bad.Validate(), "enrichment.rule[0].action")
+}
+
+func TestConvert_Metrics_Tuning(t *testing.T) {
+	args := Metrics{
+		ExemplarFilter:       "trace_based",
+		TTL:                  5 * time.Minute,
+		SpanServiceCacheSize: 1000,
+		NativeHistogram: NativeHistogram{
+			BucketFactor:     1.2,
+			MaxBucketNumber:  120,
+			MinResetDuration: 30 * time.Minute,
+		},
+		Buckets: Buckets{
+			DurationHistogram:    []float64{0, 1, 2},
+			RequestSizeHistogram: []float64{0, 100},
+		},
+	}
+	cfg := args.Convert()
+	require.Equal(t, "trace_based", cfg.ExemplarFilter)
+	require.Equal(t, 5*time.Minute, cfg.TTL)
+	require.Equal(t, 1000, cfg.SpanMetricsServiceCacheSize)
+	require.Equal(t, 1.2, cfg.NativeHistogram.BucketFactor)
+	require.Equal(t, uint32(120), cfg.NativeHistogram.MaxBucketNumber)
+	require.Equal(t, 30*time.Minute, cfg.NativeHistogram.MinResetDuration)
+	require.Equal(t, []float64{0, 1, 2}, cfg.Buckets.DurationHistogram)
+	require.Equal(t, []float64{0, 100}, cfg.Buckets.RequestSizeHistogram)
+}
+
+func TestValidate_Metrics_ExemplarFilter(t *testing.T) {
+	bad := Arguments{Metrics: Metrics{ExemplarFilter: "nope"}}
+	require.ErrorContains(t, bad.Validate(), "metrics.exemplar_filter")
+}
+
+func TestConvert_GeoIP_ReverseDNS(t *testing.T) {
+	geo := GeoIP{
+		IPInfoPath:         "/data/ipinfo.mmdb",
+		MaxMindCountryPath: "/data/country.mmdb",
+		MaxMindASNPath:     "/data/asn.mmdb",
+		CacheLen:           1000,
+		CacheTTL:           time.Hour,
+	}
+	nc := beyla.DefaultConfig().NetworkFlows
+	geo.applyToNetwork(&nc)
+	require.Equal(t, "/data/ipinfo.mmdb", nc.GeoIP.IPInfo.Path)
+	require.Equal(t, "/data/country.mmdb", nc.GeoIP.MaxMindInfo.CountryPath)
+	require.Equal(t, "/data/asn.mmdb", nc.GeoIP.MaxMindInfo.ASNPath)
+	require.Equal(t, 1000, nc.GeoIP.CacheLen)
+	require.Equal(t, time.Hour, nc.GeoIP.CacheTTL)
+
+	rdnsArgs := ReverseDNS{Type: "local", CacheLen: 256, CacheTTL: time.Minute}
+	rdnsArgs.applyToNetwork(&nc)
+	require.Equal(t, "local", nc.ReverseDNS.Type)
+	require.Equal(t, 256, nc.ReverseDNS.CacheLen)
+	require.Equal(t, time.Minute, nc.ReverseDNS.CacheTTL)
+}
+
+func TestConvert_Network_NewOptions(t *testing.T) {
+	args := Network{
+		Deduper:          "first_come",
+		DeduperFCTTL:     30 * time.Second,
+		GuessPorts:       "ordinal",
+		ListenInterfaces: "poll",
+		ListenPollPeriod: 10 * time.Second,
+		PrintFlows:       true,
+		GeoIP:            GeoIP{CacheLen: 10},
+		ReverseDNS:       ReverseDNS{Type: "ebpf"},
+	}
+	cfg := args.Convert()
+	require.Equal(t, "first_come", string(cfg.Deduper))
+	require.Equal(t, 30*time.Second, cfg.DeduperFCTTL)
+	require.Equal(t, "ordinal", string(cfg.GuessPorts))
+	require.Equal(t, "poll", string(cfg.ListenInterfaces))
+	require.Equal(t, 10*time.Second, cfg.ListenPollPeriod)
+	require.True(t, cfg.Print)
+	require.Equal(t, 10, cfg.GeoIP.CacheLen)
+	require.Equal(t, "ebpf", string(cfg.ReverseDNS.Type))
+}
+
+func TestConvert_Stats_Enrichment(t *testing.T) {
+	args := Stats{GeoIP: GeoIP{CacheLen: 5}, ReverseDNS: ReverseDNS{Type: "local"}}
+	cfg := args.Convert()
+	require.Equal(t, 5, cfg.GeoIP.CacheLen)
+	require.Equal(t, "local", string(cfg.ReverseDNS.Type))
+}
+
+func TestValidate_Network_Enums(t *testing.T) {
+	a1 := Arguments{Metrics: Metrics{Network: Network{Deduper: "bogus"}}}
+	require.ErrorContains(t, a1.Validate(), "metrics.network.deduper")
+
+	a2 := Arguments{Metrics: Metrics{Network: Network{GuessPorts: "bogus"}}}
+	require.ErrorContains(t, a2.Validate(), "metrics.network.guess_ports")
+
+	a3 := Arguments{Metrics: Metrics{Network: Network{ListenInterfaces: "bogus"}}}
+	require.ErrorContains(t, a3.Validate(), "metrics.network.listen_interfaces")
+
+	a4 := Arguments{Metrics: Metrics{Network: Network{ReverseDNS: ReverseDNS{Type: "bogus"}}}}
+	require.ErrorContains(t, a4.Validate(), "metrics.network.reverse_dns.type")
+
+	a5 := Arguments{Stats: Stats{ReverseDNS: ReverseDNS{Type: "bogus"}}}
+	require.ErrorContains(t, a5.Validate(), "stats.reverse_dns.type")
+}
+
+func TestConvertGlob_LanguagesAndPIDs(t *testing.T) {
+	svcs := Services{
+		{Name: "app", Languages: "java", PIDs: []uint32{100, 200}},
+	}
+	crit, err := svcs.ConvertGlob()
+	require.NoError(t, err)
+	require.Len(t, crit, 1)
+	require.True(t, crit[0].Languages.IsSet())
+	require.Equal(t, []uint32{100, 200}, crit[0].PIDs)
 }
