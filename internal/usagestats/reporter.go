@@ -2,14 +2,14 @@ package usagestats
 
 import (
 	"context"
+	"log/slog"
 	"math"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/multierror"
+
+	"github.com/grafana/alloy/internal/alloyseed"
 )
 
 var (
@@ -19,14 +19,14 @@ var (
 
 // Reporter holds the Alloy seed information and sends report of usage
 type Reporter struct {
-	logger log.Logger
+	logger *slog.Logger
 
 	seed       *alloyseed.Seed
 	lastReport time.Time
 }
 
 // NewReporter creates a Reporter that will send periodically reports to grafana.com
-func NewReporter(logger log.Logger) (*Reporter, error) {
+func NewReporter(logger *slog.Logger) (*Reporter, error) {
 	r := &Reporter{
 		logger: logger,
 	}
@@ -35,7 +35,7 @@ func NewReporter(logger log.Logger) (*Reporter, error) {
 
 // Start inits the reporter seed and start sending report for every interval
 func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]any) error {
-	level.Info(rep.logger).Log("msg", "running usage stats reporter")
+	rep.logger.Info("running usage stats reporter")
 	rep.seed = alloyseed.Get()
 
 	// check every minute if we should report.
@@ -55,9 +55,9 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]an
 			if !next.Equal(now) && now.Sub(rep.lastReport) < reportInterval {
 				continue
 			}
-			level.Info(rep.logger).Log("msg", "reporting Alloy stats", "date", time.Now())
+			rep.logger.Info("reporting Alloy stats", "date", time.Now())
 			if err := rep.reportUsage(ctx, next, metricsFunc()); err != nil {
-				level.Info(rep.logger).Log("msg", "failed to report usage", "err", err)
+				rep.logger.Warn("failed to report usage", "err", err)
 				continue
 			}
 			rep.lastReport = next
@@ -78,12 +78,12 @@ func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metric
 	var errs multierror.MultiError
 	for backoff.Ongoing() {
 		if err := sendReport(ctx, rep.seed, interval, metrics); err != nil {
-			level.Info(rep.logger).Log("msg", "failed to send usage report", "retries", backoff.NumRetries(), "err", err)
+			rep.logger.Debug("failed to send usage report", "retries", backoff.NumRetries(), "err", err)
 			errs.Add(err)
 			backoff.Wait()
 			continue
 		}
-		level.Info(rep.logger).Log("msg", "usage report sent with success")
+		rep.logger.Info("msg", "usage report sent with success")
 		return nil
 	}
 	return errs.Err()
