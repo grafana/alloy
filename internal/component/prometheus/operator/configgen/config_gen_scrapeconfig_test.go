@@ -78,7 +78,7 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
@@ -154,7 +154,7 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 					},
 				},
 				ConvertClassicHistogramsToNHCB: ptr.To(false),
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
@@ -198,7 +198,7 @@ func TestGenerateStaticScrapeConfigConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "/metrics",
 				Scheme:                         "https",
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,

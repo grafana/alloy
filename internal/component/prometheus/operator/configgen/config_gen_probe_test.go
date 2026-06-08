@@ -94,7 +94,7 @@ func TestGenerateProbeConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "",
 				Scheme:                         "http",
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
@@ -184,7 +184,7 @@ func TestGenerateProbeConfig(t *testing.T) {
 				MetricsPath:                    "/probe",
 				Scheme:                         "http",
 				Params:                         url.Values{"module": []string{"http_2xx"}},
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
@@ -287,7 +287,7 @@ func TestGenerateProbeConfig(t *testing.T) {
 				MetricsPath:                    "/probe",
 				Scheme:                         "http",
 				Params:                         url.Values{"module": []string{"http_2xx"}},
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,

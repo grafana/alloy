@@ -93,7 +93,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
@@ -171,7 +171,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
@@ -249,7 +249,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
@@ -327,7 +327,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,
@@ -533,7 +533,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				ScrapeNativeHistograms:         falsePtr,
 				AlwaysScrapeClassicHistograms:  falsePtr,
 				ConvertClassicHistogramsToNHCB: falsePtr,
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 			},
 		},
@@ -603,7 +603,7 @@ func TestGenerateServiceMonitorConfig(t *testing.T) {
 				EnableCompression:              true,
 				MetricsPath:                    "/metrics",
 				Scheme:                         "http",
-				MetricNameValidationScheme:     model.LegacyValidation,
+				MetricNameValidationScheme:     model.UTF8Validation,
 				MetricNameEscapingScheme:       model.UnderscoreEscaping.String(),
 				HTTPClientConfig: commonConfig.HTTPClientConfig{
 					FollowRedirects: true,

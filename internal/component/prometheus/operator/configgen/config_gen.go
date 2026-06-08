@@ -238,9 +238,12 @@ func (r *relabeler) add(cfgs ...*relabel.Config) {
 		if cfg.Replacement == "" {
 			cfg.Replacement = relabel.DefaultRelabelConfig.Replacement
 		}
-		// Set NameValidationScheme to LegacyValidation to maintain compatibility
+		// Set NameValidationScheme to UTF8Validation to match the Prometheus
+		// default. LegacyValidation rejects UTF8 metric names which causes
+		// ServiceMonitor reconciliation to fail when scraped metrics contain
+		// UTF8 characters.
 		if cfg.NameValidationScheme == model.UnsetValidation {
-			cfg.NameValidationScheme = model.LegacyValidation
+			cfg.NameValidationScheme = model.UTF8Validation
 		}
 		r.configs = append(r.configs, cfg)
 	}
