@@ -72,5 +72,5 @@ declare "self_collect" {
 }
 ```
 
-[custom component]: ../../../get-started/custom_components/
+[custom component]: ../../../get-started/components/custom-components/
 [declare]: ../../config-blocks/declare/
