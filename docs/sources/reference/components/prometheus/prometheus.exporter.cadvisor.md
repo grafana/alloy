@@ -115,6 +115,32 @@ prometheus.exporter.cadvisor "<LABEL>" {
 }
 ```
 
+When exporting to Mimir then make sure to set max_label_names_per_series higher than the default, otherwise Mimir will not except the metrics.
+
+```yaml
+limits:
+  max_label_names_per_series: 100
+```
+
+## Docker Configuration
+
+To properly collect container metrics when using Alloy in docker compose, the Alloy container must be run with specific volume mounts and privileges. Here's the required Docker Compose configuration:
+
+```yaml
+services:
+  alloy:
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+      - /etc/machine-id:/etc/machine-id:ro
+    devices:
+      - /dev/kmsg
+```
+
 ## Arguments
 
 You can use the following arguments with `prometheus.exporter.cadvisor`:
