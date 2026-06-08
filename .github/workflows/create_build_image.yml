@@ -33,7 +33,7 @@ jobs:
       run: echo "image_tag=${FULL_TAG##*/}" >> $GITHUB_OUTPUT
 
     - name: Login to Google Artifact Registry
-      uses: grafana/shared-workflows/actions/login-to-gar@c7ad5f57693ac858c698d95783685a9cbfd91223 # login-to-gar/v1.0.1
+      uses: grafana/shared-workflows/actions/login-to-gar@12c87e5aa323694c820c1ff3d8e47e8237e05136 # login-to-gar/v1.0.2
       with:
         registry: us-docker.pkg.dev
 
