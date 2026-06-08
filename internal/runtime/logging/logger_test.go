@@ -52,7 +52,7 @@ func Test_lokiWriter_nil(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotPanics(t, func() {
-		_ = logger.Log("msg", "test message")
+		logger.Slog().Info("test message")
 	})
 }
 
@@ -73,7 +73,8 @@ func TestWriteToDisabledViaUpdate(t *testing.T) {
 		WriteTo: []loki.LogsReceiver{receiver},
 	}))
 
-	require.NoError(t, logger.Log("msg", "with-write-to"))
+	slogger := logger.Slog()
+	slogger.Info("with-write-to")
 
 	require.Eventually(t, func() bool {
 		return strings.Contains(buf.String(), "with-write-to")
@@ -92,7 +93,7 @@ func TestWriteToDisabledViaUpdate(t *testing.T) {
 	}))
 
 	beforeLen := buf.String()
-	require.NoError(t, logger.Log("msg", "without-write-to"))
+	slogger.Info("without-write-to")
 
 	require.Eventually(t, func() bool {
 		return strings.Contains(buf.String(), "without-write-to")
