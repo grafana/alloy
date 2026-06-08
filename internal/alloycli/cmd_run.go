@@ -414,7 +414,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		level.Info(l).Log("msg", "global label store is disabled")
 	}
 
-	labelService := labelstore.New(l, reg, !fr.enableDirectFanout)
+	labelService := labelstore.New(l.Slog(), reg, !fr.enableDirectFanout)
 	alloyseed.Init(fr.storagePath, l)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{

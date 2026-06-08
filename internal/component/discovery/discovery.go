@@ -10,7 +10,6 @@ import (
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
 
@@ -119,7 +118,7 @@ func (c *Component) newRunAndStopForDisc(ctx context.Context, disc DiscovererWit
 		// DiscovererWithMetrics needs to have its metrics registered before running.
 		err := disc.Register()
 		if err != nil {
-			_ = level.Warn(c.opts.Logger).Log("msg", "failed to register discoverer metrics", "err", err)
+			c.opts.SLogger.Warn("failed to register discoverer metrics", "err", err)
 		}
 
 		// Run the discoverer.
@@ -145,7 +144,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if err != nil {
 		return err
 	}
-	disc, err := NewDiscovererWithMetrics(discConfig, c.opts.Registerer, c.opts.Logger)
+	disc, err := NewDiscovererWithMetrics(discConfig, c.opts.Registerer, c.opts.SLogger)
 	if err != nil {
 		return err
 	}

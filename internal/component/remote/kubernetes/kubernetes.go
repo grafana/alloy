@@ -13,7 +13,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
-	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -228,9 +227,7 @@ func (c *Component) Update(args component.Arguments) (err error) {
 	newArgs := args.(Arguments)
 	c.args = newArgs
 
-	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use kubernetes.ClientArguments
-	// to slog. Part of https://github.com/grafana/alloy/issues/4813.
-	restConfig, err := c.args.Client.BuildRESTConfig(slogadapter.GoKit(c.opts.SLogger.Handler()))
+	restConfig, err := c.args.Client.BuildRESTConfig(c.opts.SLogger)
 	if err != nil {
 		return err
 	}

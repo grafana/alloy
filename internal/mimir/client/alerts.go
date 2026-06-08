@@ -3,9 +3,9 @@ package client
 import (
 	"context"
 
-	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"gopkg.in/yaml.v3"
+
+	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 )
 
 // This struct is what Mimir expects to receive:
@@ -31,7 +31,7 @@ func (r *MimirClient) CreateAlertmanagerConfigs(ctx context.Context, conf *alert
 		return err
 	}
 
-	level.Debug(r.logger).Log("msg", "sending Alertmanager config to Mimir", "config", payloadStr)
+	r.logger.Debug("sending Alertmanager config to Mimir", "config", payloadStr)
 
 	op := "/api/v1/alerts"
 	path := "/api/v1/alerts"

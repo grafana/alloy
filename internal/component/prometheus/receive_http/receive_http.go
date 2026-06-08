@@ -18,7 +18,6 @@ import (
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -179,9 +178,7 @@ func (c *Component) createNewServer(args Arguments) (*fnet.TargetServer, error) 
 	c.uncheckedCollector.SetCollector(serverRegistry)
 
 	s, err := fnet.NewTargetServer(
-		// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use fnet.NewTargetServer
-		// to slog. Part of https://github.com/grafana/alloy/issues/4813.
-		slogadapter.GoKit(c.opts.SLogger.Handler()),
+		c.opts.SLogger,
 		"prometheus_receive_http",
 		serverRegistry,
 		args.Server,

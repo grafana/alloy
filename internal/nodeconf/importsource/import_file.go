@@ -11,22 +11,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-
 	"github.com/grafana/alloy/internal/component"
 	filedetector "github.com/grafana/alloy/internal/filedetector"
 	"github.com/grafana/alloy/internal/runtime/equality"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/vm"
 )
 
 // ImportFile imports a module from a file or a folder.
 type ImportFile struct {
-	managedOpts     component.Options
+	opts            component.Options
 	eval            *vm.Evaluator
 	onContentChange func(map[string]string)
-	logger          log.Logger
 
 	reloadCh chan struct{}
 	args     FileArguments
@@ -46,14 +42,12 @@ const waitReadPeriod time.Duration = 30 * time.Millisecond
 
 var _ ImportSource = (*ImportFile)(nil)
 
-func NewImportFile(managedOpts component.Options, eval *vm.Evaluator, onContentChange func(map[string]string)) *ImportFile {
-	opts := managedOpts
+func NewImportFile(opts component.Options, eval *vm.Evaluator, onContentChange func(map[string]string)) *ImportFile {
 	return &ImportFile{
 		reloadCh:        make(chan struct{}, 1),
-		managedOpts:     opts,
+		opts:            opts,
 		eval:            eval,
 		onContentChange: onContentChange,
-		logger:          managedOpts.Logger,
 	}
 }
 
@@ -106,7 +100,7 @@ func (im *ImportFile) Evaluate(scope *vm.Scope) error {
 
 	if im.detector != nil {
 		if err := im.detector.Close(); err != nil {
-			level.Error(im.managedOpts.Logger).Log("msg", "failed to shut down detector during eval", "err", err)
+			im.opts.SLogger.Error("failed to shut down detector during eval", "err", err)
 			// We don't return the error here because it's just a memory leak.
 		}
 	}
@@ -121,7 +115,7 @@ func (im *ImportFile) Evaluate(scope *vm.Scope) error {
 		})
 	case filedetector.DetectorFSNotify:
 		im.detector, err = filedetector.NewFSNotify(filedetector.FSNotifyOptions{
-			Logger:        im.managedOpts.Logger,
+			Logger:        im.opts.SLogger,
 			Filename:      im.args.Filename,
 			ReloadFile:    reloadFile,
 			PollFrequency: im.args.PollFrequency,
@@ -136,7 +130,7 @@ func (im *ImportFile) Run(ctx context.Context) error {
 		im.mut.Lock()
 		defer im.mut.Unlock()
 		if err := im.detector.Close(); err != nil {
-			level.Error(im.managedOpts.Logger).Log("msg", "failed to shut down detector", "err", err)
+			im.opts.SLogger.Error("failed to shut down detector", "err", err)
 		}
 		im.detector = nil
 	}()
@@ -162,7 +156,7 @@ func (im *ImportFile) readFile() error {
 			Message:    fmt.Sprintf("failed to collect files: %s", err),
 			UpdateTime: time.Now(),
 		})
-		level.Error(im.managedOpts.Logger).Log("msg", "failed to collect files", "err", err)
+		im.opts.SLogger.Error("failed to collect files", "err", err)
 		return err
 	}
 	fileContents := make(map[string]string)
@@ -178,7 +172,7 @@ func (im *ImportFile) readFile() error {
 				Message:    fmt.Sprintf("failed to read file: %s", err),
 				UpdateTime: time.Now(),
 			})
-			level.Error(im.managedOpts.Logger).Log("msg", "failed to read file", "file", fpath, "err", err)
+			im.opts.SLogger.Error("failed to read file", "file", fpath, "err", err)
 			return err
 		}
 		fileContents[f] = string(bb)
@@ -261,7 +255,7 @@ func (im *ImportFile) ModulePath() string {
 	path, err := util.ExtractDirPath(im.args.Filename)
 
 	if err != nil {
-		level.Error(im.managedOpts.Logger).Log("msg", "failed to extract module path", "module path", im.args.Filename, "err", err)
+		im.opts.SLogger.Error("failed to extract module path", "module path", im.args.Filename, "err", err)
 	}
 	return path
 }

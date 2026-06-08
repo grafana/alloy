@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	alertmgr_cfg "github.com/grafana/alloy/internal/mimir/alertmanager"
 	"github.com/grafana/dskit/backoff"
 	coreListers "k8s.io/client-go/listers/core/v1"
@@ -20,7 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/component/mimir/util"
 	"github.com/grafana/alloy/internal/featuregate"
 	mimirClient "github.com/grafana/alloy/internal/mimir/client"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,7 +54,6 @@ func init() {
 }
 
 type Component struct {
-	log  log.Logger
 	opts component.Options
 	args Arguments
 
@@ -121,7 +118,6 @@ func newNoInit(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		log:           o.Logger,
 		opts:          o,
 		args:          args,
 		configUpdates: make(chan ConfigUpdate),
@@ -144,7 +140,7 @@ func (c *Component) Run(ctx context.Context) error {
 		if errors.Is(err, errShutdown) {
 			break
 		} else if err != nil {
-			level.Error(c.log).Log("msg", "unexpected error from iteration loop; this is a bug", "err", err)
+			c.opts.SLogger.Error("unexpected error from iteration loop; this is a bug", "err", err)
 			c.ReportUnhealthy(err)
 		}
 	}
@@ -169,7 +165,7 @@ func (c *Component) startupWithRetries(ctx context.Context, state util.Lifecycle
 	)
 	for {
 		if err := state.Startup(ctx); err != nil {
-			level.Error(c.log).Log("msg", "starting up component failed, will retry", "err", err)
+			c.opts.SLogger.Error("starting up component failed, will retry", "err", err)
 			health.ReportUnhealthy(err)
 		} else {
 			break
@@ -185,7 +181,7 @@ func (c *Component) iteration(ctx context.Context, state util.Lifecycle[Argument
 		state.LifecycleUpdate(update.args)
 
 		if err := state.Restart(ctx); err != nil {
-			level.Error(c.log).Log("msg", "restarting component failed", "trigger", configurationUpdate, "err", err)
+			c.opts.SLogger.Error("restarting component failed", "trigger", configurationUpdate, "err", err)
 			health.ReportUnhealthy(err)
 		}
 	case <-ctx.Done():
@@ -263,7 +259,7 @@ func (c *Component) SyncState() {
 }
 
 func (c *Component) init() error {
-	level.Info(c.log).Log("msg", "initializing with configuration")
+	c.opts.SLogger.Info("initializing with configuration")
 
 	// TODO: allow overriding some stuff in RestConfig and k8s client options?
 	restConfig, err := controller.GetConfig()
@@ -285,7 +281,7 @@ func (c *Component) init() error {
 
 	c.ticker.Reset(c.args.SyncInterval)
 
-	c.mimirClient, err = mimirClient.New(c.log, mimirClient.Config{
+	c.mimirClient, err = mimirClient.New(c.opts.SLogger, mimirClient.Config{
 		Address:          c.args.Address,
 		HTTPClientConfig: *httpClient,
 	}, c.metrics.mimirClientTiming)
@@ -334,7 +330,7 @@ func (c *Component) startNamespaceInformer(queue workqueue.TypedRateLimitingInte
 	namespaces := factory.Core().V1().Namespaces()
 	namespaceLister := namespaces.Lister()
 	namespaceInformer := namespaces.Informer()
-	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, queue))
+	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, queue))
 	if err != nil {
 		return nil, err
 	}
@@ -357,7 +353,7 @@ func (c *Component) startConfigInformer(queue workqueue.TypedRateLimitingInterfa
 	amConfigs := factory.Monitoring().V1alpha1().AlertmanagerConfigs()
 	amConfigsLister := amConfigs.Lister()
 	amConfigsInformer := amConfigs.Informer()
-	_, err := amConfigsInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, queue))
+	_, err := amConfigsInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, queue))
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +384,7 @@ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface
 		matcherStrategy:       c.matcherStrategy,
 		alertmanagerNamespace: c.alertmanagerNamespace,
 		metrics:               c.metrics,
-		logger:                c.log,
+		logger:                c.opts.SLogger,
 		kclient:               c.k8sClient,
 		templateFiles:         templateFiles,
 		storeBuilder:          sb,
