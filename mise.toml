@@ -1,6 +1,6 @@
 [tools]
 go = "1.26.4"
-task = "3.39.2"
+task = "3.51.1"
 golangci-lint = "2.11.4"
 
 node = "24.13.0"
