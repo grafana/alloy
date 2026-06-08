@@ -16,6 +16,9 @@ import (
 
 	"github.com/grafana/alloy/flowcmd"
 	"github.com/grafana/alloy/internal/readyctx"
+	"github.com/grafana/alloy/internal/service/remotecfg"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/parser"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
@@ -254,7 +257,12 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 			modulePath = cwd
 		}
 
-		files = map[string][]byte{"config.alloy": []byte(cfg.Content)}
+		data := []byte(cfg.Content)
+		if err := validateAlloyConfig("config.alloy", data); err != nil {
+			return "", nil, fmt.Errorf("invalid inline Alloy config: %w", err)
+		}
+
+		files = map[string][]byte{"config.alloy": data}
 		return modulePath, files, nil
 	}
 
@@ -267,7 +275,11 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 		modulePath = filepath.Dir(cfg.File)
 		data, err := os.ReadFile(cfg.File)
 		if err != nil {
-			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", err)
+			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", cfg.File, err)
+		}
+
+		if err := validateAlloyConfig(cfg.File, data); err != nil {
+			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", cfg.File, err)
 		}
 
 		files = map[string][]byte{cfg.File: data}
@@ -296,16 +308,35 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 			return "", nil, err
 		}
 
-		files[fpath] = data
-	}
+		if err := validateAlloyConfig(fpath, data); err != nil {
+			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", fpath, err)
+		}
 
-	if err != nil {
-		return modulePath, nil, fmt.Errorf("failed to read alloy config directory: %w", err)
+		files[fpath] = data
 	}
 
 	return modulePath, files, nil
 }
 
-func validateAlloyConfig(files map[string][]byte) error {
-	// todo
+// validateAlloyConfig checks whether Alloy config contains statements unsupported in extension mode.
+func validateAlloyConfig(fname string, data []byte) error {
+	tree, err := parser.ParseFile(fname, data)
+	if err != nil {
+		return fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// TODO: throw warning if 'import.file' uses 'module_path' in inline config.
+	for _, stmt := range tree.Body {
+		block, ok := stmt.(*ast.BlockStmt)
+		if !ok {
+			continue
+		}
+
+		blockName := block.GetBlockName()
+		if blockName == remotecfg.ServiceName {
+			return fmt.Errorf("block %q is not supported in Alloy extension", blockName)
+		}
+	}
+
+	return nil
 }
