@@ -12,9 +12,18 @@ type Config struct {
 // AlloyConfig represents the incoming format of the Alloy configuration.
 type AlloyConfig struct {
 	// ModulePath is value to be resolved for "module_path" alloy config keyword.
+	//
+	// Has no effect if [File] is set.
 	ModulePath string `mapstructure:"module_path"`
 
+	// File is a path to Alloy config file or a directory containing config files.
+	//
+	// Note: either [File] or [Content] can be set.
+	File string `mapstructure:"file"`
+
 	// Content is config contents.
+	//
+	// Note: either [File] or [Content] can be set.
 	Content string `mapstructure:"content"`
 }
 

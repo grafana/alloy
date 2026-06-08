@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -101,23 +103,12 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		return fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
 	}
 
-	modulePath := e.config.AlloyConfig.ModulePath
-	if modulePath == "" {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return fmt.Errorf("cannot get current working directory: %w", err)
-		}
-		modulePath = cwd
+	modulePath, files, err := buildAlloyConfig(e.config.AlloyConfig)
+	if err != nil {
+		return err
 	}
 
-	alloyCfg := e.config.AlloyConfig.Content
-	if alloyCfg == "" {
-		return errors.New("empty alloy config")
-	}
-
-	runCommand := e.runCommandFactory(modulePath, map[string][]byte{
-		"config.alloy": []byte(alloyCfg),
-	})
+	runCommand := e.runCommandFactory(modulePath, files)
 
 	// Prevent cobra from autoloading command-line args from os.Args
 	runCommand.SetArgs([]string{})
@@ -241,4 +232,80 @@ func (e *alloyEngineExtension) NotReady() error {
 	default:
 		return fmt.Errorf("alloyengine extension not ready in current state: %s", currentState.String())
 	}
+}
+
+func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]byte, err error) {
+	if cfg.Content == "" && cfg.File == "" {
+		return "", nil, errors.New("missing alloy config. Either config.file or config.content must be set")
+	}
+
+	isInlineConfig := cfg.Content != ""
+	if isInlineConfig {
+		if cfg.File != "" {
+			return "", nil, errors.New("exactly one of config.file or config.content must be set")
+		}
+
+		modulePath = cfg.ModulePath
+		if modulePath == "" {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return "", nil, fmt.Errorf("cannot get current working directory: %w", err)
+			}
+			modulePath = cwd
+		}
+
+		files = map[string][]byte{"config.alloy": []byte(cfg.Content)}
+		return modulePath, files, nil
+	}
+
+	// Alloy supports accepting a directory as config source
+	stat, err := os.Lstat(cfg.File)
+	if err != nil {
+		return "", nil, err
+	}
+	if !stat.IsDir() {
+		modulePath = filepath.Dir(cfg.File)
+		data, err := os.ReadFile(cfg.File)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", err)
+		}
+
+		files = map[string][]byte{cfg.File: data}
+		return modulePath, files, nil
+	}
+
+	modulePath = cfg.File
+	children, err := os.ReadDir(modulePath)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to open alloy config dir: %w", err)
+	}
+
+	files = make(map[string][]byte, len(children))
+	for _, ch := range children {
+		if ch.IsDir() {
+			continue
+		}
+
+		if !strings.HasSuffix(ch.Name(), ".alloy") {
+			continue
+		}
+
+		fpath := filepath.Join(modulePath, ch.Name())
+		data, err := os.ReadFile(fpath)
+		if err != nil {
+			return "", nil, err
+		}
+
+		files[fpath] = data
+	}
+
+	if err != nil {
+		return modulePath, nil, fmt.Errorf("failed to read alloy config directory: %w", err)
+	}
+
+	return modulePath, files, nil
+}
+
+func validateAlloyConfig(files map[string][]byte) error {
+	// todo
 }
