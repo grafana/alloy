@@ -46,6 +46,7 @@ func newHandler(
 	replacer func(groups []string, a slog.Attr) slog.Attr,
 	nested []nesting,
 ) *handler {
+
 	return &handler{
 		w:         w,
 		leveler:   leveler,
