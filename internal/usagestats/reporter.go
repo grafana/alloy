@@ -83,7 +83,7 @@ func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metric
 			backoff.Wait()
 			continue
 		}
-		rep.logger.Info("msg", "usage report sent with success")
+		rep.logger.Info("usage report sent with success")
 		return nil
 	}
 	return errs.Err()
