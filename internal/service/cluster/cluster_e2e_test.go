@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
@@ -592,7 +591,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 
 	reg := prometheus.NewRegistry()
 	clusterOpts := alloycli.ClusterOptions{
-		Log:     log.With(logger, "service", "cluster"),
+		Log:     logger.Slog().With("service", "cluster"),
 		Tracer:  tracer,
 		Metrics: reg,
 
@@ -632,7 +631,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 
 	configFilePath := path.Join(nodeDirPath, "config.alloy")
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(logger, "service", "remotecfg"),
+		Logger:      logger.Slog().With("service", "remotecfg"),
 		ConfigPath:  configFilePath,
 		StoragePath: nodeDirPath,
 		Metrics:     reg,

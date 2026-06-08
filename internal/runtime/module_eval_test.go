@@ -342,7 +342,7 @@ func testOptions(t *testing.T) runtime.Options {
 	require.NoError(t, err)
 
 	clusterService, err := cluster_service.New(cluster_service.Options{
-		Log:              s,
+		Log:              s.Slog(),
 		EnableClustering: false,
 		NodeName:         "test-node",
 		AdvertiseAddress: "127.0.0.1:80",
