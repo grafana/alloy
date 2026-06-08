@@ -9,7 +9,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -2252,7 +2252,7 @@ func TestNewExplainPlan(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	logger := log.NewNopLogger()
+	logger := logging.NewSlogNop()
 	entryHandler := loki.NewCollectingHandler()
 	defer entryHandler.Stop()
 
@@ -2293,6 +2293,7 @@ func TestNewExplainPlan(t *testing.T) {
 	t.Run("version with trailing characters from docker image", func(t *testing.T) {
 		args := ExplainPlansArguments{
 			DBVersion: "16.10 (Debian 16.10-1.pgdg13+1)",
+			Logger:    logger,
 		}
 
 		ep, err := NewExplainPlan(args)
@@ -2306,6 +2307,7 @@ func TestNewExplainPlan(t *testing.T) {
 	t.Run("version with trailing characters from percona helm", func(t *testing.T) {
 		args := ExplainPlansArguments{
 			DBVersion: "17.7 - Percona Server for PostgreSQL 17.7.1",
+			Logger:    logger,
 		}
 
 		ep, err := NewExplainPlan(args)
@@ -2520,7 +2522,7 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
-	logger := log.NewNopLogger()
+	logger := logging.NewSlogNop()
 
 	pre17ver, err := semver.ParseTolerant("14.1")
 	require.NoError(t, err)
@@ -2754,7 +2756,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 	require.NoError(t, err)
 	defer db.Close()
 
-	logger := log.NewNopLogger()
+	logger := logging.NewSlogNop()
 
 	post17ver, err := semver.ParseTolerant("17.0")
 	require.NoError(t, err)
@@ -2794,6 +2796,12 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
+		slogger := logger.Slog()
 
 		t.Run("skips truncated queries", func(t *testing.T) {
 			lokiClient.Clear()
@@ -2815,7 +2823,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				finishedQueryCache: map[string]*queryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				entryHandler:       lokiClient,
 				currentBatchSize:   1,
 			}
@@ -2865,14 +2873,32 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						calls:      int64(10),
 						callsReset: time.Now(),
 					},
+					"testdb123459": {
+						queryId:    "123459",
+						queryText:  "show search_path",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123460": {
+						queryId:    "123460",
+						queryText:  "call refresh_summary()",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
+					"testdb123461": {
+						queryId:    "123461",
+						queryText:  "do 'begin perform 1; end'",
+						calls:      int64(10),
+						callsReset: time.Now(),
+					},
 				},
 				queryDenylist:      map[string]*queryInfo{},
 				finishedQueryCache: map[string]*queryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				entryHandler:       lokiClient,
-				currentBatchSize:   3,
+				currentBatchSize:   6,
 			}
 
 			err = explainPlan.fetchExplainPlans(t.Context())
@@ -2880,14 +2906,14 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 			require.NoError(t, err)
 			require.Eventually(
 				t,
-				func() bool { return len(lokiClient.Received()) == 3 },
+				func() bool { return len(lokiClient.Received()) == 6 },
 				5*time.Second,
 				10*time.Millisecond,
 				"did not receive the explain plan output log message within the timeout",
 			)
 
 			lokiEntries := lokiClient.Received()
-			require.Equal(t, 3, len(lokiEntries))
+			require.Equal(t, 6, len(lokiEntries))
 
 			require.NotContains(t, logBuffer.String(), "error")
 			assert.NoError(t, mock.ExpectationsWereMet())
@@ -2923,7 +2949,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				finishedQueryCache: map[string]*queryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				currentBatchSize:   1,
 				entryHandler:       lokiClient,
 			}
@@ -2990,7 +3016,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				finishedQueryCache: map[string]*queryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				currentBatchSize:   1,
 				entryHandler:       lokiClient,
 			}
@@ -3058,7 +3084,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				finishedQueryCache: map[string]*queryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				currentBatchSize:   1,
 				entryHandler:       lokiClient,
 			}
@@ -3102,6 +3128,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 
 			lokiClient.Clear()
 			logBuffer.Reset()
+
 			dbConnFactory := &mockDbConnectionFactory{
 				db:                 db,
 				Mock:               &mock,
@@ -3125,7 +3152,7 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 				finishedQueryCache: map[string]*queryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
-				logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				logger:             slogger,
 				currentBatchSize:   1,
 				entryHandler:       lokiClient,
 			}
@@ -3176,6 +3203,12 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 
 	post17ver := semver.MustParse("17.0.0")
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
@@ -3188,7 +3221,7 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 		finishedQueryCache: make(map[string]*queryInfo),
 		excludeDatabases:   []string{"excluded_db"},
 		perScrapeRatio:     1.0,
-		logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		logger:             logger.Slog(),
 		entryHandler:       lokiClient,
 	}
 
@@ -3220,6 +3253,12 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 
 	post17ver := semver.MustParse("17.0.0")
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
+
 	lokiClient := loki.NewCollectingHandler()
 	defer lokiClient.Stop()
 
@@ -3231,7 +3270,7 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 		finishedQueryCache: make(map[string]*queryInfo),
 		excludeUsers:       []string{"excluded_user"},
 		perScrapeRatio:     1.0,
-		logger:             log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		logger:             logger.Slog(),
 		entryHandler:       lokiClient,
 	}
 

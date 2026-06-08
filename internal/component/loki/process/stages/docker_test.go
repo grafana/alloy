@@ -4,13 +4,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -100,7 +100,7 @@ func TestDocker(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			p, err := NewDocker(log.NewNopLogger(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			p, err := NewDocker(logging.NewSlogNop(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if err != nil {
 				t.Fatalf("failed to create Docker parser: %s", err)
 			}
@@ -120,7 +120,7 @@ var (
 )
 
 func BenchmarkDocker(b *testing.B) {
-	p, _ := NewDocker(log.NewNopLogger(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+	p, _ := NewDocker(logging.NewSlogNop(), prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 	e := newEntry(nil, model.LabelSet{}, benchDockerLine, benchDockerTime)
 	in := make(chan Entry)
 	out := p.Run(in)

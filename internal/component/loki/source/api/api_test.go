@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/regexp"
@@ -36,6 +35,7 @@ import (
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -417,7 +417,7 @@ func newTestLokiClientTLS(t *testing.T, httpListenAddress string, opts component
 	))
 	require.NoError(t, err)
 
-	c, err := client.NewFanoutConsumer(opts.Logger, opts.Registerer, client.Config{
+	c, err := client.NewFanoutConsumer(opts.SLogger, opts.Registerer, client.Config{
 		URL:     url,
 		Timeout: 10 * time.Second,
 		Client: promCfg.HTTPClientConfig{
@@ -630,7 +630,7 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 	require.NoError(t, err)
 
 	lokiClient, err := client.NewFanoutConsumer(
-		opts.Logger,
+		opts.SLogger,
 		opts.Registerer,
 		client.Config{
 			URL:     url,
@@ -647,7 +647,7 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 func defaultOptions() component.Options {
 	return component.Options{
 		ID:         "loki.source.api.test",
-		Logger:     log.NewNopLogger(),
+		SLogger:    logging.NewSlogNop(),
 		Registerer: prometheus.NewRegistry(),
 	}
 }

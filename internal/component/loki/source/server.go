@@ -2,11 +2,11 @@ package source
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -14,12 +14,11 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Server exposes HTTP routes that ingest log entries and forward them in batches.
 type Server struct {
-	logger         log.Logger
+	logger         *slog.Logger
 	entriesWritten prometheus.Counter
 
 	server    *fnet.TargetServer
@@ -86,7 +85,7 @@ type LogsConfig struct {
 	UseIncomingTimestamp bool
 }
 
-func NewServer(logger log.Logger, reg prometheus.Registerer, recv loki.LogsBatchReceiver, cfg ServerConfig) (*Server, error) {
+func NewServer(logger *slog.Logger, reg prometheus.Registerer, recv loki.LogsBatchReceiver, cfg ServerConfig) (*Server, error) {
 	server, err := fnet.NewTargetServer(logger, cfg.Namespace, reg, cfg.NetConfig)
 	if err != nil {
 		return nil, err
@@ -140,7 +139,7 @@ func (s *Server) HTTPAddr() string {
 
 // Shutdown stops the server.
 func (s *Server) Shutdown() {
-	level.Info(s.logger).Log("msg", "stopping server")
+	s.logger.Info("stopping server")
 	// StopAndShutdown tries to gracefully shutdown.
 	// It will stop idle and incoming connections
 	// and try to wait for all in-flight connections
@@ -155,7 +154,7 @@ func (s *Server) Shutdown() {
 
 // ForceShutdown stops the server without waiting for in-flight requests.
 func (s *Server) ForceShutdown() {
-	level.Info(s.logger).Log("msg", "force shutdown of server")
+	s.logger.Info("force shutdown of server")
 	s.once.Do(func() { close(s.forceShutdown) })
 	s.server.StopAndShutdown()
 }
@@ -177,7 +176,7 @@ func (s *Server) logsHandler(route LogsRoute) http.Handler {
 		numEntries := len(entries)
 
 		if err != nil && numEntries == 0 {
-			level.Warn(s.logger).Log("msg", "failed to parse request", "err", err)
+			s.logger.Warn("failed to parse request", "err", err)
 			responseWriter.WriteResponse(w, r, status, err)
 			return
 		}
@@ -196,7 +195,7 @@ func (s *Server) logsHandler(route LogsRoute) http.Handler {
 			s.entriesWritten.Add(float64(numEntries))
 
 			if err != nil {
-				level.Warn(s.logger).Log("msg", "at least one entry failed to be processed", "err", err)
+				s.logger.Warn("at least one entry failed to be processed", "err", err)
 			}
 		}
 

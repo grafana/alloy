@@ -3,10 +3,10 @@ package alerts
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -111,10 +111,10 @@ func (f *fakeHealthReporter) getErr() error {
 	return f.err
 }
 
-func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger log.Logger) *Component {
+func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger *slog.Logger) *Component {
 	opts := component.Options{
 		ID:         "mimir.alerts.kubernetes",
-		Logger:     logger,
+		SLogger:    logger,
 		Registerer: reg,
 	}
 
@@ -129,7 +129,7 @@ func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger log.
 func TestIterationHandlesUpdate(t *testing.T) {
 	t.Run("error during restart", func(t *testing.T) {
 		reg := prometheus.NewPedanticRegistry()
-		logger := log.NewNopLogger()
+		logger := slog.New(slog.DiscardHandler)
 
 		health := &fakeHealthReporter{}
 		state := &fakeLifecycle{}
@@ -157,7 +157,7 @@ func TestIterationHandlesUpdate(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		reg := prometheus.NewPedanticRegistry()
-		logger := log.NewNopLogger()
+		logger := slog.New(slog.DiscardHandler)
 
 		health := &fakeHealthReporter{}
 		state := &fakeLifecycle{}
@@ -186,7 +186,7 @@ func TestIterationHandlesUpdate(t *testing.T) {
 func TestIterationHandlesContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	reg := prometheus.NewPedanticRegistry()
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.DiscardHandler)
 
 	health := &fakeHealthReporter{}
 	state := &fakeLifecycle{}

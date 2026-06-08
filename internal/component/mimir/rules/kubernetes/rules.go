@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"
@@ -30,7 +30,6 @@ import (
 	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/featuregate"
 	mimirClient "github.com/grafana/alloy/internal/mimir/client"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
 
@@ -56,7 +55,6 @@ func init() {
 }
 
 type Component struct {
-	log  log.Logger
 	opts component.Options
 	args Arguments
 
@@ -177,10 +175,9 @@ func newNoInit(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		log:            o.Logger,
 		opts:           o,
 		args:           args,
-		leader:         newComponentLeadership(o.ID, o.Logger, clusterSvc.(cluster.Cluster)),
+		leader:         newComponentLeadership(o.ID, o.SLogger, clusterSvc.(cluster.Cluster)),
 		configUpdates:  make(chan ConfigUpdate),
 		clusterUpdates: make(chan struct{}, 1),
 		ticker:         time.NewTicker(args.SyncInterval),
@@ -202,7 +199,7 @@ func (c *Component) Run(ctx context.Context) error {
 		if errors.Is(err, errShutdown) {
 			break
 		} else if err != nil {
-			level.Error(c.log).Log("msg", "unexpected error from iteration loop; this is a bug", "err", err)
+			c.opts.SLogger.Error("unexpected error from iteration loop; this is a bug", "err", err)
 			c.reportUnhealthy(err)
 		}
 	}
@@ -240,10 +237,10 @@ func (c *Component) startupWithRetries(ctx context.Context, leader leadership, s
 		// Repeatedly check if we are the leader and attempt to start the component
 		_, err := leader.update()
 		if err != nil {
-			level.Error(c.log).Log("msg", "checking leadership during starting failed, will retry", "err", err)
+			c.opts.SLogger.Error("checking leadership during starting failed, will retry", "err", err)
 			health.reportUnhealthy(err)
 		} else if err := state.startup(ctx); err != nil {
-			level.Error(c.log).Log("msg", "starting up component failed, will retry", "err", err)
+			c.opts.SLogger.Error("starting up component failed, will retry", "err", err)
 			health.reportUnhealthy(err)
 		} else {
 			health.reportHealthy()
@@ -260,7 +257,7 @@ func (c *Component) iteration(ctx context.Context, leader leadership, state life
 		state.update(update.args)
 
 		if err := state.restart(ctx); err != nil {
-			level.Error(c.log).Log("msg", "restarting component failed", "trigger", configurationUpdate, "err", err)
+			c.opts.SLogger.Error("restarting component failed", "trigger", configurationUpdate, "err", err)
 			health.reportUnhealthy(err)
 		}
 	case <-c.clusterUpdates:
@@ -268,11 +265,11 @@ func (c *Component) iteration(ctx context.Context, leader leadership, state life
 
 		changed, err := leader.update()
 		if err != nil {
-			level.Error(c.log).Log("msg", "checking leadership failed", "trigger", clusterUpdate, "err", err)
+			c.opts.SLogger.Error("checking leadership failed", "trigger", clusterUpdate, "err", err)
 			health.reportUnhealthy(err)
 		} else if changed {
 			if err := state.restart(ctx); err != nil {
-				level.Error(c.log).Log("msg", "restarting component failed", "trigger", clusterUpdate, "err", err)
+				c.opts.SLogger.Error("restarting component failed", "trigger", clusterUpdate, "err", err)
 				health.reportUnhealthy(err)
 			}
 		}
@@ -307,7 +304,7 @@ func (c *Component) restart(ctx context.Context) error {
 // the leader. If it is not the leader, startup does nothing.
 func (c *Component) startup(ctx context.Context) error {
 	if !c.leader.isLeader() {
-		level.Info(c.log).Log("msg", "skipping startup because we are not the leader")
+		c.opts.SLogger.Info("skipping startup because we are not the leader")
 		return nil
 	}
 
@@ -352,7 +349,7 @@ func (c *Component) syncState() {
 }
 
 func (c *Component) init() error {
-	level.Info(c.log).Log("msg", "initializing with configuration")
+	c.opts.SLogger.Info("initializing with configuration")
 
 	// TODO: allow overriding some stuff in RestConfig and k8s client options?
 	restConfig, err := controller.GetConfig()
@@ -372,7 +369,7 @@ func (c *Component) init() error {
 
 	httpClient := c.args.HTTPClientConfig.Convert()
 
-	c.mimirClient, err = mimirClient.New(c.log, mimirClient.Config{
+	c.mimirClient, err = mimirClient.New(c.opts.SLogger, mimirClient.Config{
 		ID:                   c.args.TenantID,
 		Address:              c.args.Address,
 		UseLegacyRoutes:      c.args.UseLegacyRoutes,
@@ -410,7 +407,7 @@ func (c *Component) startNamespaceInformer(queue workqueue.TypedRateLimitingInte
 	namespaces := factory.Core().V1().Namespaces()
 	namespaceLister := namespaces.Lister()
 	namespaceInformer := namespaces.Informer()
-	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, queue))
+	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, queue))
 	if err != nil {
 		return nil, err
 	}
@@ -432,7 +429,7 @@ func (c *Component) startRuleInformer(queue workqueue.TypedRateLimitingInterface
 	promRules := factory.Monitoring().V1().PrometheusRules()
 	ruleLister := promRules.Lister()
 	ruleInformer := promRules.Informer()
-	_, err := ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, queue))
+	_, err := ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, queue))
 	if err != nil {
 		return nil, err
 	}
@@ -457,8 +454,9 @@ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface
 		namespaceSelector:  c.namespaceSelector,
 		ruleSelector:       c.ruleSelector,
 		namespacePrefix:    c.args.MimirNameSpacePrefix,
+		namespaceSeparator: c.args.MimirNamespaceSeparator,
 		metrics:            c.metrics,
-		logger:             c.log,
+		logger:             c.opts.SLogger,
 		externalLabels:     externalLabels,
 		extraQueryMatchers: c.args.ExtraQueryMatchers,
 	}
@@ -509,12 +507,12 @@ type leadership interface {
 // key using a cluster.Cluster service.
 type componentLeadership struct {
 	id      string
-	logger  log.Logger
+	logger  *slog.Logger
 	cluster cluster.Cluster
 	leader  atomic.Bool
 }
 
-func newComponentLeadership(id string, logger log.Logger, cluster cluster.Cluster) *componentLeadership {
+func newComponentLeadership(id string, logger *slog.Logger, cluster cluster.Cluster) *componentLeadership {
 	return &componentLeadership{
 		id:      id,
 		logger:  logger,
@@ -534,7 +532,7 @@ func (l *componentLeadership) update() (bool, error) {
 	}
 
 	isLeader := peers[0].Self
-	level.Info(l.logger).Log("msg", "checked leadership of component", "is_leader", isLeader)
+	l.logger.Info("checked leadership of component", "is_leader", isLeader)
 	return l.leader.Swap(isLeader) != isLeader, nil
 }
 

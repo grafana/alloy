@@ -30,6 +30,8 @@ type ContainerConfig struct {
 	SecurityOpt []string `yaml:"security_opts"`
 	// PIDMode is the PID namespace to use for the container.
 	PIDMode string `yaml:"pid_mode"`
+	// Environment is passed to the container as KEY=value entries.
+	Environment map[string]string `yaml:"environment"`
 }
 
 // AdditionalContainerConfig is used to configure additional containers used for the test.

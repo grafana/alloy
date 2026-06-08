@@ -53,16 +53,15 @@
       "postUpdateOptions": ["gomodTidy"]
     },
     {
-      // Group and hold some otel-specific go dependencies
+      // These are updated in bulk via the key-deps process instead of Renovate.
       "matchManagers": ["gomod"],
       "matchPackageNames": [
-        // OpenTelemetry needs special handling due to a temporary fork
-        "github.com/open-telemetry/opentelemetry-collector-contrib/**",
-        "go.opentelemetry.io/collector/**",
-        "go.opentelemetry.io/otel/**",
+        "github.com/prometheus/prometheus",
+        "github.com/prometheus/prometheus/**",
+        "github.com/open-telemetry/**",
+        "go.opentelemetry.io/**",
       ],
-      "groupName": "go otel collector dependencies",
-      "dependencyDashboardApproval": true
+      "enabled": false
     },
     {
       // Hold unstable deps

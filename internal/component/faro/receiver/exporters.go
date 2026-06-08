@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/go-logfmt/logfmt"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -16,7 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
 	"github.com/grafana/alloy/internal/component/otelcol"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/loki/pkg/push"
 )
@@ -82,7 +81,7 @@ func (exp *metricsExporter) Export(ctx context.Context, p payload.Payload) error
 //
 
 type logsExporter struct {
-	log        log.Logger
+	log        *slog.Logger
 	sourceMaps sourceMapsStore
 	format     LogFormat
 
@@ -94,7 +93,7 @@ type logsExporter struct {
 
 var _ exporter = (*logsExporter)(nil)
 
-func newLogsExporter(log log.Logger, sourceMaps sourceMapsStore, format LogFormat) *logsExporter {
+func newLogsExporter(log *slog.Logger, sourceMaps sourceMapsStore, format LogFormat) *logsExporter {
 	return &logsExporter{
 		log:        log,
 		sourceMaps: sourceMaps,
@@ -112,37 +111,55 @@ func (exp *logsExporter) SetReceivers(receivers []loki.LogsReceiver) {
 func (exp *logsExporter) Name() string { return "logs exporter" }
 
 func (exp *logsExporter) Export(ctx context.Context, p payload.Payload) error {
-	meta := p.Meta.KeyVal()
+	var (
+		errs []error
+		meta = p.Meta.KeyVal()
+	)
 
-	var errs []error
+	// send returns early on context cancellation.
+	// Other errors are accumulated in errs.
+	send := func(kv *payload.KeyVal) error {
+		payload.MergeKeyVal(kv, meta)
+
+		err := exp.sendKeyValsToLogsPipeline(ctx, kv)
+		if errors.Is(err, context.Canceled) {
+			return err
+		}
+
+		if err != nil {
+			errs = append(errs, err)
+		}
+
+		return nil
+	}
 
 	// log events
 	for _, logItem := range p.Logs {
-		kv := logItem.KeyVal()
-		payload.MergeKeyVal(kv, meta)
-		errs = append(errs, exp.sendKeyValsToLogsPipeline(ctx, kv))
+		if err := send(logItem.KeyVal()); err != nil {
+			return err
+		}
 	}
 
 	// exceptions
 	for _, exception := range p.Exceptions {
 		transformedException := transformException(exp.log, exp.sourceMaps, &exception, p.Meta.App.Release)
-		kv := transformedException.KeyVal()
-		payload.MergeKeyVal(kv, meta)
-		errs = append(errs, exp.sendKeyValsToLogsPipeline(ctx, kv))
+		if err := send(transformedException.KeyVal()); err != nil {
+			return err
+		}
 	}
 
 	// measurements
 	for _, measurement := range p.Measurements {
-		kv := measurement.KeyVal()
-		payload.MergeKeyVal(kv, meta)
-		errs = append(errs, exp.sendKeyValsToLogsPipeline(ctx, kv))
+		if err := send(measurement.KeyVal()); err != nil {
+			return err
+		}
 	}
 
 	// events
 	for _, event := range p.Events {
-		kv := event.KeyVal()
-		payload.MergeKeyVal(kv, meta)
-		errs = append(errs, exp.sendKeyValsToLogsPipeline(ctx, kv))
+		if err := send(event.KeyVal()); err != nil {
+			return err
+		}
 	}
 
 	return errors.Join(errs...)
@@ -163,7 +180,7 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 	}
 
 	if err != nil {
-		level.Error(exp.log).Log("msg", "failed to logfmt a frontend log event", "err", err)
+		exp.log.Error("failed to logfmt a frontend log event", "err", err)
 		return err
 	}
 
@@ -210,18 +227,14 @@ func (exp *logsExporter) SetLabels(newLabels map[string]string) {
 //
 
 type tracesExporter struct {
-	log log.Logger
-
 	mut       sync.RWMutex
 	consumers []otelcol.Consumer
 }
 
 var _ exporter = (*tracesExporter)(nil)
 
-func newTracesExporter(log log.Logger) *tracesExporter {
-	return &tracesExporter{
-		log: log,
-	}
+func newTracesExporter() *tracesExporter {
+	return &tracesExporter{}
 }
 
 // SetConsumers updates the set of OTLP consumers which will receive traces

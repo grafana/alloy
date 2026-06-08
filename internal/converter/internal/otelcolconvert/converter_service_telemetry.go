@@ -57,8 +57,9 @@ func convertLogging(file *builder.File, tel otelconftelemetry.LogsConfig) diag.D
 	diags.AddAll(formatDiags)
 
 	logOpts := &logging.Options{
-		Level:  convertLoggingLevel(tel.Level),
-		Format: format,
+		Level:       convertLoggingLevel(tel.Level),
+		Format:      format,
+		Destination: logging.LogDestinationStderr,
 	}
 
 	block := common.NewBlockWithOverride([]string{"logging"}, "", logOpts)

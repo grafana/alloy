@@ -5,20 +5,21 @@ on:
       - main
     paths:
       - 'Dockerfile.windows'
-      - 'tools/ci/docker-containers-windows'
+      - 'scripts/docker-containers-windows'
       - '.github/workflows/check-windows-container.yml'
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
       - '.github/workflows/release-publish-alloy-artifacts.yml'
+      - '.github/workflows/publish-alloy-windows.yml'
   pull_request:
     paths:
       - 'Dockerfile.windows'
-      - 'tools/ci/docker-containers-windows'
+      - 'scripts/docker-containers-windows'
       - '.github/workflows/check-windows-container.yml'
       - '.github/workflows/publish-alloy.yml'
       - '.github/workflows/publish-alloy-devel.yml'
       - '.github/workflows/release-publish-alloy-artifacts.yml'
-
+      - '.github/workflows/publish-alloy-windows.yml'
 permissions:
   contents: read
 

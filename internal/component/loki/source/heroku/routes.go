@@ -6,15 +6,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
-	herokuEncoding "github.com/heroku/x/logplex/encoding"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source"
+	herokuEncoding "github.com/grafana/alloy/internal/third_party/heroku/x/logplex/encoding"
 )
 
 const (
@@ -24,9 +23,9 @@ const (
 	reservedLabelTenantID = "__tenant_id__"
 )
 
-func newRoutes(logger log.Logger, metrics *metrics) []source.LogsRoute {
+func newRoutes(metrics *metrics) []source.LogsRoute {
 	return []source.LogsRoute{
-		newDrainRoute(logger, metrics),
+		newDrainRoute(metrics),
 	}
 }
 
@@ -34,8 +33,7 @@ type drainRoute struct {
 	metrics *metrics
 }
 
-func newDrainRoute(logger log.Logger, metrics *metrics) *drainRoute {
-	_ = logger
+func newDrainRoute(metrics *metrics) *drainRoute {
 	return &drainRoute{
 		metrics: metrics,
 	}
@@ -80,7 +78,10 @@ func (d *drainRoute) Logs(r *http.Request, cfg *source.LogsConfig) ([]loki.Entry
 			lb.Set(reservedLabelTenantID, tenantID)
 		}
 
-		processed, _ := relabel.Process(lb.Labels(), cfg.RelabelRules...)
+		processed := labels.EmptyLabels()
+		if relabel.ProcessBuilder(lb, cfg.RelabelRules...) {
+			processed = lb.Labels()
+		}
 
 		filtered := cfg.FixedLabels.Clone()
 		processed.Range(func(lbl labels.Label) {

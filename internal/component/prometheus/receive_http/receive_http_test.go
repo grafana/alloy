@@ -644,7 +644,7 @@ func requestV2(ctx context.Context, rawRemoteWriteURL string, req *writev2.Reque
 func testOptions(t *testing.T) component.Options {
 	return component.Options{
 		ID:         "prometheus.receive_http.test",
-		Logger:     util.TestAlloyLogger(t),
+		SLogger:    util.TestAlloyLogger(t).Slog(),
 		Registerer: prometheus.NewRegistry(),
 		GetServiceData: func(name string) (any, error) {
 			return labelstore.New(nil, prometheus.DefaultRegisterer), nil

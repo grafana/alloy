@@ -11,8 +11,8 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"github.com/grafana/pyroscope/api/model/labelset"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -174,7 +174,7 @@ func TestRelabeling(t *testing.T) {
 			app := NewTestAppender()
 
 			c, err := New(component.Options{
-				Logger:        util.TestLogger(t),
+				SLogger:       util.TestAlloyLogger(t).Slog(),
 				Registerer:    prometheus.NewRegistry(),
 				OnStateChange: func(e component.Exports) {},
 			}, Arguments{
@@ -211,7 +211,7 @@ func TestRelabeling(t *testing.T) {
 func TestCache(t *testing.T) {
 	app := NewTestAppender()
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		SLogger:       util.TestAlloyLogger(t).Slog(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -242,7 +242,7 @@ func TestCache(t *testing.T) {
 func TestCacheCollisions(t *testing.T) {
 	app := NewTestAppender()
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		SLogger:       util.TestAlloyLogger(t).Slog(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -280,7 +280,7 @@ func TestCacheCollisions(t *testing.T) {
 func TestCacheLRU(t *testing.T) {
 	app := NewTestAppender()
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		SLogger:       util.TestAlloyLogger(t).Slog(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -313,7 +313,7 @@ func TestCacheLRU(t *testing.T) {
 func TestCachePurge(t *testing.T) {
 	app := NewTestAppender()
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		SLogger:       util.TestAlloyLogger(t).Slog(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -361,7 +361,7 @@ func TestMetricsWithRelabeling(t *testing.T) {
 
 	// Create component with relabel rules that will trigger different metrics
 	c, err := New(component.Options{
-		Logger:        util.TestLogger(t),
+		SLogger:       util.TestAlloyLogger(t).Slog(),
 		Registerer:    reg,
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{
@@ -463,7 +463,7 @@ func (t *TestAppender) Upload(j debuginfo.UploadJob) {
 
 }
 
-func (t *TestAppender) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (t *TestAppender) DebugInfoClients() []*debuginfoclient.Client {
 	return nil
 }
 

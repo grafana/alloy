@@ -8,7 +8,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/equality"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // ModuleComponent holds the common properties for module components.
@@ -74,7 +73,7 @@ func (c *ModuleComponent) LoadAlloySource(args map[string]any, contentValue stri
 func (c *ModuleComponent) RunAlloyController(ctx context.Context) {
 	err := c.mod.Run(ctx)
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "error running module", "id", c.opts.ID, "err", err)
+		c.opts.SLogger.Error("error running module", "id", c.opts.ID, "err", err)
 	}
 }
 

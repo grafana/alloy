@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,8 +26,6 @@ import (
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
-
-	"github.com/grafana/alloy/internal/util"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
@@ -38,7 +36,6 @@ import (
 	"github.com/grafana/alloy/internal/readyctx"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
 	httpservice "github.com/grafana/alloy/internal/service/http"
@@ -49,6 +46,7 @@ import (
 	uiservice "github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
 
@@ -166,11 +164,15 @@ depending on the nature of the reload error.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
-	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	if runtime.GOOS == "windows" {
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
+
+	// Feature flags
+	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
+	cmd.Flags().BoolVar(&r.enableGraphQL, "feature.graphql.enabled", r.enableGraphQL, "Enable the GraphQL API")
+	cmd.Flags().BoolVar(&r.enableGraphQLPlayground, "feature.graphql-playground.enabled", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
 	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
 	addDeprecatedFlags(cmd)
@@ -186,7 +188,6 @@ type alloyRun struct {
 	enablePprof                  bool
 	disableReporting             bool
 	clusterEnabled               bool
-	enableDirectFanout           bool
 	clusterNodeName              string
 	clusterAdvAddr               string
 	clusterJoinAddr              string
@@ -205,10 +206,14 @@ type alloyRun struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
-	enableCommunityComps         bool
 	disableSupportBundle         bool
 	windowsPriority              string
-	taskShutdownDeadline         time.Duration
+	// Feature flags
+	enableCommunityComps    bool
+	taskShutdownDeadline    time.Duration
+	enableDirectFanout      bool
+	enableGraphQL           bool
+	enableGraphQLPlayground bool
 }
 
 func (fr *alloyRun) checkExperimentalFlags() error {
@@ -216,8 +221,18 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 		return nil
 	}
 
+	const errMsg = "can only be used at experimental stability level. Use --stability.level=experimental to enable."
+
 	if fr.enableDirectFanout {
-		return fmt.Errorf("the '--feature.prometheus.direct-fanout.enabled' can be used only at experimental stability level")
+		return fmt.Errorf("'--feature.prometheus.direct-fanout.enabled' %s", errMsg)
+	}
+
+	if fr.enableGraphQL {
+		return fmt.Errorf("'--feature.graphql.enabled' %s", errMsg)
+	}
+
+	if fr.enableGraphQLPlayground {
+		return fmt.Errorf("'--feature.graphql-playground.enabled' %s", errMsg)
 	}
 
 	return nil
@@ -244,6 +259,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("building logger: %w", err)
 	}
 
+	slogger := l.Slog()
+	slogger.Info("Alloy is starting")
+
 	t, err := tracing.New(tracing.DefaultOptions)
 	if err != nil {
 		return fmt.Errorf("building tracer: %w", err)
@@ -262,7 +280,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		if err := windowspriority.SetPriority(fr.windowsPriority); err != nil {
 			return fmt.Errorf("setting process priority: %w", err)
 		} else {
-			level.Info(l).Log("msg", "set process priority", "priority", fr.windowsPriority)
+			slogger.Info("set process priority", "priority", fr.windowsPriority)
 		}
 	}
 
@@ -271,23 +289,23 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// injected.
 	otel.SetTracerProvider(t)
 
-	level.Info(l).Log("boringcrypto enabled", boringcrypto.Enabled)
+	slogger.Info("boringcrypto enabled", "enabled", boringcrypto.Enabled)
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
 	// If there is a cgroup on linux it will use that
 	err = applyAutoMemLimit(l)
 	if err != nil {
-		level.Error(l).Log("msg", "failed to apply memory limit", "err", err)
+		slogger.Error("failed to apply memory limit", "err", err)
 	}
 
 	// Enable the profiling.
-	setMutexBlockProfiling(l)
+	setMutexBlockProfiling(slogger)
 
 	// Immediately start the tracer.
 	go func() {
 		err := t.Run(ctx)
 		if err != nil {
-			level.Error(l).Log("msg", "running tracer returned an error", "err", err)
+			slogger.Error("running tracer returned an error", "err", err)
 		}
 	}()
 
@@ -299,7 +317,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// registry that we want to keep can be given a custom registry so desired
 	// metrics are still exposed.
 	reg := prometheus.DefaultRegisterer
-	_ = util.MustRegisterOrGet(reg, newResourcesCollector(l))
+	_ = util.MustRegisterOrGet(reg, newResourcesCollector(slogger))
 
 	// There's a cyclic dependency between the definition of the Alloy controller,
 	// the reload/ready functions, and the HTTP service.
@@ -312,7 +330,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	)
 
 	clusterService, err := buildClusterService(ClusterOptions{
-		Log:     log.With(l, "service", "cluster"),
+		Log:     slogger.With("service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 
@@ -367,7 +385,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	})
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(l, "service", "remotecfg"),
+		Logger:      slogger.With("service", "remotecfg"),
 		ConfigPath:  configPath,
 		StoragePath: fr.storagePath,
 		Metrics:     reg,
@@ -379,22 +397,24 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	liveDebuggingService := livedebugging.New()
 
 	uiService := uiservice.New(uiservice.Options{
-		UIPrefix:        fr.uiPrefix,
-		CallbackManager: liveDebuggingService.Data().(livedebugging.CallbackManager),
-		Logger:          log.With(l, "service", "ui"),
+		UIPrefix:                fr.uiPrefix,
+		CallbackManager:         liveDebuggingService.Data().(livedebugging.CallbackManager),
+		Logger:                  slogger.With("service", "ui"),
+		EnableGraphQL:           fr.enableGraphQL,
+		EnableGraphQLPlayground: fr.enableGraphQLPlayground,
 	})
 
-	otelService := otel_service.New(l)
+	otelService := otel_service.New(slogger.With("service", "otel"))
 	if otelService == nil {
 		return fmt.Errorf("failed to create otel service")
 	}
 
 	if fr.enableDirectFanout {
-		level.Info(l).Log("msg", "global label store is disabled")
+		slogger.Info("global label store is disabled")
 	}
 
-	labelService := labelstore.New(l, reg, !fr.enableDirectFanout)
-	alloyseed.Init(fr.storagePath, l)
+	labelService := labelstore.New(slogger, reg, !fr.enableDirectFanout)
+	alloyseed.Init(fr.storagePath, slogger)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{
 		Logger:               l,
@@ -451,14 +471,14 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	// Report usage of enabled components
 	if !fr.disableReporting {
-		reporter, err := usagestats.NewReporter(l)
+		reporter, err := usagestats.NewReporter(slogger)
 		if err != nil {
 			return fmt.Errorf("failed to create reporter: %w", err)
 		}
 		go func() {
 			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
 			if err != nil && !errors.Is(err, context.Canceled) {
-				level.Error(l).Log("msg", "failed to start reporter", "err", err)
+				slogger.Error("failed to start reporter", "err", err)
 			}
 		}()
 	}
@@ -500,6 +520,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("failed to set clusterer state to Participant after initial load")
 	}
 
+	slogger.Info("{^_^} Alloy is running")
+
 	reloadSignal := make(chan os.Signal, 1)
 	signal.Notify(reloadSignal, syscall.SIGHUP)
 	defer signal.Stop(reloadSignal)
@@ -510,9 +532,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			return nil
 		case <-reloadSignal:
 			if _, err := reload(); err != nil {
-				level.Error(l).Log("msg", "failed to reload config", "err", err)
+				slogger.Error("failed to reload config", "err", err)
 			} else {
-				level.Info(l).Log("msg", "config reloaded")
+				slogger.Info("config reloaded")
 			}
 		}
 	}
@@ -647,7 +669,7 @@ func splitPeers(s, sep string) []string {
 	return strings.Split(s, sep)
 }
 
-func setMutexBlockProfiling(l log.Logger) {
+func setMutexBlockProfiling(l *slog.Logger) {
 	mutexPercent := os.Getenv("PPROF_MUTEX_PROFILING_PERCENT")
 	if mutexPercent != "" {
 		rate, err := strconv.Atoi(mutexPercent)
@@ -655,7 +677,7 @@ func setMutexBlockProfiling(l log.Logger) {
 			// The 100/rate is because the value is interpreted as 1/rate. So 50 would be 100/50 = 2 and become 1/2 or 50%.
 			runtime.SetMutexProfileFraction(100 / rate)
 		} else {
-			level.Error(l).Log("msg", "error setting PPROF_MUTEX_PROFILING_PERCENT", "err", err, "value", mutexPercent)
+			l.Error("error setting PPROF_MUTEX_PROFILING_PERCENT", "err", err, "value", mutexPercent)
 			runtime.SetMutexProfileFraction(1000)
 		}
 	} else {
@@ -668,7 +690,7 @@ func setMutexBlockProfiling(l log.Logger) {
 		if err == nil && rate > 0 {
 			runtime.SetBlockProfileRate(rate)
 		} else {
-			level.Error(l).Log("msg", "error setting PPROF_BLOCK_PROFILING_RATE", "err", err, "value", blockRate)
+			l.Error("error setting PPROF_BLOCK_PROFILING_RATE", "err", err, "value", blockRate)
 			runtime.SetBlockProfileRate(10_000)
 		}
 	} else {

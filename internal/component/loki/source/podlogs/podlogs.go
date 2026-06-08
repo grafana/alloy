@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
 
@@ -82,7 +80,6 @@ func (args *Arguments) SetToDefault() {
 
 // Component implements the loki.source.podlogs component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	tailer     *kubetail.Manager
@@ -111,7 +108,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
+	positionsFile, err := positions.New(o.SLogger, positions.Config{
 		SyncPeriod:    10 * time.Second,
 		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
 	})
@@ -125,13 +122,12 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	var (
-		tailer     = kubetail.NewManager(o.Logger, nil)
-		reconciler = newReconciler(o.Logger, tailer, data.(cluster.Cluster))
-		controller = newController(o.Logger, reconciler)
+		tailer     = kubetail.NewManager(o.SLogger, nil)
+		reconciler = newReconciler(o.SLogger, tailer, data.(cluster.Cluster))
+		controller = newController(o.SLogger, reconciler)
 	)
 
 	c := &Component{
-		log:  o.Logger,
 		opts: o,
 
 		tailer:     tailer,
@@ -174,7 +170,7 @@ func (c *Component) Run(ctx context.Context) error {
 		// We cancel consume loop after controller exit.
 		defer cancel()
 		if err := c.controller.Run(ctx); err != nil {
-			level.Error(c.log).Log("msg", "controller exited with error", "err", err)
+			c.opts.SLogger.Error("controller exited with error", "err", err)
 		}
 	})
 
@@ -223,7 +219,7 @@ func (c *Component) updateTailer(args Arguments) error {
 		return nil
 	}
 
-	cfg, err := args.Client.BuildRESTConfig(c.log)
+	cfg, err := args.Client.BuildRESTConfig(c.opts.SLogger)
 	if err != nil {
 		return fmt.Errorf("building Kubernetes config: %w", err)
 	}
@@ -298,7 +294,7 @@ func (c *Component) updateController(args Arguments) error {
 		return nil
 	}
 
-	cfg, err := args.Client.BuildRESTConfig(c.log)
+	cfg, err := args.Client.BuildRESTConfig(c.opts.SLogger)
 	if err != nil {
 		return fmt.Errorf("building Kubernetes config: %w", err)
 	}

@@ -8,15 +8,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/static/integrations"
-	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
-	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 	"github.com/lib/pq"
 	"github.com/prometheus-community/postgres_exporter/collector"
 	postgres_exporter "github.com/prometheus-community/postgres_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
+
+	"github.com/grafana/alloy/internal/static/integrations"
+	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
+	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
 )
 
 // Config controls the postgres_exporter integration.
@@ -58,7 +57,7 @@ func (c *Config) Name() string {
 }
 
 // NewIntegration converts this config into an instance of a configuration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 
@@ -103,7 +102,7 @@ func parsePostgresURL(url string) (map[string]string, error) {
 		return map[string]string{}, nil
 	}
 
-	raw, err := pq.ParseURL(url)
+	raw, err := pq.ParseURL(url) //nolint:staticcheck // pq.ParseURL is deprecated but needed to extract DSN key-value pairs
 	if err != nil {
 		return nil, err
 	}
@@ -159,12 +158,11 @@ func init() {
 
 // New creates a new postgres_exporter integration. The integration scrapes
 // metrics from a postgres process.
-func New(log log.Logger, cfg *Config) (integrations.Integration, error) {
+func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 	dsns, err := cfg.getDataSourceNames()
 	if err != nil {
 		return nil, err
 	}
-	logger := slog.New(logging.NewSlogGoKitHandler(log))
 
 	e := postgres_exporter.NewExporter(
 		dsns,

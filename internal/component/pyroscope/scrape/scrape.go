@@ -12,7 +12,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/http"
 
@@ -274,7 +273,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 			config_util.WithDialContextFunc(httpData.DialFunc),
 		},
 	}
-	scraper, err := NewManager(scrapeHttpOptions, args, alloyAppendable, o.Logger)
+	scraper, err := NewManager(scrapeHttpOptions, args, alloyAppendable, o.SLogger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scraper manager: %w", err)
 	}
@@ -302,7 +301,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 	go func() {
 		c.scraper.Run(targetSetsChan)
-		level.Info(c.opts.Logger).Log("msg", "scrape manager stopped")
+		c.opts.SLogger.Info("scrape manager stopped")
 	}()
 
 	for {
@@ -326,7 +325,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 			select {
 			case targetSetsChan <- promTargets:
-				level.Debug(c.opts.Logger).Log("msg", "passed new targets to scrape manager")
+				c.opts.SLogger.Debug("passed new targets to scrape manager")
 			case <-ctx.Done():
 				return nil
 			}
@@ -348,7 +347,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if err != nil {
 		return fmt.Errorf("error applying scrape configs: %w", err)
 	}
-	level.Debug(c.opts.Logger).Log("msg", "scrape config was updated")
+	c.opts.SLogger.Debug("scrape config was updated")
 
 	select {
 	case c.reloadTargets <- struct{}{}:

@@ -6,12 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"reflect"
 	"sync"
+	"time"
 
 	"connectrpc.com/connect"
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
@@ -19,7 +20,6 @@ import (
 	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -38,7 +38,7 @@ func init() {
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			tracer := opts.Tracer.Tracer("pyroscope.receive_http")
-			return New(opts.Logger, tracer, opts.Registerer, args.(Arguments))
+			return New(opts.SLogger, tracer, opts.Registerer, args.(Arguments))
 		},
 	})
 }
@@ -46,27 +46,32 @@ func init() {
 type Arguments struct {
 	Server    *fnet.ServerConfig     `alloy:",squash"`
 	ForwardTo []pyroscope.Appendable `alloy:"forward_to,attr"`
+
+	DebugInfoUploadTimeout time.Duration `alloy:"debug_info_upload_timeout,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
 func (a *Arguments) SetToDefault() {
 	*a = Arguments{
-		Server: fnet.DefaultServerConfig(),
+		Server:                 fnet.DefaultServerConfig(),
+		DebugInfoUploadTimeout: 2 * time.Minute,
 	}
 	a.Server.HTTP.ConnLimit = 64 / 4 * 1024
 }
 
 type Component struct {
-	server             *fnet.TargetServer
-	serverConfig       *fnet.HTTPConfig
-	uncheckedCollector *util.UncheckedCollector
-	appendables        []pyroscope.Appendable
-	mut                sync.Mutex
-	logger             log.Logger
-	tracer             trace.Tracer
+	server                 *fnet.TargetServer
+	serverConfig           *fnet.HTTPConfig
+	uncheckedCollector     *util.UncheckedCollector
+	appendables            []pyroscope.Appendable
+	debugInfoUploadTimeout time.Duration
+	mut                    sync.Mutex
+	logger                 *slog.Logger
+	tracer                 trace.Tracer
+	metrics                *metrics
 }
 
-func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, args Arguments) (*Component, error) {
+func New(logger *slog.Logger, tracer trace.Tracer, reg prometheus.Registerer, args Arguments) (*Component, error) {
 	uncheckedCollector := util.NewUncheckedCollector(nil)
 	reg.MustRegister(uncheckedCollector)
 
@@ -75,6 +80,7 @@ func New(logger log.Logger, tracer trace.Tracer, reg prometheus.Registerer, args
 		tracer:             tracer,
 		uncheckedCollector: uncheckedCollector,
 		appendables:        args.ForwardTo,
+		metrics:            newMetrics(reg),
 	}
 
 	if err := c.Update(args); err != nil {
@@ -92,7 +98,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	<-ctx.Done()
-	level.Info(c.logger).Log("msg", "terminating due to context done")
+	c.logger.Info("terminating due to context done")
 	return nil
 }
 
@@ -105,16 +111,12 @@ func (c *Component) Update(args component.Arguments) error {
 func (c *Component) update(args component.Arguments) (bool, error) {
 	shutdown := false
 	newArgs := args.(Arguments)
-	// required for debug info upload over connect over http2 over http server port
-	if newArgs.Server.HTTP.HTTP2 == nil {
-		newArgs.Server.HTTP.HTTP2 = &fnet.HTTP2Config{}
-	}
-	newArgs.Server.HTTP.HTTP2.Enabled = true
 
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
 	c.appendables = newArgs.ForwardTo
+	c.debugInfoUploadTimeout = newArgs.DebugInfoUploadTimeout
 
 	serverNeedsRestarting := !reflect.DeepEqual(c.serverConfig, newArgs.Server.HTTP)
 	if !serverNeedsRestarting {
@@ -147,8 +149,10 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 		pathPush, handlePush := pushv1connect.NewPusherServiceHandler(c)
 		router.PathPrefix(pathPush).Handler(handlePush).Methods(http.MethodPost)
 
-		// mount connect debuginfo upload handler
+		// mount connect debuginfo handlers (ShouldInitiateUpload, UploadFinished)
 		debuginfov1alpha1connect.RegisterDebuginfoServiceHandler(router, c)
+		// mount plain HTTP upload proxy
+		router.Handle("/debuginfo.v1alpha1.DebuginfoService/Upload/{gnu_build_id}", c.UploadHTTPHandler()).Methods(http.MethodPost)
 	})
 }
 
@@ -210,7 +214,7 @@ func (c *Component) Push(ctx context.Context, req *connect.Request[pushv1.PushRe
 	}
 	wg.Wait()
 	if errs != nil {
-		level.Warn(l).Log("msg", "Failed to forward profiles requests", "err", errs)
+		l.Warn("Failed to forward profiles requests", "err", errs)
 		return nil, connect.NewError(connect.CodeInternal, errs)
 	}
 
@@ -239,8 +243,8 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	if nameParam := r.URL.Query().Get("name"); nameParam != "" {
 		ls, err := labelset.Parse(nameParam)
 		if err != nil {
-			level.Warn(l).Log(
-				"msg", "Failed to parse labels from name parameter",
+			l.Warn(
+				"Failed to parse labels from name parameter",
 				"name", nameParam,
 				"err", err,
 			)
@@ -262,7 +266,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	// but means the entire profile will be held in memory
 	var buf bytes.Buffer
 	if _, err := io.Copy(&buf, r.Body); err != nil {
-		level.Warn(l).Log("msg", "Failed to read request body", "err", err)
+		l.Warn("Failed to read request body", "err", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -293,7 +297,7 @@ func (c *Component) handleIngest(w http.ResponseWriter, r *http.Request) {
 	wg.Wait()
 
 	if errs != nil {
-		level.Warn(l).Log("msg", "Failed to ingest profiles", "err", errs)
+		l.Warn("Failed to ingest profiles", "err", errs)
 		var writeErr *write.PyroscopeWriteError
 		if errors.As(errs, &writeErr) {
 			http.Error(w, http.StatusText(writeErr.StatusCode), writeErr.StatusCode)

@@ -3,7 +3,6 @@ package receive_http
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"reflect"
 	"sync"
@@ -18,8 +17,6 @@ import (
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/util"
 )
@@ -107,7 +104,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts: opts,
 		handler: promremote.NewWriteHandler(
-			slog.New(logging.NewSlogGoKitHandler(opts.Logger)),
+			opts.SLogger,
 			opts.Registerer,
 			fanout,
 			supportedRemoteWriteProtoMsgs,
@@ -136,7 +133,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	<-ctx.Done()
-	level.Info(c.opts.Logger).Log("msg", "terminating due to context done")
+	c.opts.SLogger.Info("terminating due to context done")
 	return nil
 }
 
@@ -181,7 +178,7 @@ func (c *Component) createNewServer(args Arguments) (*fnet.TargetServer, error) 
 	c.uncheckedCollector.SetCollector(serverRegistry)
 
 	s, err := fnet.NewTargetServer(
-		c.opts.Logger,
+		c.opts.SLogger,
 		"prometheus_receive_http",
 		serverRegistry,
 		args.Server,

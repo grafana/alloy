@@ -6,13 +6,12 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	promqueue "github.com/grafana/walqueue/implementations/prometheus"
 	"github.com/prometheus/prometheus/storage"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 func init() {
@@ -28,12 +27,11 @@ func init() {
 }
 
 func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
-	level.Warn(opts.Logger).Log("msg", "prometheus.write.queue is deprecated and will be removed in a future version. Migrate to prometheus.remote_write to prevent future errors.")
+	opts.SLogger.Warn("prometheus.write.queue is deprecated and will be removed in a future version. Migrate to prometheus.remote_write to prevent future errors.")
 
 	s := &Queue{
 		opts:      opts,
 		args:      args,
-		log:       opts.Logger,
 		endpoints: map[string]promqueue.Queue{},
 	}
 	s.opts.OnStateChange(Exports{Receiver: s})
@@ -50,7 +48,6 @@ type Queue struct {
 	mut       sync.RWMutex
 	args      Arguments
 	opts      component.Options
-	log       log.Logger
 	endpoints map[string]promqueue.Queue
 	ctx       context.Context
 }
@@ -114,7 +111,7 @@ func (s *Queue) Update(args component.Arguments) error {
 		}
 		nativeCfg := epCfg.ToNativeType()
 		// Create
-		end, err := promqueue.NewQueue(epCfg.Name, nativeCfg, filepath.Join(s.opts.DataPath, epCfg.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", s.opts.Logger)
+		end, err := promqueue.NewQueue(epCfg.Name, nativeCfg, filepath.Join(s.opts.DataPath, epCfg.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", slogadapter.GoKit(s.opts.SLogger.Handler()))
 		if err != nil {
 			return err
 		}
@@ -135,7 +132,7 @@ func (s *Queue) Update(args component.Arguments) error {
 func (s *Queue) createEndpoints() error {
 	for _, ep := range s.args.Endpoints {
 		nativeCfg := ep.ToNativeType()
-		end, err := promqueue.NewQueue(ep.Name, nativeCfg, filepath.Join(s.opts.DataPath, ep.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", s.opts.Logger)
+		end, err := promqueue.NewQueue(ep.Name, nativeCfg, filepath.Join(s.opts.DataPath, ep.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", slogadapter.GoKit(s.opts.SLogger.Handler()))
 		if err != nil {
 			return err
 		}

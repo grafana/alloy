@@ -4,12 +4,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/diag"
 	"github.com/grafana/alloy/syntax/token"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // Tests for helper functions in config_manager.go
@@ -334,7 +335,7 @@ func TestCopyEffectiveConfig(t *testing.T) {
 }
 
 func TestSetEffectiveConfig(t *testing.T) {
-	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), "")
+	cm := newConfigManager(nil, util.TestAlloyLogger(t).Slog(), t.TempDir(), "")
 
 	config := []byte("test config content")
 	cm.setEffectiveConfig(config)
@@ -351,7 +352,7 @@ func TestSetEffectiveConfig(t *testing.T) {
 }
 
 func TestGetEffectiveConfigForRequest(t *testing.T) {
-	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), "")
+	cm := newConfigManager(nil, util.TestAlloyLogger(t).Slog(), t.TempDir(), "")
 
 	// First call - should return nil because effective config is not set
 	result := cm.getEffectiveConfigForRequest()
@@ -385,7 +386,7 @@ func TestGetEffectiveConfigForRequest(t *testing.T) {
 }
 
 func TestResetLastSentEffectiveConfig(t *testing.T) {
-	cm := newConfigManager(nil, util.TestLogger(t), t.TempDir(), "")
+	cm := newConfigManager(nil, util.TestAlloyLogger(t).Slog(), t.TempDir(), "")
 
 	// Set effective config
 	config := []byte("test config")

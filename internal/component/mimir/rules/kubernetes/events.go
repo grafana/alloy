@@ -3,12 +3,12 @@ package rules
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"maps"
 	"regexp"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/hashicorp/go-multierror"
 	promv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
@@ -22,7 +22,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	"github.com/grafana/alloy/internal/component/mimir/util"
 	"github.com/grafana/alloy/internal/mimir/client"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var sourceTenantsRegex = regexp.MustCompile(`\s*,\s*`)
@@ -38,11 +37,12 @@ type eventProcessor struct {
 	namespaceSelector  labels.Selector
 	ruleSelector       labels.Selector
 	namespacePrefix    string
+	namespaceSeparator string
 	externalLabels     map[string]string
 	extraQueryMatchers *ExtraQueryMatchers
 
 	metrics *metrics
-	logger  log.Logger
+	logger  *slog.Logger
 
 	currentState    kubernetes.MimirRuleGroupsByNamespace
 	currentStateMtx sync.RWMutex
@@ -53,7 +53,7 @@ func (e *eventProcessor) run(ctx context.Context) {
 	for {
 		evt, shutdown := e.queue.Get()
 		if shutdown {
-			level.Info(e.logger).Log("msg", "shutting down event loop")
+			e.logger.Info("shutting down event loop")
 			return
 		}
 
@@ -65,16 +65,16 @@ func (e *eventProcessor) run(ctx context.Context) {
 			if retries < 5 && client.IsRecoverable(err) {
 				e.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
 				e.queue.AddRateLimited(evt)
-				level.Error(e.logger).Log(
-					"msg", "failed to process event, will retry",
+				e.logger.Error(
+					"failed to process event, will retry",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
 				)
 				continue
 			} else {
 				e.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
-				level.Error(e.logger).Log(
-					"msg", "failed to process event, unrecoverable error or max retries exceeded",
+				e.logger.Error(
+					"failed to process event, unrecoverable error or max retries exceeded",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
 				)
@@ -102,9 +102,9 @@ func (e *eventProcessor) processEvent(ctx context.Context, event kubernetes.Even
 
 	switch event.Typ {
 	case kubernetes.EventTypeResourceChanged:
-		level.Info(e.logger).Log("msg", "processing event", "type", event.Typ, "key", event.ObjectKey)
+		e.logger.Info("processing event", "type", event.Typ, "key", event.ObjectKey)
 	case util.EventTypeSyncMimir:
-		level.Debug(e.logger).Log("msg", "syncing current state from ruler")
+		e.logger.Debug("syncing current state from ruler")
 		err := e.syncMimir(ctx)
 		if err != nil {
 			return err
@@ -123,9 +123,12 @@ func (e *eventProcessor) enqueueSyncMimir() {
 }
 
 func (e *eventProcessor) syncMimir(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, kubernetes.RulerSyncTimeout)
+	defer cancel()
+
 	rulesByNamespace, err := e.mimirClient.ListRules(ctx, "")
 	if err != nil {
-		level.Error(e.logger).Log("msg", "failed to list rules from mimir", "err", err)
+		e.logger.Error("failed to list rules from mimir", "err", err)
 		return err
 	}
 
@@ -177,7 +180,7 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.MimirRuleGroup
 	desiredState := make(kubernetes.MimirRuleGroupsByNamespace)
 	for _, rules := range kubernetesState {
 		for _, rule := range rules {
-			mimirNs := mimirNamespaceForRuleCRD(e.namespacePrefix, rule)
+			mimirNs := mimirNamespaceForRuleCRD(e.namespacePrefix, e.namespaceSeparator, rule)
 			groups, err := convertCRDRuleGroupToRuleGroup(rule.Spec)
 			if err != nil {
 				return nil, fmt.Errorf("failed to convert rule group: %w", err)
@@ -212,7 +215,7 @@ func (e *eventProcessor) desiredStateFromKubernetes() (kubernetes.MimirRuleGroup
 						query := ruleGroup.Rules[i].Expr
 						newQuery, err := addMatchersToQuery(rule, query, e.extraQueryMatchers.Matchers)
 						if err != nil {
-							level.Error(e.logger).Log("msg", "failed to add labels to PrometheusRule query", "query", query, "err", err)
+							e.logger.Error("failed to add labels to PrometheusRule query", "query", query, "err", err)
 						}
 						ruleGroup.Rules[i].Expr = newQuery
 					}
@@ -320,21 +323,21 @@ func (e *eventProcessor) applyChanges(ctx context.Context, namespace string, dif
 			if err != nil {
 				return err
 			}
-			level.Info(e.logger).Log("msg", "added rule group", "namespace", namespace, "group", diff.Desired.Name)
+			e.logger.Info("added rule group", "namespace", namespace, "group", diff.Desired.Name)
 		case kubernetes.RuleGroupDiffKindRemove:
 			err := e.mimirClient.DeleteRuleGroup(ctx, namespace, diff.Actual.Name)
 			if err != nil {
 				return err
 			}
-			level.Info(e.logger).Log("msg", "removed rule group", "namespace", namespace, "group", diff.Actual.Name)
+			e.logger.Info("removed rule group", "namespace", namespace, "group", diff.Actual.Name)
 		case kubernetes.RuleGroupDiffKindUpdate:
 			err := e.mimirClient.CreateRuleGroup(ctx, namespace, diff.Desired)
 			if err != nil {
 				return err
 			}
-			level.Info(e.logger).Log("msg", "updated rule group", "namespace", namespace, "group", diff.Desired.Name)
+			e.logger.Info("updated rule group", "namespace", namespace, "group", diff.Desired.Name)
 		default:
-			level.Error(e.logger).Log("msg", "unknown rule group diff kind", "kind", diff.Kind)
+			e.logger.Error("unknown rule group diff kind", "kind", diff.Kind)
 		}
 	}
 
@@ -376,21 +379,21 @@ func (e *eventProcessor) getKubernetesState() (map[string][]*promv1.PrometheusRu
 }
 
 // mimirNamespaceForRuleCRD returns the namespace that the rule CRD should be
-// stored in mimir. This function, along with isManagedNamespace, is used to
+// stored in mimir. This function, along with isManagedMimirNamespace, is used to
 // determine if a rule CRD is managed by Alloy.
-func mimirNamespaceForRuleCRD(prefix string, pr *promv1.PrometheusRule) string {
-	return fmt.Sprintf("%s/%s/%s/%s", prefix, pr.Namespace, pr.Name, pr.UID)
+func mimirNamespaceForRuleCRD(prefix, separator string, pr *promv1.PrometheusRule) string {
+	return prefix + separator + pr.Namespace + separator + pr.Name + separator + string(pr.UID)
 }
 
 // isManagedMimirNamespace returns true if the namespace is managed by Alloy.
 // Unmanaged namespaces are left as is by the operator.
+// The check is separator-agnostic so that rules created with a previous separator
+// are still recognised and garbage-collected when the separator changes.
 func isManagedMimirNamespace(prefix, namespace string) bool {
 	prefixPart := regexp.QuoteMeta(prefix)
-	namespacePart := `.+`
-	namePart := `.+`
 	uuidPart := `[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12}`
 	managedNamespaceRegex := regexp.MustCompile(
-		fmt.Sprintf("^%s/%s/%s/%s$", prefixPart, namespacePart, namePart, uuidPart),
+		fmt.Sprintf(`^%s.+%s$`, prefixPart, uuidPart),
 	)
 	return managedNamespaceRegex.MatchString(namespace)
 }

@@ -6,17 +6,16 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/sampling"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
@@ -95,7 +94,7 @@ var (
 // Component implements the loki.secretfilter component.
 type Component struct {
 	opts component.Options
-	log  log.Logger
+	log  *slog.Logger
 
 	mut      sync.RWMutex
 	args     Arguments
@@ -248,7 +247,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:               o,
-		log:                o.Logger,
+		log:                o.SLogger,
 		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 		fanout:             loki.NewFanout(args.ForwardTo),
 		metrics:            newMetrics(o.Registerer),
@@ -260,8 +259,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, err
 	}
 
-	level.Debug(c.log).Log(
-		"msg", "loki.secretfilter initialized",
+	c.log.Debug(
+		"loki.secretfilter initialized",
 		"origin_label", args.OriginLabel,
 		"redact_with", args.RedactWith,
 		"redact_percent", c.redactPercent,
@@ -289,7 +288,7 @@ func (c *Component) Run(ctx context.Context) error {
 		if c.shouldProcessEntry() {
 			newEntry, dropped := c.processEntry(ctx, entry)
 			if dropped {
-				level.Debug(c.log).Log("msg", "entry dropped", "reason", "processing_timeout")
+				c.log.Debug("entry dropped", "reason", "processing_timeout")
 				return loki.Entry{}, false
 			}
 			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
@@ -304,7 +303,7 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 
 		c.metrics.entriesBypassedTotal.Inc()
-		level.Debug(c.log).Log("msg", "entry bypassed by sampling", "rate", c.args.Rate)
+		c.log.Debug("entry bypassed by sampling", "rate", c.args.Rate)
 		return entry, true
 	})
 	return nil
@@ -340,7 +339,7 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 
 	if ctx.Err() != nil {
 		c.metrics.linesTimedOutTotal.Inc()
-		level.Debug(c.log).Log("msg", "processing timeout exceeded", "drop_on_timeout", c.args.DropOnTimeout, "partial_findings", len(findings))
+		c.log.Debug("processing timeout exceeded", "drop_on_timeout", c.args.DropOnTimeout, "partial_findings", len(findings))
 		if c.args.DropOnTimeout {
 			c.metrics.linesDroppedTotal.Inc()
 			return loki.Entry{}, true
@@ -360,7 +359,7 @@ func (c *Component) processEntry(ctx context.Context, entry loki.Entry) (loki.En
 	if len(findings) == 0 {
 		return entry, false
 	}
-	level.Debug(c.log).Log("msg", "secrets detected in line", "findings", len(findings))
+	c.log.Debug("secrets detected in line", "findings", len(findings))
 	return c.redactLine(entry, findings), false
 }
 
@@ -445,8 +444,8 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 	c.metrics = newMetrics(c.opts.Registerer)
 
-	level.Debug(c.log).Log(
-		"msg", "loki.secretfilter config updated",
+	c.log.Debug(
+		"loki.secretfilter config updated",
 		"origin_label", newArgs.OriginLabel,
 		"redact_with", newArgs.RedactWith,
 		"redact_percent", c.redactPercent,

@@ -7,12 +7,12 @@ package cloudflare
 
 import (
 	"context"
+	"log/slog"
 	"regexp"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/cloudflare-go"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/concurrency"
@@ -24,7 +24,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // The minimum window size is 1 minute.
@@ -52,7 +51,7 @@ type tailerConfig struct {
 
 // tailer is responsible to pull log messages from cloudflare using Logpull API.
 type tailer struct {
-	logger    log.Logger
+	logger    *slog.Logger
 	handler   loki.LogsReceiver
 	positions positions.Positions
 	config    *tailerConfig
@@ -68,7 +67,7 @@ type tailer struct {
 }
 
 // newTailer creates and runs a Cloudflare target.
-func newTailer(metrics *metrics, logger log.Logger, handler loki.LogsReceiver, position positions.Positions, config *tailerConfig) (*tailer, error) {
+func newTailer(metrics *metrics, logger *slog.Logger, handler loki.LogsReceiver, position positions.Positions, config *tailerConfig) (*tailer, error) {
 	fields, err := fieldsForType(config.FieldsType, config.AdditionalFields)
 	if err != nil {
 		return nil, err
@@ -125,7 +124,7 @@ func (t *tailer) start() {
 				request := requests[idx]
 				return t.pull(ctx, request.start, request.end)
 			}); err != nil {
-				level.Error(t.logger).Log("msg", "failed to pull logs", "err", err, "start", start, "end", end)
+				t.logger.Error("failed to pull logs", "err", err, "start", start, "end", end)
 				t.err = err
 				return
 			}
@@ -161,7 +160,7 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 	for backoff.Ongoing() {
 		it, err = t.client.LogpullReceived(ctx, start, end)
 		if err != nil && cloudflareTooEarlyError.MatchString(err.Error()) {
-			level.Warn(t.logger).Log("msg", "failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
+			t.logger.Warn("failed iterating over logs, out of cloudflare range, not retrying", "err", err, "start", start, "end", end, "retries", backoff.NumRetries())
 			return nil
 		} else if err != nil {
 			if it != nil {
@@ -191,7 +190,7 @@ func (t *tailer) pull(ctx context.Context, start, end time.Time) error {
 				t.metrics.Entries.Inc()
 			}
 			if it.Err() != nil {
-				level.Warn(t.logger).Log("msg", "failed iterating over logs", "err", it.Err(), "start", start, "end", end, "retries", backoff.NumRetries(), "lineRead", lineRead)
+				t.logger.Warn("failed iterating over logs", "err", it.Err(), "start", start, "end", end, "retries", backoff.NumRetries(), "lineRead", lineRead)
 				return it.Err()
 			}
 			return nil

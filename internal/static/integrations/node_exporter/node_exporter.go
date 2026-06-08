@@ -9,48 +9,44 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/build"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/static/integrations/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/node_exporter/collector"
+
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
 // Integration is the node_exporter integration. The integration scrapes metrics
 // from the host Linux-based system.
 type Integration struct {
-	c      *Config
-	logger log.Logger
-	nc     *collector.NodeCollector
+	c  *Config
+	nc *collector.NodeCollector
 
 	exporterMetricsRegistry *prometheus.Registry
 }
 
 // New creates a new node_exporter integration.
-func New(log log.Logger, c *Config) (*Integration, error) {
+func New(log *slog.Logger, c *Config) (*Integration, error) {
 	cfg := c.mapConfigToNodeConfig()
-	nc, err := collector.NewNodeCollector(cfg, slog.New(logging.NewSlogGoKitHandler(log)))
+	nc, err := collector.NewNodeCollector(cfg, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create node_exporter: %w", err)
 	}
 
-	level.Info(log).Log("msg", "Enabled node_exporter collectors")
+	log.Info("Enabled node_exporter collectors")
 	collectors := []string{}
 	for n := range nc.Collectors {
 		collectors = append(collectors, n)
 	}
 	sort.Strings(collectors)
 	for _, c := range collectors {
-		level.Info(log).Log("collector", c)
+		log.Info("collector", "name", c)
 	}
 
 	return &Integration{
-		c:      c,
-		logger: log,
-		nc:     nc,
+		c:  c,
+		nc: nc,
 
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 	}, nil

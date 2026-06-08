@@ -8,13 +8,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents/module"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/vcs"
 )
 
@@ -56,7 +53,6 @@ func (args *Arguments) SetToDefault() {
 // Component implements the module.git component.
 type Component struct {
 	opts component.Options
-	log  log.Logger
 	mod  *module.ModuleComponent
 
 	mut      sync.RWMutex
@@ -83,7 +79,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	c := &Component{
 		opts: o,
-		log:  o.Logger,
 
 		mod: m,
 
@@ -95,7 +90,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	// exists but we were just unable to update it.
 	if err := c.Update(args); err != nil {
 		if errors.As(err, &vcs.UpdateFailedError{}) {
-			level.Error(c.log).Log("msg", "failed to update repository", "err", err)
+			c.opts.SLogger.Error("failed to update repository", "err", err)
 		} else {
 			return nil, err
 		}
@@ -123,7 +118,7 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-c.argsChanged:
 			c.mut.Lock()
 			{
-				level.Info(c.log).Log("msg", "updating repository pull frequency", "new_frequency", c.args.PullFrequency)
+				c.opts.SLogger.Info("updating repository pull frequency", "new_frequency", c.args.PullFrequency)
 
 				if c.args.PullFrequency > 0 {
 					if ticker == nil {
@@ -143,7 +138,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Unlock()
 
 		case <-tickerC:
-			level.Info(c.log).Log("msg", "updating repository", "new_frequency", c.args.PullFrequency)
+			c.opts.SLogger.Info("updating repository", "new_frequency", c.args.PullFrequency)
 			c.tickPollFile(ctx)
 		}
 	}
@@ -204,7 +199,7 @@ func (c *Component) Update(args component.Arguments) (err error) {
 		r, err := vcs.NewGitRepo(context.Background(), repoPath, repoOpts)
 		if err != nil {
 			if errors.As(err, &vcs.UpdateFailedError{}) {
-				level.Error(c.log).Log("msg", "failed to update repository", "err", err)
+				c.opts.SLogger.Error("failed to update repository", "err", err)
 				c.updateHealth(err)
 			} else {
 				return err

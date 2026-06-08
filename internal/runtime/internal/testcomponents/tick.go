@@ -6,10 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -39,7 +37,6 @@ type TickExports struct {
 // will be emitted on a given frequency.
 type Tick struct {
 	opts component.Options
-	log  log.Logger
 
 	cfgMut sync.Mutex
 	cfg    TickConfig
@@ -47,7 +44,7 @@ type Tick struct {
 
 // NewTick creates a new testcomponents.tick component.
 func NewTick(o component.Options, cfg TickConfig) (*Tick, error) {
-	t := &Tick{opts: o, log: o.Logger}
+	t := &Tick{opts: o}
 	if err := t.Update(cfg); err != nil {
 		return nil, err
 	}
@@ -65,7 +62,7 @@ func (t *Tick) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(t.getNextTick()):
-			level.Info(t.log).Log("msg", "ticked")
+			t.opts.SLogger.Info("ticked")
 			t.opts.OnStateChange(TickExports{Time: time.Now()})
 		}
 	}
@@ -87,7 +84,7 @@ func (t *Tick) Update(args component.Arguments) error {
 		return fmt.Errorf("frequency must not be 0")
 	}
 
-	level.Info(t.log).Log("msg", "setting tick frequency", "freq", cfg.Frequency)
+	t.opts.SLogger.Info("setting tick frequency", "freq", cfg.Frequency)
 	t.cfg = cfg
 	return nil
 }

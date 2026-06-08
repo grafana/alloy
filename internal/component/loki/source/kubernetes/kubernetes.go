@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/grafana/alloy/internal/component"
@@ -20,7 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 )
 
@@ -60,7 +58,6 @@ func (args *Arguments) SetToDefault() {
 
 // Component implements the loki.source.kubernetes component.
 type Component struct {
-	log       log.Logger
 	opts      component.Options
 	positions positions.Positions
 	cluster   cluster.Cluster
@@ -86,7 +83,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.Logger, positions.Config{
+	positionsFile, err := positions.New(o.SLogger, positions.Config{
 		SyncPeriod:    10 * time.Second,
 		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
 	})
@@ -102,7 +99,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		cluster:   data.(cluster.Cluster),
-		log:       o.Logger,
 		opts:      o,
 		handler:   loki.NewLogsReceiver(),
 		fanout:    loki.NewFanout(args.ForwardTo),
@@ -152,7 +148,7 @@ func (c *Component) Update(args component.Arguments) error {
 	switch {
 	case c.tailer == nil:
 		// First call to Update; build the tailer.
-		c.tailer = kubetail.NewManager(c.log, managerOpts)
+		c.tailer = kubetail.NewManager(c.opts.SLogger, managerOpts)
 
 	case managerOpts != c.lastOptions:
 		// Options changed; pass it to the tailer.
@@ -183,7 +179,7 @@ func (c *Component) resyncTargets(targets []discovery.Target) {
 		processed, err := kubetail.PrepareLabels(lset, c.opts.ID)
 		if err != nil {
 			// TODO(rfratto): should this set the health of the component?
-			level.Error(c.log).Log("msg", "failed to process input target", "target", lset.String(), "err", err)
+			c.opts.SLogger.Error("failed to process input target", "target", lset.String(), "err", err)
 			continue
 		}
 		tailTargets = append(tailTargets, kubetail.NewTarget(lset, processed, false))
@@ -217,7 +213,7 @@ func (c *Component) getTailerOptions(args Arguments) (*kubetail.Options, error) 
 		return c.lastOptions, nil
 	}
 
-	cfg, err := args.Client.BuildRESTConfig(c.log)
+	cfg, err := args.Client.BuildRESTConfig(c.opts.SLogger)
 	if err != nil {
 		return c.lastOptions, fmt.Errorf("building Kubernetes config: %w", err)
 	}

@@ -35,8 +35,10 @@ func RunTestCases(t *testing.T, config string, cases []TestCase) {
 	require.NoError(t, syntax.Unmarshal([]byte(config), &args))
 	args.ForwardTo = []loki.LogsReceiver{loki.NewLogsReceiver()}
 
+	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         util.TestLogger(t),
+		Logger:         logger,
+		SLogger:        logger.Slog(),
 		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,
 		Registerer:     prometheus.NewRegistry(),

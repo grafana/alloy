@@ -11,7 +11,6 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -88,8 +87,7 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.mut.Lock()
 		defer c.mut.Unlock()
-
-		level.Info(c.opts.Logger).Log("msg", "loki.source.heroku component shutting down, stopping listener")
+		c.opts.SLogger.Info("loki.source.heroku component shutting down, stopping listener")
 		if c.server != nil {
 			c.server.ForceShutdown()
 		}
@@ -124,7 +122,7 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		server, err := source.NewServer(c.opts.Logger, registry, c.handler, source.ServerConfig{
+		server, err := source.NewServer(c.opts.SLogger, registry, c.handler, source.ServerConfig{
 			Namespace:      "loki_source_heroku_drain_target",
 			EntriesWritten: c.metrics.entriesWritten,
 			NetConfig:      newArgs.Server,
@@ -139,7 +137,7 @@ func (c *Component) Update(args component.Arguments) error {
 			return fmt.Errorf("failed to create heroku server: %w", err)
 		}
 
-		if err := server.Run(newRoutes(c.opts.Logger, c.metrics), []source.HandlerRoute{newHealthyHandler()}); err != nil {
+		if err := server.Run(newRoutes(c.metrics), []source.HandlerRoute{newHealthyHandler()}); err != nil {
 			return fmt.Errorf("failed to run heroku server: %w", err)
 		}
 

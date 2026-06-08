@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 	filedetector "github.com/grafana/alloy/internal/filedetector"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -123,7 +122,7 @@ func (c *Component) Run(ctx context.Context) error {
 		defer c.mut.Unlock()
 
 		if err := c.detector.Close(); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to shut down detector", "err", err)
+			c.opts.SLogger.Error("failed to shut down detector", "err", err)
 		}
 		c.detector = nil
 	}()
@@ -166,7 +165,7 @@ func (c *Component) readFile() error {
 			Message:    fmt.Sprintf("failed to read file: %s", err),
 			UpdateTime: time.Now(),
 		})
-		level.Error(c.opts.Logger).Log("msg", "failed to read file", "path", c.opts.DataPath, "err", err)
+		c.opts.SLogger.Error("failed to read file", "path", c.opts.DataPath, "err", err)
 		return err
 	}
 	c.latestContent = string(bb)
@@ -210,7 +209,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// to Update.
 	if c.detector != nil {
 		if err := c.detector.Close(); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to shut down old detector", "err", err)
+			c.opts.SLogger.Error("failed to shut down old detector", "err", err)
 		}
 		c.detector = nil
 	}
@@ -246,7 +245,7 @@ func (c *Component) configureDetector() error {
 		})
 	case filedetector.DetectorFSNotify:
 		c.detector, err = filedetector.NewFSNotify(filedetector.FSNotifyOptions{
-			Logger:        c.opts.Logger,
+			Logger:        c.opts.SLogger,
 			Filename:      c.args.Filename,
 			ReloadFile:    reloadFile,
 			PollFrequency: c.args.PollFrequency,

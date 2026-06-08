@@ -2,12 +2,11 @@ package windows
 
 import (
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	windows_integration "github.com/grafana/alloy/internal/static/integrations/windows_exporter"
 )
 
@@ -59,7 +58,7 @@ type Arguments struct {
 }
 
 // Convert converts the component's Arguments to the integration's Config.
-func (a *Arguments) Convert(logger log.Logger) *windows_integration.Config {
+func (a *Arguments) Convert(logger *slog.Logger) *windows_integration.Config {
 	a.logDeprecatedFields(logger)
 
 	filteredCollectors := slices.DeleteFunc(a.EnabledCollectors, func(collector string) bool {
@@ -123,27 +122,27 @@ func CombineAndConvert(t, deprecated *TextFileConfig) windows_integration.TextFi
 	}
 }
 
-func (a *Arguments) logDeprecatedFields(logger log.Logger) {
+func (a *Arguments) logDeprecatedFields(logger *slog.Logger) {
 	if slices.Contains(a.EnabledCollectors, "cs") {
-		level.Warn(logger).Log("msg", "the `cs` collector is removed - its metrics are in the `os`, `memory`, and `cpu` collectors")
+		logger.Warn("the `cs` collector is removed - its metrics are in the `os`, `memory`, and `cpu` collectors")
 	}
 	if slices.Contains(a.EnabledCollectors, "logon") {
-		level.Warn(logger).Log("msg", "the `logon` collector is removed - its metrics are in the `terminal_services` collector")
+		logger.Warn("the `logon` collector is removed - its metrics are in the `terminal_services` collector")
 	}
 	if a.MSMQ != nil {
-		level.Warn(logger).Log("msg", "the `msmq` block is deprecated - its usage is a no-op and it will be removed in the future")
+		logger.Warn("the `msmq` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 	if a.Service.UseApi != nil {
-		level.Warn(logger).Log("msg", "the `use_api` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+		logger.Warn("the `use_api` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 	if a.Service.Where != nil {
-		level.Warn(logger).Log("msg", "the `where_clause` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+		logger.Warn("the `where_clause` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 	if a.Service.V2 != nil {
-		level.Warn(logger).Log("msg", "the `enable_v2_collector` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
+		logger.Warn("the `enable_v2_collector` attribute inside the `service` block is deprecated - its usage is a no-op and it will be removed in the future")
 	}
 	if a.TextFileDeprecated != nil {
-		level.Warn(logger).Log("msg", "the `text_file` block is deprecated and will be removed in the future - use `textfile` instead")
+		logger.Warn("the `text_file` block is deprecated and will be removed in the future - use `textfile` instead")
 	}
 }
 

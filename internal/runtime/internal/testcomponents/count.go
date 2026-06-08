@@ -6,11 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"go.uber.org/atomic"
 )
 
 func init() {
@@ -37,7 +36,6 @@ type CountExports struct {
 
 type Count struct {
 	opts  component.Options
-	log   log.Logger
 	count atomic.Int32
 
 	cfgMut sync.Mutex
@@ -45,7 +43,7 @@ type Count struct {
 }
 
 func NewCount(o component.Options, cfg CountConfig) (*Count, error) {
-	t := &Count{opts: o, log: o.Logger}
+	t := &Count{opts: o}
 	if err := t.Update(cfg); err != nil {
 		return nil, err
 	}
@@ -69,10 +67,10 @@ func (t *Count) Run(ctx context.Context) error {
 			currentCount := t.count.Load()
 			if maxCount == 0 || currentCount < int32(maxCount) {
 				if t.count.CompareAndSwap(currentCount, currentCount+1) {
-					level.Info(t.log).Log("msg", "incremented count", "count", currentCount+1)
+					t.opts.SLogger.Info("incremented count", "count", currentCount+1)
 					t.opts.OnStateChange(CountExports{Count: int(currentCount + 1)})
 				} else {
-					level.Info(t.log).Log("msg", "failed to increment count", "count", currentCount)
+					t.opts.SLogger.Error("failed to increment count", "count", currentCount)
 				}
 			}
 		}
@@ -95,7 +93,7 @@ func (t *Count) Update(args component.Arguments) error {
 		return fmt.Errorf("frequency must not be 0")
 	}
 
-	level.Info(t.log).Log("msg", "setting count frequency", "freq", cfg.Frequency)
+	t.opts.SLogger.Info("setting count frequency", "freq", cfg.Frequency)
 	t.cfg = cfg
 	return nil
 }

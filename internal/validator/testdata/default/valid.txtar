@@ -231,3 +231,10 @@ prometheus.scrape "stdlibexperimental" {
   targets    = array.combine_maps([], [], [])
   forward_to = array.combine_maps([], [], [])
 }
+
+otelcol.auth.headers "headers" {
+	header {
+		key = "test"
+		action = "insert"
+	}
+}

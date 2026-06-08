@@ -79,14 +79,16 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `instrument` > [`kubernetes`][kubernetes services]       | Configures the Kubernetes services to discover and instrument for the component.                   | no       |
 | `discovery` > `instrument` > [`sampler`][sampler]                      | Configures trace sampling for the service.                                                         | no       |
 | `discovery` > [`exclude_instrument`][services]                         | Configures the services to exclude from instrumentation for the component.                         | no       |
-| `discovery` > `exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude from instrumentation for the component.             | no       |
+| `discovery` > `exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the Kubernetes services to exclude from instrumentation for the component.            | no       |
 | `discovery` > [`default_exclude_instrument`][services]                 | Configures the default services to exclude from instrumentation for the component.                 | no       |
 | `discovery` > `default_exclude_instrument` > [`kubernetes`][kubernetes services] | Configures the default Kubernetes services to exclude from instrumentation for the component.     | no       |
 | `discovery` > [`survey`][services]                                     | Configures the surveying mechanism for the component.                                              | no       |
 | `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | `ebpf` > [`payload_extraction`][payload extraction]                    | Configures HTTP payload extraction for protocol-aware parsing.                                     | no       |
-| `ebpf` > `payload_extraction` > `http` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                       | no       |
+| `ebpf` > `payload_extraction` > `http` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > [`anthropic`][anthropic payload extraction] | Configures Anthropic payload extraction.                                             | no       |
+| `ebpf` > [`maps_config`][maps config]                                  | Configures eBPF map sizing.                                                                        | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
 | `filters` > [`network`][network filters]                               | Configures filtering of network attributes.                                                        | no       |
@@ -116,6 +118,8 @@ You can use the following blocks with `beyla.ebpf`:
 [ebpf]: #ebpf
 [payload extraction]: #payload_extraction
 [openai payload extraction]: #openai
+[maps config]: #maps_config
+[anthropic payload extraction]: #anthropic
 [filters]: #filters
 [application filters]: #application
 [metrics]: #metrics
@@ -158,13 +162,14 @@ This `kubernetes` block configures the decorating of the metrics and traces with
 
 | Name                       | Type           | Description                                            | Default | Required |
 |----------------------------|----------------|--------------------------------------------------------|---------|----------|
-| `cluster_name`             | `string`       | The name of the Kubernetes cluster.                    | `""`    | no       |
-| `disable_informers`        | `list(string)` | List of Kubernetes informers to disable.               | `[]`    | no       |
-| `enable`                   | `string`       | Enable the Kubernetes metadata decoration.             | `autodetect` | no       |
-| `informers_resync_period`  | `duration`     | Period for Kubernetes informers resynchronization.     | `"30m"` | no       |
-| `informers_sync_timeout`   | `duration`     | Timeout for Kubernetes informers synchronization.      | `"30s"` | no       |
-| `meta_cache_address`       | `string`       | Address of the Kubernetes metadata cache service.      | `""`    | no       |
-| `meta_restrict_local_node` | `bool`         | Restrict Kubernetes metadata collection to local node. | `false` | no       |
+| `cluster_name`                | `string`       | The name of the Kubernetes cluster.                                              | `""`    | no       |
+| `disable_informers`           | `list(string)` | List of Kubernetes informers to disable.                                         | `[]`    | no       |
+| `enable`                      | `string`       | Enable the Kubernetes metadata decoration.                                       | `autodetect` | no  |
+| `informers_resync_period`     | `duration`     | Period for Kubernetes informers resynchronization.                               | `"30m"` | no       |
+| `informers_sync_timeout`      | `duration`     | Timeout for Kubernetes informers synchronization.                                | `"30s"` | no       |
+| `meta_cache_address`          | `string`       | Address of the Kubernetes metadata cache service.                                | `""`    | no       |
+| `meta_restrict_local_node`    | `bool`         | Restrict Kubernetes metadata collection to local node.                           | `false` | no       |
+| `reconnect_initial_interval`  | `duration`     | Initial interval for reconnecting to the Kubernetes API after a connection loss. | `"0s"`  | no       |
 
 If `cluster_name` isn't set, Beyla tries to detect the cluster name from the Kubernetes API.
 
@@ -370,10 +375,12 @@ Without an output configuration, traces are collected but not exported.
 The supported values for `instrumentations` are:
 
 * `*`: Enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `genai`: Enables the collection of GenAI (LLM) traces.
 * `grpc`: Enables the collection of gRPC traces.
 * `gpu`: Enables the collection of GPU performance traces.
 * `http`: Enables the collection of HTTP/HTTPS/HTTP2 traces.
 * `kafka`: Enables the collection of Kafka client/server traces.
+* `memcached`: Enables the collection of Memcached client/server traces.
 * `mongo`: Enables the collection of MongoDB database traces.
 * `redis`: Enables the collection of Redis client/server database traces.
 * `sql`: Enables the collection of SQL database client call traces.
@@ -507,6 +514,23 @@ The `payload_extraction` block configures protocol-aware HTTP payload parsing.
 
 When enabled, Beyla parses supported OpenAI HTTP payloads and can enrich traces with GenAI-related attributes.
 
+###### `anthropic`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable Anthropic payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported Anthropic HTTP payloads and can enrich traces with GenAI-related attributes.
+
+#### `maps_config`
+
+The `maps_config` block configures eBPF map sizing.
+
+| Name                  | Type  | Description                                                                | Default | Required |
+|-----------------------|-------|----------------------------------------------------------------------------|---------|----------|
+| `global_scale_factor` | `int` | Scales all eBPF map sizes in powers of two. Range: -3 to 3; 0 = no change. | `0`     | no       |
+
+
 [cilium]: https://grafana.com/docs/beyla/latest/cilium-compatibility/
 
 ### `filters`
@@ -569,14 +593,19 @@ The `metrics` block configures which metrics Beyla collects.
 | Name                                  | Type           | Description                                                | Default           | Required |
 |---------------------------------------|----------------|------------------------------------------------------------|-------------------|----------|
 | `allow_service_graph_self_references` | `bool`         | Allow service graph metrics to reference the same service. | `false`           | no       |
-| `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
-| `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
+| `exemplar_filter`                     | `string`       | Controls when exemplars are attached to metrics.           | `"always_off"`    | no       |
 | `extra_resource_labels`               | `list(string)` | List of OTEL resource labels to include on `target_info`.  | `[]`              | no       |
 | `extra_span_resource_labels`          | `list(string)` | List of OTEL resource labels to include on span metrics.   | `["k8s.cluster.name", "k8s.namespace.name", "service.version", "deployment.environment"]`           | no       |
+| `features`                            | `list(string)` | List of features to enable for the metrics.                | `["application"]` | no       |
+| `instrumentations`                    | `list(string)` | List of instrumentations to enable for the metrics.        | `["*"]`           | no       |
 | `native_histograms`                   | `bool`         | Use Prometheus native histograms.                          | `false` | no |
+
+`exemplar_filter` controls when exemplars are attached to Prometheus metrics, mirroring the `OTEL_METRICS_EXEMPLAR_FILTER` specification.
+The accepted values are `always_on`, `always_off`, and `trace_based`.
 
 `features` is a list of features to enable for the metrics. The following features are available:
 
+* `*` or `all` enables all features.
 * `application` exports application-level metrics.
 * `application_process` exports metrics about the processes that run the instrumented application.
 * `application_service_graph` exports application-level service graph metrics.
@@ -591,10 +620,12 @@ The `metrics` block configures which metrics Beyla collects.
 `instrumentations` is a list of instrumentations to enable for the metrics. The following instrumentations are available:
 
 * `*` enables all `instrumentations`. If `*` is present in the list, the other values are ignored.
+* `genai` enables the collection of GenAI (LLM) application metrics.
 * `grpc` enables the collection of gRPC application metrics.
 * `gpu` enables the collection of GPU performance metrics.
 * `http` enables the collection of HTTP/HTTPS/HTTP2 application metrics.
 * `kafka` enables the collection of Kafka client/server message queue metrics.
+* `memcached` enables the collection of Memcached client/server metrics.
 * `mongo` enables the collection of MongoDB database metrics.
 * `redis` enables the collection of Redis client/server database metrics.
 * `sql` enables the collection of SQL database client call metrics.
@@ -723,14 +754,15 @@ The `injector` block configures Beyla's SDK injection feature, which automatical
 | Name                  | Type           | Description                                                                    | Default | Required |
 |-----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
 | `debug`               | `bool`         | Enable debug mode for the SDK injector.                                        | `false` | no       |
-| `disable_auto_restart`| `bool`         | Disable automatic restart of instrumented services after SDK injection.         | `false` | no       |
+| `disable_auto_restart`| `bool`         | Disable automatic restart of instrumented services after SDK injection.        | `false` | no       |
 | `enabled_sdks`        | `list(string)` | List of SDK languages to enable for injection (e.g. `["java", "dotnet"]`).     | `[]`    | no       |
-| `host_mount_path`     | `string`       | Path where the host filesystem is mounted inside the injector container.        | `""`    | no       |
-| `host_path_volume`    | `string`       | Path on the host where SDK packages are stored.                                 | `""`    | no       |
-| `manage_sdk_versions` | `bool`         | Automatically manage and update SDK versions.                                   | `false` | no       |
+| `host_mount_path`     | `string`       | Path where the host filesystem is mounted inside the injector container.       | `""`    | no       |
+| `host_path_volume`    | `string`       | Path on the host where SDK packages are stored.                                | `""`    | no       |
+| `image_volume_path`   | `string`       | OCI image volume mount path for SDK injection. Requires Kubernetes 1.31+. Mutually exclusive with `host_mount_path` and `sdk_package_version`. | `""`    | no       |
+| `manage_sdk_versions` | `bool`         | Automatically manage and update SDK versions.                                  | `false` | no       |
 | `otel_endpoint`       | `string`       | OTLP endpoint URL used by injected SDKs to export telemetry.                   | `""`    | no       |
 | `propagators`         | `list(string)` | List of context propagation formats (e.g. `["tracecontext", "baggage"]`).      | `[]`    | no       |
-| `sdk_package_version` | `string`       | Version of the SDK package to inject.                                           | `""`    | no       |
+| `sdk_package_version` | `string`       | Version of the SDK package to inject.                                          | `""`    | no       |
 
 `enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`, `ruby`, `php`.
 

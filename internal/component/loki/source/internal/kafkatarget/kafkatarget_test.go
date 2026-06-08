@@ -18,6 +18,7 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 // Consumergroup handler
@@ -212,7 +213,7 @@ func Test_TargetRun(t *testing.T) {
 			session, claim := &testSession{}, newTestClaim("footopic", 10, 12)
 			handler := loki.NewCollectingHandler()
 
-			tg := NewKafkaTarget(nil, session, claim, tt.inDiscoveredLS, tt.inLS, tt.relabels, handler, true, &KafkaTargetMessageParser{})
+			tg := NewKafkaTarget(logging.NewSlogNop(), session, claim, tt.inDiscoveredLS, tt.inLS, tt.relabels, handler, true, &KafkaTargetMessageParser{})
 
 			var wg sync.WaitGroup
 			wg.Go(func() {

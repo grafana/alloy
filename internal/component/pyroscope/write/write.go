@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -15,12 +16,11 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/promhttp2"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
@@ -36,9 +36,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
-
-const SchemeHTTPS = "https"
-const SchemeHTTP = "http"
 
 var (
 	DefaultArguments = func() Arguments {
@@ -72,23 +69,25 @@ func (rc *Arguments) SetToDefault() {
 // EndpointOptions describes an individual location for where profiles
 // should be delivered to using the Pyroscope push API.
 type EndpointOptions struct {
-	Name              string                   `alloy:"name,attr,optional"`
-	URL               string                   `alloy:"url,attr"`
-	RemoteTimeout     time.Duration            `alloy:"remote_timeout,attr,optional"`
-	Headers           map[string]string        `alloy:"headers,attr,optional"`
-	HTTPClientConfig  *config.HTTPClientConfig `alloy:",squash"`
-	MinBackoff        time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
-	MaxBackoff        time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
-	MaxBackoffRetries int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
+	Name                   string                   `alloy:"name,attr,optional"`
+	URL                    string                   `alloy:"url,attr"`
+	RemoteTimeout          time.Duration            `alloy:"remote_timeout,attr,optional"`
+	DebugInfoUploadTimeout time.Duration            `alloy:"debug_info_upload_timeout,attr,optional"`
+	Headers                map[string]string        `alloy:"headers,attr,optional"`
+	HTTPClientConfig       *config.HTTPClientConfig `alloy:",squash"`
+	MinBackoff             time.Duration            `alloy:"min_backoff_period,attr,optional"`  // start backoff at this level
+	MaxBackoff             time.Duration            `alloy:"max_backoff_period,attr,optional"`  // increase exponentially to this level
+	MaxBackoffRetries      int                      `alloy:"max_backoff_retries,attr,optional"` // give up after this many; zero means infinite retries
 }
 
 func GetDefaultEndpointOptions() EndpointOptions {
 	defaultEndpointOptions := EndpointOptions{
-		RemoteTimeout:     10 * time.Second,
-		MinBackoff:        500 * time.Millisecond,
-		MaxBackoff:        5 * time.Minute,
-		MaxBackoffRetries: 10,
-		HTTPClientConfig:  config.CloneDefaultHTTPClientConfig(),
+		RemoteTimeout:          10 * time.Second,
+		DebugInfoUploadTimeout: 2 * time.Minute,
+		MinBackoff:             500 * time.Millisecond,
+		MaxBackoff:             5 * time.Minute,
+		MaxBackoffRetries:      10,
+		HTTPClientConfig:       config.CloneDefaultHTTPClientConfig(),
 	}
 
 	return defaultEndpointOptions
@@ -111,7 +110,7 @@ func (r *EndpointOptions) Validate() error {
 
 // Component is the pyroscope.write component.
 type Component struct {
-	logger        log.Logger
+	logger        *slog.Logger
 	tracer        trace.Tracer
 	onStateChange func(Exports)
 	cfg           Arguments
@@ -133,7 +132,7 @@ type Exports struct {
 
 // New creates a new pyroscope.write component.
 func New(
-	logger log.Logger,
+	logger *slog.Logger,
 	tracer trace.Tracer,
 	reg prometheus.Registerer,
 	onStateChange func(Exports),
@@ -216,10 +215,8 @@ func (c *Component) Update(newConfig Arguments) error {
 type endpointClient struct {
 	options      *EndpointOptions
 	pushClient   pushv1connect.PusherServiceClient
-	debugInfo    *debuginfo.Client
+	debugInfo    *debuginfo.Uploader
 	ingestClient *http.Client
-
-	h2cClient *http.Client
 }
 
 type fanOutClient struct {
@@ -227,12 +224,12 @@ type fanOutClient struct {
 	config     Arguments
 	metrics    *metrics
 	tracer     trace.Tracer
-	logger     log.Logger
+	logger     *slog.Logger
 	uploaderWg sync.WaitGroup
 }
 
-func (f *fanOutClient) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
-	var clients []debuginfov1alpha1connect.DebuginfoServiceClient
+func (f *fanOutClient) DebugInfoClients() []*debuginfoclient.Client {
+	var clients []*debuginfoclient.Client
 	for _, client := range f.endpoints {
 		clients = append(clients, client.debugInfo.DebugInfoClients()...)
 	}
@@ -249,10 +246,10 @@ func (f *fanOutClient) Start(ctx context.Context) {
 	for _, ec := range f.endpoints {
 		u := ec.debugInfo
 		f.uploaderWg.Add(1)
-		go func(c *debuginfo.Client) {
+		go func(c *debuginfo.Uploader) {
 			defer f.uploaderWg.Done()
 			if err := c.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				level.Error(f.logger).Log("msg", "debuginfo uploader error", "err", err)
+				f.logger.Error("debuginfo uploader error", "err", err)
 			}
 		}(u)
 	}
@@ -263,7 +260,7 @@ func (f *fanOutClient) Wait() {
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string, dataPath string) (*fanOutClient, error) {
+func newFanOut(logger *slog.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string, dataPath string) (*fanOutClient, error) {
 	endpoints := make([]*endpointClient, 0, len(config.Endpoints))
 
 	for i, endpoint := range config.Endpoints {
@@ -278,20 +275,21 @@ func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics
 		configureTracing(config, httpClient)
 
 		endpointDataPath := filepath.Join(dataPath, fmt.Sprintf("endpoint-%d", i))
-		h2Client, err := newHTTP2Client(endpoint)
-		if err != nil {
-			return nil, err
-		}
 
-		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(h2Client, endpoint.URL, WithUserAgent(userAgent))
-		debugInfo := debuginfo.NewClient(logger, debugInfoConnect, metrics.debugInfoUploadBytes, endpointDataPath)
+		debugInfoConnect := debuginfov1alpha1connect.NewDebuginfoServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent))
+		dic := &debuginfoclient.Client{
+			DebuginfoServiceClient: debugInfoConnect,
+			HTTPClient:             httpClient,
+			BaseURL:                endpoint.URL,
+			UploadTimeout:          endpoint.DebugInfoUploadTimeout,
+		}
+		debugInfo := debuginfo.NewUploader(logger, dic, metrics.debugInfoUploadBytes, endpointDataPath)
 
 		endpoints = append(endpoints, &endpointClient{
 			options:      endpoint,
 			pushClient:   pushv1connect.NewPusherServiceClient(httpClient, endpoint.URL, WithUserAgent(userAgent)),
 			debugInfo:    debugInfo,
 			ingestClient: httpClient,
-			h2cClient:    h2Client,
 		})
 	}
 
@@ -329,13 +327,15 @@ func (f *fanOutClient) Push(
 		dl = "none"
 	}
 	defer func() {
+		level := slog.LevelDebug
 		if errs != nil {
-			l = level.Warn(log.With(l, "err", errs))
-		} else {
-			l = level.Debug(l)
+			l = l.With("err", errs)
+			level = slog.LevelWarn
 		}
-		_ = l.Log(
-			"msg", "Push",
+		l.Log(
+			context.Background(),
+			level,
+			"Push",
 			"sz", reqSize,
 			"n", profileCount,
 			"dl", dl,
@@ -375,7 +375,7 @@ func (f *fanOutClient) Push(
 					f.metrics.sentProfiles.WithLabelValues(ec.options.URL).Add(float64(profileCount))
 					break
 				}
-				_ = level.Debug(l).Log("msg",
+				l.Debug(
 					"failed to push to endpoint",
 					"endpoint", ec.options.URL,
 					"retries", backoff.NumRetries(),
@@ -534,13 +534,15 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		dl = "none"
 	}
 	defer func() {
+		level := slog.LevelDebug
 		if errs != nil {
-			l = level.Warn(log.With(l, "err", errs))
-		} else {
-			l = level.Debug(l)
+			level = slog.LevelWarn
+			l = l.With("err", errs)
 		}
-		_ = l.Log(
-			"msg", "AppendIngest",
+		l.Log(
+			context.Background(),
+			level,
+			"AppendIngest",
 			"sz", reqSize,
 			"n", profileCount,
 			"dl", dl,
@@ -643,8 +645,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					f.metrics.sentProfiles.WithLabelValues(ec.options.URL).Add(float64(profileCount))
 					break
 				}
-				_ = level.Debug(l).Log(
-					"msg", "failed to ingest to endpoint",
+				l.Debug(
+					"failed to ingest to endpoint",
 					"endpoint", ec.options.URL,
 					"retries", backoff.NumRetries(),
 					"err", err)
@@ -752,33 +754,6 @@ func validateLabels(lbls labels.Labels) error {
 	})
 
 	return err
-}
-
-// newHTTP2Client creates an HTTP/2-guaranteed client for this endpoint.
-// For http:// URLs it uses h2c; for https:// it uses HTTP/2 over TLS.
-func newHTTP2Client(opt *EndpointOptions) (*http.Client, error) {
-	u, err := url.Parse(opt.URL)
-	if err != nil {
-		return nil, err
-	}
-	cfg := *opt.HTTPClientConfig.Convert()
-	switch u.Scheme {
-	case SchemeHTTP:
-		return promhttp2.NewClientFromConfigMirror(promhttp2.HTTPClientConfigMirror{
-			HTTPClientConfig: cfg,
-			H2C:              true,
-		}, opt.Name)
-	case SchemeHTTPS:
-		httpCfg := cfg
-		httpCfg.EnableHTTP2 = true
-		return promhttp2.NewClientFromConfigMirror(promhttp2.HTTPClientConfigMirror{HTTPClientConfig: httpCfg}, opt.Name)
-	default:
-		return nil, fmt.Errorf("unsupported scheme for HTTP/2 client: %s", u.Scheme)
-	}
-}
-
-func (ec *endpointClient) http2Client() *http.Client {
-	return ec.h2cClient
 }
 
 func configureTracing(config Arguments, httpClient *http.Client) {

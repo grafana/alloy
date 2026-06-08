@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/v22/sdjournal"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
@@ -29,6 +28,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 var randomGenerator *rand.Rand
@@ -86,8 +86,7 @@ func (r *mockJournalReader) Write(fields map[string]string) {
 }
 
 func TestTailer(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	initRandom()
 	dirName := filepath.Join(os.TempDir(), randName())
@@ -145,8 +144,7 @@ func TestTailer(t *testing.T) {
 }
 
 func TestTailerParsingErrors(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	initRandom()
 	dirName := filepath.Join(os.TempDir(), randName())
@@ -213,8 +211,7 @@ func TestTailerParsingErrors(t *testing.T) {
 }
 
 func TestTailer_JSON(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	initRandom()
 	dirName := filepath.Join(os.TempDir(), randName())
@@ -270,8 +267,7 @@ func TestTailer_JSON(t *testing.T) {
 }
 
 func TestTailer_Since(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	initRandom()
 	dirName := filepath.Join(os.TempDir(), randName())
@@ -304,8 +300,7 @@ func TestTailer_Since(t *testing.T) {
 }
 
 func TestTailer_Cursor_TooOld(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	initRandom()
 	dirName := filepath.Join(os.TempDir(), randName())
@@ -344,8 +339,7 @@ func TestTailer_Cursor_TooOld(t *testing.T) {
 }
 
 func TestTailer_Cursor_NotTooOld(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	initRandom()
 	dirName := filepath.Join(os.TempDir(), randName())
@@ -401,8 +395,7 @@ func Test_MakeJournalFields(t *testing.T) {
 }
 
 func TestTailer_Matches(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
+	logger := logging.NewSlogNop()
 
 	initRandom()
 	dirName := filepath.Join(os.TempDir(), randName())

@@ -13,7 +13,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/operator"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/labelstore"
 )
@@ -92,7 +91,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.reportHealth(err)
 		case <-c.onUpdate:
 			c.mut.Lock()
-			manager := c.crdManagerFactory.New(c.opts, c.cluster, c.opts.Logger, c.config, c.kind, c.ls)
+			manager := c.crdManagerFactory.New(c.opts, c.cluster, c.opts.SLogger, c.config, c.kind, c.ls)
 			c.manager = manager
 
 			// Wait for the old manager to stop.
@@ -107,7 +106,7 @@ func (c *Component) Run(ctx context.Context) error {
 			wg.Add(1)
 			go func() {
 				if err := manager.Run(innerCtx); err != nil {
-					level.Error(c.opts.Logger).Log("msg", "error running crd manager", "err", err)
+					c.opts.SLogger.Error("error running crd manager", "err", err)
 					errChan <- err
 				}
 				wg.Done()

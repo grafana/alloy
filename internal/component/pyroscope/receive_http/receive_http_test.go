@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	"go.opentelemetry.io/otel/trace/noop"
 
 	"github.com/phayes/freeport"
@@ -23,8 +22,9 @@ import (
 
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/util/testlog"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -428,7 +428,7 @@ func startComponent(t *testing.T, appendables []pyroscope.Appendable) int {
 	}
 
 	comp, err := New(
-		util.TestAlloyLogger(t),
+		testlog.TestLogger(t),
 		noop.Tracer{},
 		prometheus.NewRegistry(),
 		args,
@@ -547,7 +547,7 @@ func (a *testAppender) AppendIngest(_ context.Context, profile *pyroscope.Incomi
 	return a.appendErr
 }
 
-func (a *testAppender) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (a *testAppender) DebugInfoClients() []*debuginfoclient.Client {
 	return nil
 }
 
@@ -573,7 +573,7 @@ func TestUpdateArgs(t *testing.T) {
 	}
 
 	comp, err := New(
-		util.TestAlloyLogger(t),
+		testlog.TestLogger(t),
 		noop.Tracer{},
 		prometheus.NewRegistry(),
 		args,

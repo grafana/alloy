@@ -3,11 +3,9 @@
 package beyla
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -25,10 +23,10 @@ import (
 	"go.opentelemetry.io/obi/pkg/obi"
 	"go.opentelemetry.io/obi/pkg/transform"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/grafana/alloy/syntax"
 	obiCfg "go.opentelemetry.io/obi/pkg/config"
 )
@@ -232,6 +230,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
 	require.False(t, cfg.EBPF.BpfDebug)
 	require.False(t, cfg.EBPF.ProtocolDebug)
+	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
 	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
 	require.Len(t, cfg.Filters.Application, 1)
 	require.Len(t, cfg.Filters.Network, 1)
@@ -761,6 +760,7 @@ func TestConvert_Attributes(t *testing.T) {
 	expectedConfig.InstanceID.OverrideHostname = "test"
 	expectedConfig.InstanceID.HostnameDNSResolution = true
 	expectedConfig.MetadataRetry = beyla.DefaultConfig().Attributes.MetadataRetry
+	expectedConfig.Kubernetes.ReconnectInitialInterval = beyla.DefaultConfig().Attributes.Kubernetes.ReconnectInitialInterval
 
 	config := args.Convert()
 
@@ -1237,7 +1237,7 @@ func TestMetrics_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Metrics{
-				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo", "memcached", "genai"},
 			},
 		},
 		{
@@ -1455,21 +1455,17 @@ func TestArguments_Validate(t *testing.T) {
 }
 
 func TestDeprecatedFields(t *testing.T) {
-	var buf bytes.Buffer
-	var mu sync.Mutex
+	var buf syncbuffer.Buffer
 
-	// Create a synchronized logger that protects both writing and reading
-	syncLogger := log.LoggerFunc(func(keyvals ...any) error {
-		mu.Lock()
-		defer mu.Unlock()
-		return log.NewLogfmtLogger(&buf).Log(keyvals...)
+	logger, err := logging.New(&buf, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
 	})
-
-	logger := level.NewFilter(syncLogger, level.AllowAll())
+	require.NoError(t, err)
 
 	comp := &Component{
 		opts: component.Options{
-			Logger: logger,
+			SLogger: logger.Slog(),
 		},
 		args: Arguments{
 			Port:           "8080",
@@ -1488,8 +1484,6 @@ func TestDeprecatedFields(t *testing.T) {
 
 	// Verify warnings were logged
 	require.Eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
 		output := buf.String()
 		return strings.Contains(output, "level=warn") &&
 			strings.Contains(output, "open_port' field is deprecated") &&
@@ -1563,7 +1557,7 @@ func TestTraces_Validate(t *testing.T) {
 		{
 			name: "valid instrumentations",
 			args: Traces{
-				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo"},
+				Instrumentations: []string{"http", "grpc", "*", "redis", "kafka", "sql", "gpu", "mongo", "memcached", "genai"},
 			},
 		},
 		{
@@ -1747,6 +1741,139 @@ func TestEnvVars(t *testing.T) {
 
 	require.NoError(t, err)
 	require.Equal(t, debug.TracePrinterJSON, cfg.TracePrinter)
+}
+
+func TestMetrics_Validate_ExemplarFilter(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Metrics
+		wantErr string
+	}{
+		{
+			name: "empty exemplar_filter is valid",
+			args: Metrics{},
+		},
+		{
+			name: "always_on is valid",
+			args: Metrics{ExemplarFilter: "always_on"},
+		},
+		{
+			name: "always_off is valid",
+			args: Metrics{ExemplarFilter: "always_off"},
+		},
+		{
+			name: "trace_based is valid",
+			args: Metrics{ExemplarFilter: "trace_based"},
+		},
+		{
+			name:    "invalid value",
+			args:    Metrics{ExemplarFilter: "invalid"},
+			wantErr: `metrics.exemplar_filter: invalid value "invalid"`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestMetrics_Convert_ExemplarFilter(t *testing.T) {
+	args := Metrics{ExemplarFilter: "always_on"}
+	cfg := args.Convert()
+	require.Equal(t, "always_on", cfg.ExemplarFilter)
+
+	args = Metrics{ExemplarFilter: ""}
+	cfg = args.Convert()
+	require.Equal(t, beyla.DefaultConfig().Prometheus.ExemplarFilter, cfg.ExemplarFilter)
+}
+
+func TestMetrics_Validate_FeatureWildcard(t *testing.T) {
+	tests := []struct {
+		name string
+		args Metrics
+	}{
+		{name: "wildcard star", args: Metrics{Features: []string{"*"}}},
+		{name: "wildcard all", args: Metrics{Features: []string{"all"}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.NoError(t, tt.args.Validate())
+			require.True(t, tt.args.hasAppFeature())
+		})
+	}
+}
+
+func TestEBPF_Convert_MapsConfig(t *testing.T) {
+	args := EBPF{MapsConfig: EBPFMapsConfig{GlobalScaleFactor: 2}}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, 2, cfg.MapsConfig.GlobalScaleFactor)
+
+	args = EBPF{}
+	cfg, err = args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, 0, cfg.MapsConfig.GlobalScaleFactor)
+}
+
+func TestInjector_Validate_ImageVolumePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		args    Injector
+		wantErr string
+	}{
+		{
+			name: "image_volume_path alone is valid",
+			args: Injector{ImageVolumePath: "/var/oci"},
+		},
+		{
+			name: "image_volume_path with host_mount_path is invalid",
+			args: Injector{
+				ImageVolumePath: "/var/oci",
+				HostMountPath:   "/host",
+			},
+			wantErr: "injector.image_volume_path and injector.host_mount_path are mutually exclusive",
+		},
+		{
+			name: "image_volume_path with sdk_package_version is invalid",
+			args: Injector{
+				ImageVolumePath: "/var/oci",
+				SDKPkgVersion:   "1.0.0",
+			},
+			wantErr: "injector.image_volume_path and injector.sdk_package_version are mutually exclusive",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.args.Validate()
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestInjector_Convert_ImageVolumePath(t *testing.T) {
+	args := Injector{ImageVolumePath: "/var/oci"}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, "/var/oci", cfg.ImageVolumePath)
+
+	args = Injector{}
+	cfg, err = args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, "", cfg.ImageVolumePath)
 }
 
 func TestSurveyDisabled(t *testing.T) {

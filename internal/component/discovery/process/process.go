@@ -7,12 +7,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-kit/log"
+	gopsutil "github.com/shirou/gopsutil/v3/process"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	gopsutil "github.com/shirou/gopsutil/v3/process"
 )
 
 func init() {
@@ -38,7 +38,6 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:               opts,
-		l:                  opts.Logger,
 		onStateChange:      opts.OnStateChange,
 		argsUpdates:        make(chan Arguments),
 		args:               args,
@@ -50,7 +49,6 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 
 type Component struct {
 	opts          component.Options
-	l             log.Logger
 	onStateChange func(e component.Exports)
 	processes     []discovery.Target
 	argsUpdates   chan Arguments
@@ -64,7 +62,7 @@ var _ component.LiveDebugging = (*Component)(nil)
 
 func (c *Component) Run(ctx context.Context) error {
 	doDiscover := func() error {
-		processes, err := discover(c.l, &c.args.DiscoverConfig)
+		processes, err := discover(c.opts.SLogger, &c.args.DiscoverConfig)
 		if err != nil {
 			return err
 		}

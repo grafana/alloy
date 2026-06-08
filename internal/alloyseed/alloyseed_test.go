@@ -1,12 +1,12 @@
 package alloyseed
 
 import (
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 )
 
@@ -25,7 +25,7 @@ func reset() {
 func TestNoExistingFile(t *testing.T) {
 	t.Cleanup(reset)
 	dir := t.TempDir()
-	l := log.NewNopLogger()
+	l := slog.New(slog.DiscardHandler)
 	f := filepath.Join(dir, filename)
 	require.NoFileExists(t, f)
 	Init(dir, l)
@@ -39,7 +39,7 @@ func TestNoExistingFile(t *testing.T) {
 func TestExistingFile(t *testing.T) {
 	t.Cleanup(reset)
 	dir := t.TempDir()
-	l := log.NewNopLogger()
+	l := slog.New(slog.DiscardHandler)
 	f := filepath.Join(dir, filename)
 	seed := generateNew()
 	writeSeedFile(seed, f, l)
@@ -51,7 +51,7 @@ func TestExistingFile(t *testing.T) {
 
 func TestNoInitCalled(t *testing.T) {
 	t.Cleanup(reset)
-	l := log.NewNopLogger()
+	l := slog.New(slog.DiscardHandler)
 	seed := Get()
 	require.NotNil(t, seed)
 	f := legacyPath()
@@ -64,7 +64,7 @@ func TestNoInitCalled(t *testing.T) {
 func TestLegacyExists(t *testing.T) {
 	t.Cleanup(reset)
 	dir := t.TempDir()
-	l := log.NewNopLogger()
+	l := slog.New(slog.DiscardHandler)
 	f := filepath.Join(dir, filename)
 	seed := generateNew()
 	writeSeedFile(seed, legacyPath(), l)

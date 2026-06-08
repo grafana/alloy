@@ -7,7 +7,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -17,7 +16,7 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			level.Info(opts.Logger).Log("msg", "loki.source.windowsevent only works on windows platforms")
+			opts.SLogger.Info("loki.source.windowsevent only works on windows platforms")
 			return &FakeComponent{}, nil
 		},
 	})

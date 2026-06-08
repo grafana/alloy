@@ -18,14 +18,13 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
-	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/prometheus/common/model"
@@ -130,7 +129,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// If relabeling rules changed, purge the cache
 	if relabelingChanged(c.rcs, newRCS) {
-		level.Debug(c.opts.Logger).Log("msg", "received new relabel configs, purging cache")
+		c.opts.SLogger.Debug("received new relabel configs, purging cache")
 		c.cache.Purge()
 		c.metrics.cacheSize.Set(0)
 	}
@@ -138,7 +137,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if newArgs.MaxCacheSize != c.maxCacheSize {
 		evicted := c.cache.Resize(newArgs.MaxCacheSize)
 		if evicted > 0 {
-			level.Debug(c.opts.Logger).Log("msg", "resizing cache led to evicting items", "evicted_count", evicted)
+			c.opts.SLogger.Debug("resizing cache led to evicting items", "evicted_count", evicted)
 		}
 		c.maxCacheSize = newArgs.MaxCacheSize
 	}
@@ -172,7 +171,7 @@ func (c *Component) Append(ctx context.Context, lbls labels.Labels, samples []*p
 	newLabels, keep := c.relabel(lbls)
 	if !keep {
 		c.metrics.profilesDropped.Inc()
-		level.Debug(c.opts.Logger).Log("msg", "profile dropped by relabel rules", "labels", lbls.String())
+		c.opts.SLogger.Debug("profile dropped by relabel rules", "labels", lbls.String())
 		return nil
 	}
 
@@ -198,7 +197,7 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 	newLabels, keep := c.relabel(profile.Labels)
 	if !keep {
 		c.metrics.profilesDropped.Inc()
-		level.Debug(c.opts.Logger).Log("msg", "profile dropped by relabel rules")
+		c.opts.SLogger.Debug("profile dropped by relabel rules")
 		return nil
 	}
 
@@ -309,6 +308,6 @@ func (c *Component) Upload(j debuginfo.UploadJob) {
 	c.fanout.Upload(j)
 }
 
-func (c *Component) DebugInfoClients() []debuginfov1alpha1connect.DebuginfoServiceClient {
+func (c *Component) DebugInfoClients() []*debuginfoclient.Client {
 	return c.fanout.DebugInfoClients()
 }

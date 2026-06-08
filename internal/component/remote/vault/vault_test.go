@@ -4,14 +4,11 @@ package vault
 
 import (
 	"fmt"
-	stdlog "log"
+	"log/slog"
 	"testing"
 	"time"
 
 	vaultapi "github.com/hashicorp/vault/api"
-
-	"github.com/docker/go-connections/nat"
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -25,7 +22,7 @@ import (
 func Test_GetSecrets(t *testing.T) {
 	var (
 		ctx = componenttest.TestContext(t)
-		l   = util.TestLogger(t)
+		l   = util.TestAlloyLogger(t)
 	)
 
 	cli := getTestVaultServer(t)
@@ -109,7 +106,7 @@ func Test_PollSecrets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = componenttest.TestContext(t)
-				l   = util.TestLogger(t)
+				l   = util.TestAlloyLogger(t)
 			)
 
 			cli := getTestVaultServer(t)
@@ -173,7 +170,7 @@ func Test_PollSecrets(t *testing.T) {
 
 func getTestVaultServer(t *testing.T) *vaultapi.Client {
 	ctx := componenttest.TestContext(t)
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	container, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: testcontainers.ContainerRequest{
@@ -186,7 +183,7 @@ func getTestVaultServer(t *testing.T) *vaultapi.Client {
 			WaitingFor: wait.ForHTTP("/v1/sys/health"),
 		},
 		Started: true,
-		Logger:  stdlog.New(log.NewStdlibAdapter(l), "", 0),
+		Logger:  slog.NewLogLogger(l.Handler(), slog.LevelDebug),
 	})
 	require.NoError(t, err)
 
@@ -195,7 +192,7 @@ func getTestVaultServer(t *testing.T) *vaultapi.Client {
 		require.NoError(t, err)
 	})
 
-	ep, err := container.PortEndpoint(ctx, nat.Port("80/tcp"), "http")
+	ep, err := container.PortEndpoint(ctx, "80/tcp", "http")
 	require.NoError(t, err)
 
 	cli, err := vaultapi.NewClient(&vaultapi.Config{Address: ep})

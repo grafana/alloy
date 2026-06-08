@@ -4,10 +4,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -39,12 +37,11 @@ type PassthroughExports struct {
 // always emits its input as an output.
 type Passthrough struct {
 	opts component.Options
-	log  log.Logger
 }
 
 // NewPassthrough creates a new passthrough component.
 func NewPassthrough(o component.Options, cfg PassthroughConfig) (*Passthrough, error) {
-	t := &Passthrough{opts: o, log: o.Logger}
+	t := &Passthrough{opts: o}
 	if err := t.Update(cfg); err != nil {
 		return nil, err
 	}
@@ -67,11 +64,11 @@ func (t *Passthrough) Update(args component.Arguments) error {
 	c := args.(PassthroughConfig)
 
 	if c.Lag != 0 {
-		level.Info(t.log).Log("msg", "sleeping for lag", "lag", c.Lag)
+		t.opts.SLogger.Info("sleeping for lag", "lag", c.Lag)
 		time.Sleep(c.Lag)
 	}
 
-	level.Info(t.log).Log("msg", "passing through value", "value", c.Input)
+	t.opts.SLogger.Info("passing through value", "value", c.Input)
 	t.opts.OnStateChange(PassthroughExports{Output: c.Input})
 	return nil
 }
