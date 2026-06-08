@@ -122,7 +122,7 @@ func (c *Component) Run(ctx context.Context) error {
 		defer c.mut.Unlock()
 
 		if err := c.detector.Close(); err != nil {
-			c.opts.SLogger.Error("failed to shut down detector", "err", err)
+			c.opts.Logger.Error("failed to shut down detector", "err", err)
 		}
 		c.detector = nil
 	}()
@@ -165,7 +165,7 @@ func (c *Component) readFile() error {
 			Message:    fmt.Sprintf("failed to read file: %s", err),
 			UpdateTime: time.Now(),
 		})
-		c.opts.SLogger.Error("failed to read file", "path", c.opts.DataPath, "err", err)
+		c.opts.Logger.Error("failed to read file", "path", c.opts.DataPath, "err", err)
 		return err
 	}
 	c.latestContent = string(bb)
@@ -209,7 +209,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// to Update.
 	if c.detector != nil {
 		if err := c.detector.Close(); err != nil {
-			c.opts.SLogger.Error("failed to shut down old detector", "err", err)
+			c.opts.Logger.Error("failed to shut down old detector", "err", err)
 		}
 		c.detector = nil
 	}
@@ -245,7 +245,7 @@ func (c *Component) configureDetector() error {
 		})
 	case filedetector.DetectorFSNotify:
 		c.detector, err = filedetector.NewFSNotify(filedetector.FSNotifyOptions{
-			Logger:        c.opts.SLogger,
+			Logger:        c.opts.Logger,
 			Filename:      c.args.Filename,
 			ReloadFile:    reloadFile,
 			PollFrequency: c.args.PollFrequency,

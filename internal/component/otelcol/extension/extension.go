@@ -103,7 +103,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.New(opts.SLogger),
+		sched:     scheduler.New(opts.Logger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
@@ -114,7 +114,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Exte
 
 // Run starts the Extension component.
 func (e *Extension) Run(ctx context.Context) error {
-	e.opts.SLogger.Info("starting extension", "component", e.opts.ID)
+	e.opts.Logger.Info("starting extension", "component", e.opts.ID)
 	defer e.cancel()
 	return e.sched.Run(ctx)
 }
@@ -142,7 +142,7 @@ func (e *Extension) Update(args component.Arguments) error {
 	settings := otelextension.Settings{
 		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         slogadapter.NewZap(e.opts.SLogger),
+			Logger:         slogadapter.NewZap(e.opts.Logger),
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
 		},

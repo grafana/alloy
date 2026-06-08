@@ -466,7 +466,7 @@ func TestInstanceKey(t *testing.T) {
 						t.Fatalf("failed to convert component.Exports to exporter.Exports")
 					}
 				},
-				SLogger: util.TestAlloyLogger(t).Slog(),
+				Logger: util.TestAlloyLogger(t).Slog(),
 			}
 			reg, ok := component.Get(tt.componentName)
 			require.True(t, ok, "expected component to exist in registry")

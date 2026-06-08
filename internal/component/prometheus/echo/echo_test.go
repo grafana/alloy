@@ -25,7 +25,7 @@ func TestComponent_Creation(t *testing.T) {
 
 	comp, err := New(component.Options{
 		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 	require.NotNil(t, comp)
@@ -46,7 +46,7 @@ func TestComponent_ExportsReceiver(t *testing.T) {
 
 	comp, err := New(component.Options{
 		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		Logger: logging.NewSlogNop(),
 		OnStateChange: func(e component.Exports) {
 			exports = e
 		},
@@ -64,7 +64,7 @@ func TestComponent_ExportsReceiver(t *testing.T) {
 func TestAppender_BasicMetrics(t *testing.T) {
 	comp, err := New(component.Options{
 		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -85,7 +85,7 @@ func TestAppender_BasicMetrics(t *testing.T) {
 func TestAppender_Rollback(t *testing.T) {
 	comp, err := New(component.Options{
 		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -105,7 +105,7 @@ func TestAppender_Rollback(t *testing.T) {
 func TestAppender_MultipleMetrics(t *testing.T) {
 	comp, err := New(component.Options{
 		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -135,7 +135,7 @@ func TestAppender_MultipleMetrics(t *testing.T) {
 func TestComponent_Update(t *testing.T) {
 	comp, err := New(component.Options{
 		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -153,7 +153,7 @@ func TestAppender_WithExpfmtEncoding(t *testing.T) {
 
 	comp, err := New(component.Options{
 		ID:      "test",
-		SLogger: logger.Slog(),
+		Logger: logger.Slog(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -190,7 +190,7 @@ func TestAppender_WithOpenMetricsFormat(t *testing.T) {
 
 	comp, err := New(component.Options{
 		ID:      "test",
-		SLogger: logger.Slog(),
+		Logger: logger.Slog(),
 	}, args)
 	require.NoError(t, err)
 

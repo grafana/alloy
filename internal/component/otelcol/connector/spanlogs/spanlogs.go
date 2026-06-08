@@ -99,7 +99,7 @@ var (
 // New creates a new otelcol.exporter.spanlogs component.
 func New(o component.Options, c Arguments) (*Component, error) {
 	if c.Output.Traces != nil || c.Output.Metrics != nil {
-		o.SLogger.Warn("non-log output detected; this component only works for log outputs and trace inputs")
+		o.Logger.Warn("non-log output detected; this component only works for log outputs and trace inputs")
 	}
 
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)

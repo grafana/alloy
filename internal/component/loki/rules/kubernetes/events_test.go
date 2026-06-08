@@ -122,7 +122,7 @@ func TestEventLoop(t *testing.T) {
 
 	component := Component{
 		opts: component.Options{
-			SLogger: util.TestAlloyLogger(t).Slog(),
+			Logger: util.TestAlloyLogger(t).Slog(),
 		},
 		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
@@ -133,7 +133,7 @@ func TestEventLoop(t *testing.T) {
 		args:              Arguments{LokiNameSpacePrefix: "alloy", LokiNamespaceSeparator: "-"},
 		metrics:           newMetrics(),
 	}
-	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.SLogger, component.queue)
+	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.Logger, component.queue)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -239,7 +239,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 
 	component := Component{
 		opts: component.Options{
-			SLogger: util.TestAlloyLogger(t).Slog(),
+			Logger: util.TestAlloyLogger(t).Slog(),
 		},
 		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
@@ -250,7 +250,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 		args:              args,
 		metrics:           newMetrics(),
 	}
-	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.SLogger, component.queue)
+	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.Logger, component.queue)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -342,7 +342,7 @@ func TestExternalLabels(t *testing.T) {
 
 	component := Component{
 		opts: component.Options{
-			SLogger: util.TestAlloyLogger(t).Slog(),
+			Logger: util.TestAlloyLogger(t).Slog(),
 		},
 		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
@@ -360,7 +360,7 @@ func TestExternalLabels(t *testing.T) {
 		},
 		metrics: newMetrics(),
 	}
-	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.SLogger, component.queue)
+	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.Logger, component.queue)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

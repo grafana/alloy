@@ -73,7 +73,7 @@ func (c *ModuleComponent) LoadAlloySource(args map[string]any, contentValue stri
 func (c *ModuleComponent) RunAlloyController(ctx context.Context) {
 	err := c.mod.Run(ctx)
 	if err != nil {
-		c.opts.SLogger.Error("error running module", "id", c.opts.ID, "err", err)
+		c.opts.Logger.Error("error running module", "id", c.opts.ID, "err", err)
 	}
 }
 

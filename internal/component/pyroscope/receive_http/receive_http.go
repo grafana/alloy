@@ -38,7 +38,7 @@ func init() {
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			tracer := opts.Tracer.Tracer("pyroscope.receive_http")
-			return New(opts.SLogger, tracer, opts.Registerer, args.(Arguments))
+			return New(opts.Logger, tracer, opts.Registerer, args.(Arguments))
 		},
 	})
 }

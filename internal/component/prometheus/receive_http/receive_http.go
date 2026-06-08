@@ -104,7 +104,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts: opts,
 		handler: promremote.NewWriteHandler(
-			opts.SLogger,
+			opts.Logger,
 			opts.Registerer,
 			fanout,
 			supportedRemoteWriteProtoMsgs,
@@ -133,7 +133,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	<-ctx.Done()
-	c.opts.SLogger.Info("terminating due to context done")
+	c.opts.Logger.Info("terminating due to context done")
 	return nil
 }
 
@@ -178,7 +178,7 @@ func (c *Component) createNewServer(args Arguments) (*fnet.TargetServer, error) 
 	c.uncheckedCollector.SetCollector(serverRegistry)
 
 	s, err := fnet.NewTargetServer(
-		c.opts.SLogger,
+		c.opts.Logger,
 		"prometheus_receive_http",
 		serverRegistry,
 		args.Server,

@@ -62,7 +62,7 @@ func TestComponentFromNestedController(t *testing.T) {
 
 	opts := component.Options{
 		ID:            "foo/loki.source.awsfirehose.default",
-		SLogger:       logging.NewSlogNop(),
+		Logger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -99,7 +99,7 @@ func TestComponentFromNestedController(t *testing.T) {
 func TestComponent(t *testing.T) {
 	opts := component.Options{
 		ID:            "loki.source.awsfirehose",
-		SLogger:       logging.NewSlogNop(),
+		Logger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -177,7 +177,7 @@ func TestComponent(t *testing.T) {
 func TestComponent_UpdateWithNewArguments(t *testing.T) {
 	opts := component.Options{
 		ID:            "loki.source.awsfirehose",
-		SLogger:       logging.NewSlogNop(),
+		Logger:       logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

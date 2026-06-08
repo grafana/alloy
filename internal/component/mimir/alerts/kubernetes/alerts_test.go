@@ -114,7 +114,7 @@ func (f *fakeHealthReporter) getErr() error {
 func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger *slog.Logger) *Component {
 	opts := component.Options{
 		ID:         "mimir.alerts.kubernetes",
-		SLogger:    logger,
+		Logger:    logger,
 		Registerer: reg,
 	}
 

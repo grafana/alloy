@@ -37,7 +37,7 @@ func RunTestCases(t *testing.T, config string, cases []TestCase) {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,
 		Registerer:     prometheus.NewRegistry(),

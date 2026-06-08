@@ -193,9 +193,9 @@ func (c *Component) Update(args component.Arguments) error {
 
 	var err error
 	if walCfg.Enabled {
-		c.consumer, err = client.NewWALConsumer(c.opts.SLogger, c.opts.Registerer, walCfg, cfgs...)
+		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	} else {
-		c.consumer, err = client.NewFanoutConsumer(c.opts.SLogger, c.opts.Registerer, cfgs...)
+		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {

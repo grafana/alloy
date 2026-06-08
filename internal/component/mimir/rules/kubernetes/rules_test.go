@@ -193,7 +193,7 @@ func (f *fakeHealthReporter) getErr() error {
 func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger *slog.Logger) *Component {
 	opts := component.Options{
 		ID:         "mimir.rules.kubernetes",
-		SLogger:    logger,
+		Logger:    logger,
 		Registerer: reg,
 		GetServiceData: func(name string) (any, error) {
 			if name == cluster.ServiceName {

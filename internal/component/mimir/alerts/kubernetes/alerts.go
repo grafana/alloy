@@ -140,7 +140,7 @@ func (c *Component) Run(ctx context.Context) error {
 		if errors.Is(err, errShutdown) {
 			break
 		} else if err != nil {
-			c.opts.SLogger.Error("unexpected error from iteration loop; this is a bug", "err", err)
+			c.opts.Logger.Error("unexpected error from iteration loop; this is a bug", "err", err)
 			c.ReportUnhealthy(err)
 		}
 	}
@@ -165,7 +165,7 @@ func (c *Component) startupWithRetries(ctx context.Context, state util.Lifecycle
 	)
 	for {
 		if err := state.Startup(ctx); err != nil {
-			c.opts.SLogger.Error("starting up component failed, will retry", "err", err)
+			c.opts.Logger.Error("starting up component failed, will retry", "err", err)
 			health.ReportUnhealthy(err)
 		} else {
 			break
@@ -181,7 +181,7 @@ func (c *Component) iteration(ctx context.Context, state util.Lifecycle[Argument
 		state.LifecycleUpdate(update.args)
 
 		if err := state.Restart(ctx); err != nil {
-			c.opts.SLogger.Error("restarting component failed", "trigger", configurationUpdate, "err", err)
+			c.opts.Logger.Error("restarting component failed", "trigger", configurationUpdate, "err", err)
 			health.ReportUnhealthy(err)
 		}
 	case <-ctx.Done():
@@ -259,7 +259,7 @@ func (c *Component) SyncState() {
 }
 
 func (c *Component) init() error {
-	c.opts.SLogger.Info("initializing with configuration")
+	c.opts.Logger.Info("initializing with configuration")
 
 	// TODO: allow overriding some stuff in RestConfig and k8s client options?
 	restConfig, err := controller.GetConfig()
@@ -281,7 +281,7 @@ func (c *Component) init() error {
 
 	c.ticker.Reset(c.args.SyncInterval)
 
-	c.mimirClient, err = mimirClient.New(c.opts.SLogger, mimirClient.Config{
+	c.mimirClient, err = mimirClient.New(c.opts.Logger, mimirClient.Config{
 		Address:          c.args.Address,
 		HTTPClientConfig: *httpClient,
 	}, c.metrics.mimirClientTiming)
@@ -330,7 +330,7 @@ func (c *Component) startNamespaceInformer(queue workqueue.TypedRateLimitingInte
 	namespaces := factory.Core().V1().Namespaces()
 	namespaceLister := namespaces.Lister()
 	namespaceInformer := namespaces.Informer()
-	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, queue))
+	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.Logger, queue))
 	if err != nil {
 		return nil, err
 	}
@@ -353,7 +353,7 @@ func (c *Component) startConfigInformer(queue workqueue.TypedRateLimitingInterfa
 	amConfigs := factory.Monitoring().V1alpha1().AlertmanagerConfigs()
 	amConfigsLister := amConfigs.Lister()
 	amConfigsInformer := amConfigs.Informer()
-	_, err := amConfigsInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, queue))
+	_, err := amConfigsInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.Logger, queue))
 	if err != nil {
 		return nil, err
 	}
@@ -384,7 +384,7 @@ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface
 		matcherStrategy:       c.matcherStrategy,
 		alertmanagerNamespace: c.alertmanagerNamespace,
 		metrics:               c.metrics,
-		logger:                c.opts.SLogger,
+		logger:                c.opts.Logger,
 		kclient:               c.k8sClient,
 		templateFiles:         templateFiles,
 		storeBuilder:          sb,

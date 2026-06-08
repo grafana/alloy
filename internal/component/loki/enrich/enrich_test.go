@@ -170,7 +170,7 @@ func TestEnricher(t *testing.T) {
 			tt.args.ForwardTo = []loki.LogsReceiver{collector.Receiver()}
 
 			opts := component.Options{
-				SLogger:       logging.NewSlogNop(),
+				Logger:       logging.NewSlogNop(),
 				OnStateChange: func(e component.Exports) {},
 			}
 			opts.OnStateChange = func(e component.Exports) {
@@ -204,7 +204,7 @@ func TestEnricher(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	comp, err := New(component.Options{
-		SLogger:       logging.NewSlogNop(),
+		Logger:       logging.NewSlogNop(),
 		OnStateChange: func(e component.Exports) {},
 	}, Arguments{})
 	require.NoError(t, err)

@@ -332,7 +332,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = New(component.Options{
-			SLogger:       logging.NewSlogNop(),
+			Logger:       logging.NewSlogNop(),
 			MinStability:  featuregate.StabilityGenerallyAvailable,
 			OnStateChange: func(e component.Exports) {},
 		}, args)
@@ -352,7 +352,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = New(component.Options{
-			SLogger:       logging.NewSlogNop(),
+			Logger:       logging.NewSlogNop(),
 			MinStability:  featuregate.StabilityGenerallyAvailable,
 			OnStateChange: func(e component.Exports) {},
 		}, args)
@@ -373,7 +373,7 @@ func TestComponentExperimentalConfig(t *testing.T) {
 		require.NoError(t, err)
 
 		_, err = New(component.Options{
-			SLogger:       logging.NewSlogNop(),
+			Logger:       logging.NewSlogNop(),
 			MinStability:  featuregate.StabilityExperimental,
 			OnStateChange: func(e component.Exports) {},
 		}, args)

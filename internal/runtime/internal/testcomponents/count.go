@@ -67,10 +67,10 @@ func (t *Count) Run(ctx context.Context) error {
 			currentCount := t.count.Load()
 			if maxCount == 0 || currentCount < int32(maxCount) {
 				if t.count.CompareAndSwap(currentCount, currentCount+1) {
-					t.opts.SLogger.Info("incremented count", "count", currentCount+1)
+					t.opts.Logger.Info("incremented count", "count", currentCount+1)
 					t.opts.OnStateChange(CountExports{Count: int(currentCount + 1)})
 				} else {
-					t.opts.SLogger.Error("failed to increment count", "count", currentCount)
+					t.opts.Logger.Error("failed to increment count", "count", currentCount)
 				}
 			}
 		}
@@ -93,7 +93,7 @@ func (t *Count) Update(args component.Arguments) error {
 		return fmt.Errorf("frequency must not be 0")
 	}
 
-	t.opts.SLogger.Info("setting count frequency", "freq", cfg.Frequency)
+	t.opts.Logger.Info("setting count frequency", "freq", cfg.Frequency)
 	t.cfg = cfg
 	return nil
 }

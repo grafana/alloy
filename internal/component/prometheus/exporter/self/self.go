@@ -25,7 +25,7 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 	// it's frequently used in a cluster with a non-clustered prometheus.scrape component.
 	a := args.(Arguments)
 	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for self exporter
-	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
 // Arguments holds values which are used to configured the prometheus.exporter.self component.

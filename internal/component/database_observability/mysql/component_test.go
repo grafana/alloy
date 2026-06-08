@@ -415,7 +415,7 @@ func TestMySQL_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "user:pass@tcp(127.0.0.1:1)/db"}
 	opts := cmp.Options{
 		ID:      "test.mysql",
-		SLogger: logging.NewSlogNop(),
+		Logger: logging.NewSlogNop(),
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
@@ -449,7 +449,7 @@ func TestMySQL_StartCollectors_ReportsUnhealthy_StackedErrors(t *testing.T) {
 	var gotExports cmp.Exports
 	opts := cmp.Options{
 		ID:      "test.mysql",
-		SLogger: logging.NewSlogNop(),
+		Logger: logging.NewSlogNop(),
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
 		},
@@ -495,7 +495,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
-			SLogger:       logging.NewSlogNop(),
+			Logger:       logging.NewSlogNop(),
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
 				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
@@ -521,7 +521,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 	t.Run("tryReconnect succeeds and clears health error", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
-			SLogger:       logging.NewSlogNop(),
+			Logger:       logging.NewSlogNop(),
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
 				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
@@ -587,7 +587,7 @@ func TestMySQL_Reconnection(t *testing.T) {
 	t.Run("Run exits on context cancellation", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
-			SLogger:       logging.NewSlogNop(),
+			Logger:       logging.NewSlogNop(),
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
 				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil

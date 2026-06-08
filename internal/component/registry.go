@@ -68,12 +68,9 @@ type Options struct {
 	// components.
 	ID string
 
-	// SLogger the component may use for logging. Logs emitted with the logger
+	// Logger the component may use for logging. Logs emitted with the logger
 	// always include the component ID as a field.
-	//
-	// FIXME(kalleep): Rename SLogger to Logger once all components have been
-	// migrated to slog.
-	SLogger *slog.Logger
+	Logger *slog.Logger
 
 	// A path to a directory with this component may use for storage. The path is
 	// guaranteed to be unique across all running components.
