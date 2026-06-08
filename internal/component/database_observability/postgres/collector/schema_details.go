@@ -39,16 +39,28 @@ const (
 			AND has_database_privilege(datname, 'CONNECT')
 			AND datname NOT IN %s`
 
-	// selectSchemaNames gets all user-defined schemas, excluding system schemas
-	selectSchemaNames = `
+	// selectSchemaNamesTemplate gets all user-defined schemas, excluding system schemas.
+	// The %s placeholder is filled with the parenthesized exclusion list at runtime so
+	// extension-internal schemas (e.g. TimescaleDB's _timescaledb_*) can be added when
+	// the relevant extension is detected.
+	selectSchemaNamesTemplate = `
 	SELECT
 	    nspname as schema_name
 	FROM
 	    pg_catalog.pg_namespace
 	WHERE
-	    nspname NOT IN ('information_schema', 'pg_catalog', 'pg_toast')
-	    AND nspname NOT LIKE 'pg_temp_%'
-	    AND nspname NOT LIKE 'pg_toast_%'`
+	    nspname NOT IN %s
+	    AND nspname NOT LIKE 'pg_temp_%%'
+	    AND nspname NOT LIKE 'pg_toast_%%'`
+)
+
+var (
+	// defaultSchemaExclusions are the always-excluded Postgres system schemas.
+	defaultSchemaExclusions = []string{"information_schema", "pg_catalog", "pg_toast"}
+
+	// selectSchemaNames is the rendered SELECT used when no extension-specific
+	// exclusions apply. Kept as a package-level var so tests can match against it.
+	selectSchemaNames = fmt.Sprintf(selectSchemaNamesTemplate, database_observability.BuildExclusionClause(defaultSchemaExclusions))
 
 	// selectTableNames gets table names for a specific schema
 	/*
@@ -309,11 +321,13 @@ func formatPostgresIdentifier(identifier string) string {
 }
 
 type SchemaDetailsArguments struct {
-	DB               *sql.DB
-	DSN              string
-	CollectInterval  time.Duration
-	ExcludeDatabases []string
-	EntryHandler     loki.EntryHandler
+	DB                     *sql.DB
+	DSN                    string
+	CollectInterval        time.Duration
+	ExcludeDatabases       []string
+	EntryHandler           loki.EntryHandler
+	DetectedExtensions     DetectedExtensions
+	SkipExtensionInternals bool
 
 	Logger *slog.Logger
 
@@ -321,12 +335,14 @@ type SchemaDetailsArguments struct {
 }
 
 type SchemaDetails struct {
-	initialConnection   *sql.DB
-	dbDSN               string
-	dbConnectionFactory databaseConnectionFactory
-	collectInterval     time.Duration
-	excludeDatabases    []string
-	entryHandler        loki.EntryHandler
+	initialConnection      *sql.DB
+	dbDSN                  string
+	dbConnectionFactory    databaseConnectionFactory
+	collectInterval        time.Duration
+	excludeDatabases       []string
+	entryHandler           loki.EntryHandler
+	detectedExtensions     DetectedExtensions
+	skipExtensionInternals bool
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
 	// was last emitted for a table. The outer key is the database name and
@@ -353,17 +369,19 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	}
 
 	c := &SchemaDetails{
-		initialConnection:   args.DB,
-		dbDSN:               args.DSN,
-		dbConnectionFactory: factory,
-		collectInterval:     args.CollectInterval,
-		excludeDatabases:    args.ExcludeDatabases,
-		entryHandler:        args.EntryHandler,
-		lastEmittedAt:       map[database]map[string]time.Time{},
-		now:                 time.Now,
-		tableRegistry:       NewTableRegistry(),
-		logger:              args.Logger.With("collector", SchemaDetailsCollector),
-		running:             &atomic.Bool{},
+		initialConnection:      args.DB,
+		dbDSN:                  args.DSN,
+		dbConnectionFactory:    factory,
+		collectInterval:        args.CollectInterval,
+		excludeDatabases:       args.ExcludeDatabases,
+		entryHandler:           args.EntryHandler,
+		detectedExtensions:     args.DetectedExtensions,
+		skipExtensionInternals: args.SkipExtensionInternals,
+		lastEmittedAt:          map[database]map[string]time.Time{},
+		now:                    time.Now,
+		tableRegistry:          NewTableRegistry(),
+		logger:                 args.Logger.With("collector", SchemaDetailsCollector),
+		running:                &atomic.Bool{},
 	}
 
 	return c, nil
@@ -447,6 +465,13 @@ func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
 }
 
 func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbConnection *sql.DB) error {
+	excluded := []string{"information_schema", "pg_catalog", "pg_toast"}
+	if c.skipExtensionInternals && c.detectedExtensions.TimescaleDB {
+		excluded = append(excluded, TimescaleDBInternalSchemas()...)
+		excluded = append(excluded, TimescaleDBMetadataSchemas()...)
+	}
+	selectSchemaNames := fmt.Sprintf(selectSchemaNamesTemplate, database_observability.BuildExclusionClause(excluded))
+
 	now := c.now()
 	db := database(dbName)
 

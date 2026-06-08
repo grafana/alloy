@@ -145,21 +145,27 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 
 ### `schema_details`
 
-| Name               | Type       | Description                                                 | Default | Required |
-|--------------------|------------|-------------------------------------------------------------|---------|----------|
-| `collect_interval` | `duration` | How frequently to collect information from database.        | `"1m"`  | no       |
-| `cache_enabled`    | `boolean`  | Deprecated. Whether to enable caching of table definitions. | `true`  | no       |
-| `cache_size`       | `integer`  | Deprecated. Cache size.                                     | `256`   | no       |
-| `cache_ttl`        | `duration` | Deprecated. Cache TTL.                                      | `"10m"` | no       |
+| Name                       | Type       | Description                                                                                                                      | Default | Required |
+|----------------------------|------------|----------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `collect_interval`         | `duration` | How frequently to collect information from database.                                                                             | `"1m"`  | no       |
+| `cache_enabled`            | `boolean`  | Deprecated. Whether to enable caching of table definitions.                                                                      | `true`  | no       |
+| `cache_size`               | `integer`  | Deprecated. Cache size.                                                                                                          | `256`   | no       |
+| `cache_ttl`                | `duration` | Deprecated. Cache TTL.                                                                                                           | `"10m"` | no       |
+| `skip_extension_internals` | `boolean`  | Hide schemas owned by detected PostgreSQL extensions from schema reports. Has no effect when no recognized extension is present. | `true`  | no       |
 
 The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they are accepted for backward compatibility, but ignored.
 
+Examples of extensions that `skip_extension_internals` can detect include TimescaleDB's `_timescaledb_*` catalog schemas and `timescaledb_information`/`timescaledb_experimental` metadata views.
+
 ### `explain_plans`
 
-| Name                | Type           | Description                                          | Default | Required |
-|---------------------|----------------|------------------------------------------------------|---------|----------|
-| `collect_interval`  | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
-| `per_collect_ratio` | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
+| Name                       | Type           | Description                                          | Default | Required |
+|----------------------------|----------------|------------------------------------------------------|---------|----------|
+| `collect_interval`         | `duration`     | How frequently to collect information from database. | `"1m"`  | no       |
+| `per_collect_ratio`        | `float64`      | The ratio of queries to collect explain plans for.   | `1.0`   | no       |
+| `skip_extension_internals` | `boolean`      | Skip running `EXPLAIN` on queries against detected PostgreSQL extensions' internal schemas. Has no effect when no recognized extension is present. | `true`  | no       |
+
+When TimescaleDB is detected, statements that reference `_timescaledb_catalog`, `_timescaledb_internal`, `_timescaledb_functions`, `_timescaledb_config`, `_timescaledb_cache`, or `_timescaledb_debug` are skipped, since their text in `pg_stat_statements` is emitted by SPI invocations and cannot be re-prepared standalone, resulting in `PREPARE`/`EXPLAIN` errors logged by PostgreSQL.
 
 ### `health_check`
 

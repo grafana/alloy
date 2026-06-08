@@ -696,6 +696,76 @@ func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testi
 	assert.Equal(t, 11*time.Second, args.SchemaDetailsArguments.CollectInterval)
 }
 
+func TestPostgres_skip_extension_internals_configuration_is_parsed_from_config(t *testing.T) {
+	t.Run("default enabled", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.True(t, args.SchemaDetailsArguments.SkipExtensionInternals)
+		assert.True(t, args.ExplainPlansArguments.SkipExtensionInternals)
+	})
+
+	t.Run("per-collector opt-out", func(t *testing.T) {
+		exampleDBO11yAlloyConfig := `
+		data_source_name = "postgres://db"
+		forward_to = []
+		targets = []
+		schema_details {
+			skip_extension_internals = false
+		}
+		explain_plans {
+			skip_extension_internals = false
+		}
+		`
+
+		var args Arguments
+		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
+		require.NoError(t, err)
+
+		assert.False(t, args.SchemaDetailsArguments.SkipExtensionInternals)
+		assert.False(t, args.ExplainPlansArguments.SkipExtensionInternals)
+	})
+}
+
+func TestPostgres_shouldDetectExtensions(t *testing.T) {
+	defaultCollectors := map[string]bool{
+		collector.QueryDetailsCollector:  true,
+		collector.QuerySamplesCollector:  true,
+		collector.SchemaDetailsCollector: true,
+		collector.ExplainPlanCollector:   true,
+	}
+
+	t.Run("enabled when an extension-aware collector has skipping enabled", func(t *testing.T) {
+		args := defaultArguments()
+		assert.True(t, shouldDetectExtensions(args, defaultCollectors))
+	})
+
+	t.Run("disabled when extension-aware collectors are disabled", func(t *testing.T) {
+		args := defaultArguments()
+		collectors := map[string]bool{
+			collector.QueryDetailsCollector:  true,
+			collector.QuerySamplesCollector:  true,
+			collector.SchemaDetailsCollector: false,
+			collector.ExplainPlanCollector:   false,
+		}
+		assert.False(t, shouldDetectExtensions(args, collectors))
+	})
+
+	t.Run("disabled when both extension skips are opted out", func(t *testing.T) {
+		args := defaultArguments()
+		args.SchemaDetailsArguments.SkipExtensionInternals = false
+		args.ExplainPlansArguments.SkipExtensionInternals = false
+		assert.False(t, shouldDetectExtensions(args, defaultCollectors))
+	})
+}
+
 func Test_parseCloudProvider(t *testing.T) {
 	t.Run("parse aws cloud provider block", func(t *testing.T) {
 		exampleDBO11yAlloyConfig := `

@@ -35,6 +35,8 @@ import (
 
 const name = "database_observability.postgres"
 
+const extensionDetectionTimeout = 10 * time.Second
+
 const selectServerInfo = `
 SELECT
 	(pg_control_system()).system_identifier,
@@ -123,6 +125,8 @@ type SchemaDetailsArguments struct {
 	CacheEnabled *bool          `alloy:"cache_enabled,attr,optional"`
 	CacheSize    *int           `alloy:"cache_size,attr,optional"`
 	CacheTTL     *time.Duration `alloy:"cache_ttl,attr,optional"`
+
+	SkipExtensionInternals bool `alloy:"skip_extension_internals,attr,optional"`
 }
 
 func defaultArguments() Arguments {
@@ -139,11 +143,13 @@ func defaultArguments() Arguments {
 			StatementsLimit: 100,
 		},
 		SchemaDetailsArguments: SchemaDetailsArguments{
-			CollectInterval: 1 * time.Minute,
+			CollectInterval:        1 * time.Minute,
+			SkipExtensionInternals: true,
 		},
 		ExplainPlansArguments: ExplainPlansArguments{
-			CollectInterval: 1 * time.Minute,
-			PerCollectRatio: 1.0,
+			CollectInterval:        1 * time.Minute,
+			PerCollectRatio:        1.0,
+			SkipExtensionInternals: true,
 		},
 		HealthCheckArguments: HealthCheckArguments{
 			CollectInterval: 1 * time.Hour,
@@ -152,8 +158,9 @@ func defaultArguments() Arguments {
 }
 
 type ExplainPlansArguments struct {
-	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-	PerCollectRatio float64       `alloy:"per_collect_ratio,attr,optional"`
+	CollectInterval        time.Duration `alloy:"collect_interval,attr,optional"`
+	PerCollectRatio        float64       `alloy:"per_collect_ratio,attr,optional"`
+	SkipExtensionInternals bool          `alloy:"skip_extension_internals,attr,optional"`
 }
 
 type HealthCheckArguments struct {
@@ -578,6 +585,19 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	var tableRegistry *collector.TableRegistry
 	collectors := enableOrDisableCollectors(c.args)
+	detectedExtensions := collector.DetectedExtensions{}
+	if shouldDetectExtensions(c.args, collectors) {
+		detectionCtx, cancel := context.WithTimeout(context.Background(), extensionDetectionTimeout)
+		defer cancel()
+		detectedExtensions = collector.DetectExtensionsAcrossDatabases(
+			detectionCtx,
+			c.dbConnection,
+			string(c.args.DataSourceName),
+			c.args.ExcludeDatabases,
+			nil,
+			c.opts.Logger,
+		)
+	}
 
 	if collectors[collector.SchemaDetailsCollector] {
 		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
@@ -591,12 +611,14 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		}
 
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:               c.dbConnection,
-			DSN:              string(c.args.DataSourceName),
-			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			EntryHandler:     entryHandler,
-			Logger:           c.opts.SLogger,
+			DB:                     c.dbConnection,
+			DSN:                    string(c.args.DataSourceName),
+			CollectInterval:        c.args.SchemaDetailsArguments.CollectInterval,
+			ExcludeDatabases:       c.args.ExcludeDatabases,
+			DetectedExtensions:     detectedExtensions,
+			SkipExtensionInternals: c.args.SchemaDetailsArguments.SkipExtensionInternals,
+			EntryHandler:           entryHandler,
+			Logger:                 c.opts.SLogger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
@@ -679,15 +701,17 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.ExplainPlanCollector] {
 		epCollector, err := collector.NewExplainPlan(collector.ExplainPlansArguments{
-			DB:               c.dbConnection,
-			DSN:              string(c.args.DataSourceName),
-			ScrapeInterval:   c.args.ExplainPlansArguments.CollectInterval,
-			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
-			ExcludeDatabases: c.args.ExcludeDatabases,
-			ExcludeUsers:     effectiveExcludeUsers,
-			Logger:           c.opts.SLogger,
-			DBVersion:        engineVersion,
-			EntryHandler:     entryHandler,
+			DB:                     c.dbConnection,
+			DSN:                    string(c.args.DataSourceName),
+			ScrapeInterval:         c.args.ExplainPlansArguments.CollectInterval,
+			PerScrapeRatio:         c.args.ExplainPlansArguments.PerCollectRatio,
+			ExcludeDatabases:       c.args.ExcludeDatabases,
+			ExcludeUsers:           effectiveExcludeUsers,
+			DetectedExtensions:     detectedExtensions,
+			SkipExtensionInternals: c.args.ExplainPlansArguments.SkipExtensionInternals,
+			Logger:                 c.opts.SLogger,
+			DBVersion:              engineVersion,
+			EntryHandler:           entryHandler,
 		})
 		if err != nil {
 			logStartError(collector.ExplainPlanCollector, "create", err)
@@ -740,6 +764,11 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	}
 
 	return nil
+}
+
+func shouldDetectExtensions(args Arguments, collectors map[string]bool) bool {
+	return (collectors[collector.SchemaDetailsCollector] && args.SchemaDetailsArguments.SkipExtensionInternals) ||
+		(collectors[collector.ExplainPlanCollector] && args.ExplainPlansArguments.SkipExtensionInternals)
 }
 
 func (c *Component) Handler() http.Handler {

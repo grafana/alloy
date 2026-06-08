@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/DataDog/go-sqllexer"
 	"github.com/blang/semver/v4"
+	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -40,19 +42,84 @@ const selectQueriesForExplainPlanTemplate = `
 		JOIN pg_database d ON s.dbid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE s.queryid IS NOT NULL AND s.query IS NOT NULL
 		AND d.datname NOT IN %s
+		%s
 		%s`
 
 const selectExplainPlanPrefix = `EXPLAIN (FORMAT JSON) EXECUTE `
 
+// unrecoverablePostgresSQLErrors are substrings matched against err.Error() to
+// catch driver-level failures (e.g. pg_hba rejection) that do not surface as a
+// SQLSTATE on a *pq.Error.
 var unrecoverablePostgresSQLErrors = []string{
 	"pq: permission denied",
 	"pq: pg_hba.conf rejects connection for host",
 	"pq: syntax error",
 }
 
+// unrecoverablePostgresSQLStateCodes are SQLSTATE codes that indicate an
+// extension-internal query cannot be EXPLAIN'd in its current shape, typically
+// because recorded pg_stat_statements text references identifiers or types that
+// don't resolve outside the original execution context. For ordinary application
+// queries, these SQLSTATEs are left retryable.
+var unrecoverablePostgresSQLStateCodes = map[string]struct{}{
+	"42703": {}, // undefined_column          — e.g. TimescaleDB `htid` leakage
+	"42P01": {}, // undefined_table
+	"42804": {}, // datatype_mismatch         — e.g. UNION branch type mismatch
+	"42P18": {}, // indeterminate_datatype
+	"42883": {}, // undefined_function
+	"42501": {}, // insufficient_privilege
+	"42601": {}, // syntax_error
+}
+
+// isUnrecoverableExplainError reports whether the error from PREPARE/EXPLAIN
+// indicates a permanent inability to plan this query, in which case the
+// collector should denylist the queryid rather than retry it on every cycle.
+func isUnrecoverableExplainError(err error, queryText string, detectedExtensions DetectedExtensions, skipExtensionInternals bool) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	for _, code := range unrecoverablePostgresSQLErrors {
+		if strings.Contains(msg, code) {
+			return true
+		}
+	}
+	if !skipExtensionInternals || !detectedExtensions.TimescaleDB || !queryReferencesTimescaleDBInternalSchema(queryText) {
+		return false
+	}
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		if _, ok := unrecoverablePostgresSQLStateCodes[string(pqErr.Code)]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func queryReferencesTimescaleDBInternalSchema(queryText string) bool {
+	lexer := sqllexer.New(queryText, sqllexer.WithDBMS(sqllexer.DBMSPostgres))
+	for {
+		token := lexer.Scan()
+		switch token.Type {
+		case sqllexer.ERROR:
+			return timescaleDBInternalSchemaFallbackRegex.MatchString(queryText)
+		case sqllexer.EOF:
+			return false
+		case sqllexer.IDENT, sqllexer.QUOTED_IDENT, sqllexer.FUNCTION:
+			identifier := strings.ToLower(strings.ReplaceAll(token.Value, `"`, ""))
+			for _, schema := range timescaleDBInternalSchemas {
+				if strings.HasPrefix(identifier, schema+".") {
+					return true
+				}
+			}
+		}
+	}
+}
+
 var (
-	paramCountRegex   = regexp.MustCompile(`\$\d+`)
-	versSanitizeRegex = regexp.MustCompile(`^v?[0-9]+\.?[0-9]+`)
+	paramCountRegex                        = regexp.MustCompile(`\$\d+`)
+	timescaleDBInternalSchemaFallbackRegex = regexp.MustCompile(`(?i)(^|[^[:alnum:]_])"?_timescaledb_(cache|catalog|config|debug|functions|internal)"?\s*\.`)
+	versSanitizeRegex                      = regexp.MustCompile(`^v?[0-9]+\.?[0-9]+`)
 )
 
 type PgSQLExplainplan struct {
@@ -211,54 +278,60 @@ func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset ti
 }
 
 type ExplainPlansArguments struct {
-	DB               *sql.DB
-	DSN              string
-	ScrapeInterval   time.Duration
-	PerScrapeRatio   float64
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EntryHandler     loki.EntryHandler
-	DBVersion        string
+	DB                     *sql.DB
+	DSN                    string
+	ScrapeInterval         time.Duration
+	PerScrapeRatio         float64
+	ExcludeDatabases       []string
+	ExcludeUsers           []string
+	EntryHandler           loki.EntryHandler
+	DBVersion              string
+	DetectedExtensions     DetectedExtensions
+	SkipExtensionInternals bool
 
 	Logger *slog.Logger
 }
 
 type ExplainPlans struct {
-	dbConnection        *sql.DB
-	dbDSN               string
-	dbVersion           semver.Version
-	dbConnectionFactory databaseConnectionFactory
-	scrapeInterval      time.Duration
-	queryCache          map[string]*queryInfo
-	queryDenylist       map[string]*queryInfo
-	finishedQueryCache  map[string]*queryInfo
-	excludeDatabases    []string
-	excludeUsers        []string
-	perScrapeRatio      float64
-	currentBatchSize    int
-	entryHandler        loki.EntryHandler
-	logger              *slog.Logger
-	running             *atomic.Bool
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	wg                  sync.WaitGroup
+	dbConnection           *sql.DB
+	dbDSN                  string
+	dbVersion              semver.Version
+	dbConnectionFactory    databaseConnectionFactory
+	scrapeInterval         time.Duration
+	queryCache             map[string]*queryInfo
+	queryDenylist          map[string]*queryInfo
+	finishedQueryCache     map[string]*queryInfo
+	excludeDatabases       []string
+	excludeUsers           []string
+	detectedExtensions     DetectedExtensions
+	skipExtensionInternals bool
+	perScrapeRatio         float64
+	currentBatchSize       int
+	entryHandler           loki.EntryHandler
+	logger                 *slog.Logger
+	running                *atomic.Bool
+	ctx                    context.Context
+	cancel                 context.CancelFunc
+	wg                     sync.WaitGroup
 }
 
 func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 	ep := &ExplainPlans{
-		dbConnection:        args.DB,
-		dbDSN:               args.DSN,
-		dbConnectionFactory: defaultDbConnectionFactory,
-		scrapeInterval:      args.ScrapeInterval,
-		perScrapeRatio:      args.PerScrapeRatio,
-		excludeDatabases:    args.ExcludeDatabases,
-		excludeUsers:        args.ExcludeUsers,
-		queryCache:          make(map[string]*queryInfo),
-		queryDenylist:       make(map[string]*queryInfo),
-		finishedQueryCache:  make(map[string]*queryInfo),
-		entryHandler:        args.EntryHandler,
-		logger:              args.Logger.With("collector", ExplainPlanCollector),
-		running:             atomic.NewBool(false),
+		dbConnection:           args.DB,
+		dbDSN:                  args.DSN,
+		dbConnectionFactory:    defaultDbConnectionFactory,
+		scrapeInterval:         args.ScrapeInterval,
+		perScrapeRatio:         args.PerScrapeRatio,
+		excludeDatabases:       args.ExcludeDatabases,
+		excludeUsers:           args.ExcludeUsers,
+		detectedExtensions:     args.DetectedExtensions,
+		skipExtensionInternals: args.SkipExtensionInternals,
+		queryCache:             make(map[string]*queryInfo),
+		queryDenylist:          make(map[string]*queryInfo),
+		finishedQueryCache:     make(map[string]*queryInfo),
+		entryHandler:           args.EntryHandler,
+		logger:                 args.Logger.With("collector", ExplainPlanCollector),
+		running:                atomic.NewBool(false),
 	}
 	// Pre-sanitize the version by removing any trailing characters before semver gets it
 	foundVers := versSanitizeRegex.FindString(args.DBVersion)
@@ -358,9 +431,10 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	var resetTS time.Time
 	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
 	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "pg_get_userbyid(s.userid)")
+	extensionFilterClause := buildExtensionExplainFilterClause(c.skipExtensionInternals, c.detectedExtensions)
 	version17Plus := semver.MustParseRange(">=17.0.0")(c.dbVersion)
 	if version17Plus {
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", excludedDatabasesClause, excludedUsersClause)
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "s.stats_since", excludedDatabasesClause, excludedUsersClause, extensionFilterClause)
 	} else {
 		statReset := c.dbConnection.QueryRowContext(ctx, "SELECT stats_reset FROM pg_stat_statements_info")
 		if err := statReset.Err(); err != nil {
@@ -369,7 +443,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 		if err := statReset.Scan(&resetTS); err != nil {
 			return fmt.Errorf("failed to scan stats reset time for explain plans: %w", err)
 		}
-		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", excludedDatabasesClause, excludedUsersClause)
+		selectStatement = fmt.Sprintf(selectQueriesForExplainPlanTemplate, "NOW() AT TIME ZONE 'UTC' AS stats_since", excludedDatabasesClause, excludedUsersClause, extensionFilterClause)
 	}
 
 	rs, err := c.dbConnection.QueryContext(ctx, selectStatement)
@@ -507,11 +581,8 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
 			logger.Debug("failed to fetch explain plan json bytes", "err", err)
-			for _, code := range unrecoverablePostgresSQLErrors {
-				if strings.Contains(err.Error(), code) {
-					nonRecoverableFailureOccurred = true
-					break
-				}
+			if isUnrecoverableExplainError(err, qi.queryText, c.detectedExtensions, c.skipExtensionInternals) {
+				nonRecoverableFailureOccurred = true
 			}
 			continue
 		}
