@@ -29,7 +29,7 @@ func gqlCommand() *cobra.Command {
 		Long: `The gql subcommand runs a GraphQL query against a running Alloy instance.
 The query is provided as a single argument to the command.
 
-It requires the --feature.graphql.enabled flag on the running Alloy instance to
+It requires the --server.http.enable-graphql flag on the running Alloy instance to
 be set, as well as --stability.level flag set to "experimental".
 
 This command is experimental and may be modified or removed in the future. Use
