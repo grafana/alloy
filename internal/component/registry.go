@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -68,13 +67,6 @@ type Options struct {
 	// ID of the component. Guaranteed to be globally unique across all running
 	// components.
 	ID string
-
-	// Logger the component may use for logging. Logs emitted with the logger
-	// always include the component ID as a field.
-	//
-	// Logger is kept for compatibility with components that have not yet been
-	// migrated to slog. Prefer SLogger for new code.
-	Logger log.Logger
 
 	// SLogger the component may use for logging. Logs emitted with the logger
 	// always include the component ID as a field.
