@@ -84,6 +84,8 @@ func TestWindowsService(t *testing.T) {
 		assert.FileExists(c, uninstallerPath, "uninstaller should exist after install")
 	}, waitTimeout*waitAttempts, waitTimeout)
 
+	// TODO: Use unique component names and check for logs and metrics containing that component name.
+	//       It could be a hash. This way we guarantee that we won't be using stale logs or metrics.
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		util.EnsureServiceRunning(c, t, serviceName)
 	}, waitTimeout*waitAttempts, waitTimeout)
