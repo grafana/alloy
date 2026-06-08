@@ -322,9 +322,3 @@ func infoLevel() logging.Options {
 	opts.Level = logging.LevelInfo
 	return opts
 }
-
-func warnLevel() logging.Options {
-	opts := debugLevel()
-	opts.Level = logging.LevelWarn
-	return opts
-}
