@@ -361,9 +361,6 @@ func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.R
 
 		var logsBuffer syncbuffer.Buffer
 		s.globalLogger.SetTemporaryWriter(&logsBuffer)
-		defer func() {
-			s.globalLogger.RemoveTemporaryWriter()
-		}()
 
 		// Get and redact the cached remote config.
 		cachedConfig, err := remoteCfgRedactedCachedConfig(host)
@@ -374,12 +371,14 @@ func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.R
 		// Ensure the sources are written using the printer as it will handle
 		// secret redaction.
 		sources := redactedSources(s.sources)
-
 		bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, sources, cachedConfig, s.Data().(Data).DialFunc)
 		if err != nil {
+			s.globalLogger.RemoveTemporaryWriter()
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		s.globalLogger.RemoveTemporaryWriter()
 		if err := ServeSupportBundle(rw, bundle, logsBuffer.Bytes()); err != nil {
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
