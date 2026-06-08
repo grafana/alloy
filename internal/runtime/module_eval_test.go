@@ -349,7 +349,7 @@ func testOptions(t *testing.T) runtime.Options {
 	})
 	require.NoError(t, err)
 
-	otelService := otel_service.New(s)
+	otelService := otel_service.New(s.Slog())
 	require.NotNil(t, otelService)
 
 	remotecfgService, err := remotecfg_service.New(remotecfg_service.Options{

@@ -400,12 +400,12 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	uiService := uiservice.New(uiservice.Options{
 		UIPrefix:                fr.uiPrefix,
 		CallbackManager:         liveDebuggingService.Data().(livedebugging.CallbackManager),
-		Logger:                  log.With(l, "service", "ui"),
+		Logger:                  l.Slog().With("service", "ui"),
 		EnableGraphQL:           fr.enableGraphQL,
 		EnableGraphQLPlayground: fr.enableGraphQLPlayground,
 	})
 
-	otelService := otel_service.New(l)
+	otelService := otel_service.New(l.Slog().With("service", "otel"))
 	if otelService == nil {
 		return fmt.Errorf("failed to create otel service")
 	}
