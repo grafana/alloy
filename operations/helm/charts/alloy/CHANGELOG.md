@@ -10,20 +10,18 @@ internal API changes are not present.
 Unreleased
 ----------
 
-### Enhancements
-
-- Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
-
-### Bug fixes
-
-- Fix `templates/configmap.yaml` ignoring `alloy.configMap.key`. The pod template honors the value via the `alloy.config-map.key` helper, but the ConfigMap template hardcoded the data key as `config.alloy`, producing a key/expected-path mismatch that crash-looped Alloy when the value was set. (#6312)
-
-1.8.3 (2026-06-02)
+1.9.0 (2026-06-08)
 ----------
 
 ### Enhancements
 
-- Update to Grafana Alloy v1.16.2 (@kgeckhart)
+- Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
+
+- Update to Grafana Alloy v1.16.3 (@kgeckhart)
+
+### Bug fixes
+
+- Fix `templates/configmap.yaml` ignoring `alloy.configMap.key`. The pod template honors the value via the `alloy.config-map.key` helper, but the ConfigMap template hardcoded the data key as `config.alloy`, producing a key/expected-path mismatch that crash-looped Alloy when the value was set. (#6312)
 
 1.8.2 (2026-05-25)
 ----------
