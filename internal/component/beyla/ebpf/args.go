@@ -320,6 +320,8 @@ type Injector struct {
 	ExportedSignals   InjectorSDKExport   `alloy:"otel_exported_signals,block,optional"`
 	Resources         InjectorSDKResource `alloy:"resources,block,optional"`
 	EnabledSDKs       []string            `alloy:"enabled_sdks,attr,optional"`
+	OTELEndpoint      string              `alloy:"otel_endpoint,attr,optional"`
+	OTELProtocol      string              `alloy:"otel_protocol,attr,optional"`
 }
 
 type InjectorWebhook struct {

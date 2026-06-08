@@ -28,6 +28,7 @@ import (
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
+	"go.opentelemetry.io/obi/pkg/export/otel/otelcfg"
 	"go.opentelemetry.io/obi/pkg/export/prom"
 	"go.opentelemetry.io/obi/pkg/filter"
 	"go.opentelemetry.io/obi/pkg/kube"
@@ -1050,6 +1051,14 @@ func selectorsFromInstrument(g services.GlobDefinitionCriteria) []configmap.K8sS
 	return selectors
 }
 
+func (args Injector) GetOTELEndpoint() string {
+	return args.OTELEndpoint
+}
+
+func (args Injector) GetOTELProtocol() otelcfg.Protocol {
+	return otelcfg.Protocol(args.OTELProtocol)
+}
+
 func (args Injector) Convert() (beyla.SDKInject, error) {
 	i := beyla.DefaultConfig().Injector
 
@@ -1318,6 +1327,9 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	cfg.Traces.CommonEndpoint = a.Injector.GetOTELEndpoint()
+	cfg.Traces.Protocol = a.Injector.GetOTELProtocol()
 
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging
