@@ -119,6 +119,9 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		"config.alloy": []byte(alloyCfg),
 	})
 
+	// Prevent cobra from autoloading command-line args from os.Args
+	runCommand.SetArgs([]string{})
+
 	if err := runCommand.ParseFlags(e.config.flagsAsSlice()); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
