@@ -827,6 +827,7 @@ var errorsAllowlist = []string{
 	"failed to connect to peers; bootstrapping a new cluster",       // should be allowed only once for first node
 	`msg="node exited with error" node=remotecfg err="noop client"`, // related to remotecfg service mock ups
 	`msg="failed to rejoin list of peers"`,                          // this is because list of initial join peers is fixed in tests
+	`service=remotecfg`,                                             // remotecfg is mocked with a noop client in these tests and it's warnings / errors are expected.
 	`stream closed`,
 	`i/o timeout`,
 	`failed to receive and remove the stream label header`,
