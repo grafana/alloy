@@ -487,7 +487,7 @@ type testEnvironment struct {
 
 func newTestEnvironment(t *testing.T, client *mockCollectorClient) *testEnvironment {
 	svc, err := New(Options{
-		Logger:      util.TestLogger(t),
+		Logger:      util.TestAlloyLogger(t).Slog(),
 		StoragePath: t.TempDir(),
 	})
 	require.NoError(t, err)
