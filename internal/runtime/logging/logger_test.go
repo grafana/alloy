@@ -37,6 +37,91 @@ func (b *safeBuffer) String() string {
 
 const testStr = "this is a test string"
 
+func TestLevels(t *testing.T) {
+	type testCase struct {
+		name            string
+		configuredLevel logging.Level
+		level           slog.Level
+		message         string
+		expected        string
+	}
+
+	var testCases = []testCase{
+
+		{
+			name:            "debug - prints",
+			configuredLevel: logging.LevelDebug,
+			level:           slog.LevelDebug,
+			message:         "hello",
+			expected:        "level=debug msg=hello\n",
+		},
+		{
+			name:            "debug - drops",
+			configuredLevel: logging.LevelInfo,
+			level:           slog.LevelDebug,
+			message:         "hello",
+			expected:        "",
+		},
+
+		{
+			name:            "info - drops",
+			configuredLevel: logging.LevelWarn,
+			level:           slog.LevelInfo,
+			message:         "hello",
+			expected:        "",
+		},
+		{
+			name:            "level - prints",
+			configuredLevel: logging.LevelInfo,
+			level:           slog.LevelInfo,
+
+			message:  "hello",
+			expected: "level=info msg=hello\n",
+		},
+		{
+			name:            "warn - drops",
+			configuredLevel: logging.LevelError,
+			level:           slog.LevelWarn,
+			message:         "hello",
+			expected:        "",
+		},
+
+		{
+			name:            "warn - prints",
+			configuredLevel: logging.LevelInfo,
+			level:           slog.LevelWarn,
+			message:         "hello",
+			expected:        "level=warn msg=hello\n",
+		},
+		{
+			name:            "error - prints",
+			configuredLevel: logging.LevelError,
+			level:           slog.LevelError,
+			message:         "hello",
+			expected:        "level=error msg=hello\n",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.name, func(t *testing.T) {
+			buffer := bytes.NewBuffer(nil)
+			opts := logging.Options{}
+			opts.SetToDefault()
+			opts.Level = tt.configuredLevel
+			logger, err := logging.New(buffer, opts)
+			require.NoError(t, err)
+			logger.Slog().Log(context.Background(), tt.level, tt.message)
+			if tt.expected == "" {
+				require.Empty(t, buffer.String())
+			} else {
+				require.Contains(t, buffer.String(), "ts=")
+				noTimestamp := strings.Join(strings.Split(buffer.String(), " ")[1:], " ")
+				require.Equal(t, tt.expected, noTimestamp)
+			}
+		})
+	}
+}
+
 // Test_lokiWriter_nil ensures that writing to a lokiWriter doesn't panic when
 // given a nil receiver.
 func Test_lokiWriter_nil(t *testing.T) {
@@ -235,5 +320,11 @@ func debugLevel() logging.Options {
 func infoLevel() logging.Options {
 	opts := debugLevel()
 	opts.Level = logging.LevelInfo
+	return opts
+}
+
+func warnLevel() logging.Options {
+	opts := debugLevel()
+	opts.Level = logging.LevelWarn
 	return opts
 }
