@@ -1901,7 +1901,7 @@ func TestSelectorFromGlob(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := selectorFromGlob(&tt.attrs, configmap.ModeInstall)
+			got := selectorFromGlob(&tt.attrs)
 			require.Equal(t, tt.expected, got)
 		})
 	}
@@ -1930,7 +1930,7 @@ func TestSelectorFromGlob_OwnerKinds(t *testing.T) {
 					c.attr: globPtr("name-*"),
 				},
 			}
-			got := selectorFromGlob(&attrs, configmap.ModeInstall)
+			got := selectorFromGlob(&attrs)
 			require.Equal(t, []services.GlobAttr{services.NewGlob("name-*")}, got.OwnerNames)
 			require.Equal(t, []string{c.kind}, got.OwnerKinds)
 		})
@@ -2255,10 +2255,10 @@ func TestConvert_Network_NewOptions(t *testing.T) {
 		ReverseDNS:       ReverseDNS{Type: "ebpf"},
 	}
 	cfg := args.Convert()
-	require.Equal(t, "first_come", string(cfg.Deduper))
+	require.Equal(t, "first_come", cfg.Deduper)
 	require.Equal(t, 30*time.Second, cfg.DeduperFCTTL)
 	require.Equal(t, "ordinal", string(cfg.GuessPorts))
-	require.Equal(t, "poll", string(cfg.ListenInterfaces))
+	require.Equal(t, "poll", cfg.ListenInterfaces)
 	require.Equal(t, 10*time.Second, cfg.ListenPollPeriod)
 	require.True(t, cfg.Print)
 	require.Equal(t, 10, cfg.GeoIP.CacheLen)
@@ -2269,7 +2269,7 @@ func TestConvert_Stats_Enrichment(t *testing.T) {
 	args := Stats{GeoIP: GeoIP{CacheLen: 5}, ReverseDNS: ReverseDNS{Type: "local"}}
 	cfg := args.Convert()
 	require.Equal(t, 5, cfg.GeoIP.CacheLen)
-	require.Equal(t, "local", string(cfg.ReverseDNS.Type))
+	require.Equal(t, "local", cfg.ReverseDNS.Type)
 }
 
 func TestValidate_Network_Enums(t *testing.T) {

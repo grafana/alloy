@@ -80,6 +80,10 @@ const (
 	SamplerParentBasedTraceIDRatio = "parentbased_traceidratio"
 )
 
+const (
+	none = "none"
+)
+
 var validInstrumentations = map[string]struct{}{
 	"*": {}, "http": {}, "grpc": {}, "redis": {}, "kafka": {}, "sql": {}, "gpu": {}, "mongo": {},
 }
@@ -965,7 +969,7 @@ func (args InjectorSDKResource) Convert() configmap.SDKResource {
 	return w
 }
 
-func selectorFromGlob(a *services.GlobAttributes, mode configmap.Mode) configmap.K8sSelector {
+func selectorFromGlob(a *services.GlobAttributes) configmap.K8sSelector {
 	var podLabels map[string]services.GlobAttr
 	if len(a.PodLabels) > 0 {
 		podLabels = make(map[string]services.GlobAttr, len(a.PodLabels))
@@ -1029,11 +1033,8 @@ func selectorsFromInstrument(g services.GlobDefinitionCriteria) []configmap.K8sS
 	var selectors []configmap.K8sSelector
 
 	for i := range g {
-		sel := selectorFromGlob(&g[i], configmap.ModeInstall)
-		// TODO: replace this with sel.IsEmpty() when we upgrade to 3.22+
-		if len(sel.Namespaces) == 0 && len(sel.OwnerNames) == 0 &&
-			len(sel.OwnerKinds) == 0 && len(sel.PodLabels) == 0 &&
-			len(sel.PodAnnotations) == 0 {
+		sel := selectorFromGlob(&g[i])
+		if sel.IsEmpty() {
 			continue
 		}
 
@@ -1383,7 +1384,7 @@ func (args *Arguments) Validate() error {
 	}
 
 	switch args.Metrics.Network.Deduper {
-	case "", "none", "first_come":
+	case "", none, "first_come":
 	default:
 		return fmt.Errorf("metrics.network.deduper: invalid value %q (valid: none, first_come)", args.Metrics.Network.Deduper)
 	}
@@ -1398,12 +1399,12 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("metrics.network.listen_interfaces: invalid value %q (valid: watch, poll)", args.Metrics.Network.ListenInterfaces)
 	}
 	switch args.Metrics.Network.ReverseDNS.Type {
-	case "", "none", "local", "ebpf":
+	case "", none, "local", "ebpf":
 	default:
 		return fmt.Errorf("metrics.network.reverse_dns.type: invalid value %q (valid: none, local, ebpf)", args.Metrics.Network.ReverseDNS.Type)
 	}
 	switch args.Stats.ReverseDNS.Type {
-	case "", "none", "local", "ebpf":
+	case "", none, "local", "ebpf":
 	default:
 		return fmt.Errorf("stats.reverse_dns.type: invalid value %q (valid: none, local, ebpf)", args.Stats.ReverseDNS.Type)
 	}
