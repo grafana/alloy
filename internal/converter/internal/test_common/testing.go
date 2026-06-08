@@ -209,7 +209,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 	require.NoError(t, err)
 
 	remotecfgService, err := remotecfg_service.New(remotecfg_service.Options{
-		Logger:      logger,
+		Logger:      logger.Slog(),
 		StoragePath: t.TempDir(),
 		Metrics:     prometheus.DefaultRegisterer,
 	})

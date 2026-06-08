@@ -386,7 +386,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	})
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(l, "service", "remotecfg"),
+		Logger:      l.Slog().With("service", "remotecfg"),
 		ConfigPath:  configPath,
 		StoragePath: fr.storagePath,
 		Metrics:     reg,

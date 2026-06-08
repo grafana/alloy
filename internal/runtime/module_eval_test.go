@@ -353,7 +353,7 @@ func testOptions(t *testing.T) runtime.Options {
 	require.NotNil(t, otelService)
 
 	remotecfgService, err := remotecfg_service.New(remotecfg_service.Options{
-		Logger:      s,
+		Logger:      s.Slog(),
 		StoragePath: t.TempDir(),
 		Metrics:     prometheus.DefaultRegisterer,
 	})
