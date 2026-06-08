@@ -33,7 +33,7 @@ func Test(t *testing.T) {
 	httpAddr := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
-	l := util.TestAlloyLogger(t)
+	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.otlp")
 	require.NoError(t, err)
@@ -82,7 +82,7 @@ func Test(t *testing.T) {
 		})
 		for bo.Ongoing() {
 			if err := request(); err != nil {
-				l.Slog().Error("failed to send traces", "err", err)
+				l.Error("failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}

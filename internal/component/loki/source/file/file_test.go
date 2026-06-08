@@ -132,7 +132,7 @@ func TestComponent(t *testing.T) {
 		require.NoError(t, err)
 		defer f.Close()
 
-		ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
+		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 		require.NoError(t, err)
 
 		ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
@@ -188,7 +188,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 		require.NoError(t, err)
 		defer f.Close()
 
-		ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
+		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 		require.NoError(t, err)
 
 		ch1 := loki.NewLogsReceiver()
@@ -274,7 +274,7 @@ func TestFileWatch(t *testing.T) {
 			require.NoError(t, err)
 			defer f.Close()
 
-			ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
+			ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 			require.NoError(t, err)
 
 			ch1 := loki.NewLogsReceiver()
@@ -333,7 +333,7 @@ func TestUpdate_NoLeak(t *testing.T) {
 		require.NoError(t, err)
 		defer f.Close()
 
-		ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
+		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 		require.NoError(t, err)
 
 		args := Arguments{
@@ -368,7 +368,7 @@ func TestTwoTargets(t *testing.T) {
 	runTests(t, func(t *testing.T, match FileMatch) {
 		// Create opts for component
 		opts := component.Options{
-			Logger:       logging.NewSlogNop(),
+			Logger:        logging.NewSlogNop(),
 			Registerer:    prometheus.NewRegistry(),
 			OnStateChange: func(e component.Exports) {},
 			DataPath:      t.TempDir(),
@@ -499,7 +499,7 @@ func TestEncoding(t *testing.T) {
 		for _, tc := range testCases {
 			t.Run(tc.name, func(t *testing.T) {
 				opts := component.Options{
-					Logger:       logging.NewSlogNop(),
+					Logger:        logging.NewSlogNop(),
 					Registerer:    prometheus.NewRegistry(),
 					OnStateChange: func(e component.Exports) {},
 					DataPath:      t.TempDir(),
@@ -607,7 +607,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 		f, err := os.Create(filepath.Join(dir, "example"))
 		require.NoError(t, err)
 
-		ctrl, err := componenttest.NewControllerFromID(logging.NewNop(), "loki.source.file")
+		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 		require.NoError(t, err)
 
 		ch1 := loki.NewLogsReceiver()
