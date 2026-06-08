@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.23@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+# syntax=docker/dockerfile:1.24@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
 
 # NOTE: This Dockerfile can only be built using BuildKit. BuildKit is used by
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
