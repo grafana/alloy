@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -34,14 +33,12 @@ type StringerConfig struct {
 
 type Stringer struct {
 	opts      component.Options
-	log       log.Logger
 	cfgUpdate chan StringerConfig
 }
 
 func NewStringer(o component.Options, cfg StringerConfig) (*Stringer, error) {
 	t := &Stringer{
 		opts:      o,
-		log:       o.Logger,
 		cfgUpdate: make(chan StringerConfig, 10),
 	}
 	return t, nil

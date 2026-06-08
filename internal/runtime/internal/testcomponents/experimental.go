@@ -3,7 +3,6 @@ package testcomponents
 import (
 	"context"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -14,23 +13,23 @@ func init() {
 		Stability: featuregate.StabilityExperimental,
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return &Experimental{log: opts.Logger}, nil
+			return &Experimental{opts}, nil
 		},
 	})
 }
 
 // Experimental is a test component that is marked as experimental. Used to verify stability level checking.
 type Experimental struct {
-	log log.Logger
+	opts component.Options
 }
 
 func (e *Experimental) Run(ctx context.Context) error {
-	e.log.Log("msg", "running experimental component")
+	e.opts.SLogger.Info("running experimental component")
 	<-ctx.Done()
 	return nil
 }
 
 func (e *Experimental) Update(args component.Arguments) error {
-	e.log.Log("msg", "updating experimental component")
+	e.opts.SLogger.Info("updating experimental component")
 	return nil
 }
