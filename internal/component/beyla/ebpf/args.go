@@ -208,14 +208,6 @@ type Network struct {
 	ReverseDNS         ReverseDNS    `alloy:"reverse_dns,block,optional"`
 }
 
-type EBPFMapsConfig struct {
-	GlobalScaleFactor int `alloy:"global_scale_factor,attr,optional"`
-}
-
-type EBPFMapsConfig struct {
-	GlobalScaleFactor int `alloy:"global_scale_factor,attr,optional"`
-}
-
 type EBPF struct {
 	WakeupLen             int               `alloy:"wakeup_len,attr,optional"`
 	TrackRequestHeaders   bool              `alloy:"track_request_headers,attr,optional"`
@@ -232,6 +224,10 @@ type EBPF struct {
 	MaxTransactionTime    time.Duration     `alloy:"max_transaction_time,attr,optional"`
 	DNSRequestTimeout     time.Duration     `alloy:"dns_request_timeout,attr,optional"`
 	BufferSizes           BufferSizes       `alloy:"buffer_sizes,block,optional"`
+}
+
+type EBPFMapsConfig struct {
+	GlobalScaleFactor int `alloy:"global_scale_factor,attr,optional"`
 }
 
 type BufferSizes struct {

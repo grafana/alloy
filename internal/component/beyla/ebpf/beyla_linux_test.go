@@ -1823,59 +1823,6 @@ func TestEBPF_Convert_MapsConfig(t *testing.T) {
 	require.Equal(t, 0, cfg.MapsConfig.GlobalScaleFactor)
 }
 
-func TestInjector_Validate_ImageVolumePath(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    Injector
-		wantErr string
-	}{
-		{
-			name: "image_volume_path alone is valid",
-			args: Injector{ImageVolumePath: "/var/oci"},
-		},
-		{
-			name: "image_volume_path with host_mount_path is invalid",
-			args: Injector{
-				ImageVolumePath: "/var/oci",
-				HostMountPath:   "/host",
-			},
-			wantErr: "injector.image_volume_path and injector.host_mount_path are mutually exclusive",
-		},
-		{
-			name: "image_volume_path with sdk_package_version is invalid",
-			args: Injector{
-				ImageVolumePath: "/var/oci",
-				SDKPkgVersion:   "1.0.0",
-			},
-			wantErr: "injector.image_volume_path and injector.sdk_package_version are mutually exclusive",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestInjector_Convert_ImageVolumePath(t *testing.T) {
-	args := Injector{ImageVolumePath: "/var/oci"}
-	cfg, err := args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, "/var/oci", cfg.ImageVolumePath)
-
-	args = Injector{}
-	cfg, err = args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, "", cfg.ImageVolumePath)
-}
-
 func TestSurveyDisabled(t *testing.T) {
 	comp := &Component{
 		args: Arguments{
@@ -2389,7 +2336,7 @@ func TestConvert_Network_NewOptions(t *testing.T) {
 	require.Equal(t, 10*time.Second, cfg.ListenPollPeriod)
 	require.True(t, cfg.Print)
 	require.Equal(t, 10, cfg.GeoIP.CacheLen)
-	require.Equal(t, "ebpf", string(cfg.ReverseDNS.Type))
+	require.Equal(t, "ebpf", cfg.ReverseDNS.Type)
 }
 
 func TestConvert_Stats_Enrichment(t *testing.T) {
