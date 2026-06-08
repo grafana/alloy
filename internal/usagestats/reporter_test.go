@@ -4,14 +4,14 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func Test_ReportLoop(t *testing.T) {
@@ -39,7 +39,7 @@ func Test_ReportLoop(t *testing.T) {
 	}))
 	usageStatsURL = server.URL
 
-	r, err := NewReporter(log.NewLogfmtLogger(os.Stdout))
+	r, err := NewReporter(util.TestAlloyLogger(t).Slog())
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithCancel(t.Context())

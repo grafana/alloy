@@ -1,11 +1,10 @@
 package alloycli
 
 import (
+	"log/slog"
 	"os"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/shirou/gopsutil/v3/net"
 	"github.com/shirou/gopsutil/v3/process"
@@ -15,7 +14,7 @@ import (
 // statistics. It is similar to the process collector in
 // github.com/prometheus/client_golang but includes support for more platforms.
 type resourcesCollector struct {
-	log log.Logger
+	log *slog.Logger
 
 	processStartTime *prometheus.Desc
 	cpuTotal         *prometheus.Desc
@@ -28,7 +27,7 @@ type resourcesCollector struct {
 var _ prometheus.Collector = (*resourcesCollector)(nil)
 
 // newResourcesCollector creates a new resourcesCollector.
-func newResourcesCollector(l log.Logger) *resourcesCollector {
+func newResourcesCollector(l *slog.Logger) *resourcesCollector {
 	rc := &resourcesCollector{
 		log: l,
 
@@ -84,7 +83,7 @@ func (rc *resourcesCollector) Describe(ch chan<- *prometheus.Desc) {
 func (rc *resourcesCollector) Collect(ch chan<- prometheus.Metric) {
 	proc, err := process.NewProcess(int32(os.Getpid()))
 	if err != nil {
-		level.Error(rc.log).Log("msg", "failed to get process", "err", err)
+		rc.log.Error("failed to get process", "err", err)
 		return
 	}
 
@@ -153,5 +152,5 @@ func (rc *resourcesCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 func (rc *resourcesCollector) reportError(d *prometheus.Desc, err error) {
-	level.Error(rc.log).Log("msg", "failed to collect resources metric", "name", d.String(), "err", err)
+	rc.log.Error("failed to collect resources metric", "name", d.String(), "err", err)
 }

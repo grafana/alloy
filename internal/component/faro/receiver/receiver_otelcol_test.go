@@ -24,7 +24,7 @@ func TestWithOtelcolConsumer(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
 	faroReceiver, err := componenttest.NewControllerFromID(
-		util.TestLogger(t),
+		util.TestAlloyLogger(t),
 		"faro.receiver",
 	)
 	require.NoError(t, err)
@@ -32,13 +32,13 @@ func TestWithOtelcolConsumer(t *testing.T) {
 	require.NoError(t, err)
 
 	otelcolAuthHeader, err := componenttest.NewControllerFromID(
-		util.TestLogger(t),
+		util.TestAlloyLogger(t),
 		"otelcol.auth.headers",
 	)
 	require.NoError(t, err)
 
 	otelcolExporter, err := componenttest.NewControllerFromID(
-		util.TestLogger(t),
+		util.TestAlloyLogger(t),
 		"otelcol.exporter.otlphttp",
 	)
 	require.NoError(t, err)

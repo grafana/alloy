@@ -20,7 +20,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 func init() {
@@ -214,9 +213,7 @@ func (c *Component) getTailerOptions(args Arguments) (*kubetail.Options, error) 
 		return c.lastOptions, nil
 	}
 
-	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that uses shared
-	// kubernetes client builder to slog. Part of https://github.com/grafana/alloy/issues/4813.
-	cfg, err := args.Client.BuildRESTConfig(slogadapter.GoKit(c.opts.SLogger.Handler()))
+	cfg, err := args.Client.BuildRESTConfig(c.opts.SLogger)
 	if err != nil {
 		return c.lastOptions, fmt.Errorf("building Kubernetes config: %w", err)
 	}

@@ -3,13 +3,11 @@ package discovery
 import (
 	"context"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/Masterminds/goutils"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 	"github.com/stretchr/testify/assert"
@@ -18,6 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/util"
 )
 
 // discovererUpdateTestCase is a test case for testing discovery updates. A discovery component is created and the
@@ -139,7 +138,7 @@ func TestDiscoveryUpdates(t *testing.T) {
 					defer publishedExportsMut.Unlock()
 					publishedExports = append(publishedExports, e)
 				},
-				Logger: log.NewLogfmtLogger(os.Stdout),
+				SLogger: util.TestAlloyLogger(t).Slog(),
 				GetServiceData: func(name string) (any, error) {
 					switch name {
 					case livedebugging.ServiceName:

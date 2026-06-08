@@ -67,8 +67,8 @@ The following flags are supported:
 * `--feature.community-components.enabled`: Enable community components (default `false`).
 * `--feature.component-shutdown-deadline`: Maximum duration to wait for a component to shut down before giving up and logging an error (default `"10m"`).
 * `--feature.prometheus.direct-fanout.enabled`: Enable experimental direct fanout for metric forwarding without a global label store.
-* `--feature.graphql.enabled`: Enable the [GraphQL API][] (default `false`).
-* `--feature.graphql-playground.enabled`: Enable the [GraphQL playground][] UI at `/graphql/playground` (default `false`). Requires `--feature.graphql.enabled`.
+* `--server.http.enable-graphql`: Enable the [GraphQL API][] (default `false`).
+* `--server.http.enable-graphql-playground`: Enable the [GraphQL playground][] UI at `/graphql/playground` (default `false`). Requires `--server.http.enable-graphql`.
 * `--windows.priority`: The priority to set for the {{< param "PRODUCT_NAME" >}} process when running on Windows. This is only available on Windows. Supported values: `above_normal`, `below_normal`, `normal`, `high`, `idle`, or `realtime` (default `"normal"`).
 
 {{< admonition type="note" >}}

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"path"
@@ -15,8 +16,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
@@ -111,7 +110,7 @@ func (r *EndpointOptions) Validate() error {
 
 // Component is the pyroscope.write component.
 type Component struct {
-	logger        log.Logger
+	logger        *slog.Logger
 	tracer        trace.Tracer
 	onStateChange func(Exports)
 	cfg           Arguments
@@ -133,7 +132,7 @@ type Exports struct {
 
 // New creates a new pyroscope.write component.
 func New(
-	logger log.Logger,
+	logger *slog.Logger,
 	tracer trace.Tracer,
 	reg prometheus.Registerer,
 	onStateChange func(Exports),
@@ -225,7 +224,7 @@ type fanOutClient struct {
 	config     Arguments
 	metrics    *metrics
 	tracer     trace.Tracer
-	logger     log.Logger
+	logger     *slog.Logger
 	uploaderWg sync.WaitGroup
 }
 
@@ -250,7 +249,7 @@ func (f *fanOutClient) Start(ctx context.Context) {
 		go func(c *debuginfo.Uploader) {
 			defer f.uploaderWg.Done()
 			if err := c.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
-				level.Error(f.logger).Log("msg", "debuginfo uploader error", "err", err)
+				f.logger.Error("debuginfo uploader error", "err", err)
 			}
 		}(u)
 	}
@@ -261,7 +260,7 @@ func (f *fanOutClient) Wait() {
 }
 
 // newFanOut creates a new fan out client that will fan out to all endpoints.
-func newFanOut(logger log.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string, dataPath string) (*fanOutClient, error) {
+func newFanOut(logger *slog.Logger, tracer trace.Tracer, config Arguments, metrics *metrics, userAgent string, uid string, dataPath string) (*fanOutClient, error) {
 	endpoints := make([]*endpointClient, 0, len(config.Endpoints))
 
 	for i, endpoint := range config.Endpoints {
@@ -328,13 +327,15 @@ func (f *fanOutClient) Push(
 		dl = "none"
 	}
 	defer func() {
+		level := slog.LevelDebug
 		if errs != nil {
-			l = level.Warn(log.With(l, "err", errs))
-		} else {
-			l = level.Debug(l)
+			l = l.With("err", errs)
+			level = slog.LevelWarn
 		}
-		_ = l.Log(
-			"msg", "Push",
+		l.Log(
+			context.Background(),
+			level,
+			"Push",
 			"sz", reqSize,
 			"n", profileCount,
 			"dl", dl,
@@ -374,7 +375,7 @@ func (f *fanOutClient) Push(
 					f.metrics.sentProfiles.WithLabelValues(ec.options.URL).Add(float64(profileCount))
 					break
 				}
-				_ = level.Debug(l).Log("msg",
+				l.Debug(
 					"failed to push to endpoint",
 					"endpoint", ec.options.URL,
 					"retries", backoff.NumRetries(),
@@ -533,13 +534,15 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 		dl = "none"
 	}
 	defer func() {
+		level := slog.LevelDebug
 		if errs != nil {
-			l = level.Warn(log.With(l, "err", errs))
-		} else {
-			l = level.Debug(l)
+			level = slog.LevelWarn
+			l = l.With("err", errs)
 		}
-		_ = l.Log(
-			"msg", "AppendIngest",
+		l.Log(
+			context.Background(),
+			level,
+			"AppendIngest",
 			"sz", reqSize,
 			"n", profileCount,
 			"dl", dl,
@@ -642,8 +645,8 @@ func (f *fanOutClient) AppendIngest(ctx context.Context, profile *pyroscope.Inco
 					f.metrics.sentProfiles.WithLabelValues(ec.options.URL).Add(float64(profileCount))
 					break
 				}
-				_ = level.Debug(l).Log(
-					"msg", "failed to ingest to endpoint",
+				l.Debug(
+					"failed to ingest to endpoint",
 					"endpoint", ec.options.URL,
 					"retries", backoff.NumRetries(),
 					"err", err)

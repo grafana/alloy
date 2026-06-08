@@ -9,7 +9,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -71,18 +70,18 @@ func (s *SlowUpdate) Update(args component.Arguments) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	c := args.(SlowUpdateConfig)
-	level.Info(s.opts.Logger).Log("msg", "Sleeping on Update()", "duration", c.UpdateLag)
+	s.opts.SLogger.Info("Sleeping on Update()", "duration", c.UpdateLag)
 	s.updateLag = c.UpdateLag
 	time.Sleep(s.updateLag)
 	s.gauge.Set(float64(c.Counter))
-	level.Info(s.opts.Logger).Log("msg", "Done sleeping and updated the counter", "counter", c.Counter)
+	s.opts.SLogger.Info("Done sleeping and updated the counter", "counter", c.Counter)
 	return nil
 }
 
 func (s *SlowUpdate) NotifyClusterChange() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	level.Info(s.opts.Logger).Log("msg", "Sleeping on NotifyClusterChange()", "duration", s.updateLag)
+	s.opts.SLogger.Info("Sleeping on NotifyClusterChange()", "duration", s.updateLag)
 	time.Sleep(s.updateLag)
-	level.Info(s.opts.Logger).Log("msg", "Done sleeping on NotifyClusterChange()")
+	s.opts.SLogger.Info("Done sleeping on NotifyClusterChange()")
 }

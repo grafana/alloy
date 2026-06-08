@@ -394,7 +394,7 @@ func testRunProcessor(t *testing.T, processorConfig string, testSignal processor
 }
 
 func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorConfig string, testSignal processortest.Signal) {
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.connector.spanmetrics")
 	require.NoError(t, err)
@@ -412,7 +412,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 		TestSignal:            testSignal,
 		AdditionalSignalSends: 2,
 		Ctrl:                  ctrl,
-		L:                     l,
+		L:                     l.Slog(),
 	}
 	processortest.TestRunProcessor(prc)
 }

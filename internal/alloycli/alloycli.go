@@ -6,8 +6,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/grafana/alloy/internal/build"
 	"github.com/spf13/cobra"
+
+	"github.com/grafana/alloy/internal/build"
 )
 
 func Command() *cobra.Command {
@@ -25,6 +26,7 @@ func Command() *cobra.Command {
 	cmd.AddCommand(
 		convertCommand(),
 		fmtCommand(),
+		gqlCommand(),
 		RunCommand(),
 		toolsCommand(),
 		validateCommand(),

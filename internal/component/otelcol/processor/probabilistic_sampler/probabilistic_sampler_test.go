@@ -103,7 +103,7 @@ func testRunProcessor(t *testing.T, processorConfig string, testSignal processor
 }
 
 func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorConfig string, testSignal processortest.Signal) {
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.processor.probabilistic_sampler")
 	require.NoError(t, err)
@@ -120,7 +120,7 @@ func testRunProcessorWithContext(ctx context.Context, t *testing.T, processorCon
 		Args:       args,
 		TestSignal: testSignal,
 		Ctrl:       ctrl,
-		L:          l,
+		L:          l.Slog(),
 	}
 	processortest.TestRunProcessor(prc)
 }

@@ -17,7 +17,7 @@ import (
 func TestTargetServer(t *testing.T) {
 	// dependencies
 	reg := prometheus.NewRegistry()
-	ts, err := NewTargetServer(util.TestLogger(t), "test_namespace", reg, &ServerConfig{})
+	ts, err := NewTargetServer(util.TestAlloyLogger(t).Slog(), "test_namespace", reg, &ServerConfig{})
 	require.NoError(t, err)
 
 	err = ts.MountAndRun(func(router *mux.Router) {
@@ -45,7 +45,7 @@ func TestTargetServer(t *testing.T) {
 
 func TestTargetServer_NilConfig(t *testing.T) {
 	reg := prometheus.NewRegistry()
-	ts, err := NewTargetServer(util.TestLogger(t), "test_namespace", reg, nil)
+	ts, err := NewTargetServer(util.TestAlloyLogger(t).Slog(), "test_namespace", reg, nil)
 	require.NoError(t, err)
 
 	err = ts.MountAndRun(func(router *mux.Router) {})

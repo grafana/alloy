@@ -1,18 +1,17 @@
 package collector
 
 import (
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestHealthCheck(t *testing.T) {
@@ -35,7 +34,7 @@ func TestHealthCheck(t *testing.T) {
 			CollectInterval: 100 * time.Millisecond,
 			ExcludeSchemas:  nil,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -87,7 +86,7 @@ func TestHealthCheck(t *testing.T) {
 			CollectInterval: 100 * time.Millisecond,
 			ExcludeSchemas:  []string{"custom_schema", "another_schema"},
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -212,7 +211,7 @@ func TestHealthCheck(t *testing.T) {
 					CollectInterval: 100 * time.Millisecond,
 					ExcludeSchemas:  nil,
 					EntryHandler:    lokiClient,
-					Logger:          log.NewLogfmtLogger(os.Stderr),
+					Logger:          util.TestAlloyLogger(t).Slog(),
 				})
 				require.NoError(t, err)
 

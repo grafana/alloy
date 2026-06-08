@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 	debuginfov1alpha1 "github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1"
@@ -61,7 +61,7 @@ func newTestUploader(t *testing.T) (*PyroscopeSymbolUploader, prometheus.Counter
 	t.Helper()
 	counter := prometheus.NewCounter(prometheus.CounterOpts{Name: "test_upload_bytes"})
 	u, err := NewPyroscopeSymbolUploader(
-		log.NewNopLogger(),
+		slog.New(slog.DiscardHandler),
 		1024,  // cacheSize
 		false, // stripTextSection
 		64,    // queueSize

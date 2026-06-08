@@ -7,7 +7,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -17,7 +16,7 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			_ = level.Warn(opts.Logger).Log("msg", "the pyroscope.java component only works on linux for amd64 and arm64; enabling it otherwise will do nothing")
+			opts.SLogger.Warn("the pyroscope.java component only works on linux for amd64 and arm64; enabling it otherwise will do nothing")
 			return &javaComponent{}, nil
 		},
 	})
