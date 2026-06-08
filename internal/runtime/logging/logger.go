@@ -141,8 +141,7 @@ func (l *Logger) Update(o Options) error {
 // right handler) and AFTER l.deferredSlog.buildHandlers has run (so
 // child handlers point at the new l.handler).
 //
-// Holds bufferMut for the entire replay so concurrent log calls calls block
-// until the buffer is drained, preserving the order guarantee that
+// Holds bufferMut for the entire replay so concurrent log calls block
 // buffered logs appear before newly-arriving ones.
 func (l *Logger) flushBuffer() {
 	l.bufferMut.Lock()
