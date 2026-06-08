@@ -69,7 +69,7 @@ func TestLiveDebugging(t *testing.T) {
 	sender.SetEnabled(!isDbgDisabled)
 	opts := component.Options{
 		ID:            cid,
-		Logger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 		GetServiceData: func(name string) (any, error) {

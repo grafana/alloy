@@ -27,7 +27,7 @@ func TestClearConfigsSameNsSamePrefix(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	m := newCrdManager(
 		component.Options{
-			Logger:        logger,
+			Logger:         logger,
 			GetServiceData: func(name string) (any, error) { return nil, nil },
 		},
 		cluster.Mock(),
@@ -92,7 +92,7 @@ func TestClearConfigsProbe(t *testing.T) {
 	logger := slog.New(slog.DiscardHandler)
 	m := newCrdManager(
 		component.Options{
-			Logger:        logger,
+			Logger:         logger,
 			GetServiceData: func(name string) (any, error) { return nil, nil },
 		},
 		cluster.Mock(),

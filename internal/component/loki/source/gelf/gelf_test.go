@@ -18,7 +18,7 @@ import (
 
 func TestGelf(t *testing.T) {
 	opts := component.Options{
-		Logger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

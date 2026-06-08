@@ -17,7 +17,7 @@ import (
 func TestEnricher(t *testing.T) {
 	// Create basic component options
 	opts := component.Options{
-		Logger:       slog.New(slog.DiscardHandler),
+		Logger:        slog.New(slog.DiscardHandler),
 		OnStateChange: func(e component.Exports) {},
 		Registerer:    prometheus.NewRegistry(),
 	}
@@ -165,7 +165,7 @@ func TestUpdate(t *testing.T) {
 	})
 
 	comp, err := New(component.Options{
-		Logger:       slog.New(slog.DiscardHandler),
+		Logger:        slog.New(slog.DiscardHandler),
 		OnStateChange: func(e component.Exports) {},
 		Registerer:    prometheus.NewRegistry(),
 	}, Arguments{
@@ -197,7 +197,7 @@ func TestName(t *testing.T) {
 	})
 
 	comp, err := New(component.Options{
-		Logger:       slog.New(slog.DiscardHandler),
+		Logger:        slog.New(slog.DiscardHandler),
 		OnStateChange: func(e component.Exports) {},
 		Registerer:    prometheus.NewRegistry(),
 	}, Arguments{

@@ -647,7 +647,7 @@ func newTestLokiClient(t *testing.T, args Arguments, opts component.Options) cli
 func defaultOptions() component.Options {
 	return component.Options{
 		ID:         "loki.source.api.test",
-		Logger:    logging.NewSlogNop(),
+		Logger:     logging.NewSlogNop(),
 		Registerer: prometheus.NewRegistry(),
 	}
 }

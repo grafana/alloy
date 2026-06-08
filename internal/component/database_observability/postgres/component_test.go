@@ -32,7 +32,7 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	t.Helper()
 	opts := cmp.Options{
 		ID:            "test",
-		Logger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
@@ -665,7 +665,7 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
 	opts := cmp.Options{
 		ID:            "test.postgres",
-		Logger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
@@ -828,7 +828,7 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 	var exports Exports
 	opts := cmp.Options{
 		ID:         "test",
-		Logger:    logging.NewSlogNop(),
+		Logger:     logging.NewSlogNop(),
 		Registerer: nil,
 		OnStateChange: func(e cmp.Exports) {
 			exports = e.(Exports)
@@ -861,7 +861,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 	t.Run("returns error when database connection fails", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test-component",
-			Logger:       logging.NewSlogNop(),
+			Logger:        logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
@@ -894,7 +894,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		// an existing connection before attempting a new one
 		opts := cmp.Options{
 			ID:            "test-component",
-			Logger:       logging.NewSlogNop(),
+			Logger:        logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
@@ -985,7 +985,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
-			Logger:       logging.NewSlogNop(),
+			Logger:        logging.NewSlogNop(),
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
 				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil

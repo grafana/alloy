@@ -185,7 +185,7 @@ var rulesExport = alloy_relabel.Rules{
 
 func defaultOptions() component.Options {
 	return component.Options{
-		Logger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

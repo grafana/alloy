@@ -31,7 +31,7 @@ func TestPushFromNestedController(t *testing.T) {
 
 	opts := component.Options{
 		ID:            "foo/loki.source.gcplog.default",
-		Logger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}
@@ -65,7 +65,7 @@ func TestPushFromNestedController(t *testing.T) {
 
 func TestPush(t *testing.T) {
 	opts := component.Options{
-		Logger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

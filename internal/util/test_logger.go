@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -40,11 +39,4 @@ func TestAlloyLogger(t require.TestingT) *logging.Logger {
 	})
 	require.NoError(t, err)
 	return l
-}
-
-// testTimestamp is a log.Valuer that returns the timestamp
-// without the date or timezone, reducing the noise in the test.
-func testTimestamp() any {
-	t := time.Now().UTC()
-	return t.Format("15:04:05.000")
 }

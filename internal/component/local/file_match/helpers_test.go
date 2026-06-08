@@ -23,7 +23,7 @@ func testCreateComponentWithLabels(t *testing.T, dir string, paths []string, exc
 	tPaths := testutil.MakeTargets(paths, excluded, labels)
 	c, err := New(component.Options{
 		ID:       "test",
-		Logger:  util.TestAlloyLogger(t).Slog(),
+		Logger:   util.TestAlloyLogger(t).Slog(),
 		DataPath: dir,
 		OnStateChange: func(e component.Exports) {
 		},

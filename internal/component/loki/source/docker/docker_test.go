@@ -64,7 +64,7 @@ func TestComponentDuplicateTargets(t *testing.T) {
 
 	cmp, err := New(component.Options{
 		ID:         "loki.source.docker.test",
-		Logger:    logging.NewSlogNop(),
+		Logger:     logging.NewSlogNop(),
 		Registerer: prometheus.NewRegistry(),
 		DataPath:   t.TempDir(),
 	}, args)
