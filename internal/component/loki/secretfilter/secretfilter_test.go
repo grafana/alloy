@@ -37,7 +37,6 @@ func (f detectorFunc) DetectContext(ctx context.Context, fragment detect.Fragmen
 func newTestOptions(t require.TestingT, reg prometheus.Registerer) component.Options {
 	logger := util.TestAlloyLogger(t)
 	return component.Options{
-		Logger:         logger,
 		SLogger:        logger.Slog(),
 		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,

@@ -281,7 +281,6 @@ func TestEnrichConcurrentUpdate(t *testing.T) {
 
 	c, err := New(component.Options{
 		ID:             "1",
-		Logger:         util.TestAlloyLogger(t),
 		OnStateChange:  func(component.Exports) {},
 		Registerer:     prom.NewRegistry(),
 		GetServiceData: getServiceData,

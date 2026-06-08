@@ -341,7 +341,7 @@ func TestExperimentalFeaturesStabilityLevel(t *testing.T) {
 
 func TestLiveDebuggingServiceWorks(t *testing.T) {
 	opts := component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		SLogger:       util.TestAlloyLogger(t).Slog(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 		GetServiceData: func(name string) (any, error) {

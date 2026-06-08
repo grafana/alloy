@@ -189,7 +189,6 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments, o
 
 	opts := component.Options{
 		ID:            c.reg.Name + ".test",
-		Logger:        l,
 		SLogger:       l.Slog(),
 		Tracer:        noop.NewTracerProvider(),
 		DataPath:      dataPath,

@@ -37,7 +37,6 @@ func RunTestCases(t *testing.T, config string, cases []TestCase) {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger,
 		SLogger:        logger.Slog(),
 		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,

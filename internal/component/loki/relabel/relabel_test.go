@@ -135,7 +135,6 @@ func TestComponent(t *testing.T) {
 			logger := util.TestAlloyLogger(t)
 
 			opts := component.Options{
-				Logger:         logger,
 				SLogger:        logger.Slog(),
 				Registerer:     prometheus.NewRegistry(),
 				OnStateChange:  func(e component.Exports) {},
@@ -209,7 +208,6 @@ func BenchmarkRelabelComponent(b *testing.B) {
 	// Create and run the component, so that it relabels and forwards logs.
 	logger := util.TestAlloyLogger(b)
 	opts := component.Options{
-		Logger:         logger,
 		SLogger:        logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
@@ -260,7 +258,6 @@ func TestCache(t *testing.T) {
 	// Create and run the component, so that it relabels and forwards logs.
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger,
 		SLogger:        logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
