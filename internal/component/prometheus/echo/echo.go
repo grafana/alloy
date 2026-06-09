@@ -94,7 +94,7 @@ func (c *Component) Appender(ctx context.Context) storage.Appender {
 	c.mut.RUnlock()
 
 	return &echoAppender{
-		logger:     c.opts.SLogger,
+		logger:     c.opts.Logger,
 		format:     format,
 		samples:    make(map[string]sample),
 		exemplars:  make(map[string]seriesExemplar),

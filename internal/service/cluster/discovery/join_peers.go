@@ -4,17 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"strconv"
 	"strings"
 
-	"github.com/go-kit/log"
 	"github.com/samber/lo"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // newWithJoinPeers creates a DiscoverFn that resolves the provided list of peers to a list of addresses that can be
@@ -85,7 +83,7 @@ func buildJoinAddresses(opts Options, resolvers []addressResolver) ([]string, er
 			// It is still useful to know if user provided an address that we could not resolve, even
 			// if another addresses resolve successfully, and we don't return an error. To keep things simple, we're
 			// not including more detail as it's available through debug level.
-			level.Warn(opts.Logger).Log("msg", "failed to resolve provided join address", "addr", addr)
+			opts.Logger.Warn("failed to resolve provided join address", "addr", addr)
 		}
 	}
 
@@ -97,14 +95,14 @@ func buildJoinAddresses(opts Options, resolvers []addressResolver) ([]string, er
 
 type addressResolver func(addr string) ([]string, error)
 
-func ipResolver(log log.Logger) addressResolver {
+func ipResolver(log *slog.Logger) addressResolver {
 	return func(addr string) ([]string, error) {
 		// Check if it's IP and use it if so.
 		ip := net.ParseIP(addr)
 		if ip == nil {
 			return nil, fmt.Errorf("could not parse as an IP or IP:port address: %q", addr)
 		}
-		level.Debug(log).Log("msg", "found an IP cluster join address", "addr", addr)
+		log.Debug("found an IP cluster join address", "addr", addr)
 		return []string{ip.String()}, nil
 	}
 }
@@ -206,12 +204,12 @@ func dnsResolver(opts Options, ctx context.Context, recordType string, dnsLookup
 
 		result, err := dnsLookupFn(addr)
 		if err != nil {
-			level.Debug(opts.Logger).Log("msg", "failed to resolve DNS records", "addr", addr, "record_type", recordType, "err", err)
+			opts.Logger.Debug("failed to resolve DNS records", "addr", addr, "record_type", recordType, "err", err)
 			span.SetStatus(codes.Error, err.Error())
 			return nil, fmt.Errorf("failed to resolve %q records: %w", recordType, err)
 		}
 
-		level.Debug(opts.Logger).Log("msg", "received DNS query response", "addr", addr, "record_type", recordType, "records_count", len(result))
+		opts.Logger.Debug("received DNS query response", "addr", addr, "record_type", recordType, "records_count", len(result))
 		span.SetAttributes(attribute.Int("resolved_addresses_count", len(result)))
 		span.SetStatus(codes.Ok, "resolved addresses")
 		return result, nil

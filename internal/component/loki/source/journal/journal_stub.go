@@ -29,7 +29,7 @@ type Component struct {
 
 // New creates a new  component.
 func New(o component.Options, args Arguments) (*Component, error) {
-	o.SLogger.Info("loki.source.journal is not enabled, and must be ran on linux with journal support")
+	o.Logger.Info("loki.source.journal is not enabled, and must be ran on linux with journal support")
 	c := &Component{}
 	return c, nil
 }

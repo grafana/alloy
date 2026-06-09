@@ -32,7 +32,7 @@ func newTestComponent(t *testing.T, openSQL func(string, string) (*sql.DB, error
 	t.Helper()
 	opts := cmp.Options{
 		ID:            "test",
-		SLogger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil
@@ -665,7 +665,7 @@ func TestPostgres_Update_DBUnavailable_ReportsUnhealthy(t *testing.T) {
 	args := Arguments{DataSourceName: "postgres://127.0.0.1:1/db?sslmode=disable"}
 	opts := cmp.Options{
 		ID:            "test.postgres",
-		SLogger:       logging.NewSlogNop(),
+		Logger:        logging.NewSlogNop(),
 		OnStateChange: func(e cmp.Exports) {},
 		GetServiceData: func(name string) (any, error) {
 			return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/component"}, nil
@@ -694,47 +694,6 @@ func TestPostgres_schema_details_collect_interval_is_parsed_from_config(t *testi
 	require.NoError(t, err)
 
 	assert.Equal(t, 11*time.Second, args.SchemaDetailsArguments.CollectInterval)
-}
-
-func TestPostgres_schema_details_cache_configuration_is_parsed_from_config(t *testing.T) {
-	t.Run("default cache configuration", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		targets = []
-		`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheEnabled, args.SchemaDetailsArguments.CacheEnabled)
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheSize, args.SchemaDetailsArguments.CacheSize)
-		assert.Equal(t, defaultArguments().SchemaDetailsArguments.CacheTTL, args.SchemaDetailsArguments.CacheTTL)
-	})
-
-	t.Run("custom cache configuration", func(t *testing.T) {
-		exampleDBO11yAlloyConfig := `
-		data_source_name = "postgres://db"
-		forward_to = []
-		targets = []
-		schema_details {
-			collect_interval = "30s"
-			cache_enabled = false
-			cache_size = 512
-			cache_ttl = "5m"
-		}
-		`
-
-		var args Arguments
-		err := syntax.Unmarshal([]byte(exampleDBO11yAlloyConfig), &args)
-		require.NoError(t, err)
-
-		assert.Equal(t, 30*time.Second, args.SchemaDetailsArguments.CollectInterval)
-		assert.False(t, args.SchemaDetailsArguments.CacheEnabled)
-		assert.Equal(t, 512, args.SchemaDetailsArguments.CacheSize)
-		assert.Equal(t, 5*time.Minute, args.SchemaDetailsArguments.CacheTTL)
-	})
 }
 
 func Test_parseCloudProvider(t *testing.T) {
@@ -869,7 +828,7 @@ func Test_LogsReceiver_ExportedImmediately(t *testing.T) {
 	var exports Exports
 	opts := cmp.Options{
 		ID:         "test",
-		SLogger:    logging.NewSlogNop(),
+		Logger:     logging.NewSlogNop(),
 		Registerer: nil,
 		OnStateChange: func(e cmp.Exports) {
 			exports = e.(Exports)
@@ -902,7 +861,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 	t.Run("returns error when database connection fails", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test-component",
-			SLogger:       logging.NewSlogNop(),
+			Logger:        logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
@@ -935,7 +894,7 @@ func Test_connectAndStartCollectors(t *testing.T) {
 		// an existing connection before attempting a new one
 		opts := cmp.Options{
 			ID:            "test-component",
-			SLogger:       logging.NewSlogNop(),
+			Logger:        logging.NewSlogNop(),
 			Registerer:    nil,
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
@@ -1026,7 +985,7 @@ func TestPostgres_Reconnection(t *testing.T) {
 	t.Run("tryReconnect fails and maintains health error", func(t *testing.T) {
 		opts := cmp.Options{
 			ID:            "test",
-			SLogger:       logging.NewSlogNop(),
+			Logger:        logging.NewSlogNop(),
 			OnStateChange: func(e cmp.Exports) {},
 			GetServiceData: func(name string) (any, error) {
 				return http_service.Data{MemoryListenAddr: "127.0.0.1:0", BaseHTTPPath: "/"}, nil

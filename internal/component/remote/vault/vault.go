@@ -208,7 +208,7 @@ func (c *Component) Update(args component.Arguments) error {
 		// NOTE(rfratto): we pass 0 for the refresh interval because we don't
 		// support refreshing the auth token on an interval.
 		mgr, err := newTokenManager(tokenManagerOptions{
-			Log:    c.opts.SLogger.With("token_type", "auth"),
+			Log:    c.opts.Logger.With("token_type", "auth"),
 			Client: newClient,
 			Getter: c.getAuthToken,
 
@@ -225,7 +225,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if c.secretManager == nil {
 		mgr, err := newTokenManager(tokenManagerOptions{
-			Log:             c.opts.SLogger.With("token_type", "secret"),
+			Log:             c.opts.Logger.With("token_type", "secret"),
 			Client:          newClient,
 			Getter:          c.getSecret,
 			RefreshInterval: newArgs.RereadFrequency,
@@ -285,7 +285,7 @@ func (c *Component) exportSecret(secret *vault.Secret) {
 
 		default:
 			// Non-string secrets are ignored.
-			c.opts.SLogger.Warn(
+			c.opts.Logger.Warn(
 				"found field in secret which cannot be converted into a string",
 				"key", key,
 				"type", fmt.Sprintf("%T", value),

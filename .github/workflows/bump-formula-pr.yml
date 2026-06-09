@@ -56,7 +56,10 @@ jobs:
         type: "stable"
 
     - name: Update Homebrew formula
-      if: 'steps.latest_release.outputs.release_id == github.event.release.id'
+      # Only the Alloy binary (vX.Y.Z tags) has a Homebrew formula. The release_id
+      # check alone doesn't exclude component releases (e.g. syntax/v0.2.0):
+      # GitHub's "latest stable" is the component release at publish time.
+      if: steps.latest_release.outputs.release_id == github.event.release.id && startsWith(github.event.release.tag_name, 'v')
       # TODO: Use the upstream once they have this change:
       # https://github.com/dawidd6/action-homebrew-bump-formula/pull/90
       # uses: dawidd6/action-homebrew-bump-formula@v4

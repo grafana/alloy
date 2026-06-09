@@ -11,7 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
 
@@ -25,6 +24,11 @@ const (
 	OP_TABLE_DETECTION     = "table_detection"
 	OP_CREATE_STATEMENT    = "create_statement"
 )
+
+// emitInterval is the minimum amount of time that must elapse between
+// successive OP_CREATE_STATEMENT emissions for the same table, regardless of
+// the configured collect_interval.
+const emitInterval = 30 * time.Minute
 
 const (
 	// selectAllDatabases makes use of the initial DB connection to discover other databases on the same Postgres instance
@@ -174,7 +178,6 @@ type tableInfo struct {
 	database     database
 	schema       schema
 	tableName    table
-	updateTime   time.Time
 	b64TableSpec string
 }
 
@@ -312,10 +315,6 @@ type SchemaDetailsArguments struct {
 	ExcludeDatabases []string
 	EntryHandler     loki.EntryHandler
 
-	CacheEnabled bool
-	CacheSize    int
-	CacheTTL     time.Duration
-
 	Logger *slog.Logger
 
 	dbConnectionFactory databaseConnectionFactory
@@ -329,10 +328,14 @@ type SchemaDetails struct {
 	excludeDatabases    []string
 	entryHandler        loki.EntryHandler
 
-	// Cache of table definitions. Entries are removed after a configurable TTL.
-	// Key is a string of the form "database.schema.table".
-	// (unlike MySQL) no create/update timestamp available for detecting immediately when a table schema is changed; relying on TTL only
-	cache *expirable.LRU[string, *tableInfo]
+	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
+	// was last emitted for a table. The outer key is the database name and
+	// the inner key is "schema.table". Used to throttle logging to at most
+	// one per emitInterval per table.
+	lastEmittedAt map[database]map[string]time.Time
+
+	// now allows overriding time.Now() in tests
+	now func() time.Time
 
 	tableRegistry *TableRegistry
 
@@ -356,13 +359,11 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		collectInterval:     args.CollectInterval,
 		excludeDatabases:    args.ExcludeDatabases,
 		entryHandler:        args.EntryHandler,
+		lastEmittedAt:       map[database]map[string]time.Time{},
+		now:                 time.Now,
 		tableRegistry:       NewTableRegistry(),
 		logger:              args.Logger.With("collector", SchemaDetailsCollector),
 		running:             &atomic.Bool{},
-	}
-
-	if args.CacheEnabled {
-		c.cache = expirable.NewLRU[string, *tableInfo](args.CacheSize, nil, args.CacheTTL)
 	}
 
 	return c, nil
@@ -446,6 +447,9 @@ func (c *SchemaDetails) getAllDatabases(ctx context.Context) ([]string, error) {
 }
 
 func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbConnection *sql.DB) error {
+	now := c.now()
+	db := database(dbName)
+
 	schemaRs, err := dbConnection.QueryContext(ctx, selectSchemaNames)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_namespace for database %s: %w", dbName, err)
@@ -468,71 +472,82 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 
 	if len(schemas) == 0 {
 		c.logger.Info("no schema detected from pg_namespace", "datname", dbName)
+		c.pruneDatabaseThrottle(db, nil)
 		return nil
 	}
 
 	tables := []*tableInfo{}
+	// scanComplete tracks whether we managed to iterate every schema's
+	// tables without bailing out early. If false, we have a partial view of
+	// the database and must skip cleanup to avoid evicting throttle entries
+	// for tables we simply didn't get to scan this round.
+	scanComplete := true
 
 	for _, schemaName := range schemas {
-		rs, err := dbConnection.QueryContext(ctx, selectTableNames, schemaName)
-		if err != nil {
-			c.logger.Error("failed to query tables", "datname", dbName, "schema", schemaName, "err", err)
-			break
-		}
-		defer rs.Close()
-
-		for rs.Next() {
-			var tableName string
-			if err := rs.Scan(&tableName); err != nil {
-				c.logger.Error("failed to scan tables", "datname", dbName, "schema", schemaName, "err", err)
-				break
+		complete := func() bool {
+			rs, err := dbConnection.QueryContext(ctx, selectTableNames, schemaName)
+			if err != nil {
+				c.logger.Error("failed to query tables", "datname", dbName, "schema", schemaName, "err", err)
+				return false
 			}
-			tables = append(tables, &tableInfo{
-				database:   database(dbName),
-				schema:     schema(schemaName),
-				tableName:  table(tableName),
-				updateTime: time.Now(),
-			})
+			defer rs.Close()
 
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-				logging.LevelInfo,
-				OP_TABLE_DETECTION,
-				fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
-			)
-		}
+			for rs.Next() {
+				var tableName string
+				if err := rs.Scan(&tableName); err != nil {
+					c.logger.Error("failed to scan tables", "datname", dbName, "schema", schemaName, "err", err)
+					return false
+				}
+				tables = append(tables, &tableInfo{
+					database:  db,
+					schema:    schema(schemaName),
+					tableName: table(tableName),
+				})
 
-		if err := rs.Err(); err != nil {
-			return fmt.Errorf("failed to iterate over tables result set for database %q schema %q: %w", dbName, schemaName, err)
+				c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+					logging.LevelInfo,
+					OP_TABLE_DETECTION,
+					fmt.Sprintf(`datname="%s" schema="%s" table="%s"`, dbName, schemaName, tableName),
+				)
+			}
+
+			if err := rs.Err(); err != nil {
+				c.logger.Error("failed to iterate over tables result set", "datname", dbName, "schema", schemaName, "err", err)
+				return false
+			}
+			return true
+		}()
+
+		if !complete {
+			scanComplete = false
+			break
 		}
 	}
 
-	c.tableRegistry.SetTablesForDatabase(database(dbName), tables)
+	if scanComplete {
+		c.tableRegistry.SetTablesForDatabase(db, tables)
+	}
 
 	if len(tables) == 0 {
 		c.logger.Info("no tables detected from pg_tables", "datname", dbName)
+		if scanComplete {
+			c.pruneDatabaseThrottle(db, nil)
+		}
 		return nil
 	}
 
 	for _, table := range tables {
-		cacheKey := fmt.Sprintf("%s.%s.%s", table.database, table.schema, table.tableName)
-
-		cacheHit := false
-		if c.cache != nil {
-			if cached, ok := c.cache.Get(cacheKey); ok {
-				table = cached
-				cacheHit = true
+		key := schemaTableKey(table.schema, table.tableName)
+		if inner := c.lastEmittedAt[db]; inner != nil {
+			if last, ok := inner[key]; ok && now.Sub(last) < emitInterval {
+				continue
 			}
 		}
 
-		if !cacheHit {
-			table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
-			if err != nil {
-				c.logger.Error("failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
-				continue
-			}
-			if c.cache != nil {
-				c.cache.Add(cacheKey, table)
-			}
+		table, err = c.fetchTableDefinitions(ctx, table, dbConnection)
+		if err != nil {
+			c.logger.Error("failed to get table definitions", "datname", dbName, "schema", table.schema, "table", table.tableName, "err", err)
+			continue
 		}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
@@ -543,9 +558,40 @@ func (c *SchemaDetails) extractSchemas(ctx context.Context, dbName string, dbCon
 				dbName, table.schema, table.tableName, table.b64TableSpec,
 			),
 		)
+		if c.lastEmittedAt[db] == nil {
+			c.lastEmittedAt[db] = map[string]time.Time{}
+		}
+		c.lastEmittedAt[db][key] = now
+	}
+
+	if scanComplete {
+		c.pruneDatabaseThrottle(db, tables)
 	}
 
 	return nil
+}
+
+// pruneDatabaseThrottle removes entries in c.lastEmittedAt[db] whose
+// schema.table key is not present in the given tables. If the resulting
+// inner map is empty, the outer entry is also deleted. Must only be called
+// after a complete scan of the database's tables.
+func (c *SchemaDetails) pruneDatabaseThrottle(db database, tables []*tableInfo) {
+	if _, ok := c.lastEmittedAt[db]; !ok {
+		return
+	}
+
+	currentKeys := make(map[string]struct{}, len(tables))
+	for _, t := range tables {
+		currentKeys[schemaTableKey(t.schema, t.tableName)] = struct{}{}
+	}
+	for k := range c.lastEmittedAt[db] {
+		if _, ok := currentKeys[k]; !ok {
+			delete(c.lastEmittedAt[db], k)
+		}
+	}
+	if len(c.lastEmittedAt[db]) == 0 {
+		delete(c.lastEmittedAt, db)
+	}
 }
 
 func (c *SchemaDetails) extractNames(ctx context.Context) error {
@@ -580,6 +626,19 @@ func (c *SchemaDetails) extractNames(ctx context.Context) error {
 			if err := conn.Close(); err != nil {
 				c.logger.Warn("failed to close database connection", "datname", dbName, "err", err)
 			}
+		}
+	}
+
+	// Drop throttle entries for databases that getAllDatabases no longer
+	// returns (dropped, CONNECT revoked, added to exclude list). Per-table
+	// cleanup within a still-present database is handled by extractSchemas.
+	seenDatabases := make(map[database]struct{}, len(databases))
+	for _, dbName := range databases {
+		seenDatabases[database(dbName)] = struct{}{}
+	}
+	for db := range c.lastEmittedAt {
+		if _, ok := seenDatabases[db]; !ok {
+			delete(c.lastEmittedAt, db)
 		}
 	}
 
@@ -710,4 +769,8 @@ func (c *SchemaDetails) fetchColumnsDefinitions(ctx context.Context, databaseNam
 	}
 
 	return tblSpec, nil
+}
+
+func schemaTableKey(sch schema, tbl table) string {
+	return fmt.Sprintf("%s.%s", sch, tbl)
 }

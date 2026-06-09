@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/headers"
@@ -16,15 +19,13 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/require"
 )
 
 func TestWithOtelcolConsumer(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
 	faroReceiver, err := componenttest.NewControllerFromID(
-		util.TestAlloyLogger(t),
+		util.TestLogger(t),
 		"faro.receiver",
 	)
 	require.NoError(t, err)
@@ -32,13 +33,13 @@ func TestWithOtelcolConsumer(t *testing.T) {
 	require.NoError(t, err)
 
 	otelcolAuthHeader, err := componenttest.NewControllerFromID(
-		util.TestAlloyLogger(t),
+		util.TestLogger(t),
 		"otelcol.auth.headers",
 	)
 	require.NoError(t, err)
 
 	otelcolExporter, err := componenttest.NewControllerFromID(
-		util.TestAlloyLogger(t),
+		util.TestLogger(t),
 		"otelcol.exporter.otlphttp",
 	)
 	require.NoError(t, err)

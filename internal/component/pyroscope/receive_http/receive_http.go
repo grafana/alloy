@@ -20,7 +20,6 @@ import (
 	pyroutil "github.com/grafana/alloy/internal/component/pyroscope/util"
 	"github.com/grafana/alloy/internal/component/pyroscope/write"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/pyroscope/api/gen/proto/go/debuginfo/v1alpha1/debuginfov1alpha1connect"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
@@ -39,7 +38,7 @@ func init() {
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			tracer := opts.Tracer.Tracer("pyroscope.receive_http")
-			return New(opts.SLogger, tracer, opts.Registerer, args.(Arguments))
+			return New(opts.Logger, tracer, opts.Registerer, args.(Arguments))
 		},
 	})
 }
@@ -135,9 +134,7 @@ func (c *Component) update(args component.Arguments) (bool, error) {
 	serverRegistry := prometheus.NewRegistry()
 	c.uncheckedCollector.SetCollector(serverRegistry)
 
-	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use fnet.NewTargetServer
-	// to slog. Part of https://github.com/grafana/alloy/issues/4813.
-	srv, err := fnet.NewTargetServer(slogadapter.GoKit(c.logger.Handler()), "pyroscope_receive_http", serverRegistry, newArgs.Server)
+	srv, err := fnet.NewTargetServer(c.logger, "pyroscope_receive_http", serverRegistry, newArgs.Server)
 	if err != nil {
 		return shutdown, fmt.Errorf("failed to create server: %w", err)
 	}

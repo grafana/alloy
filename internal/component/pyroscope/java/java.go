@@ -32,7 +32,7 @@ func init() {
 		Args:      Arguments{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			return New(opts.SLogger, opts.Registerer, opts.ID, args.(Arguments))
+			return New(opts.Logger, opts.Registerer, opts.ID, args.(Arguments))
 		},
 	})
 }

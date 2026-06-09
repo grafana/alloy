@@ -18,7 +18,6 @@ import (
 	alloyprom "github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/labelstore"
-	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -105,7 +104,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts: opts,
 		handler: promremote.NewWriteHandler(
-			opts.SLogger,
+			opts.Logger,
 			opts.Registerer,
 			fanout,
 			supportedRemoteWriteProtoMsgs,
@@ -134,7 +133,7 @@ func (c *Component) Run(ctx context.Context) error {
 	}()
 
 	<-ctx.Done()
-	c.opts.SLogger.Info("terminating due to context done")
+	c.opts.Logger.Info("terminating due to context done")
 	return nil
 }
 
@@ -179,9 +178,7 @@ func (c *Component) createNewServer(args Arguments) (*fnet.TargetServer, error) 
 	c.uncheckedCollector.SetCollector(serverRegistry)
 
 	s, err := fnet.NewTargetServer(
-		// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that use fnet.NewTargetServer
-		// to slog. Part of https://github.com/grafana/alloy/issues/4813.
-		slogadapter.GoKit(c.opts.SLogger.Handler()),
+		c.opts.Logger,
 		"prometheus_receive_http",
 		serverRegistry,
 		args.Server,

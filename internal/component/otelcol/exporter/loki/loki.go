@@ -41,7 +41,7 @@ var _ component.Component = (*Component)(nil)
 
 // New creates a new otelcol.exporter.loki component.
 func New(o component.Options, c Arguments) (*Component, error) {
-	converter := convert.New(o.SLogger, o.Registerer, c.ForwardTo)
+	converter := convert.New(o.Logger, o.Registerer, c.ForwardTo)
 
 	res := &Component{
 		opts: o,

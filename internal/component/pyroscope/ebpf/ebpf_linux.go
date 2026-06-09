@@ -50,7 +50,7 @@ func init() {
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			arguments := args.(Arguments)
 
-			return New(opts.SLogger, opts.Registerer, opts.ID, arguments)
+			return New(opts.Logger, opts.Registerer, opts.ID, arguments)
 		},
 	})
 	python.NoContinueWithNextUnwinder.Store(true)
