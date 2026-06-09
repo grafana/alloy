@@ -273,15 +273,15 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	}
 	c.baseTarget = baseTarget
 
-	if err := c.Update(args); err != nil {
-		return nil, err
-	}
-
 	// Export logs receiver immediately so loki.source.file can wire to it
 	opts.OnStateChange(Exports{
 		Targets:      []discovery.Target{},
 		LogsReceiver: c,
 	})
+
+	if err := c.Update(args); err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }
