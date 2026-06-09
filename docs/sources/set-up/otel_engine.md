@@ -183,7 +183,7 @@ ports:
 alternateConfig:
   extensions:
     health_check:
-      endpoint: 0.0.0.0:13133 # This is necessary for the k8s liveliness check
+      endpoint: 0.0.0.0:13133 # This is necessary for the Kubernetes liveness check
     basicauth/my_auth:
       client_auth:
         username: <USERNAME>

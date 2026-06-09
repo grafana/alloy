@@ -166,7 +166,7 @@ To configure an `otelcol.processor.batch` component, complete the following step
      output {
        metrics = [otelcol.exporter.otlp.<EXPORTER_LABEL>.input]
        logs    = [otelcol.exporter.otlp.<EXPORTER_LABEL>.input]
-       traces  = [otelcol.exporter.otlp.>EXPORTER_LABEL>.input]
+       traces  = [otelcol.exporter.otlp.<EXPORTER_LABEL>.input]
      }
    }
    ```
