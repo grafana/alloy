@@ -82,13 +82,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
+	if err := c.Update(args); err != nil {
+		return nil, err
+	}
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
 	o.OnStateChange(Exports{Receiver: c})
 
-	if err := c.Update(args); err != nil {
-		return nil, err
-	}
 	return c, nil
 }
 
