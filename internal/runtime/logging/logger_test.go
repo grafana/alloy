@@ -47,7 +47,6 @@ func TestLevels(t *testing.T) {
 	}
 
 	var testCases = []testCase{
-
 		{
 			name:            "debug - prints",
 			configuredLevel: logging.LevelDebug,
@@ -105,9 +104,12 @@ func TestLevels(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.name, func(t *testing.T) {
 			buffer := bytes.NewBuffer(nil)
+
 			opts := logging.Options{}
 			opts.SetToDefault()
+			opts.Destination = logging.LogDestinationStderr
 			opts.Level = tt.configuredLevel
+
 			logger, err := logging.New(buffer, opts)
 			require.NoError(t, err)
 			logger.Slog().Log(context.Background(), tt.level, tt.message)
@@ -313,6 +315,7 @@ func BenchmarkLogging_Slog_Prints(b *testing.B) {
 func debugLevel() logging.Options {
 	opts := logging.Options{}
 	opts.SetToDefault()
+	opts.Destination = logging.LogDestinationStderr
 	opts.Level = logging.LevelDebug
 	return opts
 }
