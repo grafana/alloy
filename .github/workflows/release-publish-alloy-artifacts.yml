@@ -96,7 +96,10 @@ jobs:
           chown -R $(id -u):$(id -g) $PWD
 
     - name: Build
-      run: RELEASE_BUILD=1 SKIP_CODE_GENERATION=1 make -j4 dist
+      # Build the UI once up front, avoiding a race with the concurrent make that follows
+      run: |
+        make generate-ui
+        RELEASE_BUILD=1 SKIP_CODE_GENERATION=1 SKIP_UI_BUILD=1 make -j4 dist
       env:
         VERSION: ${{ env.RELEASE_TAG }}
 
