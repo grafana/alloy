@@ -140,12 +140,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return relabeled, true, nil
 	}))
 
-	// Call to Update() to set the relabelling rules once at the start.
+	// Call to Update() to set the relabelling rules once at the start and export rules and receiver
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
-
-	o.OnStateChange(Exports{Receiver: c.receiver, Rules: args.RelabelConfigs})
 
 	return c, nil
 }
