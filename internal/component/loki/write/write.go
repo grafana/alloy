@@ -98,11 +98,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts: o,
 	}
 
-	o.OnStateChange(Exports{Receiver: c})
-
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
+
+	o.OnStateChange(Exports{Receiver: c})
 
 	return c, nil
 }
