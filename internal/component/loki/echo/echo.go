@@ -53,12 +53,12 @@ type Component struct {
 func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{opts: o}
 
-	o.OnStateChange(Exports{Receiver: c})
-
 	// Call to Update() once at the start.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
+
+	o.OnStateChange(Exports{Receiver: c})
 
 	return c, nil
 }
