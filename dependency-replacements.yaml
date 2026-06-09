@@ -72,11 +72,11 @@ replaces:
     replacement: github.com/prometheus/prometheus v0.312.0-rc.0
 
   - comment: >
-      Personal fork of prometheus-operator v0.91.0 with a one-line patch adding nil
-      *slog.Logger 5th arg to rulefmt.Parse in pkg/operator/rules.go to match the new
-      Prometheus main API (commit a6ffcaa352cf, April 9 2026). Upstream prom-operator
-      main is still on prom v0.311.3 released, so this fork is needed only because
-      we're riding a prom main-branch snapshot.
+      Personal fork of prometheus-operator v0.91.0 with a one-line patch adding the nil
+      *slog.Logger arg to the rulefmt.Parse call in pkg/operator/rules.go, matching the
+      Prometheus v3.12 API. Released prom-operator v0.91.0 still targets prom v0.311.3;
+      upstream main bumped to v0.312.0 on June 2 (so the fix is on their main) but no
+      tagged release carries it yet.
       Fork branch: github.com/kgeckhart/prometheus-operator @ kgeckhart/v0.91.0-rulefmt-slog
       Removal: when upstream prom-operator ships a release that bumps prom to v3.12+.
     dependency: github.com/prometheus-operator/prometheus-operator
