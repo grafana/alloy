@@ -600,14 +600,12 @@ func TestLogsCollector_SkipsOnlyHistoricalLogs(t *testing.T) {
 }
 
 func TestLogsCollector_NonUTCLogTimezone(t *testing.T) {
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 
@@ -647,14 +645,12 @@ func TestLogsCollector_LogTimezoneCountsRecentNonUTC(t *testing.T) {
 	loc, err := time.LoadLocation("America/Los_Angeles")
 	require.NoError(t, err)
 
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 	collector.logTimezone.Store(loc)
@@ -691,14 +687,12 @@ func TestLogsCollector_LogTimezoneFiltersHistoricalNonUTC(t *testing.T) {
 	loc, err := time.LoadLocation("America/Los_Angeles")
 	require.NoError(t, err)
 
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 	collector.logTimezone.Store(loc)
@@ -729,14 +723,12 @@ func TestLogsCollector_LogTimezoneAbbrevMismatchFallsBack(t *testing.T) {
 	loc, err := time.LoadLocation("Europe/London")
 	require.NoError(t, err)
 
-	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()
 
 	collector, err := NewLogs(LogsArguments{
-		Receiver:     loki.NewLogsReceiver(),
-		EntryHandler: entryHandler,
-		Logger:       logging.NewSlogNop(),
-		Registry:     registry,
+		Receiver: loki.NewLogsReceiver(),
+		Logger:   logging.NewSlogNop(),
+		Registry: registry,
 	})
 	require.NoError(t, err)
 	collector.logTimezone.Store(loc)
