@@ -73,7 +73,6 @@
         "github.com/google/cadvisor",
         "github.com/grafana/beyla/v2",
         "github.com/grafana/jfr-parser/pprof",
-        "github.com/grafana/opentelemetry-ebpf-instrumentation",
         "github.com/hashicorp/vault/api/**",
         "github.com/heroku/x",
         "github.com/jaegertracing/jaeger-idl",

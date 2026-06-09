@@ -93,10 +93,6 @@ replaces:
     dependency: github.com/github/smimesign
     replacement: github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
-  - comment: Replace OpenTelemetry OBI with Grafana fork
-    dependency: go.opentelemetry.io/obi
-    replacement: github.com/grafana/opentelemetry-ebpf-instrumentation v1.18.4
-
   - comment: Replace OpenTelemetry eBPF profiler with Grafana fork
     dependency: go.opentelemetry.io/ebpf-profiler
     replacement: github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31a19190b9
