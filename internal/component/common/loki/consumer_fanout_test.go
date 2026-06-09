@@ -102,7 +102,6 @@ func TestFanoutConsumer_NilConsumer(t *testing.T) {
 		_ = fanout.Consume(context.Background(), NewBatch())
 		_ = fanout.ConsumeEntry(context.Background(), NewEntry(model.LabelSet{}, push.Entry{}))
 	})
-
 }
 
 type consumerFunc struct {
