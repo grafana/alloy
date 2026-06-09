@@ -23,6 +23,11 @@ import (
 func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.ScrapeConfig, err error) {
 	cfg = cg.generateDefaultScrapeConfig()
 
+	scrapeClass, err := cg.scrapeClassFor(m.Spec.ScrapeClassName)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg.JobName = fmt.Sprintf("probe/%s/%s", m.Namespace, m.Name)
 	cfg.HonorTimestamps = true
 	cfg.MetricsPath = m.Spec.ProberSpec.Path
@@ -100,7 +105,8 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 			Replacement: m.Spec.ProberSpec.URL,
 			TargetLabel: "__address__",
 		})
-		// Add configured relabelings.
+		// Add configured relabelings. Scrape class relabelings are prepended.
+		relabels.addScrapeClassRelabelings(scrapeClass)
 		if err = relabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, m.Spec.Targets.StaticConfig.RelabelConfigs)...); err != nil {
 			return nil, fmt.Errorf("parsing relabel configs: %w", err)
 		}
@@ -159,7 +165,7 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 				})
 			}
 		}
-		dConfig := cg.generateK8SSDConfig(m.Spec.Targets.Ingress.NamespaceSelector, m.Namespace, promk8s.RoleIngress, nil)
+		dConfig := cg.generateK8SSDConfig(m.Spec.Targets.Ingress.NamespaceSelector, m.Namespace, promk8s.RoleIngress, scrapeClassAttachMetadata(nil, scrapeClass))
 		cfg.ServiceDiscoveryConfigs = append(cfg.ServiceDiscoveryConfigs, dConfig)
 
 		// Relabelings for ingress SD.
@@ -197,7 +203,8 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 				Replacement: m.Spec.ProberSpec.URL,
 				TargetLabel: "__address__",
 			})
-		// Add configured relabelings.
+		// Add configured relabelings. Scrape class relabelings are prepended.
+		relabels.addScrapeClassRelabelings(scrapeClass)
 		if err = relabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, m.Spec.Targets.Ingress.RelabelConfigs)...); err != nil {
 			return nil, fmt.Errorf("parsing relabel configs: %w", err)
 		}
@@ -234,11 +241,18 @@ func (cg *ConfigGenerator) GenerateProbeConfig(m *promopv1.Probe) (cfg *config.S
 		}
 	}
 
+	epHasTLS := m.Spec.TLSConfig != nil
+	epHasAuth := m.Spec.BearerTokenSecret.Name != "" ||
+		m.Spec.BasicAuth != nil || m.Spec.OAuth2 != nil || m.Spec.Authorization != nil
+	applyScrapeClassHTTPClientConfig(&cfg.HTTPClientConfig, scrapeClass, epHasTLS, epHasAuth)
+
 	metricRelabels := relabeler{}
 	err = metricRelabels.addFromV1(labeler.GetRelabelingConfigs(m.TypeMeta, m.ObjectMeta, m.Spec.MetricRelabelConfigs)...)
 	if err != nil {
 		return nil, err
 	}
+	// Scrape class metric relabelings are appended to the resource's own.
+	metricRelabels.addScrapeClassMetricRelabelings(scrapeClass)
 	cfg.MetricRelabelConfigs = metricRelabels.configs
 
 	return cfg, cfg.Validate(cg.ScrapeOptions.GlobalConfig())
