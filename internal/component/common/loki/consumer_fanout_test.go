@@ -96,6 +96,15 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 	require.Equal(t, "original", lastStreams[0].Entries[0].Line)
 }
 
+func TestFanoutConsumer_NilConsumer(t *testing.T) {
+	fanout := NewFanoutConsumer([]Consumer{nil})
+	require.NotPanics(t, func() {
+		_ = fanout.Consume(context.Background(), NewBatch())
+		_ = fanout.ConsumeEntry(context.Background(), NewEntry(model.LabelSet{}, push.Entry{}))
+	})
+
+}
+
 type consumerFunc struct {
 	consume      func(context.Context, Batch) error
 	consumeEntry func(context.Context, Entry) error
