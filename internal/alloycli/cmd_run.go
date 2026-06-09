@@ -151,7 +151,10 @@ func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
 					// Otel uses OpAMP, thus remote config management is disabled.
 					return remotecfgservice.NewStub(reg), nil
 				},
-				loadConfig: func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
+				reloadConfig: func(*alloy_runtime.Runtime, *httpservice.Service) error {
+					return errors.New("config reload is not supported when Alloy is running in extension mode")
+				},
+				getConfig: func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
 					alloySource, err := alloy_runtime.ParseSources(params.Configs)
 					defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(params.Configs), r.clusterName)
 					if err != nil {
@@ -311,6 +314,27 @@ func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("path argument not provided")
 	}
 
+	loadConfig := func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
+		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
+		if err != nil {
+			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
+			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
+		}
+
+		alloySource, err := alloy_runtime.ParseSources(sources)
+		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
+		if err != nil {
+			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
+		}
+
+		httpSvc.SetSources(alloySource.SourceFiles())
+		if err := rt.LoadSource(alloySource, nil, configPath); err != nil {
+			return sources, fmt.Errorf("error during the initial load: %w", err)
+		}
+
+		return sources, nil
+	}
+
 	rp := runParams{
 		newReloadSignal: func() chan os.Signal {
 			reloadSignal := make(chan os.Signal, 1)
@@ -325,25 +349,10 @@ func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
 				Metrics:     reg,
 			})
 		},
-		loadConfig: func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
-			sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-			if err != nil {
-				instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
-				return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
-			}
-
-			alloySource, err := alloy_runtime.ParseSources(sources)
-			defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
-			if err != nil {
-				return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
-			}
-
-			httpSvc.SetSources(alloySource.SourceFiles())
-			if err := rt.LoadSource(alloySource, nil, configPath); err != nil {
-				return sources, fmt.Errorf("error during the initial load: %w", err)
-			}
-
-			return sources, nil
+		getConfig: loadConfig,
+		reloadConfig: func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) error {
+			_, err := loadConfig(rt, httpSvc)
+			return err
 		},
 	}
 
@@ -375,8 +384,11 @@ type runParams struct {
 	// newRemoteConfigService constructs remote configuration service.
 	newRemoteConfigService func(l *logging.Logger, regs prometheus.Registerer) (service.Service, error)
 
-	// loadConfig is config reloader function.
-	loadConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error)
+	// reloadConfig is callback called on config reload.
+	reloadConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) error
+
+	// getConfig callback provides initial alloy config.
+	getConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error)
 }
 
 func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runParams) error {
@@ -461,7 +473,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	// To work around this, we lazily create variables for the functions the HTTP
 	// service needs and set them after the Alloy controller exists.
 	var (
-		reload func() (map[string][]byte, error)
+		reload func() error
 		ready  func() bool
 	)
 
@@ -506,8 +518,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 
 		ReadyFunc: func() bool { return ready() },
 		ReloadFunc: func() error {
-			_, err := reload()
-			return err
+			return reload()
 		},
 
 		HTTPListenAddr:   fr.httpListenAddr,
@@ -570,8 +581,8 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	}
 
 	ready = f.Ready
-	reload = func() (map[string][]byte, error) {
-		return params.loadConfig(f, httpService)
+	reload = func() error {
+		return params.reloadConfig(f, httpService)
 	}
 
 	// Alloy controller
@@ -593,10 +604,10 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		}()
 	}
 
-	// Perform the initial reload. This is done after starting the HTTP server so
+	// Perform the initial load. This is done after starting the HTTP server so
 	// that /metric and pprof endpoints are available while the Alloy controller
 	// is loading.
-	if source, err := reload(); err != nil {
+	if source, err := params.getConfig(f, httpService); err != nil {
 		// TODO: map diagnostics positions to actual positions in YAML config of otel collector.
 		if diags, ok := errors.AsType[diag.Diagnostics](err); ok {
 			p := diag.NewPrinter(diag.PrinterConfig{
@@ -642,7 +653,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		case <-ctx.Done():
 			return nil
 		case <-reloadSignal:
-			if _, err := reload(); err != nil {
+			if err := reload(); err != nil {
 				level.Error(l).Log("msg", "failed to reload config", "err", err)
 			} else {
 				level.Info(l).Log("msg", "config reloaded")
