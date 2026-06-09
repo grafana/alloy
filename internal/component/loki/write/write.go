@@ -142,11 +142,6 @@ func (c *Component) Update(args component.Arguments) error {
 	c.args = newArgs
 	c.labels = util.MapToModelLabelSet(c.args.ExternalLabels)
 
-	if c.consumer != nil {
-		// only drain on component shutdown
-		c.consumer.Stop()
-	}
-
 	cfgs := newArgs.convertEndpointConfigs()
 
 	uid := alloyseed.Get().UID
@@ -169,16 +164,27 @@ func (c *Component) Update(args component.Arguments) error {
 		},
 	}
 
-	var err error
+	var (
+		err      error
+		consumer client.Consumer
+	)
+
 	if walCfg.Enabled {
-		c.consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
+		consumer, err = client.NewWALConsumer(c.opts.Logger, c.opts.Registerer, walCfg, cfgs...)
 	} else {
-		c.consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
+		consumer, err = client.NewFanoutConsumer(c.opts.Logger, c.opts.Registerer, cfgs...)
 	}
 
 	if err != nil {
 		return fmt.Errorf("failed to create cliens: %w", err)
 	}
+
+	// NOTE: it's important that we stop old consumer once we have successfully created a
+	// a new one.
+	if c.consumer != nil {
+		c.consumer.Stop()
+	}
+	c.consumer = consumer
 
 	return nil
 }
