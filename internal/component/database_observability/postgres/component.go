@@ -286,7 +286,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.opts.SLogger.Info(name + " component shutting down, stopping collectors")
+		c.opts.Logger.Info(name + " component shutting down, stopping collectors")
 
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
@@ -325,9 +325,9 @@ func (c *Component) Run(ctx context.Context) error {
 				c.mut.RUnlock()
 
 				if !hasCollectors {
-					c.opts.SLogger.Debug("attempting to reconnect to database")
+					c.opts.Logger.Debug("attempting to reconnect to database")
 					if err := c.tryReconnect(ctx); err != nil {
-						c.opts.SLogger.Error("reconnection attempt failed", "err", err)
+						c.opts.Logger.Error("reconnection attempt failed", "err", err)
 					}
 				}
 			}
@@ -356,7 +356,7 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 }
 
 func (c *Component) reportError(errorMsg string, err error) {
-	c.opts.SLogger.Error(fmt.Sprintf("%s: %+v", errorMsg, err))
+	c.opts.Logger.Error(fmt.Sprintf("%s: %+v", errorMsg, err))
 	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
 }
 
@@ -458,7 +458,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 
 		e := pg_exporter.NewExporter(
 			[]string{dsn},
-			c.opts.SLogger,
+			c.opts.Logger,
 			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
 			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
 			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
@@ -483,7 +483,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 				}))
 			}
 			col, err := pg_collector.NewPostgresCollector(
-				c.opts.SLogger,
+				c.opts.Logger,
 				c.args.ExcludeDatabases,
 				dsn,
 				exporterArgs.EnabledCollectors,
@@ -570,7 +570,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	logStartError := func(collectorName, action string, err error) {
 		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
-		c.opts.SLogger.Error(errorString)
+		c.opts.Logger.Error(errorString)
 		startErrors = append(startErrors, errorString)
 	}
 
@@ -581,13 +581,13 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	if collectors[collector.SchemaDetailsCollector] {
 		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
-			c.opts.SLogger.Warn("schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.Logger.Warn("schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
 		}
 		if c.args.SchemaDetailsArguments.CacheSize != nil {
-			c.opts.SLogger.Warn("schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.Logger.Warn("schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
 		}
 		if c.args.SchemaDetailsArguments.CacheTTL != nil {
-			c.opts.SLogger.Warn("schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.Logger.Warn("schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
 		}
 
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
@@ -596,7 +596,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeDatabases: c.args.ExcludeDatabases,
 			EntryHandler:     entryHandler,
-			Logger:           c.opts.SLogger,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
@@ -617,7 +617,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ExcludeUsers:     effectiveExcludeUsers,
 			EntryHandler:     entryHandler,
 			TableRegistry:    tableRegistry,
-			Logger:           c.opts.SLogger,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
@@ -635,7 +635,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		qsExcludeUsers := effectiveExcludeUsers
 		qsExcludeCurrentUser := false
 		if localExcludeCurrentUser := c.args.QuerySampleArguments.ExcludeCurrentUser; localExcludeCurrentUser != nil {
-			c.opts.SLogger.Warn("query_samples.exclude_current_user is deprecated; use the top-level exclude_current_user setting instead")
+			c.opts.Logger.Warn("query_samples.exclude_current_user is deprecated; use the top-level exclude_current_user setting instead")
 			qsExcludeUsers = c.args.ExcludeUsers
 			qsExcludeCurrentUser = *localExcludeCurrentUser
 		}
@@ -646,7 +646,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ExcludeDatabases:              c.args.ExcludeDatabases,
 			ExcludeUsers:                  qsExcludeUsers,
 			EntryHandler:                  entryHandler,
-			Logger:                        c.opts.SLogger,
+			Logger:                        c.opts.Logger,
 			DisableQueryRedaction:         c.args.QuerySampleArguments.DisableQueryRedaction,
 			ExcludeCurrentUser:            qsExcludeCurrentUser,
 			EnablePreClassifiedWaitEvents: c.args.QuerySampleArguments.EnablePreClassifiedWaitEvents,
@@ -685,7 +685,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			PerScrapeRatio:   c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeDatabases: c.args.ExcludeDatabases,
 			ExcludeUsers:     effectiveExcludeUsers,
-			Logger:           c.opts.SLogger,
+			Logger:           c.opts.Logger,
 			DBVersion:        engineVersion,
 			EntryHandler:     entryHandler,
 		})
@@ -705,7 +705,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		ExcludeDatabases: c.args.ExcludeDatabases,
 		ExcludeUsers:     effectiveExcludeUsers,
 		EntryHandler:     entryHandler,
-		Logger:           c.opts.SLogger,
+		Logger:           c.opts.Logger,
 	})
 	if err != nil {
 		logStartError(collector.HealthCheckCollector, "create", err)
@@ -720,7 +720,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
 		Receiver:         c.logsReceiver,
 		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
-		Logger:           c.opts.SLogger,
+		Logger:           c.opts.Logger,
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
 		ExcludeUsers:     effectiveExcludeUsers,

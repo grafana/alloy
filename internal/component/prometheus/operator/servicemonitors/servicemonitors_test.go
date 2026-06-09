@@ -88,7 +88,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			// Create component options
 			opts := component.Options{
 				ID:         "prometheus.operator.servicemonitors.test",
-				SLogger:    logger.Slog(),
+				Logger:     logger.Slog(),
 				Registerer: prometheus_client.NewRegistry(),
 				GetServiceData: func(name string) (any, error) {
 					switch name {

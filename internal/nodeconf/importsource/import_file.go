@@ -100,7 +100,7 @@ func (im *ImportFile) Evaluate(scope *vm.Scope) error {
 
 	if im.detector != nil {
 		if err := im.detector.Close(); err != nil {
-			im.opts.SLogger.Error("failed to shut down detector during eval", "err", err)
+			im.opts.Logger.Error("failed to shut down detector during eval", "err", err)
 			// We don't return the error here because it's just a memory leak.
 		}
 	}
@@ -115,7 +115,7 @@ func (im *ImportFile) Evaluate(scope *vm.Scope) error {
 		})
 	case filedetector.DetectorFSNotify:
 		im.detector, err = filedetector.NewFSNotify(filedetector.FSNotifyOptions{
-			Logger:        im.opts.SLogger,
+			Logger:        im.opts.Logger,
 			Filename:      im.args.Filename,
 			ReloadFile:    reloadFile,
 			PollFrequency: im.args.PollFrequency,
@@ -130,7 +130,7 @@ func (im *ImportFile) Run(ctx context.Context) error {
 		im.mut.Lock()
 		defer im.mut.Unlock()
 		if err := im.detector.Close(); err != nil {
-			im.opts.SLogger.Error("failed to shut down detector", "err", err)
+			im.opts.Logger.Error("failed to shut down detector", "err", err)
 		}
 		im.detector = nil
 	}()
@@ -156,7 +156,7 @@ func (im *ImportFile) readFile() error {
 			Message:    fmt.Sprintf("failed to collect files: %s", err),
 			UpdateTime: time.Now(),
 		})
-		im.opts.SLogger.Error("failed to collect files", "err", err)
+		im.opts.Logger.Error("failed to collect files", "err", err)
 		return err
 	}
 	fileContents := make(map[string]string)
@@ -172,7 +172,7 @@ func (im *ImportFile) readFile() error {
 				Message:    fmt.Sprintf("failed to read file: %s", err),
 				UpdateTime: time.Now(),
 			})
-			im.opts.SLogger.Error("failed to read file", "file", fpath, "err", err)
+			im.opts.Logger.Error("failed to read file", "file", fpath, "err", err)
 			return err
 		}
 		fileContents[f] = string(bb)
@@ -255,7 +255,7 @@ func (im *ImportFile) ModulePath() string {
 	path, err := util.ExtractDirPath(im.args.Filename)
 
 	if err != nil {
-		im.opts.SLogger.Error("failed to extract module path", "module path", im.args.Filename, "err", err)
+		im.opts.Logger.Error("failed to extract module path", "module path", im.args.Filename, "err", err)
 	}
 	return path
 }

@@ -50,14 +50,14 @@ func init() {
 					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
 						typeSignal = exporter.TypeLogs | exporter.TypeTraces | exporter.TypeMetrics
 					} else {
-						opts.SLogger.Warn("disabling metrics exporter as stability level does not allow it")
+						opts.Logger.Warn("disabling metrics exporter as stability level does not allow it")
 						typeSignal = exporter.TypeLogs | exporter.TypeTraces
 					}
 				case "resource", "metric", "streamID":
 					if opts.MinStability.Permits(featuregate.StabilityExperimental) {
 						typeSignal = exporter.TypeMetrics
 					} else {
-						opts.SLogger.Warn("disabling metrics exporter as stability level does not allow it")
+						opts.Logger.Warn("disabling metrics exporter as stability level does not allow it")
 					}
 				}
 				return typeSignal

@@ -177,7 +177,7 @@ func newNoInit(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:           o,
 		args:           args,
-		leader:         newComponentLeadership(o.ID, o.SLogger, clusterSvc.(cluster.Cluster)),
+		leader:         newComponentLeadership(o.ID, o.Logger, clusterSvc.(cluster.Cluster)),
 		configUpdates:  make(chan ConfigUpdate),
 		clusterUpdates: make(chan struct{}, 1),
 		ticker:         time.NewTicker(args.SyncInterval),
@@ -199,7 +199,7 @@ func (c *Component) Run(ctx context.Context) error {
 		if errors.Is(err, errShutdown) {
 			break
 		} else if err != nil {
-			c.opts.SLogger.Error("unexpected error from iteration loop; this is a bug", "err", err)
+			c.opts.Logger.Error("unexpected error from iteration loop; this is a bug", "err", err)
 			c.reportUnhealthy(err)
 		}
 	}
@@ -237,10 +237,10 @@ func (c *Component) startupWithRetries(ctx context.Context, leader leadership, s
 		// Repeatedly check if we are the leader and attempt to start the component
 		_, err := leader.update()
 		if err != nil {
-			c.opts.SLogger.Error("checking leadership during starting failed, will retry", "err", err)
+			c.opts.Logger.Error("checking leadership during starting failed, will retry", "err", err)
 			health.reportUnhealthy(err)
 		} else if err := state.startup(ctx); err != nil {
-			c.opts.SLogger.Error("starting up component failed, will retry", "err", err)
+			c.opts.Logger.Error("starting up component failed, will retry", "err", err)
 			health.reportUnhealthy(err)
 		} else {
 			health.reportHealthy()
@@ -257,7 +257,7 @@ func (c *Component) iteration(ctx context.Context, leader leadership, state life
 		state.update(update.args)
 
 		if err := state.restart(ctx); err != nil {
-			c.opts.SLogger.Error("restarting component failed", "trigger", configurationUpdate, "err", err)
+			c.opts.Logger.Error("restarting component failed", "trigger", configurationUpdate, "err", err)
 			health.reportUnhealthy(err)
 		}
 	case <-c.clusterUpdates:
@@ -265,11 +265,11 @@ func (c *Component) iteration(ctx context.Context, leader leadership, state life
 
 		changed, err := leader.update()
 		if err != nil {
-			c.opts.SLogger.Error("checking leadership failed", "trigger", clusterUpdate, "err", err)
+			c.opts.Logger.Error("checking leadership failed", "trigger", clusterUpdate, "err", err)
 			health.reportUnhealthy(err)
 		} else if changed {
 			if err := state.restart(ctx); err != nil {
-				c.opts.SLogger.Error("restarting component failed", "trigger", clusterUpdate, "err", err)
+				c.opts.Logger.Error("restarting component failed", "trigger", clusterUpdate, "err", err)
 				health.reportUnhealthy(err)
 			}
 		}
@@ -304,7 +304,7 @@ func (c *Component) restart(ctx context.Context) error {
 // the leader. If it is not the leader, startup does nothing.
 func (c *Component) startup(ctx context.Context) error {
 	if !c.leader.isLeader() {
-		c.opts.SLogger.Info("skipping startup because we are not the leader")
+		c.opts.Logger.Info("skipping startup because we are not the leader")
 		return nil
 	}
 
@@ -349,7 +349,7 @@ func (c *Component) syncState() {
 }
 
 func (c *Component) init() error {
-	c.opts.SLogger.Info("initializing with configuration")
+	c.opts.Logger.Info("initializing with configuration")
 
 	// TODO: allow overriding some stuff in RestConfig and k8s client options?
 	restConfig, err := controller.GetConfig()
@@ -369,7 +369,7 @@ func (c *Component) init() error {
 
 	httpClient := c.args.HTTPClientConfig.Convert()
 
-	c.mimirClient, err = mimirClient.New(c.opts.SLogger, mimirClient.Config{
+	c.mimirClient, err = mimirClient.New(c.opts.Logger, mimirClient.Config{
 		ID:                   c.args.TenantID,
 		Address:              c.args.Address,
 		UseLegacyRoutes:      c.args.UseLegacyRoutes,
@@ -407,7 +407,7 @@ func (c *Component) startNamespaceInformer(queue workqueue.TypedRateLimitingInte
 	namespaces := factory.Core().V1().Namespaces()
 	namespaceLister := namespaces.Lister()
 	namespaceInformer := namespaces.Informer()
-	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, queue))
+	_, err := namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.Logger, queue))
 	if err != nil {
 		return nil, err
 	}
@@ -429,7 +429,7 @@ func (c *Component) startRuleInformer(queue workqueue.TypedRateLimitingInterface
 	promRules := factory.Monitoring().V1().PrometheusRules()
 	ruleLister := promRules.Lister()
 	ruleInformer := promRules.Informer()
-	_, err := ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, queue))
+	_, err := ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.Logger, queue))
 	if err != nil {
 		return nil, err
 	}
@@ -456,7 +456,7 @@ func (c *Component) newEventProcessor(queue workqueue.TypedRateLimitingInterface
 		namespacePrefix:    c.args.MimirNameSpacePrefix,
 		namespaceSeparator: c.args.MimirNamespaceSeparator,
 		metrics:            c.metrics,
-		logger:             c.opts.SLogger,
+		logger:             c.opts.Logger,
 		externalLabels:     externalLabels,
 		extraQueryMatchers: c.args.ExtraQueryMatchers,
 	}

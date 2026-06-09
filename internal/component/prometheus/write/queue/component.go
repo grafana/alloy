@@ -27,7 +27,7 @@ func init() {
 }
 
 func NewComponent(opts component.Options, args Arguments) (*Queue, error) {
-	opts.SLogger.Warn("prometheus.write.queue is deprecated and will be removed in a future version. Migrate to prometheus.remote_write to prevent future errors.")
+	opts.Logger.Warn("prometheus.write.queue is deprecated and will be removed in a future version. Migrate to prometheus.remote_write to prevent future errors.")
 
 	s := &Queue{
 		opts:      opts,
@@ -111,7 +111,7 @@ func (s *Queue) Update(args component.Arguments) error {
 		}
 		nativeCfg := epCfg.ToNativeType()
 		// Create
-		end, err := promqueue.NewQueue(epCfg.Name, nativeCfg, filepath.Join(s.opts.DataPath, epCfg.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", slogadapter.GoKit(s.opts.SLogger.Handler()))
+		end, err := promqueue.NewQueue(epCfg.Name, nativeCfg, filepath.Join(s.opts.DataPath, epCfg.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", slogadapter.GoKit(s.opts.Logger.Handler()))
 		if err != nil {
 			return err
 		}
@@ -132,7 +132,7 @@ func (s *Queue) Update(args component.Arguments) error {
 func (s *Queue) createEndpoints() error {
 	for _, ep := range s.args.Endpoints {
 		nativeCfg := ep.ToNativeType()
-		end, err := promqueue.NewQueue(ep.Name, nativeCfg, filepath.Join(s.opts.DataPath, ep.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", slogadapter.GoKit(s.opts.SLogger.Handler()))
+		end, err := promqueue.NewQueue(ep.Name, nativeCfg, filepath.Join(s.opts.DataPath, ep.Name, "wal"), uint32(s.args.Persistence.MaxSignalsToBatch), s.args.Persistence.BatchInterval, s.args.TTL, s.opts.Registerer, "alloy", slogadapter.GoKit(s.opts.Logger.Handler()))
 		if err != nil {
 			return err
 		}

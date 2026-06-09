@@ -96,7 +96,7 @@ func (c *Component) Update(args component.Arguments) error {
 	for _, v := range c.args.PathTargets {
 		c.watches = append(c.watches, watch{
 			target:          v,
-			log:             c.opts.SLogger,
+			log:             c.opts.Logger,
 			ignoreOlderThan: c.args.IgnoreOlderThan,
 			globber:         c.globber,
 		})
@@ -143,7 +143,7 @@ func (c *Component) getWatchedFiles() []discovery.Target {
 	for _, w := range c.watches {
 		newPaths, err := w.getPaths()
 		if err != nil {
-			c.opts.SLogger.Error("error getting paths", "path", w.getPath(), "excluded", w.getExcludePath(), "err", err)
+			c.opts.Logger.Error("error getting paths", "path", w.getPath(), "excluded", w.getExcludePath(), "err", err)
 		}
 		paths = append(paths, newPaths...)
 	}

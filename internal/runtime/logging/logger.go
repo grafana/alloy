@@ -12,7 +12,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
-	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/loki/pkg/push"
 )
 
@@ -67,7 +66,7 @@ func NewNop() *Logger {
 
 // NewSlogNop returns a slog logger backed by a handler that never logs.
 func NewSlogNop() *slog.Logger {
-	return slog.New(nopSlogHandler{})
+	return slog.New(slog.DiscardHandler)
 }
 
 // NewDeferred creates a new logger with the default log level and format.
@@ -108,16 +107,6 @@ func (l *Logger) Handler() slog.Handler { return l.deferredSlog }
 // updated.
 func (l *Logger) Slog() *slog.Logger { return slog.New(l.deferredSlog) }
 
-type nopSlogHandler struct{}
-
-func (nopSlogHandler) Enabled(context.Context, slog.Level) bool { return false }
-
-func (nopSlogHandler) Handle(context.Context, slog.Record) error { return nil }
-
-func (nopSlogHandler) WithAttrs([]slog.Attr) slog.Handler { return nopSlogHandler{} }
-
-func (nopSlogHandler) WithGroup(string) slog.Handler { return nopSlogHandler{} }
-
 // Update re-configures the options used for the logger.
 func (l *Logger) Update(o Options) error {
 	switch o.Format {
@@ -152,8 +141,7 @@ func (l *Logger) Update(o Options) error {
 // right handler) and AFTER l.deferredSlog.buildHandlers has run (so
 // child handlers point at the new l.handler).
 //
-// Holds bufferMut for the entire replay so concurrent Log() calls block
-// until the buffer is drained, preserving the order guarantee that
+// Holds bufferMut for the entire replay so concurrent log calls block
 // buffered logs appear before newly-arriving ones.
 func (l *Logger) flushBuffer() {
 	l.bufferMut.Lock()
@@ -163,9 +151,7 @@ func (l *Logger) flushBuffer() {
 	l.buffer = nil
 
 	for _, item := range buffer {
-		if len(item.kvps) > 0 {
-			slogadapter.GoKit(l.handler).Log(item.kvps...)
-		} else if item.handler.Enabled(context.Background(), item.record.Level) {
+		if item.handler.Enabled(context.Background(), item.record.Level) {
 			_ = item.handler.Handle(context.Background(), item.record)
 		}
 	}
@@ -177,29 +163,6 @@ func (l *Logger) SetTemporaryWriter(w io.Writer) {
 
 func (l *Logger) RemoveTemporaryWriter() {
 	l.writer.RemoveTemporaryWriter()
-}
-
-// Log implements log.Logger.
-func (l *Logger) Log(kvps ...any) error {
-	// Buffer logs before confirming log format is configured in `logging` block.
-	l.bufferMut.RLock()
-	if !l.hasLogFormat {
-		l.bufferMut.RUnlock()
-		l.bufferMut.Lock()
-		// Check hasLogFormat again; could have changed since the unlock.
-		if !l.hasLogFormat {
-			l.buffer = append(l.buffer, &bufferedItem{kvps: kvps})
-			l.bufferMut.Unlock()
-			return nil
-		}
-		l.bufferMut.Unlock()
-	} else {
-		l.bufferMut.RUnlock()
-	}
-
-	// NOTE(rfratto): slogadapter is a temporary shim while log/slog is still
-	// being adopted throughout the codebase.
-	return slogadapter.GoKit(l.handler).Log(kvps...)
 }
 
 func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {
@@ -412,7 +375,6 @@ func (lw *leveledWriter) Write(p []byte) (int, error) {
 }
 
 type bufferedItem struct {
-	kvps    []any
 	handler *deferredSlogHandler
 	record  slog.Record
 }

@@ -3,16 +3,14 @@ package main
 import (
 	"context"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
-
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 // serviceManager manages an individual binary.
 type serviceManager struct {
-	log log.Logger
+	log *slog.Logger
 	cfg serviceManagerConfig
 }
 
@@ -43,9 +41,9 @@ type serviceManagerConfig struct {
 //
 // Logs from the serviceManager will be sent to w. Logs from the managed
 // service will be written to cfg.Stdout and cfg.Stderr as appropriate.
-func newServiceManager(l log.Logger, cfg serviceManagerConfig) *serviceManager {
+func newServiceManager(l *slog.Logger, cfg serviceManagerConfig) *serviceManager {
 	if l == nil {
-		l = log.NewNopLogger()
+		l = slog.New(slog.DiscardHandler)
 	}
 
 	return &serviceManager{
@@ -63,7 +61,7 @@ func newServiceManager(l log.Logger, cfg serviceManagerConfig) *serviceManager {
 func (svc *serviceManager) Run(ctx context.Context) {
 	cmd := svc.buildCommand(ctx)
 
-	level.Info(svc.log).Log("msg", "starting program", "command", cmd.String())
+	svc.log.Info("starting program", "command", cmd.String())
 	err := cmd.Run()
 
 	// Handle the context being canceled before processing whether cmd.Run
@@ -75,9 +73,9 @@ func (svc *serviceManager) Run(ctx context.Context) {
 	exitCode := cmd.ProcessState.ExitCode()
 
 	if err != nil {
-		level.Error(svc.log).Log("msg", "service exited with error", "err", err, "exit_code", exitCode)
+		svc.log.Error("service exited with error", "err", err, "exit_code", exitCode)
 	} else {
-		level.Info(svc.log).Log("msg", "service exited", "exit_code", exitCode)
+		svc.log.Info("service exited", "exit_code", exitCode)
 	}
 	os.Exit(exitCode)
 }

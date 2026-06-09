@@ -25,7 +25,7 @@ func (c *Component) eventLoop(ctx context.Context) {
 	for {
 		evt, shutdown := c.queue.Get()
 		if shutdown {
-			c.opts.SLogger.Info("shutting down event loop")
+			c.opts.Logger.Info("shutting down event loop")
 			return
 		}
 
@@ -37,7 +37,7 @@ func (c *Component) eventLoop(ctx context.Context) {
 			if retries < 5 {
 				c.metrics.eventsRetried.WithLabelValues(string(evt.Typ)).Inc()
 				c.queue.AddRateLimited(evt)
-				c.opts.SLogger.Error(
+				c.opts.Logger.Error(
 					"failed to process event, will retry",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
@@ -45,7 +45,7 @@ func (c *Component) eventLoop(ctx context.Context) {
 				continue
 			} else {
 				c.metrics.eventsFailed.WithLabelValues(string(evt.Typ)).Inc()
-				c.opts.SLogger.Error(
+				c.opts.Logger.Error(
 					"failed to process event, max retries exceeded",
 					"retries", fmt.Sprintf("%d/5", retries),
 					"err", err,
@@ -65,9 +65,9 @@ func (c *Component) processEvent(ctx context.Context, e kubernetes.Event) error 
 
 	switch e.Typ {
 	case kubernetes.EventTypeResourceChanged:
-		c.opts.SLogger.Info("processing event", "type", e.Typ, "key", e.ObjectKey)
+		c.opts.Logger.Info("processing event", "type", e.Typ, "key", e.ObjectKey)
 	case eventTypeSyncLoki:
-		c.opts.SLogger.Debug("syncing current state from ruler")
+		c.opts.Logger.Debug("syncing current state from ruler")
 		err := c.syncLoki(ctx)
 		if err != nil {
 			return err
@@ -85,7 +85,7 @@ func (c *Component) syncLoki(ctx context.Context) error {
 
 	rulesByNamespace, err := c.lokiClient.ListRules(ctx, "")
 	if err != nil {
-		c.opts.SLogger.Error("failed to list rules from loki", "err", err)
+		c.opts.Logger.Error("failed to list rules from loki", "err", err)
 		return err
 	}
 
@@ -159,7 +159,7 @@ func (c *Component) loadStateFromK8s() (kubernetes.PrometheusRuleGroupsByNamespa
 						query := ruleGroup.Rules[i].Expr
 						newQuery, err := addMatchersToQuery(query, c.args.ExtraQueryMatchers.Matchers)
 						if err != nil {
-							c.opts.SLogger.Error("failed to add labels to PrometheusRule query", "query", query, "err", err)
+							c.opts.Logger.Error("failed to add labels to PrometheusRule query", "query", query, "err", err)
 						}
 						ruleGroup.Rules[i].Expr = newQuery
 					}
@@ -269,21 +269,21 @@ func (c *Component) applyChanges(ctx context.Context, namespace string, diffs []
 			if err != nil {
 				return err
 			}
-			c.opts.SLogger.Info("added rule group", "namespace", namespace, "group", diff.Desired.Name)
+			c.opts.Logger.Info("added rule group", "namespace", namespace, "group", diff.Desired.Name)
 		case kubernetes.RuleGroupDiffKindRemove:
 			err := c.lokiClient.DeleteRuleGroup(ctx, namespace, diff.Actual.Name)
 			if err != nil {
 				return err
 			}
-			c.opts.SLogger.Info("removed rule group", "namespace", namespace, "group", diff.Actual.Name)
+			c.opts.Logger.Info("removed rule group", "namespace", namespace, "group", diff.Actual.Name)
 		case kubernetes.RuleGroupDiffKindUpdate:
 			err := c.lokiClient.CreateRuleGroup(ctx, namespace, diff.Desired)
 			if err != nil {
 				return err
 			}
-			c.opts.SLogger.Info("updated rule group", "namespace", namespace, "group", diff.Desired.Name)
+			c.opts.Logger.Info("updated rule group", "namespace", namespace, "group", diff.Desired.Name)
 		default:
-			c.opts.SLogger.Error("unknown rule group diff kind", "kind", diff.Kind)
+			c.opts.Logger.Error("unknown rule group diff kind", "kind", diff.Kind)
 		}
 	}
 

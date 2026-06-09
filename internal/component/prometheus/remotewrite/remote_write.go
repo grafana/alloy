@@ -72,13 +72,13 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	oldDataPath := filepath.Join(o.DataPath, "wal", o.ID)
 	_ = os.RemoveAll(oldDataPath)
 
-	walStorage, err := wal.NewStorage(o.SLogger.With("subcomponent", "wal"), o.Registerer, o.DataPath)
+	walStorage, err := wal.NewStorage(o.Logger.With("subcomponent", "wal"), o.Registerer, o.DataPath)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: Expose the option to enable type and unit labels: https://github.com/grafana/alloy/issues/4659
-	remoteStore := remote.NewStorage(o.SLogger.With("subcomponent", "rw"), o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
+	remoteStore := remote.NewStorage(o.Logger.With("subcomponent", "rw"), o.Registerer, startTime, o.DataPath, remoteFlushDeadline, nil, false)
 
 	walStorage.SetNotifier(remoteStore)
 
@@ -101,7 +101,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:               o,
 		walStore:           walStorage,
 		remoteStore:        remoteStore,
-		storage:            storage.NewFanout(o.SLogger.With("subcomponent", "fanout"), walStorage, remoteStore),
+		storage:            storage.NewFanout(o.Logger.With("subcomponent", "fanout"), walStorage, remoteStore),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -127,11 +127,11 @@ func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.exited.Store(true)
 
-		c.opts.SLogger.Debug("closing storage")
+		c.opts.Logger.Debug("closing storage")
 		err := c.storage.Close()
-		c.opts.SLogger.Debug("storage closed")
+		c.opts.Logger.Debug("storage closed")
 		if err != nil {
-			c.opts.SLogger.Error("error when closing storage", "err", err)
+			c.opts.Logger.Error("error when closing storage", "err", err)
 		}
 	}()
 
@@ -175,17 +175,17 @@ func (c *Component) Run(ctx context.Context) error {
 			}
 
 			if ts == lastTs {
-				c.opts.SLogger.Debug("not truncating the WAL, remote_write timestamp is unchanged", "ts", ts)
+				c.opts.Logger.Debug("not truncating the WAL, remote_write timestamp is unchanged", "ts", ts)
 				continue
 			}
 			lastTs = ts
 
-			c.opts.SLogger.Debug("truncating the WAL", "ts", ts)
+			c.opts.Logger.Debug("truncating the WAL", "ts", ts)
 			err := c.walStore.Truncate(ts)
 			if err != nil {
 				// The only issue here is larger disk usage and a greater replay time,
 				// so we'll only log this as a warning.
-				c.opts.SLogger.Warn("could not truncate WAL", "err", err)
+				c.opts.Logger.Warn("could not truncate WAL", "err", err)
 			}
 		}
 	}

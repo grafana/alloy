@@ -227,7 +227,7 @@ func (c *Component) Update(args component.Arguments) (err error) {
 	newArgs := args.(Arguments)
 	c.args = newArgs
 
-	restConfig, err := c.args.Client.BuildRESTConfig(c.opts.SLogger)
+	restConfig, err := c.args.Client.BuildRESTConfig(c.opts.Logger)
 	if err != nil {
 		return err
 	}

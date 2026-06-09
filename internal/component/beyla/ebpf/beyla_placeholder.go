@@ -28,7 +28,7 @@ type Component struct {
 }
 
 func New(opts component.Options, args Arguments) (component.Component, error) {
-	opts.SLogger.Warn("the beyla.ebpf component only works on ARM64 and AMD64 Linux platforms; enabling it otherwise will do nothing")
+	opts.Logger.Warn("the beyla.ebpf component only works on ARM64 and AMD64 Linux platforms; enabling it otherwise will do nothing")
 	return &Component{}, nil
 }
 

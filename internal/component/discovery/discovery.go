@@ -118,7 +118,7 @@ func (c *Component) newRunAndStopForDisc(ctx context.Context, disc DiscovererWit
 		// DiscovererWithMetrics needs to have its metrics registered before running.
 		err := disc.Register()
 		if err != nil {
-			c.opts.SLogger.Warn("failed to register discoverer metrics", "err", err)
+			c.opts.Logger.Warn("failed to register discoverer metrics", "err", err)
 		}
 
 		// Run the discoverer.
@@ -144,7 +144,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if err != nil {
 		return err
 	}
-	disc, err := NewDiscovererWithMetrics(discConfig, c.opts.Registerer, c.opts.SLogger)
+	disc, err := NewDiscovererWithMetrics(discConfig, c.opts.Registerer, c.opts.Logger)
 	if err != nil {
 		return err
 	}

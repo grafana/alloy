@@ -816,7 +816,7 @@ func TestComponent(t *testing.T) {
 			args.ForwardTo = []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()}
 
 			opts := component.Options{
-				SLogger:        logging.NewSlogNop(),
+				Logger:         logging.NewSlogNop(),
 				Registerer:     prometheus.NewRegistry(),
 				OnStateChange:  func(component.Exports) {},
 				GetServiceData: getServiceData,
@@ -939,7 +939,7 @@ func assertEntriesUnordered(t *testing.T, expected, actual []loki.Entry) {
 }
 
 func TestComponent_UpdateInvalidConfig(t *testing.T) {
-	ctrl, err := componenttest.NewControllerFromID(util.TestAlloyLogger(t), "loki.process")
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
 	require.NoError(t, err)
 
 	collector := loki.NewCollectingHandler()
@@ -1043,7 +1043,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	// Create and run the component, so that it can process and forwards logs.
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceDataWithLiveDebugging(liveDebuggingLog),
@@ -1269,7 +1269,7 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
@@ -1627,7 +1627,7 @@ func newTester(t *testing.T) *tester {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		Registerer:     reg,
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,

@@ -64,11 +64,11 @@ func (t *Passthrough) Update(args component.Arguments) error {
 	c := args.(PassthroughConfig)
 
 	if c.Lag != 0 {
-		t.opts.SLogger.Info("sleeping for lag", "lag", c.Lag)
+		t.opts.Logger.Info("sleeping for lag", "lag", c.Lag)
 		time.Sleep(c.Lag)
 	}
 
-	t.opts.SLogger.Info("passing through value", "value", c.Input)
+	t.opts.Logger.Info("passing through value", "value", c.Input)
 	t.opts.OnStateChange(PassthroughExports{Output: c.Input})
 	return nil
 }

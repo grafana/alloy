@@ -60,7 +60,7 @@ func (t *Summation) Update(args component.Arguments) error {
 	c := args.(SummationConfig)
 	newSum := int(t.sum.Add(int32(c.Input)))
 
-	t.opts.SLogger.Info("updated sum", "value", newSum, "input", c.Input)
+	t.opts.Logger.Info("updated sum", "value", newSum, "input", c.Input)
 	t.opts.OnStateChange(SummationExports{Sum: newSum, LastAdded: c.Input})
 	return nil
 }

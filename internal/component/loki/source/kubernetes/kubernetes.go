@@ -83,7 +83,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.SLogger, positions.Config{
+	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
 		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
 	})
@@ -148,7 +148,7 @@ func (c *Component) Update(args component.Arguments) error {
 	switch {
 	case c.tailer == nil:
 		// First call to Update; build the tailer.
-		c.tailer = kubetail.NewManager(c.opts.SLogger, managerOpts)
+		c.tailer = kubetail.NewManager(c.opts.Logger, managerOpts)
 
 	case managerOpts != c.lastOptions:
 		// Options changed; pass it to the tailer.
@@ -179,7 +179,7 @@ func (c *Component) resyncTargets(targets []discovery.Target) {
 		processed, err := kubetail.PrepareLabels(lset, c.opts.ID)
 		if err != nil {
 			// TODO(rfratto): should this set the health of the component?
-			c.opts.SLogger.Error("failed to process input target", "target", lset.String(), "err", err)
+			c.opts.Logger.Error("failed to process input target", "target", lset.String(), "err", err)
 			continue
 		}
 		tailTargets = append(tailTargets, kubetail.NewTarget(lset, processed, false))
@@ -213,7 +213,7 @@ func (c *Component) getTailerOptions(args Arguments) (*kubetail.Options, error) 
 		return c.lastOptions, nil
 	}
 
-	cfg, err := args.Client.BuildRESTConfig(c.opts.SLogger)
+	cfg, err := args.Client.BuildRESTConfig(c.opts.Logger)
 	if err != nil {
 		return c.lastOptions, fmt.Errorf("building Kubernetes config: %w", err)
 	}

@@ -33,6 +33,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/remotecfg"
+	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/static/server"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/grafana/alloy/syntax/ast"
@@ -144,7 +145,7 @@ func New(opts Options) *Service {
 
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
-		memLis:    memconn.NewListener(l),
+		memLis:    memconn.NewListener(slogadapter.GoKit(l.Handler())),
 
 		componentHttpPathPrefix:          "/api/v0/component/",
 		componentHttpPathPrefixRemotecfg: "/api/v0/component/remotecfg",

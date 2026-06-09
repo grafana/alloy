@@ -60,7 +60,7 @@ func (c *crdManagerHungRun) GetScrapeConfig(ns, name string) []*config.ScrapeCon
 
 func TestRunExit(t *testing.T) {
 	opts := component.Options{
-		Logger:     util.TestAlloyLogger(t),
+		Logger:     util.TestAlloyLogger(t).Slog(),
 		Registerer: prometheus.NewRegistry(),
 		GetServiceData: func(name string) (any, error) {
 			switch name {
@@ -146,7 +146,7 @@ func TestExperimentalFeatures(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.featureName, func(t *testing.T) {
 			opts := component.Options{
-				Logger:       util.TestAlloyLogger(t),
+				Logger:       util.TestAlloyLogger(t).Slog(),
 				Registerer:   prometheus.NewRegistry(),
 				MinStability: featuregate.StabilityGenerallyAvailable,
 				GetServiceData: func(name string) (any, error) {

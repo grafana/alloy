@@ -70,18 +70,18 @@ func (s *SlowUpdate) Update(args component.Arguments) error {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	c := args.(SlowUpdateConfig)
-	s.opts.SLogger.Info("Sleeping on Update()", "duration", c.UpdateLag)
+	s.opts.Logger.Info("Sleeping on Update()", "duration", c.UpdateLag)
 	s.updateLag = c.UpdateLag
 	time.Sleep(s.updateLag)
 	s.gauge.Set(float64(c.Counter))
-	s.opts.SLogger.Info("Done sleeping and updated the counter", "counter", c.Counter)
+	s.opts.Logger.Info("Done sleeping and updated the counter", "counter", c.Counter)
 	return nil
 }
 
 func (s *SlowUpdate) NotifyClusterChange() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	s.opts.SLogger.Info("Sleeping on NotifyClusterChange()", "duration", s.updateLag)
+	s.opts.Logger.Info("Sleeping on NotifyClusterChange()", "duration", s.updateLag)
 	time.Sleep(s.updateLag)
-	s.opts.SLogger.Info("Done sleeping on NotifyClusterChange()")
+	s.opts.Logger.Info("Done sleeping on NotifyClusterChange()")
 }

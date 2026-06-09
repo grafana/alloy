@@ -15,7 +15,7 @@ func init() {
 		Args:      Argument{},
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
-			opts.SLogger.Warn("otelcol.exporter.datadog is unsupported on freebsd")
+			opts.Logger.Warn("otelcol.exporter.datadog is unsupported on freebsd")
 			return &FakeComponent{}, nil
 		},
 	})

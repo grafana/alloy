@@ -129,7 +129,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// If relabeling rules changed, purge the cache
 	if relabelingChanged(c.rcs, newRCS) {
-		c.opts.SLogger.Debug("received new relabel configs, purging cache")
+		c.opts.Logger.Debug("received new relabel configs, purging cache")
 		c.cache.Purge()
 		c.metrics.cacheSize.Set(0)
 	}
@@ -137,7 +137,7 @@ func (c *Component) Update(args component.Arguments) error {
 	if newArgs.MaxCacheSize != c.maxCacheSize {
 		evicted := c.cache.Resize(newArgs.MaxCacheSize)
 		if evicted > 0 {
-			c.opts.SLogger.Debug("resizing cache led to evicting items", "evicted_count", evicted)
+			c.opts.Logger.Debug("resizing cache led to evicting items", "evicted_count", evicted)
 		}
 		c.maxCacheSize = newArgs.MaxCacheSize
 	}
@@ -171,7 +171,7 @@ func (c *Component) Append(ctx context.Context, lbls labels.Labels, samples []*p
 	newLabels, keep := c.relabel(lbls)
 	if !keep {
 		c.metrics.profilesDropped.Inc()
-		c.opts.SLogger.Debug("profile dropped by relabel rules", "labels", lbls.String())
+		c.opts.Logger.Debug("profile dropped by relabel rules", "labels", lbls.String())
 		return nil
 	}
 
@@ -197,7 +197,7 @@ func (c *Component) AppendIngest(ctx context.Context, profile *pyroscope.Incomin
 	newLabels, keep := c.relabel(profile.Labels)
 	if !keep {
 		c.metrics.profilesDropped.Inc()
-		c.opts.SLogger.Debug("profile dropped by relabel rules")
+		c.opts.Logger.Debug("profile dropped by relabel rules")
 		return nil
 	}
 

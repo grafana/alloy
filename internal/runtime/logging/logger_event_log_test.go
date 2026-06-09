@@ -128,7 +128,9 @@ func TestLogger_EventLog_RespectsFormatChoice(t *testing.T) {
 				Destination: LogDestinationWindowsEventLog,
 			}))
 
-			require.NoError(t, l.Log("msg", "hello", "k", "v"))
+			slogger := l.Slog()
+
+			slogger.Info("hello", "k", "v")
 
 			require.Len(t, mock.Infos, 1)
 			got := mock.Infos[0]
@@ -169,7 +171,8 @@ func TestLogger_EventLog_TransitionToStderrClosesHandle(t *testing.T) {
 	require.True(t, mock.Closed(), "event_log → stderr should close the event log handle")
 
 	mock.Reset()
-	require.NoError(t, l.Log("msg", "stderr-only"))
+	slogger := l.Slog()
+	slogger.Info("stderr-only")
 	require.Empty(t, mock.Infos, "no further records should reach the event log after transition")
 	require.Contains(t, inner.String(), "stderr-only",
 		"bytes path should now reach the stderr writer")

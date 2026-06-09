@@ -33,7 +33,7 @@ func Test(t *testing.T) {
 		fmt.Fprintln(w, "Hello, world!")
 	})
 
-	ctrl, err := componenttest.NewControllerFromID(util.TestAlloyLogger(t), "remote.http")
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "remote.http")
 	require.NoError(t, err)
 
 	cfg := fmt.Sprintf(`

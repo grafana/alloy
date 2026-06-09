@@ -124,7 +124,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.SLogger, positions.Config{
+	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,
 		PositionsFile:     filepath.Join(o.DataPath, "positions.yml"),
 		IgnoreInvalidYaml: false,
@@ -215,19 +215,19 @@ func (c *Component) Update(args component.Arguments) error {
 	})
 
 	source.Reconcile(
-		c.opts.SLogger,
+		c.opts.Logger,
 		c.scheduler,
 		slices.Values(promTargets),
 		func(target promTarget) string { return string(target.labels[dockerLabelContainerID]) },
 		func(containerID string, target promTarget) (source.Source[string], error) {
 			if containerID == "" {
-				c.opts.SLogger.Debug("docker target did not include container ID label: " + dockerLabelContainerID)
+				c.opts.Logger.Debug("docker target did not include container ID label: " + dockerLabelContainerID)
 				return nil, source.ErrSkip
 			}
 
 			return newTailer(
 				c.metrics,
-				c.opts.SLogger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
+				c.opts.Logger.With("component", "tailer", "container", fmt.Sprintf("docker/%s", containerID)),
 				c.handler,
 				c.posFile,
 				containerID,
@@ -283,7 +283,7 @@ func (c *Component) getClient(args Arguments) (client.APIClient, error) {
 
 	client, err := client.New(opts...)
 	if err != nil {
-		c.opts.SLogger.Error("could not create new Docker client", "err", err)
+		c.opts.Logger.Error("could not create new Docker client", "err", err)
 		return c.client, fmt.Errorf("failed to build docker client: %w", err)
 	}
 

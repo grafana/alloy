@@ -120,14 +120,14 @@ func (im *ImportGit) Run(ctx context.Context) error {
 			ticker, tickerC = im.updateTicker(pullFrequency, ticker, tickerC)
 
 		case <-tickerC:
-			im.opts.SLogger.Info("updating repository")
+			im.opts.Logger.Info("updating repository")
 			im.tickPollFile(ctx)
 		}
 	}
 }
 
 func (im *ImportGit) updateTicker(pullFrequency time.Duration, ticker *time.Ticker, tickerC <-chan time.Time) (*time.Ticker, <-chan time.Time) {
-	im.opts.SLogger.Info("updating repository pull frequency, next pull attempt will be done according to the pullFrequency", "new_frequency", pullFrequency)
+	im.opts.Logger.Info("updating repository pull frequency, next pull attempt will be done according to the pullFrequency", "new_frequency", pullFrequency)
 
 	if pullFrequency > 0 {
 		if ticker == nil {
@@ -154,7 +154,7 @@ func (im *ImportGit) tickPollFile(ctx context.Context) {
 	im.updateHealth(err)
 
 	if err != nil {
-		im.opts.SLogger.Error("failed to update repository", "pullFrequency", pullFrequency, "err", err)
+		im.opts.Logger.Error("failed to update repository", "pullFrequency", pullFrequency, "err", err)
 	}
 }
 
@@ -207,7 +207,7 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 		r, err := vcs.NewGitRepo(context.Background(), im.repoPath, repoOpts)
 		if err != nil {
 			if errors.As(err, &vcs.UpdateFailedError{}) {
-				im.opts.SLogger.Error("failed to update repository", "err", err)
+				im.opts.Logger.Error("failed to update repository", "err", err)
 				if im.repo == nil && r == nil {
 					return err
 				}
@@ -222,7 +222,7 @@ func (im *ImportGit) Update(args component.Arguments) (err error) {
 
 	if err = im.pollFile(context.Background(), newArgs); err != nil {
 		if errors.As(err, &vcs.UpdateFailedError{}) {
-			im.opts.SLogger.Error("failed to poll file from repository", "err", err)
+			im.opts.Logger.Error("failed to poll file from repository", "err", err)
 			// We don't update the health here because it will be updated via the defer call.
 			// This is not very good because if we reassign the err before exiting the function it will not update the health correctly.
 			// TODO improve the error  health handling.

@@ -25,7 +25,7 @@ func Test(t *testing.T) {
 	tcp := componenttest.GetFreeAddr(t)
 
 	ctx := componenttest.TestContext(t)
-	l := util.TestAlloyLogger(t)
+	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.receiver.syslog")
 	require.NoError(t, err)
@@ -79,7 +79,7 @@ func Test(t *testing.T) {
 		})
 		for bo.Ongoing() {
 			if err := request(); err != nil {
-				l.Slog().Error("failed to send logs", "err", err)
+				l.Error("failed to send logs", "err", err)
 				bo.Wait()
 				continue
 			}
