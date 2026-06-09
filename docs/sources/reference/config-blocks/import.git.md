@@ -20,7 +20,7 @@ This enables, for example, your module to import other modules within the reposi
 
 ```alloy
 import.git "<NAMESPACE>" {
-  repository = "<GIT_REPOSTORY>"
+  repository = "<GIT_REPOSITORY>"
   path       = "<PATH_TO_MODULE>"
 }
 ```
