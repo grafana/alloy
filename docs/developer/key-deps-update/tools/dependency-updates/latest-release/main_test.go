@@ -332,7 +332,6 @@ func TestAllOpenTelemetryMappings(t *testing.T) {
 		"go.opentelemetry.io/collector/component": "open-telemetry/opentelemetry-collector",
 		"go.opentelemetry.io/build-tools":         "open-telemetry/opentelemetry-go-build-tools",
 		"go.opentelemetry.io/auto":                "open-telemetry/opentelemetry-go-instrumentation",
-		"go.opentelemetry.io/obi":                 "grafana/opentelemetry-ebpf-instrumentation",
 		"go.opentelemetry.io/ebpf-profiler":       "grafana/opentelemetry-ebpf-profiler",
 	}
 
@@ -349,7 +348,6 @@ func TestGrafanaForkMappings(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"go.opentelemetry.io/obi", "grafana/opentelemetry-ebpf-instrumentation"},
 		{"go.opentelemetry.io/ebpf-profiler", "grafana/opentelemetry-ebpf-profiler"},
 	}
 
@@ -409,7 +407,6 @@ func TestGetPrimaryLookupMethod(t *testing.T) {
 		expected   LookupMethod
 	}{
 		{"go.opentelemetry.io/ebpf-profiler", "grafana/opentelemetry-ebpf-profiler", GitTag},
-		{"go.opentelemetry.io/obi", "grafana/opentelemetry-ebpf-instrumentation", GitTag},
 		{"github.com/prometheus/prometheus", "prometheus/prometheus", GitHubRelease},
 		{"github.com/prometheus/common", "prometheus/common", GitHubRelease},
 		{"github.com/grafana/loki/v3", "grafana/loki", GitHubRelease},
