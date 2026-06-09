@@ -10,9 +10,14 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.9.0 (2026-06-08)
+----------
+
 ### Enhancements
 
 - Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
+
+- Update to Grafana Alloy v1.16.3 (@kgeckhart)
 
 ### Bug fixes
 

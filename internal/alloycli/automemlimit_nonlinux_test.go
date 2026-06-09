@@ -8,8 +8,9 @@ import (
 	"testing"
 
 	"github.com/KimMachineGun/automemlimit/memlimit"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestNoMemlimitErrorLogs(t *testing.T) {

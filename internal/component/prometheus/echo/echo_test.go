@@ -24,8 +24,8 @@ func TestComponent_Creation(t *testing.T) {
 	ctx := componenttest.TestContext(t)
 
 	comp, err := New(component.Options{
-		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		ID:     "test",
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 	require.NotNil(t, comp)
@@ -45,8 +45,8 @@ func TestComponent_ExportsReceiver(t *testing.T) {
 	var exports component.Exports
 
 	comp, err := New(component.Options{
-		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		ID:     "test",
+		Logger: logging.NewSlogNop(),
 		OnStateChange: func(e component.Exports) {
 			exports = e
 		},
@@ -63,8 +63,8 @@ func TestComponent_ExportsReceiver(t *testing.T) {
 
 func TestAppender_BasicMetrics(t *testing.T) {
 	comp, err := New(component.Options{
-		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		ID:     "test",
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -84,8 +84,8 @@ func TestAppender_BasicMetrics(t *testing.T) {
 
 func TestAppender_Rollback(t *testing.T) {
 	comp, err := New(component.Options{
-		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		ID:     "test",
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -104,8 +104,8 @@ func TestAppender_Rollback(t *testing.T) {
 
 func TestAppender_MultipleMetrics(t *testing.T) {
 	comp, err := New(component.Options{
-		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		ID:     "test",
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -134,8 +134,8 @@ func TestAppender_MultipleMetrics(t *testing.T) {
 
 func TestComponent_Update(t *testing.T) {
 	comp, err := New(component.Options{
-		ID:      "test",
-		SLogger: logging.NewSlogNop(),
+		ID:     "test",
+		Logger: logging.NewSlogNop(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -152,8 +152,8 @@ func TestAppender_WithExpfmtEncoding(t *testing.T) {
 	require.NoError(t, err)
 
 	comp, err := New(component.Options{
-		ID:      "test",
-		SLogger: logger.Slog(),
+		ID:     "test",
+		Logger: logger.Slog(),
 	}, Arguments{})
 	require.NoError(t, err)
 
@@ -189,8 +189,8 @@ func TestAppender_WithOpenMetricsFormat(t *testing.T) {
 	args := Arguments{Format: "openmetrics"}
 
 	comp, err := New(component.Options{
-		ID:      "test",
-		SLogger: logger.Slog(),
+		ID:     "test",
+		Logger: logger.Slog(),
 	}, args)
 	require.NoError(t, err)
 

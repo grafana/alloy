@@ -199,7 +199,7 @@ func (c *Component) pollError() error {
 
 	req, err := http.NewRequest(c.args.Method, c.args.URL, body)
 	if err != nil {
-		c.opts.SLogger.Error("failed to build request", "err", err)
+		c.opts.Logger.Error("failed to build request", "err", err)
 		return fmt.Errorf("building request: %w", err)
 	}
 	for name, value := range c.args.Headers {
@@ -209,18 +209,18 @@ func (c *Component) pollError() error {
 
 	resp, err := c.cli.Do(req)
 	if err != nil {
-		c.opts.SLogger.Error("failed to perform request", "err", err)
+		c.opts.Logger.Error("failed to perform request", "err", err)
 		return fmt.Errorf("performing request: %w", err)
 	}
 
 	bb, err := io.ReadAll(resp.Body)
 	if err != nil {
-		c.opts.SLogger.Error("failed to read response", "err", err)
+		c.opts.Logger.Error("failed to read response", "err", err)
 		return fmt.Errorf("reading response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		c.opts.SLogger.Error("unexpected status code from response", "status", resp.Status)
+		c.opts.Logger.Error("unexpected status code from response", "status", resp.Status)
 		return fmt.Errorf("unexpected status code %s", resp.Status)
 	}
 

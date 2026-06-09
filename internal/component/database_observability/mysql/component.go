@@ -307,7 +307,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.opts.SLogger.Info(name + " component shutting down, stopping collectors")
+		c.opts.Logger.Info(name + " component shutting down, stopping collectors")
 
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
@@ -344,9 +344,9 @@ func (c *Component) Run(ctx context.Context) error {
 				c.mut.RUnlock()
 
 				if !hasCollectors {
-					c.opts.SLogger.Debug("attempting to reconnect to database")
+					c.opts.Logger.Debug("attempting to reconnect to database")
 					if err := c.tryReconnect(ctx); err != nil {
-						c.opts.SLogger.Error("reconnection attempt failed", "err", err)
+						c.opts.Logger.Error("reconnection attempt failed", "err", err)
 					}
 				}
 			}
@@ -379,7 +379,7 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 var versionRegex = regexp.MustCompile(`^((\d+)(\.\d+)(\.\d+))`)
 
 func (c *Component) reportError(errorMsg string, err error) {
-	c.opts.SLogger.Error(fmt.Sprintf("%s: %+v", errorMsg, err))
+	c.opts.Logger.Error(fmt.Sprintf("%s: %+v", errorMsg, err))
 	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
 }
 
@@ -485,7 +485,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		exporterArgs := exporter_mysql.Arguments(*c.args.PrometheusExporter)
 		exporterCfg := exporterArgs.Convert()
 		scrapers := mysqld_exporter.GetScrapers(exporterCfg)
-		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, c.opts.SLogger,
+		exporter := mysqld_collector.New(context.Background(), string(c.args.DataSourceName), scrapers, c.opts.Logger,
 			mysqld_collector.EnableLockWaitTimeout(exporterCfg.EnableLockWaitTimeout),
 			mysqld_collector.SetLockWaitTimeout(exporterCfg.LockWaitTimeout),
 			mysqld_collector.SetSlowLogFilter(exporterCfg.LogSlowFilter),
@@ -553,7 +553,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 
 	logStartError := func(collectorName, action string, err error) {
 		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
-		c.opts.SLogger.Error(errorString)
+		c.opts.Logger.Error(errorString)
 		startErrors = append(startErrors, errorString)
 	}
 	entryHandler := addLokiLabels(loki.NewEntryHandler(c.handler.Chan(), func() {}), c.instanceKey, serverID)
@@ -567,7 +567,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			StatementsLimit: c.args.QueryDetailsArguments.StatementsLimit,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			EntryHandler:    entryHandler,
-			Logger:          c.opts.SLogger,
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.QueryDetailsCollector, "create", err)
@@ -581,13 +581,13 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 
 	if collectors[collector.SchemaDetailsCollector] {
 		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
-			c.opts.SLogger.Warn("schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.Logger.Warn("schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
 		}
 		if c.args.SchemaDetailsArguments.CacheSize != nil {
-			c.opts.SLogger.Warn("schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.Logger.Warn("schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
 		}
 		if c.args.SchemaDetailsArguments.CacheTTL != nil {
-			c.opts.SLogger.Warn("schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
+			c.opts.Logger.Warn("schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
 		}
 
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
@@ -595,7 +595,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			EntryHandler:    entryHandler,
-			Logger:          c.opts.SLogger,
+			Logger:          c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)
@@ -609,10 +609,10 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 
 	if collectors[collector.QuerySamplesCollector] {
 		if c.args.QuerySamplesArguments.AutoEnableSetupConsumers && !c.args.AllowUpdatePerfSchemaSettings {
-			c.opts.SLogger.Warn("auto_enable_setup_consumers is true but allow_update_performance_schema_settings is false, setup_consumers will not be enabled")
+			c.opts.Logger.Warn("auto_enable_setup_consumers is true but allow_update_performance_schema_settings is false, setup_consumers will not be enabled")
 		}
 		if c.args.QuerySamplesArguments.SampleMinDuration > 0 && c.args.QuerySamplesArguments.WaitEventMinDuration > c.args.QuerySamplesArguments.SampleMinDuration {
-			c.opts.SLogger.Warn("wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
+			c.opts.Logger.Warn("wait_event_min_duration is greater than sample_min_duration, which may result in query samples with no associated wait events")
 		}
 
 		qsCollector, err := collector.NewQuerySamples(collector.QuerySamplesArguments{
@@ -622,7 +622,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			ExcludeSchemas:                c.args.ExcludeSchemas,
 			EntryHandler:                  entryHandler,
 			Registry:                      c.registry,
-			Logger:                        c.opts.SLogger,
+			Logger:                        c.opts.Logger,
 			DisableQueryRedaction:         c.args.QuerySamplesArguments.DisableQueryRedaction,
 			AutoEnableSetupConsumers:      c.args.AllowUpdatePerfSchemaSettings && c.args.QuerySamplesArguments.AutoEnableSetupConsumers,
 			SetupConsumersCheckInterval:   c.args.QuerySamplesArguments.SetupConsumersCheckInterval,
@@ -644,7 +644,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		scCollector, err := collector.NewSetupConsumers(collector.SetupConsumersArguments{
 			DB:              c.dbConnection,
 			Registry:        c.registry,
-			Logger:          c.opts.SLogger,
+			Logger:          c.opts.Logger,
 			CollectInterval: c.args.SetupConsumersArguments.CollectInterval,
 		})
 		if err != nil {
@@ -659,12 +659,12 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 
 	if collectors[collector.SetupActorsCollector] {
 		if c.args.SetupActorsArguments.AutoUpdateSetupActors && !c.args.AllowUpdatePerfSchemaSettings {
-			c.opts.SLogger.Warn("auto_update_setup_actors is true but allow_update_performance_schema_settings is false, setup_actors will not be updated")
+			c.opts.Logger.Warn("auto_update_setup_actors is true but allow_update_performance_schema_settings is false, setup_actors will not be updated")
 		}
 
 		saCollector, err := collector.NewSetupActors(collector.SetupActorsArguments{
 			DB:                    c.dbConnection,
-			Logger:                c.opts.SLogger,
+			Logger:                c.opts.Logger,
 			CollectInterval:       c.args.SetupActorsArguments.CollectInterval,
 			AutoUpdateSetupActors: c.args.AllowUpdatePerfSchemaSettings && c.args.SetupActorsArguments.AutoUpdateSetupActors,
 		})
@@ -683,7 +683,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			DB:                c.dbConnection,
 			CollectInterval:   c.args.LocksArguments.CollectInterval,
 			LockWaitThreshold: c.args.LocksArguments.Threshold,
-			Logger:            c.opts.SLogger,
+			Logger:            c.opts.Logger,
 			EntryHandler:      entryHandler,
 		})
 		if err != nil {
@@ -703,7 +703,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 			PerScrapeRatio:  c.args.ExplainPlansArguments.PerCollectRatio,
 			ExcludeSchemas:  c.args.ExcludeSchemas,
 			InitialLookback: time.Now().Add(-c.args.ExplainPlansArguments.InitialLookback),
-			Logger:          c.opts.SLogger,
+			Logger:          c.opts.Logger,
 			DBVersion:       engineVersion,
 			EntryHandler:    entryHandler,
 		})
@@ -740,7 +740,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string, parse
 		CollectInterval: c.args.HealthCheckArguments.CollectInterval,
 		ExcludeSchemas:  c.args.ExcludeSchemas,
 		EntryHandler:    entryHandler,
-		Logger:          c.opts.SLogger,
+		Logger:          c.opts.Logger,
 	})
 	if err != nil {
 		logStartError(collector.HealthCheckCollector, "create", err)

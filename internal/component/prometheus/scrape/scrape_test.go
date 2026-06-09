@@ -1120,7 +1120,7 @@ func newComponentOpts(t *testing.T, dialFunc ...func(context.Context, string, st
 	baseLogger := util.TestAlloyLogger(t).Slog()
 	return component.Options{
 		ID:         componentID,
-		SLogger:    baseLogger.With("component_path", "prometheus.scrape", "component_id", componentID),
+		Logger:     baseLogger.With("component_path", "prometheus.scrape", "component_id", componentID),
 		Registerer: prometheus_client.NewRegistry(),
 		GetServiceData: func(name string) (any, error) {
 			switch name {

@@ -22,7 +22,7 @@ import (
 func Test_GetSecrets(t *testing.T) {
 	var (
 		ctx = componenttest.TestContext(t)
-		l   = util.TestAlloyLogger(t)
+		l   = util.TestLogger(t)
 	)
 
 	cli := getTestVaultServer(t)
@@ -106,7 +106,7 @@ func Test_PollSecrets(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var (
 				ctx = componenttest.TestContext(t)
-				l   = util.TestAlloyLogger(t)
+				l   = util.TestLogger(t)
 			)
 
 			cli := getTestVaultServer(t)

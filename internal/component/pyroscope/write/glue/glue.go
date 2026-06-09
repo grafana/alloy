@@ -22,7 +22,7 @@ func init() {
 			uid := alloyseed.Get().UID
 
 			gc, err := write.New(
-				o.SLogger,
+				o.Logger,
 				tracer,
 				o.Registerer,
 				func(exports write.Exports) {
