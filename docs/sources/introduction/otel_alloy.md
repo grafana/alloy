@@ -166,7 +166,7 @@ git clone https://github.com/grafana/alloy.git
 cd alloy
 ```
 
-To build from a **specific release**, fetch tags and check out the tag after cloning:
+To build from a **specific release**, fetch tags and check out the tag after you clone:
 
 ```shell
 git fetch --tags
