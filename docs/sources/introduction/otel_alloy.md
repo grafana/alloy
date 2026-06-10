@@ -210,7 +210,8 @@ To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
 make alloy-image ALLOY_IMAGE=[registry_name/image_name]
 ```
 
-Ensure to set `ALLOY_IMAGE` to point to your image repository and desired image name, otherwise the image name defaults back to `grafana/alloy`.
+Replace _`<ALLOY_IMAGE>`_ with your image repository and image name.
+If you don't set the image repository and image name, the build defaults to `grafana/alloy`.
 
 ## Next steps
 
