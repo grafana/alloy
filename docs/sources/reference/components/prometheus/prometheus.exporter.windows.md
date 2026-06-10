@@ -610,72 +610,9 @@ The `cs` and `logon` collectors are deprecated and removed from the exporter.
 You can still configure these collectors, but they have no effect.
 {{< /admonition >}}
 
-## Example
+## Examples
 
-The following example uses a [`prometheus.scrape`][scrape] component to collect metrics from `prometheus.exporter.windows`:
-
-```alloy
-prometheus.exporter.windows "default" { }
-
-// Configure a prometheus.scrape component to collect windows metrics.
-prometheus.scrape "example" {
-  targets    = prometheus.exporter.windows.default.targets
-  forward_to = [prometheus.remote_write.demo.receiver]
-}
-
-prometheus.remote_write "demo" {
-  endpoint {
-    url = "<PROMETHEUS_REMOTE_WRITE_URL>"
-
-    basic_auth {
-      username = "<USERNAME>"
-      password = "<PASSWORD>"
-    }
-  }
-}
-```
-
-The following example shows you how to enable additional collectors and configure them:
-
-```alloy
-prometheus.exporter.windows "advanced" {
-  // Enable additional collectors beyond the default set
-  enabled_collectors = [
-    "cpu", "logical_disk", "net", "os", "service", "system",  // defaults
-    "dns", "iis", "process", "scheduled_task"                 // additional
-  ]
-
-  // Configure DNS collector settings
-  dns {
-    enabled_list = ["metrics", "wmi_stats"]
-  }
-
-  // Configure IIS collector settings
-  iis {
-    site_include = "^(Default Web Site|Production)$"
-    app_exclude  = "^$"
-  }
-
-  // Configure process collector settings
-  process {
-    include = "^(chrome|firefox|notepad).*"
-    exclude = "^$"
-  }
-}
-
-prometheus.scrape "advanced_example" {
-  targets    = prometheus.exporter.windows.advanced.targets
-  forward_to = [prometheus.remote_write.demo.receiver]
-}
-```
-
-Replace the following:
-
-- _`<PROMETHEUS_REMOTE_WRITE_URL>`_: The URL of the Prometheus `remote_write` compatible server to send metrics to.
-- _`<USERNAME>`_: The username to use for authentication to the `remote_write` API.
-- _`<PASSWORD>`_: The password to use for authentication to the `remote_write` API.
-
-[scrape]: ../prometheus.scrape/
+- [Monitor Microsoft Windows servers and desktops with Grafana Alloy](../../../monitor/monitor-windows/)
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
