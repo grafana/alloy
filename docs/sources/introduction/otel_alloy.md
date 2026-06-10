@@ -158,7 +158,8 @@ Custom builds aren't supported.
 
 ### 1. Clone the {{< param "PRODUCT_NAME" >}} repository
 
-Clone the Git repository and change into the repository root. The following steps assume you run commands from this directory.
+Clone the Git repository and change to the repository root.
+The following steps assume you run commands from this directory.
 
 ```shell
 git clone https://github.com/grafana/alloy.git
