@@ -82,6 +82,13 @@ type Config struct {
 	ValidateDimensions bool   `yaml:"validate_dimensions"`
 
 	AzureCloudEnvironment string `yaml:"azure_cloud_environment"`
+
+	// UseBatchAPI enables the Azure Monitor Batch API (metrics:getBatch) for fetching metrics.
+	// Instead of making one ARM API call per resource, this batches up to 50 resources per request
+	// using the Azure Monitor data plane (https://<region>.metrics.monitor.azure.com), which has
+	// separate rate limits from the ARM management plane. This significantly reduces the likelihood
+	// of hitting 429 throttling when monitoring many resources.
+	UseBatchAPI bool `yaml:"use_batch_api"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config.
@@ -134,6 +141,10 @@ func (c *Config) Validate() error {
 
 	if len(c.Regions) > 0 && c.ResourceGraphQueryFilter != "" {
 		configErrors = append(configErrors, "regions and resource_graph_query_filter cannot be used together. If you want to target specific resources add a region filter to the resource_graph_query_filter. Otherwise, remove your resource_graph_query_filter to get metrics without further filtering.")
+	}
+
+	if c.UseBatchAPI && len(c.Regions) > 0 {
+		configErrors = append(configErrors, "use_batch_api and regions cannot be used together. The batch API discovers resource locations automatically via Resource Graph. Use resource_graph_query_filter to limit by location instead.")
 	}
 
 	validAggregations := []string{"minimum", "maximum", "average", "total", "count"}
