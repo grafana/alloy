@@ -193,7 +193,7 @@ make generate-otel-collector-distro
 
 ### 4. Build the {{< param "PRODUCT_NAME" >}} binary
 
-Build the full CLI (including the {{< param "OTEL_ENGINE" >}}):
+Build the full {{< param "PRODUCT_NAME" >}} binary:
 
 ```shell
 make alloy
