@@ -170,7 +170,7 @@ To build from a **specific release**, fetch tags and check out the tag after you
 
 ```shell
 git fetch --tags
-git checkout v1.16.0
+git checkout <RELEASE_TAG>
 ```
 
 Replace `v1.16.0` with the [release tag](https://github.com/grafana/alloy/releases) you want.
