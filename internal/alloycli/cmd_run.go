@@ -173,6 +173,7 @@ func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
 		},
 	}
 
+	mountRunFlags(r, cmd.Flags())
 	return cmd
 }
 
