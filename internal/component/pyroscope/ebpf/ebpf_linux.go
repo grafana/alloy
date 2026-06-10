@@ -361,8 +361,9 @@ func NewDefaultArguments() Arguments {
 		GoEnabled:       true,
 		LoadProbe:       false,
 		UProbeLinks:     []string{},
-		VerboseMode:     false,
-		LazyMode:        false,
+		VerboseMode:          false,
+		LazyMode:             false,
+		NoKernelVersionCheck: false,
 
 		Comm:         string(rargs.CommModeNone),
 		KernelFrames: true,
@@ -405,6 +406,7 @@ func (args *Arguments) Convert() (*controller.Config, error) {
 	cfg.LoadProbe = args.LoadProbe
 	cfg.ProbeLinks = args.UProbeLinks
 	cfg.VerboseMode = args.VerboseMode
+	cfg.NoKernelVersionCheck = args.NoKernelVersionCheck
 	return cfg, nil
 }
 

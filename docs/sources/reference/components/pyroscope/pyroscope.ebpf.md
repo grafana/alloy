@@ -84,6 +84,7 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `go_table_fallback`       | `bool`                   | Deprecated (no-op), previously enabled symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. | `false`  | no       |
 | `hotspot_enabled`         | `bool`                   | A flag to enable or disable HotSpot profiling.                                                                       | `true`   | no       |
 | `kernel_frames`           | `bool`                   | Include kernel-space frames in collected profiles. Set to `false` to drop kernel frames from each stack trace.       | `true`   | no       |
+| `no_kernel_version_check` | `bool`                   | Disable checking the kernel version for eBPF support. Use at your own risk, to run on older kernels with backported eBPF features. | `false`  | no       |
 | `perl_enabled`            | `bool`                   | A flag to enable or disable Perl profiling.                                                                          | `true`   | no       |
 | `php_enabled`             | `bool`                   | A flag to enable or disable PHP profiling.                                                                           | `true`   | no       |
 | `pid_cache_size`          | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache.                       | `32`     | no       |
