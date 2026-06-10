@@ -871,7 +871,7 @@ The `resources` block configures resource attributes attached to telemetry emitt
 |-------------------------|--------------------|--------------------------------------------------------------------------------------------------------|---------|----------|
 | `add_k8s_uid_attributes`| `bool`             | Add Kubernetes UID attributes (e.g. `k8s.deployment.uid`) to the resource.                             | `false` | no       |
 | `add_k8s_ip_attribute`  | `bool`             | Defines whether the k8s.pod.ip resource attribute should be set to the resource.                       | `false` | no       |
-| `attributes`            | `map(string)`      | Map of additional resource attributes to add (e.g. `{environment = "production"}`).                    | `{}`    | no       |
+| `attributes`            | `map(string)`      | Map of additional resource attributes to add (for example, `{environment = "production"}`).                    | `{}`    | no       |
 | `use_labels`            | `bool`             | Use common Kubernetes labels as resource attributes (for example, `app.kubernetes.io/name` as `service.name`). | `false` | no       |
 
 ### `stats`
