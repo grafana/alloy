@@ -84,11 +84,16 @@ func newDropStage(logger *slog.Logger, config DropConfig, registerer prometheus.
 		return nil, err
 	}
 
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dropStage{
 		logger:    logger.With("stage", "drop"),
 		cfg:       &config,
 		regex:     regex,
-		dropCount: getDropCountMetric(registerer),
+		dropCount: dropCount,
 	}, nil
 }
 
