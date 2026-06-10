@@ -51,6 +51,7 @@ When introducing or modifying new github actions, consider the following securit
 7. **Separate test and publish jobs:** Jobs that build or test PR code must not have write access to the repo, GitHub Packages, or container registries. Keep image pushes, releases, and other publishing in dedicated workflows with elevated permissions.
 8. **Sanitize user input:** Do not interpolate user-controlled values (PR titles, comments, issue bodies, label names, etc.) directly into `run` scripts. Pass them through `env:` and read them as environment variables, or validate and quote them before use, to avoid shell and workflow-command injection.
 9. **Limit Actions caching:** To lessen cache poisoning attack vectors: avoid caching in jobs that run untrusted PR code. On release/publish jobs, avoid caching or set `lookup-only: true` on `actions/cache`. Do not reuse cache `key` / `restore-keys` between untrusted builds and privileged workflows.
+10. **zizmor check:** All new or modified workflows must pass a Zizmor run with no errors or warnings. This check runs as part of CI.
 
 ## Useful commands
 
@@ -89,6 +90,14 @@ Run:
 ```sh
 ./build/alloy run example-config.alloy
 ```
+
+Run zizmor on workflow files:
+
+```sh
+zizmor --collect=workflows .
+```
+
+Requires `zizmor` to be installed locally.
 
 ## Cursor Cloud specific instructions
 
