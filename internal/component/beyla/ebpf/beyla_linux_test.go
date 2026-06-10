@@ -11,7 +11,6 @@ import (
 
 	"github.com/grafana/beyla/v3/pkg/beyla"
 	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
-	"github.com/grafana/beyla/v3/pkg/webhook/configmap"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/obi/pkg/appolly/services"
 	"go.opentelemetry.io/obi/pkg/export"
@@ -1872,125 +1871,6 @@ func TestSurveyEnabled(t *testing.T) {
 	require.True(t, cfg.Discovery.SurveyEnabled())
 	require.Equal(t, beylaSvc.DefaultExcludeServicesWithSurvey, cfg.Discovery.DefaultExcludeServices)
 	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
-}
-
-// globPtr returns a pointer to a GlobAttr compiled from the given pattern, for
-// building the pointer-valued maps in services.GlobAttributes.
-func globPtr(pattern string) *services.GlobAttr {
-	g := services.NewGlob(pattern)
-	return &g
-}
-
-func TestSelectorFromGlob(t *testing.T) {
-	tests := []struct {
-		name     string
-		attrs    services.GlobAttributes
-		expected configmap.K8sSelector
-	}{
-		{
-			name:     "empty attributes produce an empty selector",
-			attrs:    services.GlobAttributes{},
-			expected: configmap.K8sSelector{},
-		},
-		{
-			// Port-based criteria are a process-level match and have no
-			// Kubernetes selector equivalent, so they are ignored here.
-			name: "open ports only produce an empty selector",
-			attrs: services.GlobAttributes{
-				OpenPorts: services.IntEnum{Ranges: []services.IntRange{{Start: 80}, {Start: 443}}},
-			},
-			expected: configmap.K8sSelector{},
-		},
-		{
-			name: "namespace only",
-			attrs: services.GlobAttributes{
-				Metadata: services.MetadataGlobMap{
-					services.AttrNamespace: globPtr("default"),
-				},
-			},
-			expected: configmap.K8sSelector{
-				Namespaces: []services.GlobAttr{services.NewGlob("default")},
-			},
-		},
-		{
-			name: "generic owner name sets no owner kind",
-			attrs: services.GlobAttributes{
-				Metadata: services.MetadataGlobMap{
-					services.AttrOwnerName: globPtr("my-app"),
-				},
-			},
-			expected: configmap.K8sSelector{
-				OwnerNames: []services.GlobAttr{services.NewGlob("my-app")},
-			},
-		},
-		{
-			name: "specific kind sets both owner name and kind",
-			attrs: services.GlobAttributes{
-				Metadata: services.MetadataGlobMap{
-					services.AttrDeploymentName: globPtr("web"),
-				},
-			},
-			expected: configmap.K8sSelector{
-				OwnerNames: []services.GlobAttr{services.NewGlob("web")},
-				OwnerKinds: []string{"Deployment"},
-			},
-		},
-		{
-			name: "owner name takes precedence over a specific kind",
-			attrs: services.GlobAttributes{
-				Metadata: services.MetadataGlobMap{
-					services.AttrOwnerName:      globPtr("my-app"),
-					services.AttrDeploymentName: globPtr("web"),
-				},
-			},
-			expected: configmap.K8sSelector{
-				OwnerNames: []services.GlobAttr{services.NewGlob("my-app")},
-			},
-		},
-		{
-			name: "pod labels and annotations",
-			attrs: services.GlobAttributes{
-				PodLabels: map[string]*services.GlobAttr{
-					"app": globPtr("frontend"),
-				},
-				PodAnnotations: map[string]*services.GlobAttr{
-					"team": globPtr("backend"),
-				},
-			},
-			expected: configmap.K8sSelector{
-				PodLabels:      map[string]services.GlobAttr{"app": services.NewGlob("frontend")},
-				PodAnnotations: map[string]services.GlobAttr{"team": services.NewGlob("backend")},
-			},
-		},
-		{
-			name: "all fields combined",
-			attrs: services.GlobAttributes{
-				Metadata: services.MetadataGlobMap{
-					services.AttrNamespace:       globPtr("prod"),
-					services.AttrStatefulSetName: globPtr("db"),
-				},
-				PodLabels: map[string]*services.GlobAttr{
-					"tier": globPtr("data"),
-				},
-				PodAnnotations: map[string]*services.GlobAttr{
-					"owner": globPtr("team-a"),
-				},
-			},
-			expected: configmap.K8sSelector{
-				Namespaces:     []services.GlobAttr{services.NewGlob("prod")},
-				OwnerNames:     []services.GlobAttr{services.NewGlob("db")},
-				OwnerKinds:     []string{"StatefulSet"},
-				PodLabels:      map[string]services.GlobAttr{"tier": services.NewGlob("data")},
-				PodAnnotations: map[string]services.GlobAttr{"owner": services.NewGlob("team-a")},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expected, tt.attrs)
-		})
-	}
 }
 
 func strptr(s string) *string { return &s }
