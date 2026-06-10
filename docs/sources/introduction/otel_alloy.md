@@ -152,8 +152,9 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 ## Custom builds with the OpenTelemetry Collector Builder (OCB)
 
-The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)](https://opentelemetry.io/docs/collector/custom-collector/) manifest. If you 
-need additional components or want to remove some of the default components - you can manually edit this manifest and create a custom {{< param "PRODUCT_NAME" >}} build for your workloads. Custom builds are **not** covered by the same support expectations as standard releases.
+The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)](https://opentelemetry.io/docs/collector/custom-collector/) manifest.
+If you need additional components or want to remove bundled components, edit the manifest and build a customized {{< param "PRODUCT_NAME" >}} binary.
+Custom builds aren't supported.
 
 ### 1. Clone the {{< param "PRODUCT_NAME" >}} repository
 
