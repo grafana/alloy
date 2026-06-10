@@ -1489,10 +1489,12 @@ func Test_Postgres_SchemaDetails_ErrorCases(t *testing.T) {
 		require.False(t, ok, "tableRegistry must not be partially overwritten with the in-progress sweep")
 
 		// schema_a.table_a is still detected and emitted before schema_b fails.
-		entries := lokiClient.Received()
-		require.Len(t, entries, 1)
-		require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
-		require.Equal(t, `level="info" datname="testdb" schema="schema_a" table="table_a"`, entries[0].Line)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			entries := lokiClient.Received()
+			require.Len(c, entries, 1)
+			require.Equal(c, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+			require.Equal(c, `level="info" datname="testdb" schema="schema_a" table="table_a"`, entries[0].Line)
+		}, 2*time.Second, 100*time.Millisecond)
 	})
 
 	t.Run("fetchTableDefinitions returns error when selectColumnNames query fails", func(t *testing.T) {
