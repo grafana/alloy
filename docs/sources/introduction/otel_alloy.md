@@ -184,15 +184,7 @@ You can:
 - **Add** a component: append a line that points at the module path and version you want.
   Follow the same `- gomod:` pattern as the other entries.
 
-### 3. Regenerate the collector distribution
-
-From the root of your {{< param "PRODUCT_NAME" >}} checkout, run:
-
-```shell
-make generate-otel-collector-distro
-```
-
-### 4. Build the {{< param "PRODUCT_NAME" >}} binary
+### 3. Build the {{< param "PRODUCT_NAME" >}} binary
 
 Build the full {{< param "PRODUCT_NAME" >}} binary:
 
@@ -203,7 +195,7 @@ make alloy
 The binary in `build/` behaves like a standard `alloy` build.
 Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
 
-### 5. Build a Docker image
+### 4. Build a Docker image
 
 To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
 
