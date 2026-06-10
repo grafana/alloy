@@ -43,5 +43,5 @@ func TestDatabaseObservabilityPostgresLogs(t *testing.T) {
 			assert.NoError(c, err)
 			assert.NotEmpty(c, resp.Data.Result, "expected at least one log with op=%s", op)
 		}
-	}, common.TestTimeoutEnv(t), common.DefaultRetryInterval)
+	}, common.TestTimeout(t), common.DefaultRetryInterval)
 }
