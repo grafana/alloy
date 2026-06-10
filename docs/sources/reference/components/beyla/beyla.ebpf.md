@@ -824,7 +824,7 @@ The `injector` block configures Beyla's SDK injection feature, which automatical
 
 | Name                     | Type           | Description                                                                    | Default | Required |
 |--------------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
-| `enabled_sdks`           | `list(string)` | List of SDK languages to enable for injection (e.g. `["java", "dotnet"]`).     | `[]`    | no       |
+| `enabled_sdks`           | `list(string)` | List of SDK languages to enable for injection (for example, `["java", "dotnet"]`).     | `[]`    | no       |
 | `image_version`          | `string`       | OCI image version for the composite SDK distribution.                          | `""`    | no       |
 | `exporter_otlp_endpoint` | `string`       | OTLP endpoint URL used by injected SDKs to export telemetry.                   | `""`    | no       |
 | `exporter_otlp_protocol` | `string`       | OTLP endpoint protocol used by injected SDKs to export telemetry.              | `""`    | no       |
