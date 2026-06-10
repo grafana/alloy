@@ -179,8 +179,9 @@ Replace `v1.16.0` with the [release tag](https://github.com/grafana/alloy/releas
 
 The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout. You can:
 
-- **Remove** a component by deleting its `- gomod: ...` line from the appropriate section.
-- **Add** a component by appending a line that points at the module path and version you want, using the same pattern as existing entries
+- **Remove** a component: delete its `- gomod: ...` line from the appropriate section.
+- **Add** a component: append a line that points at the module path and version you want.
+  Follow the same `- gomod:` pattern as the other entries.
 
 ### 3. Regenerate the collector distribution
 
