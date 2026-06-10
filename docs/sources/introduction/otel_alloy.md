@@ -203,7 +203,7 @@ The resulting binary in `build/` behaves like a standard `alloy` build; use [`al
 
 ### 5. Build a Docker image
 
-To produce an image analogous to Grafana’s {{< param "PRODUCT_NAME" >}} image:
+To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
 
 ```shell
 make alloy-image ALLOY_IMAGE=[registry_name/image_name]
