@@ -238,13 +238,13 @@ func (e *alloyEngineExtension) NotReady() error {
 }
 
 func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]byte, err error) {
-	if cfg.Content == "" && cfg.File == "" {
+	if cfg.Content == "" && cfg.Path == "" {
 		return "", nil, errors.New("missing alloy config. Either config.file or config.content must be set")
 	}
 
 	isInlineConfig := cfg.Content != ""
 	if isInlineConfig {
-		if cfg.File != "" {
+		if cfg.Path != "" {
 			return "", nil, errors.New("exactly one of config.file or config.content must be set")
 		}
 
@@ -267,26 +267,26 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 	}
 
 	// Alloy supports accepting a directory as config source
-	stat, err := os.Lstat(cfg.File)
+	stat, err := os.Lstat(cfg.Path)
 	if err != nil {
 		return "", nil, err
 	}
 	if !stat.IsDir() {
-		modulePath = filepath.Dir(cfg.File)
-		data, err := os.ReadFile(cfg.File)
+		modulePath = filepath.Dir(cfg.Path)
+		data, err := os.ReadFile(cfg.Path)
 		if err != nil {
-			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", cfg.File, err)
+			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", cfg.Path, err)
 		}
 
-		if err := validateAlloyConfig(cfg.File, data); err != nil {
-			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", cfg.File, err)
+		if err := validateAlloyConfig(cfg.Path, data); err != nil {
+			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", cfg.Path, err)
 		}
 
-		files = map[string][]byte{cfg.File: data}
+		files = map[string][]byte{cfg.Path: data}
 		return modulePath, files, nil
 	}
 
-	modulePath = cfg.File
+	modulePath = cfg.Path
 	children, err := os.ReadDir(modulePath)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to open alloy config dir: %w", err)
