@@ -40,7 +40,7 @@ func (k *kubeletDiscoveryConfig) NewDiscoverer(discOpts prom_discovery.Discovere
 	}
 
 	return refresh.NewDiscovery(refresh.Options{
-		Logger:              k.opts.SLogger,
+		Logger:              k.opts.Logger,
 		Mech:                "kubelet",
 		Interval:            interval,
 		RefreshF:            kubeletDiscovery.Refresh,

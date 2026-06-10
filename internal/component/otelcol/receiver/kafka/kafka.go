@@ -27,7 +27,7 @@ func init() {
 
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			a := args.(Arguments)
-			a.logDeprecations(opts.SLogger)
+			a.logDeprecations(opts.Logger)
 			fact := kafkareceiver.NewFactory()
 			return receiver.New(opts, fact, a)
 		},

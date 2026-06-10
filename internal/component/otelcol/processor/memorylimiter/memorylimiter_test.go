@@ -22,7 +22,7 @@ import (
 // process, and forward data.
 func Test(t *testing.T) {
 	ctx := componenttest.TestContext(t)
-	l := util.TestAlloyLogger(t)
+	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.processor.memory_limiter")
 	require.NoError(t, err)
@@ -61,7 +61,7 @@ func Test(t *testing.T) {
 		for bo.Ongoing() {
 			err := exports.Input.ConsumeTraces(ctx, createTestTraces())
 			if err != nil {
-				l.Slog().Error("failed to send traces", "err", err)
+				l.Error("failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}

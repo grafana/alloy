@@ -24,12 +24,12 @@ type Experimental struct {
 }
 
 func (e *Experimental) Run(ctx context.Context) error {
-	e.opts.SLogger.Info("running experimental component")
+	e.opts.Logger.Info("running experimental component")
 	<-ctx.Done()
 	return nil
 }
 
 func (e *Experimental) Update(args component.Arguments) error {
-	e.opts.SLogger.Info("updating experimental component")
+	e.opts.Logger.Info("updating experimental component")
 	return nil
 }

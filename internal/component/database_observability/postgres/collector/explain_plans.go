@@ -190,13 +190,17 @@ func (p *PlanNode) totalCost() *float64 {
 }
 
 type queryInfo struct {
-	datname      string
-	queryId      string
-	queryText    string
-	failureCount int
-	uniqueKey    string
-	calls        int64
-	callsReset   time.Time
+	datname    string
+	queryId    string
+	queryText  string
+	uniqueKey  string
+	calls      int64
+	callsReset time.Time
+}
+
+type processedQueryInfo struct {
+	calls      int64
+	callsReset time.Time
 }
 
 func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset time.Time) *queryInfo {
@@ -230,8 +234,8 @@ type ExplainPlans struct {
 	dbConnectionFactory databaseConnectionFactory
 	scrapeInterval      time.Duration
 	queryCache          map[string]*queryInfo
-	queryDenylist       map[string]*queryInfo
-	finishedQueryCache  map[string]*queryInfo
+	queryDenylist       map[string]struct{}
+	finishedQueryCache  map[string]processedQueryInfo
 	excludeDatabases    []string
 	excludeUsers        []string
 	perScrapeRatio      float64
@@ -254,8 +258,8 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		excludeDatabases:    args.ExcludeDatabases,
 		excludeUsers:        args.ExcludeUsers,
 		queryCache:          make(map[string]*queryInfo),
-		queryDenylist:       make(map[string]*queryInfo),
-		finishedQueryCache:  make(map[string]*queryInfo),
+		queryDenylist:       make(map[string]struct{}),
+		finishedQueryCache:  make(map[string]processedQueryInfo),
 		entryHandler:        args.EntryHandler,
 		logger:              args.Logger.With("collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),
@@ -446,10 +450,12 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 
 		defer func(nonRecoverableFailureOccurred *bool) {
 			if *nonRecoverableFailureOccurred {
-				qi.failureCount++
-				c.queryDenylist[qi.uniqueKey] = qi
+				c.queryDenylist[qi.uniqueKey] = struct{}{}
 			} else {
-				c.finishedQueryCache[qi.uniqueKey] = qi
+				c.finishedQueryCache[qi.uniqueKey] = processedQueryInfo{
+					calls:      qi.calls,
+					callsReset: qi.callsReset,
+				}
 			}
 			delete(c.queryCache, qi.uniqueKey)
 			processedCount++

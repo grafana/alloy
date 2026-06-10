@@ -62,7 +62,7 @@ var _ component.LiveDebugging = (*Component)(nil)
 
 func (c *Component) Run(ctx context.Context) error {
 	doDiscover := func() error {
-		processes, err := discover(c.opts.SLogger, &c.args.DiscoverConfig)
+		processes, err := discover(c.opts.Logger, &c.args.DiscoverConfig)
 		if err != nil {
 			return err
 		}

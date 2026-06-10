@@ -256,7 +256,7 @@ otelcol.exporter.otlphttp "default" {
 
 ## Enable authentication
 
-You can create a `otelcol.reciever.otlp` component that requires authentication for requests.
+You can create a `otelcol.receiver.otlp` component that requires authentication for requests.
 This is useful for limiting who can push data to the server.
 
 {{< admonition type="note" >}}

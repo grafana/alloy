@@ -62,7 +62,7 @@ func (t *Tick) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-time.After(t.getNextTick()):
-			t.opts.SLogger.Info("ticked")
+			t.opts.Logger.Info("ticked")
 			t.opts.OnStateChange(TickExports{Time: time.Now()})
 		}
 	}
@@ -84,7 +84,7 @@ func (t *Tick) Update(args component.Arguments) error {
 		return fmt.Errorf("frequency must not be 0")
 	}
 
-	t.opts.SLogger.Info("setting tick frequency", "freq", cfg.Frequency)
+	t.opts.Logger.Info("setting tick frequency", "freq", cfg.Frequency)
 	t.cfg = cfg
 	return nil
 }

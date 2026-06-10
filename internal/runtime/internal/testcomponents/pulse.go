@@ -97,7 +97,7 @@ func (t *Pulse) Update(args component.Arguments) error {
 		return fmt.Errorf("frequency must not be 0")
 	}
 
-	t.opts.SLogger.Info("setting count frequency", "freq", cfg.Frequency)
+	t.opts.Logger.Info("setting count frequency", "freq", cfg.Frequency)
 	t.cfg = cfg
 	return nil
 }

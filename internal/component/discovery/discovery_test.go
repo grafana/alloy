@@ -138,7 +138,7 @@ func TestDiscoveryUpdates(t *testing.T) {
 					defer publishedExportsMut.Unlock()
 					publishedExports = append(publishedExports, e)
 				},
-				SLogger: util.TestAlloyLogger(t).Slog(),
+				Logger: util.TestAlloyLogger(t).Slog(),
 				GetServiceData: func(name string) (any, error) {
 					switch name {
 					case livedebugging.ServiceName:

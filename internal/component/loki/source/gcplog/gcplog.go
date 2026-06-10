@@ -88,7 +88,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.opts.SLogger.Info("loki.source.gcplog component shutting down, stopping the targets")
+		c.opts.Logger.Info("loki.source.gcplog component shutting down, stopping the targets")
 
 		c.mut.Lock()
 		defer c.mut.Unlock()
@@ -121,14 +121,14 @@ func (c *Component) Update(args component.Arguments) error {
 	if newArgs.PullTarget != nil {
 		// TODO(@tpaschalis) Are there any options from "google.golang.org/api/option"
 		// we should expose as configuration and pass here?
-		t, err := gt.NewPullTarget(c.metrics, c.opts.SLogger, c.handler, newArgs.PullTarget, rcs)
+		t, err := gt.NewPullTarget(c.metrics, c.opts.Logger, c.handler, newArgs.PullTarget, rcs)
 		if err != nil {
-			c.opts.SLogger.Error("failed to create gcplog pull target", "err", err)
+			c.opts.Logger.Error("failed to create gcplog pull target", "err", err)
 			return err
 		}
 
 		if err := t.Run(); err != nil {
-			c.opts.SLogger.Error("failed to start gcplog pull target", "err", err)
+			c.opts.Logger.Error("failed to start gcplog pull target", "err", err)
 			return err
 		}
 		c.target = t
@@ -142,13 +142,13 @@ func (c *Component) Update(args component.Arguments) error {
 		registry := prometheus.NewRegistry()
 		c.serverMetrics.SetCollector(registry)
 
-		t, err := gt.NewPushTarget(c.metrics, c.opts.SLogger, c.handler, newArgs.PushTarget, rcs, registry)
+		t, err := gt.NewPushTarget(c.metrics, c.opts.Logger, c.handler, newArgs.PushTarget, rcs, registry)
 		if err != nil {
-			c.opts.SLogger.Error("failed to create gcplog push target", "err", err)
+			c.opts.Logger.Error("failed to create gcplog push target", "err", err)
 			return err
 		}
 		if err := t.Run(); err != nil {
-			c.opts.SLogger.Error("failed to start gcplog push target", "err", err)
+			c.opts.Logger.Error("failed to start gcplog push target", "err", err)
 			return err
 		}
 		c.target = t

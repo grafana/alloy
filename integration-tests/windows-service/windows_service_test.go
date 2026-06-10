@@ -95,9 +95,9 @@ func TestWindowsService(t *testing.T) {
 		util.AssertMetricsEndpoint(c, metricsURL, "alloy_build_info")
 	}, waitTimeout*waitAttempts, waitTimeout)
 
-	// Check Windows Event Log for boringcrypto line from Alloy (logfmt: "boringcrypto enabled=false" or similar).
+	// Check Windows Event Log for Alloy start message
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		util.AssertEventLogLine(c, "boringcrypto_enabled=false")
+		util.AssertEventLogLine(c, "msg=\"{^_^} Alloy is running\"")
 	}, waitTimeout*waitAttempts, waitTimeout)
 }
 

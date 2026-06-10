@@ -1478,7 +1478,7 @@ func TestDeprecatedFields(t *testing.T) {
 
 	comp := &Component{
 		opts: component.Options{
-			SLogger: logger.Slog(),
+			Logger: logger.Slog(),
 		},
 		args: Arguments{
 			Port:           "8080",

@@ -247,7 +247,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	c := &Component{
 		opts:               o,
-		log:                o.SLogger,
+		log:                o.Logger,
 		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
 		fanout:             loki.NewFanout(args.ForwardTo),
 		metrics:            newMetrics(o.Registerer),

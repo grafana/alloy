@@ -24,7 +24,7 @@ func init() {
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
-	opts.SLogger.Warn("the discovery.process component only works on linux; enabling it otherwise will do nothing")
+	opts.Logger.Warn("the discovery.process component only works on linux; enabling it otherwise will do nothing")
 	return &Component{}, nil
 }
 

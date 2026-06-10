@@ -162,7 +162,7 @@ func (c *Component) Run(ctx context.Context) error {
 	)
 	for {
 		if err := c.startup(ctx); err != nil {
-			c.opts.SLogger.Error("starting up component failed", "err", err)
+			c.opts.Logger.Error("starting up component failed", "err", err)
 			c.reportUnhealthy(err)
 		} else {
 			break
@@ -179,7 +179,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.args = update.args
 			err := c.init()
 			if err != nil {
-				c.opts.SLogger.Error("updating configuration failed", "err", err)
+				c.opts.Logger.Error("updating configuration failed", "err", err)
 				c.reportUnhealthy(err)
 				update.err <- err
 				continue
@@ -187,7 +187,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 			err = c.startup(ctx)
 			if err != nil {
-				c.opts.SLogger.Error("updating configuration failed", "err", err)
+				c.opts.Logger.Error("updating configuration failed", "err", err)
 				c.reportUnhealthy(err)
 				update.err <- err
 				continue
@@ -239,7 +239,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 }
 
 func (c *Component) init() error {
-	c.opts.SLogger.Info("initializing with new configuration")
+	c.opts.Logger.Info("initializing with new configuration")
 
 	// TODO: allow overriding some stuff in RestConfig and k8s client options?
 	restConfig, err := controller.GetConfig()
@@ -296,7 +296,7 @@ func (c *Component) startNamespaceInformer() error {
 	namespaces := factory.Core().V1().Namespaces()
 	c.namespaceLister = namespaces.Lister()
 	c.namespaceInformer = namespaces.Informer()
-	_, err := c.namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, c.queue))
+	_, err := c.namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.Logger, c.queue))
 	if err != nil {
 		return err
 	}
@@ -318,7 +318,7 @@ func (c *Component) startRuleInformer() error {
 	promRules := factory.Monitoring().V1().PrometheusRules()
 	c.ruleLister = promRules.Lister()
 	c.ruleInformer = promRules.Informer()
-	_, err := c.ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.SLogger, c.queue))
+	_, err := c.ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.Logger, c.queue))
 	if err != nil {
 		return err
 	}

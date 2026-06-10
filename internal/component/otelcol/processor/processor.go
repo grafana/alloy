@@ -117,7 +117,7 @@ func New(opts component.Options, f otelprocessor.Factory, args Arguments) (*Proc
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.NewWithPauseCallbacks(opts.SLogger, consumer.Pause, consumer.Resume),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
@@ -159,7 +159,7 @@ func (p *Processor) Update(args component.Arguments) error {
 	settings := otelprocessor.Settings{
 		ID: otelcomponent.NewIDWithName(p.factory.Type(), p.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         slogadapter.NewZap(p.opts.SLogger),
+			Logger:         slogadapter.NewZap(p.opts.Logger),
 			TracerProvider: p.opts.Tracer,
 			MeterProvider:  mp,
 		},

@@ -24,12 +24,12 @@ type Community struct {
 }
 
 func (e *Community) Run(ctx context.Context) error {
-	e.opts.SLogger.Info("running community component")
+	e.opts.Logger.Info("running community component")
 	<-ctx.Done()
 	return nil
 }
 
 func (e *Community) Update(args component.Arguments) error {
-	e.opts.SLogger.Info("updating community component")
+	e.opts.Logger.Info("updating community component")
 	return nil
 }
