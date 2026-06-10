@@ -200,7 +200,8 @@ Build the full {{< param "PRODUCT_NAME" >}} binary:
 make alloy
 ```
 
-The resulting binary in `build/` behaves like a standard `alloy` build; use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
+The binary in `build/` behaves like a standard `alloy` build.
+Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
 
 ### 5. Build a Docker image
 
