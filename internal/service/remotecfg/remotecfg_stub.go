@@ -2,7 +2,6 @@ package remotecfg
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -59,8 +58,8 @@ func (s *ServiceStub) Run(ctx context.Context, host service.Host) error {
 }
 
 func (s *ServiceStub) Update(_ any) error {
-	// TODO: check whether returning an error crashes Alloy
-	return errors.New("remote config management is not available in OTel mode")
+	// No-op: Update is called even if remotecfg block is not present.
+	return nil
 }
 
 func (s *ServiceStub) Data() any {
