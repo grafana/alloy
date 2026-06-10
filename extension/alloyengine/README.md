@@ -21,7 +21,7 @@ The `config` object specifies the Alloy configuration source. Either `file` or `
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `file` | string | No | - | Path to an Alloy config file or a directory containing `.alloy` files. |
+| `path` | string | No | - | Path to an Alloy config file or a directory containing `.alloy` files. |
 | `inline` | object | No | - | Inline Alloy configuration. See [Inline Object](#inline-object) for details. |
 
 ### Inline Object
