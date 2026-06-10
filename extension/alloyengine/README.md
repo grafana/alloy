@@ -1,8 +1,8 @@
 # Alloy Engine Extension
 
-The `alloy engine` extension embeds the **Default Engine** (the underlying Alloy runtime used by `alloy run`) within the OpenTelemetry Collector runtime exposed through the `otel` subcommand.
+The `alloy engine` extension embeds the **Default Engine** (the underlying Alloy runtime used by `alloy run`) within the **OTel Engine** (the OpenTelemetry Collector runtime exposed via the `otel` subcommand).
 
-This extension allows you to run a Default Engine pipeline set up with inline Alloy configuration alongside the OpenTelemetry Collector runtime set up with YAML configuration. These two pipelines run in parallel, and can't natively interact with one another.
+This extension allows you to run a Default Engine pipeline set up with Alloy configuration alongside the OTel Engine set up with YAML configuration. These two pipelines run in parallel, and can't natively interact with one another.
 
 If the Alloy configuration fails to load for whatever reason, the extension continues retrying at most every 15 seconds.
 
@@ -17,7 +17,7 @@ The extension accepts the following configuration fields:
 
 ### Config Object
 
-The `config` object specifies the Alloy configuration source. Either `file` or `inline` must be set, but not both.
+The `config` object specifies the Alloy configuration source. Either `path` or `inline` must be set, but not both.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
@@ -29,7 +29,7 @@ The `config` object specifies the Alloy configuration source. Either `file` or `
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `content` | string | Yes | - | The inline Alloy configuration to run. |
-| `module_path` | string | No | current working directory | Value resolved for the `module_path` Alloy config keyword. Has no effect when `config.file` is set. |
+| `module_path` | string | No | current working directory | Value resolved for the `module_path` Alloy config keyword. Has no effect when `config.path` is set. |
 
 ### Example Configuration
 
@@ -37,11 +37,7 @@ The `config` object specifies the Alloy configuration source. Either `file` or `
 extensions:
   alloyengine:
     config:
-      inline:
-        content: |
-          logging {
-            level = "debug"
-          }
+      path: ./config.alloy
     flags:
       server.http.listen-addr: 0.0.0.0:12345
       stability.level: experimental
@@ -56,7 +52,7 @@ service:
 ```
 
 In this example, the extension:
-1. Starts the default engine with the inline Alloy configuration.
+1. Starts the default engine with the configuration file at the relative path `./config.alloy`.
 2. Passes the `--server.http.listen-addr=0.0.0.0:12345` and `--stability.level=experimental` flags to the `alloy run` command.
 3. Runs the Alloy configuration concurrently with the OpenTelemetry Collector pipeline.
 
@@ -64,7 +60,7 @@ In this example, the extension:
 
 The extension manages the lifecycle of the embedded default engine:
 
-- **Start**: When the extension starts, it launches the default engine in a separate goroutine and runs the inline Alloy configuration.
+- **Start**: When the extension starts, it launches the default engine in a separate goroutine and runs the Alloy configuration.
 - **Ready**: The extension reports ready once the default engine has successfully started.
 - **Shutdown**: When the extension shuts down, it gracefully terminates the default engine and waits for it to exit.
 
