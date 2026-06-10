@@ -13,17 +13,17 @@ type Config struct {
 type AlloyConfig struct {
 	// ModulePath is value to be resolved for "module_path" alloy config keyword.
 	//
-	// Has no effect if [File] is set.
+	// Has no effect if [Path] is set.
 	ModulePath string `mapstructure:"module_path"`
 
-	// File is a path to Alloy config file or a directory containing config files.
+	// Path is a path to Alloy config file or a directory containing config files.
 	//
-	// Note: either [File] or [Content] can be set.
-	File string `mapstructure:"file"`
+	// Note: either [Path] or [Content] can be set.
+	Path string `mapstructure:"file"`
 
 	// Content is config contents.
 	//
-	// Note: either [File] or [Content] can be set.
+	// Note: either [Path] or [Content] can be set.
 	Content string `mapstructure:"content"`
 }
 
@@ -36,8 +36,14 @@ func (cfg *Config) flagsAsSlice() []string {
 }
 
 func (cfg *Config) Validate() error {
-	if cfg.AlloyConfig.Content == "" {
-		return fmt.Errorf("config.content is required")
+	hasPath := cfg.AlloyConfig.Path != ""
+	hasContent := cfg.AlloyConfig.Content != ""
+
+	if !hasPath && !hasContent {
+		return fmt.Errorf("either config.file or config.content must be set")
+	}
+	if hasPath && hasContent {
+		return fmt.Errorf("exactly one of config.file or config.content must be set")
 	}
 
 	return nil
