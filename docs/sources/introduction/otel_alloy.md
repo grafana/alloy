@@ -208,7 +208,7 @@ Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your
 To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
 
 ```shell
-make alloy-image ALLOY_IMAGE=[registry_name/image_name]
+make alloy-image <ALLOY_IMAGE>=[<REGISTRY>/<IMAGE_NAME>
 ```
 
 Replace _`<ALLOY_IMAGE>`_ with your image repository and image name.
