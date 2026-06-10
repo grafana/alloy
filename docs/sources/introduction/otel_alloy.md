@@ -177,7 +177,8 @@ Replace _`<RELEASE_TAG>`_ with the [release tag](https://github.com/grafana/allo
 
 ### 2. Start from the checked-in manifest
 
-The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout. You can:
+The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout.
+You can:
 
 - **Remove** a component: delete its `- gomod: ...` line from the appropriate section.
 - **Add** a component: append a line that points at the module path and version you want.
