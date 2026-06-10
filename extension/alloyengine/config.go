@@ -14,7 +14,7 @@ type AlloyConfig struct {
 	// Path is a path to Alloy config file or a directory containing config files.
 	//
 	// Note: either [Path] or [Inline] can be set.
-	Path string `mapstructure:"file"`
+	Path string `mapstructure:"path"`
 
 	// Inline is the inline Alloy configuration.
 	//
