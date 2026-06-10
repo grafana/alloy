@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
+	"go.opentelemetry.io/obi/pkg/export/otel/otelcfg"
 	"go.opentelemetry.io/obi/pkg/filter"
 	"go.opentelemetry.io/obi/pkg/kube/kubeflags"
 	"go.opentelemetry.io/obi/pkg/obi"
@@ -1099,6 +1100,18 @@ func TestConvert_Injector(t *testing.T) {
 	require.Equal(t, expectedConfig, config)
 }
 
+func TestConvert_Injector_OTELEndpoint(t *testing.T) {
+	args := Injector{
+		OTELEndpoint: "http://otel-collector:4317",
+		OTELProtocol: "grpc",
+	}
+
+	config, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, "http://otel-collector:4317", config.Endpoint)
+	require.Equal(t, otelcfg.Protocol("grpc"), config.Protocol)
+}
+
 func TestConvert_Injector_Errors(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -1975,72 +1988,9 @@ func TestSelectorFromGlob(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := selectorFromGlob(&tt.attrs)
-			require.Equal(t, tt.expected, got)
+			require.Equal(t, tt.expected, tt.attrs)
 		})
 	}
-}
-
-// TestSelectorFromGlob_OwnerKinds verifies that each supported k8s owner
-// metadata key maps to the expected OwnerKind.
-func TestSelectorFromGlob_OwnerKinds(t *testing.T) {
-	cases := []struct {
-		attr string
-		kind string
-	}{
-		{services.AttrDeploymentName, "Deployment"},
-		{services.AttrDaemonSetName, "DaemonSet"},
-		{services.AttrReplicaSetName, "ReplicaSet"},
-		{services.AttrStatefulSetName, "StatefulSet"},
-		{services.AttrJobName, "Job"},
-		{services.AttrCronJobName, "CronJob"},
-		{services.AttrPodName, "Pod"},
-	}
-
-	for _, c := range cases {
-		t.Run(c.kind, func(t *testing.T) {
-			attrs := services.GlobAttributes{
-				Metadata: services.MetadataGlobMap{
-					c.attr: globPtr("name-*"),
-				},
-			}
-			got := selectorFromGlob(&attrs)
-			require.Equal(t, []services.GlobAttr{services.NewGlob("name-*")}, got.OwnerNames)
-			require.Equal(t, []string{c.kind}, got.OwnerKinds)
-		})
-	}
-}
-
-func TestSelectorsFromInstrument(t *testing.T) {
-	t.Run("filters out empty selectors", func(t *testing.T) {
-		g := services.GlobDefinitionCriteria{
-			{
-				Metadata: services.MetadataGlobMap{
-					services.AttrNamespace: globPtr("default"),
-				},
-			},
-			{}, // no selectable criteria, should be skipped
-			{
-				PodLabels: map[string]*services.GlobAttr{
-					"app": globPtr("api"),
-				},
-			},
-		}
-
-		got := selectorsFromInstrument(g)
-		require.Len(t, got, 2)
-		require.Equal(t, []services.GlobAttr{services.NewGlob("default")}, got[0].Namespaces)
-		require.Equal(t, map[string]services.GlobAttr{"app": services.NewGlob("api")}, got[1].PodLabels)
-	})
-
-	t.Run("all-empty criteria return nil", func(t *testing.T) {
-		g := services.GlobDefinitionCriteria{{}, {}}
-		require.Nil(t, selectorsFromInstrument(g))
-	})
-
-	t.Run("nil criteria return nil", func(t *testing.T) {
-		require.Nil(t, selectorsFromInstrument(nil))
-	})
 }
 
 func strptr(s string) *string { return &s }

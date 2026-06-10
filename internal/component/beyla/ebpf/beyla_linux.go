@@ -976,89 +976,6 @@ func (args InjectorSDKResource) Convert() configmap.SDKResource {
 	return w
 }
 
-func selectorFromGlob(a *services.GlobAttributes) configmap.K8sSelector {
-	var podLabels map[string]services.GlobAttr
-	if len(a.PodLabels) > 0 {
-		podLabels = make(map[string]services.GlobAttr, len(a.PodLabels))
-		for k, v := range a.PodLabels {
-			podLabels[k] = *v
-		}
-	}
-
-	var podAnnotations map[string]services.GlobAttr
-	if len(a.PodAnnotations) > 0 {
-		podAnnotations = make(map[string]services.GlobAttr, len(a.PodAnnotations))
-		for k, v := range a.PodAnnotations {
-			podAnnotations[k] = *v
-		}
-	}
-
-	metaGlob := func(name string) []services.GlobAttr {
-		if g := a.Metadata[name]; g != nil {
-			return []services.GlobAttr{*g}
-		}
-		return nil
-	}
-
-	// First check to see if the user used k8s_owner_name
-	ownerNames := metaGlob(services.AttrOwnerName)
-	var kinds []string
-	// If no owner name, then we check the specific types of definitions.
-	// In this case we set both the owner name and the kind to match the new
-	// service definition format.
-	if ownerNames == nil {
-		for _, owner := range []struct {
-			metadataKey string
-			kind        string
-		}{
-			{metadataKey: services.AttrDeploymentName, kind: "Deployment"},
-			{metadataKey: services.AttrDaemonSetName, kind: "DaemonSet"},
-			{metadataKey: services.AttrReplicaSetName, kind: "ReplicaSet"},
-			{metadataKey: services.AttrStatefulSetName, kind: "StatefulSet"},
-			{metadataKey: services.AttrJobName, kind: "Job"},
-			{metadataKey: services.AttrCronJobName, kind: "CronJob"},
-			{metadataKey: services.AttrPodName, kind: "Pod"},
-		} {
-			if names := metaGlob(owner.metadataKey); names != nil {
-				ownerNames = names
-				kinds = []string{owner.kind}
-				break
-			}
-		}
-	}
-
-	return configmap.K8sSelector{
-		Namespaces:     metaGlob(services.AttrNamespace),
-		OwnerNames:     ownerNames,
-		OwnerKinds:     kinds,
-		PodLabels:      podLabels,
-		PodAnnotations: podAnnotations,
-	}
-}
-
-func selectorsFromInstrument(g services.GlobDefinitionCriteria) []configmap.K8sSelector {
-	var selectors []configmap.K8sSelector
-
-	for i := range g {
-		sel := selectorFromGlob(&g[i])
-		if sel.IsEmpty() {
-			continue
-		}
-
-		selectors = append(selectors, sel)
-	}
-
-	return selectors
-}
-
-func (args Injector) GetOTELEndpoint() string {
-	return args.OTELEndpoint
-}
-
-func (args Injector) GetOTELProtocol() otelcfg.Protocol {
-	return otelcfg.Protocol(args.OTELProtocol)
-}
-
 func (args Injector) Convert() (beyla.SDKInject, error) {
 	i := beyla.DefaultConfig().Injector
 
@@ -1067,7 +984,7 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		if err != nil {
 			return i, err
 		}
-		i.Instrument = selectorsFromInstrument(instrument)
+		i.Instrument = instrument
 	}
 
 	if len(args.ExcludeInstrument) > 0 {
@@ -1075,8 +992,11 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		if err != nil {
 			return i, err
 		}
-		i.ExcludeInstrument = selectorsFromInstrument(exclude)
+		i.ExcludeInstrument = exclude
 	}
+
+	i.Endpoint = args.OTELEndpoint
+	i.Protocol = otelcfg.Protocol(args.OTELProtocol)
 
 	i.Webhook = args.Webhook.Convert()
 	i.ExportedSignals = args.ExportedSignals.Convert()
@@ -1327,9 +1247,6 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	cfg.Traces.CommonEndpoint = a.Injector.GetOTELEndpoint()
-	cfg.Traces.Protocol = a.Injector.GetOTELProtocol()
 
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging
