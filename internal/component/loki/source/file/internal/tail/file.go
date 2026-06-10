@@ -294,7 +294,7 @@ func (f *File) reopen(truncated bool) error {
 				}
 				continue
 			}
-			return fmt.Errorf("Unable to open file %s: %s", f.cfg.Filename, err)
+			return fmt.Errorf("unable to open file %s: %s", f.cfg.Filename, err)
 		}
 
 		// File exists and is opened, get information about it.

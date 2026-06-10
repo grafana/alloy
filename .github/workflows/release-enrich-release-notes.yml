@@ -33,9 +33,7 @@ jobs:
           cache-dependency-path: tools/go.sum
 
       - name: Enrich release notes 🙋
-        run: |
-          cd tools
-          go run ./release/enrich-release-notes --tag "${RELEASE_TAG_NAME}" --footer release/release-notes-footer.md
+        run: go run -C tools ./cmd release enrich-release-notes --tag "${RELEASE_TAG_NAME}" --footer release/release-notes-footer.md
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           RELEASE_TAG_NAME: ${{ github.event.release.tag_name }}

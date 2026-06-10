@@ -1,10 +1,9 @@
 package kubernetes
 
 import (
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 )
@@ -28,11 +27,11 @@ const (
 )
 
 type queuedEventHandler struct {
-	log   log.Logger
+	log   *slog.Logger
 	queue workqueue.TypedRateLimitingInterface[Event]
 }
 
-func NewQueuedEventHandler(log log.Logger, queue workqueue.TypedRateLimitingInterface[Event]) *queuedEventHandler {
+func NewQueuedEventHandler(log *slog.Logger, queue workqueue.TypedRateLimitingInterface[Event]) *queuedEventHandler {
 	return &queuedEventHandler{
 		log:   log,
 		queue: queue,
@@ -57,7 +56,7 @@ func (c *queuedEventHandler) OnDelete(obj any) {
 func (c *queuedEventHandler) publishEvent(obj any) {
 	key, err := cache.MetaNamespaceKeyFunc(obj)
 	if err != nil {
-		level.Error(c.log).Log("msg", "failed to get key for object", "err", err)
+		c.log.Error("failed to get key for object", "err", err)
 		return
 	}
 

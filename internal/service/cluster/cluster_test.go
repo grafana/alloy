@@ -3,16 +3,16 @@ package cluster
 import (
 	"fmt"
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestGetPeers(t *testing.T) {
@@ -49,7 +49,7 @@ func TestGetPeers(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
 			s := &Service{
-				log:     log.NewLogfmtLogger(os.Stdout),
+				log:     util.TestAlloyLogger(t).Slog(),
 				opts:    test.opts,
 				randGen: rand.New(rand.NewSource(1)),
 			}
@@ -150,7 +150,7 @@ func TestReadyToAdmitTraffic(t *testing.T) {
 			peers := buildPeers(tt.peerCount)
 
 			notifyChangeCallbackCalled := atomic.NewBool(false)
-			s := newTestService(Options{
+			s := newTestService(t, Options{
 				EnableClustering:       tt.enableClustering,
 				MinimumClusterSize:     tt.minimumClusterSize,
 				MinimumSizeWaitTimeout: tt.waitTimeout,
@@ -176,7 +176,7 @@ func TestAdmitTrafficSequence_WithDeadline(t *testing.T) {
 	clusterSizeWaitTimeout := time.Second
 
 	notifyChangeCallsCount := atomic.NewInt32(0)
-	s := newTestService(Options{
+	s := newTestService(t, Options{
 		EnableClustering:       true,
 		MinimumClusterSize:     minimumClusterSize,
 		MinimumSizeWaitTimeout: clusterSizeWaitTimeout,
@@ -226,7 +226,7 @@ func TestAdmitTrafficSequence_NoDeadline(t *testing.T) {
 	minimumClusterSize := 10
 
 	notifyChangeCallsCount := atomic.NewInt32(0)
-	s := newTestService(Options{
+	s := newTestService(t, Options{
 		EnableClustering:   true,
 		MinimumClusterSize: minimumClusterSize,
 	}, buildPeers(1), func() {
@@ -302,10 +302,10 @@ func buildPeers(count int) []peer.Peer {
 	return peers
 }
 
-func newTestService(opts Options, peers []peer.Peer, callback func()) *Service {
-	logger := log.NewLogfmtLogger(os.Stdout)
+func newTestService(t *testing.T, opts Options, peers []peer.Peer, callback func()) *Service {
+	logger := util.TestAlloyLogger(t).Slog()
 	sharder := &mockSharder{peers: peers}
-	ac := newAlloyCluster(sharder, callback, opts, log.With(logger, "subcomponent", "alloy_cluster"))
+	ac := newAlloyCluster(sharder, callback, opts, logger.With("subcomponent", "alloy_cluster"))
 	return &Service{
 		log:          logger,
 		opts:         opts,

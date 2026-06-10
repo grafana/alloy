@@ -31,15 +31,15 @@ jobs:
       - name: Setup Node.js 🏗️
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
-          node-version-file: tools/release/release-please-runner/.nvmrc
+          node-version-file: build-tools/release-please-runner/.nvmrc
           package-manager-cache: false
 
       - name: Install dependencies 📦
-        working-directory: tools/release/release-please-runner
-        run: npm install
+        working-directory: build-tools/release-please-runner
+        run: npm ci --no-audit --no-fund
 
       - name: Run release-please 🚀
-        working-directory: tools/release/release-please-runner
+        working-directory: build-tools/release-please-runner
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO_URL: ${{ github.repository }}

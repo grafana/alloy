@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -43,7 +42,6 @@ type StringReceiverExports struct {
 
 type StringReceiverComponent struct {
 	opts component.Options
-	log  log.Logger
 
 	mut      sync.Mutex
 	recvStr  string
@@ -52,7 +50,7 @@ type StringReceiverComponent struct {
 
 // NewStringReceiver creates a new string_receiver component.
 func NewStringReceiverComp(o component.Options, cfg StringReceiverConfig) (*StringReceiverComponent, error) {
-	s := &StringReceiverComponent{opts: o, log: o.Logger}
+	s := &StringReceiverComponent{opts: o}
 	s.receiver = StringReceiverImpl{
 		log: func(str string) {
 			s.mut.Lock()

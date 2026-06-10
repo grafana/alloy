@@ -3,12 +3,10 @@
 package beyla
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"net/url"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -25,10 +23,10 @@ import (
 	"go.opentelemetry.io/obi/pkg/obi"
 	"go.opentelemetry.io/obi/pkg/transform"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 	"github.com/grafana/alloy/syntax"
 	obiCfg "go.opentelemetry.io/obi/pkg/config"
 )
@@ -1512,21 +1510,17 @@ func TestArguments_Validate(t *testing.T) {
 }
 
 func TestDeprecatedFields(t *testing.T) {
-	var buf bytes.Buffer
-	var mu sync.Mutex
+	var buf syncbuffer.Buffer
 
-	// Create a synchronized logger that protects both writing and reading
-	syncLogger := log.LoggerFunc(func(keyvals ...any) error {
-		mu.Lock()
-		defer mu.Unlock()
-		return log.NewLogfmtLogger(&buf).Log(keyvals...)
+	logger, err := logging.New(&buf, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
 	})
-
-	logger := level.NewFilter(syncLogger, level.AllowAll())
+	require.NoError(t, err)
 
 	comp := &Component{
 		opts: component.Options{
-			Logger: logger,
+			Logger: logger.Slog(),
 		},
 		args: Arguments{
 			Port:           "8080",
@@ -1545,8 +1539,6 @@ func TestDeprecatedFields(t *testing.T) {
 
 	// Verify warnings were logged
 	require.Eventually(t, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
 		output := buf.String()
 		return strings.Contains(output, "level=warn") &&
 			strings.Contains(output, "open_port' field is deprecated") &&

@@ -7,6 +7,7 @@ package journal
 // to other loki components.
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,7 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/loki/pkg/push"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -180,7 +180,7 @@ func newTailerWithReader(
 		maxAge, err = time.ParseDuration(targetConfig.MaxAge)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing journal reader 'max_age' config value")
+		return nil, fmt.Errorf("parsing journal reader 'max_age' config value: %w", err)
 	}
 
 	cb := journalConfigBuilder{
@@ -205,7 +205,7 @@ func newTailerWithReader(
 	cfg := t.generateJournalConfig(cb)
 	t.r, err = readerFunc(cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating journal reader")
+		return nil, fmt.Errorf("creating journal reader: %w", err)
 	}
 
 	go func() {
@@ -318,7 +318,13 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 		entryLabels[string(k)] = string(v)
 	}
 
-	processedLabels, _ := relabel.Process(labels.FromMap(entryLabels), t.relabelConfig...)
+	lb := labels.NewBuilder(labels.FromMap(entryLabels))
+	var processedLabels labels.Labels
+	if relabel.ProcessBuilder(lb, t.relabelConfig...) {
+		processedLabels = lb.Labels()
+	} else {
+		processedLabels = labels.EmptyLabels()
+	}
 
 	processedLabelsMap := processedLabels.Map()
 	lbls := make(model.LabelSet, len(processedLabelsMap))

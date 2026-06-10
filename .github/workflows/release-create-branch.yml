@@ -40,6 +40,4 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          cd tools
-          go run ./release/create-release-branch --tag "${RELEASE_TAG}"
+        run: go run -C tools ./cmd release create-release-branch --tag "${RELEASE_TAG}"

@@ -3,11 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"golang.org/x/sys/windows/svc"
 
 	// Embed application manifest for Windows builds
@@ -17,7 +16,7 @@ import (
 const serviceName = "Alloy"
 
 func main() {
-	logger, err := newLogger()
+	eventWriter, err := newWriter()
 	if err != nil {
 		// Ideally the logger never fails to be created, since if it does, there's
 		// nowhere to send the failure to.
@@ -25,9 +24,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	logger := slog.New(slog.NewTextHandler(eventWriter, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelDebug,
+	}))
+
 	managerConfig, err := loadConfig()
 	if err != nil {
-		level.Error(logger).Log("msg", "failed to run service", "err", err)
+		logger.Error("failed to run service", "err", err)
 		os.Exit(1)
 	}
 
@@ -38,19 +42,19 @@ func main() {
 		Dir:         managerConfig.WorkingDirectory,
 
 		// Send logs directly to the event logger.
-		Stdout: logger,
-		Stderr: logger,
+		Stdout: eventWriter,
+		Stderr: eventWriter,
 	}
 
 	as := &alloyService{logger: logger, cfg: cfg}
 	if err := svc.Run(serviceName, as); err != nil {
-		level.Error(logger).Log("msg", "failed to run service", "err", err)
+		logger.Error("failed to run service", "err", err)
 		os.Exit(1)
 	}
 }
 
 type alloyService struct {
-	logger log.Logger
+	logger *slog.Logger
 	cfg    serviceManagerConfig
 }
 

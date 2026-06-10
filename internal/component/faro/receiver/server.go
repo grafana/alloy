@@ -3,16 +3,16 @@ package receiver
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/instrument"
 	"github.com/grafana/dskit/middleware"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 type serverMetrics struct {
@@ -60,13 +60,13 @@ func newServerMetrics(reg prometheus.Registerer) *serverMetrics {
 // server is not dynamically updatable. To update server, shut down the old
 // server and start a new one.
 type server struct {
-	log     log.Logger
+	log     *slog.Logger
 	args    ServerArguments
 	handler http.Handler
 	metrics *serverMetrics
 }
 
-func newServer(l log.Logger, args ServerArguments, metrics *serverMetrics, h http.Handler) *server {
+func newServer(l *slog.Logger, args ServerArguments, metrics *serverMetrics, h http.Handler) *server {
 	return &server{
 		log:     l,
 		args:    args,
@@ -103,7 +103,7 @@ func (s *server) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		level.Info(s.log).Log("msg", "starting server", "addr", srv.Addr)
+		s.log.Info("starting server", "addr", srv.Addr)
 		errCh <- srv.ListenAndServe()
 	}()
 
@@ -112,10 +112,10 @@ func (s *server) Run(ctx context.Context) error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		level.Info(s.log).Log("msg", "terminating server")
+		s.log.Info("terminating server")
 
 		if err := srv.Shutdown(ctx); err != nil {
-			level.Error(s.log).Log("msg", "failed to gracefully terminate server", "err", err)
+			s.log.Error("failed to gracefully terminate server", "err", err)
 		}
 
 	case err := <-errCh:

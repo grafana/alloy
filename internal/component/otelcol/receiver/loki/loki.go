@@ -7,7 +7,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-kit/log"
+	loki_translator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki"
+	"go.opentelemetry.io/collector/consumer"
+	"go.opentelemetry.io/collector/pdata/plog"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -15,11 +18,7 @@ import (
 	"github.com/grafana/alloy/internal/component/otelcol/internal/interceptconsumer"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/livedebuggingpublisher"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-	loki_translator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki"
-	"go.opentelemetry.io/collector/consumer"
-	"go.opentelemetry.io/collector/pdata/plog"
 )
 
 func init() {
@@ -51,7 +50,6 @@ type Exports struct {
 
 // Component is the otelcol.receiver.loki component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	mut      sync.RWMutex
@@ -78,7 +76,6 @@ func New(o component.Options, c Arguments) (*Component, error) {
 	// TODO(@tpaschalis) Create a metrics struct to count
 	// total/successful/errored log entries?
 	res := &Component{
-		log:                o.Logger,
 		opts:               o,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
@@ -107,7 +104,7 @@ func (c *Component) Run(ctx context.Context) error {
 			// TODO(@tpaschalis) Is there any more handling to be done here?
 			err := c.logsSink.ConsumeLogs(ctx, logs)
 			if err != nil {
-				level.Error(c.opts.Logger).Log("msg", "failed to consume log entries", "err", err)
+				c.opts.Logger.Error("failed to consume log entries", "err", err)
 			}
 		}
 	}

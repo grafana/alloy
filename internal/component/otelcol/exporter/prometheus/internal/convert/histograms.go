@@ -1,4 +1,5 @@
 // THIS CODE IS COPIED AND ADAPTED FROM opentelemetry-contrib (https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/cfeecd887979e6f372b4a370c4562da92a2baf34/pkg/translator/prometheusremotewrite/histograms.go)
+// and from Prometheus (https://github.com/prometheus/prometheus/blob/main/storage/remote/otlptranslator/prometheusremotewrite/histograms.go)
 // see https://www.youtube.com/watch?v=W2_TpDcess8 for more information on the conversion
 
 package convert
@@ -149,4 +150,126 @@ func convertBucketsLayout(buckets pmetric.ExponentialHistogramDataPointBuckets, 
 	appendDelta(count)
 
 	return spans, deltas
+}
+
+// explicitToCustomBucketsHistogram translates an OTel Explicit (classic)
+// Histogram data point to a Prometheus Native Histogram with Custom Buckets
+// (NHCB). The OTel explicit_bounds slice maps directly to the NHCB
+// custom_values field: both describe a strictly increasing list of upper
+// bucket boundaries with an implicit +Inf bucket at the end.
+func explicitToCustomBucketsHistogram(p pmetric.HistogramDataPoint) (histogram.Histogram, error) {
+	if p.ExplicitBounds().Len()+1 != p.BucketCounts().Len() {
+		return histogram.Histogram{}, fmt.Errorf("bucket counts length (%d) must be explicit bounds length (%d) + 1",
+			p.BucketCounts().Len(), p.ExplicitBounds().Len())
+	}
+
+	bucketCounts := p.BucketCounts().AsRaw()
+	offset := bucketOffset(bucketCounts)
+	positiveSpans, positiveDeltas := convertCustomBucketsLayout(bucketCounts[offset:], int32(offset))
+
+	// We always emit UnknownCounterReset, matching the Prometheus OTLP
+	// translator. Asserting NoCounterReset is not safe here since we don't
+	// implement counter reset detection compatible with Prometheus, and a wrong
+	// hint can cause a panic in downstream Prometheus code.
+	h := histogram.Histogram{
+		CounterResetHint: histogram.UnknownCounterReset,
+		Schema:           histogram.CustomBucketsSchema,
+		PositiveSpans:    positiveSpans,
+		PositiveBuckets:  positiveDeltas,
+		CustomValues:     p.ExplicitBounds().AsRaw(),
+	}
+
+	if p.Flags().NoRecordedValue() {
+		h.Sum = math.Float64frombits(value.StaleNaN)
+		h.Count = value.StaleNaN
+	} else {
+		if p.HasSum() {
+			h.Sum = p.Sum()
+		}
+		h.Count = p.Count()
+	}
+	return h, nil
+}
+
+// convertCustomBucketsLayout converts a dense slice of cumulative-zero-trimmed
+// bucket counts into the sparse spans/deltas representation used by native
+// histograms with custom buckets. Unlike the exponential variant, indices are
+// not scaled and the initial offset is not adjusted by 1.
+func convertCustomBucketsLayout(bucketCounts []uint64, offset int32) ([]histogram.Span, []int64) {
+	if len(bucketCounts) == 0 {
+		return nil, nil
+	}
+
+	var (
+		spans     []histogram.Span
+		deltas    []int64
+		count     int64
+		prevCount int64
+	)
+
+	appendDelta := func(count int64) {
+		spans[len(spans)-1].Length++
+		deltas = append(deltas, count-prevCount)
+		prevCount = count
+	}
+
+	numBuckets := len(bucketCounts)
+	bucketIdx := offset + 1
+
+	spans = append(spans, histogram.Span{
+		Offset: offset,
+		Length: 0,
+	})
+
+	for i := 0; i < numBuckets; i++ {
+		nextBucketIdx := int32(i) + offset + 1
+		if bucketIdx == nextBucketIdx {
+			count += int64(bucketCounts[i])
+			continue
+		}
+		if count == 0 {
+			count = int64(bucketCounts[i])
+			continue
+		}
+
+		gap := nextBucketIdx - bucketIdx - 1
+		if gap > 2 {
+			spans = append(spans, histogram.Span{
+				Offset: gap,
+				Length: 0,
+			})
+		} else {
+			for j := int32(0); j < gap; j++ {
+				appendDelta(0)
+			}
+		}
+		appendDelta(count)
+		count = int64(bucketCounts[i])
+		bucketIdx = nextBucketIdx
+	}
+
+	gap := int32(numBuckets) + offset - bucketIdx
+	if gap > 2 {
+		spans = append(spans, histogram.Span{
+			Offset: gap,
+			Length: 0,
+		})
+	} else {
+		for j := int32(0); j < gap; j++ {
+			appendDelta(0)
+		}
+	}
+	appendDelta(count)
+
+	return spans, deltas
+}
+
+// bucketOffset returns the index of the first non-zero bucket in buckets, or
+// len(buckets) if all are zero.
+func bucketOffset(buckets []uint64) int {
+	offset := 0
+	for offset < len(buckets) && buckets[offset] == 0 {
+		offset++
+	}
+	return offset
 }

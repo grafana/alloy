@@ -6,16 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
-	"github.com/grafana/alloy/internal/featuregate"
-	lokiClient "github.com/grafana/alloy/internal/loki/client"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/instrument"
+	promExternalVersions "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
+	promVersioned "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
 	"github.com/prometheus/client_golang/prometheus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -27,8 +22,11 @@ import (
 	_ "k8s.io/component-base/metrics/prometheus/workqueue"
 	controller "sigs.k8s.io/controller-runtime"
 
-	promExternalVersions "github.com/prometheus-operator/prometheus-operator/pkg/client/informers/externalversions"
-	promVersioned "github.com/prometheus-operator/prometheus-operator/pkg/client/versioned"
+	"github.com/grafana/alloy/internal/component"
+	commonK8s "github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/featuregate"
+	lokiClient "github.com/grafana/alloy/internal/loki/client"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func init() {
@@ -44,7 +42,6 @@ func init() {
 }
 
 type Component struct {
-	log  log.Logger
 	opts component.Options
 	args Arguments
 
@@ -139,7 +136,6 @@ func NewComponent(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		log:           o.Logger,
 		opts:          o,
 		args:          args,
 		configUpdates: make(chan ConfigUpdate),
@@ -166,7 +162,7 @@ func (c *Component) Run(ctx context.Context) error {
 	)
 	for {
 		if err := c.startup(ctx); err != nil {
-			level.Error(c.log).Log("msg", "starting up component failed", "err", err)
+			c.opts.Logger.Error("starting up component failed", "err", err)
 			c.reportUnhealthy(err)
 		} else {
 			break
@@ -183,7 +179,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.args = update.args
 			err := c.init()
 			if err != nil {
-				level.Error(c.log).Log("msg", "updating configuration failed", "err", err)
+				c.opts.Logger.Error("updating configuration failed", "err", err)
 				c.reportUnhealthy(err)
 				update.err <- err
 				continue
@@ -191,7 +187,7 @@ func (c *Component) Run(ctx context.Context) error {
 
 			err = c.startup(ctx)
 			if err != nil {
-				level.Error(c.log).Log("msg", "updating configuration failed", "err", err)
+				c.opts.Logger.Error("updating configuration failed", "err", err)
 				c.reportUnhealthy(err)
 				update.err <- err
 				continue
@@ -243,7 +239,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 }
 
 func (c *Component) init() error {
-	level.Info(c.log).Log("msg", "initializing with new configuration")
+	c.opts.Logger.Info("initializing with new configuration")
 
 	// TODO: allow overriding some stuff in RestConfig and k8s client options?
 	restConfig, err := controller.GetConfig()
@@ -263,7 +259,7 @@ func (c *Component) init() error {
 
 	httpClient := c.args.HTTPClientConfig.Convert()
 
-	c.lokiClient, err = lokiClient.New(c.log, lokiClient.Config{
+	c.lokiClient, err = lokiClient.New(lokiClient.Config{
 		ID:               c.args.TenantID,
 		Address:          c.args.Address,
 		UseLegacyRoutes:  c.args.UseLegacyRoutes,
@@ -300,7 +296,7 @@ func (c *Component) startNamespaceInformer() error {
 	namespaces := factory.Core().V1().Namespaces()
 	c.namespaceLister = namespaces.Lister()
 	c.namespaceInformer = namespaces.Informer()
-	_, err := c.namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, c.queue))
+	_, err := c.namespaceInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.Logger, c.queue))
 	if err != nil {
 		return err
 	}
@@ -322,7 +318,7 @@ func (c *Component) startRuleInformer() error {
 	promRules := factory.Monitoring().V1().PrometheusRules()
 	c.ruleLister = promRules.Lister()
 	c.ruleInformer = promRules.Informer()
-	_, err := c.ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.log, c.queue))
+	_, err := c.ruleInformer.AddEventHandler(commonK8s.NewQueuedEventHandler(c.opts.Logger, c.queue))
 	if err != nil {
 		return err
 	}

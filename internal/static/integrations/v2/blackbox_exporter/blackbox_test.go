@@ -3,13 +3,15 @@ package blackbox_exporter_v2
 import (
 	"testing"
 
+	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/discovery/targetgroup"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	autoscrape "github.com/grafana/alloy/internal/static/integrations/v2/autoscrape"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/discovery/targetgroup"
-	"github.com/stretchr/testify/require"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestBlackbox(t *testing.T) {
@@ -31,7 +33,7 @@ func TestBlackbox(t *testing.T) {
 				Module: "icmp_ipv4",
 			}},
 		}
-		integration, err := c.NewIntegration(nil, integrations_v2.Globals{})
+		integration, err := c.NewIntegration(util.TestAlloyLogger(t).Slog(), integrations_v2.Globals{})
 		require.NoError(t, err)
 
 		i := integration.(integrations_v2.MetricsIntegration)

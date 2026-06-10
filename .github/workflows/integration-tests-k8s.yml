@@ -60,8 +60,12 @@ jobs:
       with:
         version: v3.14.4
     - name: Install kind
+      env:
+        KIND_VERSION: v0.24.0
+        KIND_SHA256: b89aada5a39d620da3fcd16435b7f28d858927dd53f92cbac77686b0588b600d
       run: |
-        curl -Lo ./kind "https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64"
+        curl -fLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
+        echo "${KIND_SHA256}  ./kind" | sha256sum -c -
         chmod +x ./kind
         sudo mv ./kind /usr/local/bin/kind
     - name: Download images artifact

@@ -3,18 +3,17 @@ package collector
 import (
 	"database/sql/driver"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/DataDog/go-sqllexer"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestQueryDetails(t *testing.T) {
@@ -503,7 +502,7 @@ func TestQueryDetails(t *testing.T) {
 				StatementsLimit: 100,
 				EntryHandler:    lokiClient,
 				TableRegistry:   tc.tableRegistry,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				Logger:          util.TestAlloyLogger(t).Slog(),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -565,7 +564,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			StatementsLimit: 100,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -629,7 +628,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			StatementsLimit: 100,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -689,7 +688,7 @@ func TestQueryDetails_SQLDriverErrors(t *testing.T) {
 			CollectInterval: time.Second,
 			StatementsLimit: 100,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -911,7 +910,7 @@ func TestQueryDetails_ExcludeDatabases(t *testing.T) {
 		StatementsLimit:  100,
 		ExcludeDatabases: []string{"excluded_database"},
 		EntryHandler:     lokiClient,
-		Logger:           log.NewLogfmtLogger(os.Stderr),
+		Logger:           util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)
@@ -967,7 +966,7 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 		StatementsLimit: 100,
 		ExcludeUsers:    []string{"excluded_user"},
 		EntryHandler:    lokiClient,
-		Logger:          log.NewLogfmtLogger(os.Stderr),
+		Logger:          util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
 	require.NotNil(t, collector)

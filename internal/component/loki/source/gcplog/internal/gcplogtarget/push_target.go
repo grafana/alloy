@@ -14,7 +14,6 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -49,7 +48,7 @@ func NewPushTarget(
 	reg prometheus.Registerer,
 ) (*PushTarget, error) {
 
-	srv, err := fnet.NewTargetServer(slogadapter.GoKit(logger.Handler()), "loki_source_gcplog_push", reg, config.Server)
+	srv, err := fnet.NewTargetServer(logger, "loki_source_gcplog_push", reg, config.Server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gcp push server: %w", err)
 	}
