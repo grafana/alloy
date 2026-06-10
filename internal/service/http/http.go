@@ -325,7 +325,7 @@ func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.R
 
 		if s.opts.BundleContext.DisableSupportBundle {
 			rw.WriteHeader(http.StatusForbidden)
-			_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --disable-support-bundle flag"))
+			_, _ = rw.Write([]byte("support bundle generation is disabled; it can be re-enabled by removing the --server.http.disable-support-bundle flag"))
 			return
 		}
 

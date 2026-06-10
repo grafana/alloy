@@ -41,9 +41,9 @@ The following flags are supported:
 * `--server.http.memory-addr`: Address to listen for [in-memory HTTP traffic][] on (default `"alloy.internal:12345"`).
 * `--server.http.listen-addr`: Address to listen for HTTP traffic on (default `"127.0.0.1:12345"`).
 * `--server.http.ui-path-prefix`: Base path where the UI is exposed (default `"/"`).
+* `--server.http.disable-support-bundle`: Disable [support bundle][] endpoint (default `false`).
 * `--storage.path`: Base directory where components can store data (default `"data-alloy/"`).
 * `--disable-reporting`: Disable [data collection][] (default `false`).
-* `--disable-support-bundle`: Disable [support bundle][] endpoint (default `false`).
 * `--cluster.enabled`: Start {{< param "PRODUCT_NAME" >}} in clustered mode (default `false`).
 * `--cluster.node-name`: The name to use for this node (defaults to the environment's hostname).
 * `--cluster.join-addresses`: Comma-separated list of addresses to join the cluster at (default `""`). Mutually exclusive with `--cluster.discover-peers`.

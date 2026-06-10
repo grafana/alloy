@@ -19,7 +19,7 @@ to debug an [issue][alloy-repo].
 This feature isn't covered by the [backward-compatibility][backward-compatibility] guarantees.
 
 {{< admonition type="note" >}}
-This endpoint is enabled by default, but may be disabled using the `--disable-support-bundle` runtime flag.
+This endpoint is enabled by default, but may be disabled using the `--server.http.disable-support-bundle` runtime flag.
 {{< /admonition >}}
 
 The duration parameter is optional, must be less than or equal to the
