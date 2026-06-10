@@ -86,15 +86,15 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | `ebpf` > [`payload_extraction`][payload extraction]                    | Configures HTTP payload extraction for protocol-aware parsing.                                     | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                      | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`anthropic`][anthropic payload extraction] | Configures Anthropic payload extraction.                                             | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`gemini`][gemini payload extraction] | Configures Gemini payload extraction.                                                      | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`qwen`][qwen payload extraction] | Configures Qwen payload extraction.                                             | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`bedrock`][bedrock payload extraction] | Configures AWS Bedrock payload extraction.                                                      | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`mcp`][mcp payload extraction] | Configures Model Context Protocol (MCP) payload extraction and parsing.                                             | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`embedding`][embedding payload extraction] | Configures generic embedding provider (Voyage AI, Cohere, Jina AI) payload extraction and parsing.                                                      | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`rerank`][rerank payload extraction] | Configures Rerank (Cohere, Jina AI, Voyage AI, etc.) payload extraction and parsing.                                             | no       |
-| `ebpf` > `payload_extraction` > `http` > `genai` > [`retrieval`][retrieval payload extraction] | Configures vector retrieval (Pinecone, Qdrant, Milvus, Chroma, Weaviate, etc.) payload extraction and parsing.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`openai`][openai payload extraction] | Configures **OpenAI** payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`anthropic`][anthropic payload extraction] | Configures **Anthropic** payload extraction.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`gemini`][gemini payload extraction] | Configures **Gemini** payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`qwen`][qwen payload extraction] | Configures **Qwen** payload extraction.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`bedrock`][bedrock payload extraction] | Configures **AWS Bedrock** payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`mcp`][mcp payload extraction] | Configures **Model Context Protocol** (MCP) payload extraction and parsing.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`embedding`][embedding payload extraction] | Configures generic **embedding** provider (**Voyage AI**, **Cohere**, **Jina AI**) payload extraction and parsing.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`rerank`][rerank payload extraction] | Configures **Rerank** (**Cohere**, **Jina AI**, **Voyage AI**, etc.) payload extraction and parsing.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`retrieval`][retrieval payload extraction] | Configures vector **retrieval** (**Pinecone**, **Qdrant**, **Milvus**, **Chroma**, **Weaviate**, etc.) payload extraction and parsing.                                             | no       |
 | `ebpf` > [`maps_config`][maps config]                                  | Configures eBPF map sizing.                                                                        | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
@@ -525,73 +525,73 @@ The `payload_extraction` block configures protocol-aware HTTP payload parsing.
 
 | Name      | Type   | Description                               | Default | Required |
 |-----------|--------|-------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable OpenAI payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **OpenAI** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported OpenAI HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **OpenAI** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `anthropic`
 
 | Name      | Type   | Description                                  | Default | Required |
 |-----------|--------|----------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable Anthropic payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **Anthropic** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported Anthropic HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **Anthropic** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `gemini`
 
 | Name      | Type   | Description                               | Default | Required |
 |-----------|--------|-------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable Gemini payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **Gemini** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported Gemini HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **Gemini** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `qwen`
 
 | Name      | Type   | Description                                  | Default | Required |
 |-----------|--------|----------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable Qwen payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **Qwen** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported Qwen HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **Qwen** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `bedrock`
 
 | Name      | Type   | Description                               | Default | Required |
 |-----------|--------|-------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable AWS Bedrock payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **AWS Bedrock** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported AWS Bedrock HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **AWS Bedrock** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `mcp`
 
 | Name      | Type   | Description                                  | Default | Required |
 |-----------|--------|----------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable MCP payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **MCP** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported MCP HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **MCP** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `embedding`
 
 | Name      | Type   | Description                               | Default | Required |
 |-----------|--------|-------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable Embedding payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **Embedding** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported Embedding HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **Embedding** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `rerank`
 
 | Name      | Type   | Description                                  | Default | Required |
 |-----------|--------|----------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable Rerank payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **Rerank** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported Rerank HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **Rerank** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `retrieval`
 
 | Name      | Type   | Description                                  | Default | Required |
 |-----------|--------|----------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable Retrieval payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **Retrieval** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported Retrieval HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **Retrieval** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 #### `maps_config`
 
