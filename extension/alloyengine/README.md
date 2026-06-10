@@ -17,13 +17,19 @@ The extension accepts the following configuration fields:
 
 ### Config Object
 
-The `config` object specifies the Alloy configuration source.
-Currently, the extension supports inline Alloy configuration.
+The `config` object specifies the Alloy configuration source. Either `file` or `inline` must be set, but not both.
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `file` | string | No | - | Path to an Alloy config file or a directory containing `.alloy` files. |
+| `inline` | object | No | - | Inline Alloy configuration. See [Inline Object](#inline-object) for details. |
+
+### Inline Object
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `content` | string | Yes | - | The inline Alloy configuration to run. |
-| `module_path` | string | No | - | Value resolved for the `module_path` Alloy config keyword. |
+| `module_path` | string | No | current working directory | Value resolved for the `module_path` Alloy config keyword. Has no effect when `config.file` is set. |
 
 ### Example Configuration
 
@@ -31,10 +37,11 @@ Currently, the extension supports inline Alloy configuration.
 extensions:
   alloyengine:
     config:
-      content: |
-        logging {
-          level = "debug"
-        }
+      inline:
+        content: |
+          logging {
+            level = "debug"
+          }
     flags:
       server.http.listen-addr: 0.0.0.0:12345
       stability.level: experimental

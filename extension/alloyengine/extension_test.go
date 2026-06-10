@@ -44,7 +44,9 @@ func requireShutdownAndTerminated(t *testing.T, e *alloyEngineExtension) {
 func defaultTestConfig() *Config {
 	return &Config{
 		AlloyConfig: AlloyConfig{
-			Content: "logging { level = \"debug\" }",
+			Inline: InlineAlloyConfig{
+				Content: "logging { level = \"debug\" }",
+			},
 		},
 		Flags: map[string]string{},
 	}
@@ -127,12 +129,10 @@ func newRetryTrackingCommand(failCount int, err error) (func(string, map[string]
 func TestConfig_MissingContent(t *testing.T) {
 	t.Helper()
 	cfg := &Config{
-		AlloyConfig: AlloyConfig{
-			Content: "",
-		},
-		Flags: map[string]string{},
+		AlloyConfig: AlloyConfig{},
+		Flags:       map[string]string{},
 	}
-	require.EqualError(t, cfg.Validate(), "config.content is required")
+	require.EqualError(t, cfg.Validate(), "either config.file or config.inline.content must be set")
 }
 
 func TestLifecycle_StartPassesInlineConfigToFactory(t *testing.T) {
@@ -149,7 +149,9 @@ func TestLifecycle_StartPassesInlineConfigToFactory(t *testing.T) {
 	}
 	e := newTestExtension(t, factory, &Config{
 		AlloyConfig: AlloyConfig{
-			Content: content,
+			Inline: InlineAlloyConfig{
+				Content: content,
+			},
 		},
 		Flags: map[string]string{},
 	})

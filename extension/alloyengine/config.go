@@ -11,19 +11,22 @@ type Config struct {
 
 // AlloyConfig represents the incoming format of the Alloy configuration.
 type AlloyConfig struct {
-	// ModulePath is value to be resolved for "module_path" alloy config keyword.
-	//
-	// Has no effect if [Path] is set.
-	ModulePath string `mapstructure:"module_path"`
-
 	// Path is a path to Alloy config file or a directory containing config files.
 	//
-	// Note: either [Path] or [Content] can be set.
+	// Note: either [Path] or [Inline] can be set.
 	Path string `mapstructure:"file"`
 
-	// Content is config contents.
+	// Inline is the inline Alloy configuration.
 	//
-	// Note: either [Path] or [Content] can be set.
+	// Note: either [Path] or [Inline] can be set.
+	Inline InlineAlloyConfig `mapstructure:"inline"`
+}
+
+type InlineAlloyConfig struct {
+	// ModulePath is value to be resolved for "module_path" alloy config keyword.
+	ModulePath string `mapstructure:"module_path"`
+
+	// Content is the inline Alloy config content.
 	Content string `mapstructure:"content"`
 }
 
@@ -37,13 +40,16 @@ func (cfg *Config) flagsAsSlice() []string {
 
 func (cfg *Config) Validate() error {
 	hasPath := cfg.AlloyConfig.Path != ""
-	hasContent := cfg.AlloyConfig.Content != ""
+	hasContent := cfg.AlloyConfig.Inline.Content != ""
 
 	if !hasPath && !hasContent {
-		return fmt.Errorf("either config.file or config.content must be set")
+		return fmt.Errorf("either config.file or config.inline.content must be set")
 	}
 	if hasPath && hasContent {
-		return fmt.Errorf("exactly one of config.file or config.content must be set")
+		return fmt.Errorf("exactly one of config.file or config.inline.content must be set")
+	}
+	if cfg.AlloyConfig.Inline.ModulePath != "" && hasPath {
+		return fmt.Errorf("config.inline.module_path has no effect when config.file is set")
 	}
 
 	return nil

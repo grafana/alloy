@@ -238,17 +238,17 @@ func (e *alloyEngineExtension) NotReady() error {
 }
 
 func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]byte, err error) {
-	if cfg.Content == "" && cfg.Path == "" {
-		return "", nil, errors.New("missing alloy config. Either config.file or config.content must be set")
+	if cfg.Inline.Content == "" && cfg.Path == "" {
+		return "", nil, errors.New("missing alloy config. Either config.file or config.inline.content must be set")
 	}
 
-	isInlineConfig := cfg.Content != ""
+	isInlineConfig := cfg.Inline.Content != ""
 	if isInlineConfig {
 		if cfg.Path != "" {
-			return "", nil, errors.New("exactly one of config.file or config.content must be set")
+			return "", nil, errors.New("exactly one of config.file or config.inline.content must be set")
 		}
 
-		modulePath = cfg.ModulePath
+		modulePath = cfg.Inline.ModulePath
 		if modulePath == "" {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -257,7 +257,7 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 			modulePath = cwd
 		}
 
-		data := []byte(cfg.Content)
+		data := []byte(cfg.Inline.Content)
 		if err := validateAlloyConfig("config.alloy", data); err != nil {
 			return "", nil, fmt.Errorf("invalid inline Alloy config: %w", err)
 		}
