@@ -173,7 +173,7 @@ git fetch --tags
 git checkout <RELEASE_TAG>
 ```
 
-Replace `v1.16.0` with the [release tag](https://github.com/grafana/alloy/releases) you want.
+Replace _`<RELEASE_TAG>`_ with the [release tag](https://github.com/grafana/alloy/releases) you want.
 
 ### 2. Start from the checked-in manifest
 
