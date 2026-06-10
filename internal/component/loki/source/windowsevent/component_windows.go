@@ -69,7 +69,6 @@ func (c *Component) Run(ctx context.Context) error {
 			if c.target != nil {
 				_ = c.target.Stop()
 			}
-
 		})
 	}()
 
