@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"maps"
 	"os"
 	"path/filepath"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	"github.com/go-kit/log"
 	collectorv1 "github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1"
 	"github.com/grafana/alloy-remote-config/api/gen/proto/go/collector/v1/collectorv1connect"
 	"github.com/prometheus/client_golang/prometheus"
@@ -53,7 +53,7 @@ const namespaceDelimiter = "."
 // Options are used to configure the remotecfg service. Options are
 // constant for the lifetime of the remotecfg service.
 type Options struct {
-	Logger      log.Logger            // Where to send logs.
+	Logger      *slog.Logger          // Where to send logs.
 	StoragePath string                // Where to cache configuration on-disk.
 	ConfigPath  string                // Where the root config file is.
 	Metrics     prometheus.Registerer // Where to send metrics to.
@@ -64,7 +64,7 @@ func New(opts Options) (*Service, error) {
 	remotecfgPath := filepath.Join(opts.StoragePath, ServiceName)
 	err := os.MkdirAll(remotecfgPath, 0750)
 	if err != nil {
-		opts.Logger.Log("level", "error", "msg", "failed to create remotecfg storage directory", "path", remotecfgPath, "err", err)
+		opts.Logger.Error("failed to create remotecfg storage directory", "path", remotecfgPath, "err", err)
 		return nil, err
 	}
 
@@ -146,7 +146,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	s.fetchLoadConfig(true) // Allow cache fallback on startup
 	err = s.registerCollector()
 	if err != nil && err != errNoopClient {
-		s.opts.Logger.Log("level", "error", "msg", "failed to register collector during service startup", "err", err)
+		s.opts.Logger.Error("failed to register collector during service startup", "err", err)
 		return err
 	}
 
@@ -165,7 +165,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			cleanupCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 			if err := s.unregisterCollector(cleanupCtx); err != nil {
-				s.opts.Logger.Log("level", "error", "msg", "failed to unregister collector during service shutdown", "err", err)
+				s.opts.Logger.Error("failed to unregister collector during service shutdown", "err", err)
 			}
 			return nil
 		}
@@ -185,13 +185,13 @@ func (s *Service) Update(newConfig any) error {
 
 	err := s.updateHandleArgs(newArgs)
 	if err != nil {
-		s.opts.Logger.Log("level", "error", "msg", "failed to update service arguments", "err", err)
+		s.opts.Logger.Error("failed to update service arguments", "err", err)
 		return err
 	}
 
 	err = s.registerCollector()
 	if err != nil {
-		s.opts.Logger.Log("level", "error", "msg", "failed to register collector during configuration update", "err", err)
+		s.opts.Logger.Error("failed to register collector during configuration update", "err", err)
 		return err
 	}
 
@@ -231,7 +231,7 @@ func (s *Service) updateHandleArgs(newArgs Arguments) error {
 	// Detect changes in the arguments which point us at a new cache location.
 	hash, err := newArgs.Hash()
 	if err != nil {
-		s.opts.Logger.Log("level", "error", "msg", "failed to compute arguments hash", "err", err)
+		s.opts.Logger.Error("failed to compute arguments hash", "err", err)
 		return err
 	}
 
@@ -244,7 +244,7 @@ func (s *Service) updateHandleArgs(newArgs Arguments) error {
 	if needsNewClient {
 		newAPIClient, err := createAPIClient(newArgs, s.metrics)
 		if err != nil {
-			s.opts.Logger.Log("level", "error", "msg", "failed to create API client", "url", newArgs.URL, "err", err)
+			s.opts.Logger.Error("failed to create API client", "url", newArgs.URL, "err", err)
 			return err
 		}
 		s.mut.Lock()
@@ -304,7 +304,7 @@ func (s *Service) getConfig() (*collectorv1.GetConfigResponse, error) {
 			// and they weren't actually sent
 			s.cm.resetLastSentConfigStatus()
 			s.cm.resetLastSentEffectiveConfig()
-			s.opts.Logger.Log("level", "error", "msg", "failed to get configuration from remote server", "id", s.args.ID, "err", err)
+			s.opts.Logger.Error("failed to get configuration from remote server", "id", s.args.ID, "err", err)
 		}
 		return nil, err
 	}
@@ -324,7 +324,7 @@ func (s *Service) registerCollector() error {
 	})
 
 	if err != nil {
-		s.opts.Logger.Log("level", "error", "msg", "failed to register collector with remote server", "id", s.args.ID, "name", s.args.Name, "err", err)
+		s.opts.Logger.Error("failed to register collector with remote server", "id", s.args.ID, "name", s.args.Name, "err", err)
 		return err
 	}
 	return nil
@@ -340,7 +340,7 @@ func (s *Service) unregisterCollector(ctx context.Context) error {
 		},
 	})
 	if err != nil {
-		s.opts.Logger.Log("level", "error", "msg", "failed to unregister collector with remote server", "id", s.args.ID, "err", err)
+		s.opts.Logger.Error("failed to unregister collector with remote server", "id", s.args.ID, "err", err)
 		return err
 	}
 	return nil

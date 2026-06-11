@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,8 +26,6 @@ import (
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
-
-	"github.com/grafana/alloy/internal/util"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
@@ -38,7 +36,6 @@ import (
 	"github.com/grafana/alloy/internal/readyctx"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
 	httpservice "github.com/grafana/alloy/internal/service/http"
@@ -49,6 +46,7 @@ import (
 	uiservice "github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
 
@@ -113,48 +111,31 @@ depending on the nature of the reload error.
 	}
 
 	// Server flags
-	cmd.Flags().
-		StringVar(&r.httpListenAddr, "server.http.listen-addr", r.httpListenAddr, "Address to listen for HTTP traffic on")
+	cmd.Flags().StringVar(&r.httpListenAddr, "server.http.listen-addr", r.httpListenAddr, "Address to listen for HTTP traffic on")
 	cmd.Flags().StringVar(&r.inMemoryAddr, "server.http.memory-addr", r.inMemoryAddr, "Address to listen for in-memory HTTP traffic on. Change if it collides with a real address")
 	cmd.Flags().StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to serve the HTTP UI at")
-	cmd.Flags().
-		BoolVar(&r.enablePprof, "server.http.enable-pprof", r.enablePprof, "Enable /debug/pprof profiling endpoints.")
-	cmd.Flags().
-		BoolVar(&r.disableSupportBundle, "server.http.disable-support-bundle", r.disableSupportBundle, "Disable /-/support support bundle retrieval.")
+	cmd.Flags().BoolVar(&r.enablePprof, "server.http.enable-pprof", r.enablePprof, "Enable /debug/pprof profiling endpoints.")
+	cmd.Flags().BoolVar(&r.disableSupportBundle, "server.http.disable-support-bundle", r.disableSupportBundle, "Disable /-/support support bundle retrieval.")
+	cmd.Flags().BoolVar(&r.enableGraphQL, "server.http.enable-graphql", r.enableGraphQL, "Enable the GraphQL API")
+	cmd.Flags().BoolVar(&r.enableGraphQLPlayground, "server.http.enable-graphql-playground", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
 
 	// Cluster flags
-	cmd.Flags().
-		BoolVar(&r.clusterEnabled, "cluster.enabled", r.clusterEnabled, "Start in clustered mode")
-	cmd.Flags().
-		StringVar(&r.clusterNodeName, "cluster.node-name", r.clusterNodeName, "The name to use for this node")
-	cmd.Flags().
-		StringVar(&r.clusterAdvAddr, "cluster.advertise-address", r.clusterAdvAddr, "Address to advertise to the cluster")
-	cmd.Flags().
-		StringVar(&r.clusterJoinAddr, "cluster.join-addresses", r.clusterJoinAddr, "Comma-separated list of addresses to join the cluster at")
-	cmd.Flags().
-		StringVar(&r.clusterDiscoverPeers, "cluster.discover-peers", r.clusterDiscoverPeers, "List of key-value tuples for discovering peers")
-	cmd.Flags().
-		StringSliceVar(&r.clusterAdvInterfaces, "cluster.advertise-interfaces", r.clusterAdvInterfaces, "List of interfaces used to infer an address to advertise")
-	cmd.Flags().
-		DurationVar(&r.clusterRejoinInterval, "cluster.rejoin-interval", r.clusterRejoinInterval, "How often to rejoin the list of peers")
-	cmd.Flags().
-		IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
-	cmd.Flags().
-		StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
-	cmd.Flags().
-		BoolVar(&r.clusterEnableTLS, "cluster.enable-tls", r.clusterEnableTLS, "Specifies whether TLS should be used for communication between peers")
-	cmd.Flags().
-		StringVar(&r.clusterTLSCAPath, "cluster.tls-ca-path", r.clusterTLSCAPath, "Path to the CA certificate file")
-	cmd.Flags().
-		StringVar(&r.clusterTLSCertPath, "cluster.tls-cert-path", r.clusterTLSCertPath, "Path to the certificate file")
-	cmd.Flags().
-		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
-	cmd.Flags().
-		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
-	cmd.Flags().
-		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled")
-	cmd.Flags().
-		DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
+	cmd.Flags().BoolVar(&r.clusterEnabled, "cluster.enabled", r.clusterEnabled, "Start in clustered mode")
+	cmd.Flags().StringVar(&r.clusterNodeName, "cluster.node-name", r.clusterNodeName, "The name to use for this node")
+	cmd.Flags().StringVar(&r.clusterAdvAddr, "cluster.advertise-address", r.clusterAdvAddr, "Address to advertise to the cluster")
+	cmd.Flags().StringVar(&r.clusterJoinAddr, "cluster.join-addresses", r.clusterJoinAddr, "Comma-separated list of addresses to join the cluster at")
+	cmd.Flags().StringVar(&r.clusterDiscoverPeers, "cluster.discover-peers", r.clusterDiscoverPeers, "List of key-value tuples for discovering peers")
+	cmd.Flags().StringSliceVar(&r.clusterAdvInterfaces, "cluster.advertise-interfaces", r.clusterAdvInterfaces, "List of interfaces used to infer an address to advertise")
+	cmd.Flags().DurationVar(&r.clusterRejoinInterval, "cluster.rejoin-interval", r.clusterRejoinInterval, "How often to rejoin the list of peers")
+	cmd.Flags().IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
+	cmd.Flags().StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
+	cmd.Flags().BoolVar(&r.clusterEnableTLS, "cluster.enable-tls", r.clusterEnableTLS, "Specifies whether TLS should be used for communication between peers")
+	cmd.Flags().StringVar(&r.clusterTLSCAPath, "cluster.tls-ca-path", r.clusterTLSCAPath, "Path to the CA certificate file")
+	cmd.Flags().StringVar(&r.clusterTLSCertPath, "cluster.tls-cert-path", r.clusterTLSCertPath, "Path to the certificate file")
+	cmd.Flags().StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
+	cmd.Flags().StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
+	cmd.Flags().IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled")
+	cmd.Flags().DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
@@ -162,8 +143,7 @@ depending on the nature of the reload error.
 	cmd.Flags().StringVar(&r.configExtraArgs, "config.extra-args", r.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
 
 	// Misc flags
-	cmd.Flags().
-		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
+	cmd.Flags().BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
 	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
 	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	if runtime.GOOS == "windows" {
@@ -173,8 +153,6 @@ depending on the nature of the reload error.
 	// Feature flags
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
-	cmd.Flags().BoolVar(&r.enableGraphQL, "feature.graphql.enabled", r.enableGraphQL, "Enable the GraphQL API")
-	cmd.Flags().BoolVar(&r.enableGraphQLPlayground, "feature.graphql-playground.enabled", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
 	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
 	addDeprecatedFlags(cmd)
@@ -230,11 +208,11 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 	}
 
 	if fr.enableGraphQL {
-		return fmt.Errorf("'--feature.graphql.enabled' %s", errMsg)
+		return fmt.Errorf("'--server.http.enable-graphql' %s", errMsg)
 	}
 
 	if fr.enableGraphQLPlayground {
-		return fmt.Errorf("'--feature.graphql-playground.enabled' %s", errMsg)
+		return fmt.Errorf("'--server.http.enable-graphql-playground' %s", errMsg)
 	}
 
 	return nil
@@ -261,7 +239,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("building logger: %w", err)
 	}
 
-	level.Info(l).Log("msg", `Alloy is starting`)
+	slogger := l.Slog()
+	slogger.Info("Alloy is starting")
 
 	t, err := tracing.New(tracing.DefaultOptions)
 	if err != nil {
@@ -281,7 +260,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		if err := windowspriority.SetPriority(fr.windowsPriority); err != nil {
 			return fmt.Errorf("setting process priority: %w", err)
 		} else {
-			level.Info(l).Log("msg", "set process priority", "priority", fr.windowsPriority)
+			slogger.Info("set process priority", "priority", fr.windowsPriority)
 		}
 	}
 
@@ -290,23 +269,23 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// injected.
 	otel.SetTracerProvider(t)
 
-	level.Info(l).Log("boringcrypto enabled", boringcrypto.Enabled)
+	slogger.Info("boringcrypto enabled", "enabled", boringcrypto.Enabled)
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
 	// If there is a cgroup on linux it will use that
 	err = applyAutoMemLimit(l)
 	if err != nil {
-		level.Error(l).Log("msg", "failed to apply memory limit", "err", err)
+		slogger.Error("failed to apply memory limit", "err", err)
 	}
 
 	// Enable the profiling.
-	setMutexBlockProfiling(l)
+	setMutexBlockProfiling(slogger)
 
 	// Immediately start the tracer.
 	go func() {
 		err := t.Run(ctx)
 		if err != nil {
-			level.Error(l).Log("msg", "running tracer returned an error", "err", err)
+			slogger.Error("running tracer returned an error", "err", err)
 		}
 	}()
 
@@ -318,7 +297,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// registry that we want to keep can be given a custom registry so desired
 	// metrics are still exposed.
 	reg := prometheus.DefaultRegisterer
-	_ = util.MustRegisterOrGet(reg, newResourcesCollector(l))
+	_ = util.MustRegisterOrGet(reg, newResourcesCollector(slogger))
 
 	// There's a cyclic dependency between the definition of the Alloy controller,
 	// the reload/ready functions, and the HTTP service.
@@ -331,7 +310,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	)
 
 	clusterService, err := buildClusterService(ClusterOptions{
-		Log:     log.With(l, "service", "cluster"),
+		Log:     slogger.With("service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 
@@ -386,7 +365,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	})
 
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(l, "service", "remotecfg"),
+		Logger:      slogger.With("service", "remotecfg"),
 		ConfigPath:  configPath,
 		StoragePath: fr.storagePath,
 		Metrics:     reg,
@@ -400,22 +379,22 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	uiService := uiservice.New(uiservice.Options{
 		UIPrefix:                fr.uiPrefix,
 		CallbackManager:         liveDebuggingService.Data().(livedebugging.CallbackManager),
-		Logger:                  log.With(l, "service", "ui"),
+		Logger:                  slogger.With("service", "ui"),
 		EnableGraphQL:           fr.enableGraphQL,
 		EnableGraphQLPlayground: fr.enableGraphQLPlayground,
 	})
 
-	otelService := otel_service.New(l)
+	otelService := otel_service.New(slogger.With("service", "otel"))
 	if otelService == nil {
 		return fmt.Errorf("failed to create otel service")
 	}
 
 	if fr.enableDirectFanout {
-		level.Info(l).Log("msg", "global label store is disabled")
+		slogger.Info("global label store is disabled")
 	}
 
-	labelService := labelstore.New(l, reg, !fr.enableDirectFanout)
-	alloyseed.Init(fr.storagePath, l)
+	labelService := labelstore.New(slogger, reg, !fr.enableDirectFanout)
+	alloyseed.Init(fr.storagePath, slogger)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{
 		Logger:               l,
@@ -472,14 +451,14 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	// Report usage of enabled components
 	if !fr.disableReporting {
-		reporter, err := usagestats.NewReporter(l)
+		reporter, err := usagestats.NewReporter(slogger)
 		if err != nil {
 			return fmt.Errorf("failed to create reporter: %w", err)
 		}
 		go func() {
 			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
 			if err != nil && !errors.Is(err, context.Canceled) {
-				level.Error(l).Log("msg", "failed to start reporter", "err", err)
+				slogger.Error("failed to start reporter", "err", err)
 			}
 		}()
 	}
@@ -521,7 +500,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("failed to set clusterer state to Participant after initial load")
 	}
 
-	level.Info(l).Log("msg", `{^_^} Alloy is running`)
+	slogger.Info("{^_^} Alloy is running")
 
 	reloadSignal := make(chan os.Signal, 1)
 	signal.Notify(reloadSignal, syscall.SIGHUP)
@@ -533,9 +512,9 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 			return nil
 		case <-reloadSignal:
 			if _, err := reload(); err != nil {
-				level.Error(l).Log("msg", "failed to reload config", "err", err)
+				slogger.Error("failed to reload config", "err", err)
 			} else {
-				level.Info(l).Log("msg", "config reloaded")
+				slogger.Info("config reloaded")
 			}
 		}
 	}
@@ -670,7 +649,7 @@ func splitPeers(s, sep string) []string {
 	return strings.Split(s, sep)
 }
 
-func setMutexBlockProfiling(l log.Logger) {
+func setMutexBlockProfiling(l *slog.Logger) {
 	mutexPercent := os.Getenv("PPROF_MUTEX_PROFILING_PERCENT")
 	if mutexPercent != "" {
 		rate, err := strconv.Atoi(mutexPercent)
@@ -678,7 +657,7 @@ func setMutexBlockProfiling(l log.Logger) {
 			// The 100/rate is because the value is interpreted as 1/rate. So 50 would be 100/50 = 2 and become 1/2 or 50%.
 			runtime.SetMutexProfileFraction(100 / rate)
 		} else {
-			level.Error(l).Log("msg", "error setting PPROF_MUTEX_PROFILING_PERCENT", "err", err, "value", mutexPercent)
+			l.Error("error setting PPROF_MUTEX_PROFILING_PERCENT", "err", err, "value", mutexPercent)
 			runtime.SetMutexProfileFraction(1000)
 		}
 	} else {
@@ -691,7 +670,7 @@ func setMutexBlockProfiling(l log.Logger) {
 		if err == nil && rate > 0 {
 			runtime.SetBlockProfileRate(rate)
 		} else {
-			level.Error(l).Log("msg", "error setting PPROF_BLOCK_PROFILING_RATE", "err", err, "value", blockRate)
+			l.Error("error setting PPROF_BLOCK_PROFILING_RATE", "err", err, "value", blockRate)
 			runtime.SetBlockProfileRate(10_000)
 		}
 	} else {

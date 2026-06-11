@@ -116,7 +116,7 @@ func TestReconstructionAfterError(t *testing.T) {
 	require.NoError(t, err)
 	invalidCachePath := filepath.Join(f.Name(), "symb.cache")
 
-	logger := util.TestLogger(t)
+	logger := util.TestAlloyLogger(t).Slog()
 	reg := prometheus.NewRegistry()
 
 	args := NewDefaultArguments()

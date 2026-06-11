@@ -104,7 +104,7 @@ func New(opts component.Options, f otelreceiver.Factory, args Arguments) (*Recei
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.New(opts.SLogger),
+		sched:     scheduler.New(opts.Logger),
 		collector: collector,
 
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
@@ -149,7 +149,7 @@ func (r *Receiver) Update(args component.Arguments) error {
 	settings := otelreceiver.Settings{
 		ID: otelcomponent.NewIDWithName(r.factory.Type(), r.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         slogadapter.NewZap(r.opts.SLogger),
+			Logger:         slogadapter.NewZap(r.opts.Logger),
 			TracerProvider: r.opts.Tracer,
 			MeterProvider:  mp,
 		},

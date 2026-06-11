@@ -217,9 +217,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	newPositionsPath := filepath.Join(o.DataPath, "positions.yml")
 	// Check to see if we can convert the legacy positions file to the new format.
 	if args.LegacyPositionsFile != "" {
-		positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.SLogger)
+		positions.ConvertLegacyPositionsFile(args.LegacyPositionsFile, newPositionsPath, o.Logger)
 	}
-	positionsFile, err := positions.New(o.SLogger, positions.Config{
+	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:        10 * time.Second,
 		PositionsFile:     newPositionsPath,
 		IgnoreInvalidYaml: false,
@@ -250,7 +250,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		c.opts.SLogger.Info("loki.source.file component shutting down, stopping sources and positions file")
+		c.opts.Logger.Info("loki.source.file component shutting down, stopping sources and positions file")
 		c.stopping.Store(true)
 
 		c.mut.Lock()
@@ -299,7 +299,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Choose resolver on FileMatch.
 	if newArgs.FileMatch.Enabled {
-		c.resolver = newGlobResolver(c.opts.SLogger)
+		c.resolver = newGlobResolver(c.opts.Logger)
 	} else {
 		c.resolver = newStaticResolver()
 	}
@@ -319,7 +319,7 @@ func (c *Component) Update(args component.Arguments) error {
 // Caller must hold write lock on c.mut before calling this function.
 func (c *Component) scheduleSources() {
 	source.Reconcile(
-		c.opts.SLogger,
+		c.opts.Logger,
 		c.scheduler,
 		c.resolver.Resolve(c.args.Targets),
 		func(target resolvedTarget) positions.Entry {
@@ -399,7 +399,7 @@ type sourceOptions struct {
 func (c *Component) newSource(opts sourceOptions) (source.Source[positions.Entry], error) {
 	tailer := newTailer(
 		c.metrics,
-		c.opts.SLogger,
+		c.opts.Logger,
 		c.handler,
 		c.posFile,
 		c.IsStopping,

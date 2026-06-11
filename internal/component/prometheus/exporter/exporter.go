@@ -75,7 +75,7 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Unlock()
 			go func() {
 				if err := exporter.Run(newCtx); err != nil && err != context.Canceled {
-					c.opts.SLogger.Error("error running exporter", "err", err)
+					c.opts.Logger.Error("error running exporter", "err", err)
 				}
 			}()
 		}
@@ -163,7 +163,7 @@ func newExporter(creator Creator, name string, targetBuilderFunc func(discovery.
 func (c *Component) getHttpHandler(integration integrations.Integration) http.Handler {
 	h, err := integration.MetricsHandler()
 	if err != nil {
-		c.opts.SLogger.Error("failed to creating metrics handler", "err", err)
+		c.opts.Logger.Error("failed to creating metrics handler", "err", err)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		})

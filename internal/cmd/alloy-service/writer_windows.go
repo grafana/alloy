@@ -5,23 +5,21 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/go-kit/log"
 	"golang.org/x/sys/windows/svc/eventlog"
 )
 
-// logger sends logs to the Windows Event Log.
-type logger struct {
+// writer sends writes to the Windows Event Log.
+type writer struct {
 	el *eventlog.Log
 }
 
 var (
-	_ log.Logger = (*logger)(nil)
-	_ io.Writer  = (*logger)(nil)
+	_ io.Writer = (*writer)(nil)
 )
 
-// newLogger creates a new logger which writes logs to the Windows Event
+// newWriter creates a new writer which writes to the Windows Event
 // Logger.
-func newLogger() (*logger, error) {
+func newWriter() (*writer, error) {
 	eventTypes := uint32(eventlog.Info | eventlog.Warning | eventlog.Error)
 
 	// Install the event source. This will fail with an error string saying "already
@@ -41,17 +39,7 @@ func newLogger() (*logger, error) {
 		_ = li.Close()
 	})
 
-	return &logger{el: el}, nil
-}
-
-// Log implements [log.Logger], logging the key-value pairs to the Windows
-// event logger as logfmt.
-//
-// If kvps contains a logging level, then
-func (l *logger) Log(kvps ...any) error {
-	// log.NewLogfmtLogger shouldn't escape to the heap since it's never used
-	// beyond the scope of this initial call.
-	return log.NewLogfmtLogger(l).Log(kvps...)
+	return &writer{el: el}, nil
 }
 
 var (
@@ -63,7 +51,7 @@ var (
 // If the data contains the phrase "warn," then the text is logged as a
 // warn-level event. If the data contains the phrase "error," then the text is
 // logged as an error-level event.
-func (l *logger) Write(data []byte) (n int, err error) {
+func (l *writer) Write(data []byte) (n int, err error) {
 	var (
 		leveledLogger = l.el.Info
 		msg           = string(data)

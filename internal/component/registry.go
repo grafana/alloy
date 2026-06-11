@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/regexp"
 	"github.com/prometheus/client_golang/prometheus"
@@ -71,17 +70,7 @@ type Options struct {
 
 	// Logger the component may use for logging. Logs emitted with the logger
 	// always include the component ID as a field.
-	//
-	// Logger is kept for compatibility with components that have not yet been
-	// migrated to slog. Prefer SLogger for new code.
-	Logger log.Logger
-
-	// SLogger the component may use for logging. Logs emitted with the logger
-	// always include the component ID as a field.
-	//
-	// FIXME(kalleep): Rename SLogger to Logger once all components have been
-	// migrated to slog.
-	SLogger *slog.Logger
+	Logger *slog.Logger
 
 	// A path to a directory with this component may use for storage. The path is
 	// guaranteed to be unique across all running components.

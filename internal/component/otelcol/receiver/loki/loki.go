@@ -104,7 +104,7 @@ func (c *Component) Run(ctx context.Context) error {
 			// TODO(@tpaschalis) Is there any more handling to be done here?
 			err := c.logsSink.ConsumeLogs(ctx, logs)
 			if err != nil {
-				c.opts.SLogger.Error("failed to consume log entries", "err", err)
+				c.opts.Logger.Error("failed to consume log entries", "err", err)
 			}
 		}
 	}

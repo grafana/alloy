@@ -22,7 +22,7 @@ func init() {
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			msg := fmt.Sprintf("otelcol.receiver.file_stats is not supported on %s; this instance of the component will do nothing", runtime.GOOS)
 
-			opts.SLogger.Warn(msg)
+			opts.Logger.Warn(msg)
 			return fakeComponent{
 				health: component.Health{
 					Health:     component.HealthTypeUnhealthy,

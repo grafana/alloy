@@ -5,6 +5,7 @@ package ebpf
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"path"
 	"path/filepath"
@@ -14,9 +15,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -38,6 +36,7 @@ import (
 	alloydiscovery "github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter"
 	rargs "github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
+	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/featuregate"
 )
@@ -63,7 +62,7 @@ var (
 	ebpfMetricsErr      error                // stored for all instances to check
 )
 
-func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
+func New(logger *slog.Logger, reg prometheus.Registerer, id string, args Arguments) (*Component, error) {
 	// ebpfmetrics.Start writes to package-level globals in the upstream library,
 	// so it must only be called once. All instances share the same OTel registry.
 	ebpfMetricsOnce.Do(func() {
@@ -160,7 +159,7 @@ func New(logger log.Logger, reg prometheus.Registerer, id string, args Arguments
 }
 
 type Component struct {
-	logger                 log.Logger
+	logger                 *slog.Logger
 	args                   Arguments
 	dynamicProfilingPolicy bool
 	argsUpdate             chan Arguments
@@ -179,7 +178,7 @@ func (c *Component) Run(ctx context.Context) error {
 	c.checkTraceFS()
 
 	if c.args.LazyMode && len(c.args.Targets) == 0 {
-		_ = level.Info(c.logger).Log("msg", "lazy mode enabled, waiting for targets to profile")
+		c.logger.Info("lazy mode enabled, waiting for targets to profile")
 		if err := c.waitForTargets(ctx); err != nil {
 			return err
 		}
@@ -253,14 +252,13 @@ func (c *Component) Update(args component.Arguments) error {
 	select {
 	case c.argsUpdate <- newArgs:
 	default:
-		_ = level.Debug(c.logger).Log("msg", "dropped args update")
+		c.logger.Debug("dropped args update")
 	}
 	return nil
 }
 
 func (c *Component) reportUnhealthy(err error) {
-	_ = level.Error(c.logger).
-		Log("msg", "unhealthy", "err", err)
+	c.logger.Error("unhealthy", "err", err)
 
 	c.healthMut.Lock()
 	defer c.healthMut.Unlock()
@@ -296,15 +294,15 @@ func (c *Component) checkTraceFS() {
 		if err != nil {
 			continue
 		}
-		level.Debug(c.logger).Log("msg", "found tracefs at "+p)
+		c.logger.Debug("found tracefs at " + p)
 		return
 	}
 	mountPath := candidates[0]
 	err := syscall.Mount("tracefs", mountPath, "tracefs", 0, "")
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to mount tracefs at "+mountPath, "err", err)
+		c.logger.Error("failed to mount tracefs at "+mountPath, "err", err)
 	} else {
-		level.Debug(c.logger).Log("msg", "mounted tracefs at "+mountPath)
+		c.logger.Debug("mounted tracefs at " + mountPath)
 	}
 }
 

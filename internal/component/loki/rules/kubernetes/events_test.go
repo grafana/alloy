@@ -2,12 +2,10 @@ package rules
 
 import (
 	"context"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	v1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	promListers "github.com/prometheus-operator/prometheus-operator/pkg/client/listers/monitoring/v1"
 	"github.com/prometheus/prometheus/model/rulefmt"
@@ -22,8 +20,10 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
 	lokiClient "github.com/grafana/alloy/internal/loki/client"
+	"github.com/grafana/alloy/internal/util"
 )
 
 type fakeLokiClient struct {
@@ -121,7 +121,9 @@ func TestEventLoop(t *testing.T) {
 	}
 
 	component := Component{
-		log:               log.NewLogfmtLogger(os.Stdout),
+		opts: component.Options{
+			Logger: util.TestAlloyLogger(t).Slog(),
+		},
 		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
@@ -131,7 +133,7 @@ func TestEventLoop(t *testing.T) {
 		args:              Arguments{LokiNameSpacePrefix: "alloy", LokiNamespaceSeparator: "-"},
 		metrics:           newMetrics(),
 	}
-	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
+	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.Logger, component.queue)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -236,7 +238,9 @@ func TestExtraQueryMatchers(t *testing.T) {
 	}
 
 	component := Component{
-		log:               log.NewLogfmtLogger(os.Stdout),
+		opts: component.Options{
+			Logger: util.TestAlloyLogger(t).Slog(),
+		},
 		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
@@ -246,7 +250,7 @@ func TestExtraQueryMatchers(t *testing.T) {
 		args:              args,
 		metrics:           newMetrics(),
 	}
-	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
+	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.Logger, component.queue)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
@@ -337,7 +341,9 @@ func TestExternalLabels(t *testing.T) {
 	}
 
 	component := Component{
-		log:               log.NewLogfmtLogger(os.Stdout),
+		opts: component.Options{
+			Logger: util.TestAlloyLogger(t).Slog(),
+		},
 		queue:             workqueue.NewTypedRateLimitingQueue(workqueue.DefaultTypedControllerRateLimiter[kubernetes.Event]()),
 		namespaceLister:   nsLister,
 		namespaceSelector: labels.Everything(),
@@ -354,7 +360,7 @@ func TestExternalLabels(t *testing.T) {
 		},
 		metrics: newMetrics(),
 	}
-	eventHandler := kubernetes.NewQueuedEventHandler(component.log, component.queue)
+	eventHandler := kubernetes.NewQueuedEventHandler(component.opts.Logger, component.queue)
 
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()

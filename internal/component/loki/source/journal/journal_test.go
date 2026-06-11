@@ -23,7 +23,7 @@ func TestJournal(t *testing.T) {
 	lr := loki.NewLogsReceiver()
 	c, err := New(component.Options{
 		ID:         "loki.source.journal.test",
-		SLogger:    logging.NewSlogNop(),
+		Logger:     logging.NewSlogNop(),
 		DataPath:   tmp,
 		Registerer: prometheus.DefaultRegisterer,
 	}, Arguments{

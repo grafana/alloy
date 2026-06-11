@@ -5,18 +5,18 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/rs/cors"
 	"go.opentelemetry.io/collector/client"
 	"golang.org/x/time/rate"
+
+	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
+	"github.com/grafana/alloy/internal/util"
 )
 
 const apiKeyHeader = "x-api-key"
@@ -24,7 +24,7 @@ const apiKeyHeader = "x-api-key"
 var defaultAllowedHeaders = []string{"content-type", "content-encoding", "traceparent", apiKeyHeader, "x-faro-session-id", "x-scope-orgid"}
 
 type handler struct {
-	log            log.Logger
+	log            *slog.Logger
 	reg            prometheus.Registerer
 	rateLimiter    *rate.Limiter
 	appRateLimiter *AppRateLimitingConfig
@@ -38,7 +38,7 @@ type handler struct {
 
 var _ http.Handler = (*handler)(nil)
 
-func newHandler(l log.Logger, reg prometheus.Registerer, exporters []exporter) *handler {
+func newHandler(l *slog.Logger, reg prometheus.Registerer, exporters []exporter) *handler {
 	errorsTotal := prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "faro_receiver_exporter_errors_total",
 		Help: "Total number of errors produced by a receiver exporter",
@@ -162,11 +162,7 @@ func (h *handler) checkPerAppRateLimit(p payload.Payload) bool {
 		app, env := h.extractAppEnv(p)
 		allowed := h.appRateLimiter.Allow(app, env)
 		if !allowed {
-			level.Debug(h.log).Log(
-				"msg", "per-app rate limit exceeded",
-				"app", app,
-				"env", env,
-			)
+			h.log.Debug("per-app rate limit exceeded", "app", app, "env", env)
 		}
 
 		return allowed
@@ -197,7 +193,7 @@ func (h *handler) processRequest(rw http.ResponseWriter, req *http.Request, p pa
 	for _, exp := range h.exporters {
 		wg.Go(func() {
 			if err := exp.Export(req.Context(), p); err != nil {
-				level.Error(h.log).Log("msg", "exporter failed with error", "exporter", exp.Name(), "err", err)
+				h.log.Error("exporter failed with error", "exporter", exp.Name(), "err", err)
 				h.errorsTotal.WithLabelValues(exp.Name()).Inc()
 			}
 		})
