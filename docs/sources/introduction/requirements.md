@@ -88,7 +88,7 @@ This requirement most often comes up when collecting:
 Not every component can run in a fully locked-down environment.
 When {{< param "PRODUCT_NAME" >}} runs with restricted permissions, certain components might fail or behave unexpectedly.
 
-For information about running as a non-root user, refer to [Run as a non-root user][nonroot].
+For access and permissions on Kubernetes, refer to [Access and permissions for {{< param "PRODUCT_NAME" >}} on Kubernetes][access-kubernetes].
 
 When you enable a component, check its documented requirements first.
 Refer to the [component reference][reference] for component-specific constraints and limitations.
@@ -191,7 +191,7 @@ If something doesn't behave as expected after deployment:
 [http]: ../../reference/http/
 [reference]: ../../reference/
 [run]: ../../reference/cli/run/
-[nonroot]: ../../configure/nonroot/
+[access-kubernetes]: ../../access_permissions/kubernetes/
 [deploy]: ../../set-up/deploy/
 [clustering]: ../../get-started/clustering/
 [estimate resource usage]: ../../set-up/estimate-resource-usage/

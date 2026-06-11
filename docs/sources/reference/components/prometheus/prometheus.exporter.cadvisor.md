@@ -26,7 +26,7 @@ The component requires specific permissions and configuration depending on your 
 {{< tabs >}}
 {{< tab-content name="Linux binary" >}}
 
-When you run {{< param "PRODUCT_NAME" >}} as a Linux binary, systemd service, or with the [non-root][nonroot] `alloy` user, you must grant the `alloy` user permissions to access the container runtime socket and related directories to collect metrics from containers on the host.
+When you run {{< param "PRODUCT_NAME" >}} as a Linux binary, systemd service, or as the `alloy` user, grant the `alloy` user permissions to access the container runtime socket and related directories to collect metrics from containers on the host.
 
 The component works with Docker, `containerd`, Container Runtime Interface for OpenShift (CRI-O), and systemd container runtimes.
 
@@ -78,9 +78,9 @@ For Docker, grant permissions using one of these approaches:
   Only use this approach if necessary for your environment.
   {{< /admonition >}}
 
-For more information about running {{< param "PRODUCT_NAME" >}} without root privileges, refer to [Configure {{< param "PRODUCT_NAME" >}} to run as a nonroot user][nonroot].
+For more information about running {{< param "PRODUCT_NAME" >}} without root privileges, refer to [Access and permissions for {{< param "PRODUCT_NAME" >}} on Kubernetes][access-kubernetes].
 
-[nonroot]: ../../../configure/nonroot/
+[access-kubernetes]: ../../../access_permissions/kubernetes/
 
 {{< /tab-content >}}
 {{< tab-content name="Kubernetes" >}}
