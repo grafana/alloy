@@ -1,7 +1,6 @@
 package runtime
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"os"
@@ -11,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -25,6 +23,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/internal/testservices"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
 func TestRuntime(t *testing.T) {
@@ -312,9 +311,8 @@ func TestController_ReloadLoaderNoErrorLog(t *testing.T) {
 		input = testcomponents.passthrough.ticker.output
 	}
 `
-	var logsBuffer bytes.Buffer
-	syncBuff := log.NewSyncWriter(&logsBuffer)
-	opts.Logger.SetTemporaryWriter(syncBuff)
+	var logsBuffer syncbuffer.Buffer
+	opts.Logger.SetTemporaryWriter(&logsBuffer)
 
 	ctrl, err := New(opts)
 	require.NoError(t, err)

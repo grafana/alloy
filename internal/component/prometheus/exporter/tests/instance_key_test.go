@@ -3,12 +3,10 @@ package exporter_test
 import (
 	"fmt"
 	"net"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -45,6 +43,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/unix"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/windows"
 	httpservice "github.com/grafana/alloy/internal/service/http"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -467,7 +466,7 @@ func TestInstanceKey(t *testing.T) {
 						t.Fatalf("failed to convert component.Exports to exporter.Exports")
 					}
 				},
-				Logger: log.NewLogfmtLogger(os.Stdout),
+				Logger: util.TestAlloyLogger(t).Slog(),
 			}
 			reg, ok := component.Get(tt.componentName)
 			require.True(t, ok, "expected component to exist in registry")

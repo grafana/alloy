@@ -201,7 +201,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 	require.NoError(t, err)
 
 	clusterService, err := cluster_service.New(cluster_service.Options{
-		Log:              logger,
+		Log:              logger.Slog(),
 		EnableClustering: false,
 		NodeName:         "test-node",
 		AdvertiseAddress: "127.0.0.1:80",
@@ -209,7 +209,7 @@ func attemptLoadingAlloyConfig(t *testing.T, bb []byte) {
 	require.NoError(t, err)
 
 	remotecfgService, err := remotecfg_service.New(remotecfg_service.Options{
-		Logger:      logger,
+		Logger:      logger.Slog(),
 		StoragePath: t.TempDir(),
 		Metrics:     prometheus.DefaultRegisterer,
 	})

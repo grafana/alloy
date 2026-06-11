@@ -6,11 +6,9 @@ import (
 	"log/slog"
 	"net/url"
 
-	"github.com/go-kit/log"
 	"github.com/percona/mongodb_exporter/exporter"
 	config_util "github.com/prometheus/common/config"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -81,8 +79,8 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration creates a new mongodb_exporter
-func (c *Config) NewIntegration(logger log.Logger) (integrations.Integration, error) {
-	return New(logger, c)
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
+	return New(l, c)
 }
 
 func init() {
@@ -91,12 +89,10 @@ func init() {
 }
 
 // New creates a new mongodb_exporter integration.
-func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	logrusLogger := slog.New(logging.NewSlogGoKitHandler(logger))
-
+func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	exp := exporter.New(&exporter.Opts{
 		URI:                    string(c.URI),
-		Logger:                 logrusLogger,
+		Logger:                 logger,
 		DisableDefaultRegistry: true,
 
 		CompatibleMode:           c.CompatibleMode,

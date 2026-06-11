@@ -3,25 +3,19 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/grafana/alloy/internal/service/graphql/client"
 )
 
 // PrintGraphQLResponse pretty prints a GraphQL response.
-func PrintGraphQLResponse(parsedResponse *client.GraphQLResponse) {
-	prettyBytes, err := json.MarshalIndent(parsedResponse.Data, "", "  ")
+func PrintGraphQLResponse(writer io.Writer, parsedResponse *client.GraphQLResponse) error {
+	prettyBytes, err := json.MarshalIndent(parsedResponse, "", "  ")
 	if err != nil {
-		fmt.Printf("Failed to pretty print response data: %v\n", err)
-		return
+		return fmt.Errorf("marshal GraphQL response: %w", err)
 	}
-	fmt.Println(string(prettyBytes))
-
-	if len(parsedResponse.Errors) > 0 {
-		prettyBytes, err = json.MarshalIndent(parsedResponse.Errors, "", "  ")
-		if err != nil {
-			fmt.Printf("Failed to pretty print response errors: %v\n", err)
-			return
-		}
-		fmt.Println("Errors: ", string(prettyBytes))
+	if _, err := fmt.Fprintln(writer, string(prettyBytes)); err != nil {
+		return fmt.Errorf("write GraphQL response: %w", err)
 	}
+	return nil
 }

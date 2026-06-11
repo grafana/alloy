@@ -3,6 +3,7 @@ package internal
 import (
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 
 	"github.com/grafana/alloy/tools/generate/moduledeps/internal/helpers"
@@ -30,6 +31,10 @@ func runGoModTidy(dirs *helpers.FileHelper, module types.Module) error {
 
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = moduleDir
+	// Forward go's output so its diagnostics surface in the build log; without
+	// this a failure only ever shows up as a bare "exit status 1".
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	log.Printf("Running go mod tidy in %s (module: %s)", moduleDir, module.Name)
 	if err := cmd.Run(); err != nil {

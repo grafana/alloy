@@ -2,8 +2,16 @@ package cluster_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"os"
@@ -14,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
@@ -48,12 +55,32 @@ type testCase struct {
 	alloyConfig            string
 	minimumClusterSize     int
 	minimumSizeWaitTimeout time.Duration
+	clusterTLS             bool // when true, nodes serve their HTTP/cluster port over TLS
 }
 
 func TestClusterE2E(t *testing.T) {
 	tests := []testCase{
 		{
 			name:             "three nodes just join",
+			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
+			nodeCountInitial: 3,
+			assertionsInitial: func(t *assert.CollectT, state *testState) {
+				for _, p := range state.peers {
+					verifyMetrics(t, p,
+						`cluster_node_info{state="participant"} 1`,
+						`cluster_node_peers{cluster_name="cluster_e2e_test",state="participant"} 3`,
+						`cluster_node_gossip_alive_peers{cluster_name="cluster_e2e_test"} 3`,
+						`cluster_state{component_id="testcomponents.cluster_state_tracker.foo",component_path="/",peers="node-0___node-1___node-2",ready="true"} 3`,
+					)
+					verifyPeers(t, p, 3)
+					verifyClusterReady(t, p)
+				}
+				verifyLookupInvariants(t, state.peers)
+			},
+		},
+		{
+			name:             "three nodes join over TLS",
+			clusterTLS:       true,
 			alloyConfig:      `testcomponents.cluster_state_tracker "foo" {}`,
 			nodeCountInitial: 3,
 			assertionsInitial: func(t *assert.CollectT, state *testState) {
@@ -219,7 +246,7 @@ func TestClusterE2E(t *testing.T) {
 					// NOTE: this and error logs are the only reliable indication that something went wrong...
 					// Currently, the cluster will continue operating with name conflicts, potentially doing some
 					// duplicated work. But this is not necessarily a bad choice of how to handle this.
-					metricsContain(t, p.address, `cluster_node_gossip_received_events_total{cluster_name="cluster_e2e_test",event="node_conflict"}`)
+					metricsContain(t, p, `cluster_node_gossip_received_events_total{cluster_name="cluster_e2e_test",event="node_conflict"}`)
 				}
 				verifyLookupInvariants(t, state.peers[:4]) // only check the healthy peers, ignore the conflicting ones
 			},
@@ -423,6 +450,11 @@ func TestClusterE2E(t *testing.T) {
 				testCase: &tc,
 			}
 
+			if tc.clusterTLS {
+				state.tlsCertPath, state.tlsKeyPath = generateTLSCertFiles(t)
+				state.tlsCAPath = state.tlsCertPath // self-signed cert is its own CA
+			}
+
 			for i := 0; i < tc.nodeCountInitial; i++ {
 				startNewNode(t, state, fmt.Sprintf("node-%d", i))
 			}
@@ -473,6 +505,9 @@ type testPeer struct {
 	mutex             sync.Mutex
 	discoverablePeers []string // list of peers that this peer can discover
 	logsWriter        *logsWriter
+
+	scheme        string       // "http" or "https" for reaching this peer
+	metricsClient *http.Client // client used to scrape this peer's /metrics
 }
 
 func (p *testPeer) discoveryFn(_ discovery.Options) (discovery.DiscoverFn, error) {
@@ -494,6 +529,11 @@ type testState struct {
 	ctx           context.Context
 	shutdownGroup sync.WaitGroup
 	testCase      *testCase
+
+	// Shared TLS cert paths, set only when clusterTLS is enabled.
+	tlsCAPath   string
+	tlsCertPath string
+	tlsKeyPath  string
 }
 
 func startNewNode(t *testing.T, state *testState, nodeName string) {
@@ -520,6 +560,14 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		ctx:               peerCtx,
 		shutdown:          peerCancel,
 		discoverablePeers: joinPeers,
+		scheme:            "http",
+		metricsClient:     http.DefaultClient,
+	}
+	if state.testCase.clusterTLS {
+		// Metrics share the same HTTP port that TLS terminates on, so once the
+		// node is TLS-enabled they can only be scraped over https.
+		newPeer.scheme = "https"
+		newPeer.metricsClient = tlsMetricsClient(t, state.tlsCAPath)
 	}
 
 	nodeDirPath := path.Join(t.TempDir(), nodeName)
@@ -542,8 +590,8 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 	require.NoError(t, err)
 
 	reg := prometheus.NewRegistry()
-	clusterService, err := alloycli.NewClusterService(alloycli.ClusterOptions{
-		Log:     log.With(logger, "service", "cluster"),
+	clusterOpts := alloycli.ClusterOptions{
+		Log:     logger.Slog().With("service", "cluster"),
 		Tracer:  tracer,
 		Metrics: reg,
 
@@ -557,7 +605,15 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		ClusterName:            "cluster_e2e_test",
 		MinimumClusterSize:     state.testCase.minimumClusterSize,
 		MinimumSizeWaitTimeout: state.testCase.minimumSizeWaitTimeout,
-	}, newPeer.discoveryFn)
+	}
+	if state.testCase.clusterTLS {
+		clusterOpts.EnableTLS = true
+		clusterOpts.TLSCAPath = state.tlsCAPath
+		clusterOpts.TLSCertPath = state.tlsCertPath
+		clusterOpts.TLSKeyPath = state.tlsKeyPath
+		clusterOpts.TLSServerName = "127.0.0.1"
+	}
+	clusterService, err := alloycli.NewClusterService(clusterOpts, newPeer.discoveryFn)
 	require.NoError(t, err)
 	newPeer.clusterService = clusterService
 
@@ -575,7 +631,7 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 
 	configFilePath := path.Join(nodeDirPath, "config.alloy")
 	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(logger, "service", "remotecfg"),
+		Logger:      logger.Slog().With("service", "remotecfg"),
 		ConfigPath:  configFilePath,
 		StoragePath: nodeDirPath,
 		Metrics:     reg,
@@ -608,7 +664,19 @@ func startNewNode(t *testing.T, state *testState, nodeName string) {
 		f.Run(peerCtx)
 	}()
 
-	src, err := runtime.ParseSource(t.Name(), []byte(state.testCase.alloyConfig))
+	configSource := state.testCase.alloyConfig
+	if state.testCase.clusterTLS {
+		// Serve the HTTP server (which also hosts the cluster transport) over TLS.
+		configSource = fmt.Sprintf(`
+http {
+  tls {
+    cert_file = %q
+    key_file  = %q
+  }
+}
+`, state.tlsCertPath, state.tlsKeyPath) + configSource
+	}
+	src, err := runtime.ParseSource(t.Name(), []byte(configSource))
 	require.NoError(t, err)
 	err = f.LoadSource(src, nil, configFilePath)
 	require.NoError(t, err)
@@ -645,22 +713,22 @@ func verifyPeers(t *assert.CollectT, p *testPeer, expectedLength int) {
 
 func verifyMetrics(t *assert.CollectT, p *testPeer, metrics ...string) {
 	for _, m := range metrics {
-		metricsContain(t, p.address, m+"\n") // add new line to validate the metric has exact value as required
+		metricsContain(t, p, m+"\n") // add new line to validate the metric has exact value as required
 	}
 }
 
-// metricsContain fetches metrics from the given URL and checks if they
+// metricsContain fetches metrics from the given peer and checks if they
 // contain a line with the specified metric name
-func metricsContain(t *assert.CollectT, nodeAddress string, text string) {
-	metricsURL := fmt.Sprintf("http://%s/metrics", nodeAddress)
-	body, err := fetchMetrics(metricsURL)
+func metricsContain(t *assert.CollectT, p *testPeer, text string) {
+	metricsURL := fmt.Sprintf("%s://%s/metrics", p.scheme, p.address)
+	body, err := fetchMetrics(p.metricsClient, metricsURL)
 	require.NoError(t, err)
-	require.Contains(t, body, text, "Could not find %q in the metrics of %q. All metrics: %s", text, nodeAddress, body)
+	require.Contains(t, body, text, "Could not find %q in the metrics of %q. All metrics: %s", text, p.address, body)
 }
 
 // fetchMetrics performs an HTTP GET request to the metrics endpoint and returns the response body
-func fetchMetrics(url string) (string, error) {
-	resp, err := http.Get(url)
+func fetchMetrics(client *http.Client, url string) (string, error) {
+	resp, err := client.Get(url)
 	if err != nil {
 		return "", fmt.Errorf("GET request failed: %w", err)
 	}
@@ -676,6 +744,59 @@ func fetchMetrics(url string) (string, error) {
 	}
 
 	return string(body), nil
+}
+
+// generateTLSCertFiles writes a self-signed certificate (valid for 127.0.0.1)
+// and its key to a temp dir, returning their paths. The cert is self-signed, so
+// it doubles as the CA for clients that need to trust it.
+func generateTLSCertFiles(t *testing.T) (certPath, keyPath string) {
+	t.Helper()
+	dir := t.TempDir()
+
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	require.NoError(t, err)
+
+	tmpl := &x509.Certificate{
+		SerialNumber:          big.NewInt(1),
+		Subject:               pkix.Name{CommonName: "alloy-cluster-e2e"},
+		NotBefore:             time.Now().Add(-time.Hour),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
+		IsCA:                  true,
+		BasicConstraintsValid: true,
+		IPAddresses:           []net.IP{net.IPv4(127, 0, 0, 1)},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &priv.PublicKey, priv)
+	require.NoError(t, err)
+
+	certPath = path.Join(dir, "cert.pem")
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
+	require.NoError(t, os.WriteFile(certPath, certPEM, 0o600))
+
+	keyDER, err := x509.MarshalECPrivateKey(priv)
+	require.NoError(t, err)
+	keyPath = path.Join(dir, "key.pem")
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
+	require.NoError(t, os.WriteFile(keyPath, keyPEM, 0o600))
+
+	return certPath, keyPath
+}
+
+// tlsMetricsClient returns an HTTP client that trusts the given CA and expects
+// the 127.0.0.1 server name, for scraping a TLS-enabled node's metrics.
+func tlsMetricsClient(t *testing.T, caPath string) *http.Client {
+	t.Helper()
+	caPEM, err := os.ReadFile(caPath)
+	require.NoError(t, err)
+	pool := x509.NewCertPool()
+	require.True(t, pool.AppendCertsFromPEM(caPEM))
+
+	return &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{RootCAs: pool, ServerName: "127.0.0.1"},
+		},
+	}
 }
 
 // getFreePort returns a free port that can be used for testing
@@ -706,6 +827,7 @@ var errorsAllowlist = []string{
 	"failed to connect to peers; bootstrapping a new cluster",       // should be allowed only once for first node
 	`msg="node exited with error" node=remotecfg err="noop client"`, // related to remotecfg service mock ups
 	`msg="failed to rejoin list of peers"`,                          // this is because list of initial join peers is fixed in tests
+	`service=remotecfg`,                                             // remotecfg is mocked with a noop client in these tests and it's warnings / errors are expected.
 	`stream closed`,
 	`i/o timeout`,
 	`failed to receive and remove the stream label header`,

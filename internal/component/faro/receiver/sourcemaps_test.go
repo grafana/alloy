@@ -11,10 +11,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
-	alloyutil "github.com/grafana/alloy/internal/util"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/component/faro/receiver/internal/payload"
+	alloyutil "github.com/grafana/alloy/internal/util"
 )
 
 // mockTimeSource is a test helper for controlling time.
@@ -55,7 +56,7 @@ func Test_traceContextKeptWhenStacktraceNotDefined(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -105,7 +106,7 @@ func Test_sourceMapsStoreImpl_DownloadSuccess(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -139,7 +140,7 @@ func Test_sourceMapsStoreImpl_DownloadError(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -207,7 +208,7 @@ func Test_sourceMapsStoreImpl_DownloadHTTPOriginFiltering(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{}
 
@@ -308,7 +309,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystem(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -389,7 +390,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndDownload(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -470,7 +471,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemAndNotDownloadIfDisabled(t *test
 
 func Test_sourceMapsStoreImpl_ReadFromRemoteLocation(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -547,7 +548,7 @@ func Test_sourceMapsStoreImpl_ReadFromRemoteLocation(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_ReadFromFileSystemIfBothLocalAndRemoteLocation(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{}
 
@@ -624,7 +625,7 @@ func Test_sourceMapsStoreImpl_ReadFromFileSystemIfBothLocalAndRemoteLocation(t *
 
 func Test_sourceMapsStoreImpl_ReadFromRemoteLocationIfBothDownloadAndLocationIsSet(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient = &mockHTTPClient{
 			responses: []struct {
@@ -701,7 +702,7 @@ func Test_sourceMapsStoreImpl_ReadFromRemoteLocationIfBothDownloadAndLocationIsS
 
 func Test_sourceMapsStoreImpl_FilepathSanitized(t *testing.T) {
 	var (
-		logger = alloyutil.TestLogger(t)
+		logger = alloyutil.TestAlloyLogger(t).Slog()
 
 		httpClient  = &mockHTTPClient{}
 		fileService = newTestFileService()
@@ -834,7 +835,7 @@ func TestOsFileService_RejectsInvalidPaths(t *testing.T) {
 
 func Test_sourceMapsStoreImpl_RealWorldPathValidation(t *testing.T) {
 	var (
-		logger      = alloyutil.TestLogger(t)
+		logger      = alloyutil.TestAlloyLogger(t).Slog()
 		fileService = &testFileService{}
 		store       = newSourceMapsStore(
 			logger,
@@ -910,14 +911,14 @@ func TestSourceMapsStoreImpl_CleanCachedErrors(t *testing.T) {
 		},
 	}
 
-	logger := alloyutil.TestLogger(t)
+	logger := alloyutil.TestAlloyLogger(t)
 
 	for _, tc := range tt {
 		reg := prometheus.NewRegistry()
 		metrics := newSourceMapMetrics(reg)
 
 		store := &sourceMapsStoreImpl{
-			log:        logger,
+			log:        logger.Slog(),
 			args:       SourceMapsArguments{Cache: &CacheArguments{TTL: 5 * time.Minute}},
 			metrics:    metrics,
 			cli:        &mockHTTPClient{},
@@ -993,14 +994,14 @@ func TestSourceMapsStoreImpl_CleanOldCachedEntries(t *testing.T) {
 		},
 	}
 
-	logger := alloyutil.TestLogger(t)
+	logger := alloyutil.TestAlloyLogger(t)
 
 	for _, tc := range tt {
 		reg := prometheus.NewRegistry()
 		metrics := newSourceMapMetrics(reg)
 
 		store := &sourceMapsStoreImpl{
-			log:        logger,
+			log:        logger.Slog(),
 			args:       SourceMapsArguments{Cache: &CacheArguments{TTL: tc.cacheTimeout}},
 			metrics:    metrics,
 			cli:        &mockHTTPClient{},

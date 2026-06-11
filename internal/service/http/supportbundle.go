@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/grafana/alloy/internal/build"
-	"github.com/grafana/alloy/internal/static/server"
 	"github.com/mackerelio/go-osstat/uptime"
 	"gopkg.in/yaml.v3"
 )
@@ -54,7 +54,15 @@ type Metadata struct {
 }
 
 // ExportSupportBundle gathers the information required for the support bundle.
-func ExportSupportBundle(ctx context.Context, runtimeFlags []string, srvAddress string, sources map[string][]byte, remoteCfg []byte, dialContext server.DialContextFunc) (*Bundle, error) {
+func ExportSupportBundle(
+	ctx context.Context,
+	runtimeFlags []string,
+	srvAddress string,
+	sources map[string][]byte,
+	remoteCfg []byte,
+	dialContext func(ctx context.Context, network string, addr string) (net.Conn, error),
+) (*Bundle, error) {
+
 	var httpClient http.Client
 	httpClient.Transport = &http.Transport{DialContext: dialContext}
 
@@ -206,7 +214,7 @@ func retrieveEnvironmentVariables() []string {
 
 // ServeSupportBundle the collected data and logs as a zip file over the given
 // http.ResponseWriter.
-func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf *bytes.Buffer) error {
+func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf []byte) error {
 	zw := zip.NewWriter(rw)
 	rw.Header().Set("Content-Type", "application/zip")
 	rw.Header().Set("Content-Disposition", "attachment; filename=\"alloy-support-bundle.zip\"")
@@ -219,7 +227,7 @@ func ServeSupportBundle(rw http.ResponseWriter, b *Bundle, logsBuf *bytes.Buffer
 		"alloy-metrics-sample-end.txt":   b.alloyMetricsEnd,
 		"alloy-runtime-flags.txt":        b.runtimeFlags,
 		"alloy-environment.txt":          b.environmentVariables,
-		"alloy-logs.txt":                 logsBuf.Bytes(),
+		"alloy-logs.txt":                 logsBuf,
 		"pprof/cpu.pprof":                b.cpuBuf.Bytes(),
 		"pprof/heap.pprof":               b.heapBuf.Bytes(),
 		"pprof/goroutine.pprof":          b.goroutineBuf.Bytes(),

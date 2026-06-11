@@ -43,7 +43,7 @@ func (t *testStore) ListMetrics(metricDescriptorName string) []*collectors.Const
 
 func TestSelfPruningDeltaStore_Increment_Delegates(t *testing.T) {
 	counterStore := newTestStore()
-	pruningStore := gcp_exporter.NewSelfPruningDeltaStore[collectors.ConstMetric](util.TestAlloyLogger(t), counterStore)
+	pruningStore := gcp_exporter.NewSelfPruningDeltaStore[collectors.ConstMetric](util.TestAlloyLogger(t).Slog(), counterStore)
 	descriptor := &monitoring.MetricDescriptor{Name: "test-descriptor"}
 	currentValue := &collectors.ConstMetric{}
 	pruningStore.Increment(descriptor, currentValue)
@@ -52,7 +52,7 @@ func TestSelfPruningDeltaStore_Increment_Delegates(t *testing.T) {
 
 func TestSelfPruningDeltaStore_ListMetrics_Delegates(t *testing.T) {
 	counterStore := newTestStore()
-	pruningStore := gcp_exporter.NewSelfPruningDeltaStore[collectors.ConstMetric](util.TestAlloyLogger(t), counterStore)
+	pruningStore := gcp_exporter.NewSelfPruningDeltaStore[collectors.ConstMetric](util.TestAlloyLogger(t).Slog(), counterStore)
 	pruningStore.ListMetrics("test-descriptor")
 	assert.Len(t, counterStore.descriptorToListMetricsCounter, 1)
 	assert.Equal(t, 1, counterStore.descriptorToListMetricsCounter["test-descriptor"])
@@ -140,7 +140,7 @@ func TestSelfPruningDeltaStore_PruningWorkflow(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ts := newTestStore(tc.storeState)
 			store := gcp_exporter.NewSelfPruningDeltaStore[collectors.ConstMetric](
-				util.TestAlloyLogger(t),
+				util.TestAlloyLogger(t).Slog(),
 				ts)
 			tc.callsToMakeTo(store, ts)
 

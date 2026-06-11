@@ -2,12 +2,12 @@ package node_exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/flagext"
 	"github.com/prometheus/node_exporter/collector"
 	"github.com/prometheus/procfs"
@@ -261,7 +261,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 

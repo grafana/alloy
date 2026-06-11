@@ -36,17 +36,18 @@ otelcol.exporter.prometheus "<LABEL>" {
 
 You can use the following arguments with `otelcol.exporter.prometheus`:
 
-| Name                                 | Type                    | Description                                                                       | Default | Required |
-| ------------------------------------ | ----------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
-| `forward_to`                         | `list(MetricsReceiver)` | Where to forward converted Prometheus metrics.                                    |         | yes      |
-| `add_metric_suffixes`                | `bool`                  | Whether to add type and unit suffixes to metric names.                            | `true`  | no       |
-| `convert_classic_histograms_to_nhcb` | `bool`                  | (Experimental) Convert OTel explicit-bucket histograms to NHCB.                   | `false` | no       |
-| `gc_frequency`                       | `duration`              | How often to clean up stale metrics from memory.                                  | `"5m"`  | no       |
-| `honor_metadata`                     | `bool`                  | (Experimental) Whether to send metric metadata to downstream components.          | `false` | no       |
-| `include_scope_info`                 | `bool`                  | Whether to include `otel_scope_info` metrics.                                     | `false` | no       |
-| `include_scope_labels`               | `bool`                  | Whether to include additional OTLP labels in all metrics.                         | `true`  | no       |
-| `include_target_info`                | `bool`                  | Whether to include `target_info` metrics.                                         | `true`  | no       |
-| `resource_to_telemetry_conversion`   | `bool`                  | Whether to convert OTel resource attributes to Prometheus labels.                 | `false` | no       |
+| Name                                   | Type                    | Description                                                                       | Default | Required |
+| -------------------------------------- | ----------------------- | --------------------------------------------------------------------------------- | ------- | -------- |
+| `forward_to`                           | `list(MetricsReceiver)` | Where to forward converted Prometheus metrics.                                    |         | yes      |
+| `add_metric_suffixes`                  | `bool`                  | Whether to add type and unit suffixes to metric names.                            | `true`  | no       |
+| `convert_classic_histograms_to_nhcb`   | `bool`                  | (Experimental) Convert OTel explicit-bucket histograms to NHCB.                   | `false` | no       |
+| `gc_frequency`                         | `duration`              | How often to clean up stale metrics from memory.                                  | `"5m"`  | no       |
+| `honor_metadata`                       | `bool`                  | (Experimental) Whether to send metric metadata to downstream components.          | `false` | no       |
+| `include_scope_info`                   | `bool`                  | Whether to include `otel_scope_info` metrics.                                     | `false` | no       |
+| `include_scope_labels`                 | `bool`                  | Whether to include additional OTLP labels in all metrics.                         | `true`  | no       |
+| `include_target_info`                  | `bool`                  | Whether to include `target_info` metrics.                                         | `true`  | no       |
+| `keep_identifying_resource_attributes` | `bool`                  | Whether to keep `service.name`, `service.namespace`, and `service.instance.id` as labels on `target_info`. | `false` | no       |
+| `resource_to_telemetry_conversion`     | `bool`                  | Whether to convert OTel resource attributes to Prometheus labels.                 | `false` | no       |
 
 By default, OpenTelemetry resources are converted into `target_info` metrics.
 OpenTelemetry instrumentation scopes are converted into `otel_scope_info` metrics.
@@ -80,6 +81,12 @@ To enable and use an experimental feature, you must set the `stability.level` [f
 When `include_scope_labels` is `true`  the `otel_scope_name` and `otel_scope_version` labels are added to every converted metric sample.
 
 When `include_target_info` is true, OpenTelemetry Collector resources are converted into `target_info` metrics.
+
+By default, `service.name`, `service.namespace`, and `service.instance.id` are stripped from `target_info` after being mapped into the `job` and `instance` labels.
+Set `keep_identifying_resource_attributes = true` to preserve them as labels on `target_info`, keeping it compliant with the [OpenTelemetry service resource semantic conventions][otel-svc-semconv].
+This option only affects `target_info`; regular metric series are unchanged.
+
+[otel-svc-semconv]: https://opentelemetry.io/docs/specs/semconv/resource/service/
 
 {{< admonition type="note" >}}
 OTLP metrics can have a lot of resource attributes.

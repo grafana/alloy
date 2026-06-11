@@ -37,8 +37,7 @@ func (f detectorFunc) DetectContext(ctx context.Context, fragment detect.Fragmen
 func newTestOptions(t require.TestingT, reg prometheus.Registerer) component.Options {
 	logger := util.TestAlloyLogger(t)
 	return component.Options{
-		Logger:         logger,
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,
 		Registerer:     reg,
@@ -291,7 +290,7 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
 	opts := component.Options{
-		SLogger:        logging.NewSlogNop(),
+		Logger:         logging.NewSlogNop(),
 		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,
 	}

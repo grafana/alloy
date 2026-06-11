@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opentelemetry.io/otel/trace"
 
@@ -183,9 +182,8 @@ func getManagedOptions(globals ComponentGlobals, cn *BuiltinComponentNode) compo
 	cn.registry = prometheus.NewRegistry()
 	parent, id := splitPath(cn.globalID)
 	return component.Options{
-		ID:      cn.globalID,
-		Logger:  log.With(globals.Logger, "component_path", parent, "component_id", id),
-		SLogger: globals.Logger.Slog().With("component_path", parent, "component_id", id),
+		ID:     cn.globalID,
+		Logger: globals.Logger.Slog().With("component_path", parent, "component_id", id),
 		Registerer: prometheus.WrapRegistererWith(prometheus.Labels{
 			"component_path": parent,
 			"component_id":   id,

@@ -16,14 +16,16 @@ Available commands:
 
 * [`convert`][convert]: Convert an {{< param "PRODUCT_NAME" >}} configuration file.
 * [`fmt`][fmt]: Format an {{< param "PRODUCT_NAME" >}} configuration file.
+* [`gql`][gql]: Run a GraphQL query against a running {{< param "PRODUCT_NAME" >}} instance.
 * [`run`][run]: Start {{< param "PRODUCT_NAME" >}} with the Default Engine, given an Alloy syntax configuration file.
-* [`otel`][otel]: Start {{< param "PRODUCT_NAME" >}} with the experimental OTel Engine, given an Open Telemetry Collector YAML configuration file.
+* [`otel`][otel]: Start {{< param "PRODUCT_NAME" >}} with the experimental OTel Engine, given an OpenTelemetry Collector YAML configuration file.
 * [`tools`][tools]: Read the WAL and provide statistical information.
 * `completion`: Generate shell completion for the `alloy` CLI.
 * `help`: Print help for supported commands.
 
 [run]: ./run/
 [fmt]: ./fmt/
+[gql]: ./gql/
 [convert]: ./convert/
 [otel]: ./otel/
 [tools]: ./tools/

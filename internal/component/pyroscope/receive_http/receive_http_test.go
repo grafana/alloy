@@ -22,9 +22,9 @@ import (
 
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	"github.com/grafana/alloy/internal/component/pyroscope"
+	"github.com/grafana/alloy/internal/component/pyroscope/util/testlog"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfo"
 	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
-	"github.com/grafana/alloy/internal/util"
 	pushv1 "github.com/grafana/pyroscope/api/gen/proto/go/push/v1"
 	"github.com/grafana/pyroscope/api/gen/proto/go/push/v1/pushv1connect"
 	typesv1 "github.com/grafana/pyroscope/api/gen/proto/go/types/v1"
@@ -428,7 +428,7 @@ func startComponent(t *testing.T, appendables []pyroscope.Appendable) int {
 	}
 
 	comp, err := New(
-		util.TestAlloyLogger(t),
+		testlog.TestLogger(t),
 		noop.Tracer{},
 		prometheus.NewRegistry(),
 		args,
@@ -573,7 +573,7 @@ func TestUpdateArgs(t *testing.T) {
 	}
 
 	comp, err := New(
-		util.TestAlloyLogger(t),
+		testlog.TestLogger(t),
 		noop.Tracer{},
 		prometheus.NewRegistry(),
 		args,

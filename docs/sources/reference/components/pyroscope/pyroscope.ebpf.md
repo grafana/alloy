@@ -192,7 +192,7 @@ The full list of ~213 metrics is defined in the [`opentelemetry-ebpf-profiler` m
 ## Profile collecting behavior
 
 The `pyroscope.ebpf` component collects stack traces associated with a process running on the current host.
-You can use the `sample_rate` argument to define the number of stack traces collected per second. The default is 97.
+You can use the `sample_rate` argument to define the number of stack traces collected per second. The default is 19.
 
 The following labels are automatically injected into the collected profiles if you haven't defined them.
 These labels can help you pin down a profiling target.

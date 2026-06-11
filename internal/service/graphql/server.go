@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"path"
 	"time"
@@ -12,9 +13,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/graphql/graph"
 	"github.com/vektah/gqlparser/v2/ast"
@@ -29,7 +28,7 @@ type AlloyGraphQLProvider struct {
 
 type RegisterRoutesParams struct {
 	Router           *mux.Router
-	Logger           log.Logger
+	Logger           *slog.Logger
 	URLPrefix        string
 	Host             service.Host
 	EnablePlayground bool
@@ -37,7 +36,7 @@ type RegisterRoutesParams struct {
 
 func RegisterRoutes(params RegisterRoutesParams) {
 	if params.Logger == nil {
-		params.Logger = log.NewNopLogger()
+		params.Logger = slog.New(slog.DiscardHandler)
 	}
 
 	provider := newAlloyGraphQLProvider(params.URLPrefix, params.Host, params.EnablePlayground)
@@ -45,7 +44,7 @@ func RegisterRoutes(params RegisterRoutesParams) {
 	params.Router.Handle(path.Join(params.URLPrefix, "/graphql"), provider.srv)
 
 	if params.EnablePlayground {
-		level.Info(params.Logger).Log("msg", "GraphQL playground is enabled")
+		params.Logger.Info("GraphQL playground is enabled")
 		params.Router.Handle(path.Join(params.URLPrefix, "/graphql/playground"), provider.playground)
 	}
 }

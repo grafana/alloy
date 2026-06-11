@@ -1,47 +1,33 @@
-// Package zapadapter allows github.com/go-kit/log to be used as a Zap core.
-package zapadapter
+package slogadapter
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-// New returns a new zap.Logger instance which will forward logs to the
-// provided log.Logger. The github.com/go-kit/log/level package will be used
-// for specifying log levels.
-func New(l log.Logger) *zap.Logger {
-	return zap.New(&loggerCore{inner: l})
+// NewZap returns a new zap.Logger instance which will forward logs to the
+// provided *slog.Logger.
+func NewZap(l *slog.Logger) *zap.Logger {
+	return zap.New(&slogCore{inner: l})
 }
 
-// loggerCore is a zap.Core implementation which forwards logs to a log.Logger
-// instance.
-type loggerCore struct {
-	inner log.Logger
+// slogCore is a zap.Core implementation which forwards logs to a *slog.Logger instance.
+type slogCore struct {
+	inner *slog.Logger
 }
 
-var _ zapcore.Core = (*loggerCore)(nil)
-
-// Enabled implements zapcore.Core and returns whether logs at a specific level
-// should be reported.
-func (lc *loggerCore) Enabled(zapcore.Level) bool {
-	// An instance of log.Logger has no way of knowing if logs will be filtered
-	// out, so we always have to return true here.
-	return true
-}
+var _ zapcore.Core = (*slogCore)(nil)
 
 // With implements zapcore.Core, returning a new logger core with ff appended
 // to the list of fields.
-func (lc *loggerCore) With(ff []zapcore.Field) zapcore.Core {
-	// Encode all the fields so that they're go-kit compatible and create a
-	// new logger from it.
+func (lc *slogCore) With(ff []zapcore.Field) zapcore.Core {
 	enc := newFieldEncoder()
 	defer func() { _ = enc.Close() }()
 
@@ -49,54 +35,61 @@ func (lc *loggerCore) With(ff []zapcore.Field) zapcore.Core {
 		f.AddTo(enc)
 	}
 
-	return &loggerCore{
-		inner: log.With(lc.inner, enc.fields...),
+	return &slogCore{
+		inner: lc.inner.With(enc.fields...),
 	}
+}
+
+// Enabled implements zapcore.Core and returns whether logs at a specific level
+// should be reported.
+func (lc *slogCore) Enabled(level zapcore.Level) bool {
+	return lc.inner.Enabled(context.Background(), zapToSlogLevel(level))
 }
 
 // Check implements zapcore.Core. lc will always add itself along with the
 // provided entry to the CheckedEntry.
-func (lc *loggerCore) Check(e zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
-	return ce.AddCore(e, lc)
+func (lc *slogCore) Check(e zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
+	if lc.Enabled(e.Level) {
+		return ce.AddCore(e, lc)
+	}
+	return ce
 }
 
 // Write serializes e with the provided list of fields, writing them to the
-// underlying github.com/go-kit/log.Logger instance.
-func (lc *loggerCore) Write(e zapcore.Entry, ff []zapcore.Field) error {
+// underlying *slog.Logger instance.
+func (lc *slogCore) Write(e zapcore.Entry, ff []zapcore.Field) error {
 	enc := newFieldEncoder()
 	defer func() { _ = enc.Close() }()
-
-	enc.fields = append(enc.fields, "msg", e.Message)
 
 	for _, f := range ff {
 		f.AddTo(enc)
 	}
 
-	switch e.Level {
-	case zapcore.DebugLevel:
-		return level.Debug(lc.inner).Log(enc.fields...)
-	case zapcore.InfoLevel:
-		return level.Info(lc.inner).Log(enc.fields...)
-	case zapcore.WarnLevel:
-		return level.Warn(lc.inner).Log(enc.fields...)
-	case zapcore.ErrorLevel, zapcore.DPanicLevel, zapcore.PanicLevel, zapcore.FatalLevel:
-		// We ignore panics/fatals here because we really don't want components to
-		// be able to do that.
-		return level.Error(lc.inner).Log(enc.fields...)
-	default:
-		return lc.inner.Log(enc.fields...)
-	}
-}
-
-func (lc *loggerCore) Sync() error {
+	lc.inner.Log(context.Background(), zapToSlogLevel(e.Level), e.Message, enc.fields...)
 	return nil
 }
 
+func (lc *slogCore) Sync() error {
+	return nil
+}
+
+func zapToSlogLevel(level zapcore.Level) slog.Level {
+	switch level {
+	case zapcore.DebugLevel:
+		return slog.LevelDebug
+	case zapcore.InfoLevel:
+		return slog.LevelInfo
+	case zapcore.WarnLevel:
+		return slog.LevelWarn
+	default: // Error, DPanic, Panic, Fatal
+		return slog.LevelError
+	}
+}
+
 // fieldEncoder implements zapcore.ObjectEncoder. It enables converting a
-// zapcore.Field into a value which will be written as a github.com/go-kit/log
-// keypair.
+// zapcore.Field into a value which will be written as slog keypair.
 type fieldEncoder struct {
-	// fields are the list of fields that will be passed to log.Logger.Log.
+	// fields are the list of fields that will be passed to *slog.Logger.
 	fields []any
 
 	// namespace is used to prefix keys before appending to fields. When a
@@ -132,34 +125,30 @@ func (fe *fieldEncoder) Close() error {
 }
 
 func (fe *fieldEncoder) AddArray(key string, marshaler zapcore.ArrayMarshaler) error {
-	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
-		enc := newArrayFieldEncoder()
-		err := marshaler.MarshalLogArray(enc)
-		if err != nil {
-			return err.Error()
-		}
-		b, err := enc.jsonMarshal()
-		if err != nil {
-			return err.Error()
-		}
-		return string(b)
-	}})
+	enc := newArrayFieldEncoder()
+	if err := marshaler.MarshalLogArray(enc); err != nil {
+		return err
+	}
+	b, err := enc.jsonMarshal()
+	if err != nil {
+		return err
+	}
+
+	fe.fields = append(fe.fields, fe.keyName(key), string(b))
 	return nil
 }
 
 func (fe *fieldEncoder) AddObject(key string, marshaler zapcore.ObjectMarshaler) error {
-	fe.fields = append(fe.fields, fe.keyName(key), lazyStringer{f: func() string {
-		enc := newObjectFieldEncoder()
-		err := marshaler.MarshalLogObject(enc)
-		if err != nil {
-			return err.Error()
-		}
-		b, err := enc.jsonMarshal()
-		if err != nil {
-			return err.Error()
-		}
-		return string(b)
-	}})
+	enc := newObjectFieldEncoder()
+	if err := marshaler.MarshalLogObject(enc); err != nil {
+		return err
+	}
+	b, err := enc.jsonMarshal()
+	if err != nil {
+		return err
+	}
+
+	fe.fields = append(fe.fields, fe.keyName(key), string(b))
 	return nil
 }
 
@@ -256,25 +245,11 @@ func (fe *fieldEncoder) OpenNamespace(key string) {
 	fe.namespace = append(fe.namespace, key)
 }
 
-// keyName returns the key to used for a named field. If the fieldEncoder isn't
-// namespaced, then the key name is k. Otherwise, the key name the combined
-// string of the namespace and key, delimiting each fragment by a period `.`.
-func (fe *fieldEncoder) keyName(k string) any {
+func (fe *fieldEncoder) keyName(k string) string {
 	if len(fe.namespace) == 0 {
 		return k
 	}
-	return key(append(fe.namespace, k))
-}
-
-type key []string
-
-var _ fmt.Stringer = (key)(nil)
-
-func (k key) String() string {
-	if len(k) == 1 {
-		return k[0]
-	}
-	return strings.Join(k, ".")
+	return strings.Join(append(fe.namespace, k), ".")
 }
 
 var _ zapcore.ObjectEncoder = (*objectFieldEncoder)(nil)
@@ -491,12 +466,4 @@ func (fe *arrayFieldEncoder) AppendUintptr(value uintptr) {
 func (fe *arrayFieldEncoder) AppendReflected(value any) error {
 	fe.arr = append(fe.arr, value)
 	return nil
-}
-
-type lazyStringer struct {
-	f func() string
-}
-
-func (l lazyStringer) String() string {
-	return l.f()
 }

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-kit/log"
 	yace "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg"
 	yaceClients "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/clients"
 	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
@@ -14,7 +13,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/atomic"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
@@ -33,20 +31,18 @@ type asyncExporter struct {
 // NewDecoupledCloudwatchExporter creates a new YACE wrapper, that implements Integration. The decouple feature spawns a
 // background go-routine to perform YACE metric collection allowing for a decoupled collection of AWS metrics from the
 // ServerHandler.
-func NewDecoupledCloudwatchExporter(name string, logger log.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, labelsSnakeCase, debug bool) (*asyncExporter, error) {
+func NewDecoupledCloudwatchExporter(name string, logger *slog.Logger, conf yaceModel.JobsConfig, scrapeInterval time.Duration, fipsEnabled, labelsSnakeCase bool) (*asyncExporter, error) {
 	var factory cachingFactory
 	var err error
 
-	l := slog.New(newSlogHandler(logging.NewSlogGoKitHandler(logger), debug))
-
-	factory, err = yaceClients.NewFactory(l, conf, fipsEnabled)
+	factory, err = yaceClients.NewFactory(logger, conf, fipsEnabled)
 	if err != nil {
 		return nil, err
 	}
 
 	return &asyncExporter{
 		name:                 name,
-		logger:               l,
+		logger:               logger,
 		cachingClientFactory: factory,
 		scrapeConf:           conf,
 		registry:             atomic.Pointer[prometheus.Registry]{},

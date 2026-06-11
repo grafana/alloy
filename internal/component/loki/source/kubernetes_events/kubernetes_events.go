@@ -22,7 +22,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 // Generous timeout period for configuring informers
@@ -108,7 +107,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.SLogger, positions.Config{
+	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
 		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
 	})
@@ -162,9 +161,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// Create a new restConfig if we don't have one or if our arguments changed.
 	if c.restConfig == nil || !reflect.DeepEqual(c.args.Client, newArgs.Client) {
 		var err error
-		// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that uses shared
-		// kubernetes client builder to slog. Part of https://github.com/grafana/alloy/issues/4813.
-		c.restConfig, err = newArgs.Client.BuildRESTConfig(slogadapter.GoKit(c.opts.SLogger.Handler()))
+		c.restConfig, err = newArgs.Client.BuildRESTConfig(c.opts.Logger)
 		if err != nil {
 			return fmt.Errorf("building Kubernetes client config: %w", err)
 		}
@@ -182,13 +179,13 @@ func (c *Component) Update(args component.Arguments) error {
 // of namespaces, filtered by clustering ownership.
 func (c *Component) reconcile() {
 	source.Reconcile(
-		c.opts.SLogger,
+		c.opts.Logger,
 		c.scheduler,
 		c.localNamespaces(),
 		func(namespace string) string { return namespace },
 		func(_ string, namespace string) (source.Source[string], error) {
 			return newEventController(eventControllerOptions{
-				Log:          c.opts.SLogger,
+				Log:          c.opts.Logger,
 				Config:       c.restConfig,
 				Namespace:    namespace,
 				JobName:      c.args.JobName,
