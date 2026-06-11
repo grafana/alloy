@@ -6,9 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/prometheus/discovery/dns"
-
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -60,10 +57,5 @@ func (args *Arguments) Validate() error {
 }
 
 func (args Arguments) Convert() discovery.DiscovererConfig {
-	return &dns.SDConfig{
-		Names:           args.Names,
-		RefreshInterval: model.Duration(args.RefreshInterval),
-		Type:            args.Type,
-		Port:            args.Port,
-	}
+	return newDiscovererConfig(args)
 }
