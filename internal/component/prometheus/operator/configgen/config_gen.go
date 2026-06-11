@@ -25,6 +25,80 @@ type ConfigGenerator struct {
 	Secrets                  SecretFetcher
 	AdditionalRelabelConfigs []*alloy_relabel.Config
 	ScrapeOptions            operator.ScrapeOptions
+	ScrapeClasses            []operator.ScrapeClass
+}
+
+// scrapeClassFor returns the scrape class that applies to a resource. When the
+// resource references a class by name, that class is returned (or an error if
+// it is not defined). When the reference is empty, the class marked as default
+// is returned, if any.
+func (cg *ConfigGenerator) scrapeClassFor(name *string) (*operator.ScrapeClass, error) {
+	var def *operator.ScrapeClass
+	for i := range cg.ScrapeClasses {
+		sc := &cg.ScrapeClasses[i]
+		if sc.Default {
+			def = sc
+		}
+		if name != nil && *name != "" && *name == sc.Name {
+			return sc, nil
+		}
+	}
+	if name != nil && *name != "" {
+		return nil, fmt.Errorf("scrape class %q is not defined", *name)
+	}
+	return def, nil
+}
+
+// applyScrapeClassHTTPClientConfig fills in TLS and authorization from the
+// scrape class when the resource's endpoint does not set them. The endpoint
+// always takes precedence.
+func applyScrapeClassHTTPClientConfig(httpCfg *commonConfig.HTTPClientConfig, sc *operator.ScrapeClass, epHasTLS, epHasAuth bool) {
+	if sc == nil {
+		return
+	}
+	if !epHasTLS && sc.TLSConfig != nil {
+		httpCfg.TLSConfig = *sc.TLSConfig.Convert()
+	}
+	if !epHasAuth && sc.Authorization != nil {
+		httpCfg.Authorization = sc.Authorization.Convert()
+	}
+}
+
+// scrapeClassAttachMetadata returns the attach metadata to use for a resource,
+// preferring the resource's own setting and falling back to the scrape class.
+func scrapeClassAttachMetadata(resource *promopv1.AttachMetadata, sc *operator.ScrapeClass) *promopv1.AttachMetadata {
+	if resource != nil {
+		return resource
+	}
+	if sc != nil && sc.AttachMetadata != nil {
+		node := sc.AttachMetadata.Node
+		return &promopv1.AttachMetadata{Node: &node}
+	}
+	return nil
+}
+
+// addScrapeClassRelabelings adds the scrape class relabelings to the relabeler.
+// Call this before adding the endpoint's own relabelings so the class rules are
+// prepended.
+func (r *relabeler) addScrapeClassRelabelings(sc *operator.ScrapeClass) {
+	if sc == nil {
+		return
+	}
+	for _, c := range alloy_relabel.ComponentToPromRelabelConfigs(sc.Relabelings) {
+		r.add(c)
+	}
+}
+
+// addScrapeClassMetricRelabelings adds the scrape class metric relabelings to
+// the relabeler. Call this after adding the endpoint's own metric relabelings so
+// the class rules are appended.
+func (r *relabeler) addScrapeClassMetricRelabelings(sc *operator.ScrapeClass) {
+	if sc == nil {
+		return
+	}
+	for _, c := range alloy_relabel.ComponentToPromRelabelConfigs(sc.MetricRelabelings) {
+		r.add(c)
+	}
 }
 
 var (
