@@ -50,8 +50,9 @@ func TestGroups(t *testing.T) {
 func TestSlogTester(t *testing.T) {
 	var buf bytes.Buffer
 	l, err := New(&buf, Options{
-		Level:  "debug",
-		Format: "json",
+		Level:       "debug",
+		Format:      "json",
+		Destination: LogDestinationStderr,
 	})
 	require.NoError(t, err)
 	results := func() []map[string]any {
@@ -84,8 +85,9 @@ func getTestHandler(t *testing.T, w io.Writer) slog.Handler {
 	t.Helper()
 
 	l, err := New(w, Options{
-		Level:  LevelDebug,
-		Format: FormatLogfmt,
+		Level:       LevelDebug,
+		Format:      FormatLogfmt,
+		Destination: LogDestinationStderr,
 	})
 	require.NoError(t, err)
 
