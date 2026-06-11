@@ -14,6 +14,16 @@ func (c *Component) watchdogLoop(ctx context.Context) error {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
+	client := &http.Client{
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, "unix", c.subprocess.HealthAddr())
+			},
+		},
+	}
+	defer client.CloseIdleConnections()
+
 	// Beyla loads eBPF programs before opening its Prometheus port (~15-20s)
 	select {
 	case <-ctx.Done():
@@ -63,37 +73,27 @@ func (c *Component) watchdogLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			if err := handleProbe(c.probeSubprocess()); err != nil {
+			if err := handleProbe(c.probeSubprocess(ctx, client)); err != nil {
 				return err
 			}
 		}
 	}
 }
 
-func (c *Component) probeSubprocess() error {
-	addr := c.subprocess.HealthAddr()
-
-	if addr == "" {
+func (c *Component) probeSubprocess(ctx context.Context, client *http.Client) error {
+	if c.subprocess.HealthAddr() == "" {
 		return fmt.Errorf("subprocess not started")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// "beyla" is a placeholder, DialContext below ignores it and
+	// "beyla" is a placeholder, the client's DialContext ignores it and
 	// dials the abstract unix socket
 	req, err := http.NewRequestWithContext(ctx, "GET", "http://beyla/healthz", nil)
 
 	if err != nil {
 		return err
-	}
-
-	client := &http.Client{
-		Transport: &http.Transport{
-			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
-				return (&net.Dialer{}).DialContext(ctx, "unix", addr)
-			},
-		},
 	}
 
 	resp, err := client.Do(req)
