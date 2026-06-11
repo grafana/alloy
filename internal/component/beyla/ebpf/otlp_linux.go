@@ -117,6 +117,8 @@ func (c *Component) enqueueOTLP(w http.ResponseWriter, r *http.Request, queue ch
 		return
 	}
 
+	defer r.Body.Close()
+
 	body, err := io.ReadAll(r.Body)
 
 	if err != nil {
@@ -124,8 +126,6 @@ func (c *Component) enqueueOTLP(w http.ResponseWriter, r *http.Request, queue ch
 		http.Error(w, "failed to read request", http.StatusBadRequest)
 		return
 	}
-
-	defer r.Body.Close()
 
 	item := otlpItem{isTraces: isTraces, body: body, contentType: r.Header.Get("Content-Type")}
 
