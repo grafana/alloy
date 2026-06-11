@@ -17,6 +17,9 @@
   // Updates must be published for at least 7 to be considered
   "minimumReleaseAge": "7 days",
 
+  // Surface abandonment signal in dependency dashboard after one year
+  "abandonmentThreshold": "365 days",
+
   "prConcurrentLimit": 5,
 
   // Move dependency files forward along with lock files
