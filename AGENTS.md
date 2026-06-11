@@ -37,6 +37,23 @@ If you are developing code, depending on what you are building, make sure you ge
 - [Create exporter components](docs/developer/writing-exporter-components.md)
 - [Key dependency updates](docs/developer/key-deps-update/key-dep-updates.md)
 
+## GitHub Actions security
+
+When introducing or modifying new github actions, consider the following security requirements:
+
+### Required rules
+
+1. **Secrets and Credentials:** For GitHub App tokens: use GATB (`grafana/shared-workflows/actions/create-github-app-token`). For all other secrets: fetch from Vault via `get-vault-secrets`. Never hardcode secrets or store them in GitHub Secrets.
+2. **PR / fork workflow safety:** `pull_request` workflows must be read-only (checkout, lint, test etc). OIDC requests will fail in forked repositories.
+3. **Commit SHAs:** Pin third-party actions to full commit SHAs, for example `uses: org/action@abcdef… # v1.2.3`
+4. **Least-privilege permissions** — Scope the workflow `permissions:` key, defaulting to `contents: read`; add `id-token: write` or write scopes only when the job actually needs OIDC/Vault or publishing.
+5. **`persist-credentials: false` on actions/checkout:** Unless later steps use git to push or commit (then pass a token to checkout and leave persistence enabled).
+6. **Avoid dangerous triggers:** Do not use `pull_request_target`. Use `workflow_run` only when documented and gated; never check out or execute untrusted PR code in those jobs. For `issue_comment` workflows, allow only authorized actors to trigger runs and checkout the commit SHA specified in the comment—not the PR head ref by default.
+7. **Separate test and publish jobs:** Jobs that build or test PR code must not have write access to the repo, GitHub Packages, or container registries. Keep image pushes, releases, and other publishing in dedicated workflows with elevated permissions.
+8. **Sanitize user input:** Do not interpolate user-controlled values (PR titles, comments, issue bodies, label names, etc.) directly into `run` scripts. Pass them through `env:` and read them as environment variables, or validate and quote them before use, to avoid shell and workflow-command injection.
+9. **Limit Actions caching:** To lessen cache poisoning attack vectors: avoid caching in jobs that run untrusted PR code. On release/publish jobs, avoid caching or set `lookup-only: true` on `actions/cache`. Do not reuse cache `key` / `restore-keys` between untrusted builds and privileged workflows.
+10. **zizmor check:** All new or modified workflows must pass a Zizmor run with no errors or warnings. This check runs as part of CI.
+
 ## Useful commands
 
 Show all Makefile targets and descriptions:
@@ -74,6 +91,14 @@ Run:
 ```sh
 ./build/alloy run example-config.alloy
 ```
+
+Run zizmor on workflow files:
+
+```sh
+zizmor --collect=workflows .
+```
+
+Requires `zizmor` to be installed locally.
 
 ## Cursor Cloud specific instructions
 
