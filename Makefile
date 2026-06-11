@@ -85,7 +85,7 @@
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
 ##   SKIP_CODE_GENERATION Set to 1 to skip code generation before building the alloy binary
-##   BEYLA_VERSION        Version of Beyla to download and embed (default v3.9.3).
+##   BEYLA_VERSION        Version of Beyla to download and embed.
 
 include build-tools/make/*.mk
 

@@ -33,7 +33,7 @@ func newResourcesCollector(l *slog.Logger) *resourcesCollector {
 
 		processStartTime: prometheus.NewDesc(
 			"alloy_resources_process_start_time_seconds",
-			"Start time of the process since unix epoch in seconds.",
+			"Start time of the process since Unix epoch in seconds.",
 			nil, nil,
 		),
 
