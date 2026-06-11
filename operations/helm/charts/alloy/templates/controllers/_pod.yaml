@@ -52,7 +52,18 @@ spec:
   dnsPolicy: {{ .Values.controller.dnsPolicy }}
   {{- with .Values.controller.dnsConfig }}
   dnsConfig:
-    {{- toYaml . | nindent 4 }}
+    {{- with .nameservers }}
+    nameservers:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .searches }}
+    searches:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .options }}
+    options:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   {{- end }}
   {{- with .Values.controller.affinity }}
   affinity:

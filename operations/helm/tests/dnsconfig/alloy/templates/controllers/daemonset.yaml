@@ -77,14 +77,14 @@ spec:
       dnsPolicy: ClusterFirst
       dnsConfig:
         nameservers:
-        - 1.2.3.4
-        options:
-        - name: ndots
-          value: "2"
-        - name: edns0
+          - 1.2.3.4
         searches:
-        - ns1.svc.cluster-domain.example
-        - my.dns.search.suffix
+          - ns1.svc.cluster-domain.example
+          - my.dns.search.suffix
+        options:
+          - name: ndots
+            value: "2"
+          - name: edns0
       volumes:
         - name: config
           configMap:
