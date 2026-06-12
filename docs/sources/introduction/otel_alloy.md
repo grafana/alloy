@@ -154,7 +154,7 @@ To view the full list of components and their versions, refer to the [OpenTeleme
 
 The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)](https://opentelemetry.io/docs/collector/custom-collector/) manifest.
 If you need additional components or want to remove bundled components, edit the manifest and build a customized {{< param "PRODUCT_NAME" >}} binary.
-Custom builds aren't supported.
+Grafana doesn't offer commercial support for custom builds.
 
 ### 1. Clone the {{< param "PRODUCT_NAME" >}} repository
 
