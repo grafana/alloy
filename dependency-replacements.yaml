@@ -59,7 +59,28 @@ replaces:
 
   - comment: Replace memberlist with Grafana fork which includes unmerged upstream fixes
     dependency: github.com/hashicorp/memberlist
-    replacement: github.com/grafana/memberlist v0.3.1-0.20220714140823-09ffed8adbbe
+    replacement: github.com/grafana/memberlist v0.3.1-0.20251126142931-6f9f62ab6f86
+
+  - comment: >
+      Pin Prometheus to the v3.12.0-rc.0 tag — the last tagged cut before GA (v0.312.0) pulled
+      the OTel stack to v0.153 via a CVE-driven `go get -u`. rc.0 keeps deltatocumulative at
+      v0.151 and collector core at v1.57, matching our otel-contrib pin, so MVS drags nothing
+      up. MVS would otherwise select released v0.311.x via prom-operator's requirement, whose
+      old discovery API is incompatible with otel-contrib v0.151+.
+      Removal: when otel-contrib pins a released Prometheus tag (post-v3.12.0 GA).
+    dependency: github.com/prometheus/prometheus
+    replacement: github.com/prometheus/prometheus v0.312.0-rc.0
+
+  - comment: >
+      Personal fork of prometheus-operator v0.91.0 with a one-line patch adding the nil
+      *slog.Logger arg to the rulefmt.Parse call in pkg/operator/rules.go, matching the
+      Prometheus v3.12 API. Released prom-operator v0.91.0 still targets prom v0.311.3;
+      upstream main bumped to v0.312.0 on June 2 (so the fix is on their main) but no
+      tagged release carries it yet.
+      Fork branch: github.com/kgeckhart/prometheus-operator @ kgeckhart/v0.91.0-rulefmt-slog
+      Removal: when upstream prom-operator ships a release that bumps prom to v3.12+.
+    dependency: github.com/prometheus-operator/prometheus-operator
+    replacement: github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253
 
   - comment: Use forked syslog implementation by leodido for continued support
     dependency: github.com/influxdata/go-syslog/v3
@@ -119,18 +140,6 @@ replaces:
     dependency: sigs.k8s.io/controller-runtime
     replacement: sigs.k8s.io/controller-runtime v0.20.4
 
-  - comment: >
-      Fork to grafana repo to address issue with freebsd build tags.
-      This can be removed once https://github.com/open-telemetry/opentelemetry-collector-contrib/issues/42645 is fixed
-    dependency: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/filestatsreceiver
-    replacement: github.com/grafana/opentelemetry-collector-contrib/receiver/filestatsreceiver v0.0.0-20260126095124-0af81a9e8966
-
-  - comment: >
-      Fix sent_batch_duration_seconds measuring before the request was sent.
-      Fork branch: https://github.com/grafana/prometheus/tree/fix-sent-batch-duration-c7bc56cf6c8f
-      Remove when https://github.com/prometheus/prometheus/pull/18214 is merged and Prometheus is upgraded.
-    dependency: github.com/prometheus/prometheus
-    replacement: github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57
 
   - comment: >
       Fork hashicorp/vault to replace obsolete aws-sdk-go with aws-sdk-go-v2 (see: https://github.com/grafana/alloy/issues/2936).

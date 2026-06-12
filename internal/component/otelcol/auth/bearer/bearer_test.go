@@ -202,7 +202,9 @@ func TestServer(t *testing.T) {
 
 		// Trim the space in case bearer token is set to an empty string
 		scheme = strings.TrimSpace(scheme)
-		_, err = otelServerAuthExtension.Authenticate(ctx, map[string][]string{header: {scheme}})
+		// Use HTTP canonical header key; upstream bearertokenauthextension v0.151+
+		// uses http.CanonicalHeaderKey when looking up the header.
+		_, err = otelServerAuthExtension.Authenticate(ctx, map[string][]string{http.CanonicalHeaderKey(header): {scheme}})
 		require.NoError(t, err, td.testName)
 	}
 }

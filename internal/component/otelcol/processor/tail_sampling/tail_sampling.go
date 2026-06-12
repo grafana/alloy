@@ -8,8 +8,10 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/mitchellh/mapstructure"
 	tsp "github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 	otelcomponent "go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/pipeline"
@@ -41,6 +43,11 @@ type Arguments struct {
 	DropPendingTracesOnShutdown   bool                `alloy:"drop_pending_traces_on_shutdown,attr,optional"`
 	MaximumTraceSizeBytes         uint64              `alloy:"maximum_trace_size_bytes,attr,optional"`
 	DecisionCache                 DecisionCacheConfig `alloy:"decision_cache,attr,optional"`
+	// SamplingStrategy controls how/when sampling decisions are made.
+	// Valid values: "trace-complete" (default) or "span-ingest".
+	SamplingStrategy string `alloy:"sampling_strategy,attr,optional"`
+	// TailStorage configures an optional extension for buffering spans on disk.
+	TailStorage *extension.ExtensionHandler `alloy:"tail_storage,attr,optional"`
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 	// DebugMetrics configures component internal metrics. Optional.
@@ -56,6 +63,7 @@ var DefaultArguments = Arguments{
 	DecisionWait:            30 * time.Second,
 	NumTraces:               50000,
 	ExpectedNewTracesPerSec: 0,
+	SamplingStrategy:        "trace-complete",
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -84,7 +92,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		otelPolicyCfgs = append(otelPolicyCfgs, policyCfg.Convert())
 	}
 
-	return &tsp.Config{
+	result := &tsp.Config{
 		DecisionWait:                  args.DecisionWait,
 		DecisionWaitAfterRootReceived: args.DecisionWaitAfterRootReceived,
 		NumTraces:                     args.NumTraces,
@@ -95,12 +103,32 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		MaximumTraceSizeBytes:         args.MaximumTraceSizeBytes,
 		PolicyCfgs:                    otelPolicyCfgs,
 		DecisionCache:                 args.DecisionCache.Convert(),
-	}, nil
+	}
+
+	// SamplingStrategy uses an unexported type; use mapstructure to set it.
+	if args.SamplingStrategy != "" {
+		if err := mapstructure.Decode(map[string]any{"sampling_strategy": args.SamplingStrategy}, result); err != nil {
+			return nil, fmt.Errorf("invalid sampling_strategy: %w", err)
+		}
+	}
+
+	if args.TailStorage != nil {
+		if args.TailStorage.Extension == nil {
+			return nil, fmt.Errorf("missing tail_storage extension")
+		}
+		result.TailStorageID = &args.TailStorage.ID
+	}
+
+	return result, nil
 }
 
 // Extensions implements processor.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	return nil
+	m := make(map[otelcomponent.ID]otelcomponent.Component)
+	if args.TailStorage != nil {
+		m[args.TailStorage.ID] = args.TailStorage.Extension
+	}
+	return m
 }
 
 // Exporters implements processor.Arguments.
