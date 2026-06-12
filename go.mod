@@ -991,6 +991,7 @@ require (
 	github.com/charmbracelet/huh v1.0.0
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/azureauthextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/splunk v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/nginxreceiver v0.147.0
