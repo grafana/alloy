@@ -339,7 +339,7 @@ func (s *Service) unregisterCollector(ctx context.Context) error {
 			Id: s.args.ID,
 		},
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, errNoopClient) {
 		s.opts.Logger.Error("failed to unregister collector with remote server", "id", s.args.ID, "err", err)
 		return err
 	}
