@@ -1,0 +1,160 @@
+name: Release Semantics - Refresh Code Freeze
+
+#
+# The purpose of this workflow is to automatically freeze PRs when RC mode
+# starts, and unfreeze them when the final release is published.
+#
+# This is done by adding a label whose only purpose is to trigger the "labeled"
+# or "unlabeled" event on other workflows, such as the code freeze guard.
+#
+
+on:
+  push:
+    tags: # Minors and minor RCs
+      - 'v[0-9]+.[0-9]+.0'
+      - 'v[0-9]+.[0-9]+.0-rc.[0-9]+'
+
+concurrency:
+  group: "${{ github.ref_name }}-refresh-code-freeze-guard"
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
+  REFRESH_LABEL: freeze-auto-refresh
+
+jobs:
+  determine-mode:
+    if: github.repository == 'grafana/alloy'
+    runs-on: ubuntu-latest
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    steps:
+      - name: Determine mode 🔎
+        id: mode
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$TAG_NAME" == *"-rc."* ]]; then
+            MODE="freeze"
+          else
+            MODE="unfreeze"
+          fi
+
+          echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
+          echo "Tag $TAG_NAME puts main PRs in ${MODE} mode."
+
+  freeze:
+    needs: determine-mode
+    if: needs.determine-mode.outputs.mode == 'freeze'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate token 🔐
+        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+        id: app-token
+        with:
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
+
+      - name: Add refresh label to unfrozen main PRs 🥶
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REFRESH_LABEL: ${{ env.REFRESH_LABEL }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_BRANCH: main
+        run: |
+          PRS=$(gh pr list \
+            --repo "$REPOSITORY" \
+            --state open \
+            --search "base:${TARGET_BRANCH} -label:${REFRESH_LABEL}" \
+            --limit 500 \
+            --json number \
+            --jq '.[].number')
+
+          if [ -z "$PRS" ]; then
+            echo "No open PRs targeting ${TARGET_BRANCH} without ${REFRESH_LABEL}."
+            exit 0
+          fi
+
+          COUNT=0
+          echo "$PRS" | while IFS= read -r PR_NUMBER; do
+            echo "Adding ${REFRESH_LABEL} to PR #${PR_NUMBER}."
+            gh pr edit "$PR_NUMBER" --repo "$REPOSITORY" --add-label "$REFRESH_LABEL"
+            COUNT=$((COUNT + 1))
+            if [ $((COUNT % 10)) -eq 0 ]; then
+              sleep 1
+            fi
+          done
+
+  unfreeze:
+    needs: determine-mode
+    if: needs.determine-mode.outputs.mode == 'unfreeze'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate token 🔐
+        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # v0.2.3
+        id: app-token
+        with:
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
+
+      - name: Add refresh label to unmarked main PRs 🌤️
+        # This catches PRs that were created during the code freeze.
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REFRESH_LABEL: ${{ env.REFRESH_LABEL }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_BRANCH: main
+        run: |
+          PRS=$(gh pr list \
+            --repo "$REPOSITORY" \
+            --state open \
+            --search "base:${TARGET_BRANCH} -label:${REFRESH_LABEL}" \
+            --limit 500 \
+            --json number \
+            --jq '.[].number')
+
+          if [ -z "$PRS" ]; then
+            echo "No open PRs targeting ${TARGET_BRANCH} without ${REFRESH_LABEL}."
+            exit 0
+          fi
+
+          COUNT=0
+          echo "$PRS" | while IFS= read -r PR_NUMBER; do
+            echo "Adding ${REFRESH_LABEL} to PR #${PR_NUMBER}."
+            gh pr edit "$PR_NUMBER" --repo "$REPOSITORY" --add-label "$REFRESH_LABEL"
+            COUNT=$((COUNT + 1))
+            if [ $((COUNT % 10)) -eq 0 ]; then
+              sleep 1
+            fi
+          done
+
+      - name: Remove refresh label from frozen main PRs 🌤️
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REFRESH_LABEL: ${{ env.REFRESH_LABEL }}
+          REPOSITORY: ${{ github.repository }}
+          TARGET_BRANCH: main
+        run: |
+          PRS=$(gh pr list \
+            --repo "$REPOSITORY" \
+            --state open \
+            --search "base:${TARGET_BRANCH} label:${REFRESH_LABEL}" \
+            --limit 500 \
+            --json number \
+            --jq '.[].number')
+
+          if [ -z "$PRS" ]; then
+            echo "No open PRs targeting ${TARGET_BRANCH} with ${REFRESH_LABEL}."
+            exit 0
+          fi
+
+          COUNT=0
+          echo "$PRS" | while IFS= read -r PR_NUMBER; do
+            echo "Removing ${REFRESH_LABEL} from PR #${PR_NUMBER}."
+            gh pr edit "$PR_NUMBER" --repo "$REPOSITORY" --remove-label "$REFRESH_LABEL"
+            COUNT=$((COUNT + 1))
+            if [ $((COUNT % 10)) -eq 0 ]; then
+              sleep 1
+            fi
+          done
