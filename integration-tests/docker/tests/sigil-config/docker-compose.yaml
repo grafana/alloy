@@ -1,0 +1,34 @@
+services:
+  alloy:
+    image: alloy-integration-tests
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --stability.level=experimental
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy
+    ports:
+      - "1236:1234"
+      - "12343:12345"
+    depends_on:
+      - echo-server
+    networks:
+      - sigil-config-test
+
+  echo-server:
+    build:
+      context: ../sigil/echo-server
+    environment:
+      # Return a non-default status and a populated result list so the test can
+      # assert sigil.receive propagates both back to the caller.
+      RESPONSE_STATUS: "200"
+      RESPONSE_BODY: '{"results":[{"generation_id":"gen-1","accepted":true}]}'
+    ports:
+      - "8894:8888"
+    networks:
+      - sigil-config-test
+
+networks:
+  sigil-config-test:
+    driver: bridge

@@ -459,3 +459,36 @@ The following components, grouped by namespace, _consume_ Pyroscope `ProfilesRec
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: CONSUMERS OF Pyroscope `ProfilesReceiver` -->
+
+## Sigil `GenerationsForwarder`
+
+Sigil generation export requests are sent between components using `GenerationsForwarder`s.
+`GenerationsForwarder`s are [capsules][] that are exported by components that can receive Sigil generations.
+Components that can consume Sigil generations can be passed the `GenerationsForwarder` as an argument.
+Use the following components to build your Sigil generations pipeline:
+
+<!-- NOTE: this title is used as an anchor in links. Do not change. -->
+### Sigil `GenerationsForwarder` Exporters
+
+The following components, grouped by namespace, _export_ Sigil `GenerationsForwarder`.
+
+<!-- START GENERATED SECTION: EXPORTERS OF Sigil `GenerationsForwarder` -->
+
+{{< collapse title="sigil" >}}
+- [sigil.write](../components/sigil/sigil.write)
+{{< /collapse >}}
+
+<!-- END GENERATED SECTION: EXPORTERS OF Sigil `GenerationsForwarder` -->
+
+<!-- NOTE: this title is used as an anchor in links. Do not change. -->
+### Sigil `GenerationsForwarder` Consumers
+
+The following components, grouped by namespace, _consume_ Sigil `GenerationsForwarder`.
+
+<!-- START GENERATED SECTION: CONSUMERS OF Sigil `GenerationsForwarder` -->
+
+{{< collapse title="sigil" >}}
+- [sigil.receive](../components/sigil/sigil.receive)
+{{< /collapse >}}
+
+<!-- END GENERATED SECTION: CONSUMERS OF Sigil `GenerationsForwarder` -->

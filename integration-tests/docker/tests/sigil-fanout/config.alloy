@@ -1,0 +1,32 @@
+logging {
+	level = "debug"
+}
+
+// Receiver fans out to two independent writers. write.b in turn fans out to
+// two endpoints, so a single inbound request reaches three upstreams.
+sigil.receive "default" {
+	forward_to = [
+		sigil.write.a.receiver,
+		sigil.write.b.receiver,
+	]
+
+	http {
+		listen_address = "0.0.0.0"
+		listen_port    = 1234
+	}
+}
+
+sigil.write "a" {
+	endpoint {
+		url = "http://echo-a:8888/api/v1/generations:export"
+	}
+}
+
+sigil.write "b" {
+	endpoint {
+		url = "http://echo-b:8888/api/v1/generations:export"
+	}
+	endpoint {
+		url = "http://echo-c:8888/api/v1/generations:export"
+	}
+}
