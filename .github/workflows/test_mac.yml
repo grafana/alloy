@@ -23,11 +23,17 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
-    - name: Set up Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        go-version-file: go.mod
-        cache: true
+        version: v2026.5.18
+        sha256: 998428f820e22301bab9273cba8b4e59d05a40f77a9a8411d75b2de85fbb0335
+        install_args: go
+
+    - name: Cache Go modules and build
+      uses: ./.github/actions/go-cache
+
     - name: Test
       run: CGO_LDFLAGS="-ld_classic $CGO_LDFLAGS" make GO_TAGS="nodocker" test
 
@@ -43,10 +49,13 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
-    - name: Set up Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        go-version-file: go.mod
-        cache: false
+        version: v2026.5.18
+        sha256: 998428f820e22301bab9273cba8b4e59d05a40f77a9a8411d75b2de85fbb0335
+        install_args: go
+
     - run: cd collector && go build .
     - run: go build ./internal/component/pyroscope/util/internal/cmd/playground
