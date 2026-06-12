@@ -29,12 +29,11 @@ jobs:
 
       - name: Check for generated file changes
         run: |
-          # List changed files in the collector directory (excluding generator source files)
-          if [ -n "$(git status --porcelain -- collector/)" ]; then
+          # The OTel collector generation also syncs builder-config shared replaces into the root module.
+          if [ -n "$(git status --porcelain -- collector/ go.mod go.sum)" ]; then
             echo "Error: generated collector files are out of sync with generate-otel-collector-distro."
-            echo "  Run: make generate-otel-collector-distro and commit the generated files"
-            git status -- collector/
-            git diff -- collector/
+            echo "  Run: make generate-otel-collector-distro and commit the generated files and module updates"
+            git status -- collector/ go.mod go.sum
+            git diff -- collector/ go.mod go.sum
             exit 1
           fi
-
