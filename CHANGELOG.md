@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.18.0](https://github.com/grafana/alloy/compare/v1.17.0...v1.18.0) (2026-06-12)
+
+
+### Features 🌟
+
+* **Helm Chart:** Make service.externalTrafficPolicy avaliable ([#4511](https://github.com/grafana/alloy/issues/4511)) ([a987e33](https://github.com/grafana/alloy/commit/a987e33af93f6756c32d776c37a6af4484b66183))
+
+
+### Bug Fixes 🐛
+
+* Back off usage reporting on persistent failure instead of retrying every minute ([#6478](https://github.com/grafana/alloy/issues/6478)) ([0a1d139](https://github.com/grafana/alloy/commit/0a1d13919326e9321ece2d0694e5a0b42a691233))
+
 ## [1.17.0](https://github.com/grafana/alloy/compare/v1.16.0...v1.17.0) (2026-06-11)
 
 
