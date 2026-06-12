@@ -3,11 +3,10 @@ package discovery
 import (
 	"context"
 	"fmt"
-	stdlog "log"
+	"log/slog"
 	"net"
 	"strconv"
 
-	"github.com/go-kit/log"
 	"github.com/hashicorp/go-discover"
 	"github.com/hashicorp/go-discover/provider/k8s"
 	"go.opentelemetry.io/otel/attribute"
@@ -45,7 +44,7 @@ func newWithGoDiscovery(opt Options) (DiscoverFn, error) {
 		)
 		defer span.End()
 
-		addrs, err := discoverer.Addrs(opt.DiscoverPeers, stdlog.New(log.NewStdlibAdapter(opt.Logger), "", 0))
+		addrs, err := discoverer.Addrs(opt.DiscoverPeers, slog.NewLogLogger(opt.Logger.Handler(), slog.LevelDebug))
 		if err != nil {
 			span.SetStatus(codes.Error, err.Error())
 			return nil, fmt.Errorf("discovering peers: %w", err)

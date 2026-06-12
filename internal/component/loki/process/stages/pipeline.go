@@ -107,7 +107,10 @@ func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHa
 	}))
 
 	return loki.NewEntryHandler(in, func() {
-		once.Do(func() { cancel() })
+		once.Do(func() {
+			cancel()
+			p.Stop()
+		})
 		wg.Wait()
 		p.Cleanup()
 	})
@@ -134,6 +137,20 @@ func (p *Pipeline) Run(in chan Entry) chan Entry {
 func (p *Pipeline) Cleanup() {
 	for _, s := range p.stages {
 		s.Cleanup()
+	}
+}
+
+// Stop implements Stopper.
+func (p *Pipeline) Stop() {
+	for _, s := range p.stages {
+		stopper, ok := s.(Stopper)
+		if !ok {
+			continue
+		}
+		func() {
+			defer func() { _ = recover() }()
+			stopper.Stop()
+		}()
 	}
 }
 

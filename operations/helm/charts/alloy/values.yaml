@@ -244,7 +244,7 @@ configReloader:
     # -- Repository to get config reloader image from.
     repository: prometheus-operator/prometheus-config-reloader
     # -- Tag of image to use for config reloading.
-    tag: v0.91.0
+    tag: v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1
     # -- SHA256 digest of image to use for config reloading (either in format "sha256:XYZ" or "XYZ"). When set, will override `configReloader.image.tag`
     digest: ""
     # -- Config reloader image pull policy.
@@ -370,6 +370,19 @@ controller:
     horizontal:
       # -- Enables the Horizontal Pod Autoscaler for the controller.
       enabled: false
+      # -- When true, the chart omits `spec.replicas` from the workload AND does NOT
+      # render its own HorizontalPodAutoscaler. Use this when an external controller
+      # (e.g. KEDA, a hand-written HPA, or another scaler) owns replicas for the Alloy
+      # workload. Mutually exclusive with `horizontal.enabled`. When set, all other
+      # `controller.autoscaling.horizontal.*` fields are ignored.
+      #
+      # Upgrade note: switching this from `false` to `true` on an existing release
+      # triggers a one-time single-cycle dip to 1 replica on the next `helm upgrade`
+      # (Helm removes the `replicas` field via `{"spec":{"replicas":null}}`, which
+      # Kubernetes interprets as "reset to default"). The external HPA corrects this
+      # within its next polling interval; users with `minReplicaCount > 1` are
+      # restored within ~30s under KEDA defaults. Plan upgrades accordingly.
+      externalHPA: false
 
       # -- The lower limit for the number of replicas to which the autoscaler can scale down.
       minReplicas: 1
@@ -487,6 +500,8 @@ service:
   clusterIP: ''
   # -- Value for internal traffic policy. 'Cluster' or 'Local'
   internalTrafficPolicy: Cluster
+  # -- Value for external traffic policy. 'Cluster' or 'Local'
+  externalTrafficPolicy: Cluster
   annotations: {}
     # cloud.google.com/load-balancer-type: Internal
 

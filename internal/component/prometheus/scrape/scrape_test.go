@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/memconn"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -25,6 +24,7 @@ import (
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/testappender"
 	"github.com/grafana/alloy/syntax"
@@ -148,7 +148,7 @@ func TestCustomDialer(t *testing.T) {
 			}),
 		}
 
-		memLis = memconn.NewListener(util.TestLogger(t))
+		memLis = memconn.NewListener(slogadapter.GoKit(util.TestAlloyLogger(t).Handler()))
 	)
 
 	go srv.Serve(memLis)
@@ -1117,10 +1117,10 @@ func newComponentOpts(t *testing.T, dialFunc ...func(context.Context, string, st
 	if len(dialFunc) > 0 && dialFunc[0] != nil {
 		df = dialFunc[0]
 	}
-	baseLogger := util.TestAlloyLogger(t)
+	baseLogger := util.TestAlloyLogger(t).Slog()
 	return component.Options{
 		ID:         componentID,
-		Logger:     log.With(baseLogger, "component_path", "prometheus.scrape", "component_id", componentID),
+		Logger:     baseLogger.With("component_path", "prometheus.scrape", "component_id", componentID),
 		Registerer: prometheus_client.NewRegistry(),
 		GetServiceData: func(name string) (any, error) {
 			switch name {

@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"log/slog"
 	"sort"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/model"
@@ -95,21 +94,19 @@ func (c *Component) Appender(ctx context.Context) storage.Appender {
 	c.mut.RUnlock()
 
 	return &echoAppender{
-		logger:      c.opts.Logger,
-		componentID: c.opts.ID,
-		format:      format,
-		samples:     make(map[string]sample),
-		exemplars:   make(map[string]seriesExemplar),
-		histograms:  make(map[string]seriesHistogram),
-		metadata:    make(map[string]metadata.Metadata),
+		logger:     c.opts.Logger,
+		format:     format,
+		samples:    make(map[string]sample),
+		exemplars:  make(map[string]seriesExemplar),
+		histograms: make(map[string]seriesHistogram),
+		metadata:   make(map[string]metadata.Metadata),
 	}
 }
 
 type echoAppender struct {
-	logger      log.Logger
-	componentID string
-	format      string
-	mut         sync.Mutex
+	logger *slog.Logger
+	format string
+	mut    sync.Mutex
 
 	samples    map[string]sample
 	exemplars  map[string]seriesExemplar
@@ -240,7 +237,7 @@ func (a *echoAppender) Commit() error {
 	case "text", "":
 		expFormat = expfmt.NewFormat(expfmt.TypeTextPlain)
 	default:
-		level.Warn(a.logger).Log("component", a.componentID, "msg", "unknown format, using text", "format", a.format)
+		a.logger.Warn("unknown format, using text", "format", a.format)
 		expFormat = expfmt.NewFormat(expfmt.TypeTextPlain)
 	}
 
@@ -248,13 +245,12 @@ func (a *echoAppender) Commit() error {
 
 	for _, family := range families {
 		if err := encoder.Encode(family); err != nil {
-			level.Error(a.logger).Log("component", a.componentID, "error", "failed to encode metric family", "family", family.GetName(), "err", err)
+			a.logger.Error("failed to encode metric family", "family", family.GetName(), "err", err)
 			continue
 		}
 	}
 
-	level.Info(a.logger).Log("component", a.componentID, "metrics", buf.String())
-
+	a.logger.Info("received metrics", "metrics", buf.String())
 	a.clearStorage()
 
 	return nil

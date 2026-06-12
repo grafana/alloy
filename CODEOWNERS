@@ -22,4 +22,4 @@
 # Components:
 /internal/component/pyroscope/              @grafana/grafana-alloy-profiling-maintainers
 /internal/component/beyla/                  @grafana/beyla
-/internal/component/database_observability/ @grafana/db-o11y-squad-backend
+/internal/component/database_observability/ @grafana/db-o11y-squad

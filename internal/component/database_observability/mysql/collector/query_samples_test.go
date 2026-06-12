@@ -4,14 +4,12 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"math"
-	"os"
 	"regexp"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
@@ -21,6 +19,8 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -279,6 +279,12 @@ func TestQuerySamples(t *testing.T) {
 			defer db.Close()
 
 			logBuffer := syncbuffer.Buffer{}
+			logger, err := logging.New(&logBuffer, logging.Options{
+				Level:  logging.LevelDebug,
+				Format: logging.FormatLogfmt,
+			})
+			require.NoError(t, err)
+
 			lokiClient := loki.NewCollectingHandler()
 
 			collector, err := NewQuerySamples(QuerySamplesArguments{
@@ -286,7 +292,7 @@ func TestQuerySamples(t *testing.T) {
 				EngineVersion:   latestCompatibleVersion,
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+				Logger:          logger.Slog(),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -395,7 +401,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -508,7 +514,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -621,7 +627,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -833,7 +839,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -979,7 +985,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			DisableQueryRedaction: true,
 		})
 		require.NoError(t, err)
@@ -1107,7 +1113,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:        latestCompatibleVersion,
 			CollectInterval:      time.Second,
 			EntryHandler:         lokiClient,
-			Logger:               log.NewLogfmtLogger(os.Stderr),
+			Logger:               util.TestAlloyLogger(t).Slog(),
 			WaitEventMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1219,7 +1225,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:        latestCompatibleVersion,
 			CollectInterval:      time.Second,
 			EntryHandler:         lokiClient,
-			Logger:               log.NewLogfmtLogger(os.Stderr),
+			Logger:               util.TestAlloyLogger(t).Slog(),
 			WaitEventMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1334,7 +1340,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1444,7 +1450,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:                 latestCompatibleVersion,
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
-			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			Logger:                        util.TestAlloyLogger(t).Slog(),
 			EnablePreClassifiedWaitEvents: true,
 		})
 		require.NoError(t, err)
@@ -1562,7 +1568,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 			EngineVersion:        latestCompatibleVersion,
 			CollectInterval:      time.Second,
 			EntryHandler:         lokiClient,
-			Logger:               log.NewLogfmtLogger(os.Stderr),
+			Logger:               util.TestAlloyLogger(t).Slog(),
 			WaitEventMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1675,7 +1681,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 			EngineVersion:     latestCompatibleVersion,
 			CollectInterval:   time.Second,
 			EntryHandler:      lokiClient,
-			Logger:            log.NewLogfmtLogger(os.Stderr),
+			Logger:            util.TestAlloyLogger(t).Slog(),
 			SampleMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1752,7 +1758,7 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 			EngineVersion:     latestCompatibleVersion,
 			CollectInterval:   time.Second,
 			EntryHandler:      lokiClient,
-			Logger:            log.NewLogfmtLogger(os.Stderr),
+			Logger:            util.TestAlloyLogger(t).Slog(),
 			SampleMinDuration: 1 * time.Millisecond,
 		})
 		require.NoError(t, err)
@@ -1867,7 +1873,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			DisableQueryRedaction: true,
 		})
 		require.NoError(t, err)
@@ -1991,7 +1997,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 			EngineVersion:         latestCompatibleVersion,
 			CollectInterval:       time.Second,
 			EntryHandler:          lokiClient,
-			Logger:                log.NewLogfmtLogger(os.Stderr),
+			Logger:                util.TestAlloyLogger(t).Slog(),
 			DisableQueryRedaction: false,
 		})
 		require.NoError(t, err)
@@ -2324,7 +2330,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				EngineVersion:   semver.MustParse(tc.mysqlVersion),
 				CollectInterval: time.Second,
 				EntryHandler:    lokiClient,
-				Logger:          log.NewLogfmtLogger(os.Stderr),
+				Logger:          util.TestAlloyLogger(t).Slog(),
 			})
 			require.NoError(t, err)
 			require.NotNil(t, collector)
@@ -2393,7 +2399,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -2539,7 +2545,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -2692,7 +2698,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 			EngineVersion:   latestCompatibleVersion,
 			CollectInterval: time.Second,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -2831,7 +2837,7 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 			5,
 		))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
@@ -2850,12 +2856,219 @@ func TestQuerySamples_initializeTimer(t *testing.T) {
 			picosecondsToSeconds(math.MaxUint64) + 5,
 		))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		require.NoError(t, c.initializeBookmark(t.Context()))
 
 		assert.Equal(t, 5e12, c.timerBookmark)
+	})
+}
+
+func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
+	t.Run("query_sample and legacy wait_event", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"now",
+				"uptime",
+			}).AddRow(
+				10,
+				10,
+			),
+		)
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			float64(0), // initial timerBookmark
+			10e12,      // uptime of 10 seconds in picoseconds
+		).WillReturnRows(sqlmock.NewRows([]string{
+			"statements.CURRENT_SCHEMA",
+			"statements.THREAD_ID",
+			"statements.EVENT_ID",
+			"statements.END_EVENT_ID",
+			"statements.DIGEST",
+			"statements.SQL_TEXT",
+			"statements.TIMER_END",
+			"statements.TIMER_WAIT",
+			"statements.ROWS_EXAMINED",
+			"statements.ROWS_SENT",
+			"statements.ROWS_AFFECTED",
+			"statements.ERRORS",
+			"waits.event_id",
+			"waits.end_event_id",
+			"waits.event_name",
+			"waits.object_name",
+			"waits.object_type",
+			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
+			"statements.CPU_TIME",
+			"statements.MAX_CONTROLLED_MEMORY",
+			"statements.MAX_TOTAL_MEMORY",
+		}).
+			AddRow(
+				"test_schema",
+				890,
+				123,
+				234,
+				"some digest",
+				nil,
+				4e12, // timer_end
+				1e12, // elapsed time
+				1000,
+				100,
+				0,
+				0,
+				"124",
+				"125",
+				"wait/io/file/innodb/innodb_data_file",
+				"wait_object_name",
+				"wait_object_type",
+				100000000,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"some_user",
+				"some_host",
+				555555,
+				1048576,
+				2097152,
+			),
+		)
+
+		lokiClient := loki.NewCollectingHandler()
+		c := &QuerySamples{
+			dbConnection:  db,
+			engineVersion: latestCompatibleVersion,
+			entryHandler:  lokiClient,
+			logger:        util.TestAlloyLogger(t).Slog(),
+		}
+
+		require.NoError(t, c.fetchQuerySamples(t.Context()))
+
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 2
+		}, 5*time.Second, 100*time.Millisecond)
+		require.Len(t, lokiClient.Received(), 2)
+
+		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiClient.Received()[0].Labels)
+		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[0].Timestamp) // timer_end - elapsed time = timer_start
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiClient.Received()[1].Labels)
+		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[1].Timestamp) // timer_end - elapsed time = timer_start
+	})
+
+	t.Run("wait_event v2", func(t *testing.T) {
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnRows(
+			sqlmock.NewRows([]string{
+				"now",
+				"uptime",
+			}).AddRow(
+				10,
+				10,
+			),
+		)
+
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(
+			float64(0), // initial timerBookmark
+			10e12,      // uptime of 10 seconds in picoseconds
+		).WillReturnRows(sqlmock.NewRows([]string{
+			"statements.CURRENT_SCHEMA",
+			"statements.THREAD_ID",
+			"statements.EVENT_ID",
+			"statements.END_EVENT_ID",
+			"statements.DIGEST",
+			"statements.SQL_TEXT",
+			"statements.TIMER_END",
+			"statements.TIMER_WAIT",
+			"statements.ROWS_EXAMINED",
+			"statements.ROWS_SENT",
+			"statements.ROWS_AFFECTED",
+			"statements.ERRORS",
+			"waits.event_id",
+			"waits.end_event_id",
+			"waits.event_name",
+			"waits.object_name",
+			"waits.object_type",
+			"waits.timer_wait",
+			"nested_waits.event_id",
+			"nested_waits.end_event_id",
+			"nested_waits.event_name",
+			"nested_waits.object_name",
+			"nested_waits.object_type",
+			"nested_waits.timer_wait",
+			"threads.PROCESSLIST_USER",
+			"threads.PROCESSLIST_HOST",
+			"statements.CPU_TIME",
+			"statements.MAX_CONTROLLED_MEMORY",
+			"statements.MAX_TOTAL_MEMORY",
+		}).
+			AddRow(
+				"schema_X",
+				"1",
+				"10",
+				"11",
+				"digest_A",
+				"sql1",
+				4e12, // timer_end
+				1e12, // elapsed time
+				"5",
+				"5",
+				"0",
+				"0",
+				"100",
+				"101",
+				"wait/io/file/x",
+				"obj",
+				"typ",
+				"100000000",
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"u",
+				"h",
+				"1000",
+				"1",
+				"1",
+			),
+		)
+
+		lokiClient := loki.NewCollectingHandler()
+		c := &QuerySamples{
+			dbConnection:                  db,
+			engineVersion:                 latestCompatibleVersion,
+			entryHandler:                  lokiClient,
+			logger:                        util.TestAlloyLogger(t).Slog(),
+			enablePreClassifiedWaitEvents: true,
+		}
+
+		require.NoError(t, c.fetchQuerySamples(t.Context()))
+
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool { return len(lokiClient.Received()) == 2 }, 5*time.Second, 100*time.Millisecond)
+
+		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT_V2}, lokiClient.Received()[1].Labels)
+		assert.Equal(t, time.Unix(3, 0), lokiClient.Received()[1].Timestamp) // timer_end - elapsed time = timer_start
 	})
 }
 
@@ -2948,7 +3161,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			timerBookmark: 1e12,
 			lastUptime:    4,
 			entryHandler:  lokiClient,
-			logger:        log.NewLogfmtLogger(os.Stderr),
+			logger:        util.TestAlloyLogger(t).Slog(),
 		}
 
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
@@ -3026,7 +3239,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			engineVersion: latestCompatibleVersion,
 			timerBookmark: 1e12,
 			lastUptime:    4,
-			logger:        log.NewLogfmtLogger(os.Stderr),
+			logger:        util.TestAlloyLogger(t).Slog(),
 		}
 
 		require.NoError(t, c.fetchQuerySamples(t.Context()))
@@ -3311,7 +3524,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 
 		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().WillReturnError(fmt.Errorf("some error"))
 
-		c, err := NewQuerySamples(QuerySamplesArguments{DB: db})
+		c, err := NewQuerySamples(QuerySamplesArguments{DB: db, Logger: util.TestAlloyLogger(t).Slog()})
 		require.NoError(t, err)
 
 		err = c.fetchQuerySamples(t.Context())
@@ -3408,7 +3621,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			dbConnection:  db,
 			engineVersion: latestCompatibleVersion,
 			timerBookmark: 2e12,
-			logger:        log.NewLogfmtLogger(os.Stderr),
+			logger:        util.TestAlloyLogger(t).Slog(),
 		}
 
 		mockParser.On("CleanTruncatedText", "SELECT * FROM users").Return("SELECT * FROM users", nil)
@@ -3467,100 +3680,6 @@ func TestQuerySamples_calculateTimerClauseAndLimit(t *testing.T) {
 	}
 }
 
-func Test_TryExtractTraceParent(t *testing.T) {
-	testCases := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{
-			name:     "valid traceparent with single quotes",
-			input:    "SELECT * FROM users /*traceparent='00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'*/",
-			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-		},
-		{
-			name:     "valid traceparent with double quotes",
-			input:    `SELECT * FROM users /*traceparent="00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"*/`,
-			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-		},
-		{
-			name:     "valid traceparent without quotes",
-			input:    "SELECT * FROM users /*traceparent=00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01*/",
-			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-		},
-		{
-			name:     "traceparent with mixed case keyword",
-			input:    "SELECT * FROM users /*TraceParent='00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01'*/",
-			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-		},
-		{
-			name:     "traceparent among other comment fields",
-			input:    "SELECT * FROM users /*controller='index',traceparent='00-abc123-def456-01',framework='django'*/",
-			expected: "00-abc123-def456-01",
-		},
-		{
-			name:     "no traceparent in SQL",
-			input:    "SELECT * FROM users WHERE id = 1",
-			expected: "",
-		},
-		{
-			name:     "truncated SQL ending with ...",
-			input:    "SELECT * FROM users WHERE id = 1 /*traceparent='00-abc...",
-			expected: "",
-		},
-		{
-			name:     "truncated as traceparent=... ",
-			input:    "SELECT * FROM users WHERE id = 1 /*traceparent=...",
-			expected: "",
-		},
-		{
-			name:     "truncated as traceparent=",
-			input:    "SELECT * FROM users WHERE id = 1 /*traceparent=",
-			expected: "",
-		},
-		{
-			name:     "traceparent without closing quote",
-			input:    "SELECT * FROM users /*traceparent='00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-			expected: "",
-		},
-		{
-			name:     "empty traceparent value",
-			input:    "SELECT * FROM users /*traceparent=''*/",
-			expected: "",
-		},
-		{
-			name:     "traceparent with whitespace",
-			input:    "SELECT * FROM users /*traceparent='  00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01  '*/",
-			expected: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
-		},
-		{
-			name:     "multiple traceparent occurrences - last one wins",
-			input:    "SELECT * FROM users /*traceparent='00-first-first-01'*/ /*traceparent='00-second-second-02'*/",
-			expected: "00-second-second-02",
-		},
-		{
-			name:     "empty string",
-			input:    "",
-			expected: "",
-		},
-		{
-			name: "SQLCommenter exhibit",
-			// Note that traceparent and value (W3C trace context) cannot have meta characters nor URL to decode, so they are effectively inert to tryExtractTraceParent
-			input: `SELECT * FROM FOO /*action='%2Fparam*\'d',controller='index,'framework='spring',` +
-				"\n" + `traceparent='00-5bd66ef5095369c7b0d1f8f4bd33716a-c532cb4098ac3dd2-01',` +
-				"\n" + `tracestate='congo%3Dt61rcWkgMzE%2Crojo%3D00f067aa0ba902b7'*/`,
-			expected: "00-5bd66ef5095369c7b0d1f8f4bd33716a-c532cb4098ac3dd2-01",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			result := tryExtractTraceParent(tc.input)
-			assert.Equal(t, tc.expected, result)
-		})
-	}
-}
-
 func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 	defer goleak.VerifyNone(t)
 
@@ -3578,7 +3697,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 			EngineVersion:               latestCompatibleVersion,
 			CollectInterval:             time.Second,
 			EntryHandler:                lokiClient,
-			Logger:                      log.NewLogfmtLogger(os.Stderr),
+			Logger:                      util.TestAlloyLogger(t).Slog(),
 			AutoEnableSetupConsumers:    true,
 			SetupConsumersCheckInterval: time.Second,
 		})
@@ -3705,7 +3824,7 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 			EngineVersion:               latestCompatibleVersion,
 			CollectInterval:             time.Second,
 			EntryHandler:                lokiClient,
-			Logger:                      log.NewLogfmtLogger(os.Stderr),
+			Logger:                      util.TestAlloyLogger(t).Slog(),
 			AutoEnableSetupConsumers:    true,
 			SetupConsumersCheckInterval: time.Second,
 		})
@@ -3758,7 +3877,7 @@ func TestQuerySamplesExcludeSchemas(t *testing.T) {
 		CollectInterval: time.Millisecond,
 		ExcludeSchemas:  []string{"excluded_schema"},
 		EntryHandler:    lokiClient,
-		Logger:          log.NewLogfmtLogger(os.Stderr),
+		Logger:          util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
 
@@ -3801,7 +3920,7 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
 			Registry:                      registry,
-			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			Logger:                        util.TestAlloyLogger(t).Slog(),
 			EnablePreClassifiedWaitEvents: true,
 		})
 		require.NoError(t, err)
@@ -3912,7 +4031,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 			EngineVersion:                 latestCompatibleVersion,
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
-			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			Logger:                        util.TestAlloyLogger(t).Slog(),
 			EnablePreClassifiedWaitEvents: false,
 		})
 		require.NoError(t, err)
@@ -3979,7 +4098,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 			EngineVersion:                 latestCompatibleVersion,
 			CollectInterval:               time.Second,
 			EntryHandler:                  lokiClient,
-			Logger:                        log.NewLogfmtLogger(os.Stderr),
+			Logger:                        util.TestAlloyLogger(t).Slog(),
 			EnablePreClassifiedWaitEvents: true,
 		})
 		require.NoError(t, err)

@@ -121,10 +121,10 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 
-			c.opts.SLogger.Info("loki.source.kafka component shutting down, stopping target")
+			c.opts.Logger.Info("loki.source.kafka component shutting down, stopping target")
 			if c.target != nil {
 				if err := c.target.Stop(); err != nil {
-					c.opts.SLogger.Error("error while stopping kafka target", "err", err)
+					c.opts.Logger.Error("error while stopping kafka target", "err", err)
 				}
 			}
 		})
@@ -145,14 +145,14 @@ func (c *Component) Update(args component.Arguments) error {
 	if c.target != nil {
 		err := c.target.Stop()
 		if err != nil {
-			c.opts.SLogger.Error("error while stopping kafka target", "err", err)
+			c.opts.Logger.Error("error while stopping kafka target", "err", err)
 		}
 	}
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
-	t, err := kt.NewSyncer(c.opts.SLogger, newArgs.Convert(), entryHandler, &kt.KafkaTargetMessageParser{})
+	t, err := kt.NewSyncer(c.opts.Logger, newArgs.Convert(), entryHandler, &kt.KafkaTargetMessageParser{})
 	if err != nil {
-		c.opts.SLogger.Error("failed to create kafka client with provided config", "err", err)
+		c.opts.Logger.Error("failed to create kafka client with provided config", "err", err)
 		return err
 	}
 

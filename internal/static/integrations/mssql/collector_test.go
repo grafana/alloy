@@ -2,16 +2,16 @@ package mssql
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/burningalchemist/sql_exporter"
 	"github.com/burningalchemist/sql_exporter/errors"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestTargetCollectorAdapter_Collect(t *testing.T) {
@@ -22,7 +22,7 @@ func TestTargetCollectorAdapter_Collect(t *testing.T) {
 		},
 	}
 
-	tca := newTargetCollectorAdapter(target, log.NewJSONLogger(os.Stdout))
+	tca := newTargetCollectorAdapter(target, util.TestAlloyLogger(t).Slog())
 	metricChan := make(chan prometheus.Metric, 1)
 	tca.Collect(metricChan)
 
@@ -60,7 +60,7 @@ func TestSqlPrometheusMetricAdapter_Write(t *testing.T) {
 	metricDesc := mockMetricDesc()
 	metric := sqlPrometheusMetricAdapter{
 		Metric: sql_exporter.NewMetric(metricDesc, 1, "labelval1", "labelval2"),
-		logger: log.NewJSONLogger(os.Stdout),
+		logger: util.TestAlloyLogger(t).Slog(),
 	}
 
 	var dto io_prometheus_client.Metric
@@ -88,7 +88,7 @@ func TestSqlPrometheusMetricAdapter_Desc(t *testing.T) {
 		metricDesc := mockMetricDesc()
 		metric := sqlPrometheusMetricAdapter{
 			Metric: sql_exporter.NewMetric(metricDesc, 1, "labelval1", "labelval2"),
-			logger: log.NewJSONLogger(os.Stdout),
+			logger: util.TestAlloyLogger(t).Slog(),
 		}
 
 		desc := metric.Desc()
@@ -107,7 +107,7 @@ func TestSqlPrometheusMetricAdapter_Desc(t *testing.T) {
 		metricErr := errors.New("", "some error")
 		metric := sqlPrometheusMetricAdapter{
 			Metric: sql_exporter.NewInvalidMetric(metricErr),
-			logger: log.NewJSONLogger(os.Stdout),
+			logger: util.TestAlloyLogger(t).Slog(),
 		}
 
 		desc := metric.Desc()
@@ -147,4 +147,12 @@ func (mt mockTarget) Collect(_ context.Context, ch chan<- sql_exporter.Metric) {
 	for _, m := range mt.metrics {
 		ch <- m
 	}
+}
+
+func (mt mockTarget) Close() error {
+	return nil
+}
+
+func (mt mockTarget) JobGroup() string {
+	return ""
 }

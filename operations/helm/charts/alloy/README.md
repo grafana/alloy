@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.8.1](https://img.shields.io/badge/Version-1.8.1-informational?style=flat-square) ![AppVersion: v1.16.1](https://img.shields.io/badge/AppVersion-v1.16.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.9.0](https://img.shields.io/badge/Version-1.9.0-informational?style=flat-square) ![AppVersion: v1.16.3](https://img.shields.io/badge/AppVersion-v1.16.3-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -68,13 +68,14 @@ useful if just using the default DaemonSet isn't sufficient.
 | configReloader.image.pullPolicy | string | `"IfNotPresent"` | Config reloader image pull policy. |
 | configReloader.image.registry | string | `"quay.io"` | Config reloader image registry (defaults to docker.io) |
 | configReloader.image.repository | string | `"prometheus-operator/prometheus-config-reloader"` | Repository to get config reloader image from. |
-| configReloader.image.tag | string | `"v0.91.0"` | Tag of image to use for config reloading. |
+| configReloader.image.tag | string | `"v0.91.0@sha256:7d9e4eea5f1139e602508871f422b0116c60e87c662f3dcd234d5ab60cd0d8c1"` | Tag of image to use for config reloading. |
 | configReloader.resources | object | `{"requests":{"cpu":"10m","memory":"50Mi"}}` | Resource requests and limits to apply to the config reloader container. |
 | configReloader.securityContext | object | `{}` | Security context to apply to the Grafana configReloader container. |
 | controller.affinity | object | `{}` | Affinity configuration for pods. |
 | controller.autoscaling.enabled | bool | `false` | Creates a HorizontalPodAutoscaler for controller type deployment. Deprecated: Please use controller.autoscaling.horizontal instead |
-| controller.autoscaling.horizontal | object | `{"enabled":false,"maxReplicas":5,"minReplicas":1,"scaleDown":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":300},"scaleUp":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":0},"targetCPUUtilizationPercentage":0,"targetMemoryUtilizationPercentage":80}` | Configures the Horizontal Pod Autoscaler for the controller. |
+| controller.autoscaling.horizontal | object | `{"enabled":false,"externalHPA":false,"maxReplicas":5,"minReplicas":1,"scaleDown":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":300},"scaleUp":{"policies":[],"selectPolicy":"Max","stabilizationWindowSeconds":0},"targetCPUUtilizationPercentage":0,"targetMemoryUtilizationPercentage":80}` | Configures the Horizontal Pod Autoscaler for the controller. |
 | controller.autoscaling.horizontal.enabled | bool | `false` | Enables the Horizontal Pod Autoscaler for the controller. |
+| controller.autoscaling.horizontal.externalHPA | bool | `false` | When true, the chart omits `spec.replicas` from the workload AND does NOT render its own HorizontalPodAutoscaler. Use this when an external controller (e.g. KEDA, a hand-written HPA, or another scaler) owns replicas for the Alloy workload. Mutually exclusive with `horizontal.enabled`. When set, all other `controller.autoscaling.horizontal.*` fields are ignored.  Upgrade note: switching this from `false` to `true` on an existing release triggers a one-time single-cycle dip to 1 replica on the next `helm upgrade` (Helm removes the `replicas` field via `{"spec":{"replicas":null}}`, which Kubernetes interprets as "reset to default"). The external HPA corrects this within its next polling interval; users with `minReplicaCount > 1` are restored within ~30s under KEDA defaults. Plan upgrades accordingly. |
 | controller.autoscaling.horizontal.maxReplicas | int | `5` | The upper limit for the number of replicas to which the autoscaler can scale up. |
 | controller.autoscaling.horizontal.minReplicas | int | `1` | The lower limit for the number of replicas to which the autoscaler can scale down. |
 | controller.autoscaling.horizontal.scaleDown.policies | list | `[]` | List of policies to determine the scale-down behavior. |
@@ -182,6 +183,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
+| service.externalTrafficPolicy | string | `"Cluster"` | Value for external traffic policy. 'Cluster' or 'Local' |
 | service.internalTrafficPolicy | string | `"Cluster"` | Value for internal traffic policy. 'Cluster' or 'Local' |
 | service.nodePort | int | `31128` | NodePort port. Only takes effect when `service.type: NodePort` |
 | service.type | string | `"ClusterIP"` | Service type |

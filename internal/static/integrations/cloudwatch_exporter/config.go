@@ -7,9 +7,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-
-	"github.com/go-kit/log"
 	yaceConf "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
 	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 	"gopkg.in/yaml.v2"
@@ -50,7 +47,6 @@ type Config struct {
 	FIPSDisabled    bool                  `yaml:"fips_disabled"`
 	Discovery       DiscoveryConfig       `yaml:"discovery"`
 	Static          []StaticJob           `yaml:"static"`
-	Debug           bool                  `yaml:"debug"`
 	DecoupledScrape DecoupledScrapeConfig `yaml:"decoupled_scraping"`
 
 	// UseAWSSDKVersion2 is deprecated and has no effect.
@@ -147,14 +143,14 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration creates a new integration from the config.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	exporterConfig, fipsEnabled, err := ToYACEConfig(c, l)
 	if err != nil {
 		return nil, fmt.Errorf("invalid cloudwatch exporter configuration: %w", err)
 	}
 
 	if !c.UseAWSSDKVersion2 {
-		level.Warn(l).Log("msg", "the `aws_sdk_version_v2` argument is deprecated and has no effect, AWS SDK for Go v2 is always used - remove this argument from your configuration")
+		l.Warn("the `aws_sdk_version_v2` argument is deprecated and has no effect, AWS SDK for Go v2 is always used - remove this argument from your configuration")
 	}
 
 	if c.DecoupledScrape.Enabled {
@@ -162,10 +158,10 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		if v := c.DecoupledScrape.ScrapeInterval; v != nil {
 			scrapeInterval = *v
 		}
-		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, labelsSnakeCase, c.Debug)
+		return NewDecoupledCloudwatchExporter(c.Name(), l, exporterConfig, scrapeInterval, fipsEnabled, labelsSnakeCase)
 	}
 
-	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, labelsSnakeCase, c.Debug)
+	return NewCloudwatchExporter(c.Name(), l, exporterConfig, fipsEnabled, labelsSnakeCase)
 }
 
 // getHash calculates the MD5 hash of the yaml representation of the config
@@ -181,7 +177,7 @@ func getHash(c *Config) (string, error) {
 // ToYACEConfig converts a Config into YACE's config model. Note that the conversion is not direct, some values
 // have been opinionated to simplify the config model the agent exposes for this integration.
 // The returned boolean is whether or not AWS FIPS endpoints will be enabled.
-func ToYACEConfig(c *Config, logger log.Logger) (yaceModel.JobsConfig, bool, error) {
+func ToYACEConfig(c *Config, logger *slog.Logger) (yaceModel.JobsConfig, bool, error) {
 	// Once the support for deprecated aliases is dropped, this function (convertAliasesToNamespaces) can be removed.
 	convertAliasesToNamespaces(c, logger)
 	return toYACEConfig(c)
@@ -190,12 +186,12 @@ func ToYACEConfig(c *Config, logger log.Logger) (yaceModel.JobsConfig, bool, err
 // convertAliasesToNamespaces converts the deprecated service aliases to their corresponding namespaces.
 // This function is added for the backward compatibility of the deprecated service aliases. This compatibility
 // may be removed in the future.
-func convertAliasesToNamespaces(c *Config, logger log.Logger) {
+func convertAliasesToNamespaces(c *Config, logger *slog.Logger) {
 	for i, job := range c.Discovery.Jobs {
 		if job.Type != "" {
 			if svc := yaceConf.SupportedServices.GetService(job.Type); svc == nil {
 				if namespace := getServiceByAlias(job.Type); namespace != "" {
-					level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Type, "namespace", namespace)
+					logger.Warn("service alias is deprecated, use the namespace instead", "alias", job.Type, "namespace", namespace)
 					c.Discovery.Jobs[i].Type = namespace
 				}
 			}
@@ -205,7 +201,7 @@ func convertAliasesToNamespaces(c *Config, logger log.Logger) {
 	for i, job := range c.Static {
 		if svc := yaceConf.SupportedServices.GetService(job.Namespace); svc == nil {
 			if namespace := getServiceByAlias(job.Namespace); namespace != "" {
-				level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Namespace, "namespace", namespace)
+				logger.Warn("service alias is deprecated, use the namespace instead", "alias", job.Namespace, "namespace", namespace)
 				c.Static[i].Namespace = namespace
 			}
 		}

@@ -17,6 +17,7 @@
 ##
 ##   test                  Run tests
 ##   lint                  Lint code
+##   govulncheck           Run govulncheck across all Go modules
 ##   integration-test      Run integration tests
 ##   integration-test-k8s            Run Kubernetes integration tests (CI mode)
 ##   integration-test-k8s-local-dev  Run Kubernetes integration tests via interactive menu
@@ -51,6 +52,7 @@
 ##   generate-graphql          Generate the GraphQL assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
+##   generate-source-code      Wrapper for collector distro codegen (skips when CI=true or SKIP_CODE_GENERATION=1).
 ##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
 ##
 ## Other targets:
@@ -81,8 +83,9 @@
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
+##   SKIP_CODE_GENERATION Set to 1 to skip code generation before building the alloy binary
 
-include tools/make/*.mk
+include build-tools/make/*.mk
 
 ALLOY_IMAGE          		?= grafana/alloy:latest
 ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
@@ -95,6 +98,9 @@ BUILDER_VERSION      		?= v0.139.0
 JSONNET              		?= go run github.com/google/go-jsonnet/cmd/jsonnet@v0.20.0
 JB                   		?= go run github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.6.0
 GRIZZLY              		?= go run github.com/grafana/grizzly/cmd/grr@v0.7.1
+# GO_TAGS converted to govulncheck's comma form so tag-gated code paths are
+# analysed (the underlying govulncheck version is pinned in tools/govulncheck).
+GOVULNCHECK_TAGS    		?= $(shell echo "$(GO_TAGS)" | tr ' ' ',')
 GOOS                 		?= $(shell go env GOOS)
 GOARCH               		?= $(shell go env GOARCH)
 GOARM                		?= $(shell go env GOARM)
@@ -121,6 +127,7 @@ PROPAGATE_VARS := \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
+    SKIP_CODE_GENERATION \
 
 #
 # Constants for targets
@@ -135,7 +142,7 @@ endif
 
 GO_ENV := GOEXPERIMENT=$(GOEXPERIMENT) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) CGO_ENABLED=$(CGO_ENABLED)
 
-VERSION      ?= $(shell bash ./tools/image-tag)
+VERSION      ?= $(shell bash ./scripts/image-tag)
 GIT_REVISION := $(shell git rev-parse --short HEAD)
 GIT_BRANCH   := $(shell git rev-parse --abbrev-ref HEAD)
 BEYLA_MODULE  := $(shell go list -m -f '{{.Path}} {{.Version}}' github.com/grafana/beyla/v3 2>/dev/null)
@@ -164,20 +171,26 @@ else
 GO_FLAGS := $(DEFAULT_FLAGS) $(DEBUG_GO_FLAGS)
 endif
 
+.PHONY: lint
+lint: lint-go run-alloylint lint-shell
+
+.PHONY: lint-go
+lint-go:
+	mise exec -- task lint:go
+
+.PHONY: lint-shell
+lint-shell:
+	mise exec -- task lint:shellcheck
+
+.PHONY: run-alloylint
+run-alloylint: alloylint
+	mise exec -- task lint:alloylint
+
 #
 # Targets for running tests
 #
 # These targets currently don't support proxying to a build container.
 #
-
-.PHONY: lint
-lint: alloylint
-	find . -name go.mod | xargs dirname | xargs -I __dir__ $(GOLANGCI_LINT_BINARY) run -v --timeout=10m
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
-
-.PHONY: run-alloylint
-run-alloylint: alloylint
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
 
 .PHONY: test
 # We have to run test twice: once for all packages with -race and then once
@@ -189,6 +202,13 @@ test:
 			(cd $$dir && $(GO_ENV) go test $(GO_FLAGS) -race ./...) || exit 1;\
 		fi;\
 	done
+
+.PHONY: govulncheck
+# Thin Go wrapper around govulncheck: streams the tool's native text output
+# unchanged, parses `=== Symbol Results ===` for reachable OSV IDs, and
+# applies the YAML ignore list (see .govulncheck.yaml and tools/govulncheck/).
+govulncheck:
+	go run -C tools ./cmd govulncheck --tags=$(GOVULNCHECK_TAGS)
 
 test-packages:
 ifeq ($(USE_CONTAINER),1)
@@ -232,7 +252,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-ui
+alloy: generate-ui generate-source-code
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -287,7 +307,7 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-source-code generate-otel-collector-distro generate-graphql
 generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
 
 generate-graphql:
@@ -311,6 +331,15 @@ else
 	bash ./operations/helm/scripts/rebuild-tests.sh
 endif
 
+generate-source-code:
+ifeq ($(USE_CONTAINER),1)
+	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_CODE_GENERATION),1)
+	@echo "Skipping code generation (SKIP_CODE_GENERATION=1)"
+else
+	@$(MAKE) generate-otel-collector-distro
+endif
+
 generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
@@ -327,7 +356,7 @@ ifeq ($(USE_CONTAINER),1)
 else ifeq ($(SKIP_UI_BUILD),1)
 	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
 else
-	cd ./internal/web/ui && npm install && npm run build
+	cd ./internal/web/ui && npm ci --no-audit --no-fund && npm run build
 endif
 
 generate-docs:
@@ -404,13 +433,13 @@ endif
 
 .PHONY: update-go-version-pr-1
 update-go-version-pr-1:
-	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-build-image VERSION=1.25.8)"; exit 1; fi
-	cd ./tools && go run ./go-version pr-1 $(VERSION)
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-version-pr-1 VERSION=1.25.8)"; exit 1; fi
+	go run -C ./tools ./cmd goversion pr-1 $(VERSION)
 
 .PHONY: update-go-version-pr-2
 update-go-version-pr-2:
-	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-mod VERSION=1.25.8)"; exit 1; fi
-	cd ./tools && go run ./go-version pr-2 $(VERSION)
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required (e.g. make update-go-version-pr-2 VERSION=1.25.8)"; exit 1; fi
+	go run -C ./tools ./cmd goversion pr-2 $(VERSION)
 
 .PHONY: clean
 clean: clean-dist clean-build-container-cache

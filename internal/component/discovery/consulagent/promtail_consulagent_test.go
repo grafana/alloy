@@ -17,13 +17,13 @@ package consulagent
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -341,8 +341,7 @@ func newServer(t *testing.T) (*httptest.Server, *SDConfig) {
 }
 
 func newDiscovery(t *testing.T, config *SDConfig) *Discovery {
-	logger := log.NewNopLogger()
-	d, err := NewDiscovery(config, logger)
+	d, err := NewDiscovery(config, slog.New(slog.DiscardHandler))
 	require.NoError(t, err)
 	return d
 }

@@ -28,6 +28,13 @@ type Stage interface {
 	Cleanup()
 }
 
+// Stopper is an optional interface for stages that need an out-of-band signal
+// to unblock goroutines during shutdown. Implementations must not block,
+// panic, or assume Run has stopped.
+type Stopper interface {
+	Stop()
+}
+
 // stageProcessor Allow to transform a Processor (old synchronous pipeline stage) into an async Stage
 type stageProcessor struct {
 	Processor
@@ -187,10 +194,7 @@ func New(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer
 			return nil, err
 		}
 	case cfg.TruncateConfig != nil:
-		s, err = newTruncateStage(slogger, *cfg.TruncateConfig, registerer)
-		if err != nil {
-			return nil, err
-		}
+		s = newTruncateStage(slogger, *cfg.TruncateConfig, registerer)
 	default:
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
 	}

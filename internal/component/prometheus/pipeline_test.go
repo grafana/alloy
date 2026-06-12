@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/storage"
@@ -25,7 +24,6 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/remotewrite"
 	"github.com/grafana/alloy/internal/component/prometheus/scrape"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/static/metrics/wal"
@@ -187,17 +185,17 @@ func (ref refTrackingConfig) TestNameString() string {
 func BenchmarkPipelines(b *testing.B) {
 	pipelineTypes := []struct {
 		name            string
-		pipelineBuilder func(t testing.TB, logger log.Logger, rwComponents int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc)
+		pipelineBuilder func(t testing.TB, logger *slog.Logger, rwComponents int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc)
 	}{
 		{
 			name: "remote_write",
-			pipelineBuilder: func(t testing.TB, logger log.Logger, rwComponents int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
+			pipelineBuilder: func(t testing.TB, logger *slog.Logger, rwComponents int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
 				return newRemoteWritePipeline(t, logger, rwComponents, appenders.Noop{}, refTrackingConfig)
 			},
 		},
 		{
 			name: "relabel-remote_write",
-			pipelineBuilder: func(t testing.TB, logger log.Logger, _ int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
+			pipelineBuilder: func(t testing.TB, logger *slog.Logger, _ int, refTrackingConfig refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
 				return newRelabelPipeline(t, logger, appenders.Noop{}, refTrackingConfig)
 			},
 		},
@@ -249,7 +247,7 @@ func BenchmarkPipelines(b *testing.B) {
 					pipelineType.name, config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), n)
 
 				b.Run(testName, func(b *testing.B) {
-					pipeline, _, clearCache := pipelineType.pipelineBuilder(b, log.NewNopLogger(), config.numberOfRWComponents, config.refTrackingConfig)
+					pipeline, _, clearCache := pipelineType.pipelineBuilder(b, util.TestLogger(b), config.numberOfRWComponents, config.refTrackingConfig)
 					metrics := setupMetrics(n)
 					b.ReportAllocs()
 					b.ResetTimer()
@@ -282,7 +280,7 @@ func BenchmarkPipelines(b *testing.B) {
 					pipelineType.name, config.numberOfRWComponents, config.refTrackingConfig.TestNameString(), c)
 
 				b.Run(testName, func(b *testing.B) {
-					pipeline, _, _ := pipelineType.pipelineBuilder(b, log.NewNopLogger(), config.numberOfRWComponents, config.refTrackingConfig)
+					pipeline, _, _ := pipelineType.pipelineBuilder(b, util.TestLogger(b), config.numberOfRWComponents, config.refTrackingConfig)
 					var metricsForAppenders [][]labels.Labels
 					numMetrics := 1000
 					for appenderIndex := range c {
@@ -366,7 +364,7 @@ func setupMetrics(numberOfMetrics int, extraLabels ...string) []labels.Labels {
 
 type clearCacheFunc = func()
 
-func newRemoteWritePipeline(t testing.TB, logger log.Logger, numberOfRemoteWriteComponents int, destination storage.Appender, config refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
+func newRemoteWritePipeline(t testing.TB, logger *slog.Logger, numberOfRemoteWriteComponents int, destination storage.Appender, config refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
 	ls := labelstore.New(logger, promclient.DefaultRegisterer, config.useLabelStore)
 
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
@@ -385,7 +383,7 @@ func newRemoteWritePipeline(t testing.TB, logger log.Logger, numberOfRemoteWrite
 	}
 }
 
-func newRelabelPipeline(t testing.TB, logger log.Logger, destination storage.Appender, config refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
+func newRelabelPipeline(t testing.TB, logger *slog.Logger, destination storage.Appender, config refTrackingConfig) (storage.Appendable, labelstore.LabelStore, clearCacheFunc) {
 	ls := labelstore.New(logger, promclient.DefaultRegisterer, config.useLabelStore)
 
 	destAppendable := testappender.ConstantAppendable{Inner: destination}
@@ -400,19 +398,13 @@ func newRelabelPipeline(t testing.TB, logger log.Logger, destination storage.App
 	}
 }
 
-func newRemoteWriteComponent(t testing.TB, logger log.Logger, ls labelstore.LabelStore, destination storage.Appendable) storage.Appendable {
+func newRemoteWriteComponent(t testing.TB, logger *slog.Logger, ls labelstore.LabelStore, destination storage.Appendable) storage.Appendable {
 	walDir := t.TempDir()
 
 	walStorage, err := wal.NewStorage(logger, promclient.NewRegistry(), walDir)
 	require.NoError(t, err)
 
-	fanoutLogger := slog.New(
-		logging.NewSlogGoKitHandler(
-			log.With(logger, "subcomponent", "fanout"),
-		),
-	)
-
-	store := storage.NewFanout(fanoutLogger, walStorage, testStorage{destination: destination})
+	store := storage.NewFanout(logger.With("subcomponent", "fanout"), walStorage, testStorage{destination: destination})
 
 	t.Cleanup(func() {
 		store.Close()
@@ -442,7 +434,7 @@ func (t testStorage) Close() error {
 	return nil
 }
 
-func newRelabelComponent(t testing.TB, logger log.Logger, forwardTo []storage.Appendable, ls labelstore.LabelStore) storage.Appendable {
+func newRelabelComponent(t testing.TB, logger *slog.Logger, forwardTo []storage.Appendable, ls labelstore.LabelStore) storage.Appendable {
 	cfg := `forward_to = []
 			rule {
 				action       = "replace"

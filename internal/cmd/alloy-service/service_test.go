@@ -5,18 +5,19 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
 
-	"github.com/go-kit/log"
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/require"
 )
 
 const goosWindows = "windows"
@@ -138,10 +139,10 @@ func Test_serviceManager(t *testing.T) {
 	})
 }
 
-func buildExampleService(t *testing.T, l log.Logger) string {
+func buildExampleService(t *testing.T, l *slog.Logger) string {
 	t.Helper()
 
-	writer := log.NewStdlibAdapter(l)
+	stdlog := slog.NewLogLogger(l.Handler(), slog.LevelDebug)
 
 	servicePath := filepath.Join(t.TempDir(), "example-service")
 	if runtime.GOOS == goosWindows {
@@ -153,8 +154,8 @@ func buildExampleService(t *testing.T, l log.Logger) string {
 		"-o", servicePath,
 		"testdata/example_service.go",
 	)
-	cmd.Stdout = writer
-	cmd.Stderr = writer
+	cmd.Stdout = stdlog.Writer()
+	cmd.Stderr = stdlog.Writer()
 
 	require.NoError(t, cmd.Run())
 
