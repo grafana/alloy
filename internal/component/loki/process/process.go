@@ -29,14 +29,14 @@ func init() {
 // Arguments holds values which are used to configure the loki.process
 // component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	ForwardTo []loki.Consumer      `alloy:"forward_to,attr"`
 	Stages    []stages.StageConfig `alloy:"stage,enum,optional"`
 }
 
 // Exports exposes the receiver that can be used to send log entries to
 // loki.process.
 type Exports struct {
-	Receiver loki.LogsReceiver `alloy:"receiver,attr"`
+	Receiver loki.Consumer `alloy:"receiver,attr"`
 }
 
 var (
@@ -49,10 +49,12 @@ type Component struct {
 	opts       component.Options
 	processOut loki.LogsReceiver
 	processIn  loki.LogsReceiver
-	receiver   loki.LogsReceiver
-	fanout     *loki.Fanout
 
-	mut          sync.Mutex
+	receiver *loki.InterceptorConsumer
+	fanout   *loki.FanoutConsumer
+
+	mut          sync.RWMutex
+	stopped      bool
 	entryHandler loki.EntryHandler
 	stages       []stages.StageConfig
 
@@ -70,17 +72,57 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:               o,
 		processOut:         loki.NewLogsReceiver(),
 		processIn:          loki.NewLogsReceiver(),
-		receiver:           loki.NewLogsReceiver(loki.WithComponentID(o.ID)),
-		fanout:             loki.NewFanout(args.ForwardTo),
+		fanout:             loki.NewFanoutConsumer(args.ForwardTo),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
-	o.OnStateChange(Exports{Receiver: c.receiver})
+	c.receiver = loki.NewInterceptorConsumer(
+		c.opts.ID,
+		c.fanout,
+		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
+			c.mut.RLock()
+			defer c.mut.RUnlock()
 
-	// Call to Update() to start readers and set receivers once at the start.
+			if c.stopped {
+				return entry, false, loki.ErrConsumerStopped
+			}
+
+			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+				livedebugging.ComponentID(c.opts.ID),
+				livedebugging.LokiLog,
+				0, // does not count because we count only the data that exists
+				func() string {
+					structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
+					if err != nil {
+						c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
+						structured_metadata = []byte("{}")
+					}
+					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
+				},
+			))
+
+			select {
+			case <-ctx.Done():
+				return entry, false, ctx.Err()
+			case c.processIn.Chan() <- entry.Clone():
+				// TODO(@tpaschalis) Instead of calling Clone() at the
+				// component's entrypoint here, we can try a copy-on-write
+				// approach instead, so that the copy only gets made on the
+				// first stage that needs to modify the entry's labels.
+
+				// FIXME(kalleep): This is a temporary hack, we "disconnect" entry from call. This lets us refactor
+				// pipelines to be synchronous in followup pr. See https://github.com/grafana/alloy/issues/4953.
+				return entry, false, nil
+			}
+		}),
+	)
+
+	// Call to Update() to create and start pipeline.
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
+
+	o.OnStateChange(Exports{Receiver: c.receiver})
 
 	return c, nil
 }
@@ -91,44 +133,38 @@ func (c *Component) Run(ctx context.Context) error {
 		loki.Drain(c.processOut, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()
+			c.stopped = true
+
 			if c.entryHandler != nil {
 				c.entryHandler.Stop()
 			}
 		})
 	}()
 
-	var wg sync.WaitGroup
-	wg.Go(func() { c.handleIn(ctx) })
+	loki.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
+		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
+			livedebugging.ComponentID(c.opts.ID),
+			livedebugging.LokiLog,
+			1,
+			func() string {
+				structured_metadata, err := e.StructuredMetadata.MarshalJSON()
+				if err != nil {
+					c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
+					structured_metadata = []byte("{}")
+				}
+				return fmt.Sprintf(
+					"[OUT]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s",
+					e.Timestamp.Format(time.RFC3339Nano),
+					e.Line,
+					e.Labels.String(),
+					string(structured_metadata),
+				)
+			},
+		))
 
-	wg.Go(func() {
-		loki.ConsumeAndProcess(ctx, c.processOut, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
-			// The log entry is the same for every fanout,
-			// so we can publish it only once.
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				livedebugging.ComponentID(c.opts.ID),
-				livedebugging.LokiLog,
-				1,
-				func() string {
-					structured_metadata, err := e.StructuredMetadata.MarshalJSON()
-					if err != nil {
-						c.opts.Logger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
-						structured_metadata = []byte("{}")
-					}
-					return fmt.Sprintf(
-						"[OUT]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s",
-						e.Timestamp.Format(time.RFC3339Nano),
-						e.Line,
-						e.Labels.String(),
-						string(structured_metadata),
-					)
-				},
-			))
-
-			return e, true
-		})
+		return e, true
 	})
 
-	wg.Wait()
 	return nil
 }
 
@@ -139,11 +175,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	// We always want to update fanout but it's important to do so
-	// after we have drained the existing pipeline in case one of the
-	// new receivers is not running yet. This behaviour will go away with
-	// https://github.com/grafana/alloy/issues/4953.
-	defer c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	// We want to create a new pipeline if the config changed or if this is the
 	// first load. This will allow a component with no stages to function properly.
@@ -163,39 +195,6 @@ func (c *Component) Update(args component.Arguments) error {
 	}
 
 	return nil
-}
-
-func (c *Component) handleIn(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case entry := <-c.receiver.Chan():
-			c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				livedebugging.ComponentID(c.opts.ID),
-				livedebugging.LokiLog,
-				0, // does not count because we count only the data that exists
-				func() string {
-					structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
-					if err != nil {
-						c.opts.Logger.Error("failed to marshal structured metadata", "receiver", c.opts.ID, "error", err)
-						structured_metadata = []byte("{}")
-					}
-					return fmt.Sprintf("[IN]: timestamp: %s, entry: %s, labels: %s, structured_metadata: %s", entry.Timestamp.Format(time.RFC3339Nano), entry.Line, entry.Labels.String(), string(structured_metadata))
-				},
-			))
-
-			select {
-			case <-ctx.Done():
-				return
-			case c.processIn.Chan() <- entry.Clone():
-				// TODO(@tpaschalis) Instead of calling Clone() at the
-				// component's entrypoint here, we can try a copy-on-write
-				// approach instead, so that the copy only gets made on the
-				// first stage that needs to modify the entry's labels.
-			}
-		}
-	}
 }
 
 func stagesChanged(prev, next []stages.StageConfig) bool {

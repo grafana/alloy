@@ -14,7 +14,7 @@ import (
 	"github.com/grafana/alloy/syntax/token/builder"
 )
 
-func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string, maxStreams int) (*builder.Block, loki.LogsReceiver) {
+func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, labelPrefix string, maxStreams int) (*builder.Block, loki.Consumer) {
 	label := "default"
 	if labelPrefix != "" {
 		label = labelPrefix
@@ -24,7 +24,7 @@ func NewLokiWrite(client *client.Config, diags *diag.Diagnostics, index int, lab
 
 	lokiWriteArgs := toLokiWriteArguments(client, diags, maxStreams)
 	block := common.NewBlockWithOverride([]string{"loki", "write"}, lokiWriteLabel, lokiWriteArgs)
-	return block, common.ConvertLogsReceiver{
+	return block, common.ConvertLogsConsumer{
 		Expr: fmt.Sprintf("loki.write.%s.receiver", lokiWriteLabel),
 	}
 }

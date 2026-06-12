@@ -3,7 +3,6 @@
 package journal
 
 import (
-	"context"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +19,7 @@ import (
 func TestJournal(t *testing.T) {
 	// Create opts for component
 	tmp := t.TempDir()
-	lr := loki.NewLogsReceiver()
+	collector := loki.NewCollectingConsumer()
 	c, err := New(component.Options{
 		ID:         "loki.source.journal.test",
 		Logger:     logging.NewSlogNop(),
@@ -30,24 +29,22 @@ func TestJournal(t *testing.T) {
 		FormatAsJson: false,
 		MaxAge:       7 * time.Hour,
 		Path:         "",
-		ForwardTo:    []loki.LogsReceiver{lr},
+		ForwardTo:    []loki.Consumer{collector},
 	})
 	require.NoError(t, err)
-	ctx := t.Context()
-	ctx, cnc := context.WithTimeout(ctx, 5*time.Second)
-	defer cnc()
-	go c.Run(ctx)
+
+	go c.Run(t.Context())
+
 	ts := time.Now().String()
 	err = journal.Send(ts, journal.PriInfo, nil)
 	require.NoError(t, err)
 
-	select {
-	case <-ctx.Done():
-		t.Error("did not get entry in time")
-		return
-	case msg := <-lr.Chan():
-		if strings.Contains(msg.Line, ts) {
-			return
+	require.Eventually(t, func() bool {
+		for _, e := range collector.Entries() {
+			if strings.Contains(e.Line, ts) {
+				return true
+			}
 		}
-	}
+		return false
+	}, 5*time.Second, 100*time.Millisecond)
 }

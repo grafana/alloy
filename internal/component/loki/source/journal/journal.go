@@ -38,11 +38,11 @@ var _ component.Component = (*Component)(nil)
 type Component struct {
 	opts           component.Options
 	metrics        *metrics
-	recv           loki.LogsReceiver
 	positions      positions.Positions
 	targetsUpdated chan struct{}
 
-	fanout *loki.Fanout
+	recv   loki.LogsReceiver
+	fanout *loki.FanoutConsumer
 
 	mut       sync.RWMutex
 	tailer    *tailer
@@ -77,7 +77,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:           o,
 		recv:           loki.NewLogsReceiver(),
 		positions:      positionsFile,
-		fanout:         loki.NewFanout(args.ForwardTo),
+		fanout:         loki.NewFanoutConsumer(args.ForwardTo),
 		targetsUpdated: make(chan struct{}, 1),
 		args:           args,
 	}
@@ -127,7 +127,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	defer c.mut.Unlock()
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	c.args = newArgs
 	select {

@@ -12,10 +12,7 @@ const DefaultDrainTimeout = 2 * time.Minute
 // fn executes. It will continue to forward up to the timeout and then falls back
 // to discarding entries from recv until fn returns. This prevents deadlocks in
 // shutdown paths where component may still send to recv while fn is stopping them.
-//
-// This is typically used during component shutdown to drain any remaining entries
-// from a receiver channel while performing cleanup operations.
-func Drain(recv LogsReceiver, fanout *Fanout, timeout time.Duration, fn func()) {
+func Drain(recv LogsReceiver, fanout *FanoutConsumer, timeout time.Duration, fn func()) {
 	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 

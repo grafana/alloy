@@ -14,7 +14,7 @@ type Arguments struct {
 	Path           string              `alloy:"path,attr,optional"`
 	RelabelRules   alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 	Matches        string              `alloy:"matches,attr,optional"`
-	ForwardTo      []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo      []loki.Consumer     `alloy:"forward_to,attr"`
 	Labels         map[string]string   `alloy:"labels,attr,optional"`
 	LegacyPosition *LegacyPosition     `alloy:"legacy_position,block,optional"`
 }

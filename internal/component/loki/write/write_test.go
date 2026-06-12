@@ -5,7 +5,6 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -17,8 +16,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
-	"github.com/grafana/alloy/internal/component/discovery"
-	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/featuregate"
 	loki_util "github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
@@ -186,8 +183,9 @@ func testSingleEndpoint(t *testing.T, alterConfig func(arguments *Arguments)) {
 	}
 
 	exports := tc.Exports().(Exports)
-	exports.Receiver.Chan() <- logEntry
-	exports.Receiver.Chan() <- logEntry
+
+	exports.Receiver.ConsumeEntry(t.Context(), logEntry)
+	exports.Receiver.ConsumeEntry(t.Context(), logEntry)
 
 	// Wait for our exporter to finish and pass data to our HTTP server.
 	// Make sure the log entries were received correctly.
@@ -221,15 +219,25 @@ func TestEntrySentToTwoWriteComponents(t *testing.T) {
 }
 
 func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
-	ch1, ch2 := make(chan push.PushRequest), make(chan push.PushRequest)
+	ch1, ch2 := make(chan push.PushRequest, 1), make(chan push.PushRequest, 1)
 	srv1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var pushReq push.PushRequest
-		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
+
+		if err := loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 		ch1 <- pushReq
 	}))
 	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var pushReq push.PushRequest
-		require.NoError(t, loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy))
+
+		if err := loki_util.ParseProtoReader(t.Context(), r.Body, int(r.ContentLength), math.MaxInt32, &pushReq, loki_util.RawSnappy); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
 		ch2 <- pushReq
 	}))
 	defer srv1.Close()
@@ -268,39 +276,18 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 	require.NoError(t, tc1.WaitExports(time.Second))
 	require.NoError(t, tc2.WaitExports(time.Second))
 
-	// Create a file to log to.
-	f, err := os.CreateTemp(t.TempDir(), "example")
-	require.NoError(t, err)
-	defer f.Close()
+	fanout := loki.NewFanoutConsumer([]loki.Consumer{tc1.Exports().(Exports).Receiver, tc2.Exports().(Exports).Receiver})
 
-	// Create and start a component that will read from that file and fan out to both components.
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
-	require.NoError(t, err)
-
-	go func() {
-		err := ctrl.Run(t.Context(), lsf.Arguments{
-			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
-			ForwardTo: []loki.LogsReceiver{
-				tc1.Exports().(Exports).Receiver,
-				tc2.Exports().(Exports).Receiver,
-			},
-			FileMatch: lsf.FileMatch{
-				Enabled:    false,
-				SyncPeriod: 10 * time.Second,
-			},
-		})
-		require.NoError(t, err)
-	}()
-	ctrl.WaitRunning(time.Minute)
-
-	// Write a line to the file.
-	_, err = f.Write([]byte("writing some text\n"))
-	require.NoError(t, err)
-
-	wantLabelSet := model.LabelSet{
-		"filename": model.LabelValue(f.Name()),
+	lset := model.LabelSet{
+		"filename": "myfile",
 		"somelbl":  "somevalue",
 	}
+
+	err = fanout.ConsumeEntry(t.Context(), loki.NewEntry(lset, push.Entry{
+		Timestamp: time.Now(),
+		Line:      "my line",
+	}))
+	require.NoError(t, err)
 
 	// The two entries have been received with their
 	for i := 0; i < 2; i++ {
@@ -309,14 +296,14 @@ func testMultipleEndpoint(t *testing.T, alterArgs func(arguments *Arguments)) {
 			require.FailNow(t, "failed waiting for logs")
 		case req := <-ch1:
 			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}).String())
+			require.Equal(t, lset.Clone().Merge(model.LabelSet{"lbl": "foo"}).String(), req.Streams[0].Labels)
 			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
+			require.Equal(t, "my line", req.Streams[0].Entries[0].Line)
 		case req := <-ch2:
 			require.Len(t, req.Streams, 1)
-			require.Equal(t, req.Streams[0].Labels, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}).String())
+			require.Equal(t, lset.Clone().Merge(model.LabelSet{"lbl": "bar"}).String(), req.Streams[0].Labels)
 			require.Len(t, req.Streams[0].Entries, 1)
-			require.Equal(t, req.Streams[0].Entries[0].Line, "writing some text")
+			require.Equal(t, "my line", req.Streams[0].Entries[0].Line)
 		}
 	}
 }
@@ -468,7 +455,7 @@ func benchSingleEndpoint(b *testing.B, tc testCase, alterConfig func(arguments *
 					Line:      "very important log",
 				},
 			}
-			exports.Receiver.Chan() <- logEntry
+			exports.Receiver.ConsumeEntry(b.Context(), logEntry)
 		}
 
 		require.Eventually(b, func() bool {

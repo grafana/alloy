@@ -8,7 +8,7 @@ import (
 )
 
 type GlobalContext struct {
-	WriteReceivers   []loki.LogsReceiver
+	WriteReceivers   []loki.Consumer
 	TargetSyncPeriod time.Duration
 	LabelPrefix      string
 	LimitsConfig     limit.Config

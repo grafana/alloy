@@ -32,14 +32,14 @@ func init() {
 // Arguments holds values which are used to configure the
 // loki.source.cloudflare component.
 type Arguments struct {
-	APIToken         alloytypes.Secret   `alloy:"api_token,attr"`
-	ZoneID           string              `alloy:"zone_id,attr"`
-	Labels           map[string]string   `alloy:"labels,attr,optional"`
-	Workers          int                 `alloy:"workers,attr,optional"`
-	PullRange        time.Duration       `alloy:"pull_range,attr,optional"`
-	FieldsType       FieldsType          `alloy:"fields_type,attr,optional"`
-	AdditionalFields []string            `alloy:"additional_fields,attr,optional"`
-	ForwardTo        []loki.LogsReceiver `alloy:"forward_to,attr"`
+	APIToken         alloytypes.Secret `alloy:"api_token,attr"`
+	ZoneID           string            `alloy:"zone_id,attr"`
+	Labels           map[string]string `alloy:"labels,attr,optional"`
+	Workers          int               `alloy:"workers,attr,optional"`
+	PullRange        time.Duration     `alloy:"pull_range,attr,optional"`
+	FieldsType       FieldsType        `alloy:"fields_type,attr,optional"`
+	AdditionalFields []string          `alloy:"additional_fields,attr,optional"`
+	ForwardTo        []loki.Consumer   `alloy:"forward_to,attr"`
 }
 
 func (c Arguments) tailerConfig() *tailerConfig {
@@ -90,7 +90,7 @@ type Component struct {
 	mut    sync.RWMutex
 	tailer *tailer
 
-	fanout *loki.Fanout
+	fanout *loki.FanoutConsumer
 }
 
 // New creates a new loki.source.cloudflare component.
@@ -113,7 +113,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:    o,
 		metrics: newMetrics(o.Registerer),
 		handler: loki.NewLogsReceiver(),
-		fanout:  loki.NewFanout(args.ForwardTo),
+		fanout:  loki.NewFanoutConsumer(args.ForwardTo),
 		posFile: positionsFile,
 	}
 
@@ -150,7 +150,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	newArgs := args.(Arguments)
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	if c.tailer != nil {
 		c.tailer.stop()

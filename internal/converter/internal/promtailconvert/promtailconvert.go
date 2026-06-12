@@ -103,7 +103,7 @@ func fixFunctionUse(buf string) string {
 func AppendAll(f *builder.File, cfg *promtailcfg.Config, labelPrefix string, diags diag.Diagnostics) diag.Diagnostics {
 	validateTopLevelConfig(cfg, &diags)
 
-	writeReceivers := make([]loki.LogsReceiver, len(cfg.ClientConfigs))
+	writeReceivers := make([]loki.Consumer, len(cfg.ClientConfigs))
 	writeBlocks := make([]*builder.Block, len(cfg.ClientConfigs))
 	// Each client config needs to be a separate remote_write,
 	// because they may have different ExternalLabels fields.

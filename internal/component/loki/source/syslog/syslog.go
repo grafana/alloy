@@ -35,7 +35,7 @@ func init() {
 // component.
 type Arguments struct {
 	SyslogListeners []ListenerConfig    `alloy:"listener,block"`
-	ForwardTo       []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo       []loki.Consumer     `alloy:"forward_to,attr"`
 	RelabelRules    alloy_relabel.Rules `alloy:"relabel_rules,attr,optional"`
 }
 
@@ -43,7 +43,7 @@ type Arguments struct {
 type Component struct {
 	opts    component.Options
 	metrics *st.Metrics
-	fanout  *loki.Fanout
+	fanout  *loki.FanoutConsumer
 	handler loki.LogsReceiver
 
 	mut             sync.RWMutex
@@ -63,7 +63,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:            o,
 		metrics:         st.NewMetrics(o.Registerer),
 		handler:         loki.NewLogsReceiver(),
-		fanout:          loki.NewFanout(args.ForwardTo),
+		fanout:          loki.NewFanoutConsumer(args.ForwardTo),
 		targetsUpdated:  make(chan struct{}, 1),
 		targets:         []*st.SyslogTarget{},
 		liveDbgListener: newLiveDebuggingListener(o),
@@ -125,7 +125,7 @@ func (c *Component) Update(args component.Arguments) error {
 		return err
 	}
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	prevArgs := c.args
 	c.args = newArgs
