@@ -8,8 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/dskit/backoff"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/util"
 )
@@ -62,6 +64,45 @@ func Test_ReportLoop(t *testing.T) {
 		require.Equal(t, first, uid)
 	}
 	require.Equal(t, first, r.seed.UID)
+}
+
+func Test_ReportLoop_BoundedRetriesOnFailure(t *testing.T) {
+	// A failed report advances the schedule by a full reportInterval, so a
+	// persistently unreachable endpoint is contacted at most once per interval
+	// rather than on every (much shorter) check tick. With the interval set far
+	// longer than the test, a correct reporter contacts the endpoint exactly
+	// once regardless of how slowly the test host runs.
+	reportCheckInterval = time.Millisecond
+	reportInterval = time.Hour
+	reportBackoffConfig = backoff.Config{
+		MinBackoff: time.Millisecond,
+		MaxBackoff: 2 * time.Millisecond,
+		MaxRetries: 2,
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		rw.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	usageStatsURL = server.URL
+
+	r, err := NewReporter(util.TestAlloyLogger(t).Slog())
+	require.NoError(t, err)
+	// Make the first report eligible immediately; otherwise the loop waits a
+	// full (now hour-long) interval before its first attempt.
+	r.lastReport = time.Now().Add(-2 * reportInterval)
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+
+	var cycles atomic.Int64
+	metricsFunc := func() map[string]any {
+		cycles.Add(1)
+		return map[string]any{}
+	}
+	require.Equal(t, context.DeadlineExceeded, r.Start(ctx, metricsFunc))
+
+	require.Equal(t, int64(1), cycles.Load())
 }
 
 func Test_NextReport(t *testing.T) {
