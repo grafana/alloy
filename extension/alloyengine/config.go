@@ -2,7 +2,6 @@ package alloyengine
 
 import (
 	"fmt"
-	"os"
 )
 
 type Config struct {
@@ -10,10 +9,25 @@ type Config struct {
 	Flags       map[string]string `mapstructure:"flags"`
 }
 
-// This type represents the incoming format of the Alloy configuration
-// This is a one-of type, and it is expected that only one of the fields will be set (ie, we cannot define multiple config sources of different types)
+// AlloyConfig represents the incoming format of the Alloy configuration.
 type AlloyConfig struct {
-	File string `mapstructure:"file"`
+	// Path is a path to Alloy config file or a directory containing config files.
+	//
+	// Note: either [Path] or [Inline] can be set.
+	Path string `mapstructure:"path"`
+
+	// Inline is the inline Alloy configuration.
+	//
+	// Note: either [Path] or [Inline] can be set.
+	Inline InlineAlloyConfig `mapstructure:"inline"`
+}
+
+type InlineAlloyConfig struct {
+	// ModulePath is value to be resolved for "module_path" alloy config keyword.
+	ModulePath string `mapstructure:"module_path"`
+
+	// Content is the inline Alloy config content.
+	Content string `mapstructure:"content"`
 }
 
 func (cfg *Config) flagsAsSlice() []string {
@@ -25,13 +39,17 @@ func (cfg *Config) flagsAsSlice() []string {
 }
 
 func (cfg *Config) Validate() error {
-	if cfg.AlloyConfig.File == "" {
-		return fmt.Errorf("config.file is required")
-	}
+	hasPath := cfg.AlloyConfig.Path != ""
+	hasContent := cfg.AlloyConfig.Inline.Content != ""
 
-	_, err := os.Stat(cfg.AlloyConfig.File)
-	if err != nil {
-		return fmt.Errorf("provided config path %s does not exist or is not readable: %w", cfg.AlloyConfig.File, err)
+	if !hasPath && !hasContent {
+		return fmt.Errorf("either config.file or config.inline.content must be set")
+	}
+	if hasPath && hasContent {
+		return fmt.Errorf("exactly one of config.file or config.inline.content must be set")
+	}
+	if cfg.AlloyConfig.Inline.ModulePath != "" && hasPath {
+		return fmt.Errorf("config.inline.module_path has no effect when config.file is set")
 	}
 
 	return nil

@@ -2,19 +2,27 @@ package alloyengine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/spf13/cobra"
+
+	"github.com/grafana/alloy/flowcmd"
+	"github.com/grafana/alloy/internal/readyctx"
+	"github.com/grafana/alloy/internal/service/remotecfg"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/parser"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/extension"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
-
-	"github.com/grafana/alloy/flowcmd"
-	"github.com/grafana/alloy/internal/readyctx"
-	"github.com/spf13/cobra"
 )
 
 var _ extension.Extension = (*alloyEngineExtension)(nil)
@@ -72,7 +80,7 @@ type alloyEngineExtension struct {
 	config            *Config
 	settings          component.TelemetrySettings
 	runExited         chan struct{}
-	runCommandFactory func() *cobra.Command
+	runCommandFactory func(modulePath string, configs map[string][]byte) *cobra.Command
 
 	stateMutex sync.Mutex
 	state      state
@@ -85,7 +93,7 @@ func newAlloyEngineExtension(config *Config, settings component.TelemetrySetting
 		config:            config,
 		settings:          settings,
 		state:             stateNotStarted,
-		runCommandFactory: flowcmd.RunCommand,
+		runCommandFactory: flowcmd.RunAsExtensionCommand,
 	}
 }
 
@@ -98,8 +106,16 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		return fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
 	}
 
-	runCommand := e.runCommandFactory()
-	runCommand.SetArgs([]string{e.config.AlloyConfig.File})
+	modulePath, files, err := buildAlloyConfig(e.config.AlloyConfig)
+	if err != nil {
+		return err
+	}
+
+	runCommand := e.runCommandFactory(modulePath, files)
+
+	// Prevent cobra from autoloading command-line args from os.Args
+	runCommand.SetArgs([]string{})
+
 	if err := runCommand.ParseFlags(e.config.flagsAsSlice()); err != nil {
 		return fmt.Errorf("failed to parse flags: %w", err)
 	}
@@ -219,4 +235,108 @@ func (e *alloyEngineExtension) NotReady() error {
 	default:
 		return fmt.Errorf("alloyengine extension not ready in current state: %s", currentState.String())
 	}
+}
+
+func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]byte, err error) {
+	if cfg.Inline.Content == "" && cfg.Path == "" {
+		return "", nil, errors.New("missing alloy config. Either config.file or config.inline.content must be set")
+	}
+
+	isInlineConfig := cfg.Inline.Content != ""
+	if isInlineConfig {
+		if cfg.Path != "" {
+			return "", nil, errors.New("exactly one of config.file or config.inline.content must be set")
+		}
+
+		modulePath = cfg.Inline.ModulePath
+		if modulePath == "" {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return "", nil, fmt.Errorf("cannot get current working directory: %w", err)
+			}
+			modulePath = cwd
+		}
+
+		data := []byte(cfg.Inline.Content)
+		if err := validateAlloyConfig("config.alloy", data); err != nil {
+			return "", nil, fmt.Errorf("invalid inline Alloy config: %w", err)
+		}
+
+		files = map[string][]byte{"config.alloy": data}
+		return modulePath, files, nil
+	}
+
+	// Alloy supports accepting a directory as config source
+	stat, err := os.Lstat(cfg.Path)
+	if err != nil {
+		return "", nil, err
+	}
+	if !stat.IsDir() {
+		modulePath = filepath.Dir(cfg.Path)
+		data, err := os.ReadFile(cfg.Path)
+		if err != nil {
+			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", cfg.Path, err)
+		}
+
+		if err := validateAlloyConfig(cfg.Path, data); err != nil {
+			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", cfg.Path, err)
+		}
+
+		files = map[string][]byte{cfg.Path: data}
+		return modulePath, files, nil
+	}
+
+	modulePath = cfg.Path
+	children, err := os.ReadDir(modulePath)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to open alloy config dir: %w", err)
+	}
+
+	files = make(map[string][]byte, len(children))
+	for _, ch := range children {
+		if ch.IsDir() {
+			continue
+		}
+
+		if !strings.HasSuffix(ch.Name(), ".alloy") {
+			continue
+		}
+
+		fpath := filepath.Join(modulePath, ch.Name())
+		data, err := os.ReadFile(fpath)
+		if err != nil {
+			return "", nil, err
+		}
+
+		if err := validateAlloyConfig(fpath, data); err != nil {
+			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", fpath, err)
+		}
+
+		files[fpath] = data
+	}
+
+	return modulePath, files, nil
+}
+
+// validateAlloyConfig checks whether Alloy config contains statements unsupported in extension mode.
+func validateAlloyConfig(fname string, data []byte) error {
+	tree, err := parser.ParseFile(fname, data)
+	if err != nil {
+		return fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	// TODO: throw warning if 'import.file' uses 'module_path' in inline config.
+	for _, stmt := range tree.Body {
+		block, ok := stmt.(*ast.BlockStmt)
+		if !ok {
+			continue
+		}
+
+		blockName := block.GetBlockName()
+		if blockName == remotecfg.ServiceName {
+			return fmt.Errorf("block %q is not supported in Alloy extension", blockName)
+		}
+	}
+
+	return nil
 }

@@ -3,6 +3,7 @@ package alloyengine
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 	"time"
 
@@ -43,14 +44,16 @@ func requireShutdownAndTerminated(t *testing.T, e *alloyEngineExtension) {
 func defaultTestConfig() *Config {
 	return &Config{
 		AlloyConfig: AlloyConfig{
-			File: "testdata/config.alloy",
+			Inline: InlineAlloyConfig{
+				Content: "logging { level = \"debug\" }",
+			},
 		},
 		Flags: map[string]string{},
 	}
 }
 
 // newTestExtension creates an extension with injectable runCommandFactory and a nop logger.
-func newTestExtension(t *testing.T, factory func() *cobra.Command, config *Config) *alloyEngineExtension {
+func newTestExtension(t *testing.T, factory func(modulePath string, configs map[string][]byte) *cobra.Command, config *Config) *alloyEngineExtension {
 	t.Helper()
 	e := newAlloyEngineExtension(config, component.TelemetrySettings{Logger: zap.NewNop()})
 	e.runCommandFactory = factory
@@ -59,7 +62,7 @@ func newTestExtension(t *testing.T, factory func() *cobra.Command, config *Confi
 }
 
 // blockingCommand returns a cobra command that blocks until the context is cancelled, then returns nil.
-func blockingCommand() *cobra.Command {
+func blockingCommand(_ string, _ map[string][]byte) *cobra.Command {
 	return &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if fn, ok := readyctx.OnReadyFromContext(cmd.Context()); ok && fn != nil {
@@ -72,7 +75,7 @@ func blockingCommand() *cobra.Command {
 }
 
 // blockingCommandWithoutReady blocks until context cancellation but never calls the ready callback.
-func blockingCommandWithoutReady() *cobra.Command {
+func blockingCommandWithoutReady(_ string, _ map[string][]byte) *cobra.Command {
 	return &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
 			<-cmd.Context().Done()
@@ -102,12 +105,12 @@ type retryTrackingState struct {
 	err         error
 }
 
-func newRetryTrackingCommand(failCount int, err error) (func() *cobra.Command, *retryTrackingState) {
+func newRetryTrackingCommand(failCount int, err error) (func(string, map[string][]byte) *cobra.Command, *retryTrackingState) {
 	state := &retryTrackingState{
 		failCount: failCount,
 		err:       err,
 	}
-	factory := func() *cobra.Command {
+	factory := func(_ string, _ map[string][]byte) *cobra.Command {
 		return &cobra.Command{
 			RunE: func(cmd *cobra.Command, args []string) error {
 				state.attempts++
@@ -123,15 +126,44 @@ func newRetryTrackingCommand(failCount int, err error) (func() *cobra.Command, *
 	return factory, state
 }
 
-func TestConfig_MissingPath(t *testing.T) {
+func TestConfig_MissingContent(t *testing.T) {
 	t.Helper()
 	cfg := &Config{
+		AlloyConfig: AlloyConfig{},
+		Flags:       map[string]string{},
+	}
+	require.EqualError(t, cfg.Validate(), "either config.file or config.inline.content must be set")
+}
+
+func TestLifecycle_StartPassesInlineConfigToFactory(t *testing.T) {
+	const content = "logging { level = \"debug\" }"
+
+	var (
+		gotModulePath string
+		gotConfigs    map[string][]byte
+	)
+	factory := func(modulePath string, configs map[string][]byte) *cobra.Command {
+		gotModulePath = modulePath
+		gotConfigs = configs
+		return blockingCommand(modulePath, configs)
+	}
+	e := newTestExtension(t, factory, &Config{
 		AlloyConfig: AlloyConfig{
-			File: "",
+			Inline: InlineAlloyConfig{
+				Content: content,
+			},
 		},
 		Flags: map[string]string{},
-	}
-	require.Error(t, cfg.Validate())
+	})
+
+	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+	require.Equal(t, cwd, gotModulePath)
+	require.Equal(t, content, string(gotConfigs["config.alloy"]))
+
+	requireShutdownAndTerminated(t, e)
 }
 
 func TestLifecycle_SuccessfulStartAndShutdown(t *testing.T) {
@@ -188,7 +220,7 @@ func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 
 func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 	expected := errors.New("shutdown error")
-	e := newTestExtension(t, func() *cobra.Command { return shutdownErrorCommand(expected) }, defaultTestConfig())
+	e := newTestExtension(t, func(_ string, _ map[string][]byte) *cobra.Command { return shutdownErrorCommand(expected) }, defaultTestConfig())
 
 	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
