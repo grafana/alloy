@@ -6,7 +6,7 @@ include:
 
 services:
   alloy:
-    image: grafana/alloy:latest@sha256:579582bce40049f2e27bd1e445000689c907a41f0495cb0d0c7f65609316ba7c
+    image: grafana/alloy:latest@sha256:41c41849989b7e054ccbadc17938ee1e5592fe26bfbc56ef3ffc109c0b0b2739
     pull_policy: always
     profiles: ["alloy"]
     restart: on-failure
