@@ -84,7 +84,7 @@ published release's body, and optionally appends a footer template (with
 with a `/` like `syntax/v0.1.2`) skip the footer. Driven by
 `release-enrich-release-notes.yml` (fires on release publish).
 
-### `sync-builder-config-replaces`
+### `sync-replaces`
 
 Keeps shared Go module `replace` directives consistent from the canonical
 OpenTelemetry Collector Builder config in `collector/builder-config.yaml`.
@@ -107,8 +107,17 @@ Run via the Make wrapper:
 make generate-otel-collector-distro
 ```
 
-That target syncs shared replaces into the root `go.mod`, runs `go mod tidy`,
-and regenerates the collector distro.
+That target runs `sync-replaces`, which syncs shared replaces into the root
+`go.mod` and runs `go mod tidy` with retry handling, then regenerates the
+collector distro.
+
+Or invoke the CLI directly:
+
+```bash
+go run -C tools ./cmd sync-replaces \
+  --builder-config ../collector/builder-config.yaml \
+  --go-mod ../go.mod
+```
 
 ### `goversion`
 

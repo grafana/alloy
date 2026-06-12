@@ -1,13 +1,12 @@
-package main
+package syncreplaces
 
 import (
-	"flag"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"golang.org/x/mod/modfile"
 )
 
@@ -22,14 +21,24 @@ type replaceEntry struct {
 	Value    string
 }
 
-func main() {
-	builderConfigPath := flag.String("builder-config", "collector/builder-config.yaml", "path to the canonical OCB builder config")
-	goModPath := flag.String("go-mod", "go.mod", "path to the root go.mod file to update")
-	flag.Parse()
+func Command() *cobra.Command {
+	var builderConfigPath string
+	var goModPath string
 
-	if err := syncBuilderConfigReplacesToGoMod(*builderConfigPath, *goModPath); err != nil {
-		log.Fatal(err)
+	cmd := &cobra.Command{
+		Use:   "sync-replaces",
+		Short: "Sync shared builder config replace directives into go.mod",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := syncBuilderConfigReplacesToGoMod(builderConfigPath, goModPath); err != nil {
+				return err
+			}
+			return runGoModTidy(filepath.Dir(goModPath))
+		},
 	}
+	cmd.Flags().StringVar(&builderConfigPath, "builder-config", "collector/builder-config.yaml", "path to the canonical OCB builder config")
+	cmd.Flags().StringVar(&goModPath, "go-mod", "go.mod", "path to the root go.mod file to update")
+
+	return cmd
 }
 
 func syncBuilderConfigReplacesToGoMod(builderConfigPath, goModPath string) error {
