@@ -55,6 +55,7 @@ You can use the following blocks with `prometheus.remote_write`:
 | `endpoint` > `azuread` > [`managed_identity`][managed_identity] | Configure Azure user-assigned managed identity.                            | yes      |
 | `endpoint` > `azuread` > [`oauth`][oauth]                       | Configure Azure OAuth.                                                     | yes      |
 | `endpoint` > `azuread` > [`sdk`][sdk]                           | Configure Azure SDK authentication.                                        | yes      |
+| `endpoint` > `azuread` > [`workload_identity`][workload_identity] | Configure Azure Workload Identity.                                       | yes      |
 | `endpoint` > [`basic_auth`][basic_auth]                         | Configure `basic_auth` for authenticating to the endpoint.                 | no       |
 | `endpoint` > [`metadata_config`][metadata_config]               | Configuration for how metric metadata is sent.                             | no       |
 | `endpoint` > [`oauth2`][oauth2]                                 | Configure OAuth 2.0 for authenticating to the endpoint.                    | no       |
@@ -75,6 +76,7 @@ You can use the following blocks with `prometheus.remote_write`:
 [oauth2]: #oauth2
 [queue_config]: #queue_config
 [sdk]: #sdk
+[workload_identity]: #workload_identity
 [sigv4]: #sigv4
 [tls_config]: #tls_config
 [wal]: #wal
@@ -138,6 +140,8 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 
 {{< docs/shared lookup="reference/components/azuread-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
+You must configure exactly one of the [`managed_identity`][managed_identity], [`oauth`][oauth], [`sdk`][sdk], or [`workload_identity`][workload_identity] blocks.
+
 ### `managed_identity`
 
 {{< badge text="Required" >}}
@@ -155,6 +159,12 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 {{< badge text="Required" >}}
 
 {{< docs/shared lookup="reference/components/azuread-sdk.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `workload_identity`
+
+{{< badge text="Required" >}}
+
+{{< docs/shared lookup="reference/components/azure-workload_identity-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ### `basic_auth`
 

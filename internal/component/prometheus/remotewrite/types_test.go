@@ -204,6 +204,143 @@ func TestAlloyConfig(t *testing.T) {
 			}),
 		},
 		{
+			testName: "AzureAD_WorkloadIdentity_Defaults",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					workload_identity {
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+						tenant_id = "00000000-0000-0000-0000-000000000001"
+					}
+				}
+			}`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
+					Cloud: "AzurePublic",
+					WorkloadIdentity: &azuread.WorkloadIdentityConfig{
+						ClientID:      "f47ac10b-58cc-0372-8567-0e02b2c3d479",
+						TenantID:      "00000000-0000-0000-0000-000000000001",
+						TokenFilePath: "/var/run/secrets/azure/tokens/azure-identity-token",
+					},
+				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "AzureAD_WorkloadIdentity_ExplicitTokenPath",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					workload_identity {
+						client_id       = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+						tenant_id       = "00000000-0000-0000-0000-000000000001"
+						token_file_path = "/custom/token/path"
+					}
+				}
+			}`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
+					Cloud: "AzurePublic",
+					WorkloadIdentity: &azuread.WorkloadIdentityConfig{
+						ClientID:      "f47ac10b-58cc-0372-8567-0e02b2c3d479",
+						TenantID:      "00000000-0000-0000-0000-000000000001",
+						TokenFilePath: "/custom/token/path",
+					},
+				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "AzureAD_Scope",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					managed_identity {
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+					}
+					scope = "api://alloy-gateway/.default"
+				}
+			}`,
+			expectedCfg: expectedCfg(func(c *config.Config) {
+				c.RemoteWriteConfigs[0].AzureADConfig = &azuread.AzureADConfig{
+					Cloud: "AzurePublic",
+					ManagedIdentity: &azuread.ManagedIdentityConfig{
+						ClientID: "f47ac10b-58cc-0372-8567-0e02b2c3d479",
+					},
+					Scope: "api://alloy-gateway/.default",
+				}
+				c.RemoteWriteConfigs[0].ProtobufMessage = remote.WriteV1MessageType
+			}),
+		},
+		{
+			testName: "AzureAD_WorkloadIdentity_MissingTenantID",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					workload_identity {
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+					}
+				}
+			}`,
+			errorMsg: `missing required attribute "tenant_id"`,
+		},
+		{
+			testName: "AzureAD_WorkloadIdentity_BadClientID",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					workload_identity {
+						client_id = "not-a-uuid"
+						tenant_id = "00000000-0000-0000-0000-000000000001"
+					}
+				}
+			}`,
+			errorMsg: "the provided Azure Workload Identity client_id is invalid",
+		},
+		{
+			testName: "AzureAD_MultipleAuthenticators",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					managed_identity {
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+					}
+					workload_identity {
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+						tenant_id = "00000000-0000-0000-0000-000000000001"
+					}
+				}
+			}`,
+			errorMsg: "cannot provide multiple authentication methods in the Azure AD config",
+		},
+		{
+			testName: "AzureAD_BadScope",
+			cfg: `
+			endpoint {
+				url  = "http://0.0.0.0:11111/api/v1/write"
+
+				azuread {
+					managed_identity {
+						client_id = "f47ac10b-58cc-0372-8567-0e02b2c3d479"
+					}
+					scope = "invalid!scope"
+				}
+			}`,
+			errorMsg: "the provided Azure scope contains invalid characters",
+		},
+		{
 			testName: "SigV4_Defaults",
 			cfg: `
 			endpoint {

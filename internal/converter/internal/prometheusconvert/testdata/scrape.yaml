@@ -55,3 +55,15 @@ remote_write:
       cloud: AzureGovernment
       managed_identity:
         client_id: 00000000-0000-0000-0000-000000000000
+  - name: "remote7_azuread_workload_identity"
+    url: http://localhost:9012/api/prom/push
+    azuread:
+      workload_identity:
+        client_id: 00000000-0000-0000-0000-000000000000
+        tenant_id: 00000000-0000-0000-0000-000000000001
+  - name: "remote8_azuread_scope"
+    url: http://localhost:9012/api/prom/push
+    azuread:
+      managed_identity:
+        client_id: 00000000-0000-0000-0000-000000000000
+      scope: api://alloy-gateway/.default
