@@ -10,6 +10,15 @@ internal API changes are not present.
 Unreleased
 ----------
 
+1.10.0 (2026-06-12)
+----------
+
+### Enhancements
+
+- Allow configuring of the alloy service externalTrafficPolicy (@at-blacknight)
+
+- Update to Grafana Alloy v1.17.0 (@kgeckhart)
+
 1.9.0 (2026-06-08)
 ----------
 
