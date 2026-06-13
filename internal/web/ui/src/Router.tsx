@@ -8,6 +8,7 @@ import PageLiveDebugging from './pages/LiveDebugging';
 import PageComponentList from './pages/PageComponentList';
 import PageRemoteComponentList from './pages/PageRemoteComponentList';
 import RemoteComponentDetailPage from './pages/RemoteComponentDetailPage';
+import TargetsPage from './pages/TargetsPage';
 
 interface Props {
   basePath: string;
@@ -27,6 +28,7 @@ const Router = ({ basePath }: Props) => {
 
           <Route path="/graph/*" element={<Graph />} />
           <Route path="/clustering" element={<PageClusteringPeers />} />
+          <Route path="/targets" element={<TargetsPage />} />
           <Route path="/debug/*" element={<PageLiveDebugging />} />
         </Routes>
       </main>
