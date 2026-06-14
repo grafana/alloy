@@ -18,6 +18,7 @@ import (
 	"time"
 	"unsafe"
 
+	cerrdefs "github.com/containerd/errdefs"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/moby/moby/api/pkg/stdcopy"
 	"github.com/moby/moby/client"
@@ -98,6 +99,11 @@ func (t *tailer) Run(ctx context.Context) {
 		case <-ticker.C:
 			res, err := t.client.ContainerInspect(ctx, t.containerID, client.ContainerInspectOptions{})
 			if err != nil {
+				if cerrdefs.IsNotFound(err) {
+					t.logger.Info("container no longer exists, stopping tailer", "id", t.containerID)
+					t.stop()
+					return
+				}
 				if !errors.Is(err, context.Canceled) {
 					t.logger.Error("error inspecting Docker container", "id", t.containerID, "error", err)
 				}
