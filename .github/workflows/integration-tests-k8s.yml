@@ -18,7 +18,7 @@ jobs:
       labels: github-hosted-ubuntu-x64-large
     steps:
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         persist-credentials: false
     - name: Setup Go
@@ -32,7 +32,7 @@ jobs:
     - name: Save images
       run: docker save grafana/alloy:latest prom-gen:latest -o test-images.tar
     - name: Upload images artifact
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: test-images
         path: test-images.tar
@@ -48,7 +48,7 @@ jobs:
       labels: github-hosted-ubuntu-x64-large
     steps:
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         persist-credentials: false
     - name: Setup Go
@@ -58,7 +58,7 @@ jobs:
     - name: Install Helm
       uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
       with:
-        version: v3.14.4
+        version: v3.21.0
     - name: Install kind
       env:
         KIND_VERSION: v0.24.0
