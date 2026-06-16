@@ -134,7 +134,6 @@ type ExtensionModeParams struct {
 //   - Alloy config contents passed directly, instead of file path cli argument.
 func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
 	r := newAlloyRun()
-	r.isExtension = true
 
 	cmd := &cobra.Command{
 		SilenceUsage: true,
@@ -281,9 +280,6 @@ type alloyRun struct {
 	enableDirectFanout      bool
 	enableGraphQL           bool
 	enableGraphQLPlayground bool
-
-	// reserved for otel mode
-	isExtension bool
 }
 
 func (fr *alloyRun) checkExperimentalFlags() error {
