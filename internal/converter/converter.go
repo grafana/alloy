@@ -6,10 +6,8 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/converter/diag"
-	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert"
 	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
 	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
-	"github.com/grafana/alloy/internal/converter/internal/staticconvert"
 )
 
 // Input represents the type of config file being fed into the converter.
@@ -26,13 +24,6 @@ const (
 	InputStatic Input = "static"
 )
 
-var SupportedFormats = []string{
-	string(InputOtelCol),
-	string(InputPrometheus),
-	string(InputPromtail),
-	string(InputStatic),
-}
-
 // Convert generates a Grafana Alloy config given an input configuration file.
 //
 // extraArgs are supported to be passed along to a converter such as enabling
@@ -48,16 +39,19 @@ var SupportedFormats = []string{
 // of mismatched functionality, an error is returned with no resulting config.
 // If the conversion completed successfully but generated warnings, an error is
 // returned alongside the resulting config.
+//
+// otelcol and static conversion are only available in non-slim builds; see
+// convert_heavy.go / convert_slim.go.
 func Convert(in []byte, kind Input, extraArgs []string) ([]byte, diag.Diagnostics) {
 	switch kind {
 	case InputOtelCol:
-		return otelcolconvert.Convert(in, extraArgs)
+		return convertOtelcol(in, extraArgs)
 	case InputPrometheus:
 		return prometheusconvert.Convert(in, extraArgs)
 	case InputPromtail:
 		return promtailconvert.Convert(in, extraArgs)
 	case InputStatic:
-		return staticconvert.Convert(in, extraArgs)
+		return convertStatic(in, extraArgs)
 	}
 
 	var diags diag.Diagnostics
