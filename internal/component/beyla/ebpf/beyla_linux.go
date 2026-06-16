@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,6 +18,7 @@ import (
 	"github.com/grafana/beyla/v3/pkg/beyla"
 	"github.com/grafana/beyla/v3/pkg/components"
 	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
+	"github.com/grafana/beyla/v3/pkg/webhook/configmap"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/model"
@@ -27,9 +28,12 @@ import (
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
+	"go.opentelemetry.io/obi/pkg/export/otel/otelcfg"
 	"go.opentelemetry.io/obi/pkg/export/prom"
 	"go.opentelemetry.io/obi/pkg/filter"
+	"go.opentelemetry.io/obi/pkg/kube"
 	"go.opentelemetry.io/obi/pkg/kube/kubeflags"
+	"go.opentelemetry.io/obi/pkg/netolly/flowdef"
 	"go.opentelemetry.io/obi/pkg/obi"
 	"go.opentelemetry.io/obi/pkg/transform"
 	"golang.org/x/sync/errgroup" //nolint:depguard
@@ -74,6 +78,10 @@ const (
 	SamplerParentBasedAlwaysOn     = "parentbased_always_on"
 	SamplerParentBasedAlwaysOff    = "parentbased_always_off"
 	SamplerParentBasedTraceIDRatio = "parentbased_traceidratio"
+)
+
+const (
+	none = "none"
 )
 
 var validInstrumentations = map[string]struct{}{
@@ -164,8 +172,18 @@ func (args Attributes) Convert() beyla.Attributes {
 	if args.Kubernetes.MetaCacheAddress != "" {
 		attrs.Kubernetes.MetaCacheAddress = args.Kubernetes.MetaCacheAddress
 	}
+	if args.Kubernetes.KubeconfigPath != "" {
+		attrs.Kubernetes.KubeconfigPath = args.Kubernetes.KubeconfigPath
+	}
 	if args.Kubernetes.ReconnectInitialInterval != 0 {
 		attrs.Kubernetes.ReconnectInitialInterval = args.Kubernetes.ReconnectInitialInterval
+	}
+	attrs.Kubernetes.DropExternal = args.Kubernetes.DropExternal
+	if args.Kubernetes.ServiceNameTemplate != "" {
+		attrs.Kubernetes.ServiceNameTemplate = args.Kubernetes.ServiceNameTemplate
+	}
+	if args.Kubernetes.ResourceLabels != nil {
+		attrs.Kubernetes.ResourceLabels = kube.ResourceLabels(args.Kubernetes.ResourceLabels)
 	}
 	// InstanceID
 	if args.InstanceID.HostnameDNSResolution {
@@ -175,6 +193,30 @@ func (args Attributes) Convert() beyla.Attributes {
 	// Selection
 	if args.Select != nil {
 		attrs.Select = args.Select.Convert()
+	}
+	if args.RenameUnresolvedHosts != nil {
+		attrs.RenameUnresolvedHosts = *args.RenameUnresolvedHosts
+	}
+	if args.RenameUnresolvedHostsOutgoing != nil {
+		attrs.RenameUnresolvedHostsOutgoing = *args.RenameUnresolvedHostsOutgoing
+	}
+	if args.RenameUnresolvedHostsIncoming != nil {
+		attrs.RenameUnresolvedHostsIncoming = *args.RenameUnresolvedHostsIncoming
+	}
+	if args.MetricSpanNamesLimit != 0 {
+		attrs.MetricSpanNameAggregationLimit = args.MetricSpanNamesLimit
+	}
+	if args.HostID.Override != "" {
+		attrs.HostID.Override = args.HostID.Override
+	}
+	if args.MetadataRetry.Timeout != 0 {
+		attrs.MetadataRetry.Timeout = args.MetadataRetry.Timeout
+	}
+	if args.MetadataRetry.StartInterval != 0 {
+		attrs.MetadataRetry.StartInterval = args.MetadataRetry.StartInterval
+	}
+	if args.MetadataRetry.MaxInterval != 0 {
+		attrs.MetadataRetry.MaxInterval = args.MetadataRetry.MaxInterval
 	}
 	return attrs
 }
@@ -248,6 +290,16 @@ func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 	if args.ExcludeOTelInstrumentedServices {
 		d.ExcludeOTelInstrumentedServices = args.ExcludeOTelInstrumentedServices
 	}
+	if args.PollInterval != 0 {
+		d.PollInterval = args.PollInterval
+	}
+	if args.MinProcessAge != 0 {
+		d.MinProcessAge = args.MinProcessAge
+	}
+	if args.DefaultOtlpGRPCPort != 0 {
+		d.DefaultOtlpGRPCPort = args.DefaultOtlpGRPCPort
+	}
+	d.ExcludeOTelInstrumentedServicesSpanMetrics = args.ExcludeOTelInstrumentedServicesSpanMetrics
 	return d, nil
 }
 
@@ -375,6 +427,11 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			return nil, err
 		}
 
+		languages, err := stringToGlobAttr(s.Languages)
+		if err != nil {
+			return nil, err
+		}
+
 		var samplerConfig *services.SamplerConfig
 		if s.Sampler.Name != "" || s.Sampler.Arg != "" {
 			config := s.Sampler.Convert()
@@ -386,6 +443,8 @@ func (args Services) ConvertGlob() (services.GlobDefinitionCriteria, error) {
 			OpenPorts:      ports,
 			Path:           paths,
 			CmdArgs:        cmdArgs,
+			Languages:      languages,
+			PIDs:           s.PIDs,
 			Metadata:       kubernetes,
 			PodLabels:      podLabels,
 			ContainersOnly: s.ContainersOnly,
@@ -471,6 +530,39 @@ func (args Metrics) Convert() prom.PrometheusConfig {
 	if args.ExemplarFilter != "" {
 		p.ExemplarFilter = args.ExemplarFilter
 	}
+	if args.TTL != 0 {
+		p.TTL = args.TTL
+	}
+	if args.SpanServiceCacheSize != 0 {
+		p.SpanMetricsServiceCacheSize = args.SpanServiceCacheSize
+	}
+	if args.NativeHistogram.BucketFactor != 0 {
+		p.NativeHistogram.BucketFactor = args.NativeHistogram.BucketFactor
+	}
+	if args.NativeHistogram.MaxBucketNumber != 0 {
+		p.NativeHistogram.MaxBucketNumber = args.NativeHistogram.MaxBucketNumber
+	}
+	if args.NativeHistogram.MinResetDuration != 0 {
+		p.NativeHistogram.MinResetDuration = args.NativeHistogram.MinResetDuration
+	}
+	if args.Buckets.DurationHistogram != nil {
+		p.Buckets.DurationHistogram = args.Buckets.DurationHistogram
+	}
+	if args.Buckets.RequestSizeHistogram != nil {
+		p.Buckets.RequestSizeHistogram = args.Buckets.RequestSizeHistogram
+	}
+	if args.Buckets.ResponseSizeHistogram != nil {
+		p.Buckets.ResponseSizeHistogram = args.Buckets.ResponseSizeHistogram
+	}
+	if args.Buckets.GenAITokenUsageHistogram != nil {
+		p.Buckets.GenAITokenUsageHistogram = args.Buckets.GenAITokenUsageHistogram
+	}
+	if args.Buckets.GenAIClientDurationHistogram != nil {
+		p.Buckets.GenAIClientDurationHistogram = args.Buckets.GenAIClientDurationHistogram
+	}
+	if args.Buckets.StatTCPRttHistogram != nil {
+		p.Buckets.StatTCPRttHistogram = args.Buckets.StatTCPRttHistogram
+	}
 	return p
 }
 
@@ -518,6 +610,76 @@ func (args Metrics) Validate() error {
 	return nil
 }
 
+// applyToNetwork copies GeoIP settings into the GeoIP sub-field of an
+// obi.NetworkConfig. Only non-zero values override the existing field.
+// We mutate through the parent struct because geoip/rdns are internal OBI
+// packages that cannot be imported from outside the OBI module.
+// applyToStats mirrors this for obi.StatsConfig (separate upstream type,
+// same internal GeoIP/ReverseDNS fields).
+func (args GeoIP) applyToNetwork(n *obi.NetworkConfig) {
+	if args.IPInfoPath != "" {
+		n.GeoIP.IPInfo.Path = args.IPInfoPath
+	}
+	if args.MaxMindCountryPath != "" {
+		n.GeoIP.MaxMindInfo.CountryPath = args.MaxMindCountryPath
+	}
+	if args.MaxMindASNPath != "" {
+		n.GeoIP.MaxMindInfo.ASNPath = args.MaxMindASNPath
+	}
+	if args.CacheLen != 0 {
+		n.GeoIP.CacheLen = args.CacheLen
+	}
+	if args.CacheTTL != 0 {
+		n.GeoIP.CacheTTL = args.CacheTTL
+	}
+}
+
+// applyToNetwork copies ReverseDNS settings into the ReverseDNS sub-field of
+// an obi.NetworkConfig. Only non-zero values override the existing field.
+func (args ReverseDNS) applyToNetwork(n *obi.NetworkConfig) {
+	if args.Type != "" {
+		n.ReverseDNS.Type = args.Type
+	}
+	if args.CacheLen != 0 {
+		n.ReverseDNS.CacheLen = args.CacheLen
+	}
+	if args.CacheTTL != 0 {
+		n.ReverseDNS.CacheTTL = args.CacheTTL
+	}
+}
+
+// applyToStats mirrors applyToNetwork for obi.StatsConfig (separate upstream type,
+// same internal GeoIP field; the internal geoip package can't be named here).
+func (args GeoIP) applyToStats(s *obi.StatsConfig) {
+	if args.IPInfoPath != "" {
+		s.GeoIP.IPInfo.Path = args.IPInfoPath
+	}
+	if args.MaxMindCountryPath != "" {
+		s.GeoIP.MaxMindInfo.CountryPath = args.MaxMindCountryPath
+	}
+	if args.MaxMindASNPath != "" {
+		s.GeoIP.MaxMindInfo.ASNPath = args.MaxMindASNPath
+	}
+	if args.CacheLen != 0 {
+		s.GeoIP.CacheLen = args.CacheLen
+	}
+	if args.CacheTTL != 0 {
+		s.GeoIP.CacheTTL = args.CacheTTL
+	}
+}
+
+func (args ReverseDNS) applyToStats(s *obi.StatsConfig) {
+	if args.Type != "" {
+		s.ReverseDNS.Type = args.Type
+	}
+	if args.CacheLen != 0 {
+		s.ReverseDNS.CacheLen = args.CacheLen
+	}
+	if args.CacheTTL != 0 {
+		s.ReverseDNS.CacheTTL = args.CacheTTL
+	}
+}
+
 func (args Network) Convert() obi.NetworkConfig {
 	networks := beyla.DefaultConfig().NetworkFlows
 	if args.Source != "" {
@@ -548,7 +710,27 @@ func (args Network) Convert() obi.NetworkConfig {
 	networks.Protocols = args.Protocols
 	networks.ExcludeProtocols = args.ExcludeProtocols
 	networks.Sampling = args.Sampling
-	networks.CIDRs = args.CIDRs
+	if len(args.CIDRs) > 0 {
+		_ = networks.CIDRs.UnmarshalText([]byte(strings.Join(args.CIDRs, ",")))
+	}
+	if args.Deduper != "" {
+		networks.Deduper = args.Deduper
+	}
+	if args.DeduperFCTTL != 0 {
+		networks.DeduperFCTTL = args.DeduperFCTTL
+	}
+	if args.GuessPorts != "" {
+		networks.GuessPorts = flowdef.PortGuessPolicy(args.GuessPorts)
+	}
+	if args.ListenInterfaces != "" {
+		networks.ListenInterfaces = args.ListenInterfaces
+	}
+	if args.ListenPollPeriod != 0 {
+		networks.ListenPollPeriod = args.ListenPollPeriod
+	}
+	networks.Print = args.PrintFlows
+	args.GeoIP.applyToNetwork(&networks)
+	args.ReverseDNS.applyToNetwork(&networks)
 	return networks
 }
 
@@ -564,9 +746,13 @@ func (args Stats) Convert() obi.StatsConfig {
 		stats.AgentIPType = args.AgentIPType
 	}
 	if args.CIDRs != nil {
-		stats.CIDRs = args.CIDRs
+		if len(args.CIDRs) > 0 {
+			_ = stats.CIDRs.UnmarshalText([]byte(strings.Join(args.CIDRs, ",")))
+		}
 	}
 	stats.Print = args.Print
+	args.GeoIP.applyToStats(&stats)
+	args.ReverseDNS.applyToStats(&stats)
 	return stats
 }
 
@@ -594,10 +780,128 @@ func (args EBPF) Convert() (*obiCfg.EBPFTracer, error) {
 	ebpf.HeuristicSQLDetect = args.HeuristicSQLDetect
 	ebpf.BpfDebug = args.BpfDebug
 	ebpf.ProtocolDebug = args.ProtocolDebug
-	ebpf.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = args.PayloadExtraction.HTTP.OpenAI.Enabled
-	ebpf.PayloadExtraction.HTTP.GenAI.Anthropic.Enabled = args.PayloadExtraction.HTTP.Anthropic.Enabled
 	ebpf.MapsConfig.GlobalScaleFactor = args.MapsConfig.GlobalScaleFactor
+	h := args.PayloadExtraction.HTTP
+	ebpf.PayloadExtraction.HTTP.GraphQL.Enabled = h.GraphQL.Enabled
+	ebpf.PayloadExtraction.HTTP.Elasticsearch.Enabled = h.Elasticsearch.Enabled
+	ebpf.PayloadExtraction.HTTP.AWS.Enabled = h.AWS.Enabled
+	ebpf.PayloadExtraction.HTTP.JSONRPC.Enabled = h.JSONRPC.Enabled
+	ebpf.PayloadExtraction.HTTP.SQLPP.Enabled = h.SQLPP.Enabled
+	if h.SQLPP.EndpointPatterns != nil {
+		ebpf.PayloadExtraction.HTTP.SQLPP.EndpointPatterns = h.SQLPP.EndpointPatterns
+	}
+	ebpf.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled = h.GenAI.OpenAI.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.Anthropic.Enabled = h.GenAI.Anthropic.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.Gemini.Enabled = h.GenAI.Gemini.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.Qwen.Enabled = h.GenAI.Qwen.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.Bedrock.Enabled = h.GenAI.Bedrock.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.MCP.Enabled = h.GenAI.MCP.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.Embedding.Enabled = h.GenAI.Embedding.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.Rerank.Enabled = h.GenAI.Rerank.Enabled
+	ebpf.PayloadExtraction.HTTP.GenAI.Retrieval.Enabled = h.GenAI.Retrieval.Enabled
+	enrichment, err := h.Enrichment.Convert()
+	if err != nil {
+		return nil, err
+	}
+	ebpf.PayloadExtraction.HTTP.Enrichment = enrichment
+	if args.InstrumentCuda != "" {
+		if err := ebpf.InstrumentCuda.UnmarshalText([]byte(args.InstrumentCuda)); err != nil {
+			return nil, fmt.Errorf("ebpf.instrument_cuda: %w", err)
+		}
+	}
+	if args.TrafficControlBackend != "" {
+		if err := ebpf.TCBackend.UnmarshalText([]byte(args.TrafficControlBackend)); err != nil {
+			return nil, fmt.Errorf("ebpf.traffic_control_backend: %w", err)
+		}
+	}
+	if args.MaxTransactionTime != 0 {
+		ebpf.MaxTransactionTime = args.MaxTransactionTime
+	}
+	if args.DNSRequestTimeout != 0 {
+		ebpf.DNSRequestTimeout = args.DNSRequestTimeout
+	}
+	ebpf.BufferSizes.HTTP = args.BufferSizes.HTTP
+	ebpf.BufferSizes.MySQL = args.BufferSizes.MySQL
+	ebpf.BufferSizes.Kafka = args.BufferSizes.Kafka
+	ebpf.BufferSizes.Postgres = args.BufferSizes.Postgres
+	ebpf.BufferSizes.MSSQL = args.BufferSizes.MSSQL
+	ebpf.BufferSizes.TCP = args.BufferSizes.TCP
 	return &ebpf, nil
+}
+
+func (args Enrichment) Convert() (obiCfg.EnrichmentConfig, error) {
+	// Start from the default config so unset fields (e.g. the default
+	// exclude/exclude policy and obfuscation string) are preserved.
+	cfg := beyla.DefaultConfig().EBPF.PayloadExtraction.HTTP.Enrichment
+	cfg.Enabled = args.Enabled
+	if len(args.Rules) > 0 {
+		cfg.Rules = make([]obiCfg.HTTPParsingRule, 0, len(args.Rules))
+	}
+	if args.Policy.ObfuscationString != "" {
+		cfg.Policy.ObfuscationString = args.Policy.ObfuscationString
+	}
+	if args.Policy.DefaultAction.Headers != "" {
+		if err := cfg.Policy.DefaultAction.Headers.UnmarshalText([]byte(args.Policy.DefaultAction.Headers)); err != nil {
+			return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.policy.default_action.headers: %w", err)
+		}
+	}
+	if args.Policy.DefaultAction.Body != "" {
+		if err := cfg.Policy.DefaultAction.Body.UnmarshalText([]byte(args.Policy.DefaultAction.Body)); err != nil {
+			return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.policy.default_action.body: %w", err)
+		}
+	}
+	for i, r := range args.Rules {
+		rule := obiCfg.HTTPParsingRule{
+			Match: obiCfg.HTTPParsingMatch{
+				CaseSensitive: r.Match.CaseSensitive,
+			},
+		}
+		if r.Action != "" {
+			if err := rule.Action.UnmarshalText([]byte(r.Action)); err != nil {
+				return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].action: %w", i, err)
+			}
+		}
+		if r.Type != "" {
+			if err := rule.Type.UnmarshalText([]byte(r.Type)); err != nil {
+				return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].type: %w", i, err)
+			}
+		}
+		if r.Scope != "" {
+			if err := rule.Scope.UnmarshalText([]byte(r.Scope)); err != nil {
+				return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].scope: %w", i, err)
+			}
+		}
+		for _, p := range r.Match.Patterns {
+			g, err := stringToGlobAttr(p)
+			if err != nil {
+				return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].match.patterns: %w", i, err)
+			}
+			rule.Match.Patterns = append(rule.Match.Patterns, g)
+		}
+		for _, p := range r.Match.URLPathPatterns {
+			g, err := stringToGlobAttr(p)
+			if err != nil {
+				return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].match.url_path_patterns: %w", i, err)
+			}
+			rule.Match.URLPathPatterns = append(rule.Match.URLPathPatterns, g)
+		}
+		for _, jp := range r.Match.ObfuscationJSONPaths {
+			expr, err := obiCfg.NewJSONPathExpr(jp)
+			if err != nil {
+				return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].match.obfuscation_json_paths: %w", i, err)
+			}
+			rule.Match.ObfuscationJSONPaths = append(rule.Match.ObfuscationJSONPaths, expr)
+		}
+		for _, m := range r.Match.Methods {
+			var hm obiCfg.HTTPMethod
+			if err := hm.UnmarshalText([]byte(m)); err != nil {
+				return cfg, fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].match.methods: %w", i, err)
+			}
+			rule.Match.Methods = append(rule.Match.Methods, hm)
+		}
+		cfg.Rules = append(cfg.Rules, rule)
+	}
+	return cfg, nil
 }
 
 func (args Filters) Convert() filter.AttributesConfig {
@@ -607,14 +911,26 @@ func (args Filters) Convert() filter.AttributesConfig {
 	}
 	for _, app := range args.Application {
 		filters.Application[app.Attr] = filter.MatchDefinition{
-			Match:    app.Match,
-			NotMatch: app.NotMatch,
+			Match:         app.Match,
+			NotMatch:      app.NotMatch,
+			GreaterThan:   app.GreaterThan,
+			GreaterEquals: app.GreaterEquals,
+			Equals:        app.Equals,
+			NotEquals:     app.NotEquals,
+			LessEquals:    app.LessEquals,
+			LessThan:      app.LessThan,
 		}
 	}
 	for _, net := range args.Network {
 		filters.Network[net.Attr] = filter.MatchDefinition{
-			Match:    net.Match,
-			NotMatch: net.NotMatch,
+			Match:         net.Match,
+			NotMatch:      net.NotMatch,
+			GreaterThan:   net.GreaterThan,
+			GreaterEquals: net.GreaterEquals,
+			Equals:        net.Equals,
+			NotEquals:     net.NotEquals,
+			LessEquals:    net.LessEquals,
+			LessThan:      net.LessThan,
 		}
 	}
 	return filters
@@ -622,25 +938,13 @@ func (args Filters) Convert() filter.AttributesConfig {
 
 func (args InjectorWebhook) Convert() beyla.WebhookConfig {
 	w := beyla.DefaultConfig().Injector.Webhook
-	w.Enable = args.Enable
-	if args.CertPath != "" {
-		w.CertPath = args.CertPath
-	}
-	if args.KeyPath != "" {
-		w.KeyPath = args.KeyPath
-	}
-	if args.Port != nil {
-		w.Port = *args.Port
-	}
-	if args.Timeout != nil {
-		w.Timeout = *args.Timeout
-	}
+	w.ExternalWebhook = args.ExternalWebhook
 
 	return w
 }
 
-func (args InjectorSDKExport) Convert() beyla.SDKExport {
-	w := beyla.DefaultConfig().Injector.Export
+func (args InjectorSDKExport) Convert() configmap.SDKExportedSignals {
+	w := beyla.DefaultConfig().Injector.ExportedSignals
 	if args.Traces != nil {
 		w.Traces = args.Traces
 	}
@@ -654,13 +958,16 @@ func (args InjectorSDKExport) Convert() beyla.SDKExport {
 	return w
 }
 
-func (args InjectorSDKResource) Convert() beyla.SDKResource {
+func (args InjectorSDKResource) Convert() configmap.SDKResource {
 	w := beyla.DefaultConfig().Injector.Resources
 	if args.Attributes != nil {
 		w.Attributes = args.Attributes
 	}
 	if args.AddK8sUIDAttributes != nil {
 		w.AddK8sUIDAttributes = *args.AddK8sUIDAttributes
+	}
+	if args.AddK8sIPAttribute != nil {
+		w.AddK8sIPAttribute = *args.AddK8sIPAttribute
 	}
 	if args.UseLabelsForResourceAttributes != nil {
 		w.UseLabelsForResourceAttributes = *args.UseLabelsForResourceAttributes
@@ -680,8 +987,19 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		i.Instrument = instrument
 	}
 
+	if len(args.ExcludeInstrument) > 0 {
+		exclude, err := args.ExcludeInstrument.ConvertGlob()
+		if err != nil {
+			return i, err
+		}
+		i.ExcludeInstrument = exclude
+	}
+
+	i.Endpoint = args.OTELEndpoint
+	i.Protocol = otelcfg.Protocol(args.OTELProtocol)
+
 	i.Webhook = args.Webhook.Convert()
-	i.Export = args.Export.Convert()
+	i.ExportedSignals = args.ExportedSignals.Convert()
 	i.Resources = args.Resources.Convert()
 
 	if args.DefaultSampler.Name != "" || args.DefaultSampler.Arg != "" {
@@ -689,28 +1007,8 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		i.DefaultSampler = &s
 	}
 
-	if args.NoAutoRestart != nil {
-		i.NoAutoRestart = *args.NoAutoRestart
-	}
-
-	if args.HostMountPath != "" {
-		i.HostMountPath = args.HostMountPath
-	}
-
-	if args.HostPathVolumeDir != "" {
-		i.HostPathVolumeDir = args.HostPathVolumeDir
-	}
-
-	if args.ImageVolumePath != "" {
-		i.ImageVolumePath = args.ImageVolumePath
-	}
-
-	if args.SDKPkgVersion != "" {
-		i.SDKPkgVersion = args.SDKPkgVersion
-	}
-
-	if args.ManageSDKVersions != nil {
-		i.ManageSDKVersions = *args.ManageSDKVersions
+	if args.ImageVersion != "" {
+		i.ImageVersion = args.ImageVersion
 	}
 
 	if len(args.Propagators) > 0 {
@@ -729,50 +1027,7 @@ func (args Injector) Convert() (beyla.SDKInject, error) {
 		i.EnabledSDKs = sdks
 	}
 
-	if args.Debug != nil {
-		i.Debug = *args.Debug
-	}
-
 	return i, nil
-}
-
-func (args Injector) Validate() error {
-	if args.Webhook.Enable {
-		if args.Webhook.CertPath == "" {
-			return fmt.Errorf("injector.webhook.cert_path must be set when injector.webhook.enable is true")
-		}
-		if args.Webhook.KeyPath == "" {
-			return fmt.Errorf("injector.webhook.key_path must be set when injector.webhook.enable is true")
-		}
-	}
-
-	for _, sdk := range args.EnabledSDKs {
-		var it beylaSvc.InstrumentableType
-		if err := it.UnmarshalText([]byte(sdk)); err != nil {
-			return fmt.Errorf("injector.enabled_sdks: %w", err)
-		}
-	}
-
-	if args.OTELEndpoint != "" {
-		endpoint, err := url.Parse(args.OTELEndpoint)
-		if err != nil {
-			return fmt.Errorf("injector.otel_endpoint: %w", err)
-		}
-		if endpoint.Scheme == "" || endpoint.Host == "" {
-			return fmt.Errorf("injector.otel_endpoint: URL %q must have a scheme and a host", args.OTELEndpoint)
-		}
-	}
-
-	if args.ImageVolumePath != "" {
-		if args.HostMountPath != "" {
-			return fmt.Errorf("injector.image_volume_path and injector.host_mount_path are mutually exclusive")
-		}
-		if args.SDKPkgVersion != "" {
-			return fmt.Errorf("injector.image_volume_path and injector.sdk_package_version are mutually exclusive")
-		}
-	}
-
-	return nil
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -993,13 +1248,6 @@ func (a *Arguments) Convert() (*beyla.Config, error) {
 		return nil, err
 	}
 
-	if a.Injector.OTELEndpoint != "" {
-		endpoint := a.Injector.OTELEndpoint
-		cfg.Traces.OTLPEndpointProvider = func() (string, bool) {
-			return endpoint, true
-		}
-	}
-
 	if a.Debug {
 		// TODO: integrate Beyla internal logging with Alloy global logging
 		lvl := slog.LevelVar{}
@@ -1021,15 +1269,82 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("trace_printer: invalid value %q. Valid values are: disabled, counter, text, json, json_indent", args.TracePrinter)
 	}
 
+	switch args.EBPF.InstrumentCuda {
+	case "", "auto", "on", "off":
+	default:
+		return fmt.Errorf("ebpf.instrument_cuda: invalid value %q (valid: auto, on, off)", args.EBPF.InstrumentCuda)
+	}
+	switch args.EBPF.TrafficControlBackend {
+	case "", "auto", "tc", "tcx":
+	default:
+		return fmt.Errorf("ebpf.traffic_control_backend: invalid value %q (valid: auto, tc, tcx)", args.EBPF.TrafficControlBackend)
+	}
+	for name, v := range map[string]uint32{
+		"http":     args.EBPF.BufferSizes.HTTP,
+		"mysql":    args.EBPF.BufferSizes.MySQL,
+		"kafka":    args.EBPF.BufferSizes.Kafka,
+		"postgres": args.EBPF.BufferSizes.Postgres,
+		"mssql":    args.EBPF.BufferSizes.MSSQL,
+		"tcp":      args.EBPF.BufferSizes.TCP,
+	} {
+		if v > 65536 {
+			return fmt.Errorf("ebpf.buffer_sizes.%s: must be <= 65536, got %d", name, v)
+		}
+	}
+
+	validAction := map[string]struct{}{"": {}, "include": {}, "exclude": {}, "obfuscate": {}}
+	en := args.EBPF.PayloadExtraction.HTTP.Enrichment
+	if _, ok := validAction[en.Policy.DefaultAction.Headers]; !ok {
+		return fmt.Errorf("ebpf.payload_extraction.http.enrichment.policy.default_action.headers: invalid value %q", en.Policy.DefaultAction.Headers)
+	}
+	if _, ok := validAction[en.Policy.DefaultAction.Body]; !ok {
+		return fmt.Errorf("ebpf.payload_extraction.http.enrichment.policy.default_action.body: invalid value %q", en.Policy.DefaultAction.Body)
+	}
+	validType := map[string]struct{}{"": {}, "headers": {}, "body": {}}
+	validScope := map[string]struct{}{"": {}, "request": {}, "response": {}, "all": {}}
+	for i, r := range en.Rules {
+		if _, ok := validAction[r.Action]; !ok {
+			return fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].action: invalid value %q", i, r.Action)
+		}
+		if _, ok := validType[r.Type]; !ok {
+			return fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].type: invalid value %q", i, r.Type)
+		}
+		if _, ok := validScope[r.Scope]; !ok {
+			return fmt.Errorf("ebpf.payload_extraction.http.enrichment.rule[%d].scope: invalid value %q", i, r.Scope)
+		}
+	}
+
 	if err := args.Metrics.Validate(); err != nil {
 		return err
 	}
 
-	if err := args.Traces.Validate(); err != nil {
-		return err
+	switch args.Metrics.Network.Deduper {
+	case "", none, "first_come":
+	default:
+		return fmt.Errorf("metrics.network.deduper: invalid value %q (valid: none, first_come)", args.Metrics.Network.Deduper)
+	}
+	switch args.Metrics.Network.GuessPorts {
+	case "", "ordinal", "disable":
+	default:
+		return fmt.Errorf("metrics.network.guess_ports: invalid value %q (valid: ordinal, disable)", args.Metrics.Network.GuessPorts)
+	}
+	switch args.Metrics.Network.ListenInterfaces {
+	case "", "watch", "poll":
+	default:
+		return fmt.Errorf("metrics.network.listen_interfaces: invalid value %q (valid: watch, poll)", args.Metrics.Network.ListenInterfaces)
+	}
+	switch args.Metrics.Network.ReverseDNS.Type {
+	case "", none, "local", "ebpf":
+	default:
+		return fmt.Errorf("metrics.network.reverse_dns.type: invalid value %q (valid: none, local, ebpf)", args.Metrics.Network.ReverseDNS.Type)
+	}
+	switch args.Stats.ReverseDNS.Type {
+	case "", none, "local", "ebpf":
+	default:
+		return fmt.Errorf("stats.reverse_dns.type: invalid value %q (valid: none, local, ebpf)", args.Stats.ReverseDNS.Type)
 	}
 
-	if err := args.Injector.Validate(); err != nil {
+	if err := args.Traces.Validate(); err != nil {
 		return err
 	}
 

@@ -84,6 +84,7 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `go_table_fallback`       | `bool`                   | Deprecated (no-op), previously enabled symbol lookup in `.sym` / `.dynsym` sections when `.gopclntab` lookup failed. | `false`  | no       |
 | `hotspot_enabled`         | `bool`                   | A flag to enable or disable HotSpot profiling.                                                                       | `true`   | no       |
 | `kernel_frames`           | `bool`                   | Include kernel-space frames in collected profiles. Set to `false` to drop kernel frames from each stack trace.       | `true`   | no       |
+| `no_kernel_version_check` | `bool`                   | Skip the kernel version check for eBPF support.                                                                      | `false`  | no       |
 | `perl_enabled`            | `bool`                   | A flag to enable or disable Perl profiling.                                                                          | `true`   | no       |
 | `php_enabled`             | `bool`                   | A flag to enable or disable PHP profiling.                                                                           | `true`   | no       |
 | `pid_cache_size`          | `int`                    | Deprecated (no-op), previously controlled the size of the PID -> proc symbols table LRU cache.                       | `32`     | no       |
@@ -101,6 +102,11 @@ You can use the following arguments with `pyroscope.ebpf`:
 | `verbose_mode`            | `bool`                   | Enable verbose logging for the eBPF profiler.                                                                        | `false`  | no       |
 | `lazy_mode`               | `bool`                   | Enable lazy mode to defer eBPF profiler startup until targets are discovered.                                        | `false`  | no       |
 
+{{< admonition type="caution" >}}
+Use `no_kernel_version_check` only when you run on an older kernel that includes backported eBPF features from a later release.
+When you skip this check, the profiler can't verify that your kernel has the eBPF features it needs, and profiling may fail or produce incomplete results.
+Proceed at your own risk.
+{{< /admonition >}}
 Only the `forward_to` and `targets` fields are required.
 Omitted fields take their default values.
 
