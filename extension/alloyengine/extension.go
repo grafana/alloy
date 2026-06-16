@@ -238,10 +238,6 @@ func (e *alloyEngineExtension) NotReady() error {
 }
 
 func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]byte, err error) {
-	if cfg.Inline.Content == "" && cfg.Path == "" {
-		return "", nil, errors.New("missing alloy config. Either config.file or config.inline.content must be set")
-	}
-
 	isInlineConfig := cfg.Inline.Content != ""
 	if isInlineConfig {
 		if cfg.Path != "" {
