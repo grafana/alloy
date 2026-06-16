@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.8.2](https://img.shields.io/badge/Version-1.8.2-informational?style=flat-square) ![AppVersion: v1.16.1](https://img.shields.io/badge/AppVersion-v1.16.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.10.0](https://img.shields.io/badge/Version-1.10.0-informational?style=flat-square) ![AppVersion: v1.17.0](https://img.shields.io/badge/AppVersion-v1.17.0-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -183,6 +183,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
+| service.externalTrafficPolicy | string | `"Cluster"` | Value for external traffic policy. 'Cluster' or 'Local' |
 | service.internalTrafficPolicy | string | `"Cluster"` | Value for internal traffic policy. 'Cluster' or 'Local' |
 | service.nodePort | int | `31128` | NodePort port. Only takes effect when `service.type: NodePort` |
 | service.type | string | `"ClusterIP"` | Service type |

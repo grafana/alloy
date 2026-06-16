@@ -111,7 +111,7 @@ Your configuration file must be a valid OpenTelemetry Collector configuration fi
    You can bypass any non-critical issues and start {{< param "PRODUCT_NAME" >}} by including the `--config.bypass-conversion-errors` flag in addition to `--config.format=otelcol`.
 
    {{< admonition type="caution" >}}
-   If you bypass the errors, the behavior of the converted configuration may not match the original Prometheus configuration.
+   If you bypass the errors, the behavior of the converted configuration may not match the original OpenTelemetry Collector configuration.
    Don't use this flag in a production environment.
    {{< /admonition >}}
 
