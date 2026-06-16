@@ -162,8 +162,7 @@ type lib struct {
 func openLib() (*lib, error) {
 	name := C.CString("libsystemd.so.0")
 	// Safe: freeing a C string we allocated above
-	// #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-	defer C.free(unsafe.Pointer(name))
+	defer C.free(unsafe.Pointer(name)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 
 	handle := C.dlopen(name, C.RTLD_NOW)
 	if handle == nil {
@@ -235,8 +234,7 @@ func openLib() (*lib, error) {
 func dlsym(handle unsafe.Pointer, name string) (unsafe.Pointer, error) {
 	cname := C.CString(name)
 	// Safe: freeing a C string we allocated above
-	// #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-	defer C.free(unsafe.Pointer(cname))
+	defer C.free(unsafe.Pointer(cname)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 
 	sym := C.dlsym(handle, cname)
 	if sym == nil {
@@ -275,8 +273,7 @@ func New(opts Options) (*Journal, error) {
 	if opts.Path != "" {
 		p := C.CString(opts.Path)
 		// Safe: freeing a C string we allocated above
-		// #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-		defer C.free(unsafe.Pointer(p))
+		defer C.free(unsafe.Pointer(p)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 		if ret := C.j_open_directory(l.openDirectory, &journal, p, 0); ret < 0 {
 			return nil, fmt.Errorf("sd_journal_open_directory failed: %d", int(ret))
 		}
@@ -351,8 +348,7 @@ func (j *Journal) Next() ([]Field, string, error) {
 		// kv aliases libsystemd's field buffer, it is only valid until the
 		// next enumerate/next/close. We copy out fields below
 		// before the next iteration invalidates it.
-		// #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-		kv := unsafe.Slice((*byte)(data), int(length))
+		kv := unsafe.Slice((*byte)(data), int(length)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 		if i := bytes.IndexByte(kv, '='); i >= 0 {
 			j.fields = append(j.fields, Field{Name: string(kv[:i]), Value: string(kv[i+1:])})
 		}
@@ -365,8 +361,7 @@ func (j *Journal) cursor() (string, error) {
 		return "", fmt.Errorf("sd_journal_get_cursor failed: %d", int(ret))
 	}
 	// Safe: freeing a C string libsystemd allocated for us
-	// #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-	defer C.free(unsafe.Pointer(c))
+	defer C.free(unsafe.Pointer(c)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 	return C.GoString(c), nil
 }
 
@@ -426,8 +421,7 @@ func (j *Journal) seekToStart(cursor string, maxAge time.Duration) error {
 
 	c := C.CString(cursor)
 	// Safe: freeing a C string we allocated above
-	// #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-	defer C.free(unsafe.Pointer(c))
+	defer C.free(unsafe.Pointer(c)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 
 	if ret := C.j_seek_cursor(j.lib.seekCursor, j.journal, c); ret < 0 {
 		return fmt.Errorf("sd_journal_seek_cursor failed: %d", int(ret))
@@ -477,12 +471,10 @@ func (j *Journal) seekRealtime(t time.Time) error {
 func (j *Journal) addMatch(match string) error {
 	m := C.CString(match)
 	// Safe: freeing a C string we allocated above
-	// #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-	defer C.free(unsafe.Pointer(m))
+	defer C.free(unsafe.Pointer(m)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 
 	// Safe: add_match copies the C string we allocated above
-	// #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-	if ret := C.j_add_match(j.lib.addMatch, j.journal, unsafe.Pointer(m), C.size_t(len(match))); ret < 0 {
+	if ret := C.j_add_match(j.lib.addMatch, j.journal, unsafe.Pointer(m), C.size_t(len(match))); ret < 0 { // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 		return fmt.Errorf("sd_journal_add_match failed: %d", int(ret))
 	}
 	return nil
