@@ -5,6 +5,8 @@ package converter
 import (
 	"github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/converter/internal/otelcolconvert"
+	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
+	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
 	"github.com/grafana/alloy/internal/converter/internal/staticconvert"
 )
 
@@ -18,6 +20,14 @@ var SupportedFormats = []string{
 
 func convertOtelcol(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
 	return otelcolconvert.Convert(in, extraArgs)
+}
+
+func convertPrometheus(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
+	return prometheusconvert.Convert(in, extraArgs)
+}
+
+func convertPromtail(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {
+	return promtailconvert.Convert(in, extraArgs)
 }
 
 func convertStatic(in []byte, extraArgs []string) ([]byte, diag.Diagnostics) {

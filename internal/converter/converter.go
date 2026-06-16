@@ -6,8 +6,6 @@ import (
 	"fmt"
 
 	"github.com/grafana/alloy/internal/converter/diag"
-	"github.com/grafana/alloy/internal/converter/internal/prometheusconvert"
-	"github.com/grafana/alloy/internal/converter/internal/promtailconvert"
 )
 
 // Input represents the type of config file being fed into the converter.
@@ -26,30 +24,17 @@ const (
 
 // Convert generates a Grafana Alloy config given an input configuration file.
 //
-// extraArgs are supported to be passed along to a converter such as enabling
-// integrations-next for the static converter. Converters that do not support
-// extraArgs will return a critical severity diagnostic if any are passed.
-//
-// Conversions are made as literally as possible, so the resulting config files
-// may be unoptimized (i.e., lacking component reuse). A converted config file
-// should just be the starting point rather than the final destination.
-//
-// Note that not all functionality defined in the input configuration may have
-// an equivalent in Grafana Alloy. If the conversion could not complete because
-// of mismatched functionality, an error is returned with no resulting config.
-// If the conversion completed successfully but generated warnings, an error is
-// returned alongside the resulting config.
-//
-// otelcol and static conversion are only available in non-slim builds; see
-// convert_heavy.go / convert_slim.go.
+// All format-specific conversion is delegated to build-tag-gated helpers
+// (see convert_heavy.go / convert_slim.go). slim builds support no conversion
+// formats, which keeps their heavy dependency trees out of the binary.
 func Convert(in []byte, kind Input, extraArgs []string) ([]byte, diag.Diagnostics) {
 	switch kind {
 	case InputOtelCol:
 		return convertOtelcol(in, extraArgs)
 	case InputPrometheus:
-		return prometheusconvert.Convert(in, extraArgs)
+		return convertPrometheus(in, extraArgs)
 	case InputPromtail:
-		return promtailconvert.Convert(in, extraArgs)
+		return convertPromtail(in, extraArgs)
 	case InputStatic:
 		return convertStatic(in, extraArgs)
 	}
