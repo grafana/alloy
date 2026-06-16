@@ -25,21 +25,30 @@ type serverMetrics struct {
 func newServerMetrics(reg prometheus.Registerer) *serverMetrics {
 	m := &serverMetrics{
 		requestDuration: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "faro_receiver_request_duration_seconds",
-			Help:    "Time (in seconds) spent serving HTTP requests.",
-			Buckets: instrument.DefBuckets,
+			Name:                            "faro_receiver_request_duration_seconds",
+			Help:                            "Time (in seconds) spent serving HTTP requests.",
+			Buckets:                         instrument.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		}, []string{"method", "route", "status_code", "ws"}),
 
 		rxMessageSize: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "faro_receiver_request_message_bytes",
-			Help:    "Size (in bytes) of messages received in the request.",
-			Buckets: middleware.BodySizeBuckets,
+			Name:                            "faro_receiver_request_message_bytes",
+			Help:                            "Size (in bytes) of messages received in the request.",
+			Buckets:                         middleware.BodySizeBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		}, []string{"method", "route"}),
 
 		txMessageSize: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Name:    "faro_receiver_response_message_bytes",
-			Help:    "Size (in bytes) of messages sent in response.",
-			Buckets: middleware.BodySizeBuckets,
+			Name:                            "faro_receiver_response_message_bytes",
+			Help:                            "Size (in bytes) of messages sent in response.",
+			Buckets:                         middleware.BodySizeBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		}, []string{"method", "route"}),
 
 		inflightRequests: prometheus.NewGaugeVec(prometheus.GaugeOpts{
