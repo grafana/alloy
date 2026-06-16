@@ -6,7 +6,6 @@ import (
 	"net"
 	"strings"
 
-	godiscover "github.com/hashicorp/go-discover"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -25,9 +24,10 @@ type Options struct {
 	// lookupIPFn is a function that can be used to lookup addresses using A/AAAA DNS records. If nil, net.LookupIP is used. Used for testing.
 	lookupIPFn lookupIPFn
 
-	// goDiscoverFactory is a function that can be used to create a new discover.Discover instance.
-	// If nil, godiscover.New is used. Used for testing.
-	goDiscoverFactory goDiscoverFactory
+	// goDiscoverFactory is an optional override used for testing. In the full
+	// build it holds a func(...godiscover.Option) (*godiscover.Discover, error);
+	// it is unused in slim builds. Typed as any to keep this file tag-agnostic.
+	goDiscoverFactory any
 }
 
 // lookupSRVFn is a function that can be used to lookup SRV records. Matches net.LookupSRV signature.
@@ -35,10 +35,6 @@ type lookupSRVFn func(service, proto, name string) (string, []*net.SRV, error)
 
 // lookupIPFn is a function that can be used to lookup IP addresses using A/AAAA DNS records. Matches net.LookupIP signature.
 type lookupIPFn func(host string) ([]net.IP, error)
-
-// goDiscoverFactory is a function that can be used to create a new discover.Discover instance.
-// Matches discover.New signature.
-type goDiscoverFactory func(opts ...godiscover.Option) (*godiscover.Discover, error)
 
 func NewPeerDiscoveryFn(opts Options) (DiscoverFn, error) {
 	if opts.Logger == nil {

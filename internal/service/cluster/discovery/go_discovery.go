@@ -1,3 +1,5 @@
+//go:build !slim
+
 package discovery
 
 import (
@@ -14,13 +16,24 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// goDiscoverFactory is a function that can be used to create a new discover.Discover instance.
+// Matches discover.New signature.
+type goDiscoverFactory func(opts ...discover.Option) (*discover.Discover, error)
+
 // newWithGoDiscovery creates a new peer discovery function that uses the github.com/hashicorp/go-discover library to
 // discover peer addresses that can be used for clustering.
 func newWithGoDiscovery(opt Options) (DiscoverFn, error) {
 	// Default to discover.New if no factory is provided.
-	factory := opt.goDiscoverFactory
-	if factory == nil {
-		factory = discover.New
+	var factory goDiscoverFactory = discover.New
+	if opt.goDiscoverFactory != nil {
+		switch f := opt.goDiscoverFactory.(type) {
+		case goDiscoverFactory:
+			factory = f
+		case func(opts ...discover.Option) (*discover.Discover, error):
+			factory = goDiscoverFactory(f)
+		default:
+			return nil, fmt.Errorf("goDiscoverFactory has unexpected type %T", opt.goDiscoverFactory)
+		}
 	}
 
 	providers := make(map[string]discover.Provider, len(discover.Providers)+1)
