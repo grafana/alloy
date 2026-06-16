@@ -11,6 +11,8 @@ import (
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 var (
@@ -58,6 +60,14 @@ type GeoIPConfig struct {
 	Source        *string           `alloy:"source,attr"`
 	DBType        string            `alloy:"db_type,attr,optional"`
 	CustomLookups map[string]string `alloy:"custom_lookups,attr,optional"`
+}
+
+var _ syntax.Validator = (*GeoIPConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *GeoIPConfig) Validate() error {
+	_, err := validateGeoIPConfig(*c)
+	return err
 }
 
 func validateGeoIPConfig(c GeoIPConfig) (map[string]jmespath.JMESPath, error) {

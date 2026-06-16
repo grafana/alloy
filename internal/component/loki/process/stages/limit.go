@@ -9,6 +9,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"golang.org/x/time/rate"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // Configuration errors.
@@ -28,6 +30,13 @@ type LimitConfig struct {
 	Drop              bool    `alloy:"drop,attr,optional"`
 	ByLabelName       string  `alloy:"by_label_name,attr,optional"`
 	MaxDistinctLabels int     `alloy:"max_distinct_labels,attr,optional"`
+}
+
+var _ syntax.Validator = (*LimitConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *LimitConfig) Validate() error {
+	return validateLimitConfig(*c)
 }
 
 func newLimitStage(logger *slog.Logger, cfg LimitConfig, registerer prometheus.Registerer) (Stage, error) {

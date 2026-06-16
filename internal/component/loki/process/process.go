@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/livedebugging"
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -33,6 +34,16 @@ type Arguments struct {
 	Stages    []stages.StageConfig `alloy:"stage,enum,optional"`
 }
 
+// Validate implements syntax.Validator.
+func (a *Arguments) Validate() error {
+	for _, stage := range a.Stages {
+		if err := stage.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Exports exposes the receiver that can be used to send log entries to
 // loki.process.
 type Exports struct {
@@ -42,6 +53,7 @@ type Exports struct {
 var (
 	_ component.Component     = (*Component)(nil)
 	_ component.LiveDebugging = (*Component)(nil)
+	_ syntax.Validator        = (*Arguments)(nil)
 )
 
 // Component implements the loki.process component.

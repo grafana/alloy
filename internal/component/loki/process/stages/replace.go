@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 func init() {
@@ -23,6 +25,20 @@ type ReplaceConfig struct {
 	Expression string `alloy:"expression,attr"`
 	Source     string `alloy:"source,attr,optional"`
 	Replace    string `alloy:"replace,attr,optional"`
+}
+
+var _ syntax.Validator = (*ReplaceConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *ReplaceConfig) Validate() error {
+	if _, err := getExpressionRegex(*c); err != nil {
+		return err
+	}
+	_, err := template.New("pipeline_template").Funcs(functionMap).Parse(c.Replace)
+	if err != nil {
+		return fmt.Errorf("invalid replace template: %w", err)
+	}
+	return nil
 }
 
 func getExpressionRegex(c ReplaceConfig) (*regexp.Regexp, error) {

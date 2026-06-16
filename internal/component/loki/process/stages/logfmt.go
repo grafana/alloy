@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-logfmt/logfmt"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config Errors
@@ -23,6 +25,14 @@ type LogfmtConfig struct {
 	Mapping map[string]string `alloy:"mapping,attr,optional"`
 	Source  string            `alloy:"source,attr,optional"`
 	Regex   string            `alloy:"regex,attr,optional"`
+}
+
+var _ syntax.Validator = (*LogfmtConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *LogfmtConfig) Validate() error {
+	_, _, err := validateLogfmtConfig(c)
+	return err
 }
 
 // validateLogfmtConfig validates a logfmt stage config and returns an inverse mapping of configured mapping.

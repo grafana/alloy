@@ -10,11 +10,28 @@ import (
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 type StructuredMetadataConfig struct {
 	Values map[string]*string `alloy:"values,attr,optional"`
 	Regex  string             `alloy:"regex,attr,optional"`
+}
+
+var _ syntax.Validator = (*StructuredMetadataConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *StructuredMetadataConfig) Validate() error {
+	if len(c.Values) > 0 {
+		if _, err := validateStructuredMetadataConfig(c.Values); err != nil {
+			return err
+		}
+	}
+	if _, err := regexp.Compile(c.Regex); err != nil {
+		return err
+	}
+	return nil
 }
 
 // validateStructuredMetadataConfig validates the structured metadata stage config.

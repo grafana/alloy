@@ -7,6 +7,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/sampling"
+	"github.com/grafana/alloy/syntax"
 )
 
 const (
@@ -22,6 +23,11 @@ type SamplingConfig struct {
 	DropReason   string  `alloy:"drop_counter_reason,attr,optional"`
 	SamplingRate float64 `alloy:"rate,attr"`
 }
+
+var (
+	_ syntax.Defaulter = (*SamplingConfig)(nil)
+	_ syntax.Validator = (*SamplingConfig)(nil)
+)
 
 func (s *SamplingConfig) SetToDefault() {
 	s.DropReason = defaultSamplingpReason

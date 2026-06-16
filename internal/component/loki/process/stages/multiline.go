@@ -14,6 +14,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Configuration errors.
@@ -37,6 +38,11 @@ var DefaultMultilineConfig = MultilineConfig{
 	TrimNewlines: true,
 }
 
+var (
+	_ syntax.Defaulter = (*MultilineConfig)(nil)
+	_ syntax.Validator = (*MultilineConfig)(nil)
+)
+
 // SetToDefault implements syntax.Defaulter.
 func (args *MultilineConfig) SetToDefault() {
 	*args = DefaultMultilineConfig
@@ -47,7 +53,12 @@ func (args *MultilineConfig) Validate() error {
 	if args.MaxWaitTime <= 0 {
 		return fmt.Errorf("max_wait_time must be greater than 0")
 	}
-
+	if args.Expression == "" {
+		return ErrMultilineStageEmptyConfig
+	}
+	if _, err := regexp.Compile(args.Expression); err != nil {
+		return fmt.Errorf("%v: %w", ErrMultilineStageInvalidRegex, err)
+	}
 	return nil
 }
 

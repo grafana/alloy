@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 const (
@@ -17,6 +19,11 @@ type EventLogMessageConfig struct {
 	DropInvalidLabels bool   `alloy:"drop_invalid_labels,attr,optional"`
 	OverwriteExisting bool   `alloy:"overwrite_existing,attr,optional"`
 }
+
+var (
+	_ syntax.Defaulter = (*EventLogMessageConfig)(nil)
+	_ syntax.Validator = (*EventLogMessageConfig)(nil)
+)
 
 func (e *EventLogMessageConfig) Validate() error {
 	// TODO: add support for different validation schemes.

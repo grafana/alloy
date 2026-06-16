@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // Configuration errors.
@@ -28,6 +30,13 @@ type TenantConfig struct {
 	Label  string `alloy:"label,attr,optional"`
 	Source string `alloy:"source,attr,optional"`
 	Value  string `alloy:"value,attr,optional"`
+}
+
+var _ syntax.Validator = (*TenantConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *TenantConfig) Validate() error {
+	return validateTenantConfig(*c)
 }
 
 // validateTenantConfig validates the tenant stage configuration

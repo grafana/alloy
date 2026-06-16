@@ -7,6 +7,8 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/util/strutil"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 const (
@@ -19,6 +21,11 @@ type WindowsEventConfig struct {
 	DropInvalidLabels bool   `alloy:"drop_invalid_labels,attr,optional"`
 	OverwriteExisting bool   `alloy:"overwrite_existing,attr,optional"`
 }
+
+var (
+	_ syntax.Defaulter = (*WindowsEventConfig)(nil)
+	_ syntax.Validator = (*WindowsEventConfig)(nil)
+)
 
 func (e *WindowsEventConfig) Validate() error {
 	// TODO: add support for different validation schemes.

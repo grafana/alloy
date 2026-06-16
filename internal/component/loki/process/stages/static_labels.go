@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // ErrEmptyStaticLabelStageConfig error returned if the config is empty.
@@ -16,8 +18,27 @@ type StaticLabelsConfig struct {
 	Values map[string]*string `alloy:"values,attr"`
 }
 
+var _ syntax.Validator = (*StaticLabelsConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *StaticLabelsConfig) Validate() error {
+	if err := validateLabelStaticConfig(*c); err != nil {
+		return err
+	}
+	for _, v := range c.Values {
+		if v == nil || *v == "" {
+			continue
+		}
+		value := *v
+		if !model.LabelValue(value).IsValid() {
+			return fmt.Errorf("invalid label value: %s", value)
+		}
+	}
+	return nil
+}
+
 func newStaticLabelsStage(config StaticLabelsConfig) (Stage, error) {
-	err := validateLabelStaticConfig(config)
+	err := config.Validate()
 	if err != nil {
 		return nil, err
 	}

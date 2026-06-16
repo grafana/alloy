@@ -6,6 +6,8 @@ import (
 	"slices"
 
 	"github.com/grafana/loki/pkg/push"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // ErrEmptyStructuredMetadataDropStageConfig error returned if the config is empty.
@@ -16,9 +18,19 @@ type StructuredMetadataDropConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
+var _ syntax.Validator = (*StructuredMetadataDropConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *StructuredMetadataDropConfig) Validate() error {
+	if len(c.Values) < 1 {
+		return ErrEmptyStructuredMetadataDropStageConfig
+	}
+	return nil
+}
+
 func newStructuredMetadataDropStage(logger *slog.Logger, config StructuredMetadataDropConfig) (Stage, error) {
-	if len(config.Values) < 1 {
-		return nil, ErrEmptyStructuredMetadataDropStageConfig
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
 	return &structuredMetadataDropStage{

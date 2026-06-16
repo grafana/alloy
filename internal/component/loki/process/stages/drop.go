@@ -11,6 +11,8 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 const (
@@ -36,6 +38,14 @@ type DropConfig struct {
 	Expression string           `alloy:"expression,attr,optional"`
 	OlderThan  time.Duration    `alloy:"older_than,attr,optional"`
 	LongerThan units.Base2Bytes `alloy:"longer_than,attr,optional"`
+}
+
+var _ syntax.Validator = (*DropConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (cfg *DropConfig) Validate() error {
+	_, err := validateDropConfig(cfg)
+	return err
 }
 
 // validateDropConfig validates the DropConfig for the dropStage

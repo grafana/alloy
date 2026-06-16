@@ -9,6 +9,8 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/loki/pkg/push"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 const (
@@ -24,6 +26,14 @@ const (
 type LabelsConfig struct {
 	Values     map[string]*string `alloy:"values,attr"`
 	SourceType SourceType         `alloy:"source_type,attr,optional"`
+}
+
+var _ syntax.Validator = (*LabelsConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (args *LabelsConfig) Validate() error {
+	_, err := validateLabelsConfig(args)
+	return err
 }
 
 // validateLabelsConfig validates the Label stage configuration

@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config Errors.
@@ -25,6 +27,14 @@ type RegexConfig struct {
 	Expression       string  `alloy:"expression,attr"`
 	Source           *string `alloy:"source,attr,optional"`
 	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
+}
+
+var _ syntax.Validator = (*RegexConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *RegexConfig) Validate() error {
+	_, err := validateRegexConfig(*c)
+	return err
 }
 
 // validateRegexConfig validates the config and return a regex

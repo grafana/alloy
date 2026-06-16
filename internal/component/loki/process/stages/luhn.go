@@ -7,6 +7,8 @@ import (
 	"unicode"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // LuhnFilterConfig configures a processing stage that filters out Luhn-valid numbers.
@@ -15,6 +17,13 @@ type LuhnFilterConfig struct {
 	Source      *string `alloy:"source,attr,optional"`
 	MinLength   int     `alloy:"min_length,attr,optional"`
 	Delimiters  string  `alloy:"delimiters,attr,optional"`
+}
+
+var _ syntax.Validator = (*LuhnFilterConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *LuhnFilterConfig) Validate() error {
+	return validateLuhnFilterConfig(c)
 }
 
 // validateLuhnFilterConfig validates the LuhnFilterConfig.

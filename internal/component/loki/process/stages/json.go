@@ -9,6 +9,8 @@ import (
 
 	"github.com/jmespath-community/go-jmespath"
 	json "github.com/json-iterator/go"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config Errors
@@ -26,6 +28,14 @@ type JSONConfig struct {
 	Regex         string            `alloy:"regex,attr,optional"`
 	Source        *string           `alloy:"source,attr,optional"`
 	DropMalformed bool              `alloy:"drop_malformed,attr,optional"`
+}
+
+var _ syntax.Validator = (*JSONConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *JSONConfig) Validate() error {
+	_, _, err := validateJSONConfig(c)
+	return err
 }
 
 // validateJSONConfig validates a json config and returns a map of necessary jmespath expressions.

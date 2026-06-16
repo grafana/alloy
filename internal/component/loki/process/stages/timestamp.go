@@ -11,6 +11,8 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config errors.
@@ -58,6 +60,14 @@ type TimestampConfig struct {
 	Location                   *string  `alloy:"location,attr,optional"`
 	ActionOnFailure            string   `alloy:"action_on_failure,attr,optional"`
 	ActionOnDuplicateTimestamp string   `alloy:"action_on_duplicate_timestamp,attr,optional"`
+}
+
+var _ syntax.Validator = (*TimestampConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *TimestampConfig) Validate() error {
+	_, err := validateTimestampConfig(c)
+	return err
 }
 
 type parser func(string) (time.Time, error)

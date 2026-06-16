@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // ErrEmptyLabelDropStageConfig error returned if the config is empty.
@@ -15,9 +17,19 @@ type LabelDropConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
+var _ syntax.Validator = (*LabelDropConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *LabelDropConfig) Validate() error {
+	if len(c.Values) < 1 {
+		return ErrEmptyLabelDropStageConfig
+	}
+	return nil
+}
+
 func newLabelDropStage(config LabelDropConfig) (Stage, error) {
-	if len(config.Values) < 1 {
-		return nil, ErrEmptyLabelDropStageConfig
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
 	return toStage(&labelDropStage{

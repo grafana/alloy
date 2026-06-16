@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config Errors.
@@ -21,8 +23,21 @@ type OutputConfig struct {
 	Source string `alloy:"source,attr"`
 }
 
+var _ syntax.Validator = (*OutputConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *OutputConfig) Validate() error {
+	if c.Source == "" {
+		return ErrOutputSourceRequired
+	}
+	return nil
+}
+
 // newOutputStage creates a new outputStage
 func newOutputStage(logger *slog.Logger, config OutputConfig) (Stage, error) {
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
 	if config.Source == "" {
 		return nil, ErrOutputSourceRequired
 	}

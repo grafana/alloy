@@ -11,6 +11,8 @@ import (
 	json "github.com/json-iterator/go"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 const (
@@ -111,9 +113,22 @@ var DefaultPackConfig = PackConfig{
 	IngestTimestamp: true,
 }
 
+var (
+	_ syntax.Defaulter = (*PackConfig)(nil)
+	_ syntax.Validator = (*PackConfig)(nil)
+)
+
 // SetToDefault implements syntax.Defaulter.
 func (p *PackConfig) SetToDefault() {
 	*p = DefaultPackConfig
+}
+
+// Validate implements syntax.Validator.
+func (p *PackConfig) Validate() error {
+	if len(p.Labels) == 0 {
+		return errors.New("pack stage config must contain at least one label")
+	}
+	return nil
 }
 
 // newPackStage creates a DropStage from config

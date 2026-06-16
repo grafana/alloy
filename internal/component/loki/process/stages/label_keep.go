@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // ErrEmptyLabelAllowStageConfig error is returned if the config is empty.
@@ -15,9 +17,19 @@ type LabelAllowConfig struct {
 	Values []string `alloy:"values,attr"`
 }
 
+var _ syntax.Validator = (*LabelAllowConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *LabelAllowConfig) Validate() error {
+	if len(c.Values) < 1 {
+		return ErrEmptyLabelAllowStageConfig
+	}
+	return nil
+}
+
 func newLabelAllowStage(config LabelAllowConfig) (Stage, error) {
-	if len(config.Values) < 1 {
-		return nil, ErrEmptyLabelAllowStageConfig
+	if err := config.Validate(); err != nil {
+		return nil, err
 	}
 
 	labelMap := make(map[string]struct{})

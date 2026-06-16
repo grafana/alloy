@@ -11,6 +11,7 @@ import (
 
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/logql"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Configuration errors.
@@ -32,6 +33,21 @@ type MatchConfig struct {
 	Action       string        `alloy:"action,attr,optional"`
 	PipelineName string        `alloy:"pipeline_name,attr,optional"`
 	DropReason   string        `alloy:"drop_counter_reason,attr,optional"`
+}
+
+var _ syntax.Validator = (*MatchConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *MatchConfig) Validate() error {
+	if _, err := validateMatcherConfig(c); err != nil {
+		return err
+	}
+	for _, stage := range c.Stages {
+		if err := stage.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // validateMatcherConfig validates the MatcherConfig for the matcherStage

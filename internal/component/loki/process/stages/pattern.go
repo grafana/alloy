@@ -10,6 +10,8 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/loki/v3/pkg/logql/log/pattern"
 	"github.com/prometheus/common/model"
+
+	"github.com/grafana/alloy/syntax"
 )
 
 // Config Errors.
@@ -25,6 +27,14 @@ type PatternConfig struct {
 	Pattern          string  `alloy:"pattern,attr"`
 	Source           *string `alloy:"source,attr,optional"`
 	LabelsFromGroups bool    `alloy:"labels_from_groups,attr,optional"`
+}
+
+var _ syntax.Validator = (*PatternConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *PatternConfig) Validate() error {
+	_, err := validatePatternConfig(*c)
+	return err
 }
 
 // validatePatternConfig validates the config and return a regex

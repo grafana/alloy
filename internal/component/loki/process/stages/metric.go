@@ -12,6 +12,7 @@ import (
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/loki/process/metric"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Metric types.
@@ -26,9 +27,44 @@ type MetricConfig struct {
 	Histogram *metric.HistogramConfig `alloy:"histogram,block,optional"`
 }
 
+var _ syntax.Validator = (*MetricConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *MetricConfig) Validate() error {
+	count := 0
+	if c.Counter != nil {
+		count++
+	}
+	if c.Gauge != nil {
+		count++
+	}
+	if c.Histogram != nil {
+		count++
+	}
+	if count == 0 {
+		return fmt.Errorf("metric block must configure one of counter, gauge, or histogram")
+	}
+	if count > 1 {
+		return fmt.Errorf("metric block must configure exactly one of counter, gauge, or histogram")
+	}
+	return nil
+}
+
 // MetricsConfig is a set of configured metrics.
 type MetricsConfig struct {
 	Metrics []MetricConfig `alloy:"metric,enum,optional"`
+}
+
+var _ syntax.Validator = (*MetricsConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *MetricsConfig) Validate() error {
+	for _, m := range c.Metrics {
+		if err := m.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type cfgCollector struct {

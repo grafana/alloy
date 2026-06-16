@@ -9,6 +9,7 @@ import (
 
 	"github.com/alecthomas/units"
 	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -32,12 +33,29 @@ type TruncateConfig struct {
 	Rules []*RuleConfig `alloy:"rule,block"`
 }
 
+var _ syntax.Validator = (*TruncateConfig)(nil)
+
+// Validate implements syntax.Validator.
+func (c *TruncateConfig) Validate() error {
+	for _, rule := range c.Rules {
+		if err := rule.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type RuleConfig struct {
 	Limit      units.Base2Bytes `alloy:"limit,attr"`
 	Suffix     string           `alloy:"suffix,attr,optional"`
 	Sources    []string         `alloy:"sources,attr,optional"`
 	SourceType SourceType       `alloy:"source_type,attr,optional"`
 }
+
+var (
+	_ syntax.Defaulter = (*RuleConfig)(nil)
+	_ syntax.Validator = (*RuleConfig)(nil)
+)
 
 // SetToDefault implements syntax.Defaulter.
 func (r *RuleConfig) SetToDefault() {
