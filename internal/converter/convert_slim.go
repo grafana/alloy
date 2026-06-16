@@ -26,6 +26,6 @@ func convertStatic(_ []byte, _ []string) ([]byte, diag.Diagnostics) {
 
 func unsupportedInSlim(format string) diag.Diagnostics {
 	var diags diag.Diagnostics
-	diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("%q conversion is not supported in this slim build of Alloy", format))
+	diags.Add(diag.SeverityLevelCritical, fmt.Sprintf("%q conversion is not supported in this slim build of Alloy; use a full (non-slim) build to convert this format", format))
 	return diags
 }
