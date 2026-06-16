@@ -145,7 +145,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	s.fetchLoadConfig(true) // Allow cache fallback on startup
 	err = s.registerCollector()
-	if err != nil && err != errNoopClient {
+	if err != nil && !errors.Is(err, errNoopClient) {
 		s.opts.Logger.Error("failed to register collector during service startup", "err", err)
 		return err
 	}
