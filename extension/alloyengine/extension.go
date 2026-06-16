@@ -106,6 +106,10 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		return fmt.Errorf("cannot start alloyengine extension in current state: %s", currentState)
 	}
 
+	if e.config.AlloyConfig.File != "" {
+		e.settings.Logger.Warn("config.file is deprecated, use config.path instead")
+	}
+
 	modulePath, files, err := buildAlloyConfig(e.config.AlloyConfig)
 	if err != nil {
 		return err
@@ -238,10 +242,16 @@ func (e *alloyEngineExtension) NotReady() error {
 }
 
 func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]byte, err error) {
+	// File is deprecated; use it as fallback when Path is not set.
+	effectivePath := cfg.Path
+	if effectivePath == "" {
+		effectivePath = cfg.File
+	}
+
 	isInlineConfig := cfg.Inline.Content != ""
 	if isInlineConfig {
-		if cfg.Path != "" {
-			return "", nil, errors.New("exactly one of config.file or config.inline.content must be set")
+		if effectivePath != "" {
+			return "", nil, errors.New("exactly one of config.path or config.inline.content must be set")
 		}
 
 		modulePath = cfg.Inline.ModulePath
@@ -263,26 +273,26 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 	}
 
 	// Alloy supports accepting a directory as config source
-	stat, err := os.Lstat(cfg.Path)
+	stat, err := os.Lstat(effectivePath)
 	if err != nil {
 		return "", nil, err
 	}
 	if !stat.IsDir() {
-		modulePath = filepath.Dir(cfg.Path)
-		data, err := os.ReadFile(cfg.Path)
+		modulePath = filepath.Dir(effectivePath)
+		data, err := os.ReadFile(effectivePath)
 		if err != nil {
-			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", cfg.Path, err)
+			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", effectivePath, err)
 		}
 
-		if err := validateAlloyConfig(cfg.Path, data); err != nil {
-			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", cfg.Path, err)
+		if err := validateAlloyConfig(effectivePath, data); err != nil {
+			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", effectivePath, err)
 		}
 
-		files = map[string][]byte{cfg.Path: data}
+		files = map[string][]byte{effectivePath: data}
 		return modulePath, files, nil
 	}
 
-	modulePath = cfg.Path
+	modulePath = effectivePath
 	children, err := os.ReadDir(modulePath)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to open alloy config dir: %w", err)

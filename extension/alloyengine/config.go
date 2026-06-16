@@ -16,6 +16,11 @@ type AlloyConfig struct {
 	// Note: either [Path] or [Inline] can be set.
 	Path string `mapstructure:"path"`
 
+	// File is a path to Alloy config file.
+	//
+	// Note: this field is deprecated and replaced by "path".
+	File string `mapstructure:"file"`
+
 	// Inline is the inline Alloy configuration.
 	//
 	// Note: either [Path] or [Inline] can be set.
@@ -39,7 +44,7 @@ func (cfg *Config) flagsAsSlice() []string {
 }
 
 func (cfg *Config) Validate() error {
-	hasPath := cfg.AlloyConfig.Path != ""
+	hasPath := cfg.AlloyConfig.Path != "" || cfg.AlloyConfig.File != ""
 	hasContent := cfg.AlloyConfig.Inline.Content != ""
 
 	if !hasPath && !hasContent {
@@ -48,8 +53,11 @@ func (cfg *Config) Validate() error {
 	if hasPath && hasContent {
 		return fmt.Errorf("exactly one of config.path or config.inline.content must be set")
 	}
+	if cfg.AlloyConfig.Path != "" && cfg.AlloyConfig.File != "" {
+		return fmt.Errorf("config.path and config.file are mutually exclusive; config.file is deprecated, use config.path")
+	}
 	if cfg.AlloyConfig.Inline.ModulePath != "" && hasPath {
-		return fmt.Errorf("config.inline.module_path has no effect when config.path is set")
+		return fmt.Errorf("config.inline.module_path has no effect when config.path or config.file is set")
 	}
 
 	return nil
