@@ -229,6 +229,43 @@ func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 	requireShutdownAndTerminated(t, e)
 }
 
+func TestBuildAlloyConfig_RemoteCfgValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		cfg         AlloyConfig
+		errContains string
+	}{
+		{
+			name:        "inline with remotecfg block is rejected",
+			cfg:         AlloyConfig{Inline: InlineAlloyConfig{Content: `remotecfg { }`}},
+			errContains: "remotecfg",
+		},
+		{
+			name:        "file with remotecfg block is rejected",
+			cfg:         AlloyConfig{Path: "testdata/remotecfg.alloy"},
+			errContains: "remotecfg",
+		},
+		{
+			name: "valid inline config is accepted",
+			cfg:  AlloyConfig{Inline: InlineAlloyConfig{Content: `logging { level = "debug" }`}},
+		},
+		{
+			name: "valid file config is accepted",
+			cfg:  AlloyConfig{Path: "testdata/valid.alloy"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, _, err := buildAlloyConfig(tc.cfg)
+			if tc.errContains != "" {
+				require.ErrorContains(t, err, tc.errContains)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestLifecycle_RunSucceedsAfterRetries(t *testing.T) {
 	testErr := errors.New("temporary failure")
 	factory, state := newRetryTrackingCommand(2, testErr) // Fail 2 times, succeed on 3rd attempt
