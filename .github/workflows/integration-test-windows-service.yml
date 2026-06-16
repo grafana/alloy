@@ -51,6 +51,21 @@ jobs:
           Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
         shell: pwsh
 
+      # Guard against supply chain attacks.
+      # Runs unconditionally so a poisoned cache entry is caught too, not just a fresh download.
+      # NOTE: This same hash is also pinned in build-tools/build-image/Dockerfile; update both.
+      - name: Verify NSIS AccessControl plugin checksum
+        run: |
+          $expected = "9aa60f9c5c023fda2808af216514d8913d2673bc522d944ee771da032a1bdc10"
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
+          $actual = (Get-FileHash -Algorithm SHA256 -Path $zipPath).Hash.ToLower()
+          if ($actual -ne $expected) {
+            Write-Error "AccessControl.zip checksum mismatch: expected=$expected actual=$actual"
+            exit 1
+          }
+          Write-Host "AccessControl.zip checksum verified ($actual)"
+        shell: pwsh
+
       - name: Install NSIS AccessControl plugin
         run: |
           $nsisPath = "C:\Program Files (x86)\NSIS"
