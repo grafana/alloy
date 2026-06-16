@@ -8,3 +8,17 @@ ${If} $0 != "admin" # Require admin rights on NT4+
 ${EndIf}
 !macroend
 
+# ExecAndPop runs a command with nsExec::ExecToLog and pops the exit code that
+# nsExec pushes onto the stack. Use it for fire-and-forget commands whose return
+# value we don't inspect. Commands whose exit code is checked (e.g. the Reg.exe
+# queries in InitializeRegistry) must call nsExec::ExecToLog and Pop directly so
+# they can read $0.
+#
+# The command is wrapped in backticks so it can freely contain double quotes; pass
+# the argument delimited by single quotes (none of our commands contain a single
+# quote).
+!macro ExecAndPop cmd
+  nsExec::ExecToLog `${cmd}`
+  Pop $0
+!macroend
+

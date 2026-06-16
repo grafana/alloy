@@ -29,6 +29,8 @@ const (
 	waitTimeout  = 500 * time.Millisecond
 	waitAttempts = 10
 	installDir   = `C:\Program Files\GrafanaLabs\Alloy`
+	configFile   = installDir + `\config.alloy`
+	dataDir      = `C:\ProgramData\GrafanaLabs\Alloy\data`
 )
 
 // TestWindowsService runs the Alloy Windows installer, starts the Alloy service, and uninstalls.
@@ -98,6 +100,27 @@ func TestWindowsService(t *testing.T) {
 	// Check Windows Event Log for Alloy start message
 	require.EventuallyWithT(t, func(c *assert.CollectT) {
 		util.AssertEventLogLine(c, "msg=\"{^_^} Alloy is running\"")
+	}, waitTimeout*waitAttempts, waitTimeout)
+
+	// Verify the installer set the expected ACLs on the install dir, config file,
+	// and data dir via icacls. These are presence checks on the key ACEs rather than
+	// a full golden-string match, since icacls formatting can vary across Windows builds.
+	// SYSTEM must have full control; Everyone must remain read-only (and crucially must
+	// NOT have full control on the secret-bearing config file).
+	// TODO: If the rights tokens below don't match the runner's icacls output, adjust them
+	//       against a baseline dump (see the PR verification steps), not by widening Everyone.
+	// TODO: Also exercise the "/USERNAME=" install path (needs a throwaway local user via
+	//       `net user`) so the $User ACL branch is covered.
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		// Install directory (directory ACEs carry (OI)(CI) inheritance flags).
+		util.AssertACLContains(c, installDir, `NT AUTHORITY\SYSTEM:(OI)(CI)(F)`, `Everyone:(OI)(CI)`)
+		// Config file (a file, so no inheritance flags). Everyone must not be full.
+		util.AssertACLContains(c, configFile, `NT AUTHORITY\SYSTEM:(F)`, `Everyone:`)
+		acl, err := util.GetACL(configFile)
+		assert.NoError(c, err)
+		assert.NotContains(c, acl, `Everyone:(F)`, "Everyone must not have full control of the config file")
+		// Data directory.
+		util.AssertACLContains(c, dataDir, `NT AUTHORITY\SYSTEM:(OI)(CI)(F)`, `Everyone:(OI)(CI)`)
 	}, waitTimeout*waitAttempts, waitTimeout)
 }
 
