@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 
 	"github.com/spf13/cobra"
 
@@ -117,7 +116,7 @@ func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool)
 
 	// If -t/--test flag is check, only check if file is formatted correctly
 	if test {
-		if !reflect.DeepEqual(bb, buf.Bytes()) {
+		if !bytes.Equal(bb, buf.Bytes()) {
 			return fmt.Errorf("file %s is not formatted correctly", filename)
 		}
 		return nil
@@ -126,6 +125,11 @@ func format(filename string, fi os.FileInfo, r io.Reader, write bool, test bool)
 	if !write {
 		_, err := io.Copy(os.Stdout, &buf)
 		return err
+	}
+
+	// Only write to the file if the content actually changed
+	if bytes.Equal(bb, buf.Bytes()) {
+		return nil
 	}
 
 	wf, err := os.OpenFile(filename, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, fi.Mode().Perm())
