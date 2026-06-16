@@ -48,6 +48,25 @@ Refer to the [profile][profile] documentation for more details on how to use thi
 * The `sources/` directory contains copies of the local configuration files used to configure {{< param "PRODUCT_NAME" >}}.
 * `sources/remote-config/remote.alloy` contains a copy of the last received [remote configuration][remotecfg].
 
+## Analyze a support bundle with AI agents
+
+You can use AI coding agents (such as Claude Code or Cursor) configured with the Grafana GCX plugin to automatically analyze {{< param "PRODUCT_NAME" >}} support bundles.
+
+By leveraging the **Analyze Support Bundle** skill, the agent can parse the files in the bundle (logs, metrics, configuration, component status, and Go runtime details) to identify potential configuration issues, bottlenecks, or runtime errors.
+
+To run the analysis:
+
+1. Generate the support bundle from your running {{< param "PRODUCT_NAME" >}} instance:
+
+   ```bash
+   curl -O http://localhost:12345/-/support
+   ```
+
+2. Uncompress the bundle.
+3. Prompt your AI agent:
+
+   > Analyze the {{< param "PRODUCT_NAME" >}} support bundle in `./support-bundle-dir` and check for any issues.
+
 [profile]: ../profile/
 [components]: ../../get-started/components/
 [alloy-repo]: https://github.com/grafana/alloy/issues/
