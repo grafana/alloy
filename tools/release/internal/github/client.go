@@ -59,10 +59,10 @@ type CreatePRParams struct {
 	Draft bool
 }
 
-// FindCommitParams holds parameters for FindCommitWithPattern and CommitExistsWithPattern.
-type FindCommitParams struct {
-	Branch  string
-	Pattern string
+// FindCherryPickedCommitParams holds parameters for FindCherryPickedCommit.
+type FindCherryPickedCommitParams struct {
+	Branch      string
+	OriginalSHA string
 }
 
 // BackportLabelColor is the hex color for backport labels (without '#' prefix).
@@ -74,9 +74,6 @@ type CreateLabelParams struct {
 	Color       string // Hex color without '#' prefix (e.g., "ff0000")
 	Description string // Optional description
 }
-
-// ErrCommitNotFound is returned when a commit matching the search criteria is not found.
-var ErrCommitNotFound = errors.New("commit not found")
 
 // NewClientFromEnv creates a new Client from environment variables.
 // Reads GITHUB_TOKEN and GITHUB_REPOSITORY (format: owner/repo).
@@ -333,9 +330,10 @@ func (c *Client) CreatePR(ctx context.Context, p CreatePRParams) (*github.PullRe
 	return pr, nil
 }
 
-// FindCommitWithPattern searches the commit history of a branch for a commit whose title contains the pattern.
-// Returns the commit SHA if found, or an error if not found.
-func (c *Client) FindCommitWithPattern(ctx context.Context, p FindCommitParams) (string, error) {
+// FindCherryPickedCommit searches the commit history of a branch for a commit
+// message containing the original commit SHA. It returns nil when no matching
+// commit is found.
+func (c *Client) FindCherryPickedCommit(ctx context.Context, p FindCherryPickedCommitParams) (*github.RepositoryCommit, error) {
 	opts := &github.CommitsListOptions{
 		SHA: p.Branch,
 		ListOptions: github.ListOptions{
@@ -347,14 +345,13 @@ func (c *Client) FindCommitWithPattern(ctx context.Context, p FindCommitParams) 
 	for range 5 {
 		commits, resp, err := c.api.Repositories.ListCommits(ctx, c.owner, c.repo, opts)
 		if err != nil {
-			return "", fmt.Errorf("listing commits: %w", err)
+			return nil, fmt.Errorf("listing commits: %w", err)
 		}
 
 		for _, commit := range commits {
 			message := commit.GetCommit().GetMessage()
-			title := strings.Split(message, "\n")[0]
-			if strings.Contains(title, p.Pattern) {
-				return commit.GetSHA(), nil
+			if strings.Contains(message, p.OriginalSHA) {
+				return commit, nil
 			}
 		}
 
@@ -364,19 +361,7 @@ func (c *Client) FindCommitWithPattern(ctx context.Context, p FindCommitParams) 
 		opts.Page = resp.NextPage
 	}
 
-	return "", fmt.Errorf("%w with pattern %q in branch %s", ErrCommitNotFound, p.Pattern, p.Branch)
-}
-
-// CommitExistsWithPattern checks if any commit in the branch history contains the pattern in its title.
-func (c *Client) CommitExistsWithPattern(ctx context.Context, p FindCommitParams) (bool, error) {
-	_, err := c.FindCommitWithPattern(ctx, p)
-	if err != nil {
-		if errors.Is(err, ErrCommitNotFound) {
-			return false, nil
-		}
-		return false, err
-	}
-	return true, nil
+	return nil, nil
 }
 
 // IsBranchMergedInto checks if the source branch is fully merged into the target branch.

@@ -168,27 +168,23 @@ func resolveBackportInfo(ctx context.Context, client *gh.Client, prNumber int, t
 		return nil, fmt.Errorf("getting app identity: %w", err)
 	}
 
-	// Check if backport was already merged by looking for the original PR
-	// title in the release branch history.
-	alreadyMerged, err := client.CommitExistsWithPattern(ctx, gh.FindCommitParams{
-		Branch:  targetBranch,
-		Pattern: originalPR.GetTitle(),
+	commitSHA := originalPR.GetMergeCommitSHA()
+	if commitSHA == "" {
+		return nil, fmt.Errorf("PR #%d does not have a merge commit SHA", prNumber)
+	}
+
+	cherryPickedCommit, err := client.FindCherryPickedCommit(ctx, gh.FindCherryPickedCommitParams{
+		Branch:      targetBranch,
+		OriginalSHA: commitSHA,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("checking for existing backport: %w", err)
 	}
-	if alreadyMerged {
-		fmt.Printf("ℹ️  Backport already merged (found commit with title %q in %s)\n", originalPR.GetTitle(), targetBranch)
+	if cherryPickedCommit != nil {
+		fmt.Printf("ℹ️  Backport already merged (found cherry-pick of %s in %s)\n", commitSHA, targetBranch)
 		return nil, nil
 	}
 
-	commitSHA, err := client.FindCommitWithPattern(ctx, gh.FindCommitParams{
-		Branch:  "main",
-		Pattern: fmt.Sprintf("(#%d)", prNumber),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("finding commit for PR #%d: %w", prNumber, err)
-	}
 	fmt.Printf("   Found commit: %s\n", commitSHA)
 	fmt.Printf("   Backport branch: %s\n", backportBranch)
 
