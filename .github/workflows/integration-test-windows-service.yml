@@ -36,12 +36,25 @@ jobs:
         run: choco install nsis -y
         shell: pwsh
 
+      - name: Cache NSIS AccessControl plugin
+        id: cache-accesscontrol
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ runner.temp }}\AccessControl.zip
+          key: nsis-accesscontrol-zip-v1
+
+      - name: Download NSIS AccessControl plugin
+        if: steps.cache-accesscontrol.outputs.cache-hit != 'true'
+        run: |
+          $zipUrl = "https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip"
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+        shell: pwsh
+
       - name: Install NSIS AccessControl plugin
         run: |
           $nsisPath = "C:\Program Files (x86)\NSIS"
-          $zipUrl = "https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip"
-          $zipPath = "$env:TEMP\AccessControl.zip"
-          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
           Expand-Archive -Path $zipPath -DestinationPath $env:TEMP\AccessControl -Force
           Copy-Item -Path "$env:TEMP\AccessControl\Plugins\*" -Destination "$nsisPath\Plugins\" -Recurse -Force
           New-Item -ItemType Directory -Path "$nsisPath\Plugins\x86-unicode" -Force
