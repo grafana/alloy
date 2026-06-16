@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/readyctx"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.uber.org/zap"
+
+	"github.com/grafana/alloy/internal/readyctx"
 )
 
 func shutdownExtensionWithTestTimeout(e *alloyEngineExtension) error {
@@ -132,7 +133,7 @@ func TestConfig_MissingContent(t *testing.T) {
 		AlloyConfig: AlloyConfig{},
 		Flags:       map[string]string{},
 	}
-	require.EqualError(t, cfg.Validate(), "either config.file or config.inline.content must be set")
+	require.EqualError(t, cfg.Validate(), "either config.path or config.inline.content must be set")
 }
 
 func TestLifecycle_StartPassesInlineConfigToFactory(t *testing.T) {

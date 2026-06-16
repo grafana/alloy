@@ -43,13 +43,13 @@ func (cfg *Config) Validate() error {
 	hasContent := cfg.AlloyConfig.Inline.Content != ""
 
 	if !hasPath && !hasContent {
-		return fmt.Errorf("either config.file or config.inline.content must be set")
+		return fmt.Errorf("either config.path or config.inline.content must be set")
 	}
 	if hasPath && hasContent {
-		return fmt.Errorf("exactly one of config.file or config.inline.content must be set")
+		return fmt.Errorf("exactly one of config.path or config.inline.content must be set")
 	}
 	if cfg.AlloyConfig.Inline.ModulePath != "" && hasPath {
-		return fmt.Errorf("config.inline.module_path has no effect when config.file is set")
+		return fmt.Errorf("config.inline.module_path has no effect when config.path is set")
 	}
 
 	return nil
