@@ -2,21 +2,15 @@
 
 package journal
 
-// This code is copied from Promtail (https://github.com/grafana/loki/blob/baaaa83c78c03c6b9257afddc0854daec928a755/clients/pkg/promtail/targets/journal/journaltarget.go#L4)
-// with minor edits. The target package is used to configure and run the targets that can read journal entries and forward them
-// to other loki components.
-
 import (
+	"context"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
+	"maps"
 	"strings"
-	"syscall"
+	"sync"
 	"time"
 
-	"github.com/coreos/go-systemd/v22/sdjournal"
-	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/grafana/loki/pkg/push"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/prometheus/common/model"
@@ -25,349 +19,213 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/journal/internal/sdjournal"
 )
 
-const (
-	// journalEmptyStr is represented as a single-character space because
-	// returning an empty string from sdjournal.JournalReaderConfig's
-	// Formatter causes an immediate EOF and induces performance issues
-	// with how that is handled in sdjournal.
-	journalEmptyStr = " "
+type tailerOptions struct {
+	logger  *slog.Logger
+	metrics *metrics
+	fanout  *loki.Fanout
 
-	// journalDefaultMaxAgeTime represents the default earliest entry that
-	// will be read by the journal reader if there is no saved position
-	// newer than the "max_age" time.
-	journalDefaultMaxAgeTime = time.Hour * 7
-)
+	path string
+	id   string
+	pos  positions.Positions
 
-const (
-	noMessageError   = "no_message"
-	emptyLabelsError = "empty_labels"
-)
-
-type journalReader interface {
-	io.Closer
-	Follow(until <-chan time.Time, writer io.Writer) error
+	matches string
+	maxAge  time.Duration
+	rcs     []*relabel.Config
+	labels  map[string]string
+	asJSON  bool
 }
 
-// Abstracted functions for interacting with the journal, used for mocking in tests:
-type (
-	journalReaderFunc func(sdjournal.JournalReaderConfig) (journalReader, error)
-	journalEntryFunc  func(cfg sdjournal.JournalReaderConfig, cursor string) (*sdjournal.JournalEntry, error)
-)
+func newTailer(opts tailerOptions) (*tailer, error) {
+	key := positions.CursorKey(opts.id)
+	cursor := opts.pos.GetString(key, "")
 
-// Default implementations of abstracted functions:
-var defaultJournalReaderFunc = func(c sdjournal.JournalReaderConfig) (journalReader, error) {
-	return sdjournal.NewJournalReader(c)
-}
-
-var defaultJournalEntryFunc = func(c sdjournal.JournalReaderConfig, cursor string) (entry *sdjournal.JournalEntry, err error) {
-	var journal *sdjournal.Journal
-
-	if c.Path != "" {
-		journal, err = sdjournal.NewJournalFromDir(c.Path)
-	} else {
-		journal, err = sdjournal.NewJournal()
-	}
-
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		if errClose := journal.Close(); err == nil {
-			err = errClose
-		}
-	}()
-
-	err = journal.SeekCursor(cursor)
+	journal, err := sdjournal.New(sdjournal.Options{
+		Path:    opts.path,
+		Cursor:  cursor,
+		MaxAge:  opts.maxAge,
+		Matches: strings.Fields(opts.matches),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	// Just seeking the cursor won't give us the entry. We should call Next() or Previous()
-	// to get the closest following or the closest preceding entry. We have chosen here to call Next(),
-	// reason being, if we call Previous() we would re read an already read entry.
-	// More info here https://www.freedesktop.org/software/systemd/man/sd_journal_seek_cursor.html#
-	_, err = journal.Next()
-	if err != nil {
-		return nil, err
-	}
-
-	return journal.GetEntry()
+	return newTailerWithJournal(opts, journal), nil
 }
 
-// tailer tails systemd journal entries.
-// nolint
+func newTailerWithJournal(opts tailerOptions, journal journal) *tailer {
+	labelMap := make(map[string]string, len(opts.labels)+1)
+	maps.Copy(labelMap, opts.labels)
+	labelMap["job"] = opts.id
+	lbls := labels.FromMap(labelMap)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	return &tailer{
+		journal: journal,
+		fanout:  opts.fanout,
+		logger:  opts.logger,
+		metrics: opts.metrics,
+
+		key: positions.CursorKey(opts.id),
+		pos: opts.pos,
+
+		rcs:    opts.rcs,
+		labels: lbls,
+		br:     labels.NewBuilder(lbls),
+		asJson: opts.asJSON,
+
+		ctx:    ctx,
+		cancel: cancel,
+	}
+}
+
+type journal interface {
+	Next() ([]sdjournal.Field, string, error)
+	Realtime() (time.Time, error)
+	Wait(ctx context.Context) error
+	Close()
+}
+
 type tailer struct {
-	metrics       *metrics
-	logger        *slog.Logger
-	recv          loki.LogsReceiver
-	positions     positions.Positions
-	positionPath  string
-	relabelConfig []*relabel.Config
-	config        *scrapeconfig.JournalTargetConfig
-	labels        model.LabelSet
+	journal journal
+	logger  *slog.Logger
+	metrics *metrics
+	fanout  *loki.Fanout
 
-	r     journalReader
-	until chan time.Time
+	rcs    []*relabel.Config
+	labels labels.Labels
+	br     *labels.Builder
+
+	asJson bool
+
+	key string
+	pos positions.Positions
+
+	ctx    context.Context
+	cancel context.CancelFunc
+	wg     sync.WaitGroup
 }
 
-// newTailer return as new tailer
-func newTailer(
-	metrics *metrics,
-	logger *slog.Logger,
-	recv loki.LogsReceiver,
-	positions positions.Positions,
-	jobName string,
-	relabelConfig []*relabel.Config,
-	targetConfig *scrapeconfig.JournalTargetConfig,
-) (*tailer, error) {
-
-	return newTailerWithReader(
-		metrics,
-		logger,
-		recv,
-		positions,
-		jobName,
-		relabelConfig,
-		targetConfig,
-		defaultJournalReaderFunc,
-		defaultJournalEntryFunc,
-	)
-}
-
-func newTailerWithReader(
-	metrics *metrics,
-	logger *slog.Logger,
-	recv loki.LogsReceiver,
-	pos positions.Positions,
-	jobName string,
-	relabelConfig []*relabel.Config,
-	targetConfig *scrapeconfig.JournalTargetConfig,
-	readerFunc journalReaderFunc,
-	entryFunc journalEntryFunc,
-) (*tailer, error) {
-
-	positionPath := positions.CursorKey(jobName)
-	position := pos.GetString(positionPath, "")
-
-	if readerFunc == nil {
-		readerFunc = defaultJournalReaderFunc
-	}
-	if entryFunc == nil {
-		entryFunc = defaultJournalEntryFunc
-	}
-
-	until := make(chan time.Time)
-	t := &tailer{
-		metrics:       metrics,
-		logger:        logger,
-		recv:          recv,
-		positions:     pos,
-		positionPath:  positionPath,
-		relabelConfig: relabelConfig,
-		labels:        targetConfig.Labels,
-		config:        targetConfig,
-
-		until: until,
-	}
-
-	var maxAge time.Duration
-	var err error
-	if targetConfig.MaxAge == "" {
-		maxAge = journalDefaultMaxAgeTime
-	} else {
-		maxAge, err = time.ParseDuration(targetConfig.MaxAge)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("parsing journal reader 'max_age' config value: %w", err)
-	}
-
-	cb := journalConfigBuilder{
-		JournalPath: targetConfig.Path,
-		Position:    position,
-		MaxAge:      maxAge,
-		EntryFunc:   entryFunc,
-	}
-
-	matches := strings.Fields(targetConfig.Matches)
-	for _, m := range matches {
-		fv := strings.Split(m, "=")
-		if len(fv) != 2 {
-			return nil, errors.New("Error parsing journal reader 'matches' config value")
-		}
-		cb.Matches = append(cb.Matches, sdjournal.Match{
-			Field: fv[0],
-			Value: fv[1],
-		})
-	}
-
-	cfg := t.generateJournalConfig(cb)
-	t.r, err = readerFunc(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("creating journal reader: %w", err)
-	}
-
-	go func() {
+func (t *tailer) Start() {
+	t.wg.Go(func() {
 		for {
-			err := t.r.Follow(until, io.Discard)
-			if err != nil {
-				if err == sdjournal.ErrExpired {
-					return
-				}
-
-				if err == syscall.EBADMSG || err == io.EOF || strings.HasPrefix(err.Error(), "failed to iterate journal:") {
-					t.logger.Error("unable to follow journal", "err", err.Error())
-					return
-				}
-
-				t.logger.Error("received unexpected error while following the journal", "err", err.Error())
+			select {
+			case <-t.ctx.Done():
+				return
+			default:
 			}
 
-			// prevent tight loop
-			time.Sleep(100 * time.Millisecond)
+			fields, cursor, err := t.journal.Next()
+			if errors.Is(err, sdjournal.ErrNoData) {
+				if err := t.journal.Wait(t.ctx); err != nil && !errors.Is(err, context.Canceled) {
+					t.logger.Error("failed waiting for journal entry", "err", err)
+					return
+				}
+				continue
+			}
+
+			if err != nil {
+				t.logger.Error("failed to read journal entry", "err", err)
+				select {
+				case <-t.ctx.Done():
+					return
+				case <-time.After(100 * time.Millisecond):
+					continue
+				}
+			}
+
+			t.br.Reset(t.labels)
+
+			var line string
+			if t.asJson {
+				m := make(map[string]string, len(fields))
+				setLabels(t.br, fields, func(f sdjournal.Field) {
+					m[f.Name] = f.Value
+				})
+
+				json := jsoniter.ConfigCompatibleWithStandardLibrary
+				bb, err := json.Marshal(m)
+				if err != nil {
+					t.logger.Error("could not marshal journal fields as JSON", "err", err)
+					t.pos.PutString(t.key, "", cursor)
+					continue
+				}
+				line = string(bb)
+			} else {
+				setLabels(t.br, fields, func(f sdjournal.Field) {
+					if f.Name == sdjournal.FieldMessage {
+						line = f.Value
+					}
+				})
+			}
+
+			if line == "" {
+				t.logger.Debug("received journal entry without MESSAGE field, skipping")
+				t.metrics.journalErrors.WithLabelValues(noMessageError).Inc()
+				t.pos.PutString(t.key, "", cursor)
+				continue
+			}
+
+			if !relabel.ProcessBuilder(t.br, t.rcs...) {
+				t.logger.Debug("journal entry dropped by relabel rules")
+				t.pos.PutString(t.key, "", cursor)
+				continue
+			}
+
+			lset := make(model.LabelSet)
+			t.br.Range(func(l labels.Label) {
+				if strings.HasPrefix(l.Name, "__") {
+					return
+				}
+				lset[model.LabelName(l.Name)] = model.LabelValue(l.Value)
+			})
+
+			if len(lset) == 0 {
+				t.logger.Debug("received journal entry without labels")
+				t.metrics.journalErrors.WithLabelValues(emptyLabelsError).Inc()
+				t.pos.PutString(t.key, "", cursor)
+				continue
+			}
+
+			ts, err := t.journal.Realtime()
+			if err != nil {
+				t.logger.Warn("failed to get journal entry time defaulting to now", "err", err)
+				ts = time.Now()
+			}
+
+			if err := t.fanout.Send(t.ctx, loki.NewEntry(lset, push.Entry{
+				Timestamp: ts,
+				Line:      line,
+			})); err != nil {
+				t.logger.Debug("could not forward entry", "err", err)
+				continue
+			}
+
+			t.metrics.journalLines.Inc()
+			t.pos.PutString(t.key, "", cursor)
 		}
-	}()
-
-	return t, nil
-}
-
-type journalConfigBuilder struct {
-	JournalPath string
-	Position    string
-	Matches     []sdjournal.Match
-	MaxAge      time.Duration
-	EntryFunc   journalEntryFunc
-}
-
-// generateJournalConfig generates a journal config by trying to intelligently
-// determine if a time offset or the cursor should be used for the starting
-// position in the reader.
-func (t *tailer) generateJournalConfig(
-	cb journalConfigBuilder,
-) sdjournal.JournalReaderConfig {
-
-	cfg := sdjournal.JournalReaderConfig{
-		Path:      cb.JournalPath,
-		Matches:   cb.Matches,
-		Formatter: t.formatter,
-	}
-
-	// When generating the JournalReaderConfig, we want to preferably
-	// use the Cursor, since it's guaranteed unique to a given journal
-	// entry. When we don't know the cursor position (or want to set
-	// a start time), we'll fall back to the less-precise Since, which
-	// takes a negative duration back from the current system time.
-	//
-	// The presence of Since takes precedence over Cursor, so we only
-	// ever set one and not both here.
-
-	if cb.Position == "" {
-		cfg.Since = -1 * cb.MaxAge
-		return cfg
-	}
-
-	// We have a saved position and need to get that entry to see if it's
-	// older than cb.MaxAge. If it _is_ older, then we need to use cfg.Since
-	// rather than cfg.Cursor.
-	entry, err := cb.EntryFunc(cfg, cb.Position)
-	if err != nil {
-		t.logger.Error("received error reading saved journal position", "err", err.Error())
-		cfg.Since = -1 * cb.MaxAge
-		return cfg
-	}
-
-	ts := time.Unix(0, int64(entry.RealtimeTimestamp)*int64(time.Microsecond))
-	if time.Since(ts) > cb.MaxAge {
-		cfg.Since = -1 * cb.MaxAge
-		return cfg
-	}
-
-	cfg.Cursor = cb.Position
-	return cfg
-}
-
-func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
-	ts := time.Unix(0, int64(entry.RealtimeTimestamp)*int64(time.Microsecond))
-
-	var msg string
-
-	if t.config.JSON {
-		json := jsoniter.ConfigCompatibleWithStandardLibrary
-
-		bb, err := json.Marshal(entry.Fields)
-		if err != nil {
-			t.logger.Error("could not marshal journal fields to JSON", "err", err, "unit", entry.Fields["_SYSTEMD_UNIT"])
-			return journalEmptyStr, nil
-		}
-		msg = string(bb)
-	} else {
-		var ok bool
-		msg, ok = entry.Fields["MESSAGE"]
-		if !ok {
-			t.logger.Debug("received journal entry with no MESSAGE field", "unit", entry.Fields["_SYSTEMD_UNIT"])
-			t.metrics.journalErrors.WithLabelValues(noMessageError).Inc()
-			return journalEmptyStr, nil
-		}
-	}
-
-	entryLabels := makeJournalFields(entry.Fields)
-
-	// Add constant labels
-	for k, v := range t.labels {
-		entryLabels[string(k)] = string(v)
-	}
-
-	lb := labels.NewBuilder(labels.FromMap(entryLabels))
-	var processedLabels labels.Labels
-	if relabel.ProcessBuilder(lb, t.relabelConfig...) {
-		processedLabels = lb.Labels()
-	} else {
-		processedLabels = labels.EmptyLabels()
-	}
-
-	processedLabelsMap := processedLabels.Map()
-	lbls := make(model.LabelSet, len(processedLabelsMap))
-	for k, v := range processedLabelsMap {
-		if k[0:2] == "__" {
-			continue
-		}
-
-		lbls[model.LabelName(k)] = model.LabelValue(v)
-	}
-	if len(lbls) == 0 {
-		// No labels, drop journal entry
-		t.logger.Debug("received journal entry with no labels", "unit", entry.Fields["_SYSTEMD_UNIT"])
-		t.metrics.journalErrors.WithLabelValues(emptyLabelsError).Inc()
-		return journalEmptyStr, nil
-	}
-
-	t.metrics.journalLines.Inc()
-	t.positions.PutString(t.positionPath, "", entry.Cursor)
-
-	t.recv.Chan() <- loki.NewEntry(lbls, push.Entry{
-		Line:      msg,
-		Timestamp: ts,
 	})
-	return journalEmptyStr, nil
 }
 
-// Stop shuts down the JournalTarget.
-func (t *tailer) Stop() error {
-	t.until <- time.Now()
-	err := t.r.Close()
-	return err
+func (t *tailer) Stop() {
+	t.cancel()
+	t.wg.Wait()
+	t.journal.Close()
 }
 
-func makeJournalFields(fields map[string]string) map[string]string {
-	result := make(map[string]string, len(fields))
-	for k, v := range fields {
-		if k == "PRIORITY" {
-			result[fmt.Sprintf("__journal_%s_%s", strings.ToLower(k), "keyword")] = makeJournalPriority(v)
+const labelNamePrefix = "__journal_"
+
+func setLabels(br *labels.Builder, fields []sdjournal.Field, visit func(f sdjournal.Field)) {
+	for _, f := range fields {
+		if f.Name == sdjournal.FieldPriority {
+			br.Set(labelNamePrefix+"priority_keyword", makeJournalPriority(f.Value))
 		}
-		result[fmt.Sprintf("__journal_%s", strings.ToLower(k))] = v
+		br.Set(labelNamePrefix+strings.ToLower(f.Name), f.Value)
+		visit(f)
 	}
-	return result
 }
 
 func makeJournalPriority(priority string) string {
