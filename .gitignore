@@ -44,3 +44,6 @@ collector/otel_engine.exe
 # AI
 CLAUDE.local.md
 .codex/
+docs/superpowers/
+docs/slim-build-design.md
+docs/slim-build-design.zh-CN.md
