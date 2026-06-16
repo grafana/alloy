@@ -350,7 +350,9 @@ func (c *Client) FindCherryPickedCommit(ctx context.Context, p FindCherryPickedC
 
 		for _, commit := range commits {
 			message := commit.GetCommit().GetMessage()
-			if strings.Contains(message, p.OriginalSHA) {
+			trailer := fmt.Sprintf("(cherry picked from commit %s)", p.OriginalSHA)
+
+			if strings.Contains(strings.ToLower(message), strings.ToLower(trailer)) {
 				return commit, nil
 			}
 		}
