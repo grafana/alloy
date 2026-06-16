@@ -10,13 +10,23 @@
 - 代码段大头：AWS SDK v2 ~50MB、crypto ~34MB、pingcap/tidb ~8.7MB、arrow-go ~5.9MB、
   vmware/govmomi、gcp compute、envoy、datadog、azure 等。
 
-**用户实际只使用 5 个原生组件**：
+**用户实际使用的原生组件（10 个，依据实际配置确认）**：
 
-- `prometheus.scrape`
-- `prometheus.remote_write`
-- `prometheus.exporter.unix`
-- `loki.source.file`
-- `loki.process`
+| 组件 | import 路径 |
+|---|---|
+| `prometheus.scrape` | `internal/component/prometheus/scrape` |
+| `prometheus.remote_write` | `internal/component/prometheus/remotewrite` |
+| `prometheus.relabel` | `internal/component/prometheus/relabel` |
+| `prometheus.exporter.unix` | `internal/component/prometheus/exporter/unix` |
+| `prometheus.exporter.self` | `internal/component/prometheus/exporter/self` |
+| `discovery.relabel` | `internal/component/discovery/relabel` |
+| `loki.source.file` | `internal/component/loki/source/file` |
+| `loki.process` | `internal/component/loki/process` |
+| `loki.write` | `internal/component/loki/write` |
+| `local.file_match` | `internal/component/local/file_match` |
+
+（`sys.env`、`array.concat`、`constants.hostname`、`argument` 均为 syntax 内置功能，非组件，无需保留。）
+该清单由用户实际 `config.alloy` 驱动；后续若发现新组件按同样方式追加。
 
 目标：产出一个只保留上述能力的裁剪版二进制，体积尽可能小。
 
@@ -40,13 +50,7 @@
 
 ### 改动 1：`internal/component/all/all.go`
 
-将 ~180 个 blank import 缩减为仅保留 5 个目标组件：
-
-- `internal/component/loki/process`
-- `internal/component/loki/source/file`
-- `internal/component/prometheus/exporter/unix`
-- `internal/component/prometheus/remotewrite`
-- `internal/component/prometheus/scrape`
+将 ~180 个 blank import 缩减为仅保留上表列出的 10 个目标组件（见"用户实际使用的原生组件"表）。
 
 被移除的 import 通过 git 历史保留，便于回退。Alloy 引擎对"必须注册哪些组件"无硬性要求；
 未注册的组件只是在用户配置引用时报"unknown component"，不影响启动。
