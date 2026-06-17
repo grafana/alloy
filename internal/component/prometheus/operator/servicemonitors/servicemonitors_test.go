@@ -181,12 +181,21 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			// registered Kubernetes SD-backed scrape config is brittle.
 			jobName := "serviceMonitor/monitoring/test-service-monitor/0"
 			require.Eventually(t, func() bool {
+				for _, name := range testFactory.GetScrapeConfigJobNames() {
+					if name == jobName {
+						return true
+					}
+				}
+				return false
+			}, 10*time.Second, 100*time.Millisecond, "Expected generated ServiceMonitor job to appear")
+
+			require.Eventually(t, func() bool {
 				ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
 				if err != nil {
 					return false
 				}
 				return ready
-			}, 5*time.Second, 100*time.Millisecond, "Expected static target injection to succeed")
+			}, 10*time.Second, 100*time.Millisecond, "Expected static target injection to succeed")
 
 			// Wait for metrics to be scraped and forwarded, then verify
 			require.EventuallyWithT(t, func(ct *assert.CollectT) {
