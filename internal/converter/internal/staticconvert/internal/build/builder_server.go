@@ -66,6 +66,10 @@ func toWindowsFilter(windowsFilter *server.WindowsCertificateFilter) *http.Windo
 		return nil
 	}
 
+	// This conversion intentionally collapses empty windows_certificate_filter blocks to nil.
+	// Some Windows paths can materialize empty nested structs/slices even when no effective
+	// filter is configured; treating those as nil is semantically equivalent and prevents the
+	// server TLS args from looking non-empty solely due to zero-value Windows filter fields.
 	result := &http.WindowsCertificateFilter{
 		Server: toWindowsServerFilter(windowsFilter.Server),
 		Client: toWindowsClientFilter(windowsFilter.Client),
