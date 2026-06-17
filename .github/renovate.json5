@@ -129,7 +129,7 @@
       "groupName": "npm dependencies",
       "enabled": true
     },
-        {
+    {
       "matchManagers": ["mise"],
       "groupName": "mise dependencies",
       "enabled": true
