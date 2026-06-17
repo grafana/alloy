@@ -86,6 +86,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
 		c.opts.Logger.Info("loki.source.journal component shutting down")
+		c.mut.Lock()
+		defer c.mut.Unlock()
+
 		if c.tailer != nil {
 			c.tailer.Stop()
 		}
