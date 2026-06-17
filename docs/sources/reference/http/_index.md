@@ -26,28 +26,17 @@ Otherwise, if the instance isn't ready, the `/-/ready` endpoint returns `HTTP 50
 
 ## `/-/healthy`
 
-When all {{< param "PRODUCT_NAME" >}} components are working correctly, all components are considered healthy.
-If all components are healthy, the `/-/healthy` endpoint returns `HTTP 200 OK` and the message `All Alloy components are healthy.`.
-Otherwise, if any of the components aren't working correctly, the `/-/healthy` endpoint returns `HTTP 500 Internal Server Error` and an error message.
-You can also monitor component health through the {{< param "PRODUCT_NAME" >}} [UI](../../troubleshoot/debug#alloy-ui).
+The `/-/healthy` endpoint returns `HTTP 200 OK` and the message `Alloy is healthy.` to indicate that the {{< param "PRODUCT_NAME" >}} instance is running.
 
 ```shell
 curl localhost:12345/-/healthy
-All Alloy components are healthy.
-```
-
-```shell
-curl localhost:12345/-/healthy
-unhealthy components: math.add
+Alloy is healthy.
 ```
 
 {{< admonition type="note" >}}
-The `/-/healthy` endpoint isn't suitable for a [Kubernetes liveness probe][k8s-liveness].
+The `/-/healthy` endpoint is suitable for a [Kubernetes liveness probe][k8s-liveness] to verify that the {{< param "PRODUCT_NAME" >}} process is alive and responsive.
 
-You don't necessarily need to restart an {{< param "PRODUCT_NAME" >}} instance that reports as unhealthy.
-For example, a component may be unhealthy due to an invalid configuration or an unavailable external resource.
-In this case, restarting {{< param "PRODUCT_NAME" >}} would not fix the problem.
-A restart may make it worse, because it would stop the flow of telemetry in healthy pipelines.
+Note that this endpoint only reflects the health of the {{< param "PRODUCT_NAME" >}} process itself, not individual internal components. Individual components can be monitored through the {{< param "PRODUCT_NAME" >}} [UI](../../troubleshoot/debug#alloy-ui) or via the `/metrics` endpoint (using `alloy_component_controller_running_components` with the `health_type` label).
 
 [k8s-liveness]: https://kubernetes.io/docs/concepts/configuration/liveness-readiness-startup-probes/
 {{< /admonition >}}

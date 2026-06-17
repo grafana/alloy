@@ -64,7 +64,7 @@ func TestHTTP(t *testing.T) {
 
 		buf, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		require.Equal(t, "All Alloy components are healthy.\n", string(buf))
+		require.Equal(t, "Alloy is healthy.\n", string(buf))
 
 		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -325,9 +325,9 @@ func TestUnhealthy(t *testing.T) {
 
 		buf, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		require.Equal(t, "unhealthy components: testCompName\n", string(buf))
+		require.Equal(t, "Alloy is healthy.\n", string(buf))
 
-		require.Equal(t, http.StatusInternalServerError, resp.StatusCode)
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 }
 
