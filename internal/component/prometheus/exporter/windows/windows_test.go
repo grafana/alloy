@@ -82,6 +82,10 @@ var (
 			file_patterns = ["example"]
 		}
 
+		time {
+			enabled_list = ["example"]
+		}
+
 		performancecounter {
 			objects =   "---" +
 						"	- name: \"Processor\"" +
@@ -128,6 +132,7 @@ func TestAlloyUnmarshal(t *testing.T) {
 
 	require.Equal(t, []string{"example"}, args.TCP.EnabledList)
 	require.Equal(t, []string{"example"}, args.Filetime.FilePatterns)
+	require.Equal(t, []string{"example"}, args.Time.EnabledList)
 	// This isn't a real example, and the recommendation would be to use a file rather than a raw string
 	require.Equal(t, "---\t- name: \"Processor\"\t\tcounters:\t\t\t- name: \"% Processor Time\"\t\t\t  instance: \"_Total\"\t\t\t  type: \"counter\"\t\t\t  labels:\t\t\t\t  state: idle", args.PerformanceCounter.Objects)
 }
@@ -165,4 +170,5 @@ func TestConvert(t *testing.T) {
 	require.Equal(t, "^(?:.+)$", conf.LogicalDisk.Include)
 	require.Equal(t, "example", conf.TCP.EnabledList)
 	require.Equal(t, []string{"example"}, conf.Filetime.FilePatterns)
+	require.Equal(t, "example", conf.Time.EnabledList)
 }
