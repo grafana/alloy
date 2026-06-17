@@ -22,6 +22,7 @@ import (
 	"go.opentelemetry.io/obi/pkg/kube/kubeflags"
 	"go.opentelemetry.io/obi/pkg/obi"
 	"go.opentelemetry.io/obi/pkg/transform"
+	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -1142,6 +1143,19 @@ func TestConvert_Injector_Errors(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestStringToGlobAttr_YAMLRoundTrip(t *testing.T) {
+	for _, value := range []string{"default", "frontend-2", "prod-*"} {
+		t.Run(value, func(t *testing.T) {
+			attr, err := stringToGlobAttr(value)
+			require.NoError(t, err)
+
+			out, err := yaml.Marshal(attr)
+			require.NoError(t, err)
+			require.Equal(t, value, strings.TrimSpace(string(out)))
 		})
 	}
 }

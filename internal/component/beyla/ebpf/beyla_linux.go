@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v9"
+	"github.com/gobwas/glob"
 	"github.com/grafana/beyla/v3/pkg/beyla"
 	"github.com/grafana/beyla/v3/pkg/components"
 	beylaSvc "github.com/grafana/beyla/v3/pkg/services"
@@ -1484,13 +1485,10 @@ func stringToGlobAttr(s string) (services.GlobAttr, error) {
 		return services.GlobAttr{}, nil
 	}
 
-	globAttr := services.GlobAttr{}
-	err := globAttr.UnmarshalText([]byte(s))
-
-	if err != nil {
-		return services.GlobAttr{}, err
+	if _, err := glob.Compile(s); err != nil {
+		return services.GlobAttr{}, fmt.Errorf("invalid glob pattern %q: %w", s, err)
 	}
-	return globAttr, nil
+	return services.NewGlob(s), nil
 }
 
 func stringToPortEnum(s string) (services.IntEnum, error) {
