@@ -96,8 +96,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		TimeoutSettings: exporterhelper.TimeoutConfig{
 			Timeout: args.Timeout,
 		},
-		// Replicate the upstream factory's flow-control defaults, which Alloy bypasses
-		// by building the Config directly. Not yet user-configurable.
+		// Alloy builds the Config directly, bypassing the factory that sets these
+		// defaults; the zero values it would otherwise send break the receiver.
 		FlowControlConfig: googlecloudpubsubreceiver.FlowControlConfig{
 			TriggerAckBatchDuration: 10 * time.Second,
 			StreamAckDeadline:       60 * time.Second,

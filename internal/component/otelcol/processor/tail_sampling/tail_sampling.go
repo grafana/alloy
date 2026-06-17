@@ -98,10 +98,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		DecisionCache:                 args.DecisionCache.Convert(),
 	}
 
-	// v0.151 added an unexported samplingStrategy field that the upstream factory
-	// defaults to "trace-complete". Alloy bypasses that factory, so replicate the
-	// default via mapstructure to preserve behavior (an empty value breaks the
-	// processor). The strategy is not yet user-configurable.
+	// samplingStrategy is unexported upstream and set by the factory that Alloy
+	// bypasses when it builds the Config directly. An empty value breaks the
+	// processor, so replicate the factory default via mapstructure.
 	if err := mapstructure.Decode(map[string]any{"sampling_strategy": "trace-complete"}, result); err != nil {
 		return nil, fmt.Errorf("setting default sampling_strategy: %w", err)
 	}

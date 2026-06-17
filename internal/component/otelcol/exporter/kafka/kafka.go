@@ -314,8 +314,8 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	result.QueueBatchConfig = q
 	result.Producer = args.Producer.Convert()
 
-	// v0.151 requires a record partitioner; the upstream factory defaults it to
-	// sarama_compat, which Alloy bypasses by building the Config directly.
+	// A record partitioner is required. Alloy builds the Config directly, bypassing
+	// the factory that defaults it, so set the default explicitly.
 	result.RecordPartitioner = kafkaexporter.RecordPartitionerConfig{
 		StickyKey: &kafkaexporter.StickyKeyPartitionerConfig{Hasher: "sarama_compat"},
 	}
