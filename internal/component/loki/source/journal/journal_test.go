@@ -3,6 +3,7 @@
 package journal
 
 import (
+	"context"
 	"log/slog"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 )
@@ -61,4 +63,24 @@ func TestJournal(t *testing.T) {
 		err = testutil.GatherAndCompare(ctrl.PromRegistry, strings.NewReader(expectedMetrics))
 		require.NoError(t, err)
 	})
+}
+
+func BenchmarkJournal(b *testing.B) {
+	ctrl, err := componenttest.NewControllerFromID(slog.New(slog.DiscardHandler), "loki.source.journal")
+	require.NoError(b, err)
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for b.Loop() {
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		ctrl.Run(ctx, Arguments{
+			ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry, 10000)))},
+			Labels:    map[string]string{"test": "yay"},
+		}, func(opts component.Options) component.Options {
+			opts.DataPath = b.TempDir()
+			return opts
+		})
+		cancel()
+	}
 }
