@@ -3,6 +3,7 @@ package loki
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 )
 
@@ -20,31 +21,36 @@ type FanoutConsumer struct {
 }
 
 func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
-	// NOTE: It's important that we hold a read lock for the duration of Consume
-	// rather than making a copy of consumers and releasing the lock early.
+	// NOTE: We snapshot the consumer list under a brief read lock and release it
+	// before delivering, rather than holding the lock for the whole fan-out.
 	//
-	// When config is updated, the loader evaluates all components and updates
-	// them while they continue running. The scheduler only stops removed components
-	// after all updates complete. During this window, Send may execute concurrently
-	// with receiver list updates. By holding the read lock for the entire Send
-	// operation, receiver list updates (which require a write lock) will block
-	// until all in-flight Send calls complete. This prevents sending entries to
-	// receivers that have been removed by the scheduler.
+	// This is safe because delivery is a plain function call: a consumer that has
+	// stopped returns ErrConsumerStopped instead of blocking, so delivering against
+	// a stale snapshot can never deadlock — a consumer removed concurrently with
+	// delivery simply reports that it has stopped (see isReportableError). The
+	// snapshot stays valid because Update replaces the slice rather than mutating it
+	// in place. Releasing the lock early also keeps a slow consumer from blocking
+	// reconfiguration.
 
 	f.mut.RLock()
-	defer f.mut.RUnlock()
+	consumers := f.consumers
+	f.mut.RUnlock()
 
 	var errs []error
 
-	for i, consumer := range f.consumers {
-		if i == len(f.consumers)-1 {
-			if err := consumer.Consume(ctx, batch); err != nil {
+	for i, consumer := range consumers {
+		if consumer == nil {
+			continue
+		}
+
+		if i == len(consumers)-1 {
+			if err := consumer.Consume(ctx, batch); isReportableError(err) {
 				errs = append(errs, err)
 			}
 			continue
 		}
 
-		if err := consumer.Consume(ctx, batch.Clone()); err != nil {
+		if err := consumer.Consume(ctx, batch.Clone()); isReportableError(err) {
 			errs = append(errs, err)
 		}
 	}
@@ -53,31 +59,31 @@ func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
 }
 
 func (f *FanoutConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
-	// NOTE: It's important that we hold a read lock for the duration of ConsumeEntry
-	// rather than making a copy of consumers and releasing the lock early.
+	// NOTE: We snapshot the consumer list under a brief read lock and release it
+	// before delivering, rather than holding the lock for the whole fan-out.
 	//
-	// When config is updated, the loader evaluates all components and updates
-	// them while they continue running. The scheduler only stops removed components
-	// after all updates complete. During this window, Send may execute concurrently
-	// with receiver list updates. By holding the read lock for the entire Send
-	// operation, receiver list updates (which require a write lock) will block
-	// until all in-flight Send calls complete. This prevents sending entries to
-	// receivers that have been removed by the scheduler.
+	// This is safe because delivery is a plain function call: a consumer that has
+	// stopped returns ErrConsumerStopped instead of blocking, so delivering against
+	// a stale snapshot can never deadlock — a consumer removed concurrently with
+	// delivery simply reports that it has stopped (see isReportableError). The
+	// snapshot stays valid because Update replaces the slice rather than mutating it
+	// in place. Releasing the lock early also keeps a slow consumer from blocking
+	// reconfiguration.
 
 	f.mut.RLock()
-	defer f.mut.RUnlock()
+	consumers := f.consumers
+	f.mut.RUnlock()
 
 	var errs []error
 
-	for i, consumer := range f.consumers {
-		if i == len(f.consumers)-1 {
-			if err := consumer.ConsumeEntry(ctx, entry); err != nil {
-				errs = append(errs, err)
-			}
+	for _, consumer := range consumers {
+		if consumer == nil {
 			continue
 		}
 
-		if err := consumer.ConsumeEntry(ctx, entry.Clone()); err != nil {
+		// ConsumeEntry does not clone entries. Components that mutate an entry must
+		// clone it first, as they already do. Batching will own cloning at the batch/pipeline boundary.
+		if err := consumer.ConsumeEntry(ctx, entry); isReportableError(err) {
 			errs = append(errs, err)
 		}
 	}
@@ -87,7 +93,7 @@ func (f *FanoutConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 
 func (f *FanoutConsumer) Update(consumers []Consumer) {
 	f.mut.RLock()
-	if requireUpdate(f.consumers, consumers) {
+	if !slices.Equal(f.consumers, consumers) {
 		// Upgrade lock to write.
 		f.mut.RUnlock()
 		f.mut.Lock()
@@ -96,4 +102,13 @@ func (f *FanoutConsumer) Update(consumers []Consumer) {
 	} else {
 		f.mut.RUnlock()
 	}
+}
+
+func isReportableError(err error) bool {
+	// We can always ignore ErrConsumerStopped.
+	// If a downstream component have been stopped due to config update
+	// we should no longer forward entries there and when alloy it self
+	// stops we shut down components from sources to sinks so we should
+	// never hit this error.
+	return err != nil && !errors.Is(err, ErrConsumerStopped)
 }
