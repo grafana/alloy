@@ -264,9 +264,10 @@ func dlsym(handle unsafe.Pointer, name string) (unsafe.Pointer, error) {
 	return sym, nil
 }
 
-// Journal is an open handle to the systemd journal. It owns the dlopen'd
-// library and the underlying sd_journal object, and is the only type callers
-// interact with: the C API is never exposed.
+// Journal is an open handle to the systemd journal. It owns the underlying
+// sd_journal object, and is the only type callers interact with: the C API is
+// never exposed. (The libsystemd symbol table is loaded once per process and
+// cached globally.)
 type Journal struct {
 	lib     *lib
 	journal *C.sd_journal
