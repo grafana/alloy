@@ -157,9 +157,8 @@ func normalizeWindowsTimeCollectorDefaults(args *windows.Arguments) {
 	}
 	defaulter.SetToDefault()
 
-	// Empty structs/slices and nil are semantically the same, but will be detected as different in DeepEquals.
-	// Normalise them to the defaults representation.
-	normalizeEmptySlicesToDefault(args, &defaults, "Time")
+	// Empty structs/slices and nil are semantically the same, but will be detected as different in DeepEqual.
+	// Normalize them to the defaults representation.
 	normalizeEmptySlicesToDefault(args, &defaults, "Filetime")
 }
 

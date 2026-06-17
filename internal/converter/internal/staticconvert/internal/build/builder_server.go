@@ -66,9 +66,8 @@ func toWindowsFilter(windowsFilter *server.WindowsCertificateFilter) *http.Windo
 		return nil
 	}
 
-	// Empty structs/slices and nil are semantically the same, but will be detected as different in DeepEquals.
-	// Normalise them to nil.
-	result := &http.WindowsCertificateFilter{
+	// Empty structs/slices and nil are semantically the same, but will be detected as different in DeepEqual.
+	// Normalize them to nil.
 		Server: toWindowsServerFilter(windowsFilter.Server),
 		Client: toWindowsClientFilter(windowsFilter.Client),
 	}
