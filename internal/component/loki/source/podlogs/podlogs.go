@@ -38,7 +38,7 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.podlogs
 // component.
 type Arguments struct {
-	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo []loki.Consumer `alloy:"forward_to,attr"`
 
 	// Client settings to connect to Kubernetes.
 	Client commonk8s.ClientArguments `alloy:"client,block,optional"`
@@ -88,7 +88,7 @@ type Component struct {
 
 	positions positions.Positions
 	handler   loki.LogsReceiver
-	fanout    *loki.Fanout
+	fanout    *loki.FanoutConsumer
 
 	mut         sync.RWMutex
 	args        Arguments
@@ -136,7 +136,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 		positions: positionsFile,
 		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanoutConsumer(args.ForwardTo),
 	}
 	if err := c.Update(args); err != nil {
 		return nil, err
@@ -186,7 +186,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	// Update the receivers before anything else, just in case something fails.
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	if err := c.updateTailer(newArgs); err != nil {
 		return err

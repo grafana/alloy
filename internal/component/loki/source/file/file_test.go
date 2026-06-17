@@ -47,7 +47,7 @@ func Test_UnmarshalConfig(t *testing.T) {
 					SyncPeriod: 10 * time.Second,
 				},
 				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
-				ForwardTo:            []loki.LogsReceiver{},
+				ForwardTo:            []loki.Consumer{},
 				Targets:              []discovery.Target{},
 			},
 		},
@@ -72,7 +72,7 @@ func Test_UnmarshalConfig(t *testing.T) {
 					SyncPeriod: 14 * time.Second,
 				},
 				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
-				ForwardTo:            []loki.LogsReceiver{},
+				ForwardTo:            []loki.Consumer{},
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
 						"__path__": "/tmp/*.log",
@@ -101,7 +101,7 @@ func Test_UnmarshalConfig(t *testing.T) {
 					SyncPeriod: 14 * time.Second,
 				},
 				OnPositionsFileError: OnPositionsFileErrorRestartBeginning,
-				ForwardTo:            []loki.LogsReceiver{},
+				ForwardTo:            []loki.Consumer{},
 				Targets: []discovery.Target{
 					discovery.NewTargetFromMap(map[string]string{
 						"__path__": "/tmp/*.log",
@@ -135,7 +135,7 @@ func TestComponent(t *testing.T) {
 		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 		require.NoError(t, err)
 
-		ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+		collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 
 		go func() {
 			err := ctrl.Run(ctx, Arguments{
@@ -143,7 +143,7 @@ func TestComponent(t *testing.T) {
 					"__path__": f.Name(),
 					"foo":      "bar",
 				})},
-				ForwardTo: []loki.LogsReceiver{ch1, ch2},
+				ForwardTo: []loki.Consumer{collector1, collector2},
 				FileMatch: match,
 			})
 			require.NoError(t, err)
@@ -159,20 +159,20 @@ func TestComponent(t *testing.T) {
 			"foo":      "bar",
 		}
 
-		for i := 0; i < 2; i++ {
-			select {
-			case logEntry := <-ch1.Chan():
-				require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-				require.Equal(t, "writing some text", logEntry.Line)
-				require.Equal(t, wantLabelSet, logEntry.Labels)
-			case logEntry := <-ch2.Chan():
-				require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-				require.Equal(t, "writing some text", logEntry.Line)
-				require.Equal(t, wantLabelSet, logEntry.Labels)
-			case <-time.After(5 * time.Second):
-				require.FailNow(t, "failed waiting for log line")
-			}
-		}
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			require.Len(c, collector1.Entries(), 1)
+			require.Len(c, collector2.Entries(), 1)
+		}, 5*time.Second, 100*time.Millisecond)
+
+		got := collector1.Entries()[0]
+		require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+		require.Equal(t, "writing some text", got.Line)
+		require.Equal(t, wantLabelSet, got.Labels)
+
+		got = collector2.Entries()[0]
+		require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+		require.Equal(t, "writing some text", got.Line)
+		require.Equal(t, wantLabelSet, got.Labels)
 	})
 }
 
@@ -191,7 +191,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 		require.NoError(t, err)
 
-		ch1 := loki.NewLogsReceiver()
+		collector := loki.NewCollectingConsumer()
 
 		go func() {
 			err := ctrl.Run(ctx, Arguments{
@@ -199,7 +199,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 					"__path__": f.Name(),
 					"foo":      "bar",
 				})},
-				ForwardTo: []loki.LogsReceiver{ch1},
+				ForwardTo: []loki.Consumer{collector},
 				FileMatch: match,
 			})
 			require.NoError(t, err)
@@ -208,25 +208,13 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 		ctrl.WaitRunning(time.Minute)
 
 		workerCtx, cancelWorkers := context.WithCancel(ctx)
-		var wg sync.WaitGroup
-		wg.Add(2)
 
-		var backgroundErr error
-		// Start a goroutine that reads from the channel until cancellation
-		go func() {
-			defer wg.Done()
-			for {
-				select {
-				case <-workerCtx.Done():
-					return
-				case <-ch1.Chan():
-					// Just consume the messages
-				}
-			}
-		}()
+		var (
+			wg            sync.WaitGroup
+			backgroundErr error
+		)
 
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for {
 				select {
 				case <-workerCtx.Done():
@@ -238,13 +226,12 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 					}
 				}
 			}
-		}()
-
+		})
 		time.Sleep(100 * time.Millisecond)
 
 		err = ctrl.Update(Arguments{
 			Targets:   []discovery.Target{},
-			ForwardTo: []loki.LogsReceiver{ch1},
+			ForwardTo: []loki.Consumer{collector},
 			FileMatch: match,
 		})
 		require.NoError(t, err)
@@ -253,7 +240,7 @@ func TestUpdateRemoveFileWhileReading(t *testing.T) {
 
 		err = ctrl.Update(Arguments{
 			Targets:   []discovery.Target{},
-			ForwardTo: []loki.LogsReceiver{ch1},
+			ForwardTo: []loki.Consumer{collector},
 			FileMatch: match,
 		})
 		require.NoError(t, err)
@@ -277,14 +264,14 @@ func TestFileWatch(t *testing.T) {
 			ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 			require.NoError(t, err)
 
-			ch1 := loki.NewLogsReceiver()
+			collector := loki.NewCollectingConsumer()
 
 			args := Arguments{
 				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 					"__path__": f.Name(),
 					"foo":      "bar",
 				})},
-				ForwardTo: []loki.LogsReceiver{ch1},
+				ForwardTo: []loki.Consumer{collector},
 				FileWatch: FileWatch{
 					MinPollFrequency: time.Millisecond * 500,
 					MaxPollFrequency: time.Millisecond * 500,
@@ -306,12 +293,12 @@ func TestFileWatch(t *testing.T) {
 			_, err = f.Write([]byte("writing some text\n"))
 			require.NoError(t, err)
 
-			select {
-			case logEntry := <-ch1.Chan():
-				require.Equal(t, "writing some text", logEntry.Line)
-			case <-time.After(5 * time.Second):
-				require.FailNow(t, "failed waiting for log line")
-			}
+			require.EventuallyWithT(t, func(c *assert.CollectT) {
+				require.Len(c, collector.Entries(), 1)
+			}, 5*time.Second, 100*time.Millisecond)
+
+			got := collector.Entries()[0]
+			require.Equal(t, "writing some text", got.Line)
 
 			// Shut down the component.
 			cancel()
@@ -341,7 +328,7 @@ func TestUpdate_NoLeak(t *testing.T) {
 				"__path__": f.Name(),
 				"foo":      "bar",
 			})},
-			ForwardTo: []loki.LogsReceiver{},
+			ForwardTo: []loki.Consumer{},
 			FileMatch: match,
 		}
 
@@ -364,7 +351,6 @@ func TestUpdate_NoLeak(t *testing.T) {
 func TestTwoTargets(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreTopFunction("go.opencensus.io/stats/view.(*worker).start"))
 
-	// FIXME use test ctrl
 	runTests(t, func(t *testing.T, match FileMatch) {
 		// Create opts for component
 		opts := component.Options{
@@ -385,13 +371,13 @@ func TestTwoTargets(t *testing.T) {
 		defer f.Close()
 		defer f2.Close()
 
-		ch1 := loki.NewLogsReceiver()
+		collector := loki.NewCollectingConsumer()
 		args := Arguments{
 			Targets: []discovery.Target{
 				discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "foo": "bar"}),
 				discovery.NewTargetFromMap(map[string]string{"__path__": f2.Name(), "foo": "bar2"}),
 			},
-			ForwardTo: []loki.LogsReceiver{ch1},
+			ForwardTo: []loki.Consumer{collector},
 			FileMatch: match,
 		}
 
@@ -408,20 +394,21 @@ func TestTwoTargets(t *testing.T) {
 		_, err = f2.Write([]byte("text2\n"))
 		require.NoError(t, err)
 
-		foundF1, foundF2 := false, false
-		for i := 0; i < 2; i++ {
-			select {
-			case logEntry := <-ch1.Chan():
-				require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-				switch logEntry.Line {
-				case "text":
-					foundF1 = true
-				case "text2":
-					foundF2 = true
-				}
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			require.Len(c, collector.Entries(), 2)
+		}, 5*time.Second, 100*time.Millisecond)
 
-			case <-time.After(5 * time.Second):
-				require.FailNow(t, "failed waiting for log line")
+		got := collector.Entries()
+
+		foundF1, foundF2 := false, false
+		for _, e := range got {
+			switch e.Line {
+			case "text":
+				foundF1 = true
+			case "text2":
+				foundF2 = true
+			default:
+				t.Fatalf("unknown entry: %s", e.Line)
 			}
 		}
 		require.True(t, foundF1)
@@ -512,7 +499,7 @@ func TestEncoding(t *testing.T) {
 				_, err = os.Stat(filePath)
 				require.NoError(t, err, fmt.Sprintf("%s test file should exist in testdata/encoding/", tc.filename))
 
-				ch1 := loki.NewLogsReceiver()
+				collector := loki.NewCollectingConsumer()
 				args := Arguments{
 					Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 						"__path__": filePath,
@@ -521,7 +508,7 @@ func TestEncoding(t *testing.T) {
 					FileMatch:           match,
 					Encoding:            tc.encoding,
 					DecompressionConfig: tc.decompressionConfig,
-					ForwardTo:           []loki.LogsReceiver{ch1},
+					ForwardTo:           []loki.Consumer{collector},
 				}
 
 				// Create and run the component
@@ -531,48 +518,25 @@ func TestEncoding(t *testing.T) {
 				ctx, cancel := context.WithCancel(componenttest.TestContext(t))
 
 				var wg sync.WaitGroup
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
-					err := c.Run(ctx)
-					require.NoError(t, err)
-				}()
+				wg.Go(func() {
+					_ = c.Run(ctx)
+				})
 
 				expectedLabelSet := model.LabelSet{
 					"filename": model.LabelValue(filePath),
 					"source":   "sql_errorlog_real",
 				}
 
-				// Collect all received log lines
-				receivedLines := make([]string, 0)
-				timeout := time.After(10 * time.Second)
+				require.EventuallyWithT(t, func(c *assert.CollectT) {
+					require.GreaterOrEqual(c, len(collector.Entries()), len(expectedLines))
+				}, 10*time.Second, 100*time.Millisecond)
 
-				// Read for a reasonable amount of time to get several log entries
-				readingComplete := false
-				for !readingComplete {
-					select {
-					case logEntry := <-ch1.Chan():
-						require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-						require.Equal(t, expectedLabelSet, logEntry.Labels)
-
-						receivedLines = append(receivedLines, logEntry.Line)
-						t.Logf("Received log line %d: %q", len(receivedLines), logEntry.Line)
-
-						// Stop after we have enough lines to verify the first few
-						if len(receivedLines) >= len(expectedLines) {
-							readingComplete = true
-						}
-
-					case <-timeout:
-						t.Logf("Timeout reached, received %d log lines total", len(receivedLines))
-						readingComplete = true
-					}
-				}
+				got := collector.Entries()
 
 				// Verify we received all log lines
-				require.Len(t, receivedLines, len(expectedLines))
 				for i := range expectedLines {
-					require.Equal(t, expectedLines[i], receivedLines[i], "log line %d should match", i+1)
+					require.Equal(t, expectedLines[i], got[i].Line)
+					require.Equal(t, expectedLabelSet, got[i].Labels)
 				}
 
 				// Shut down the component before checking for the positions file.
@@ -588,7 +552,6 @@ func TestEncoding(t *testing.T) {
 					}
 					return true
 				}, 5*time.Second, 10*time.Millisecond, "expected positions.yml file to be written eventually")
-
 				wg.Wait()
 			})
 		}
@@ -610,7 +573,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 		ctrl, err := componenttest.NewControllerFromID(nil, "loki.source.file")
 		require.NoError(t, err)
 
-		ch1 := loki.NewLogsReceiver()
+		collector := loki.NewCollectingConsumer()
 
 		go func() {
 			err := ctrl.Run(ctx, Arguments{
@@ -618,7 +581,7 @@ func TestDeleteRecreateFile(t *testing.T) {
 					"__path__": f.Name(),
 					"foo":      "bar",
 				})},
-				ForwardTo: []loki.LogsReceiver{ch1},
+				ForwardTo: []loki.Consumer{collector},
 				FileMatch: match,
 			})
 			require.NoError(t, err)
@@ -639,7 +602,15 @@ func TestDeleteRecreateFile(t *testing.T) {
 			"foo":      "bar",
 		}
 
-		checkMsg(t, ch1, "writing some text", 5*time.Second, wantLabelSet)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			require.Len(c, collector.Entries(), 1)
+		}, 5*time.Second, 100*time.Millisecond)
+
+		got := collector.Entries()[0]
+
+		require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+		require.Equal(t, "writing some text", got.Line)
+		require.Equal(t, wantLabelSet, got.Labels)
 
 		require.NoError(t, f.Close())
 		require.NoError(t, os.Remove(f.Name()))
@@ -653,10 +624,19 @@ func TestDeleteRecreateFile(t *testing.T) {
 		defer os.Remove(f.Name())
 		defer f.Close()
 
+		collector.Reset()
+
 		_, err = f.Write([]byte("writing some new text\n"))
 		require.NoError(t, err)
 
-		checkMsg(t, ch1, "writing some new text", 5*time.Second, wantLabelSet)
+		require.EventuallyWithT(t, func(c *assert.CollectT) {
+			require.Len(c, collector.Entries(), 1)
+		}, 5*time.Second, 100*time.Millisecond)
+
+		got = collector.Entries()[0]
+		require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+		require.Equal(t, "writing some new text", got.Line)
+		require.Equal(t, wantLabelSet, got.Labels)
 	})
 }
 
@@ -667,16 +647,5 @@ func runTests(t *testing.T, run func(t *testing.T, match FileMatch)) {
 		t.Run(fmt.Sprintf("file match %t", m.Enabled), func(t *testing.T) {
 			run(t, m)
 		})
-	}
-}
-
-func checkMsg(t *testing.T, ch loki.LogsReceiver, msg string, timeout time.Duration, labelSet model.LabelSet) {
-	select {
-	case logEntry := <-ch.Chan():
-		require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-		require.Equal(t, msg, logEntry.Line)
-		require.Equal(t, labelSet, logEntry.Labels)
-	case <-time.After(timeout):
-		require.FailNow(t, "failed waiting for log line")
 	}
 }

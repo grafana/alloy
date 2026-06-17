@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"path"
@@ -63,14 +64,14 @@ var (
 )
 
 type Arguments struct {
-	DataSourceName     alloytypes.Secret   `alloy:"data_source_name,attr"`
-	ForwardTo          []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Targets            []discovery.Target  `alloy:"targets,attr,optional"`
-	EnableCollectors   []string            `alloy:"enable_collectors,attr,optional"`
-	DisableCollectors  []string            `alloy:"disable_collectors,attr,optional"`
-	ExcludeDatabases   []string            `alloy:"exclude_databases,attr,optional"`
-	ExcludeUsers       []string            `alloy:"exclude_users,attr,optional"`
-	ExcludeCurrentUser bool                `alloy:"exclude_current_user,attr,optional"`
+	DataSourceName     alloytypes.Secret  `alloy:"data_source_name,attr"`
+	ForwardTo          []loki.Consumer    `alloy:"forward_to,attr"`
+	Targets            []discovery.Target `alloy:"targets,attr,optional"`
+	EnableCollectors   []string           `alloy:"enable_collectors,attr,optional"`
+	DisableCollectors  []string           `alloy:"disable_collectors,attr,optional"`
+	ExcludeDatabases   []string           `alloy:"exclude_databases,attr,optional"`
+	ExcludeUsers       []string           `alloy:"exclude_users,attr,optional"`
+	ExcludeCurrentUser bool               `alloy:"exclude_current_user,attr,optional"`
 
 	CloudProvider          *CloudProvider               `alloy:"cloud_provider,block,optional"`
 	QuerySampleArguments   QuerySampleArguments         `alloy:"query_samples,block,optional"`
@@ -210,13 +211,14 @@ func (a *Arguments) Validate() error {
 
 type Exports struct {
 	Targets      []discovery.Target `alloy:"targets,attr"`
-	LogsReceiver loki.LogsReceiver  `alloy:"logs_receiver,attr,optional"`
+	LogsReceiver loki.Consumer      `alloy:"logs_receiver,attr,optional"`
 }
 
 var (
 	_ component.Component       = (*Component)(nil)
 	_ http_service.Component    = (*Component)(nil)
 	_ component.HealthComponent = (*Component)(nil)
+	_ loki.Consumer             = (*Component)(nil)
 )
 
 type Collector interface {
@@ -230,7 +232,7 @@ type Component struct {
 	opts               component.Options
 	args               Arguments
 	handler            loki.LogsReceiver
-	fanout             *loki.Fanout
+	fanout             *loki.FanoutConsumer
 	mut                sync.RWMutex
 	registry           *prometheus.Registry
 	baseTarget         discovery.Target
@@ -251,7 +253,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	c := &Component{
 		opts:         opts,
 		args:         args,
-		fanout:       loki.NewFanout(args.ForwardTo),
+		fanout:       loki.NewFanoutConsumer(args.ForwardTo),
 		handler:      loki.NewLogsReceiver(),
 		registry:     prometheus.NewRegistry(),
 		healthErr:    atomic.NewString(""),
@@ -274,7 +276,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 	// Export logs receiver immediately so loki.source.file can wire to it
 	opts.OnStateChange(Exports{
 		Targets:      []discovery.Target{},
-		LogsReceiver: c.logsReceiver,
+		LogsReceiver: c,
 	})
 
 	if err := c.Update(args); err != nil {
@@ -510,7 +512,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 
 	c.opts.OnStateChange(Exports{
 		Targets:      targets,
-		LogsReceiver: c.logsReceiver,
+		LogsReceiver: c,
 	})
 
 	for _, collector := range c.collectors {
@@ -530,7 +532,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	c.args = args.(Arguments)
-	c.fanout.UpdateChildren(c.args.ForwardTo)
+	c.fanout.Update(c.args.ForwardTo)
 
 	if err := c.connectAndStartCollectors(context.Background()); err != nil {
 		c.reportError("failed to connect and start collectors", err)
@@ -719,7 +721,6 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
 		Receiver:         c.logsReceiver,
-		EntryHandler:     loki.NewEntryHandler(c.logsReceiver.Chan(), func() {}),
 		Logger:           c.opts.Logger,
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
@@ -777,6 +778,22 @@ func (c *Component) CurrentHealth() component.Health {
 		Health:     component.HealthTypeHealthy,
 		Message:    "All collectors are healthy",
 		UpdateTime: time.Now(),
+	}
+}
+
+// Consume implements loki.Consumer.
+func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
+	// FIXME(kalleep): Implement batching see https://github.com/grafana/alloy/issues/4953
+	return errors.New("consume: unimplemented")
+}
+
+// ConsumeEntry implements loki.Consumer.
+func (c *Component) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case c.logsReceiver.Chan() <- entry:
+		return nil
 	}
 }
 

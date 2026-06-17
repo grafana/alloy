@@ -3,22 +3,17 @@ package relabel
 import (
 	"context"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
-	"github.com/grafana/alloy/internal/component/discovery"
-	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
@@ -128,10 +123,7 @@ func TestComponent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			collector1 := loki.NewCollectingHandler()
-			defer collector1.Stop()
-			collector2 := loki.NewCollectingHandler()
-			defer collector2.Stop()
+			collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 			logger := util.TestAlloyLogger(t)
 
 			opts := component.Options{
@@ -141,7 +133,7 @@ func TestComponent(t *testing.T) {
 				GetServiceData: getServiceData,
 			}
 			args := Arguments{
-				ForwardTo:      []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()},
+				ForwardTo:      []loki.Consumer{collector1, collector2},
 				RelabelConfigs: tt.rules,
 				MaxCacheSize:   10,
 			}
@@ -150,30 +142,27 @@ func TestComponent(t *testing.T) {
 			require.NoError(t, err)
 			go c.Run(t.Context())
 
-			c.receiver.Chan() <- tt.input
+			require.NoError(t, c.receiver.ConsumeEntry(t.Context(), tt.input))
 
 			if tt.dropped {
-				require.Never(t, func() bool {
-					return len(collector1.Received()) > 0 || len(collector2.Received()) > 0
-				}, time.Second, 10*time.Millisecond)
+				require.Len(t, collector1.Entries(), 0)
+				require.Len(t, collector2.Entries(), 0)
 				return
 			}
 
-			require.EventuallyWithT(t, func(c *assert.CollectT) {
-				received1 := collector1.Received()
-				received2 := collector2.Received()
+			received1 := collector1.Entries()
+			received2 := collector2.Entries()
 
-				require.Len(c, received1, 1)
-				require.Len(c, received2, 1)
+			require.Len(t, received1, 1)
+			require.Len(t, received2, 1)
 
-				require.Equal(t, now, received1[0].Timestamp)
-				require.Equal(c, tt.input.Line, received1[0].Line)
-				require.Equal(c, tt.wantLabels, received1[0].Labels)
+			require.Equal(t, now, received1[0].Timestamp)
+			require.Equal(t, tt.input.Line, received1[0].Line)
+			require.Equal(t, tt.wantLabels, received1[0].Labels)
 
-				require.Equal(t, now, received2[0].Timestamp)
-				require.Equal(c, tt.input.Line, received2[0].Line)
-				require.Equal(c, tt.wantLabels, received2[0].Labels)
-			}, 5*time.Second, 10*time.Millisecond)
+			require.Equal(t, now, received2[0].Timestamp)
+			require.Equal(t, tt.input.Line, received2[0].Line)
+			require.Equal(t, tt.wantLabels, received2[0].Labels)
 		})
 	}
 }
@@ -203,7 +192,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 	}
 	var relabelConfigs cfg
 	_ = syntax.Unmarshal([]byte(rc), &relabelConfigs)
-	ch1 := loki.NewLogsReceiver()
+	collector := loki.NewCollectingConsumer()
 
 	// Create and run the component, so that it relabels and forwards logs.
 	logger := util.TestAlloyLogger(b)
@@ -214,7 +203,7 @@ func BenchmarkRelabelComponent(b *testing.B) {
 		GetServiceData: getServiceData,
 	}
 	args := Arguments{
-		ForwardTo:      []loki.LogsReceiver{ch1},
+		ForwardTo:      []loki.Consumer{collector},
 		RelabelConfigs: relabelConfigs.Rcs,
 		MaxCacheSize:   500_000,
 	}
@@ -223,25 +212,20 @@ func BenchmarkRelabelComponent(b *testing.B) {
 	ctx, cancel := context.WithCancel(b.Context())
 	go c.Run(ctx)
 
-	var entry loki.Entry
-	go func() {
-		for e := range ch1.Chan() {
-			entry = e
-		}
-	}()
-
 	now := time.Now()
 	for i := 0; i < b.N; i++ {
-		c.receiver.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/%d.log", "kubernetes_namespace": "dev", "kubernetes_pod_name": model.LabelValue(fmt.Sprintf("agent-%d", i)), "foo": "bar"},
-			Entry: push.Entry{
-				Timestamp: now,
-				Line:      "very important log",
+		_ = c.receiver.ConsumeEntry(
+			b.Context(),
+			loki.Entry{
+				Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/%d.log", "kubernetes_namespace": "dev", "kubernetes_pod_name": model.LabelValue(fmt.Sprintf("agent-%d", i)), "foo": "bar"},
+				Entry: push.Entry{
+					Timestamp: now,
+					Line:      "very important log",
+				},
 			},
-		}
+		)
 	}
 
-	_ = entry
 	cancel()
 }
 
@@ -253,7 +237,7 @@ func TestCache(t *testing.T) {
 	err := syntax.Unmarshal([]byte(rc), &relabelConfigs)
 	require.NoError(t, err)
 
-	ch1 := loki.NewLogsReceiver()
+	collector := loki.NewCollectingConsumer()
 
 	// Create and run the component, so that it relabels and forwards logs.
 	logger := util.TestAlloyLogger(t)
@@ -264,7 +248,7 @@ func TestCache(t *testing.T) {
 		GetServiceData: getServiceData,
 	}
 	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch1},
+		ForwardTo: []loki.Consumer{collector},
 		RelabelConfigs: []*alloy_relabel.Config{
 			{
 				SourceLabels: []string{"name", "A"},
@@ -280,14 +264,6 @@ func TestCache(t *testing.T) {
 	c, err := New(opts, args)
 	require.NoError(t, err)
 	go c.Run(t.Context())
-
-	receivedMessages := atomic.NewInt32(0)
-	go func() {
-		for e := range ch1.Chan() {
-			receivedMessages.Inc()
-			require.Equal(t, "very important log", e.Line)
-		}
-	}()
 
 	e := getEntry()
 
@@ -307,15 +283,13 @@ func TestCache(t *testing.T) {
 	}
 	// Send three entries with different label sets along the receiver.
 	e.Labels = lsets[0]
-	c.receiver.Chan() <- e
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), e))
 	e.Labels = lsets[1]
-	c.receiver.Chan() <- e
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), e))
 	e.Labels = lsets[2]
-	c.receiver.Chan() <- e
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), e))
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.EqualValues(c, 3, receivedMessages.Load())
-	}, 3*time.Second, 25*time.Millisecond)
+	require.Len(t, collector.Entries(), 3)
 
 	// Let's look into the cache's structure now!
 	// The cache should have stored each label set by its fingerprint.
@@ -336,13 +310,11 @@ func TestCache(t *testing.T) {
 	// We should've hit the cached path, with no changes to the cache's length
 	// or the underlying stored value.
 	e.Labels = lsets[0]
-	c.receiver.Chan() <- e
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), e))
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.EqualValues(c, 4, receivedMessages.Load())
-	}, 3*time.Second, 25*time.Millisecond)
-
+	require.Len(t, collector.Entries(), 4)
 	require.Equal(t, c.cache.Len(), 3)
+
 	val, _ := c.cache.Get(lsets[0].Fingerprint())
 	cachedVal := val.([]cacheItem)
 	require.Len(t, cachedVal, 1)
@@ -358,15 +330,12 @@ func TestCache(t *testing.T) {
 	require.Equal(t, ls1.Fingerprint(), ls2.Fingerprint(), "expected labelset fingerprints to collide; have we changed the hashing algorithm?")
 
 	e.Labels = ls1
-	c.receiver.Chan() <- e
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), e))
 
 	e.Labels = ls2
-	c.receiver.Chan() <- e
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), e))
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.EqualValues(c, 6, receivedMessages.Load())
-	}, 3*time.Second, 25*time.Millisecond)
-
+	require.Len(t, collector.Entries(), 6)
 	// Both of these should be under a single, new cache key which will contain
 	// both entries.
 	require.Equal(t, c.cache.Len(), 4)
@@ -383,14 +352,11 @@ func TestCache(t *testing.T) {
 	// Finally, send two more entries, which should fill up the cache and evict
 	// the Least Recently Used items (lsets[1], and lsets[2]).
 	e.Labels = lsets[3]
-	c.receiver.Chan() <- e
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), e))
 	e.Labels = lsets[4]
-	c.receiver.Chan() <- e
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), e))
 
-	require.EventuallyWithT(t, func(c *assert.CollectT) {
-		require.EqualValues(c, 8, receivedMessages.Load())
-	}, 3*time.Second, 25*time.Millisecond)
-
+	require.Len(t, collector.Entries(), 8)
 	require.Equal(t, c.cache.Len(), 4)
 	wantKeys := []model.Fingerprint{lsets[0].Fingerprint(), ls1.Fingerprint(), lsets[3].Fingerprint(), lsets[4].Fingerprint()}
 	actualKeys := make([]model.Fingerprint, 0, len(wantKeys))
@@ -421,12 +387,12 @@ rule {
 }
 `
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 	var args1, args2 Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(stg1), &args1))
 	require.NoError(t, syntax.Unmarshal([]byte(stg2), &args2))
-	args1.ForwardTo = []loki.LogsReceiver{ch1}
-	args2.ForwardTo = []loki.LogsReceiver{ch2}
+	args1.ForwardTo = []loki.Consumer{collector1}
+	args2.ForwardTo = []loki.Consumer{collector2}
 
 	// Start the loki.process components.
 	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.relabel")
@@ -445,55 +411,34 @@ rule {
 	require.NoError(t, tc1.WaitExports(time.Second))
 	require.NoError(t, tc2.WaitExports(time.Second))
 
-	// Create a file to log to.
-	f, err := os.CreateTemp(t.TempDir(), "example")
-	require.NoError(t, err)
-	defer f.Close()
+	fanout := loki.NewFanoutConsumer([]loki.Consumer{
+		tc1.Exports().(Exports).Receiver,
+		tc2.Exports().(Exports).Receiver,
+	})
 
-	// Create and start a component that will read from that file and fan out to both components.
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
-	require.NoError(t, err)
-
-	go func() {
-		err := ctrl.Run(t.Context(), lsf.Arguments{
-			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
-			ForwardTo: []loki.LogsReceiver{
-				tc1.Exports().(Exports).Receiver,
-				tc2.Exports().(Exports).Receiver,
-			},
-			FileMatch: lsf.FileMatch{
-				Enabled:    false,
-				SyncPeriod: 10 * time.Second,
-			},
-		})
-		require.NoError(t, err)
-	}()
-	ctrl.WaitRunning(time.Minute)
-
-	// Write a line to the file.
-	_, err = f.Write([]byte("writing some text\n"))
-	require.NoError(t, err)
-
-	wantLabelSet := model.LabelSet{
-		"filename": model.LabelValue(f.Name()),
+	lset := model.LabelSet{
+		"filename": "myfile",
 		"somelbl":  "somevalue",
 	}
 
+	require.NoError(t, fanout.ConsumeEntry(t.Context(), loki.NewEntry(lset, push.Entry{
+		Timestamp: time.Now(),
+		Line:      "my line",
+	})))
+
 	// The two entries have been modified without a race condition.
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "writing some text", logEntry.Line)
-			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}), logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "writing some text", logEntry.Line)
-			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}), logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
+
+	got := collector1.Entries()
+	require.Len(t, got, 1)
+	require.WithinDuration(t, time.Now(), got[0].Entry.Timestamp, 1*time.Second)
+	require.Equal(t, "my line", got[0].Entry.Line)
+	require.Equal(t, lset.Clone().Merge(model.LabelSet{"lbl": "foo"}), got[0].Labels)
+
+	got = collector2.Entries()
+	require.Len(t, got, 1)
+	require.WithinDuration(t, time.Now(), got[0].Entry.Timestamp, 1*time.Second)
+	require.Equal(t, "my line", got[0].Entry.Line)
+	require.Equal(t, lset.Clone().Merge(model.LabelSet{"lbl": "bar"}), got[0].Labels)
 }
 
 func TestRuleGetter(t *testing.T) {

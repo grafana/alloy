@@ -32,7 +32,7 @@ type ScrapeConfigBuilder struct {
 	globalCtx *GlobalContext
 
 	allTargetsExps            []string
-	processStageReceivers     []loki.LogsReceiver
+	processStageReceivers     []loki.Consumer
 	allRelabeledTargetsExpr   string
 	discoveryRelabelRulesExpr string
 	lokiRelabelReceiverExpr   string
@@ -119,7 +119,7 @@ func (s *ScrapeConfigBuilder) getOrNewLokiRelabel() string {
 	return s.lokiRelabelReceiverExpr
 }
 
-func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.LogsReceiver {
+func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.Consumer {
 	if s.processStageReceivers != nil {
 		return s.processStageReceivers
 	}
@@ -146,7 +146,7 @@ func (s *ScrapeConfigBuilder) getOrNewProcessStageReceivers() []loki.LogsReceive
 	}
 	compLabel := common.LabelForParts(s.globalCtx.LabelPrefix, s.cfg.JobName)
 	s.f.Body().AppendBlock(common.NewBlockWithOverride([]string{"loki", "process"}, compLabel, args))
-	s.processStageReceivers = []loki.LogsReceiver{common.ConvertLogsReceiver{
+	s.processStageReceivers = []loki.Consumer{common.ConvertLogsConsumer{
 		Expr: fmt.Sprintf("loki.process.%s.receiver", compLabel),
 	}}
 	return s.processStageReceivers
@@ -245,10 +245,10 @@ func convertFileMatchConfig(sync time.Duration) lokisourcefile.FileMatch {
 	}
 }
 
-func logsReceiversToExpr(r []loki.LogsReceiver) string {
+func logsReceiversToExpr(r []loki.Consumer) string {
 	var exprs []string
 	for _, r := range r {
-		clr := r.(common.ConvertLogsReceiver)
+		clr := r.(common.ConvertLogsConsumer)
 		exprs = append(exprs, clr.Expr)
 	}
 	return "[" + strings.Join(exprs, ", ") + "]"

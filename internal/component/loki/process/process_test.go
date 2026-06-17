@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"reflect"
 	"slices"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
 	"go.uber.org/goleak"
@@ -23,9 +23,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/loki/process/stages"
-	lsf "github.com/grafana/alloy/internal/component/loki/source/file"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -807,13 +805,11 @@ func TestComponent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			collector1, collector2 := loki.NewCollectingHandler(), loki.NewCollectingHandler()
-			defer collector1.Stop()
-			defer collector2.Stop()
+			collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 
 			var args Arguments
 			require.NoError(t, syntax.Unmarshal([]byte(tt.cfg), &args))
-			args.ForwardTo = []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()}
+			args.ForwardTo = []loki.Consumer{collector1, collector2}
 
 			opts := component.Options{
 				Logger:         logging.NewSlogNop(),
@@ -831,11 +827,11 @@ func TestComponent(t *testing.T) {
 			go func() { runErr <- c.Run(ctx) }()
 
 			for _, input := range tt.inputs {
-				c.receiver.Chan() <- input
+				require.NoError(t, c.receiver.ConsumeEntry(t.Context(), input))
 			}
 
 			require.Eventually(t, func() bool {
-				return len(collector1.Received()) == len(tt.expected) && len(collector2.Received()) == len(tt.expected)
+				return len(collector1.Entries()) == len(tt.expected) && len(collector2.Entries()) == len(tt.expected)
 			}, 5*time.Second, 10*time.Millisecond)
 
 			if tt.unorderedFrom == nil {
@@ -849,8 +845,8 @@ func TestComponent(t *testing.T) {
 				assertEntriesUnordered(t, expected[unorderedFrom:], got[unorderedFrom:])
 			}
 
-			assert(t, *tt.unorderedFrom, tt.expected, collector1.Received())
-			assert(t, *tt.unorderedFrom, tt.expected, collector2.Received())
+			assert(t, *tt.unorderedFrom, tt.expected, collector1.Entries())
+			assert(t, *tt.unorderedFrom, tt.expected, collector2.Entries())
 
 			cancel()
 			require.NoError(t, <-runErr)
@@ -942,31 +938,29 @@ func TestComponent_UpdateInvalidConfig(t *testing.T) {
 	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
 	require.NoError(t, err)
 
-	collector := loki.NewCollectingHandler()
-	defer collector.Stop()
+	collector := loki.NewCollectingConsumer()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var wg sync.WaitGroup
 	wg.Go(func() {
-		require.NoError(t, ctrl.Run(ctx, Arguments{ForwardTo: []loki.LogsReceiver{collector.Receiver()}}))
+		require.NoError(t, ctrl.Run(ctx, Arguments{ForwardTo: []loki.Consumer{collector}}))
 	})
 	require.NoError(t, ctrl.WaitExports(time.Minute))
 
 	recv := ctrl.Exports().(Exports).Receiver
-	fanout := loki.NewFanout([]loki.LogsReceiver{recv})
 
 	wg.Go(func() {
 		for {
-			// We get error if context is canceled
-			if err := fanout.Send(ctx, loki.Entry{}); err != nil {
+			// We get error when component is stopped
+			if err := recv.ConsumeEntry(ctx, loki.Entry{}); err != nil {
 				return
 			}
 		}
 	})
 
 	err = ctrl.Update(Arguments{
-		ForwardTo: []loki.LogsReceiver{collector.Receiver()},
+		ForwardTo: []loki.Consumer{collector},
 		Stages: []stages.StageConfig{
 			{
 				MatchConfig: &stages.MatchConfig{
@@ -1027,7 +1021,7 @@ func TestJSONLabelsStage(t *testing.T) {
 			}`
 
 	// Unmarshal the Alloy relabel rules into a custom struct, as we don't have
-	// an easy way to refer to a loki.LogsReceiver value for the forward_to
+	// an easy way to refer to a loki.Consumer value for the forward_to
 	// argument.
 	type cfg struct {
 		Stages []stages.StageConfig `alloy:"stage,enum"`
@@ -1036,7 +1030,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	err := syntax.Unmarshal([]byte(stg), &stagesCfg)
 	require.NoError(t, err)
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 
 	liveDebuggingLog := testlivedebugging.NewLog()
 
@@ -1049,7 +1043,7 @@ func TestJSONLabelsStage(t *testing.T) {
 		GetServiceData: getServiceDataWithLiveDebugging(liveDebuggingLog),
 	}
 	args := Arguments{
-		ForwardTo: []loki.LogsReceiver{ch1, ch2},
+		ForwardTo: []loki.Consumer{collector1, collector2},
 		Stages:    stagesCfg.Stages,
 	}
 
@@ -1077,7 +1071,7 @@ func TestJSONLabelsStage(t *testing.T) {
 		},
 	}
 
-	c.receiver.Chan() <- logEntry
+	require.NoError(t, c.receiver.ConsumeEntry(t.Context(), logEntry))
 
 	// This is the timestamp from the json body of the log line that is being sent.
 	expectedTsLabel := "2019-04-30T02:12:41.8443515Z"
@@ -1092,22 +1086,20 @@ func TestJSONLabelsStage(t *testing.T) {
 		"user":     "smith",
 	}
 
-	// The log entry should be received in both channels, with the processing
-	// stages correctly applied.
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.Equal(t, expectedTs, logEntry.Timestamp)
-			require.Equal(t, logline, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.Equal(t, expectedTs, logEntry.Timestamp)
-			require.Equal(t, logline, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
+		require.Len(c, collector2.Entries(), 1)
+	}, 5*time.Second, 50*time.Millisecond)
+
+	got := collector1.Entries()[0]
+	require.Equal(t, expectedTs, got.Timestamp)
+	require.Equal(t, logline, got.Line)
+	require.Equal(t, wantLabelSet, got.Labels)
+
+	got = collector2.Entries()[0]
+	require.Equal(t, expectedTs, got.Timestamp)
+	require.Equal(t, logline, got.Line)
+	require.Equal(t, wantLabelSet, got.Labels)
 
 	cancel()
 	wgRun.Wait()
@@ -1138,12 +1130,13 @@ stage.static_labels {
 }
 `
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
+
 	var args1, args2 Arguments
 	require.NoError(t, syntax.Unmarshal([]byte(stg1), &args1))
 	require.NoError(t, syntax.Unmarshal([]byte(stg2), &args2))
-	args1.ForwardTo = []loki.LogsReceiver{ch1}
-	args2.ForwardTo = []loki.LogsReceiver{ch2}
+	args1.ForwardTo = []loki.Consumer{collector1}
+	args2.ForwardTo = []loki.Consumer{collector2}
 
 	ctx, ctxCancel := context.WithCancel(t.Context())
 	defer ctxCancel()
@@ -1158,64 +1151,41 @@ stage.static_labels {
 	require.NoError(t, tc1.WaitExports(time.Second))
 	require.NoError(t, tc2.WaitExports(time.Second))
 
-	// Create a file to log to.
-	f, err := os.CreateTemp(t.TempDir(), "example")
-	require.NoError(t, err)
-	defer f.Close()
+	fanout := loki.NewFanoutConsumer([]loki.Consumer{
+		tc1.Exports().(Exports).Receiver,
+		tc2.Exports().(Exports).Receiver,
+	})
 
-	// Create and start a component that will read from that file and fan out to both components.
-	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
-	require.NoError(t, err)
-
-	go func() {
-		err := ctrl.Run(ctx, lsf.Arguments{
-			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
-			ForwardTo: []loki.LogsReceiver{
-				tc1.Exports().(Exports).Receiver,
-				tc2.Exports().(Exports).Receiver,
-			},
-			FileMatch: lsf.FileMatch{
-				Enabled:    false,
-				SyncPeriod: 10 * time.Second,
-			},
-		})
-		require.NoError(t, err)
-	}()
-	ctrl.WaitRunning(time.Minute)
-
-	// Write a line to the file.
-	_, err = f.Write([]byte("writing some text\n"))
-	require.NoError(t, err)
-
-	wantLabelSet := model.LabelSet{
-		"filename": model.LabelValue(f.Name()),
+	lset := model.LabelSet{
+		"filename": "myfile",
 		"somelbl":  "somevalue",
 	}
 
-	// The lines were received after processing by each component, with no
-	// race condition between them.
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "writing some text", logEntry.Line)
-			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}), logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, "writing some text", logEntry.Line)
-			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}), logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
+	require.NoError(t, fanout.ConsumeEntry(t.Context(), loki.NewEntry(lset, push.Entry{
+		Timestamp: time.Now(),
+		Line:      "my line",
+	})))
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
+		require.Len(c, collector2.Entries(), 1)
+	}, 5*time.Second, 50*time.Millisecond)
+
+	got := collector1.Entries()[0]
+	require.Equal(t, "my line", got.Line)
+	require.Equal(t, lset.Merge(model.LabelSet{"lbl": "foo"}), got.Labels)
+
+	got = collector2.Entries()[0]
+	require.Equal(t, "my line", got.Line)
+	require.Equal(t, lset.Merge(model.LabelSet{"lbl": "bar"}), got.Labels)
 }
 
 type testFrequentUpdate struct {
 	t *testing.T
 	c *Component
 
-	receiver1 loki.LogsReceiver
-	receiver2 loki.LogsReceiver
+	receiver1 loki.Consumer
+	receiver2 loki.Consumer
 
 	keepSending   atomic.Bool
 	stopReceiving chan struct{}
@@ -1226,16 +1196,14 @@ type testFrequentUpdate struct {
 	wgRun     sync.WaitGroup
 	wgUpdate  sync.WaitGroup
 
-	lastSend atomic.Value
-
 	stop func()
 }
 
 func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 	res := testFrequentUpdate{
 		t:             t,
-		receiver1:     loki.NewLogsReceiver(),
-		receiver2:     loki.NewLogsReceiver(),
+		receiver1:     loki.NewCollectingConsumer(),
+		receiver2:     loki.NewCollectingConsumer(),
 		stopReceiving: make(chan struct{}),
 	}
 
@@ -1256,16 +1224,13 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 
 		close(res.stopReceiving)
 		res.wgReceive.Wait()
-
-		close(res.receiver1.Chan())
-		close(res.receiver2.Chan())
 	}
 
 	var args Arguments
 	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t, err)
 
-	args.ForwardTo = []loki.LogsReceiver{res.receiver1, res.receiver2}
+	args.ForwardTo = []loki.Consumer{res.receiver1, res.receiver2}
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
@@ -1287,32 +1252,9 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 	return &res
 }
 
-// Continuously receive the logs from both channels
-func (r *testFrequentUpdate) drainLogs() {
-	drainLogs := func() {
-		r.lastSend.Store(time.Now())
-	}
-
-	r.wgReceive.Add(1)
-	go func() {
-		for {
-			select {
-			case <-r.stopReceiving:
-				r.wgReceive.Done()
-				return
-			case <-r.receiver1.Chan():
-				drainLogs()
-			case <-r.receiver2.Chan():
-				drainLogs()
-			}
-		}
-	}()
-}
-
 // Continuously send entries to both channels
 func (r *testFrequentUpdate) sendLogs() {
-	r.wgSend.Add(1)
-	go func() {
+	r.wgSend.Go(func() {
 		for r.keepSending.Load() {
 			ts := time.Now()
 			logEntry := loki.Entry{
@@ -1322,26 +1264,21 @@ func (r *testFrequentUpdate) sendLogs() {
 					Line:      logline,
 				},
 			}
-			select {
-			case r.c.receiver.Chan() <- logEntry:
-			default:
-				// continue
-			}
+			_ = r.c.receiver.ConsumeEntry(context.Background(), logEntry)
 		}
-		r.wgSend.Done()
-	}()
+	})
 }
 
 func (r *testFrequentUpdate) updateContinuously(cfg1, cfg2 string) {
 	var args1 Arguments
 	err := syntax.Unmarshal([]byte(cfg1), &args1)
 	require.NoError(r.t, err)
-	args1.ForwardTo = []loki.LogsReceiver{r.receiver1}
+	args1.ForwardTo = []loki.Consumer{r.receiver1}
 
 	var args2 Arguments
 	err = syntax.Unmarshal([]byte(cfg2), &args2)
 	require.NoError(r.t, err)
-	args2.ForwardTo = []loki.LogsReceiver{r.receiver2}
+	args2.ForwardTo = []loki.Consumer{r.receiver2}
 
 	r.wgUpdate.Add(1)
 	go func() {
@@ -1390,15 +1327,11 @@ func TestDeadlockWithFrequentUpdates(t *testing.T) {
 	// Continuously send entries to both channels
 	r.sendLogs()
 
-	// Continuously receive entries on both channels
-	r.drainLogs()
-
 	// Call Updates
 	r.updateContinuously(cfg1, cfg2)
 
 	// Run everything for a while
 	time.Sleep(1 * time.Second)
-	require.WithinDuration(t, time.Now(), r.lastSend.Load().(time.Time), 300*time.Millisecond)
 
 	// Clean up
 	r.stop()
@@ -1615,7 +1548,7 @@ type tester struct {
 	component    *Component
 	registry     *prometheus.Registry
 	cancelFunc   context.CancelFunc
-	logReceiver  loki.LogsReceiver
+	collector    *loki.CollectingConsumer
 	logTimestamp time.Time
 	logEntry     loki.Entry
 	wantLabelSet model.LabelSet
@@ -1638,8 +1571,8 @@ func newTester(t *testing.T) *tester {
 	err := syntax.Unmarshal([]byte(initialCfg), &args)
 	require.NoError(t, err)
 
-	logReceiver := loki.NewLogsReceiver()
-	args.ForwardTo = []loki.LogsReceiver{logReceiver}
+	logReceiver := loki.NewCollectingConsumer()
+	args.ForwardTo = []loki.Consumer{logReceiver}
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -1654,7 +1587,7 @@ func newTester(t *testing.T) *tester {
 		component:    c,
 		registry:     reg,
 		cancelFunc:   cancel,
-		logReceiver:  logReceiver,
+		collector:    logReceiver,
 		logTimestamp: logTimestamp,
 		logEntry: loki.Entry{
 			Labels: model.LabelSet{"filename": "/var/log/pods/agent/agent/1.log", "foo": "bar"},
@@ -1675,11 +1608,13 @@ func (t *tester) stop() {
 }
 
 func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSendingLogs, expectedMetricsAfterSendingLogs string) {
+	t.collector.Reset()
+
 	var args Arguments
 	err := syntax.Unmarshal([]byte(cfg), &args)
 	require.NoError(t.t, err)
 
-	args.ForwardTo = []loki.LogsReceiver{t.logReceiver}
+	args.ForwardTo = []loki.Consumer{t.collector}
 
 	t.component.Update(args)
 
@@ -1691,20 +1626,12 @@ func (t *tester) updateAndTest(numLogsToSend int, cfg, expectedMetricsBeforeSend
 
 	// Send logs.
 	for i := 0; i < numLogsToSend; i++ {
-		t.component.receiver.Chan() <- t.logEntry
+		require.NoError(t.t, t.component.receiver.ConsumeEntry(context.Background(), t.logEntry))
 	}
 
-	// Receive logs.
-	for i := 0; i < numLogsToSend; i++ {
-		select {
-		case logEntry := <-t.logReceiver.Chan():
-			require.True(t.t, t.logTimestamp.Equal(logEntry.Timestamp))
-			require.Equal(t.t, logline, logEntry.Line)
-			require.Equal(t.t, t.wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t.t, "failed waiting for log line")
-		}
-	}
+	require.EventuallyWithT(t.t, func(c *assert.CollectT) {
+		require.Len(c, t.collector.Entries(), numLogsToSend)
+	}, 5*time.Second, 50*time.Millisecond)
 
 	// Check the component metrics.
 	if err := testutil.GatherAndCompare(t.registry,

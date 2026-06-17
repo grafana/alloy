@@ -11,6 +11,7 @@ import (
 	"github.com/phayes/freeport"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
@@ -36,7 +37,7 @@ func TestPushFromNestedController(t *testing.T) {
 		OnStateChange: func(e component.Exports) {},
 	}
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 	args := Arguments{}
 
 	port, err := freeport.GetFreePort()
@@ -54,7 +55,7 @@ func TestPushFromNestedController(t *testing.T) {
 			"foo": "bar",
 		},
 	}
-	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
+	args.ForwardTo = []loki.Consumer{collector1, collector2}
 	args.RelabelRules = exportedRules
 
 	// Create and run the component.
@@ -70,7 +71,7 @@ func TestPush(t *testing.T) {
 		OnStateChange: func(e component.Exports) {},
 	}
 
-	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
+	collector1, collector2 := loki.NewCollectingConsumer(), loki.NewCollectingConsumer()
 	args := Arguments{}
 
 	port, err := freeport.GetFreePort()
@@ -88,7 +89,7 @@ func TestPush(t *testing.T) {
 			"foo": "bar",
 		},
 	}
-	args.ForwardTo = []loki.LogsReceiver{ch1, ch2}
+	args.ForwardTo = []loki.Consumer{collector1, collector2}
 	args.RelabelRules = exportedRules
 
 	// Create and run the component.
@@ -110,20 +111,20 @@ func TestPush(t *testing.T) {
 	wantLabelSet := model.LabelSet{"foo": "bar", "message_id": "5187581549398349", "resource_type": "k8s_cluster"}
 	wantLogLine := "{\"insertId\":\"4affa858-e5f2-47f7-9254-e609b5c014d0\",\"labels\":{},\"logName\":\"projects/test-project/logs/cloudaudit.googleapis.com%2Fdata_access\",\"receiveTimestamp\":\"2022-09-06T18:07:43.417714046Z\",\"resource\":{\"labels\":{\"cluster_name\":\"dev-us-central-42\",\"location\":\"us-central1\",\"project_id\":\"test-project\"},\"type\":\"k8s_cluster\"},\"timestamp\":\"2022-09-06T18:07:42.363113Z\"}\n"
 
-	for i := 0; i < 2; i++ {
-		select {
-		case logEntry := <-ch1.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, wantLogLine, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case logEntry := <-ch2.Chan():
-			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
-			require.Equal(t, wantLogLine, logEntry.Line)
-			require.Equal(t, wantLabelSet, logEntry.Labels)
-		case <-time.After(5 * time.Second):
-			require.FailNow(t, "failed waiting for log line")
-		}
-	}
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		require.Len(c, collector1.Entries(), 1)
+		require.Len(c, collector2.Entries(), 1)
+	}, 5*time.Second, 100*time.Millisecond)
+
+	got := collector1.Entries()[0]
+	require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+	require.Equal(t, wantLogLine, got.Line)
+	require.Equal(t, wantLabelSet, got.Labels)
+
+	got = collector2.Entries()[0]
+	require.WithinDuration(t, time.Now(), got.Timestamp, 1*time.Second)
+	require.Equal(t, wantLogLine, got.Line)
+	require.Equal(t, wantLabelSet, got.Labels)
 }
 
 const testPushPayload = `

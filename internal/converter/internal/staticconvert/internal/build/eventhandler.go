@@ -45,7 +45,7 @@ func (b *ConfigBuilder) appendEventHandlerV2(config *eventhandler_v2.Config) {
 	))
 }
 
-func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiver common.ConvertLogsReceiver, compLabel string) common.ConvertLogsReceiver {
+func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiver common.ConvertLogsConsumer, compLabel string) common.ConvertLogsConsumer {
 	var relabelConfigs []*alloy_relabel.Config
 	config.ExtraLabels.Range(func(extraLabel labels.Label) {
 		defaultConfig := alloy_relabel.DefaultRelabelConfig
@@ -58,7 +58,7 @@ func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiv
 	})
 
 	relabelArgs := relabel.Arguments{
-		ForwardTo:      []loki.LogsReceiver{receiver},
+		ForwardTo:      []loki.Consumer{receiver},
 		RelabelConfigs: relabelConfigs,
 		MaxCacheSize:   relabel.DefaultArguments.MaxCacheSize,
 	}
@@ -69,13 +69,13 @@ func (b *ConfigBuilder) injectExtraLabels(config *eventhandler_v2.Config, receiv
 		relabelArgs,
 	))
 
-	return common.ConvertLogsReceiver{
+	return common.ConvertLogsConsumer{
 		Expr: fmt.Sprintf("loki.relabel.%s.receiver", compLabel),
 	}
 }
 
-func getLogsReceiver(config *eventhandler_v2.Config) common.ConvertLogsReceiver {
-	logsReceiver := common.ConvertLogsReceiver{}
+func getLogsReceiver(config *eventhandler_v2.Config) common.ConvertLogsConsumer {
+	logsReceiver := common.ConvertLogsConsumer{}
 	if config.LogsInstance != "" {
 		compLabel, err := scanner.SanitizeIdentifier("logs_" + config.LogsInstance)
 		if err != nil {
@@ -88,7 +88,7 @@ func getLogsReceiver(config *eventhandler_v2.Config) common.ConvertLogsReceiver 
 	return logsReceiver
 }
 
-func toEventHandlerV2(config *eventhandler_v2.Config, receiver common.ConvertLogsReceiver) *kubernetes_events.Arguments {
+func toEventHandlerV2(config *eventhandler_v2.Config, receiver common.ConvertLogsConsumer) *kubernetes_events.Arguments {
 	defaultOverrides := kubernetes_events.DefaultArguments
 	defaultOverrides.Client.KubeConfig = config.KubeconfigPath
 	if config.Namespace != "" {
@@ -96,7 +96,7 @@ func toEventHandlerV2(config *eventhandler_v2.Config, receiver common.ConvertLog
 	}
 
 	return &kubernetes_events.Arguments{
-		ForwardTo:  []loki.LogsReceiver{receiver},
+		ForwardTo:  []loki.Consumer{receiver},
 		JobName:    kubernetes_events.DefaultArguments.JobName,
 		Namespaces: defaultOverrides.Namespaces,
 		LogFormat:  config.LogFormat,

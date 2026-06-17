@@ -32,8 +32,8 @@ func init() {
 // Arguments holds values which are used to configure the loki.relabel
 // component.
 type Arguments struct {
-	// Where the relabeled metrics should be forwarded to.
-	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
+	// Where the relabeled entries should be forwarded to.
+	ForwardTo []loki.Consumer `alloy:"forward_to,attr"`
 
 	// The relabelling rules to apply to each log entry before it's forwarded.
 	RelabelConfigs []*alloy_relabel.Config `alloy:"rule,block,optional"`
@@ -55,7 +55,7 @@ func (a *Arguments) SetToDefault() {
 
 // Exports holds values which are exported by the loki.relabel component.
 type Exports struct {
-	Receiver loki.LogsReceiver   `alloy:"receiver,attr"`
+	Receiver loki.Consumer       `alloy:"receiver,attr"`
 	Rules    alloy_relabel.Rules `alloy:"rules,attr"`
 }
 
@@ -64,17 +64,17 @@ type Component struct {
 	opts    component.Options
 	metrics *metrics
 
-	mut      sync.RWMutex
-	rcs      []*relabel.Config
-	receiver loki.LogsReceiver
-	fanout   *loki.Fanout
+	receiver *loki.InterceptorConsumer
+	fanout   *loki.FanoutConsumer
+
+	mut     sync.RWMutex
+	stopped bool
+	rcs     []*relabel.Config
 
 	cache        *lru.Cache
 	maxCacheSize int
 
 	debugDataPublisher livedebugging.DebugDataPublisher
-
-	builder labels.ScratchBuilder
 }
 
 var (
@@ -100,27 +100,19 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cache:              cache,
 		maxCacheSize:       args.MaxCacheSize,
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
-		builder:            labels.NewScratchBuilder(0),
-		fanout:             loki.NewFanout(args.ForwardTo),
+		fanout:             loki.NewFanoutConsumer(args.ForwardTo),
 	}
 
 	// Create and immediately export the receiver which remains the same for
 	// the component's lifetime.
-	c.receiver = loki.NewLogsReceiver(loki.WithComponentID(o.ID))
-	o.OnStateChange(Exports{Receiver: c.receiver, Rules: args.RelabelConfigs})
+	c.receiver = loki.NewInterceptorConsumer(c.opts.ID, c.fanout, loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
+		c.mut.RLock()
+		defer c.mut.RUnlock()
 
-	// Call to Update() to set the relabelling rules once at the start.
-	if err := c.Update(args); err != nil {
-		return nil, err
-	}
+		if c.stopped {
+			return entry, false, loki.ErrConsumerStopped
+		}
 
-	return c, nil
-}
-
-// Run implements component.Component.
-func (c *Component) Run(ctx context.Context) error {
-	componentID := livedebugging.ComponentID(c.opts.ID)
-	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(entry loki.Entry) (loki.Entry, bool) {
 		relabeled, ok := c.relabel(entry)
 
 		count := uint64(1)
@@ -128,7 +120,7 @@ func (c *Component) Run(ctx context.Context) error {
 			count = 0
 		}
 		c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
-			componentID,
+			livedebugging.ComponentID(c.opts.ID),
 			livedebugging.LokiLog,
 			count,
 			func() string {
@@ -141,12 +133,29 @@ func (c *Component) Run(ctx context.Context) error {
 
 		if !ok {
 			c.opts.Logger.Debug("dropping entry after relabeling", "labels", entry.Labels.String())
-			return loki.Entry{}, false
+			return loki.Entry{}, false, nil
 		}
 
 		c.metrics.entriesOutgoing.Inc()
-		return relabeled, true
-	})
+		return relabeled, true, nil
+	}))
+
+	// Call to Update() to set the relabelling rules once at the start and export rules and receiver
+	if err := c.Update(args); err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+// Run implements component.Component.
+func (c *Component) Run(ctx context.Context) error {
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
+	<-ctx.Done()
 	return nil
 }
 
@@ -169,7 +178,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 	c.rcs = newRCS
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	c.opts.OnStateChange(Exports{Receiver: c.receiver, Rules: newArgs.RelabelConfigs})
 
@@ -243,25 +252,34 @@ func (c *Component) relabel(e loki.Entry) (loki.Entry, bool) {
 	return e, true
 }
 
+var builderPool = sync.Pool{
+	New: func() any {
+		return labels.NewBuilder(labels.EmptyLabels())
+	},
+}
+
 func (c *Component) process(e loki.Entry) model.LabelSet {
-	c.builder.Reset()
+	builder := builderPool.Get().(*labels.Builder)
+	defer func() {
+		builder.Reset(labels.EmptyLabels())
+		builderPool.Put(builder)
+	}()
+
 	for k, v := range e.Labels {
-		c.builder.Add(string(k), string(v))
-	}
-	c.builder.Sort()
-	lbls := c.builder.Labels()
-	if len(c.rcs) > 0 {
-		lb := labels.NewBuilder(lbls)
-		if !relabel.ProcessBuilder(lb, c.rcs...) {
-			return nil
-		}
-		lbls = lb.Labels()
+		builder.Set(string(k), string(v))
 	}
 
+	ok := relabel.ProcessBuilder(builder, c.rcs...)
+	if !ok {
+		return nil
+	}
+
+	lbls := builder.Labels()
 	relabeled := make(model.LabelSet, lbls.Len())
 	lbls.Range(func(lbl labels.Label) {
 		relabeled[model.LabelName(lbl.Name)] = model.LabelValue(lbl.Value)
 	})
+
 	return relabeled
 }
 

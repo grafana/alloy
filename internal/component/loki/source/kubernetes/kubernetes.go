@@ -37,8 +37,8 @@ func init() {
 // Arguments holds values which are used to configure the loki.source.kubernetes
 // component.
 type Arguments struct {
-	Targets   []discovery.Target  `alloy:"targets,attr"`
-	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
+	Targets   []discovery.Target `alloy:"targets,attr"`
+	ForwardTo []loki.Consumer    `alloy:"forward_to,attr"`
 
 	// Client settings to connect to Kubernetes.
 	Client commonk8s.ClientArguments `alloy:"client,block,optional"`
@@ -62,7 +62,7 @@ type Component struct {
 	positions positions.Positions
 	cluster   cluster.Cluster
 
-	fanout  *loki.Fanout
+	fanout  *loki.FanoutConsumer
 	handler loki.LogsReceiver
 
 	mut         sync.Mutex
@@ -101,7 +101,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		cluster:   data.(cluster.Cluster),
 		opts:      o,
 		handler:   loki.NewLogsReceiver(),
-		fanout:    loki.NewFanout(args.ForwardTo),
+		fanout:    loki.NewFanoutConsumer(args.ForwardTo),
 		positions: positionsFile,
 	}
 	if err := c.Update(args); err != nil {
@@ -138,7 +138,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	// Update the receivers before anything else, just in case something fails.
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	managerOpts, err := c.getTailerOptions(newArgs)
 	if err != nil {

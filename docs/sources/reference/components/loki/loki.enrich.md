@@ -44,13 +44,13 @@ You can use the following arguments with `loki.enrich`:
 
 | Name                 | Type                  | Description                                                                                      | Default                | Required |
 | -------------------- | --------------------- | ------------------------------------------------------------------------------------------------ | ---------------------- | -------- |
-| `forward_to`         | `[]loki.LogsReceiver` | List of receivers to send enriched logs to.                                                      |                        | yes      |
+| `forward_to`         | `list(LogsReceiver)`  | List of receivers to send enriched logs to.                                                      |                        | yes      |
 | `target_match_label` | `string`              | The label from discovered targets to match against, for example, `"__inventory_consul_service"`. |                        | yes      |
-| `targets`            | `[]discovery.Target`  | List of targets from a discovery component.                                                      |                        | yes      |
-| `labels_to_copy`     | `[]string`            | List of labels to copy from discovered targets to logs. If empty, all labels will be copied.     |                        | no       |
+| `targets`            | `list(map(string))`   | List of targets from a discovery component.                                                      |                        | yes      |
+| `labels_to_copy`     | `list(string)`        | List of labels to copy from discovered targets to logs. If empty, all labels are copied.     |                        | no       |
 | `logs_match_label`   | `string`              | The label from incoming logs to match against discovered targets, for example `"service_name"`.  |                        | no       |
 
-If not provided, the `logs_match_label` attribute will default to the value of `target_match_label`.
+If not provided, the `logs_match_label` attribute defaults to the value of `target_match_label`.
 
 ## Blocks
 
@@ -60,9 +60,9 @@ The `loki.enrich` component doesn't support any blocks. You can configure this c
 
 The following values are exported:
 
-| Name       | Type                | Description                                                 |
-| ---------- | ------------------- | ----------------------------------------------------------- |
-| `receiver` | `loki.LogsReceiver` | A receiver that can be used to send logs to this component. |
+| Name       | Type           | Description                                                 |
+| ---------- | ---------------| ----------------------------------------------------------- |
+| `receiver` | `LogsReceiver` | A receiver that can be used to send logs to this component. |
 
 ## Example
 

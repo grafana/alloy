@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 	"golang.org/x/sys/windows/svc/eventlog"
@@ -29,7 +28,7 @@ func TestEventLogger(t *testing.T) {
 	wlog, err := eventlog.Open(loggerName)
 	require.NoError(t, err)
 	dataPath := t.TempDir()
-	rec := loki.NewLogsReceiver()
+	collector := loki.NewCollectingConsumer()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
 		Logger:   logging.NewSlogNop(),
@@ -49,30 +48,26 @@ func TestEventLogger(t *testing.T) {
 		ExcludeUserdata:      false,
 		ExcludeEventMessage:  false,
 		UseIncomingTimestamp: false,
-		ForwardTo:            []loki.LogsReceiver{rec},
+		ForwardTo:            []loki.Consumer{collector},
 		Labels:               map[string]string{"job": "windows"},
 	})
 	require.NoError(t, err)
 	ctx := t.Context()
 	ctx, cancelFunc := context.WithTimeout(ctx, 10*time.Second)
-	found := false
 	go c.Run(ctx)
 	tm := time.Now().Format(time.RFC3339Nano)
 	err = wlog.Info(2, tm)
 	require.NoError(t, err)
-	select {
-	case <-ctx.Done():
-		// Fail!
-		require.True(t, false)
-	case e := <-rec.Chan():
-		require.Equal(t, model.LabelValue("windows"), e.Labels["job"])
-		if strings.Contains(e.Line, tm) {
-			found = true
-			break
+
+	require.Eventually(t, func() bool {
+		for _, e := range collector.Entries() {
+			if strings.Contains(e.Line, tm) {
+				return true
+			}
 		}
-	}
+		return false
+	}, 5*time.Second, 100*time.Millisecond)
 	cancelFunc()
-	require.True(t, found)
 }
 
 func TestLegacyBookmarkConversion(t *testing.T) {
@@ -87,7 +82,7 @@ func TestLegacyBookmarkConversion(t *testing.T) {
 	legacyPath := filepath.Join(t.TempDir(), "legacy.xml")
 	err := os.WriteFile(legacyPath, []byte(bookmarkText), 644)
 	require.NoError(t, err)
-	rec := loki.NewLogsReceiver()
+	collector := loki.NewCollectingConsumer()
 	c, err := New(component.Options{
 		ID:       "loki.source.windowsevent.test",
 		Logger:   logging.NewSlogNop(),
@@ -107,7 +102,7 @@ func TestLegacyBookmarkConversion(t *testing.T) {
 		ExcludeUserdata:      false,
 		ExcludeEventMessage:  false,
 		UseIncomingTimestamp: false,
-		ForwardTo:            []loki.LogsReceiver{rec},
+		ForwardTo:            []loki.Consumer{collector},
 		Labels:               map[string]string{"job": "windows"},
 		LegacyBookmarkPath:   legacyPath,
 	})

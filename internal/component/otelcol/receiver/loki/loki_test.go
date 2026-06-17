@@ -59,7 +59,7 @@ func Test(t *testing.T) {
 				Line:      "It's super effective!",
 			},
 		}
-		exports.Receiver.Chan() <- entry
+		_ = exports.Receiver.ConsumeEntry(t.Context(), entry)
 	}()
 
 	wantAttributes := map[string]any{

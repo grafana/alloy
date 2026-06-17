@@ -85,7 +85,7 @@ type logsExporter struct {
 	sourceMaps sourceMapsStore
 	format     LogFormat
 
-	fanout *loki.Fanout
+	fanout *loki.FanoutConsumer
 
 	labelsMut sync.RWMutex
 	labels    model.LabelSet
@@ -98,14 +98,14 @@ func newLogsExporter(log *slog.Logger, sourceMaps sourceMapsStore, format LogFor
 		log:        log,
 		sourceMaps: sourceMaps,
 		format:     format,
-		fanout:     loki.NewFanout([]loki.LogsReceiver{}),
+		fanout:     loki.NewFanoutConsumer([]loki.Consumer{}),
 	}
 }
 
 // SetReceivers updates the set of logs receivers which will receive logs
 // emitted by the exporter.
-func (exp *logsExporter) SetReceivers(receivers []loki.LogsReceiver) {
-	exp.fanout.UpdateChildren(receivers)
+func (exp *logsExporter) SetReceivers(receivers []loki.Consumer) {
+	exp.fanout.Update(receivers)
 }
 
 func (exp *logsExporter) Name() string { return "logs exporter" }
@@ -186,7 +186,11 @@ func (exp *logsExporter) sendKeyValsToLogsPipeline(ctx context.Context, kv *payl
 
 	ctx, cancel := context.WithTimeout(ctx, 2*time.Second) // TODO(rfratto): potentially make this configurable
 	defer cancel()
-	return exp.fanout.Send(ctx, loki.NewEntry(exp.labelSet(kv), push.Entry{
+
+	// NOTE: For now we send each log entry individually. Once we change to
+	// support batching we will batch all entries and send them once. See
+	// https://github.com/grafana/alloy/issues/4953.
+	return exp.fanout.ConsumeEntry(ctx, loki.NewEntry(exp.labelSet(kv), push.Entry{
 		Timestamp: time.Now(),
 		Line:      string(line),
 	}))

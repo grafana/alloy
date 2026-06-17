@@ -21,13 +21,13 @@ func (s *ScrapeConfigBuilder) AppendWindowsEventsConfig() {
 		ExcludeUserdata:      winCfg.ExcludeUserData,
 		ExcludeEventMessage:  winCfg.ExcludeEventMessage,
 		UseIncomingTimestamp: winCfg.UseIncomingTimestamp,
-		ForwardTo:            make([]loki.LogsReceiver, 0),
+		ForwardTo:            make([]loki.Consumer, 0),
 		Labels:               convertPromLabels(winCfg.Labels),
 	}
 
 	override := func(val any) any {
 		switch val.(type) {
-		case []loki.LogsReceiver:
+		case []loki.Consumer:
 			return common.CustomTokenizer{Expr: s.getOrNewLokiRelabel()}
 		default:
 			return val

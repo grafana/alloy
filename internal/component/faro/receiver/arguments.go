@@ -116,8 +116,8 @@ type LocationArguments struct {
 // OutputArguments configures where to send emitted logs and traces. Metrics
 // emitted by app_agent_receiver are exported as targets to be scraped.
 type OutputArguments struct {
-	Logs   []loki.LogsReceiver `alloy:"logs,attr,optional"`
-	Traces []otelcol.Consumer  `alloy:"traces,attr,optional"`
+	Logs   []loki.Consumer    `alloy:"logs,attr,optional"`
+	Traces []otelcol.Consumer `alloy:"traces,attr,optional"`
 }
 
 type LogFormat string

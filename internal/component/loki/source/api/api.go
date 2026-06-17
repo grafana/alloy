@@ -30,12 +30,12 @@ func init() {
 }
 
 type Arguments struct {
-	Server               *fnet.ServerConfig  `alloy:",squash"`
-	ForwardTo            []loki.LogsReceiver `alloy:"forward_to,attr"`
-	Labels               map[string]string   `alloy:"labels,attr,optional"`
-	RelabelRules         relabel.Rules       `alloy:"relabel_rules,attr,optional"`
-	UseIncomingTimestamp bool                `alloy:"use_incoming_timestamp,attr,optional"`
-	MaxSendMessageSize   units.Base2Bytes    `alloy:"max_send_message_size,attr,optional"`
+	Server               *fnet.ServerConfig `alloy:",squash"`
+	ForwardTo            []loki.Consumer    `alloy:"forward_to,attr"`
+	Labels               map[string]string  `alloy:"labels,attr,optional"`
+	RelabelRules         relabel.Rules      `alloy:"relabel_rules,attr,optional"`
+	UseIncomingTimestamp bool               `alloy:"use_incoming_timestamp,attr,optional"`
+	MaxSendMessageSize   units.Base2Bytes   `alloy:"max_send_message_size,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -57,13 +57,12 @@ func (a *Arguments) labelSet() model.LabelSet {
 type Component struct {
 	opts               component.Options
 	metrics            *metrics
+	fanout             *loki.FanoutConsumer
 	handler            loki.LogsBatchReceiver
 	uncheckedCollector *util.UncheckedCollector
 
 	serverMut sync.Mutex
 	server    *source.Server
-
-	fanout *loki.Fanout
 }
 
 func New(opts component.Options, args Arguments) (*Component, error) {
@@ -72,8 +71,7 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		metrics:            newMetrics(opts.Registerer),
 		handler:            loki.NewLogsBatchReceiver(),
 		uncheckedCollector: util.NewUncheckedCollector(nil),
-
-		fanout: loki.NewFanout(args.ForwardTo),
+		fanout:             loki.NewFanoutConsumer(args.ForwardTo),
 	}
 	opts.Registerer.MustRegister(c.uncheckedCollector)
 	err := c.Update(args)
@@ -117,7 +115,7 @@ func (c *Component) Update(args component.Arguments) error {
 		}
 	}
 
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	c.serverMut.Lock()
 	defer c.serverMut.Unlock()

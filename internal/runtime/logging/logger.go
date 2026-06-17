@@ -2,17 +2,18 @@ package logging
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"sync"
 	"time"
 
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
-	"github.com/grafana/loki/pkg/push"
 )
 
 type EnabledAware interface {
@@ -76,6 +77,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		leveler slog.LevelVar
 		format  formatVar
 	)
+
 	// innerWriter is stable for the life of the Logger; destinations that
 	// want to suppress it (windows_event_log) lazily open an event log via
 	// the writer's own opener instead of swapping the writer.
@@ -122,7 +124,7 @@ func (l *Logger) Update(o Options) error {
 		l.bufferMut.Unlock()
 		return err
 	}
-	l.writer.SetLokiWriter(o.WriteTo)
+	l.writer.SetLokiConsumers(o.WriteTo)
 	l.bufferMut.Unlock()
 
 	// Rebuild deferred slog handlers outside bufferMut to avoid a deadlock
@@ -175,34 +177,43 @@ func (l *Logger) addRecord(r slog.Record, df *deferredSlogHandler) {
 	})
 }
 
-type lokiWriter struct {
-	f []loki.LogsReceiver
+func newLokiWriter(f *loki.FanoutConsumer) *lokiWriter {
+	w := &lokiWriter{
+		queue:  make(chan loki.Entry),
+		fanout: f,
+	}
+
+	// The Logger lives for process whole lifetime. Downstream consumers
+	// are swapped in-place via FanoutConsumer.Update rather than by recreating
+	// the writer so this goroutine never needs to be stopped.
+	go w.loop()
+
+	return w
 }
 
-func (fw *lokiWriter) Write(p []byte) (int, error) {
-	for _, receiver := range fw.f {
-		// We may have been given a nil value in rare circumstances due to
-		// misconfiguration or a component which generates exports after
-		// construction.
-		//
-		// Ignore nil values so we don't panic.
-		if receiver == nil {
-			continue
-		}
+type lokiWriter struct {
+	queue  chan loki.Entry
+	fanout *loki.FanoutConsumer
+}
 
-		select {
-		case receiver.Chan() <- loki.Entry{
-			Labels: model.LabelSet{"component": "alloy"},
-			Entry: push.Entry{
-				Timestamp: time.Now(),
-				Line:      string(p),
-			},
-		}:
-		default:
-			return 0, fmt.Errorf("lokiWriter failed to forward entry, channel was blocked")
-		}
+func (w *lokiWriter) loop() {
+	for e := range w.queue {
+		_ = w.fanout.ConsumeEntry(context.Background(), e)
 	}
-	return len(p), nil
+}
+
+func (w *lokiWriter) Write(p []byte) (int, error) {
+	e := loki.NewEntry(model.LabelSet{"component": "alloy"}, push.Entry{
+		Timestamp: time.Now(),
+		Line:      string(p),
+	})
+
+	select {
+	case w.queue <- e:
+		return len(p), nil
+	default:
+		return 0, errors.New("lokiWriter failed to forward entry, channel was blocked")
+	}
 }
 
 type formatVar struct {
@@ -256,13 +267,19 @@ func (w *writerVar) RemoveTemporaryWriter() {
 	w.tmpWriter = nil
 }
 
-func (w *writerVar) SetLokiWriter(receivers []loki.LogsReceiver) {
+func (w *writerVar) SetLokiConsumers(consumers []loki.Consumer) {
 	w.mut.Lock()
 	defer w.mut.Unlock()
-	if len(receivers) > 0 {
-		w.lokiWriter = &lokiWriter{receivers}
-	} else {
-		w.lokiWriter = nil
+
+	// NOTE: We create the loki writer first time consumers are configured for it.
+	// If this is never configured we don't start the consume loop.
+	if w.lokiWriter == nil && len(consumers) > 0 {
+		w.lokiWriter = newLokiWriter(loki.NewFanoutConsumer(consumers))
+		return
+	}
+
+	if w.lokiWriter != nil {
+		w.lokiWriter.fanout.Update(consumers)
 	}
 }
 

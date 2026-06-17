@@ -44,7 +44,6 @@ var supportedSeverities = map[string]struct{}{
 
 type LogsArguments struct {
 	Receiver         loki.LogsReceiver
-	EntryHandler     loki.EntryHandler
 	Logger           *slog.Logger
 	Registry         *prometheus.Registry
 	ExcludeDatabases []string
@@ -53,9 +52,8 @@ type LogsArguments struct {
 }
 
 type Logs struct {
-	logger       *slog.Logger
-	entryHandler loki.EntryHandler
-	registry     *prometheus.Registry
+	logger   *slog.Logger
+	registry *prometheus.Registry
 
 	receiver         loki.LogsReceiver
 	excludeDatabases []string
@@ -86,7 +84,6 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 
 	l := &Logs{
 		logger:           args.Logger.With("collector", LogsCollector),
-		entryHandler:     args.EntryHandler,
 		registry:         args.Registry,
 		receiver:         args.Receiver,
 		excludeDatabases: args.ExcludeDatabases,

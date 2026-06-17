@@ -33,7 +33,7 @@ func (s *ScrapeConfigBuilder) AppendPushAPI() {
 	))
 }
 
-func toLokiApiArguments(config *scrapeconfig.PushTargetConfig, forwardTo []loki.LogsReceiver) api.Arguments {
+func toLokiApiArguments(config *scrapeconfig.PushTargetConfig, forwardTo []loki.Consumer) api.Arguments {
 	return api.Arguments{
 		ForwardTo:            forwardTo,
 		RelabelRules:         make(relabel.Rules, 0),

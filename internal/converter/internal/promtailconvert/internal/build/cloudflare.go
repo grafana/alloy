@@ -24,7 +24,7 @@ func (s *ScrapeConfigBuilder) AppendCloudFlareConfig() {
 	}
 	override := func(val any) any {
 		switch conv := val.(type) {
-		case []loki.LogsReceiver:
+		case []loki.Consumer:
 			return common.CustomTokenizer{Expr: s.getOrNewLokiRelabel()}
 		case alloytypes.Secret:
 			return string(conv)

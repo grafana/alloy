@@ -35,7 +35,7 @@ func toAppAgentReceiverV2(config *app_agent_receiver_v2.Config) *receiver.Argume
 		logLabels = config.LogsLabels
 	}
 
-	logsReceiver := common.ConvertLogsReceiver{}
+	logsReceiver := common.ConvertLogsConsumer{}
 	if config.LogsInstance != "" {
 		compLabel, err := scanner.SanitizeIdentifier("logs_" + config.LogsInstance)
 		if err != nil {
@@ -67,7 +67,7 @@ func toAppAgentReceiverV2(config *app_agent_receiver_v2.Config) *receiver.Argume
 			Locations:           toLocationArguments(config.SourceMaps.FileSystem),
 		},
 		Output: receiver.OutputArguments{
-			Logs:   []loki.LogsReceiver{logsReceiver},
+			Logs:   []loki.Consumer{logsReceiver},
 			Traces: []otelcol.Consumer{},
 		},
 	}

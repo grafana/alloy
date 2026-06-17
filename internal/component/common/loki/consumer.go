@@ -2,9 +2,14 @@ package loki
 
 import (
 	"context"
-	"reflect"
+	"errors"
+	"slices"
 	"sync"
 )
+
+// ErrConsumerStopped is returned by Consumer implementations when an entry is
+// submitted after the consumer has been stopped.
+var ErrConsumerStopped = errors.New("consumer stopped")
 
 type Consumer interface {
 	Consume(ctx context.Context, batch Batch) error
@@ -46,24 +51,18 @@ func (c *CollectingConsumer) ConsumeEntry(_ context.Context, entry Entry) error 
 func (c *CollectingConsumer) Batches() []Batch {
 	c.mut.Lock()
 	defer c.mut.Unlock()
-
-	return c.batches
+	return slices.Clone(c.batches)
 }
 
 func (c *CollectingConsumer) Entries() []Entry {
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	return c.entries
+	return slices.Clone(c.entries)
 }
 
-func requireUpdate[T any](prev, next []T) bool {
-	if len(prev) != len(next) {
-		return true
-	}
-	for i := range prev {
-		if !reflect.DeepEqual(prev[i], next[i]) {
-			return true
-		}
-	}
-	return false
+func (c *CollectingConsumer) Reset() {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+	c.entries = nil
+	c.batches = nil
 }

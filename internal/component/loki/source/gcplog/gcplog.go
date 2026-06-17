@@ -34,7 +34,7 @@ func init() {
 type Arguments struct {
 	PullTarget   *gcptypes.PullConfig `alloy:"pull,block,optional"`
 	PushTarget   *gcptypes.PushConfig `alloy:"push,block,optional"`
-	ForwardTo    []loki.LogsReceiver  `alloy:"forward_to,attr"`
+	ForwardTo    []loki.Consumer      `alloy:"forward_to,attr"`
 	RelabelRules alloy_relabel.Rules  `alloy:"relabel_rules,attr,optional"`
 }
 
@@ -58,7 +58,7 @@ type Component struct {
 	metrics       *gt.Metrics
 	serverMetrics *util.UncheckedCollector
 
-	fanout  *loki.Fanout
+	fanout  *loki.FanoutConsumer
 	handler loki.LogsReceiver
 
 	mut    sync.RWMutex
@@ -71,7 +71,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		opts:          o,
 		metrics:       gt.NewMetrics(o.Registerer),
 		handler:       loki.NewLogsReceiver(),
-		fanout:        loki.NewFanout(args.ForwardTo),
+		fanout:        loki.NewFanoutConsumer(args.ForwardTo),
 		serverMetrics: util.NewUncheckedCollector(nil),
 	}
 
@@ -107,7 +107,7 @@ func (c *Component) Update(args component.Arguments) error {
 	defer c.mut.Unlock()
 
 	newArgs := args.(Arguments)
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
+	c.fanout.Update(newArgs.ForwardTo)
 
 	var rcs []*relabel.Config
 	if len(newArgs.RelabelRules) > 0 {

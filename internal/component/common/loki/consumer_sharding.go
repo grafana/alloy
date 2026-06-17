@@ -10,8 +10,6 @@ import (
 
 var _ Consumer = (*ShardingConsumer)(nil)
 
-var ErrConsumerStopped = errors.New("consumer stopped")
-
 // NewShardingConsumer creates a Consumer which shards streams across a fixed
 // number of shards before forwarding them to the downstream consumer.
 func NewShardingConsumer(shards int, consumer Consumer) *ShardingConsumer {

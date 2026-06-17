@@ -34,6 +34,7 @@ func TestEnricher(t *testing.T) {
 		args     Arguments
 		input    loki.Entry
 		expected loki.Entry
+		stop     bool
 	}
 
 	tests := []testCase{
@@ -157,22 +158,37 @@ func TestEnricher(t *testing.T) {
 				Entry: expectedEntry,
 			},
 		},
+		{
+			name: "returns error after component stops",
+			args: Arguments{
+				Targets:          []discovery.Target{},
+				TargetMatchLabel: "",
+				LabelsToCopy:     []string{},
+			},
+			input: loki.Entry{
+				Labels: model.LabelSet{
+					"service":  "test-service",
+					"original": "label",
+				},
+				Entry: inputEntry,
+			},
+			stop: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			collector := loki.NewCollectingHandler()
-			defer collector.Stop()
-
-			var exports Exports
+			collector := loki.NewCollectingConsumer()
 
 			// Create the component
-			tt.args.ForwardTo = []loki.LogsReceiver{collector.Receiver()}
+			tt.args.ForwardTo = []loki.Consumer{collector}
 
 			opts := component.Options{
 				Logger:        logging.NewSlogNop(),
 				OnStateChange: func(e component.Exports) {},
 			}
+
+			var exports Exports
 			opts.OnStateChange = func(e component.Exports) {
 				exports = e.(Exports)
 			}
@@ -186,13 +202,18 @@ func TestEnricher(t *testing.T) {
 				_ = comp.Run(ctx)
 			})
 
-			exports.Receiver.Chan() <- tt.input
+			if tt.stop {
+				cancel()
+				wg.Wait()
+				require.ErrorIs(t, exports.Receiver.ConsumeEntry(t.Context(), tt.input), loki.ErrConsumerStopped)
+				return
+			}
 
-			require.Eventually(t, func() bool {
-				return len(collector.Received()) == 1
-			}, time.Second, 10*time.Millisecond)
+			require.NoError(t, exports.Receiver.ConsumeEntry(t.Context(), tt.input))
 
-			received := collector.Received()[0]
+			require.Len(t, collector.Entries(), 1)
+
+			received := collector.Entries()[0]
 			require.Equal(t, tt.expected.Labels, received.Labels)
 			require.Equal(t, tt.expected.Line, received.Line)
 

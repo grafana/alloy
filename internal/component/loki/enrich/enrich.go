@@ -3,6 +3,7 @@ package enrich
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/prometheus/common/model"
@@ -41,19 +42,24 @@ type Arguments struct {
 	LabelsToCopy []string `alloy:"labels_to_copy,attr,optional"`
 
 	// Where to forward logs after enrichment
-	ForwardTo []loki.LogsReceiver `alloy:"forward_to,attr"`
+	ForwardTo []loki.Consumer `alloy:"forward_to,attr"`
 }
 
 type Exports struct {
-	Receiver loki.LogsReceiver `alloy:"receiver,attr,optional"`
+	Receiver loki.Consumer `alloy:"receiver,attr,optional"`
 }
+
+var (
+	_ component.Component = (*Component)(nil)
+)
 
 type Component struct {
 	opts     component.Options
-	receiver loki.LogsReceiver
-	fanout   *loki.Fanout
+	receiver *loki.InterceptorConsumer
+	fanout   *loki.FanoutConsumer
 
 	mut          sync.RWMutex
+	stopped      bool
 	args         Arguments
 	targetsCache map[string]model.LabelSet
 }
@@ -63,34 +69,67 @@ func New(opts component.Options, args Arguments) (*Component, error) {
 		opts:         opts,
 		args:         args,
 		targetsCache: make(map[string]model.LabelSet),
-		receiver:     loki.NewLogsReceiver(loki.WithComponentID(opts.ID)),
-		fanout:       loki.NewFanout(args.ForwardTo),
+		fanout:       loki.NewFanoutConsumer(args.ForwardTo),
 	}
 
-	opts.OnStateChange(Exports{Receiver: c.receiver})
+	c.receiver = loki.NewInterceptorConsumer(
+		opts.ID,
+		c.fanout,
+		loki.WithConsumeEntryHook(func(ctx context.Context, entry loki.Entry) (loki.Entry, bool, error) {
+			entry, err := c.processLog(entry)
+			return entry, true, err
+		}),
+	)
 
 	if err := c.Update(args); err != nil {
 		return nil, err
 	}
+
+	opts.OnStateChange(Exports{Receiver: c.receiver})
 
 	return c, nil
 }
 
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
-	loki.ConsumeAndProcess(ctx, c.receiver, c.fanout, func(e loki.Entry) (loki.Entry, bool) {
-		return c.processLog(e), true
-	})
+	defer func() {
+		c.mut.Lock()
+		defer c.mut.Unlock()
+		c.stopped = true
+	}()
+
+	<-ctx.Done()
 	return nil
 }
 
-func (c *Component) processLog(entry loki.Entry) loki.Entry {
-	c.mut.RLock()
-	defer c.mut.RUnlock()
+func (c *Component) Update(args component.Arguments) error {
+	c.mut.Lock()
+	defer c.mut.Unlock()
 
-	targetMatchLabel := c.args.TargetMatchLabel
-	logsMatchLabel := c.args.LogsMatchLabel
-	labelsToCopy := append([]string(nil), c.args.LabelsToCopy...)
+	newArgs := args.(Arguments)
+	c.args = newArgs
+	c.fanout.Update(newArgs.ForwardTo)
+
+	// Update the targets cache with new targets
+	c.refreshCacheFromTargets(newArgs.Targets)
+
+	return nil
+}
+
+func (c *Component) processLog(entry loki.Entry) (loki.Entry, error) {
+	c.mut.RLock()
+	if c.stopped {
+		c.mut.RUnlock()
+		return entry, loki.ErrConsumerStopped
+	}
+
+	var (
+		targetsCache     = c.targetsCache
+		targetMatchLabel = c.args.TargetMatchLabel
+		logsMatchLabel   = c.args.LogsMatchLabel
+		labelsToCopy     = slices.Clone(c.args.LabelsToCopy)
+	)
+	c.mut.RUnlock()
 
 	// Determine which label to use for matching
 	matchLabel := logsMatchLabel
@@ -102,15 +141,15 @@ func (c *Component) processLog(entry loki.Entry) loki.Entry {
 	sourceValue := string(entry.Labels[model.LabelName(matchLabel)])
 	if sourceValue == "" {
 		// No match label, forward as-is
-		return entry
+		return entry, nil
 	}
 
 	// Look up matching target
-	targetLabels, found := c.targetsCache[sourceValue]
+	targetLabels, found := targetsCache[sourceValue]
 
 	if !found {
 		// No matching target, forward as-is
-		return entry
+		return entry, nil
 	}
 
 	// Copy entry in case it was forwarded to several components.
@@ -129,21 +168,7 @@ func (c *Component) processLog(entry loki.Entry) loki.Entry {
 		}
 	}
 
-	return newEntry
-}
-
-func (c *Component) Update(args component.Arguments) error {
-	c.mut.Lock()
-	defer c.mut.Unlock()
-
-	newArgs := args.(Arguments)
-	c.args = newArgs
-	c.fanout.UpdateChildren(newArgs.ForwardTo)
-
-	// Update the targets cache with new targets
-	c.refreshCacheFromTargets(newArgs.Targets)
-
-	return nil
+	return newEntry, nil
 }
 
 func (c *Component) refreshCacheFromTargets(targets []discovery.Target) {
