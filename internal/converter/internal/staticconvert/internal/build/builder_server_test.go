@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/alloy/internal/static/server"
 )
 
-func TestToServer_EmptyWindowsFilterNormalizesToZeroTLS(t *testing.T) {
+func TestToServer_EmptyWindowsFilterMapsToZeroTLS(t *testing.T) {
 	args := toServer(&server.Config{
 		HTTP: server.HTTPConfig{
 			TLSConfig: server.TLSConfig{
@@ -25,8 +25,6 @@ func TestToServer_EmptyWindowsFilterNormalizesToZeroTLS(t *testing.T) {
 			},
 		},
 	})
-	normalizeEmptyTLSWindowsFilter(args.TLS)
-
 	require.Nil(t, args.TLS.WindowsFilter)
 	require.True(t, reflect.DeepEqual(*args.TLS, http.TLSArguments{}))
 }
@@ -43,8 +41,6 @@ func TestToServer_NonEmptyWindowsFilterNotRemoved(t *testing.T) {
 			},
 		},
 	})
-	normalizeEmptyTLSWindowsFilter(args.TLS)
-
 	require.NotNil(t, args.TLS.WindowsFilter)
 	require.NotNil(t, args.TLS.WindowsFilter.Server)
 	require.Equal(t, "my-store", args.TLS.WindowsFilter.Server.Store)

@@ -10,7 +10,6 @@ import (
 
 func (b *ConfigBuilder) appendServer(config *server.Config) {
 	args := toServer(config)
-	normalizeEmptyTLSWindowsFilter(args.TLS)
 	if !reflect.DeepEqual(*args.TLS, http.TLSArguments{}) {
 		b.f.Body().AppendBlock(common.NewBlockWithOverride(
 			[]string{"http"},
@@ -18,50 +17,6 @@ func (b *ConfigBuilder) appendServer(config *server.Config) {
 			args,
 		))
 	}
-}
-
-func normalizeEmptyTLSWindowsFilter(tlsArgs *http.TLSArguments) {
-	if tlsArgs == nil || tlsArgs.WindowsFilter == nil {
-		return
-	}
-
-	tlsArgs.WindowsFilter.Server = normalizeEmptyWindowsServerFilter(tlsArgs.WindowsFilter.Server)
-	tlsArgs.WindowsFilter.Client = normalizeEmptyWindowsClientFilter(tlsArgs.WindowsFilter.Client)
-	if tlsArgs.WindowsFilter.Server == nil && tlsArgs.WindowsFilter.Client == nil {
-		tlsArgs.WindowsFilter = nil
-	}
-}
-
-func normalizeEmptyWindowsServerFilter(serverFilter *http.WindowsServerFilter) *http.WindowsServerFilter {
-	if serverFilter == nil {
-		return nil
-	}
-	if len(serverFilter.IssuerCommonNames) == 0 {
-		serverFilter.IssuerCommonNames = nil
-	}
-	if serverFilter.Store == "" &&
-		serverFilter.SystemStore == "" &&
-		len(serverFilter.IssuerCommonNames) == 0 &&
-		serverFilter.TemplateID == "" &&
-		serverFilter.RefreshInterval == 0 {
-		return nil
-	}
-	return serverFilter
-}
-
-func normalizeEmptyWindowsClientFilter(clientFilter *http.WindowsClientFilter) *http.WindowsClientFilter {
-	if clientFilter == nil {
-		return nil
-	}
-	if len(clientFilter.IssuerCommonNames) == 0 {
-		clientFilter.IssuerCommonNames = nil
-	}
-	if len(clientFilter.IssuerCommonNames) == 0 &&
-		clientFilter.SubjectRegEx == "" &&
-		clientFilter.TemplateID == "" {
-		return nil
-	}
-	return clientFilter
 }
 
 func toServer(config *server.Config) *http.Arguments {
@@ -111,10 +66,14 @@ func toWindowsFilter(windowsFilter *server.WindowsCertificateFilter) *http.Windo
 		return nil
 	}
 
-	return &http.WindowsCertificateFilter{
+	result := &http.WindowsCertificateFilter{
 		Server: toWindowsServerFilter(windowsFilter.Server),
 		Client: toWindowsClientFilter(windowsFilter.Client),
 	}
+	if result.Server == nil && result.Client == nil {
+		return nil
+	}
+	return result
 }
 
 func toWindowsServerFilter(server *server.WindowsServerFilter) *http.WindowsServerFilter {
@@ -122,13 +81,24 @@ func toWindowsServerFilter(server *server.WindowsServerFilter) *http.WindowsServ
 		return nil
 	}
 
-	return &http.WindowsServerFilter{
+	result := &http.WindowsServerFilter{
 		Store:             server.Store,
 		SystemStore:       server.SystemStore,
 		IssuerCommonNames: server.IssuerCommonNames,
 		TemplateID:        server.TemplateID,
 		RefreshInterval:   server.RefreshInterval,
 	}
+	if len(result.IssuerCommonNames) == 0 {
+		result.IssuerCommonNames = nil
+	}
+	if result.Store == "" &&
+		result.SystemStore == "" &&
+		len(result.IssuerCommonNames) == 0 &&
+		result.TemplateID == "" &&
+		result.RefreshInterval == 0 {
+		return nil
+	}
+	return result
 }
 
 func toWindowsClientFilter(client *server.WindowsClientFilter) *http.WindowsClientFilter {
@@ -136,9 +106,18 @@ func toWindowsClientFilter(client *server.WindowsClientFilter) *http.WindowsClie
 		return nil
 	}
 
-	return &http.WindowsClientFilter{
+	result := &http.WindowsClientFilter{
 		IssuerCommonNames: client.IssuerCommonNames,
 		SubjectRegEx:      client.SubjectRegEx,
 		TemplateID:        client.TemplateID,
 	}
+	if len(result.IssuerCommonNames) == 0 {
+		result.IssuerCommonNames = nil
+	}
+	if len(result.IssuerCommonNames) == 0 &&
+		result.SubjectRegEx == "" &&
+		result.TemplateID == "" {
+		return nil
+	}
+	return result
 }
