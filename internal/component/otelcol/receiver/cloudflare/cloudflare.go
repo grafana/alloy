@@ -33,14 +33,13 @@ func init() {
 }
 
 type Arguments struct {
-	Endpoint           string                      `alloy:"endpoint,attr"`
-	Secret             string                      `alloy:"secret,attr,optional"`
-	TimestampField     string                      `alloy:"timestamp_field,attr,optional"`
-	TimestampFormat    string                      `alloy:"timestamp_format,attr,optional"`
-	Separator          string                      `alloy:"separator,attr,optional"`
-	Attributes         map[string]string           `alloy:"attributes,attr,optional"`
-	MaxRequestBodySize int64                       `alloy:"max_request_body_size,attr,optional"`
-	TLS                *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
+	Endpoint        string                      `alloy:"endpoint,attr"`
+	Secret          string                      `alloy:"secret,attr,optional"`
+	TimestampField  string                      `alloy:"timestamp_field,attr,optional"`
+	TimestampFormat string                      `alloy:"timestamp_format,attr,optional"`
+	Separator       string                      `alloy:"separator,attr,optional"`
+	Attributes      map[string]string           `alloy:"attributes,attr,optional"`
+	TLS             *otelcol.TLSServerArguments `alloy:"tls,block,optional"`
 
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
@@ -54,14 +53,13 @@ func (args *Arguments) SetToDefault() {
 func (args Arguments) receiverConfig() *cloudflarereceiver.Config {
 	tlsCfg := args.TLS.Convert()
 	logCfg := cloudflarereceiver.LogsConfig{
-		Secret:             args.Secret,
-		Endpoint:           args.Endpoint,
-		TLS:                tlsCfg.Get(),
-		Attributes:         args.Attributes,
-		TimestampField:     args.TimestampField,
-		TimestampFormat:    args.TimestampFormat,
-		Separator:          args.Separator,
-		MaxRequestBodySize: args.MaxRequestBodySize,
+		Secret:          args.Secret,
+		Endpoint:        args.Endpoint,
+		TLS:             tlsCfg.Get(),
+		Attributes:      args.Attributes,
+		TimestampField:  args.TimestampField,
+		TimestampFormat: args.TimestampFormat,
+		Separator:       args.Separator,
 	}
 
 	return &cloudflarereceiver.Config{

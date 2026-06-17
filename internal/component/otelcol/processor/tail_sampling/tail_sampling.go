@@ -8,7 +8,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/extension"
 	"github.com/grafana/alloy/internal/component/otelcol/processor"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/mitchellh/mapstructure"
@@ -43,11 +42,6 @@ type Arguments struct {
 	DropPendingTracesOnShutdown   bool                `alloy:"drop_pending_traces_on_shutdown,attr,optional"`
 	MaximumTraceSizeBytes         uint64              `alloy:"maximum_trace_size_bytes,attr,optional"`
 	DecisionCache                 DecisionCacheConfig `alloy:"decision_cache,attr,optional"`
-	// SamplingStrategy controls how/when sampling decisions are made.
-	// Valid values: "trace-complete" (default) or "span-ingest".
-	SamplingStrategy string `alloy:"sampling_strategy,attr,optional"`
-	// TailStorage configures an optional extension for buffering spans on disk.
-	TailStorage *extension.ExtensionHandler `alloy:"tail_storage,attr,optional"`
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 	// DebugMetrics configures component internal metrics. Optional.
@@ -63,7 +57,6 @@ var DefaultArguments = Arguments{
 	DecisionWait:            30 * time.Second,
 	NumTraces:               50000,
 	ExpectedNewTracesPerSec: 0,
-	SamplingStrategy:        "trace-complete",
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -105,18 +98,12 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		DecisionCache:                 args.DecisionCache.Convert(),
 	}
 
-	// SamplingStrategy uses an unexported type; use mapstructure to set it.
-	if args.SamplingStrategy != "" {
-		if err := mapstructure.Decode(map[string]any{"sampling_strategy": args.SamplingStrategy}, result); err != nil {
-			return nil, fmt.Errorf("invalid sampling_strategy: %w", err)
-		}
-	}
-
-	if args.TailStorage != nil {
-		if args.TailStorage.Extension == nil {
-			return nil, fmt.Errorf("missing tail_storage extension")
-		}
-		result.TailStorageID = &args.TailStorage.ID
+	// v0.151 added an unexported samplingStrategy field that the upstream factory
+	// defaults to "trace-complete". Alloy bypasses that factory, so replicate the
+	// default via mapstructure to preserve behavior (an empty value breaks the
+	// processor). The strategy is not yet user-configurable.
+	if err := mapstructure.Decode(map[string]any{"sampling_strategy": "trace-complete"}, result); err != nil {
+		return nil, fmt.Errorf("setting default sampling_strategy: %w", err)
 	}
 
 	return result, nil
@@ -124,11 +111,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 // Extensions implements processor.Arguments.
 func (args Arguments) Extensions() map[otelcomponent.ID]otelcomponent.Component {
-	m := make(map[otelcomponent.ID]otelcomponent.Component)
-	if args.TailStorage != nil {
-		m[args.TailStorage.ID] = args.TailStorage.Extension
-	}
-	return m
+	return nil
 }
 
 // Exporters implements processor.Arguments.
