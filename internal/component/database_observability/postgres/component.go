@@ -461,7 +461,6 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			c.opts.Logger,
 			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
 			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
-			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
 			pg_exporter.AutoDiscoverDatabases(true),
 			pg_exporter.ExcludeDatabases(c.args.ExcludeDatabases),
 			pg_exporter.WithMetricPrefix("pg"),
@@ -474,7 +473,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 		if !exporterArgs.DisableDefaultMetrics {
 			collectorOpts := []pg_collector.Option{pg_collector.WithCollectionTimeout("10s")}
 			if exporterArgs.StatStatementFlags != nil {
-				collectorOpts = append(collectorOpts, pg_collector.WithStatStatementsConfig(pg_collector.StatStatementsConfig{
+				collectorOpts = append(collectorOpts, pg_collector.WithPGStatStatementsConfig(pg_collector.PGStatStatementsConfig{
 					IncludeQuery:     exporterArgs.StatStatementFlags.IncludeQuery,
 					QueryLength:      exporterArgs.StatStatementFlags.QueryLength,
 					Limit:            exporterArgs.StatStatementFlags.Limit,
@@ -482,6 +481,10 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 					ExcludeUsers:     exporterArgs.StatStatementFlags.ExcludeUsers,
 				}))
 			}
+			if exporterArgs.DisableSettingsMetrics {
+				collectorOpts = append(collectorOpts, pg_collector.WithCollectorStates(map[string]bool{"settings": false}))
+			}
+
 			col, err := pg_collector.NewPostgresCollector(
 				c.opts.Logger,
 				c.args.ExcludeDatabases,

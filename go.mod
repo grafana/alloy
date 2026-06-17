@@ -185,7 +185,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus-community/elasticsearch_exporter v1.5.0
-	github.com/prometheus-community/postgres_exporter v0.19.0
+	github.com/prometheus-community/postgres_exporter v0.19.2-0.20260611195944-e802612e790b
 	github.com/prometheus-community/stackdriver_exporter v0.18.0
 	github.com/prometheus-community/windows_exporter v0.31.3 // if you update the windows_exporter version, make sure to update the PROM_WIN_EXP_VERSION in _index
 	github.com/prometheus-community/yet-another-cloudwatch-exporter v0.64.0
@@ -197,7 +197,7 @@ require (
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_golang/exp v0.0.0-20260101091701-2cd067eb23c9
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.67.6-0.20260415130754-a4fac5c9b6d9
+	github.com/prometheus/common v0.68.0
 	github.com/prometheus/consul_exporter v0.8.0
 	github.com/prometheus/memcached_exporter v0.13.0
 	github.com/prometheus/mysqld_exporter v0.18.0
@@ -1142,9 +1142,6 @@ replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-2025
 
 // TODO - remove forks when changes are merged upstream — non-singleton cadvisor Fork branch: https://github.com/grafana/cadvisor/tree/grafana-v0.54.1-noglobals
 replace github.com/google/cadvisor => github.com/grafana/cadvisor v0.0.0-20260204200106-865a22723970
-
-// TODO - this tracks exporter-package-v0.19.1 branch of grafana fork; remove once all patches are merged upstream
-replace github.com/prometheus-community/postgres_exporter => github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a
 
 // TODO - this tracks exporter-package-v0.19.0 branch of grafana fork; remove once all patches are merged upstream
 replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_exporter v0.0.0-20260319134024-e0461af8db16

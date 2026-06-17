@@ -1285,8 +1285,6 @@ github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31
 github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31a19190b9/go.mod h1:ScvlwaxUquDwjJfWxYBZC8Fk6e+Z/mOLllzecUYnQpc=
 github.com/grafana/otel-profiling-go v0.5.1 h1:stVPKAFZSa7eGiqbYuG25VcqYksR6iWvF3YH66t4qL8=
 github.com/grafana/otel-profiling-go v0.5.1/go.mod h1:ftN/t5A/4gQI19/8MoWurBEtC6gFw8Dns1sJZ9W4Tls=
-github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a h1:uT3vXB+E1dAMfvrgwQR6PwQbNmgLe6cyvTxHnHcmuns=
-github.com/grafana/postgres_exporter v0.0.0-20260225165717-9c2c77e3702a/go.mod h1:4zH24t6LEqkdL3ZfBTtp0kGHOBr6komR55CrmL2AAg4=
 github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57 h1:v/2M4OKUYTjV01i9bKXOFmEIHQlc8w79V/rZQZ9HbTk=
 github.com/grafana/prometheus v1.8.2-0.20260313093229-87200e297b57/go.mod h1:wSFyaZQ1ioryO2X47s2wvQEWypS+Mwf9IQ1ABDEo2Sk=
 github.com/grafana/pyroscope-go/godeltaprof v0.1.10 h1:dvhndEbyavTb59vFCd6PsrAG5qi69/qZZtegh/TJKSY=
@@ -2137,6 +2135,8 @@ github.com/prometheus-community/elasticsearch_exporter v1.5.0 h1:1k8CK7aPMdmJ/Lc
 github.com/prometheus-community/elasticsearch_exporter v1.5.0/go.mod h1:ZITzMapK/TzzsaKOBlNCatKGcCfp/6xIQg2ucoLHA5c=
 github.com/prometheus-community/go-runit v0.1.0 h1:uTWEj/Fn2RoLdfg/etSqwzgYNOYPrARx1BHUN052tGA=
 github.com/prometheus-community/go-runit v0.1.0/go.mod h1:AvJ9Jo3gAFu2lbM4+qfjdpq30FfiLDJZKbQ015u08IQ=
+github.com/prometheus-community/postgres_exporter v0.19.2-0.20260611195944-e802612e790b h1:qauLKDzoimcaRTT8b7ufCCPepc75HuiPwVABw9cxWpQ=
+github.com/prometheus-community/postgres_exporter v0.19.2-0.20260611195944-e802612e790b/go.mod h1:OWOhElWgPDKWABLgasVrioL90V2Gur4N3mW2/dGzg9o=
 github.com/prometheus-community/prom-label-proxy v0.12.1 h1:vJ6tGz4NMge140Ua3T/zh3HO0CA3bmnCsfkWK/cujG0=
 github.com/prometheus-community/prom-label-proxy v0.12.1/go.mod h1:/tZNtOMcbPbE1VFcY8b48mPqT1bb2jVpXx2WdjjM8TY=
 github.com/prometheus-community/stackdriver_exporter v0.18.0 h1:nB7JwloiBziunaujql5XEjB06WOo0ePgBTCJxFeaOhY=
@@ -2183,8 +2183,8 @@ github.com/prometheus/common v0.26.0/go.mod h1:M7rCNAaPfAosfx8veZJCuw84e35h3Cfd9
 github.com/prometheus/common v0.29.0/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+M/gUGO4Hls=
 github.com/prometheus/common v0.31.1/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+M/gUGO4Hls=
 github.com/prometheus/common v0.32.1/go.mod h1:vu+V0TpY+O6vW9J44gczi3Ap/oXXR10b+M/gUGO4Hls=
-github.com/prometheus/common v0.67.6-0.20260415130754-a4fac5c9b6d9 h1:eaoStYKBROCn0w1ImVlWcNWFUI4olLnrasMGiDcSHyg=
-github.com/prometheus/common v0.67.6-0.20260415130754-a4fac5c9b6d9/go.mod h1:sKxNDM7M78UZlfvgbSKcm6/jnmDu/nJe4UEfO8ZPXVU=
+github.com/prometheus/common v0.68.0 h1:8rQJvQmYltsR2L7h8Zw0Iyj8WYNNmpwikoQTZXwfVeA=
+github.com/prometheus/common v0.68.0/go.mod h1:4soH+U8yJSROk7OJ//hmTiWKsxapv6zRGgTt3keN8gQ=
 github.com/prometheus/common/assets v0.2.0 h1:0P5OrzoHrYBOSM1OigWL3mY8ZvV2N4zIE/5AahrSrfM=
 github.com/prometheus/common/assets v0.2.0/go.mod h1:D17UVUE12bHbim7HzwUvtqm6gwBEaDQ0F+hIGbFbccI=
 github.com/prometheus/consul_exporter v0.8.0 h1:2z3drFic65WFoHaJRKkmnJRRlBLmmxVqT8L9LO2yxAo=

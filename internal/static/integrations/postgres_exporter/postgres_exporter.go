@@ -169,7 +169,6 @@ func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 		logger,
 		postgres_exporter.DisableDefaultMetrics(cfg.DisableDefaultMetrics),
 		postgres_exporter.WithUserQueriesPath(cfg.QueryPath),
-		postgres_exporter.DisableSettingsMetrics(cfg.DisableSettingsMetrics),
 		postgres_exporter.AutoDiscoverDatabases(cfg.AutodiscoverDatabases),
 		postgres_exporter.ExcludeDatabases(cfg.ExcludeDatabases),
 		postgres_exporter.IncludeDatabases(strings.Join(cfg.IncludeDatabases, ",")),
@@ -196,13 +195,16 @@ func New(logger *slog.Logger, cfg *Config) (integrations.Integration, error) {
 		collector.WithCollectionTimeout("10s"),
 	}
 	if cfg.StatStatementFlags != nil {
-		collectorOpts = append(collectorOpts, collector.WithStatStatementsConfig(collector.StatStatementsConfig{
+		collectorOpts = append(collectorOpts, collector.WithPGStatStatementsConfig(collector.PGStatStatementsConfig{
 			IncludeQuery:     cfg.StatStatementFlags.IncludeQuery,
 			QueryLength:      cfg.StatStatementFlags.QueryLength,
 			Limit:            cfg.StatStatementFlags.Limit,
 			ExcludeDatabases: cfg.StatStatementFlags.ExcludeDatabases,
 			ExcludeUsers:     cfg.StatStatementFlags.ExcludeUsers,
 		}))
+	}
+	if cfg.DisableSettingsMetrics {
+		collectorOpts = append(collectorOpts, collector.WithCollectorStates(map[string]bool{"settings": false}))
 	}
 
 	// On top of the exporter's metrics, the postgres exporter also has metrics exposed via collector package.
