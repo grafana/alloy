@@ -273,7 +273,7 @@ func buildAlloyConfig(cfg AlloyConfig) (modulePath string, files map[string][]by
 	}
 
 	// Alloy supports accepting a directory as config source
-	stat, err := os.Lstat(effectivePath)
+	stat, err := os.Stat(effectivePath)
 	if err != nil {
 		return "", nil, err
 	}
