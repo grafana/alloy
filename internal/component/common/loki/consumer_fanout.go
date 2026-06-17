@@ -107,7 +107,7 @@ func (f *FanoutConsumer) Update(consumers []Consumer) {
 func isReportableError(err error) bool {
 	// We can always ignore ErrConsumerStopped.
 	// If a downstream component have been stopped due to config update
-	// we should no longer forward entries there and when alloy it self
+	// we should no longer forward entries there and when alloy itself
 	// stops we shut down components from sources to sinks so we should
 	// never hit this error.
 	return err != nil && !errors.Is(err, ErrConsumerStopped)
