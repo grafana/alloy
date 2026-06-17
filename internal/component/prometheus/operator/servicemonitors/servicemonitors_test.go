@@ -176,17 +176,17 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 				return testFactory.TriggerServiceMonitorAdd(serviceMonitor)
 			}, 10*time.Second, 100*time.Millisecond, "Timeout waiting for manager to be ready")
 
-			// Verify scrape config was registered
-			require.Eventually(t, func() bool {
-				jobNames := testFactory.GetScrapeConfigJobNames()
-				return len(jobNames) == 1
-			}, 5*time.Second, 100*time.Millisecond, "Expected 1 scrape config to be registered")
-
-			// Inject static targets (since k8s service discovery won't work without a real cluster)
+			// Inject static targets once the generated job is available.
+			// In CI there is no in-cluster Kubernetes config, so waiting for a fully
+			// registered Kubernetes SD-backed scrape config is brittle.
 			jobName := "serviceMonitor/monitoring/test-service-monitor/0"
-			ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
-			require.True(t, ready, "Manager should be ready after TriggerServiceMonitorAdd succeeded")
-			require.NoError(t, err)
+			require.Eventually(t, func() bool {
+				ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
+				if err != nil {
+					return false
+				}
+				return ready
+			}, 5*time.Second, 100*time.Millisecond, "Expected static target injection to succeed")
 
 			// Wait for metrics to be scraped and forwarded, then verify
 			require.EventuallyWithT(t, func(ct *assert.CollectT) {
