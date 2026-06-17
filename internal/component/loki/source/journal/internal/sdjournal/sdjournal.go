@@ -441,9 +441,9 @@ func (j *Journal) seekToStart(cursor string, maxAge time.Duration) error {
 
 	switch ret := C.j_next(j.lib.next, j.journal); {
 	case ret < 0:
-		// Couldn't read from the cursor. Fall back to cutoff.
+		// Couldn't read from the cursor. Fall back to cutoff or don't seek at all.
 		if cutoff.IsZero() {
-			return fmt.Errorf("sd_journal_next failed: %w", syscall.Errno(-ret))
+			return nil
 		}
 		return j.seekRealtime(cutoff)
 	case ret == 0:
