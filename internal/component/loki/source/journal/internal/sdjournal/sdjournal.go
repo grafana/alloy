@@ -90,10 +90,10 @@ static int j_seek_realtime_usec(void *f, sd_journal *j, uint64_t usec) {
 import "C"
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 	"unsafe"
 )
@@ -323,19 +323,21 @@ func (j *Journal) Next() ([]Field, string, error) {
 		return nil, "", ErrNoData
 	}
 
-	cursor, err := j.cursor()
-	if err != nil {
-		return nil, "", err
+	var c *C.char
+	if ret := C.j_get_cursor(j.lib.getCursor, j.journal, &c); ret < 0 {
+		return nil, "", fmt.Errorf("sd_journal_get_cursor failed: %d", int(ret))
 	}
+	// Safe: freeing a C string libsystemd allocated for us
+	defer C.free(unsafe.Pointer(c)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
+	cursor := C.GoString(c)
 
 	j.fields = j.fields[:0]
 	C.j_restart_data(j.lib.restartData, j.journal)
+	var (
+		data   unsafe.Pointer
+		length C.size_t
+	)
 	for {
-		var (
-			data   unsafe.Pointer
-			length C.size_t
-		)
-
 		ret := C.j_enumerate_data(j.lib.enumerateData, j.journal, &data, &length)
 		if ret < 0 {
 			return nil, cursor, fmt.Errorf("sd_journal_enumerate_data failed: %d", int(ret))
@@ -345,24 +347,13 @@ func (j *Journal) Next() ([]Field, string, error) {
 			return j.fields, cursor, nil
 		}
 
-		// kv aliases libsystemd's field buffer, it is only valid until the
-		// next enumerate/next/close. We copy out fields below
-		// before the next iteration invalidates it.
-		kv := unsafe.Slice((*byte)(data), int(length)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-		if i := bytes.IndexByte(kv, '='); i >= 0 {
-			j.fields = append(j.fields, Field{Name: string(kv[:i]), Value: string(kv[i+1:])})
+		kv := C.GoStringN((*C.char)(data), C.int(length))
+		if i := strings.Index(kv, "="); i >= 0 {
+			j.fields = append(j.fields, Field{Name: kv[:i], Value: kv[i+1:]})
+		} else {
+			return nil, "", errors.New("failed to parse field")
 		}
 	}
-}
-
-func (j *Journal) cursor() (string, error) {
-	var c *C.char
-	if ret := C.j_get_cursor(j.lib.getCursor, j.journal, &c); ret < 0 {
-		return "", fmt.Errorf("sd_journal_get_cursor failed: %d", int(ret))
-	}
-	// Safe: freeing a C string libsystemd allocated for us
-	defer C.free(unsafe.Pointer(c)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-	return C.GoString(c), nil
 }
 
 // Wait blocks until the journal changes, so a subsequent Next can return newly
