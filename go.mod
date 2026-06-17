@@ -110,7 +110,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/mackerelio/go-osstat v0.2.5
 	github.com/miekg/dns v1.1.72
-	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c
+	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f
 	github.com/natefinch/atomic v1.0.1
 	github.com/ncabatoff/process-exporter v0.8.7
