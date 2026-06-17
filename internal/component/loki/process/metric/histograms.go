@@ -57,13 +57,13 @@ type Histograms struct {
 func NewHistograms(name string, config *HistogramConfig) (*Histograms, error) {
 	return &Histograms{
 		metricVec: newMetricVec(func(labels map[string]string) prometheus.Metric {
-			return &expiringHistogram{prometheus.NewHistogram(prometheus.HistogramOpts{
-				Help:        config.Description,
-				Name:        name,
-				ConstLabels: labels,
-				Buckets:     config.Buckets,
-			}),
-				*atomic.NewInt64(0),
+			return &expiringHistogram{
+				Histogram: prometheus.NewHistogram(prometheus.HistogramOpts{
+					Help:        config.Description,
+					Name:        name,
+					ConstLabels: labels,
+					Buckets:     config.Buckets,
+				}),
 			}
 		}, int64(config.MaxIdle.Seconds())),
 		Cfg: config,
