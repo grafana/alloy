@@ -42,6 +42,9 @@ type Arguments struct {
 	DropPendingTracesOnShutdown   bool                `alloy:"drop_pending_traces_on_shutdown,attr,optional"`
 	MaximumTraceSizeBytes         uint64              `alloy:"maximum_trace_size_bytes,attr,optional"`
 	DecisionCache                 DecisionCacheConfig `alloy:"decision_cache,attr,optional"`
+	// SamplingStrategy selects when sampling decisions are made: "trace-complete"
+	// (default) waits for a full trace; "span-ingest" decides per incoming batch.
+	SamplingStrategy string `alloy:"sampling_strategy,attr,optional"`
 	// Output configures where to send processed data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
 	// DebugMetrics configures component internal metrics. Optional.
@@ -57,6 +60,7 @@ var DefaultArguments = Arguments{
 	DecisionWait:            30 * time.Second,
 	NumTraces:               50000,
 	ExpectedNewTracesPerSec: 0,
+	SamplingStrategy:        "trace-complete",
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -75,6 +79,12 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("num_traces must be greater than zero")
 	}
 
+	switch args.SamplingStrategy {
+	case "trace-complete", "span-ingest":
+	default:
+		return fmt.Errorf("sampling_strategy must be %q or %q", "trace-complete", "span-ingest")
+	}
+
 	return nil
 }
 
@@ -85,27 +95,26 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		otelPolicyCfgs = append(otelPolicyCfgs, policyCfg.Convert())
 	}
 
-	result := &tsp.Config{
-		DecisionWait:                  args.DecisionWait,
-		DecisionWaitAfterRootReceived: args.DecisionWaitAfterRootReceived,
-		NumTraces:                     args.NumTraces,
-		BlockOnOverflow:               args.BlockOnOverflow,
-		ExpectedNewTracesPerSec:       args.ExpectedNewTracesPerSec,
-		SampleOnFirstMatch:            args.SampleOnFirstMatch,
-		DropPendingTracesOnShutdown:   args.DropPendingTracesOnShutdown,
-		MaximumTraceSizeBytes:         args.MaximumTraceSizeBytes,
-		PolicyCfgs:                    otelPolicyCfgs,
-		DecisionCache:                 args.DecisionCache.Convert(),
-	}
+	// Start from the upstream default config so fields Alloy doesn't expose keep
+	// their upstream defaults.
+	cfg := tsp.NewFactory().CreateDefaultConfig().(*tsp.Config)
+	cfg.DecisionWait = args.DecisionWait
+	cfg.DecisionWaitAfterRootReceived = args.DecisionWaitAfterRootReceived
+	cfg.NumTraces = args.NumTraces
+	cfg.BlockOnOverflow = args.BlockOnOverflow
+	cfg.ExpectedNewTracesPerSec = args.ExpectedNewTracesPerSec
+	cfg.SampleOnFirstMatch = args.SampleOnFirstMatch
+	cfg.DropPendingTracesOnShutdown = args.DropPendingTracesOnShutdown
+	cfg.MaximumTraceSizeBytes = args.MaximumTraceSizeBytes
+	cfg.PolicyCfgs = otelPolicyCfgs
+	cfg.DecisionCache = args.DecisionCache.Convert()
 
-	// samplingStrategy is unexported upstream and set by the factory that Alloy
-	// bypasses when it builds the Config directly. An empty value breaks the
-	// processor, so replicate the factory default via mapstructure.
-	if err := mapstructure.Decode(map[string]any{"sampling_strategy": "trace-complete"}, result); err != nil {
-		return nil, fmt.Errorf("setting default sampling_strategy: %w", err)
+	// samplingStrategy's upstream type is unexported, so it can only be set by
+	// name via mapstructure.
+	if err := mapstructure.Decode(map[string]any{"sampling_strategy": args.SamplingStrategy}, cfg); err != nil {
+		return nil, fmt.Errorf("encoding sampling_strategy: %w", err)
 	}
-
-	return result, nil
+	return cfg, nil
 }
 
 // Extensions implements processor.Arguments.

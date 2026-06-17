@@ -78,11 +78,12 @@ func toKafkaExporter(cfg *kafkaexporter.Config) *kafka.Arguments {
 		Metrics:                              toKafkaSignalConfig(cfg.Metrics),
 		Traces:                               toKafkaSignalConfig(cfg.Traces),
 
-		Authentication: toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
-		Metadata:       toKafkaMetadata(cfg.Metadata),
-		Retry:          toRetryArguments(cfg.BackOffConfig),
-		Queue:          toQueueArguments(cfg.QueueBatchConfig),
-		Producer:       toKafkaProducer(cfg.Producer),
+		Authentication:    toKafkaAuthentication(encodeMapstruct(cfg.Authentication)),
+		Metadata:          toKafkaMetadata(cfg.Metadata),
+		Retry:             toRetryArguments(cfg.BackOffConfig),
+		Queue:             toQueueArguments(cfg.QueueBatchConfig),
+		Producer:          toKafkaProducer(cfg.Producer),
+		RecordPartitioner: toKafkaRecordPartitioner(cfg.RecordPartitioner),
 
 		TLS: tlsCfgPtr,
 
@@ -105,6 +106,20 @@ func toKafkaCompressionParams(cfg configcompression.CompressionParams) kafka.Com
 	return kafka.CompressionParams{
 		Level: int(cfg.Level),
 	}
+}
+
+func toKafkaRecordPartitioner(cfg kafkaexporter.RecordPartitionerConfig) *kafka.RecordPartitionerConfig {
+	r := &kafka.RecordPartitionerConfig{}
+	if cfg.StickyKey != nil {
+		r.StickyKey = &kafka.StickyKeyPartitionerConfig{Hasher: cfg.StickyKey.Hasher}
+	}
+	if cfg.RoundRobin != nil {
+		r.RoundRobin = true
+	}
+	if cfg.LeastBackup != nil {
+		r.LeastBackup = true
+	}
+	return r
 }
 
 func toKafkaSignalConfig(cfg kafkaexporter.SignalConfig) *kafka.KafkaExporterSignalConfig {
