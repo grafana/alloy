@@ -62,7 +62,7 @@ func BenchmarkJournal(b *testing.B) {
 	b.ReportAllocs()
 
 	for b.Loop() {
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		ctrl.Run(ctx, Arguments{
 			ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver(loki.WithChannel(make(chan loki.Entry, 10000)))},
 			Labels:    map[string]string{"test": "yay"},
