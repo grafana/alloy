@@ -94,6 +94,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 	"unsafe"
 )
@@ -159,7 +160,18 @@ type lib struct {
 	addMatch unsafe.Pointer
 }
 
+var (
+	journalLib *lib
+	mut        sync.Mutex
+)
+
 func openLib() (*lib, error) {
+	mut.Lock()
+	defer mut.Unlock()
+	if journalLib != nil {
+		return journalLib, nil
+	}
+
 	name := C.CString("libsystemd.so.0")
 	// Safe: freeing a C string we allocated above
 	defer C.free(unsafe.Pointer(name)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
@@ -171,6 +183,13 @@ func openLib() (*lib, error) {
 
 	l := &lib{handle: handle}
 	var err error
+
+	defer func() {
+		if err != nil {
+			_ = C.dlclose(handle)
+		}
+	}()
+
 	l.open, err = dlsym(handle, "sd_journal_open")
 	if err != nil {
 		return nil, err
@@ -228,6 +247,7 @@ func openLib() (*lib, error) {
 		return nil, err
 	}
 
+	journalLib = l
 	return l, nil
 }
 
