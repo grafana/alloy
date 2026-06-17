@@ -51,10 +51,11 @@ func TestJournal(t *testing.T) {
 
 		require.EventuallyWithT(t, func(c *assert.CollectT) {
 			require.Len(c, collector.Received(), numMessages)
-			for i := range collector.Received() {
-				require.Equal(c, strconv.Itoa(i), collector.Received()[i].Line)
-			}
 		}, 5*time.Second, 100*time.Millisecond)
+
+		for i := range collector.Received() {
+			require.Equal(t, strconv.Itoa(i), collector.Received()[i].Line)
+		}
 
 		expectedMetrics := `# HELP loki_source_journal_target_lines_total Total number of successful journal lines read
 	# TYPE loki_source_journal_target_lines_total counter

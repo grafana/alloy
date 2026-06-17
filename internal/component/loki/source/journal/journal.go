@@ -35,7 +35,6 @@ var _ component.Component = (*Component)(nil)
 type Component struct {
 	opts           component.Options
 	metrics        *metrics
-	recv           loki.LogsReceiver
 	positions      positions.Positions
 	targetsUpdated chan struct{}
 
@@ -72,7 +71,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		metrics:        newMetrics(o.Registerer),
 		opts:           o,
-		recv:           loki.NewLogsReceiver(),
 		positions:      positionsFile,
 		fanout:         loki.NewFanout(args.ForwardTo),
 		targetsUpdated: make(chan struct{}, 1),
@@ -142,12 +140,19 @@ func (c *Component) CurrentHealth() component.Health {
 }
 
 func (c *Component) reloadTailer() {
+	c.mut.RLock()
+	var tailerToStop *tailer
+	if c.tailer != nil {
+		tailerToStop = c.tailer
+	}
+	c.mut.Unlock()
+
+	if tailerToStop != nil {
+		tailerToStop.Stop()
+	}
+
 	c.mut.Lock()
 	defer c.mut.Unlock()
-	if c.tailer != nil {
-		c.tailer.Stop()
-		c.tailer = nil
-	}
 
 	tailer, err := newTailer(tailerOptions{
 		logger:  c.opts.Logger,
@@ -167,8 +172,8 @@ func (c *Component) reloadTailer() {
 		c.opts.Logger.Error("error creating journal tailer", "err", err, "path", c.args.Path)
 		c.healthErr = fmt.Errorf("error creating journal tailer: %w", err)
 	} else {
-		tailer.Start()
 		c.tailer = tailer
+		c.tailer.Start()
 		c.healthErr = nil
 	}
 }
