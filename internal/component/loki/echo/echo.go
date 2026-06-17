@@ -96,7 +96,7 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
-	batch.ConsumeStreams(func(stream loki.Stream, created int64) {
+	batch.ConsumeStreams(func(stream loki.Stream, created int64) bool {
 		logger := c.opts.Logger.With("labels", stream.Labels.String())
 		for _, e := range stream.Entries {
 			sm, err := e.StructuredMetadata.MarshalJSON()
@@ -106,6 +106,7 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 			}
 			logger.Info("received log entry", "entry", e.Line, "entry_timestamp", e.Timestamp, "structured_metadata", string(sm))
 		}
+		return true
 	})
 	return nil
 }

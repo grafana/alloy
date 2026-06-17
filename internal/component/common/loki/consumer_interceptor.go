@@ -56,7 +56,19 @@ func (i *InterceptorConsumer) Consume(ctx context.Context, batch Batch) error {
 		return i.next.Consume(ctx, batch)
 	}
 
-	return errors.New("loki interceptor: unimplemented consume")
+	// Fallback to ConsumeEntry.
+	var err error
+	batch.ConsumeStreams(func(stream Stream, created int64) bool {
+		for _, e := range stream.Entries {
+			err = i.ConsumeEntry(ctx, NewEntryWithCreatedUnixMicro(stream.Labels, created, e))
+			if err != nil {
+				return false
+			}
+		}
+		return true
+	})
+
+	return err
 }
 
 // TODO: Remove this when we have moved over to batching.

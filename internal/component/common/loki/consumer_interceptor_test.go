@@ -81,9 +81,10 @@ func TestInterceptorConsumer_Consume(t *testing.T) {
 		batches := next.Batches()
 		require.Len(t, batches, 1)
 		require.Equal(t, 1, batches[0].EntryLen())
-		batches[0].ConsumeStreams(func(stream Stream, _ int64) {
+		batches[0].ConsumeStreams(func(stream Stream, _ int64) bool {
 			require.Equal(t, model.LabelValue("true"), stream.Labels["hook"])
 			require.Equal(t, "modified", stream.Entries[0].Line)
+			return true
 		})
 	})
 
