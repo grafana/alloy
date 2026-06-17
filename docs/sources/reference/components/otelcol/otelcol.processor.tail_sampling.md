@@ -54,7 +54,6 @@ You can use the following arguments with `otelcol.processor.tail_sampling`:
 | `drop_pending_traces_on_shutdown`   | `boolean`  | Drop pending traces on shutdown instead of deciding with partial data.                                                  | `false` | no       |
 | `maximum_trace_size_bytes`          | `int`      | Drop traces early when they exceed this size in bytes. `0` disables early dropping.                                     | `0`     | no       |
 | `decision_cache`                    | `object`   | Configures caches for sampling decisions.                                                                               | `{}`    | no       |
-| `sampling_strategy`                 | `string`   | When sampling decisions are made: `"trace-complete"` waits for a full trace, `"span-ingest"` decides per ingested batch. | `"trace-complete"` | no |
 
 `decision_wait` determines the number of batches to maintain on a channel.
 Its value must convert to a number of seconds greater than zero.

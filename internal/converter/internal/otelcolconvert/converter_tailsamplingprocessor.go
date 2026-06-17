@@ -57,7 +57,6 @@ func toTailSamplingProcessor(state *State, id componentstatus.InstanceID, cfg *t
 		ExpectedNewTracesPerSec:     cfg.ExpectedNewTracesPerSec,
 		SampleOnFirstMatch:          cfg.SampleOnFirstMatch,
 		DropPendingTracesOnShutdown: cfg.DropPendingTracesOnShutdown,
-		SamplingStrategy:            fmt.Sprint(cfg.SamplingStrategy),
 		Output: &otelcol.ConsumerArguments{
 			Traces: ToTokenizedConsumers(nextTraces),
 		},
