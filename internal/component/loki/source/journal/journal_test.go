@@ -39,7 +39,7 @@ func TestJournal(t *testing.T) {
 			})
 		}()
 
-		ctrl.WaitRunning(time.Minute)
+		require.NoError(t, ctrl.WaitRunning(time.Minute))
 		const numMessages = 10
 
 		for i := range numMessages {

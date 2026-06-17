@@ -144,7 +144,7 @@ var _ journal = (*fakeJournal)(nil)
 
 func newFakeJournal() *fakeJournal {
 	return &fakeJournal{
-		written: make(chan struct{}),
+		written: make(chan struct{}, 1),
 	}
 }
 
