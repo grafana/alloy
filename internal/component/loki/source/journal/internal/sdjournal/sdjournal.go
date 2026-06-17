@@ -95,6 +95,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"unsafe"
 )
@@ -295,11 +296,11 @@ func New(opts Options) (*Journal, error) {
 		// Safe: freeing a C string we allocated above
 		defer C.free(unsafe.Pointer(p)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 		if ret := C.j_open_directory(l.openDirectory, &journal, p, 0); ret < 0 {
-			return nil, fmt.Errorf("sd_journal_open_directory failed: %d", int(ret))
+			return nil, fmt.Errorf("sd_journal_open_directory failed: %w", syscall.Errno(-ret))
 		}
 	} else {
 		if ret := C.j_open(l.open, &journal, sdJournalLocalOnly); ret < 0 {
-			return nil, fmt.Errorf("sd_journal_open failed: %d", int(ret))
+			return nil, fmt.Errorf("sd_journal_open failed: %w", syscall.Errno(-ret))
 		}
 	}
 
@@ -335,7 +336,7 @@ var ErrNoData = errors.New("no data")
 func (j *Journal) Next() ([]Field, string, error) {
 	ret := C.j_next(j.lib.next, j.journal)
 	if ret < 0 {
-		return nil, "", fmt.Errorf("sd_journal_next failed: %d", int(ret))
+		return nil, "", fmt.Errorf("sd_journal_next failed: %w", syscall.Errno(-ret))
 	}
 
 	// No more data.
@@ -345,7 +346,7 @@ func (j *Journal) Next() ([]Field, string, error) {
 
 	var c *C.char
 	if ret := C.j_get_cursor(j.lib.getCursor, j.journal, &c); ret < 0 {
-		return nil, "", fmt.Errorf("sd_journal_get_cursor failed: %d", int(ret))
+		return nil, "", fmt.Errorf("sd_journal_get_cursor failed: %w", syscall.Errno(-ret))
 	}
 	// Safe: freeing a C string libsystemd allocated for us
 	defer C.free(unsafe.Pointer(c)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
@@ -360,7 +361,7 @@ func (j *Journal) Next() ([]Field, string, error) {
 	for {
 		ret := C.j_enumerate_data(j.lib.enumerateData, j.journal, &data, &length)
 		if ret < 0 {
-			return nil, cursor, fmt.Errorf("sd_journal_enumerate_data failed: %d", int(ret))
+			return nil, cursor, fmt.Errorf("sd_journal_enumerate_data failed: %w", syscall.Errno(-ret))
 		}
 		if ret == 0 {
 			// no more fields
@@ -393,7 +394,7 @@ func (j *Journal) Wait(ctx context.Context) error {
 		case sdJournalAppend, sdJournalInvalidate:
 			return nil
 		default:
-			return fmt.Errorf("sd_journal_wait failed: %d", ret)
+			return fmt.Errorf("sd_journal_wait failed: %w", syscall.Errno(-ret))
 		}
 	}
 }
@@ -403,7 +404,7 @@ func (j *Journal) Wait(ctx context.Context) error {
 func (j *Journal) Realtime() (time.Time, error) {
 	var usec C.uint64_t
 	if ret := C.j_get_realtime_usec(j.lib.getRealtimeUsec, j.journal, &usec); ret < 0 {
-		return time.Time{}, fmt.Errorf("sd_journal_get_realtime_usec failed: %d", int(ret))
+		return time.Time{}, fmt.Errorf("sd_journal_get_realtime_usec failed: %w", syscall.Errno(-ret))
 	}
 	return time.UnixMicro(int64(usec)), nil
 }
@@ -435,14 +436,14 @@ func (j *Journal) seekToStart(cursor string, maxAge time.Duration) error {
 	defer C.free(unsafe.Pointer(c)) // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
 
 	if ret := C.j_seek_cursor(j.lib.seekCursor, j.journal, c); ret < 0 {
-		return fmt.Errorf("sd_journal_seek_cursor failed: %d", int(ret))
+		return fmt.Errorf("sd_journal_seek_cursor failed: %w", syscall.Errno(-ret))
 	}
 
 	switch ret := C.j_next(j.lib.next, j.journal); {
 	case ret < 0:
 		// Couldn't read from the cursor. Fall back to cutoff.
 		if cutoff.IsZero() {
-			return fmt.Errorf("sd_journal_next failed: %d", int(ret))
+			return fmt.Errorf("sd_journal_next failed: %w", syscall.Errno(-ret))
 		}
 		return j.seekRealtime(cutoff)
 	case ret == 0:
@@ -462,7 +463,7 @@ func (j *Journal) seekToStart(cursor string, maxAge time.Duration) error {
 	// if the cursor was rotated away the entry is unread, so step back to avoid skipping it.
 	if C.j_test_cursor(j.lib.testCursor, j.journal, c) <= 0 {
 		if ret := C.j_previous(j.lib.previous, j.journal); ret < 0 {
-			return fmt.Errorf("sd_journal_previous failed: %d", int(ret))
+			return fmt.Errorf("sd_journal_previous failed: %w", syscall.Errno(-ret))
 		}
 	}
 	return nil
@@ -472,7 +473,7 @@ func (j *Journal) seekToStart(cursor string, maxAge time.Duration) error {
 // entry received at or after t.
 func (j *Journal) seekRealtime(t time.Time) error {
 	if ret := C.j_seek_realtime_usec(j.lib.seekRealtimeUsec, j.journal, C.uint64_t(t.UnixMicro())); ret < 0 {
-		return fmt.Errorf("sd_journal_seek_realtime_usec failed: %d", int(ret))
+		return fmt.Errorf("sd_journal_seek_realtime_usec failed: %w", syscall.Errno(-ret))
 	}
 	return nil
 }
@@ -486,7 +487,7 @@ func (j *Journal) addMatch(match string) error {
 
 	// Safe: add_match copies the C string we allocated above
 	if ret := C.j_add_match(j.lib.addMatch, j.journal, unsafe.Pointer(m), C.size_t(len(match))); ret < 0 { // #nosec G103 nosemgrep: go.lang.security.audit.unsafe.use-of-unsafe-block
-		return fmt.Errorf("sd_journal_add_match failed: %d", int(ret))
+		return fmt.Errorf("sd_journal_add_match failed: %w", syscall.Errno(-ret))
 	}
 	return nil
 }
