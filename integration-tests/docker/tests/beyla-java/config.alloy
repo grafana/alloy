@@ -26,7 +26,7 @@ beyla.ebpf "default" {
     }
     enabled_sdks = ["java"]
     // alloy is reachable from java-app on the shared default docker network
-    otel_endpoint = "http://alloy:4318"
+    exporter_otlp_endpoint = "http://alloy:4318"
   }
 
   output {
