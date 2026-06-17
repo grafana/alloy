@@ -99,8 +99,8 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 func TestFanoutConsumer_NilConsumer(t *testing.T) {
 	fanout := NewFanoutConsumer([]Consumer{nil})
 	require.NotPanics(t, func() {
-		_ = fanout.Consume(context.Background(), NewBatch())
-		_ = fanout.ConsumeEntry(context.Background(), NewEntry(model.LabelSet{}, push.Entry{}))
+		require.NoError(t, fanout.Consume(context.Background(), NewBatch()))
+		require.NoError(t, fanout.ConsumeEntry(context.Background(), NewEntry(model.LabelSet{}, push.Entry{})))
 	})
 }
 

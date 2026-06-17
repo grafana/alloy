@@ -59,6 +59,7 @@ func (i *InterceptorConsumer) Consume(ctx context.Context, batch Batch) error {
 	return errors.New("loki interceptor: unimplemented consume")
 }
 
+// TODO: Remove this when we have moved over to batching.
 func (i *InterceptorConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 	if i.onConsumeEntry != nil {
 		entry, keep, err := i.onConsumeEntry(ctx, entry)

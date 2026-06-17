@@ -13,6 +13,7 @@ var ErrConsumerStopped = errors.New("consumer stopped")
 
 type Consumer interface {
 	Consume(ctx context.Context, batch Batch) error
+	// TODO: Remove this when we have moved over to batching.
 	ConsumeEntry(ctx context.Context, entry Entry) error
 }
 

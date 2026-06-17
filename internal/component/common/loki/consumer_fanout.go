@@ -58,6 +58,7 @@ func (f *FanoutConsumer) Consume(ctx context.Context, batch Batch) error {
 	return errors.Join(errs...)
 }
 
+// TODO: Remove this when we have moved over to batching.
 func (f *FanoutConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 	// NOTE: We snapshot the consumer list under a brief read lock and release it
 	// before delivering, rather than holding the lock for the whole fan-out.

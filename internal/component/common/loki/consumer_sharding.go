@@ -90,6 +90,7 @@ func (s *ShardingConsumer) consume(ctx context.Context, shard int, batch Batch) 
 
 // ConsumeEntry shards a single entry to the shard selected by the entry's labels.
 // It returns ErrConsumerStopped if called after shutdown begins.
+// TODO: Remove this when we have moved over to batching.
 func (s *ShardingConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 	errCh := make(chan error, 1)
 	req := shardingRequest{

@@ -110,6 +110,7 @@ func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
 	return nil
 }
 
+// TODO: Remove this when we have moved over to batching.
 func (c *Component) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
 	structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
 	if err != nil {
