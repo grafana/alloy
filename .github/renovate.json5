@@ -129,6 +129,11 @@
       "groupName": "npm dependencies",
       "enabled": true
     },
+        {
+      "matchManagers": ["mise"],
+      "groupName": "mise dependencies",
+      "enabled": true
+    },
     {
       // Supersede previous rules to require PR creation approval for major versions
       "matchUpdateTypes": ["major"],
@@ -137,11 +142,6 @@
       // having its own PR.
       "groupName": "{{manager}} dependency {{depName}}",
       "commitMessageTopic": "{{manager}} dependency {{depName}}"
-    },
-    {
-      "matchManagers": ["mise"],
-      "groupName": "mise dependencies",
-      "enabled": true
-    },
+    }
   ],
 }
