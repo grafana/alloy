@@ -205,10 +205,50 @@ var groupBy = value.RawFunction(func(funcValue value.Value, args ...value.Value)
 	return value.Array(result...), nil
 })
 
+// get returns the element at the specified index of the array, or the fallback value if the index is out of bounds.
+var get = value.RawFunction(func(funcValue value.Value, args ...value.Value) (value.Value, error) {
+	if len(args) != 3 {
+		return value.Null, fmt.Errorf("array.get: expected 3 arguments, got %d", len(args))
+	}
+
+	if args[0].Type() != value.TypeArray {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[0],
+			Index:    0,
+			Inner: value.TypeError{
+				Value:    args[0],
+				Expected: value.TypeArray,
+			},
+		}
+	}
+
+	if args[1].Type() != value.TypeNumber {
+		return value.Null, value.ArgError{
+			Function: funcValue,
+			Argument: args[1],
+			Index:    1,
+			Inner: value.TypeError{
+				Value:    args[1],
+				Expected: value.TypeNumber,
+			},
+		}
+	}
+
+	idx := int(args[1].Int())
+	arr := args[0]
+	if idx < 0 || idx >= arr.Len() {
+		return args[2], nil
+	}
+
+	return arr.Index(idx), nil
+})
+
 var array = map[string]any{
 	"concat":       concat,
 	"combine_maps": combineMaps,
 	"group_by":     groupBy,
+	"get":          get,
 }
 
 var convert = map[string]any{

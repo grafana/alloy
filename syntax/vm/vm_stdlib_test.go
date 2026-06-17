@@ -154,6 +154,12 @@ func TestVM_Stdlib(t *testing.T) {
 				{"a": 1, "n": 2.1}, {"a": 1, "n": 2.2}, {"a": 1, "n": 2.3},
 			},
 		},
+		{"array.get within bounds", `array.get(["foo", "bar"], 0, "fallback")`, string("foo")},
+		{"array.get within bounds 2", `array.get(["foo", "bar"], 1, "fallback")`, string("bar")},
+		{"array.get out of bounds", `array.get(["foo", "bar"], 2, "fallback")`, string("fallback")},
+		{"array.get negative index", `array.get(["foo", "bar"], -1, "fallback")`, string("fallback")},
+		{"array.get empty array", `array.get([], 0, "fallback")`, string("fallback")},
+		{"array.get object fallback", `array.get([], 0, {"__address__" = "localhost:3100"}).__address__`, string("localhost:3100")},
 	}
 
 	for _, tc := range tt {
@@ -198,6 +204,16 @@ func TestVM_Stdlib_Errors(t *testing.T) {
 			"encoding.to_json",
 			`encoding.to_json(12)`,
 			`encoding.to_json jsonEncode only supports map`,
+		},
+		{
+			"array.get type error array",
+			`array.get("not array", 0, "fallback")`,
+			`"not array" should be array, got string`,
+		},
+		{
+			"array.get type error index",
+			`array.get(["foo"], "not number", "fallback")`,
+			`"not number" should be number, got string`,
 		},
 	}
 
