@@ -463,9 +463,8 @@ The `.prom` files must end with an empty line feed for the component to recogniz
 ### `time`
 
 The time collector exposes the Windows Time Service and other time related metrics.
-If the Windows Time Service is stopped after collection has started, collector metric values will reset to 0.
+If the Windows Time Service is stopped after collection has started, collector metric values reset to 0.
 
-Please note the Time Service perflib counters are only available on [Windows Server 2016 or newer](https://docs.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-server-2016-improvements).
 | Name           | Type           | Description                  | Default                                       | Required |
 | -------------- | -------------- | ---------------------------- | --------------------------------------------- | -------- |
 | `enabled_list` | `list(string)` | A list of collectors to use. | `["system_time","clock_source","ntp"]`        | no       |
@@ -476,7 +475,9 @@ The collectors specified by `enabled_list` can include the following:
 - `ntp`
 - `system_time`
 
-The `ntp` collector may not be available on all systems.
+The `ntp` sub-collector reads the Windows Time Service performance counters, which are only available on [Windows Server 2016 or newer][win2016-time-svc-improv]. It produces no metrics on older systems.
+
+[win2016-time-svc-improv]: https://docs.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-server-2016-improvements
 
 ### `update`
 
