@@ -42,6 +42,7 @@ type Config struct {
 	PerformanceCounter PerformanceCounterConfig `yaml:"performancecounter,omitempty"`
 	DNS                DNSConfig                `yaml:"dns,omitempty"`
 	Net                NetConfig                `yaml:"net,omitempty"`
+	Time               TimeConfig               `yaml:"time,omitempty"`
 }
 
 // Name returns the name used, "windows_explorer"
@@ -202,4 +203,9 @@ type NetConfig struct {
 	EnabledList string `yaml:"enabled_list,omitempty"`
 	Exclude     string `yaml:"exclude,omitempty"`
 	Include     string `yaml:"include,omitempty"`
+}
+
+// TimeConfig handles settings for the windows_exporter time collector
+type TimeConfig struct {
+	EnabledList string `yaml:"enabled_list,omitempty"`
 }

@@ -10,6 +10,10 @@ internal API changes are not present.
 Unreleased
 ----------
 
+### Enhancements
+
+- Add `alloy.command` to override the entrypoint command for the Alloy container. This makes it possible to launch the Alloy binary from its image path when running as a HostProcess container on Windows nodes. (@petewall)
+
 1.10.0 (2026-06-12)
 ----------
 
