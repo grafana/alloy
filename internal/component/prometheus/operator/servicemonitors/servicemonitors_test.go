@@ -176,9 +176,9 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 				return testFactory.TriggerServiceMonitorAdd(serviceMonitor)
 			}, 10*time.Second, 100*time.Millisecond, "Timeout waiting for manager to be ready")
 
-			// Inject static targets once the generated job is available.
-			// In CI there is no in-cluster Kubernetes config, so waiting for a fully
-			// registered Kubernetes SD-backed scrape config is brittle.
+			// This test intentionally uses a fake Kubernetes client and then injects
+			// static targets for scraping. The ServiceMonitor add path is asynchronous,
+			// so we first wait for the expected generated job and then inject targets.
 			jobName := "serviceMonitor/monitoring/test-service-monitor/0"
 			require.Eventually(t, func() bool {
 				for _, name := range testFactory.GetScrapeConfigJobNames() {
