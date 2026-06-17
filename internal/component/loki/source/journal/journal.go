@@ -145,7 +145,7 @@ func (c *Component) reloadTailer() {
 	if c.tailer != nil {
 		tailerToStop = c.tailer
 	}
-	c.mut.Unlock()
+	c.mut.RUnlock()
 
 	if tailerToStop != nil {
 		tailerToStop.Stop()
