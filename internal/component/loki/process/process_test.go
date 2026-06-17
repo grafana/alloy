@@ -1194,20 +1194,26 @@ stage.static_labels {
 
 	// The lines were received after processing by each component, with no
 	// race condition between them.
+	seenCh1 := false
+	seenCh2 := false
 	for i := 0; i < 2; i++ {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
 			require.Equal(t, "writing some text", logEntry.Line)
 			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}), logEntry.Labels)
+			seenCh1 = true
 		case logEntry := <-ch2.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
 			require.Equal(t, "writing some text", logEntry.Line)
 			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}), logEntry.Labels)
+			seenCh2 = true
 		case <-time.After(5 * time.Second):
 			require.FailNow(t, "failed waiting for log line")
 		}
 	}
+	require.True(t, seenCh1, "expected log line from first receiver")
+	require.True(t, seenCh2, "expected log line from second receiver")
 }
 
 type testFrequentUpdate struct {

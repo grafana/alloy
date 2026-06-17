@@ -10,6 +10,7 @@ import (
 
 func (b *ConfigBuilder) appendServer(config *server.Config) {
 	args := toServer(config)
+	normalizeEmptyTLSWindowsFilter(args.TLS)
 	if !reflect.DeepEqual(*args.TLS, http.TLSArguments{}) {
 		b.f.Body().AppendBlock(common.NewBlockWithOverride(
 			[]string{"http"},
@@ -17,6 +18,50 @@ func (b *ConfigBuilder) appendServer(config *server.Config) {
 			args,
 		))
 	}
+}
+
+func normalizeEmptyTLSWindowsFilter(tlsArgs *http.TLSArguments) {
+	if tlsArgs == nil || tlsArgs.WindowsFilter == nil {
+		return
+	}
+
+	tlsArgs.WindowsFilter.Server = normalizeEmptyWindowsServerFilter(tlsArgs.WindowsFilter.Server)
+	tlsArgs.WindowsFilter.Client = normalizeEmptyWindowsClientFilter(tlsArgs.WindowsFilter.Client)
+	if tlsArgs.WindowsFilter.Server == nil && tlsArgs.WindowsFilter.Client == nil {
+		tlsArgs.WindowsFilter = nil
+	}
+}
+
+func normalizeEmptyWindowsServerFilter(serverFilter *http.WindowsServerFilter) *http.WindowsServerFilter {
+	if serverFilter == nil {
+		return nil
+	}
+	if len(serverFilter.IssuerCommonNames) == 0 {
+		serverFilter.IssuerCommonNames = nil
+	}
+	if serverFilter.Store == "" &&
+		serverFilter.SystemStore == "" &&
+		len(serverFilter.IssuerCommonNames) == 0 &&
+		serverFilter.TemplateID == "" &&
+		serverFilter.RefreshInterval == 0 {
+		return nil
+	}
+	return serverFilter
+}
+
+func normalizeEmptyWindowsClientFilter(clientFilter *http.WindowsClientFilter) *http.WindowsClientFilter {
+	if clientFilter == nil {
+		return nil
+	}
+	if len(clientFilter.IssuerCommonNames) == 0 {
+		clientFilter.IssuerCommonNames = nil
+	}
+	if len(clientFilter.IssuerCommonNames) == 0 &&
+		clientFilter.SubjectRegEx == "" &&
+		clientFilter.TemplateID == "" {
+		return nil
+	}
+	return clientFilter
 }
 
 func toServer(config *server.Config) *http.Arguments {
