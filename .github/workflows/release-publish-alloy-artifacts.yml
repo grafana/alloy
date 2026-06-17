@@ -84,7 +84,7 @@ jobs:
     - validate
     steps:
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         ref: ${{ env.RELEASE_TAG }}
         persist-credentials: false
@@ -104,14 +104,14 @@ jobs:
         VERSION: ${{ env.RELEASE_TAG }}
 
     - name: Publish dist
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: dist
         path: ./dist
         if-no-files-found: error
 
     - name: Publish unsigned Windows executables
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: windows-executables
         path: |
@@ -141,7 +141,7 @@ jobs:
           tenant-id=azure-trusted-signing:tenant-id
 
     - name: Sign Windows binaries
-      uses: grafana/shared-workflows/actions/azure-trusted-signing@e86cdb1c0a8cf5df57d3078f285261f7c9577174 # azure-trusted-signing/v1.0.0
+      uses: grafana/shared-workflows/actions/azure-trusted-signing@6a042eda14a697e71944976ab618d27104d9fed4 # azure-trusted-signing/v1.0.3
       id: sign-artifacts
       with:
         application-description: 'Grafana Alloy'
@@ -160,7 +160,7 @@ jobs:
     - sign_alloy_windows
     steps:
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         ref: ${{ env.RELEASE_TAG }}
         persist-credentials: false
@@ -185,7 +185,7 @@ jobs:
         VERSION: ${{ env.RELEASE_TAG }}
 
     - name: Publish unsigned Windows installer
-      uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: windows-installer-unsigned
         path: ./dist/alloy-installer-windows-amd64.exe
@@ -213,7 +213,7 @@ jobs:
           tenant-id=azure-trusted-signing:tenant-id
 
     - name: Sign Windows installer
-      uses: grafana/shared-workflows/actions/azure-trusted-signing@e86cdb1c0a8cf5df57d3078f285261f7c9577174 # azure-trusted-signing/v1.0.0
+      uses: grafana/shared-workflows/actions/azure-trusted-signing@6a042eda14a697e71944976ab618d27104d9fed4 # azure-trusted-signing/v1.0.3
       id: sign-artifacts
       with:
         application-description: 'Grafana Alloy'
@@ -242,7 +242,7 @@ jobs:
         github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
     - name: Checkout repository 🛎️
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         ref: ${{ env.RELEASE_TAG }}
         token: ${{ steps.app-token.outputs.token }}
