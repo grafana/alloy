@@ -8,6 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
+	"go.uber.org/atomic"
 )
 
 // DefaultHistogramConfig sets the defaults for a Histogram.
@@ -62,7 +63,7 @@ func NewHistograms(name string, config *HistogramConfig) (*Histograms, error) {
 				ConstLabels: labels,
 				Buckets:     config.Buckets,
 			}),
-				0,
+				*atomic.NewInt64(0),
 			}
 		}, int64(config.MaxIdle.Seconds())),
 		Cfg: config,
@@ -76,16 +77,16 @@ func (h *Histograms) With(labels model.LabelSet) prometheus.Histogram {
 
 type expiringHistogram struct {
 	prometheus.Histogram
-	lastModSec int64
+	lastModSec atomic.Int64
 }
 
 // Observe adds a single observation to the histogram.
 func (h *expiringHistogram) Observe(val float64) {
 	h.Histogram.Observe(val)
-	h.lastModSec = time.Now().Unix()
+	h.lastModSec.Store(time.Now().Unix())
 }
 
 // HasExpired implements Expirable
 func (h *expiringHistogram) HasExpired(currentTimeSec int64, maxAgeSec int64) bool {
-	return currentTimeSec-h.lastModSec >= maxAgeSec
+	return currentTimeSec-h.lastModSec.Load() >= maxAgeSec
 }
