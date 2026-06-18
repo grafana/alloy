@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+if [ -f "/opt/homebrew/etc/alloy/config.env" ]; then
+  set -a
+  . "/opt/homebrew/etc/alloy/config.env"
+  set +a
+fi
+
+extra_args=""
+[ -f "/opt/homebrew/etc/alloy/extra-args.txt" ] && extra_args=$(cat "/opt/homebrew/etc/alloy/extra-args.txt")
+
+exec "/opt/homebrew/opt/alloy/bin/alloy" run \
+  --storage.path="/opt/homebrew/var/lib/alloy/data" \
+  $extra_args \
+  "/opt/homebrew/etc/alloy/config.alloy"

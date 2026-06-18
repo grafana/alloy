@@ -3,6 +3,7 @@ package generate
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/grafana/alloy/tools/generate/alloyservicewrapper"
 	"github.com/grafana/alloy/tools/generate/moduledeps"
 )
 
@@ -17,6 +18,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(
 		moduledeps.Command(),
+		alloyservicewrapper.Command(),
 	)
 
 	return cmd
