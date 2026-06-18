@@ -81,10 +81,10 @@ func TestInterceptorConsumer_Consume(t *testing.T) {
 		batches := next.Batches()
 		require.Len(t, batches, 1)
 		require.Equal(t, 1, batches[0].EntryLen())
-		batches[0].ConsumeStreams(func(stream Stream, _ int64) bool {
+		_ = batches[0].ConsumeStreams(func(stream Stream, _ int64) error {
 			require.Equal(t, model.LabelValue("true"), stream.Labels["hook"])
 			require.Equal(t, "modified", stream.Entries[0].Line)
-			return true
+			return nil
 		})
 	})
 
@@ -120,10 +120,17 @@ func TestInterceptorConsumer_Consume(t *testing.T) {
 		require.Empty(t, next.Batches())
 	})
 
-	t.Run("returns error without hook", func(t *testing.T) {
-		consumer := NewInterceptorConsumer("test", NewCollectingConsumer())
+	t.Run("fallback to consumeEntry", func(t *testing.T) {
+		var called bool
+		consumer := NewInterceptorConsumer("test", NewCollectingConsumer(), WithConsumeEntryHook(func(ctx context.Context, entry Entry) (Entry, bool, error) {
+			called = true
+			return entry, true, nil
 
-		err := consumer.Consume(t.Context(), NewBatch())
-		require.EqualError(t, err, "loki interceptor: unimplemented consume")
+		}))
+
+		batch := NewBatch()
+		batch.Add(NewStream(model.LabelSet{}, push.Entry{}))
+		require.NoError(t, consumer.Consume(t.Context(), batch))
+		require.True(t, called)
 	})
 }
