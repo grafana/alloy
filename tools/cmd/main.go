@@ -10,7 +10,7 @@ import (
 	"github.com/grafana/alloy/tools/govulncheck"
 	"github.com/grafana/alloy/tools/lint"
 	"github.com/grafana/alloy/tools/release"
-	"github.com/grafana/alloy/tools/sync-replaces"
+	syncreplaces "github.com/grafana/alloy/tools/sync-replaces"
 )
 
 func main() {
