@@ -171,6 +171,7 @@ func (t *tailer) Start() {
 
 			if !relabel.ProcessBuilder(t.br, t.rcs...) {
 				t.logger.Debug("journal entry dropped by relabel rules")
+				t.metrics.journalErrors.WithLabelValues(emptyLabelsError).Inc()
 				t.pos.PutString(t.key, "", cursor)
 				continue
 			}
