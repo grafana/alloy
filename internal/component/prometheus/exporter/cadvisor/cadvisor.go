@@ -26,7 +26,7 @@ func createExporter(opts component.Options, args component.Arguments) (integrati
 	common.WarningIfUsedInCluster(opts)
 	a := args.(Arguments)
 	defaultInstanceKey := common.HostNameInstanceKey() // if cannot resolve instance key, use the host name for cadvisor
-	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
 // Arguments configures the prometheus.exporter.cadvisor component.

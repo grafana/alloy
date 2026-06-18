@@ -32,7 +32,7 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
 	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
-	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
 // buildBlackboxTargets creates the exporter's discovery targets based on the defined blackbox targets.

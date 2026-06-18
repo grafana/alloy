@@ -35,10 +35,10 @@ The `graphql` command is an alias for `gql`.
 ## Enable the GraphQL API
 
 The GraphQL API is disabled by default.
-To enable it, start {{< param "PRODUCT_NAME" >}} with the `--stability.level=experimental` and `--feature.graphql.enabled` flags:
+To enable it, start {{< param "PRODUCT_NAME" >}} with the `--stability.level=experimental` and `--server.http.enable-graphql` flags:
 
 ```shell
-alloy run --stability.level=experimental --feature.graphql.enabled <CONFIG_PATH>
+alloy run --stability.level=experimental --server.http.enable-graphql <CONFIG_PATH>
 ```
 
 Replace _`<CONFIG_PATH>`_ with the {{< param "PRODUCT_NAME" >}} configuration file or directory path.
@@ -94,7 +94,7 @@ The output resembles the following:
 }
 ```
 
-To query a GraphQL endpoint on a different address, use the `--endpoint` flag:
+To query a GraphQL endpoint on a different address (including other {{< param "PRODUCT_NAME" >}} deployments), use the `--endpoint` flag:
 
 ```shell
 alloy gql --endpoint=http://localhost:12345/graphql 'components { id health { message } }'

@@ -140,7 +140,7 @@ func (c *Component) Run(ctx context.Context) error {
 		))
 
 		if !ok {
-			c.opts.SLogger.Debug("dropping entry after relabeling", "labels", entry.Labels.String())
+			c.opts.Logger.Debug("dropping entry after relabeling", "labels", entry.Labels.String())
 			return loki.Entry{}, false
 		}
 
@@ -158,14 +158,14 @@ func (c *Component) Update(args component.Arguments) error {
 	newArgs := args.(Arguments)
 	newRCS := alloy_relabel.ComponentToPromRelabelConfigs(newArgs.RelabelConfigs)
 	if relabelingChanged(c.rcs, newRCS) {
-		c.opts.SLogger.Debug("received new relabel configs, purging cache")
+		c.opts.Logger.Debug("received new relabel configs, purging cache")
 		c.cache.Purge()
 		c.metrics.cacheSize.Set(0)
 	}
 	if newArgs.MaxCacheSize != c.maxCacheSize {
 		evicted := c.cache.Resize(newArgs.MaxCacheSize)
 		if evicted > 0 {
-			c.opts.SLogger.Debug("resizing the cache led to evicting items", "len_items_evicted", evicted)
+			c.opts.Logger.Debug("resizing the cache led to evicting items", "len_items_evicted", evicted)
 		}
 	}
 	c.rcs = newRCS

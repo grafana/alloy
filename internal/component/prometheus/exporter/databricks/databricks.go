@@ -27,7 +27,7 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
 	cfg := a.toConfig()
-	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, cfg, a.ServerHostname)
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, cfg, a.ServerHostname)
 }
 
 // DefaultArguments holds the default settings for the databricks exporter

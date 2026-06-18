@@ -2349,7 +2349,6 @@ func TestNewQueryInfo(t *testing.T) {
 	assert.Equal(t, calls, qi.calls)
 	assert.Equal(t, callsReset, qi.callsReset)
 	assert.Equal(t, datname+queryId, qi.uniqueKey)
-	assert.Equal(t, 0, qi.failureCount)
 }
 
 func TestPlanNode_TotalCost(t *testing.T) {
@@ -2540,8 +2539,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				dbConnection:       db,
 				dbVersion:          pre17ver,
 				queryCache:         make(map[string]*queryInfo),
-				queryDenylist:      make(map[string]*queryInfo),
-				finishedQueryCache: make(map[string]*queryInfo),
+				queryDenylist:      make(map[string]struct{}),
+				finishedQueryCache: make(map[string]processedQueryInfo),
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             logger,
@@ -2580,8 +2579,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				dbConnection:       db,
 				dbVersion:          post17ver,
 				queryCache:         make(map[string]*queryInfo),
-				queryDenylist:      make(map[string]*queryInfo),
-				finishedQueryCache: make(map[string]*queryInfo),
+				queryDenylist:      make(map[string]struct{}),
+				finishedQueryCache: make(map[string]processedQueryInfo),
 				excludeDatabases:   []string{"information_schema"},
 				perScrapeRatio:     0.5,
 				logger:             logger,
@@ -2621,8 +2620,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				logger:       logger,
 				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
-				finishedQueryCache: map[string]*queryInfo{
-					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()),
+				finishedQueryCache: map[string]processedQueryInfo{
+					"testdb123456": {calls: int64(10), callsReset: time.Now()},
 				},
 			}
 
@@ -2647,8 +2646,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				logger:       logger,
 				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
-				finishedQueryCache: map[string]*queryInfo{
-					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now().Add(-time.Hour)),
+				finishedQueryCache: map[string]processedQueryInfo{
+					"testdb123456": {calls: int64(10), callsReset: time.Now().Add(-time.Hour)},
 				},
 			}
 
@@ -2674,8 +2673,8 @@ func TestExplainPlan_PopulateQueryCache(t *testing.T) {
 				logger:       logger,
 				entryHandler: lokiClient,
 				queryCache:   make(map[string]*queryInfo),
-				finishedQueryCache: map[string]*queryInfo{
-					"testdb123456": newQueryInfo("testdb", "123456", "SELECT * FROM users WHERE id = $1", int64(10), time.Now()),
+				finishedQueryCache: map[string]processedQueryInfo{
+					"testdb123456": {calls: int64(10), callsReset: time.Now()},
 				},
 			}
 
@@ -2767,8 +2766,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 		dbDSN:               "postgres://user:pass@host:1234/database",
 		dbVersion:           post17ver,
 		queryCache:          make(map[string]*queryInfo),
-		queryDenylist:       make(map[string]*queryInfo),
-		finishedQueryCache:  make(map[string]*queryInfo),
+		queryDenylist:       make(map[string]struct{}),
+		finishedQueryCache:  make(map[string]processedQueryInfo),
 		excludeDatabases:    []string{},
 		perScrapeRatio:      1.0,
 		logger:              logger,
@@ -2819,8 +2818,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             slogger,
@@ -2892,8 +2891,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             slogger,
@@ -2945,8 +2944,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             slogger,
@@ -3012,8 +3011,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             slogger,
@@ -3080,8 +3079,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             slogger,
@@ -3148,8 +3147,8 @@ func TestExplainPlanFetchExplainPlans(t *testing.T) {
 						callsReset: time.Now(),
 					},
 				},
-				queryDenylist:      map[string]*queryInfo{},
-				finishedQueryCache: map[string]*queryInfo{},
+				queryDenylist:      map[string]struct{}{},
+				finishedQueryCache: map[string]processedQueryInfo{},
 				excludeDatabases:   []string{},
 				perScrapeRatio:     1.0,
 				logger:             slogger,
@@ -3217,8 +3216,8 @@ func TestExplainPlans_ExcludeDatabases_NoLogSent(t *testing.T) {
 		dbConnection:       db,
 		dbVersion:          post17ver,
 		queryCache:         make(map[string]*queryInfo),
-		queryDenylist:      make(map[string]*queryInfo),
-		finishedQueryCache: make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]struct{}),
+		finishedQueryCache: make(map[string]processedQueryInfo),
 		excludeDatabases:   []string{"excluded_db"},
 		perScrapeRatio:     1.0,
 		logger:             logger.Slog(),
@@ -3266,8 +3265,8 @@ func TestExplainPlans_ExcludeUsers(t *testing.T) {
 		dbConnection:       db,
 		dbVersion:          post17ver,
 		queryCache:         make(map[string]*queryInfo),
-		queryDenylist:      make(map[string]*queryInfo),
-		finishedQueryCache: make(map[string]*queryInfo),
+		queryDenylist:      make(map[string]struct{}),
+		finishedQueryCache: make(map[string]processedQueryInfo),
 		excludeUsers:       []string{"excluded_user"},
 		perScrapeRatio:     1.0,
 		logger:             logger.Slog(),

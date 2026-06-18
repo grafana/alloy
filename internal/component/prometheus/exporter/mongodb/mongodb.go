@@ -1,6 +1,8 @@
 package mongodb
 
 import (
+	"time"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter"
 	"github.com/grafana/alloy/internal/featuregate"
@@ -24,7 +26,7 @@ func init() {
 func createExporter(opts component.Options, args component.Arguments) (integrations.Integration, string, error) {
 	a := args.(Arguments)
 	defaultInstanceKey := opts.ID // if cannot resolve instance key, use the component ID
-	return integrations.NewIntegrationWithInstanceKey(opts.SLogger, a.Convert(), defaultInstanceKey)
+	return integrations.NewIntegrationWithInstanceKey(opts.Logger, a.Convert(), defaultInstanceKey)
 }
 
 type Arguments struct {
@@ -33,6 +35,7 @@ type Arguments struct {
 	CollectAll               bool              `alloy:"collect_all,attr,optional"`
 	DirectConnect            bool              `alloy:"direct_connect,attr,optional"`
 	DiscoveringMode          bool              `alloy:"discovering_mode,attr,optional"`
+	CurrentopSlowTime        time.Duration     `alloy:"currentop_slow_time,attr,optional"`
 	EnableDBStats            bool              `alloy:"enable_db_stats,attr,optional"`
 	EnableDBStatsFreeStorage bool              `alloy:"enable_db_stats_free_storage,attr,optional"`
 	EnableDiagnosticData     bool              `alloy:"enable_diagnostic_data,attr,optional"`
@@ -55,6 +58,7 @@ func (a *Arguments) Convert() *mongodb_exporter.Config {
 		CollectAll:               a.CollectAll,
 		DirectConnect:            a.DirectConnect,
 		DiscoveringMode:          a.DiscoveringMode,
+		CurrentopSlowTime:        a.CurrentopSlowTime,
 		EnableDBStats:            a.EnableDBStats,
 		EnableDBStatsFreeStorage: a.EnableDBStatsFreeStorage,
 		EnableDiagnosticData:     a.EnableDiagnosticData,
@@ -77,6 +81,8 @@ func (a *Arguments) SetToDefault() {
 	a.CompatibleMode = true
 	a.CollectAll = true
 	a.DiscoveringMode = false
+	// Same default as upstream collector https://github.com/percona/mongodb_exporter/blob/43a703c25d752b910e4457428a0cded0f9c5962d/main.go#L80
+	a.CurrentopSlowTime = 1 * time.Minute
 	a.EnableDBStats = false
 	a.EnableDBStatsFreeStorage = false
 	a.EnableDiagnosticData = false

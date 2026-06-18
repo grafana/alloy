@@ -135,7 +135,7 @@ func New(opts component.Options, f otelexporter.Factory, args Arguments, support
 		factory:  f,
 		consumer: consumer,
 
-		sched:     scheduler.NewWithPauseCallbacks(opts.SLogger, consumer.Pause, consumer.Resume),
+		sched:     scheduler.NewWithPauseCallbacks(opts.Logger, consumer.Pause, consumer.Resume),
 		collector: collector,
 
 		supportedSignals: supportedSignals,
@@ -182,7 +182,7 @@ func (e *Exporter) Update(args component.Arguments) error {
 	settings := otelexporter.Settings{
 		ID: otelcomponent.NewIDWithName(e.factory.Type(), e.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         slogadapter.NewZap(e.opts.SLogger),
+			Logger:         slogadapter.NewZap(e.opts.Logger),
 			TracerProvider: e.opts.Tracer,
 			MeterProvider:  mp,
 		},

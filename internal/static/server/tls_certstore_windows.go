@@ -6,14 +6,13 @@ import (
 	"crypto/x509"
 	"encoding/asn1"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/github/smimesign/certstore"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 )
 
 // Documentation on how to setup a certificate store can be found at docs/developer/windows
@@ -22,7 +21,7 @@ import (
 type WinCertStoreHandler struct {
 	cfg          WindowsCertificateFilter
 	subjectRegEx *regexp.Regexp
-	log          log.Logger
+	log          *slog.Logger
 
 	winMut       sync.Mutex
 	serverCert   *x509.Certificate
@@ -36,7 +35,7 @@ type WinCertStoreHandler struct {
 }
 
 // NewWinCertStoreHandler creates a new WindowsCertificateFilter. Run should be called afterward.
-func NewWinCertStoreHandler(cfg WindowsCertificateFilter, clientAuth tls.ClientAuthType, l log.Logger) (*WinCertStoreHandler, error) {
+func NewWinCertStoreHandler(cfg WindowsCertificateFilter, clientAuth tls.ClientAuthType, l *slog.Logger) (*WinCertStoreHandler, error) {
 	var subjectRegEx *regexp.Regexp
 	var err error
 	if cfg.Client != nil && cfg.Client.SubjectRegEx != "" {
@@ -151,7 +150,7 @@ func (c *WinCertStoreHandler) startUpdateTimer() {
 		case <-time.After(refreshInterval):
 			err := c.refreshCerts()
 			if err != nil {
-				level.Error(c.log).Log("msg", "error refreshing Windows certificates", "err", err)
+				c.log.Error("error refreshing Windows certificates", "err", err)
 			}
 
 		}
@@ -163,7 +162,7 @@ func (c *WinCertStoreHandler) refreshCerts() (err error) {
 	c.winMut.Lock()
 	defer c.winMut.Unlock()
 
-	level.Debug(c.log).Log("msg", "refreshing Windows certificates")
+	c.log.Debug("refreshing Windows certificates")
 	// Close the server identity if already set
 	if c.serverIdentity != nil {
 		c.serverIdentity.Close()

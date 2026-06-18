@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus"
@@ -190,7 +190,7 @@ func (f *fakeHealthReporter) getErr() error {
 	return f.err
 }
 
-func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger log.Logger) *Component {
+func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger *slog.Logger) *Component {
 	opts := component.Options{
 		ID:         "mimir.rules.kubernetes",
 		Logger:     logger,
@@ -215,7 +215,7 @@ func newComponentForTesting(t *testing.T, reg prometheus.Registerer, logger log.
 func TestIterationHandlesUpdate(t *testing.T) {
 	t.Run("error during restart", func(t *testing.T) {
 		reg := prometheus.NewPedanticRegistry()
-		logger := log.NewNopLogger()
+		logger := slog.New(slog.DiscardHandler)
 
 		leader := &fakeLeadership{}
 		health := &fakeHealthReporter{}
@@ -243,7 +243,7 @@ func TestIterationHandlesUpdate(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		reg := prometheus.NewPedanticRegistry()
-		logger := log.NewNopLogger()
+		logger := slog.New(slog.DiscardHandler)
 
 		leader := &fakeLeadership{}
 		health := &fakeHealthReporter{}
@@ -272,7 +272,7 @@ func TestIterationHandlesUpdate(t *testing.T) {
 func TestIterationHandlesClusterChange(t *testing.T) {
 	t.Run("error during leader check", func(t *testing.T) {
 		reg := prometheus.NewPedanticRegistry()
-		logger := log.NewNopLogger()
+		logger := slog.New(slog.DiscardHandler)
 
 		leader := &fakeLeadership{}
 		leader.updateErr = errors.New("expected test error")
@@ -297,7 +297,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 
 	t.Run("leader not changed", func(t *testing.T) {
 		reg := prometheus.NewPedanticRegistry()
-		logger := log.NewNopLogger()
+		logger := slog.New(slog.DiscardHandler)
 
 		leader := &fakeLeadership{}
 		leader.changed = false
@@ -322,7 +322,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 
 	t.Run("error during restart", func(t *testing.T) {
 		reg := prometheus.NewPedanticRegistry()
-		logger := log.NewNopLogger()
+		logger := slog.New(slog.DiscardHandler)
 
 		leader := &fakeLeadership{}
 		leader.changed = true
@@ -348,7 +348,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		reg := prometheus.NewPedanticRegistry()
-		logger := log.NewNopLogger()
+		logger := slog.New(slog.DiscardHandler)
 
 		leader := &fakeLeadership{}
 		leader.changed = true
@@ -375,7 +375,7 @@ func TestIterationHandlesClusterChange(t *testing.T) {
 func TestIterationHandlesContextCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	reg := prometheus.NewPedanticRegistry()
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.DiscardHandler)
 
 	leader := &fakeLeadership{}
 	health := &fakeHealthReporter{}
@@ -392,7 +392,7 @@ func TestIterationHandlesContextCanceled(t *testing.T) {
 
 func TestIterationHandlesTick(t *testing.T) {
 	reg := prometheus.NewPedanticRegistry()
-	logger := log.NewNopLogger()
+	logger := slog.New(slog.DiscardHandler)
 
 	leader := &fakeLeadership{}
 	health := &fakeHealthReporter{}

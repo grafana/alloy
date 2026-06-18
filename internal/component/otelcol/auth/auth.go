@@ -189,7 +189,7 @@ func New(opts component.Options, f otelextension.Factory, args Arguments) (*Auth
 		opts:    opts,
 		factory: f,
 
-		sched:     scheduler.NewAuthExtensionScheduler(opts.SLogger),
+		sched:     scheduler.NewAuthExtensionScheduler(opts.Logger),
 		collector: collector,
 	}
 	if err := r.Update(args); err != nil {
@@ -231,7 +231,7 @@ func (a *Auth) Update(args component.Arguments) error {
 	settings := otelextension.Settings{
 		ID: otelcomponent.NewIDWithName(a.factory.Type(), a.opts.ID),
 		TelemetrySettings: otelcomponent.TelemetrySettings{
-			Logger:         slogadapter.NewZap(a.opts.SLogger),
+			Logger:         slogadapter.NewZap(a.opts.Logger),
 			TracerProvider: a.opts.Tracer,
 			MeterProvider:  mp,
 		},

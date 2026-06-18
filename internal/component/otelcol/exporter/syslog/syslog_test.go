@@ -26,7 +26,7 @@ func Test(t *testing.T) {
 	h, p := makeSyslogServer(t, ch)
 
 	ctx := componenttest.TestContext(t)
-	l := util.TestAlloyLogger(t)
+	l := util.TestLogger(t)
 
 	ctrl, err := componenttest.NewControllerFromID(l, "otelcol.exporter.syslog")
 	require.NoError(t, err)
@@ -72,7 +72,7 @@ func Test(t *testing.T) {
 		for bo.Ongoing() {
 			err := exports.Input.ConsumeLogs(ctx, createTestLogs(timestamp))
 			if err != nil {
-				l.Slog().Error("failed to send logs", "err", err)
+				l.Error("failed to send logs", "err", err)
 				bo.Wait()
 				continue
 			}
