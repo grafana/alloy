@@ -151,15 +151,20 @@ BEYLA_VERSION := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f2)
 BEYLA_PKG     := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f1)/pkg/buildinfo
 VPREFIX      := github.com/grafana/alloy/internal/build
 VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
+# Allow the Go build cache to be used except when doing a release build or when
+# an epoch is explicitly set. BuildDate otherwise changes on every invocation,
+# which busts the cache and forces a relink on every local build.
 ifdef SOURCE_DATE_EPOCH
-    DATE_STAMP = -d@$(SOURCE_DATE_EPOCH)
+    BUILD_DATE = $(shell date -u -d@$(SOURCE_DATE_EPOCH) +"%Y-%m-%dT%H:%M:%SZ")
+else ifeq ($(RELEASE_BUILD),1)
+    BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 endif
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
 		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
-                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ") \
+                -X $(VPREFIX).BuildDate=$(BUILD_DATE) \
                 -X $(BEYLA_PKG).Version=$(BEYLA_VERSION)
 
 DEFAULT_FLAGS    := $(GO_FLAGS)
