@@ -1,7 +1,6 @@
-package alloyservicewrapper
+package main
 
 import (
-	"bytes"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,14 +38,14 @@ func TestRenderGolden(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var buf bytes.Buffer
-			if err := render(&buf, tc.data); err != nil {
+			got, err := render(tc.data)
+			if err != nil {
 				t.Fatalf("render: %v", err)
 			}
 
 			goldenPath := filepath.Join("testdata", tc.golden)
 			if os.Getenv("UPDATE_GOLDEN") != "" {
-				if err := os.WriteFile(goldenPath, buf.Bytes(), 0o644); err != nil {
+				if err := os.WriteFile(goldenPath, got, 0o644); err != nil {
 					t.Fatalf("update golden: %v", err)
 				}
 			}
@@ -56,7 +55,7 @@ func TestRenderGolden(t *testing.T) {
 				t.Fatalf("read golden: %v", err)
 			}
 
-			if got := buf.String(); got != string(want) {
+			if string(got) != string(want) {
 				t.Errorf("rendered wrapper mismatch.\nWant:\n%s\nGot:\n%s", want, got)
 			}
 		})
@@ -70,9 +69,7 @@ func TestRenderValidation(t *testing.T) {
 	}{
 		{
 			name: "missing field",
-			data: templateData{
-				AlloyBin: "/opt/alloy",
-			},
+			data: templateData{AlloyBin: "/opt/alloy"},
 		},
 		{
 			name: "quote in value",
@@ -88,7 +85,7 @@ func TestRenderValidation(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := render(&bytes.Buffer{}, tc.data); err == nil {
+			if _, err := render(tc.data); err == nil {
 				t.Fatal("expected validation error, got nil")
 			}
 		})
