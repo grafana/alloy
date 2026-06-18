@@ -125,7 +125,6 @@ func TestInterceptorConsumer_Consume(t *testing.T) {
 		consumer := NewInterceptorConsumer("test", NewCollectingConsumer(), WithConsumeEntryHook(func(ctx context.Context, entry Entry) (Entry, bool, error) {
 			called = true
 			return entry, true, nil
-
 		}))
 
 		batch := NewBatch()

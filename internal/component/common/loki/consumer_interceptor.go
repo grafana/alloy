@@ -65,7 +65,6 @@ func (i *InterceptorConsumer) Consume(ctx context.Context, batch Batch) error {
 		}
 		return nil
 	})
-
 }
 
 // TODO: Remove this when we have moved over to batching.
