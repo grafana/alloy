@@ -189,13 +189,11 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 				return false
 			}, 10*time.Second, 100*time.Millisecond, "Expected generated ServiceMonitor job to appear")
 
-			require.Eventually(t, func() bool {
+			require.EventuallyWithT(t, func(ct *assert.CollectT) {
 				ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
-				if err != nil {
-					return false
-				}
-				return ready
-			}, 10*time.Second, 100*time.Millisecond, "Expected static target injection to succeed")
+				assert.NoError(ct, err, "Expected static target injection to apply cleanly")
+				assert.True(ct, ready, "Expected static target injection to succeed")
+			}, 10*time.Second, 100*time.Millisecond)
 
 			// Wait for metrics to be scraped and forwarded, then verify
 			require.EventuallyWithT(t, func(ct *assert.CollectT) {
