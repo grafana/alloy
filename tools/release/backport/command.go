@@ -25,7 +25,6 @@ type backportInfo struct {
 	PRNumber       int
 	OriginalPR     *github.PullRequest
 	MergeCommitSHA string
-	CommitSHA      string
 	AppIdentity    gh.AppIdentity
 	TargetBranch   string
 	BackportBranch string
@@ -36,7 +35,7 @@ func Command() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "backport",
-		Short: "Cherry-pick a merged PR to a release branch and open a backport PR",
+		Short: "Cherry-pick a squash-merged PR to a release branch and open a backport PR",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(cmd.Context(), flags)
 		},
@@ -81,7 +80,7 @@ func run(ctx context.Context, flags flags) (retErr error) {
 	if flags.dryRun {
 		fmt.Println("\n🏃 DRY RUN - No changes made")
 		fmt.Printf("Would create backport branch: %s\n", info.BackportBranch)
-		fmt.Printf("Would cherry-pick commit: %s\n", info.CommitSHA)
+		fmt.Printf("Would cherry-pick commit: %s\n", info.MergeCommitSHA)
 		fmt.Printf("Would create PR: %s → %s\n", info.BackportBranch, info.TargetBranch)
 		return nil
 	}
@@ -113,7 +112,7 @@ func run(ctx context.Context, flags flags) (retErr error) {
 	}
 	defer resetWorkingCopy(originalBranch, info.BackportBranch)
 
-	if err := git.CherryPick(info.CommitSHA, true); err != nil {
+	if err := git.CherryPick(info.MergeCommitSHA, true); err != nil {
 		return err
 	}
 
@@ -168,35 +167,30 @@ func resolveBackportInfo(ctx context.Context, client *gh.Client, prNumber int, t
 		return nil, fmt.Errorf("getting app identity: %w", err)
 	}
 
-	// Check if backport was already merged by looking for the original PR
-	// title in the release branch history.
-	alreadyMerged, err := client.CommitExistsWithPattern(ctx, gh.FindCommitParams{
-		Branch:  targetBranch,
-		Pattern: originalPR.GetTitle(),
+	mergeCommitSHA := originalPR.GetMergeCommitSHA()
+	if mergeCommitSHA == "" {
+		return nil, fmt.Errorf("PR #%d does not have a merge commit SHA", prNumber)
+	}
+
+	cherryPickedCommit, err := client.FindCherryPickedCommit(ctx, gh.FindCherryPickedCommitParams{
+		Branch:      targetBranch,
+		OriginalSHA: mergeCommitSHA,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("checking for existing backport: %w", err)
 	}
-	if alreadyMerged {
-		fmt.Printf("ℹ️  Backport already merged (found commit with title %q in %s)\n", originalPR.GetTitle(), targetBranch)
+	if cherryPickedCommit != nil {
+		fmt.Printf("ℹ️  Backport already merged (found cherry-pick of %s in %s)\n", mergeCommitSHA, targetBranch)
 		return nil, nil
 	}
 
-	commitSHA, err := client.FindCommitWithPattern(ctx, gh.FindCommitParams{
-		Branch:  "main",
-		Pattern: fmt.Sprintf("(#%d)", prNumber),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("finding commit for PR #%d: %w", prNumber, err)
-	}
-	fmt.Printf("   Found commit: %s\n", commitSHA)
+	fmt.Printf("   Found commit: %s\n", mergeCommitSHA)
 	fmt.Printf("   Backport branch: %s\n", backportBranch)
 
 	return &backportInfo{
 		PRNumber:       prNumber,
 		OriginalPR:     originalPR,
-		MergeCommitSHA: originalPR.GetMergeCommitSHA(),
-		CommitSHA:      commitSHA,
+		MergeCommitSHA: mergeCommitSHA,
 		AppIdentity:    appIdentity,
 		TargetBranch:   targetBranch,
 		BackportBranch: backportBranch,

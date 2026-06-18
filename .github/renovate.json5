@@ -46,11 +46,13 @@
       "matchManagers": ["github-actions"],
       "groupName": "github-actions dependencies",
       "pinDigests": true,
+      "enabled": true
     },
     {
       "matchManagers": ["gomod"],
       "groupName": "go dependencies",
-      "postUpdateOptions": ["gomodTidy"]
+      "postUpdateOptions": ["gomodTidy"],
+      "enabled": true
     },
     {
       // These are updated in bulk via the key-deps process instead of Renovate.
@@ -125,6 +127,12 @@
     {
       "matchManagers": ["npm"],
       "groupName": "npm dependencies",
+      "enabled": true
+    },
+    {
+      "matchManagers": ["mise"],
+      "groupName": "mise dependencies",
+      "enabled": true
     },
     {
       // Supersede previous rules to require PR creation approval for major versions
