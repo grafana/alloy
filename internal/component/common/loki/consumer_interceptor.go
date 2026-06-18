@@ -57,18 +57,15 @@ func (i *InterceptorConsumer) Consume(ctx context.Context, batch Batch) error {
 	}
 
 	// Fallback to ConsumeEntry.
-	var err error
-	batch.ConsumeStreams(func(stream Stream, created int64) bool {
+	return batch.ConsumeStreams(func(stream Stream, created int64) error {
 		for _, e := range stream.Entries {
-			err = i.ConsumeEntry(ctx, NewEntryWithCreatedUnixMicro(stream.Labels, created, e))
-			if err != nil {
-				return false
+			if err := i.ConsumeEntry(ctx, NewEntryWithCreatedUnixMicro(stream.Labels, created, e)); err != nil {
+				return err
 			}
 		}
-		return true
+		return nil
 	})
 
-	return err
 }
 
 // TODO: Remove this when we have moved over to batching.

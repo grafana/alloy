@@ -151,14 +151,15 @@ func (b *Batch) Clone() Batch {
 
 // ConsumeStreams calls fn for each stream in the batch and then resets the batch.
 // The callback receives ownership of the stream.
-// If callback returns false iteration will stop.
-func (b *Batch) ConsumeStreams(fn func(stream Stream, created int64) bool) {
+// If callback returns errors interation will stop
+func (b *Batch) ConsumeStreams(fn func(stream Stream, created int64) error) error {
+	defer b.Reset()
 	for _, s := range b.streams {
-		if !fn(s, b.created) {
-			break
+		if err := fn(s, b.created); err != nil {
+			return err
 		}
 	}
-	b.Reset()
+	return nil
 }
 
 // Reset clears the batch so it can be reused.

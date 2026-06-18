@@ -58,11 +58,11 @@ func (s *ShardingConsumer) Consume(ctx context.Context, batch Batch) error {
 	if streamLen == 1 {
 		errChans = append(errChans, s.consume(ctx, s.shardFor(batch.streams[0].Labels), batch))
 	} else {
-		batch.ConsumeStreams(func(stream Stream, created int64) bool {
+		_ = batch.ConsumeStreams(func(stream Stream, created int64) error {
 			streamBatch := NewBatchWithCreatedUnixMicro(created)
 			streamBatch.Add(stream)
 			errChans = append(errChans, s.consume(ctx, s.shardFor(stream.Labels), streamBatch))
-			return true
+			return nil
 		})
 	}
 

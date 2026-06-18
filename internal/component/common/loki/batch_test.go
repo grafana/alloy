@@ -142,9 +142,9 @@ func TestBatch_Clone(t *testing.T) {
 
 func collectStreams(b *Batch) []Stream {
 	var streams []Stream
-	b.ConsumeStreams(func(s Stream, _ int64) bool {
+	_ = b.ConsumeStreams(func(s Stream, _ int64) error {
 		streams = append(streams, s)
-		return true
+		return nil
 	})
 	return streams
 }
