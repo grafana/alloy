@@ -28,6 +28,13 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
+      - name: Configure Git user
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
+        run: |
+          go run -C tools ./cmd release configure-git-user
+
       - name: Setup Node.js 🏗️
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
@@ -71,14 +78,6 @@ jobs:
           fetch-depth: 1
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: true # Needed for subsequent git push.
-
-      - name: Configure Git user
-        if: steps.root-release-branch.outputs.exists == 'true'
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
-        run: |
-          go run -C tools ./cmd release configure-git-user
 
       - name: Set up Go 🏗️
         if: steps.root-release-branch.outputs.exists == 'true'

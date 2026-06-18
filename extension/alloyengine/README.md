@@ -47,7 +47,53 @@ service:
 In this example, the extension will:
 1. Start the default engine with the configuration file at the relative path `./config.alloy`
 2. Pass the `--server.http.listen-addr=0.0.0.0:12345` and `--stability.level=experimental` flags to the `alloy run` command
-4. Run the Alloy configuration concurrently with the OpenTelemetry Collector pipeline
+3. Run the Alloy configuration concurrently with the OpenTelemetry Collector pipeline
+
+## Build with OCB
+
+To include the extension in an external OpenTelemetry Collector Builder (OCB) distribution, add it as an extension using the Alloy module plus the extension import path. The extension doesn't have its own Go module, so the one-line `gomod: github.com/grafana/alloy/extension/alloyengine ...` form doesn't work.
+
+```yaml
+dist:
+  name: custom-alloy-otel
+  output_path: ./dist
+  cgo_enabled: true
+
+extensions:
+  - gomod: github.com/grafana/alloy v<ALLOY_VERSION>
+    import: github.com/grafana/alloy/extension/alloyengine
+    name: alloyengine
+```
+
+Replace `v<ALLOY_VERSION>` with the Alloy version you want to embed.
+
+### Replace directives
+
+If you copy from Alloy's in-tree `collector/builder-config.yaml`, don't copy the local module replaces unchanged. These paths only work from Alloy's `collector/` directory:
+
+```yaml
+replaces:
+  - github.com/grafana/alloy => ../
+  - github.com/grafana/alloy/syntax => ../syntax
+```
+
+For a build that uses a released Alloy version, remove both local module replaces.
+
+For a build that uses a local Alloy checkout, keep both replaces but point them at your checkout:
+
+```yaml
+replaces:
+  - github.com/grafana/alloy => /path/to/alloy
+  - github.com/grafana/alloy/syntax => /path/to/alloy/syntax
+```
+
+The `github.com/grafana/alloy/syntax` replace must point at the `syntax` submodule in the same checkout as the Alloy module.
+
+If you copy additional replace directives from Alloy's `collector/builder-config.yaml`, keep the shared remote replaces between the `<BEGIN_SHARED_REPLACE_DIRECTIVES>` and `<END_SHARED_REPLACE_DIRECTIVES>` markers. Those replaces track dependency forks and pins that Alloy needs during OCB builds.
+
+### CGO
+
+Set `dist.cgo_enabled: true` in the OCB builder config. OCB disables CGO by default, while Alloy builds assume CGO is enabled unless you intentionally opt out. On Linux, make sure the build environment has the required system development libraries, such as `libsystemd-dev`.
 
 ## Lifecycle
 
@@ -66,4 +112,3 @@ Please note that if extensions fail to start, the collector will also fail to st
 ## Stability
 
 This extension is currently marked as **experimental** stability level. The API and behavior may change in future releases.
-
