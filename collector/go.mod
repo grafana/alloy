@@ -5,7 +5,7 @@ module github.com/grafana/alloy/otel_engine
 go 1.26.4
 
 require (
-	github.com/grafana/alloy v1.16.0
+	github.com/grafana/alloy v1.17.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0
