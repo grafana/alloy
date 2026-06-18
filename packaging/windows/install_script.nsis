@@ -69,20 +69,19 @@ Section "install"
   ${GetOptions} $PassedInParameters "/PASSWORD=" $Password
   ${GetOptions} $PassedInParameters "/FORCEREGISTRY=" $ForceRegistry
 
-  # Calls to functions like nsExec::ExecToLog below push the exit code to the
-  # stack, and must be popped after calling.
+  # nsExec::ExecToLog pushes the command's exit code onto the stack; the ExecAndPop
+  # macro (see macros.nsis) runs the command and pops that code for the common case
+  # where we don't inspect it.
 
   # When /FORCEREGISTRY=yes, delete all Alloy registry keys at the start so the
   # rest of the installation can proceed as normal and write fresh values. This
   # also cleans up any old or unused keys from previous versions.
   ${If} $ForceRegistry == "yes"
-    nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy" /reg:64 /f'
-    Pop $0
+    !insertmacro ExecAndPop 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy" /reg:64 /f'
   ${EndIf}
 
   # Preemptively stop the existing service if it's running.
-  nsExec::ExecToLog 'net stop "Alloy" /y'
-  Pop $0
+  !insertmacro ExecAndPop 'net stop "Alloy" /y'
 
   # Configure the out path and copy files to it.
   IfFileExists "$INSTDIR" Exists NotExists
@@ -128,16 +127,13 @@ Section "install"
   ${EndIf}
 
   # Create the service.
-  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto $AuthFlag binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
-  Pop $0
+  !insertmacro ExecAndPop 'sc create "Alloy" start= delayed-auto $AuthFlag binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
 
   # Start the service.
-  nsExec::ExecToLog 'sc start "Alloy"'
-  Pop $0
+  !insertmacro ExecAndPop 'sc start "Alloy"'
 
   # Auto-restart Alloy on failure with delays of 1 minute, 5 minutes, and 5 minutes. Reset failure counter after 1 day without failure.
-  nsExec::ExecToLog `sc failure "Alloy" reset= 86400 actions= restart/60000/restart/300000/restart/300000`
-  Pop $0
+  !insertmacro ExecAndPop 'sc failure "Alloy" reset= 86400 actions= restart/60000/restart/300000/restart/300000'
 SectionEnd
 
 Function CreateConfig
@@ -148,14 +144,14 @@ Function CreateConfig
     File "config.alloy"
 
     # Set permissions on the config file
-    AccessControl::DisableFileInheritance "$INSTDIR\config.alloy"
-    AccessControl::SetFileOwner "$INSTDIR\config.alloy" "Administrators"
-    AccessControl::ClearOnFile  "$INSTDIR\config.alloy" "Administrators" "FullAccess"
-    AccessControl::SetOnFile    "$INSTDIR\config.alloy" "SYSTEM" "FullAccess"
-    AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ListDirectory"
-    AccessControl::GrantOnFile  "$INSTDIR\config.alloy" "Everyone" "ReadAttributes"
+    !insertmacro ExecAndPop 'icacls "$INSTDIR\config.alloy" /inheritance:d'
+    !insertmacro ExecAndPop 'icacls "$INSTDIR\config.alloy" /setowner "Administrators"'
+    !insertmacro ExecAndPop 'icacls "$INSTDIR\config.alloy" /remove:g "Administrators"'
+    !insertmacro ExecAndPop 'icacls "$INSTDIR\config.alloy" /grant:r "SYSTEM:F"'
+    # Everyone: ListDirectory (read data) + ReadAttributes only.
+    !insertmacro ExecAndPop 'icacls "$INSTDIR\config.alloy" /grant "Everyone:(RD)(RA)"'
     ${If} $User != ""
-      AccessControl::SetOnFile    "$INSTDIR\config.alloy" "$User" "FullAccess"
+      !insertmacro ExecAndPop 'icacls "$INSTDIR\config.alloy" /grant:r "$User:F"'
     ${EndIf}
 
     Return
@@ -170,15 +166,16 @@ Function CreateDataDirectory
   CreateDataDirectory:
     CreateDirectory "$APPDATA\GrafanaLabs\${APPNAME}\data"
 
-    # Set permissions on the data directory
-    AccessControl::DisableFileInheritance "$APPDATA\GrafanaLabs\${APPNAME}\data"
-    AccessControl::SetFileOwner "$APPDATA\GrafanaLabs\${APPNAME}\data" "Administrators"
-    AccessControl::ClearOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Administrators" "FullAccess"
-    AccessControl::SetOnFile    "$APPDATA\GrafanaLabs\${APPNAME}\data" "SYSTEM" "FullAccess"
-    AccessControl::GrantOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Everyone" "ListDirectory"
-    AccessControl::GrantOnFile  "$APPDATA\GrafanaLabs\${APPNAME}\data" "Everyone" "ReadAttributes"
+    # Set permissions on the data directory using the built-in icacls.exe. This is a
+    # directory, so grants use (OI)(CI) to apply to subfolders and files.
+    !insertmacro ExecAndPop 'icacls "$APPDATA\GrafanaLabs\${APPNAME}\data" /inheritance:d'
+    !insertmacro ExecAndPop 'icacls "$APPDATA\GrafanaLabs\${APPNAME}\data" /setowner "Administrators"'
+    !insertmacro ExecAndPop 'icacls "$APPDATA\GrafanaLabs\${APPNAME}\data" /remove:g "Administrators"'
+    !insertmacro ExecAndPop 'icacls "$APPDATA\GrafanaLabs\${APPNAME}\data" /grant:r "SYSTEM:(OI)(CI)F"'
+    # Everyone: ListDirectory + ReadAttributes only.
+    !insertmacro ExecAndPop 'icacls "$APPDATA\GrafanaLabs\${APPNAME}\data" /grant "Everyone:(OI)(CI)(RD)(RA)"'
     ${If} $User != ""
-      AccessControl::SetOnFile    "$APPDATA\GrafanaLabs\${APPNAME}\data" "$User" "FullAccess"
+      !insertmacro ExecAndPop 'icacls "$APPDATA\GrafanaLabs\${APPNAME}\data" /grant:r "$User:(OI)(CI)F"'
     ${EndIf}
 
     Return
@@ -193,8 +190,7 @@ Function InitializeRegistry
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /ve'
   Pop $0
   ${If} $0 == 1
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /ve /d  "$INSTDIR\alloy-windows-amd64.exe"'
-    Pop $0 # Ignore return result
+    !insertmacro ExecAndPop 'Reg.exe add "${REGKEY}" /reg:64 /ve /d  "$INSTDIR\alloy-windows-amd64.exe"'
   ${EndIf}
 
   ${If} $Config != ""
@@ -232,8 +228,7 @@ Function InitializeRegistry
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v Arguments'
   Pop $0
   ${If} $0 == 1
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag$RuntimePriorityFlag$StabilityFlag"'
-    Pop $0 # Ignore return result
+    !insertmacro ExecAndPop 'Reg.exe add "${REGKEY}" /reg:64 /v Arguments /t REG_MULTI_SZ /d "run"\0"$ConfigFlag"\0"--storage.path=$APPDATA\GrafanaLabs\${APPNAME}\data"\0"$DisableReportingFlag$DisableProfilingFlag$RuntimePriorityFlag$StabilityFlag"'
   ${EndIf}
 
   nsExec::ExecToLog 'Reg.exe query "${REGKEY}" /reg:64 /v Environment'
@@ -241,25 +236,36 @@ Function InitializeRegistry
   ${If} $0 == 1
     # Define the environment key, which holds environment variables to pass to the
     # service.
-    nsExec::ExecToLog 'Reg.exe add "${REGKEY}" /reg:64 /v Environment /t REG_MULTI_SZ /d "$Environment"'
-    Pop $0 # Ignore return result
+    !insertmacro ExecAndPop 'Reg.exe add "${REGKEY}" /reg:64 /v Environment /t REG_MULTI_SZ /d "$Environment"'
   ${EndIf}
 
   Return
 FunctionEnd
 
+# File/directory permissions are set with the built-in icacls.exe rather than the
+# third-party NSIS AccessControl plugin, so the installer can be built with stock NSIS
+# and we avoid downloading the plugin from SourceForge.
+#
+# /inheritance:d mirrors AccessControl::DisableFileInheritance: it disables inheritance
+# but *copies* the parent's inherited ACEs as explicit entries. /grant:r replaces a
+# trustee's existing ACEs (like SetOnFile); /grant without :r is additive (like
+# GrantOnFile). Directory grants use (OI)(CI) so they apply to subfolders and files.
+#
+# TODO: Consider /inheritance:r instead of /inheritance:d to produce fully deterministic
+#       ACLs independent of the parent folder's inherited entries (behavior change:
+#       currently-inherited access such as Users:RX would be dropped).
+# TODO: Consider referencing trustees by well-known SID (*S-1-5-32-544 Administrators,
+#       *S-1-5-18 SYSTEM, *S-1-1-0 Everyone) for locale-independent installs.
 Function SetFolderPermissions
     # Set permissions on the install directory
-    AccessControl::DisableFileInheritance $INSTDIR
-    AccessControl::SetFileOwner $INSTDIR "Administrators"
-    AccessControl::ClearOnFile  $INSTDIR "Administrators" "FullAccess"
-    AccessControl::SetOnFile    $INSTDIR "SYSTEM" "FullAccess"
-    AccessControl::GrantOnFile  $INSTDIR "Everyone" "ListDirectory"
-    AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericExecute"
-    AccessControl::GrantOnFile  $INSTDIR "Everyone" "GenericRead"
-    AccessControl::GrantOnFile  $INSTDIR "Everyone" "ReadAttributes"
+    !insertmacro ExecAndPop 'icacls "$INSTDIR" /inheritance:d'
+    !insertmacro ExecAndPop 'icacls "$INSTDIR" /setowner "Administrators"'
+    !insertmacro ExecAndPop 'icacls "$INSTDIR" /remove:g "Administrators"'
+    !insertmacro ExecAndPop 'icacls "$INSTDIR" /grant:r "SYSTEM:(OI)(CI)F"'
+    # Everyone: ListDirectory + GenericExecute + GenericRead + ReadAttributes.
+    !insertmacro ExecAndPop 'icacls "$INSTDIR" /grant "Everyone:(OI)(CI)(RD)(GE)(GR)(RA)"'
     ${If} $User != ""
-      AccessControl::SetOnFile    $INSTDIR "$User" "FullAccess"
+      !insertmacro ExecAndPop 'icacls "$INSTDIR" /grant:r "$User:(OI)(CI)F"'
     ${EndIf}
 FunctionEnd
 
@@ -282,10 +288,8 @@ Section "uninstall"
   DetailPrint "Starting uninstaller."
 
   # Stop and remove service.
-  nsExec::ExecToLog 'net stop "Alloy" /y'
-  Pop $0
-  nsExec::ExecToLog 'sc delete "Alloy"'
-  Pop $0
+  !insertmacro ExecAndPop 'net stop "Alloy" /y'
+  !insertmacro ExecAndPop 'sc delete "Alloy"'
 
   RMDir /r "$SMPROGRAMS\${APPNAME}"  # Start Menu folder.
   RMDir /r "$INSTDIR"                # Install directory.
@@ -294,7 +298,6 @@ Section "uninstall"
   # Remove service and uninstaller information from the registry. Note that the
   # service settings are stored in the 64-bit registry (so we use /reg:64),
   # while the uninstaller information is stored in the 32-bit registry.
-  nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy"  /reg:64 /f'
-  Pop $0
+  !insertmacro ExecAndPop 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy"  /reg:64 /f'
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 SectionEnd

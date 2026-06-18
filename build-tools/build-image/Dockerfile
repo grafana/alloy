@@ -22,16 +22,6 @@ RUN apk add --no-cache docker-cli docker-cli-buildx
 FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as helm
 RUN apk add --no-cache helm
 
-# Dependency: nsis (for building Windows installers)
-# TODO: Use nsis with conda so that we don't have to pull those packages from the internet.
-# https://nsis.sourceforge.io/Conda
-# TODO: Why do we use i386? Is it correct?
-FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as nsis
-RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip \
- && unzip AccessControl.zip -d /usr/share/nsis/ \
- && mkdir -p /usr/share/nsis/Plugins/x86-unicode \
- && cp /usr/share/nsis/Plugins/i386-unicode/AccessControl.dll /usr/share/nsis/Plugins/x86-unicode/
-
 # Dependency: Go and Go dependencies
 FROM ${GO_RUNTIME} as golang
 
@@ -73,7 +63,6 @@ RUN apt-get update                                \
 COPY --from=docker   /usr/bin/docker                     /usr/bin/docker
 COPY --from=docker   /usr/libexec/docker/cli-plugins     /usr/libexec/docker/cli-plugins
 COPY --from=helm     /usr/bin/helm                       /usr/bin/helm
-COPY --from=nsis     /usr/share/nsis/Plugins/x86-unicode /usr/share/nsis/Plugins/x86-unicode
 COPY --from=golang   /usr/local/go                       /usr/local/go
 COPY --from=golang   /go/bin                             /go/bin
 
