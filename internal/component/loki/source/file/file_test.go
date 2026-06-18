@@ -614,7 +614,12 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 		t.Cleanup(func() {
 			cancel()
-			require.NoError(t, <-runErr)
+			select {
+			case err := <-runErr:
+				require.NoError(t, err)
+			case <-time.After(10 * time.Second):
+				require.FailNow(t, "timed out waiting for ctrl.Run to exit")
+			}
 		})
 
 		go func() {
