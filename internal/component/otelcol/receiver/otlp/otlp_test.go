@@ -8,17 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"gotest.tools/assert"
-
-	"github.com/grafana/alloy/internal/component/otelcol"
-	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
-	"github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/confighttp"
@@ -26,6 +17,14 @@ import (
 	"go.opentelemetry.io/collector/config/configoptional"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/receiver/otlpreceiver"
+
+	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
+	"github.com/grafana/alloy/internal/component/otelcol/receiver/otlp"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Test performs a basic integration test which runs the otelcol.receiver.otlp
@@ -83,7 +82,7 @@ func Test(t *testing.T) {
 		})
 		for bo.Ongoing() {
 			if err := request(); err != nil {
-				level.Error(l).Log("msg", "failed to send traces", "err", err)
+				l.Error("failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}

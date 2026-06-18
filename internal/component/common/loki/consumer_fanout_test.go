@@ -96,6 +96,32 @@ func TestFanoutConsumer_Consume(t *testing.T) {
 	require.Equal(t, "original", lastStreams[0].Entries[0].Line)
 }
 
+func TestFanoutConsumer_NilConsumer(t *testing.T) {
+	fanout := NewFanoutConsumer([]Consumer{nil})
+	require.NotPanics(t, func() {
+		require.NoError(t, fanout.Consume(context.Background(), NewBatch()))
+		require.NoError(t, fanout.ConsumeEntry(context.Background(), NewEntry(model.LabelSet{}, push.Entry{})))
+	})
+}
+
+func TestFanoutConsumer_ConsumerStopped(t *testing.T) {
+	fanout := NewFanoutConsumer([]Consumer{
+		consumerFunc{
+			consume: func(_ context.Context, batch Batch) error {
+				return ErrConsumerStopped
+			},
+		},
+		consumerFunc{
+			consume: func(_ context.Context, batch Batch) error {
+				return ErrConsumerStopped
+			},
+		},
+	})
+
+	require.NoError(t, fanout.Consume(context.Background(), NewBatch()))
+	require.NoError(t, fanout.ConsumeEntry(context.Background(), NewEntry(model.LabelSet{}, push.Entry{})))
+}
+
 type consumerFunc struct {
 	consume      func(context.Context, Batch) error
 	consumeEntry func(context.Context, Entry) error

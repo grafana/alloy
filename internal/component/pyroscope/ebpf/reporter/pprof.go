@@ -7,12 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/google/pprof/profile"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
@@ -45,7 +44,7 @@ type Config struct {
 }
 type PPROFReporter struct {
 	cfg *Config
-	log log.Logger
+	log *slog.Logger
 
 	consumer PPROFConsumer
 	symbols  irsymcache.NativeSymbolResolver
@@ -58,7 +57,7 @@ type PPROFReporter struct {
 	cancelReporting context.CancelFunc
 }
 
-func NewPPROF(log log.Logger,
+func NewPPROF(log *slog.Logger,
 	cfg *Config,
 	sd discovery.TargetProducer,
 	symbols irsymcache.NativeSymbolResolver,
@@ -179,7 +178,7 @@ func (p *PPROFReporter) reportProfile(ctx context.Context) {
 	for _, it := range profiles {
 		sz += len(it.Raw)
 	}
-	_ = level.Debug(p.log).Log("msg", "pprof report successful", "count", len(profiles), "total-size", sz)
+	p.log.Debug("pprof report successful", "count", len(profiles), "total-size", sz)
 }
 
 func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin libpf.Origin, events map[samples.SampleKey]*samples.TraceEvents) []PPROF {
@@ -313,7 +312,7 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin li
 		buf := bytes.NewBuffer(nil)
 		_, err := b.Write(buf)
 		if err != nil {
-			_ = p.log.Log("err", err)
+			p.log.Error("failed to encode profile", "err", err)
 			continue
 		}
 		_, ls := b.Target.Labels()

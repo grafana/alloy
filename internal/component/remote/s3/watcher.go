@@ -1,14 +1,12 @@
 package s3
 
 import (
+	"context"
 	"io"
 	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-
-	"context"
-
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 )
 

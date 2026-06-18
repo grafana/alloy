@@ -10,11 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	common_config "github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/common/config"
@@ -87,7 +85,6 @@ type Exports struct {
 
 // Component implements the remote.http component.
 type Component struct {
-	log  log.Logger
 	opts component.Options
 
 	mut         sync.Mutex
@@ -111,7 +108,6 @@ var (
 // New returns a new, unstarted, remote.http component.
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		log:  opts.Logger,
 		opts: opts,
 
 		updated: make(chan struct{}, 1),
@@ -203,7 +199,7 @@ func (c *Component) pollError() error {
 
 	req, err := http.NewRequest(c.args.Method, c.args.URL, body)
 	if err != nil {
-		level.Error(c.log).Log("msg", "failed to build request", "err", err)
+		c.opts.Logger.Error("failed to build request", "err", err)
 		return fmt.Errorf("building request: %w", err)
 	}
 	for name, value := range c.args.Headers {
@@ -213,18 +209,18 @@ func (c *Component) pollError() error {
 
 	resp, err := c.cli.Do(req)
 	if err != nil {
-		level.Error(c.log).Log("msg", "failed to perform request", "err", err)
+		c.opts.Logger.Error("failed to perform request", "err", err)
 		return fmt.Errorf("performing request: %w", err)
 	}
 
 	bb, err := io.ReadAll(resp.Body)
 	if err != nil {
-		level.Error(c.log).Log("msg", "failed to read response", "err", err)
+		c.opts.Logger.Error("failed to read response", "err", err)
 		return fmt.Errorf("reading response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		level.Error(c.log).Log("msg", "unexpected status code from response", "status", resp.Status)
+		c.opts.Logger.Error("unexpected status code from response", "status", resp.Status)
 		return fmt.Errorf("unexpected status code %s", resp.Status)
 	}
 

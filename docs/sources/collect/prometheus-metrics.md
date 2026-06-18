@@ -318,7 +318,7 @@ To collect metrics from Kubernetes Services, complete the following steps.
        Replace the following:
 
        * _`<SCRAPE_LABEL>`_: The label for the component, such as `services`.
-         The label you use must be unique across all `prometeus.scrape` components in the same configuration file.
+         The label you use must be unique across all `prometheus.scrape` components in the same configuration file.
        * _`<DISCOVERY_LABEL>`_: The label for the `discovery.kubernetes` component.
        * _`<REMOTE_WRITE_LABEL>`_: The label for your `prometheus.remote_write` component.
 
@@ -402,7 +402,7 @@ prometheus.scrape "custom_targets" {
     },
     {
       __address__      = "custom-application:80",
-      __metrics_path__ = "/custom-metrics–path",
+      __metrics_path__ = "/custom-metrics-path",
     },
     {
       __address__ = "alloy:12345",

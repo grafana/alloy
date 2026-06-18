@@ -2,25 +2,29 @@ package collector
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
 	LogsCollector         = "logs"
 	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
+	selectLogTimezone     = `SELECT setting FROM pg_settings WHERE name = 'log_timezone';`
 )
+
+// log_timezone is a sighup-reloadable Postgres setting so we periodically poll for changes
+const logTimezoneRefreshInterval = time.Hour
 
 // Postgres log format regex
 var logFormatRegex = regexp.MustCompile(
@@ -41,20 +45,25 @@ var supportedSeverities = map[string]struct{}{
 type LogsArguments struct {
 	Receiver         loki.LogsReceiver
 	EntryHandler     loki.EntryHandler
-	Logger           log.Logger
+	Logger           *slog.Logger
 	Registry         *prometheus.Registry
 	ExcludeDatabases []string
 	ExcludeUsers     []string
+	DB               *sql.DB
 }
 
 type Logs struct {
-	logger       log.Logger
+	logger       *slog.Logger
 	entryHandler loki.EntryHandler
 	registry     *prometheus.Registry
 
 	receiver         loki.LogsReceiver
 	excludeDatabases []string
 	excludeUsers     []string
+
+	db              *sql.DB
+	logTimezone     atomic.Pointer[time.Location]
+	lastLogTimezone atomic.Pointer[string]
 
 	errorsBySQLState *prometheus.CounterVec
 	parseErrors      prometheus.Counter
@@ -76,12 +85,13 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:           log.With(args.Logger, "collector", LogsCollector),
+		logger:           args.Logger.With("collector", LogsCollector),
 		entryHandler:     args.EntryHandler,
 		registry:         args.Registry,
 		receiver:         args.Receiver,
 		excludeDatabases: args.ExcludeDatabases,
 		excludeUsers:     args.ExcludeUsers,
+		db:               args.DB,
 		ctx:              ctx,
 		cancel:           cancel,
 		stopped:          atomic.NewBool(false),
@@ -127,11 +137,52 @@ func (l *Logs) Receiver() loki.LogsReceiver {
 }
 
 func (l *Logs) Start(ctx context.Context) error {
-	level.Debug(l.logger).Log("msg", "collector started")
+	l.logger.Debug("collector started")
 
+	if l.db != nil {
+		l.refreshLogTimezone(l.ctx)
+		l.wg.Go(l.logTimezoneRefreshLoop)
+	}
 	l.wg.Go(l.run)
 
 	return nil
+}
+
+func (l *Logs) logTimezoneRefreshLoop() {
+	ticker := time.NewTicker(logTimezoneRefreshInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-l.ctx.Done():
+			return
+		case <-ticker.C:
+			l.refreshLogTimezone(l.ctx)
+		}
+	}
+}
+
+func (l *Logs) refreshLogTimezone(ctx context.Context) {
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var tzName string
+	if err := l.db.QueryRowContext(queryCtx, selectLogTimezone).Scan(&tzName); err != nil {
+		l.logger.Debug("failed to query log_timezone", "err", err)
+		return
+	}
+
+	loc, err := time.LoadLocation(tzName)
+	if err != nil {
+		// PG accepts POSIX specs (e.g. 'EST5EDT,M3.2.0,M11.1.0') that Go's tzdata can't load.
+		if prev := l.lastLogTimezone.Load(); prev == nil || *prev != tzName {
+			l.logger.Warn("PostgreSQL log_timezone is not a Go-loadable IANA name; logs collector will skip its historical-log filter. Consider setting log_timezone to an IANA name (e.g. 'America/New_York') in postgresql.conf.", "log_timezone", tzName, "err", err)
+			l.lastLogTimezone.Store(&tzName)
+		}
+		l.logTimezone.Store(nil)
+		return
+	}
+	l.lastLogTimezone.Store(nil)
+	l.logTimezone.Store(loc)
 }
 
 func (l *Logs) Stop() {
@@ -148,17 +199,17 @@ func (l *Logs) Stopped() bool {
 }
 
 func (l *Logs) run() {
-	level.Debug(l.logger).Log("msg", "collector running, waiting for log entries")
+	l.logger.Debug("collector running, waiting for log entries")
 
 	for {
 		select {
 		case <-l.ctx.Done():
-			level.Debug(l.logger).Log("msg", "collector stopping")
+			l.logger.Debug("collector stopping")
 			return
 		case entry := <-l.receiver.Chan():
 			if err := l.parseTextLog(entry); err != nil {
-				level.Warn(l.logger).Log(
-					"msg", "failed to process log line",
+				l.logger.Warn(
+					"failed to process log line",
 					"error", err,
 					"line_preview", truncateString(entry.Entry.Line, 100),
 				)
@@ -200,10 +251,11 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 			} {
 				logTimestamp, err := time.Parse(layout, timestampStr)
 				if err == nil {
-					if !logTimestamp.After(l.startTime) {
+					absolute, ok := l.resolveAbsolute(logTimestamp)
+					if ok && !absolute.After(l.startTime) {
 						return nil // Skip historical log
 					}
-					break // Found valid timestamp, continue processing
+					break
 				}
 			}
 		}
@@ -269,6 +321,31 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	return nil
 }
 
+// resolveAbsolute returns a trustworthy UTC instant. time.Parse fabricates a
+// zero-offset Location for unknown abbreviations (PST, PDT, EDT, ...); we
+// recover the real instant via the configured log_timezone, trusting the
+// recovery only when its abbreviation matches the log line's.
+func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
+	name, offset := parsed.Zone()
+	if offset != 0 || name == "UTC" || name == "GMT" {
+		return parsed, true
+	}
+
+	loc := l.logTimezone.Load()
+	if loc == nil {
+		return time.Time{}, false
+	}
+
+	y, mo, d := parsed.Date()
+	h, mi, s := parsed.Clock()
+	reconstructed := time.Date(y, mo, d, h, mi, s, parsed.Nanosecond(), loc)
+	reconstructedName, _ := reconstructed.Zone()
+	if reconstructedName != name {
+		return time.Time{}, false
+	}
+	return reconstructed, true
+}
+
 // isContinuationLine checks if a line is part of a multi-line PostgreSQL error
 func isContinuationLine(line string) bool {
 	if strings.HasPrefix(line, "\t") {
@@ -326,8 +403,8 @@ func (l *Logs) trackInvalidFormat() {
 	now := time.Now()
 	if now.Sub(l.lastFormatWarning) >= time.Minute {
 		if l.validLogsThisMinute == 0 && l.invalidLogsThisMinute > 0 {
-			level.Warn(l.logger).Log(
-				"msg", "all PostgreSQL error logs in the last minute had invalid format",
+			l.logger.Warn(
+				"all PostgreSQL error logs in the last minute had invalid format",
 				"invalid_count", l.invalidLogsThisMinute,
 				"expected_format", expectedLogLinePrefix,
 				"hint", "ensure log_line_prefix is set correctly on PostgreSQL server",

@@ -93,6 +93,13 @@ alloy:
   # -- Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core
   envFrom: []
 
+  # -- Override the entrypoint command for the Alloy container. When set, this
+  # replaces the image's default entrypoint (the chart-provided `args` are still
+  # passed). Useful on Windows where the binary lives at a different path, for
+  # example `["C:\\Program Files\\GrafanaLabs\\Alloy\\alloy.exe"]`. Leave empty
+  # to use the image's default entrypoint.
+  command: []
+
   # -- Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/
   extraArgs: []
 
@@ -370,6 +377,19 @@ controller:
     horizontal:
       # -- Enables the Horizontal Pod Autoscaler for the controller.
       enabled: false
+      # -- When true, the chart omits `spec.replicas` from the workload AND does NOT
+      # render its own HorizontalPodAutoscaler. Use this when an external controller
+      # (e.g. KEDA, a hand-written HPA, or another scaler) owns replicas for the Alloy
+      # workload. Mutually exclusive with `horizontal.enabled`. When set, all other
+      # `controller.autoscaling.horizontal.*` fields are ignored.
+      #
+      # Upgrade note: switching this from `false` to `true` on an existing release
+      # triggers a one-time single-cycle dip to 1 replica on the next `helm upgrade`
+      # (Helm removes the `replicas` field via `{"spec":{"replicas":null}}`, which
+      # Kubernetes interprets as "reset to default"). The external HPA corrects this
+      # within its next polling interval; users with `minReplicaCount > 1` are
+      # restored within ~30s under KEDA defaults. Plan upgrades accordingly.
+      externalHPA: false
 
       # -- The lower limit for the number of replicas to which the autoscaler can scale down.
       minReplicas: 1
@@ -487,6 +507,8 @@ service:
   clusterIP: ''
   # -- Value for internal traffic policy. 'Cluster' or 'Local'
   internalTrafficPolicy: Cluster
+  # -- Value for external traffic policy. 'Cluster' or 'Local'
+  externalTrafficPolicy: Cluster
   annotations: {}
     # cloud.google.com/load-balancer-type: Internal
 

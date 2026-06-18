@@ -4,18 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/DataDog/go-sqllexer"
-	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/component/database_observability/mysql/collector/parser"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -43,7 +42,7 @@ type QueryDetailsArguments struct {
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type QueryDetails struct {
@@ -55,7 +54,7 @@ type QueryDetails struct {
 	sqlParser       parser.Parser
 	normalizer      *sqllexer.Normalizer
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -71,7 +70,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		entryHandler:    args.EntryHandler,
 		sqlParser:       parser.NewTiDBSqlParser(),
 		normalizer:      sqllexer.NewNormalizer(sqllexer.WithCollectTables(true)),
-		logger:          log.With(args.Logger, "collector", QueryDetailsCollector),
+		logger:          args.Logger.With("collector", QueryDetailsCollector),
 		running:         &atomic.Bool{},
 	}
 
@@ -83,7 +82,7 @@ func (c *QueryDetails) Name() string {
 }
 
 func (c *QueryDetails) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -98,7 +97,7 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 
 		for {
 			if err := c.tablesFromEventsStatements(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -136,7 +135,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		var digest, digestText, schema string
 		var sampleText sql.NullString
 		if err := rs.Scan(&digest, &digestText, &schema, &sampleText); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan result set from summary table samples", "schema", schema, "err", err)
+			c.logger.Error("failed to scan result set from summary table samples", "schema", schema, "err", err)
 			continue
 		}
 
@@ -144,7 +143,7 @@ func (c *QueryDetails) tablesFromEventsStatements(ctx context.Context) error {
 		var parserErr, lexerErr error
 		if tables, parserErr = c.tryParseTableNames(sampleText.String, digestText); parserErr != nil {
 			if tables, lexerErr = c.tryTokenizeTableNames(sampleText.String, digestText); lexerErr != nil {
-				level.Warn(c.logger).Log("msg", "failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
+				c.logger.Warn("failed to extract tables from sql text", "schema", schema, "digest", digest, "parser_err", parserErr, "lexer_err", lexerErr)
 				continue
 			}
 		}
