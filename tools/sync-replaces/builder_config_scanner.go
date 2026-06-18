@@ -28,7 +28,7 @@ func (s *builderConfigScanner) findSharedReplacesStart() error {
 	if err := s.scanner.Err(); err != nil {
 		return fmt.Errorf("scan builder config: %w", err)
 	}
-	return fmt.Errorf("missing shared replace markers")
+	return fmt.Errorf("missing shared replace start marker")
 }
 
 func (s *builderConfigScanner) readSharedReplaceEntry() (*replaceEntry, error) {

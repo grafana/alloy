@@ -15,7 +15,7 @@ func TestExtractSharedReplacesFromBuilderConfig(t *testing.T) {
 
   # <BEGIN_SHARED_REPLACE_DIRECTIVES>
   # Replace yaml.v2 with fork
-  - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
+  - gopkg.in/yaml.v2 => example.com/forks/go-yaml v0.0.0-20211119180816-77389c3526dc
   # Keep this dependency pinned
   # Until upstream publishes a compatible release
   - example.com/module => example.com/fork v1.2.3
@@ -30,7 +30,7 @@ func TestExtractSharedReplacesFromBuilderConfig(t *testing.T) {
 	if got, want := len(replaces), 2; got != want {
 		t.Fatalf("expected %d replaces, got %d", want, got)
 	}
-	if got, want := replaces[0].Value, "gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc"; got != want {
+	if got, want := replaces[0].Value, "gopkg.in/yaml.v2 => example.com/forks/go-yaml v0.0.0-20211119180816-77389c3526dc"; got != want {
 		t.Fatalf("first replace value = %q, want %q", got, want)
 	}
 	if got, want := replaces[0].Comments, []string{"Replace yaml.v2 with fork"}; strings.Join(got, "\n") != strings.Join(want, "\n") {
@@ -46,7 +46,7 @@ func TestExtractSharedReplacesRequiresMarkers(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected missing marker error")
 	}
-	if !strings.Contains(err.Error(), "missing shared replace markers") {
+	if !strings.Contains(err.Error(), "missing shared replace start marker") {
 		t.Fatalf("expected missing marker error, got %v", err)
 	}
 }
@@ -109,7 +109,7 @@ func TestSyncBuilderConfigReplacesToGoMod(t *testing.T) {
   - github.com/grafana/alloy => ../
   # <BEGIN_SHARED_REPLACE_DIRECTIVES>
   # Replace yaml.v2 with fork
-  - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
+  - gopkg.in/yaml.v2 => example.com/forks/go-yaml v0.0.0-20211119180816-77389c3526dc
   # Keep this dependency pinned
   # Until upstream publishes a compatible release
   - example.com/module => example.com/fork v1.2.3
@@ -145,10 +145,13 @@ replace old.example/module => old.example/fork v0.0.1
 	if strings.Contains(got, "old.example/module") {
 		t.Fatalf("stale replace was not removed:\n%s", got)
 	}
+	if strings.Contains(got, "// stale") {
+		t.Fatalf("stale replace comment was not removed:\n%s", got)
+	}
 	if !strings.Contains(got, "replace github.com/grafana/alloy/syntax => ./syntax") {
 		t.Fatalf("root-local path replace should be preserved:\n%s", got)
 	}
-	if !strings.Contains(got, "replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml") {
+	if !strings.Contains(got, "replace gopkg.in/yaml.v2 => example.com/forks/go-yaml") {
 		t.Fatalf("shared replace was not propagated:\n%s", got)
 	}
 	if !strings.Contains(got, "// Replace yaml.v2 with fork (synced from collector/builder-config.yaml)") {

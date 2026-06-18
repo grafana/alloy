@@ -62,14 +62,7 @@ func syncBuilderConfigReplacesToGoMod(builderConfigPath, goModPath string) error
 		return fmt.Errorf("sync replaces in %s: %w", goModPath, err)
 	}
 
-	mode := os.FileMode(0o644)
-	if fi, err := os.Stat(goModPath); err == nil {
-		mode = fi.Mode()
-	}
-	if err := os.MkdirAll(filepath.Dir(goModPath), 0o755); err != nil {
-		return fmt.Errorf("create go.mod directory: %w", err)
-	}
-	if err := os.WriteFile(goModPath, updated, mode); err != nil {
+	if err := os.WriteFile(goModPath, updated, 0o644); err != nil {
 		return fmt.Errorf("write go.mod %s: %w", goModPath, err)
 	}
 
@@ -127,16 +120,12 @@ func syncGoModReplaces(filename string, data []byte, replaces []replaceEntry) ([
 		if isLocalReplacement(replace.New.Path) {
 			continue
 		}
-		if replace.Syntax != nil {
-			replace.Syntax.Before = nil
-			replace.Syntax.Suffix = nil
-			replace.Syntax.After = nil
-		}
 		if err := parsed.DropReplace(replace.Old.Path, replace.Old.Version); err != nil {
 			return nil, fmt.Errorf("drop replace %s: %w", moduleVersionString(replace.Old.Path, replace.Old.Version), err)
 		}
 	}
 
+	parsed.Cleanup()
 	formatted, err := parsed.Format()
 	if err != nil {
 		return nil, fmt.Errorf("format go.mod: %w", err)

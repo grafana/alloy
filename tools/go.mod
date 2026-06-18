@@ -4,7 +4,6 @@ go 1.26.4
 
 require (
 	github.com/google/go-github/v57 v57.0.0
-	github.com/grafana/dskit v0.0.0-20250917065751-798f5a8fa154
 	github.com/openai/openai-go/v3 v3.21.0
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/mod v0.33.0
@@ -13,6 +12,7 @@ require (
 )
 
 require (
+	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
