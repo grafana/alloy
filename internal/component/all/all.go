@@ -63,6 +63,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/loki/write"                               // Import loki.write
 	_ "github.com/grafana/alloy/internal/component/mimir/alerts/kubernetes"                  // Import mimir.alerts.kubernetes
 	_ "github.com/grafana/alloy/internal/component/mimir/rules/kubernetes"                   // Import mimir.rules.kubernetes
+	_ "github.com/grafana/alloy/internal/component/otelcol/auth/azure"                       // Import otelcol.auth.azure
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/basic"                       // Import otelcol.auth.basic
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/bearer"                      // Import otelcol.auth.bearer
 	_ "github.com/grafana/alloy/internal/component/otelcol/auth/google"                      // Import otelcol.auth.google

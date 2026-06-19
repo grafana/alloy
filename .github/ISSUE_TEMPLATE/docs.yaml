@@ -83,6 +83,7 @@ body:
       - loki.write
       - mimir.alerts.kubernetes
       - mimir.rules.kubernetes
+      - otelcol.auth.azure
       - otelcol.auth.basic
       - otelcol.auth.bearer
       - otelcol.auth.google
