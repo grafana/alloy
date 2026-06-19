@@ -5,9 +5,7 @@ if [ -f "{{.EnvFile}}" ]; then
   set +a
 fi
 
-# Run in OTel mode when ALLOY_OTEL_MODE is truthy. The `otel` subcommand has
-# different flags than `run`: it takes a `--config` file URL, does not support
-# `--storage.path`, and reads its own extra-args file.
+# Run in OTel mode when ALLOY_OTEL_MODE is truthy.
 otel_mode=""
 case "${ALLOY_OTEL_MODE:-}" in
   1 | true | yes | on ) otel_mode="1" ;;
