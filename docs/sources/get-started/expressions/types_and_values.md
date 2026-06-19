@@ -201,7 +201,9 @@ You can't assign a secret to an attribute expecting a string.
 - **Component exports**: A component can't export a `secret` value as a `string`.
 
 Use the `secret` type for passwords, tokens, API keys, and other values you don't want to expose at runtime.
-When an attribute expects a `string`, call [`convert.nonsensitive`][nonsensitive] to make the conversion explicit in your configuration.
+When an attribute expects a `string`, call [`convert.nonsensitive`][nonsensitive].
+This exposes the value in plain text in the {{< param "PRODUCT_NAME" >}} UI and lets components export it as a `string`.
+Refer to [`convert.nonsensitive`][nonsensitive] before converting values that must stay secret.
 
 ### Capsules
 
@@ -243,7 +245,7 @@ For advanced expression features:
 
 [component reference]: ../../../reference/components/
 [valid]: ../../syntax#identifiers
-[nonsensitive]: ../../../reference/stdlib/convert/
+[nonsensitive]: ../../../reference/stdlib/convert/#nonsensitive
 [Component exports]: ../referencing_exports/
 [Operators]: ../operators/
 [Function calls]: ../function_calls/
