@@ -5,7 +5,6 @@ package beyla
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -18,10 +17,12 @@ import (
 	"go.opentelemetry.io/obi/pkg/export/attributes"
 	"go.opentelemetry.io/obi/pkg/export/debug"
 	"go.opentelemetry.io/obi/pkg/export/instrumentations"
+	"go.opentelemetry.io/obi/pkg/export/otel/otelcfg"
 	"go.opentelemetry.io/obi/pkg/filter"
 	"go.opentelemetry.io/obi/pkg/kube/kubeflags"
 	"go.opentelemetry.io/obi/pkg/obi"
 	"go.opentelemetry.io/obi/pkg/transform"
+	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
@@ -134,8 +135,10 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 			protocol_debug_print = false
 			payload_extraction {
 				http {
-					openai {
-						enabled = true
+					genai {
+						openai {
+							enabled = true
+						}
 					}
 				}
 			}
@@ -185,7 +188,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.Equal(t, []string{"TCP", "UDP"}, cfg.NetworkFlows.Protocols)
 	require.Equal(t, []string{"ICMP"}, cfg.NetworkFlows.ExcludeProtocols)
 	require.Equal(t, 1, cfg.NetworkFlows.Sampling)
-	require.Equal(t, "10.0.0.0/8", cfg.NetworkFlows.CIDRs[0])
+	require.Equal(t, "10.0.0.0/8", cfg.NetworkFlows.CIDRs[0].CIDR)
 	require.Equal(t, 8000, cfg.NetworkFlows.CacheMaxFlows)
 	require.Equal(t, 10*time.Second, cfg.NetworkFlows.CacheActiveTimeout)
 	require.Equal(t, "ingress", cfg.NetworkFlows.Direction)
@@ -228,6 +231,7 @@ func TestArguments_UnmarshalSyntax(t *testing.T) {
 	require.True(t, cfg.EBPF.HeuristicSQLDetect)
 	require.False(t, cfg.EBPF.BpfDebug)
 	require.False(t, cfg.EBPF.ProtocolDebug)
+	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
 	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
 	require.Len(t, cfg.Filters.Application, 1)
 	require.Len(t, cfg.Filters.Network, 1)
@@ -887,7 +891,9 @@ func TestConvert_Network(t *testing.T) {
 	expectedConfig.ExcludeProtocols = args.ExcludeProtocols
 	expectedConfig.Sampling = 1
 	expectedConfig.Print = false
-	expectedConfig.CIDRs = args.CIDRs
+	if len(args.CIDRs) > 0 {
+		_ = expectedConfig.CIDRs.UnmarshalText([]byte(strings.Join(args.CIDRs, ",")))
+	}
 
 	config := args.Convert()
 
@@ -907,7 +913,9 @@ func TestConvert_Stats(t *testing.T) {
 	expectedConfig.AgentIP = args.AgentIP
 	expectedConfig.AgentIPIface = obi.AgentTypeIface(args.AgentIPIface)
 	expectedConfig.AgentIPType = args.AgentIPType
-	expectedConfig.CIDRs = args.CIDRs
+	if len(args.CIDRs) > 0 {
+		_ = expectedConfig.CIDRs.UnmarshalText([]byte(strings.Join(args.CIDRs, ",")))
+	}
 	expectedConfig.Print = args.Print
 
 	config := args.Convert()
@@ -926,8 +934,8 @@ func TestConvert_EBPF(t *testing.T) {
 		ProtocolDebug:       true,
 		PayloadExtraction: PayloadExtraction{
 			HTTP: HTTPPayloadExtraction{
-				OpenAI: OpenAIPayloadExtraction{
-					Enabled: true,
+				GenAI: GenAI{
+					OpenAI: ProtocolToggle{Enabled: true},
 				},
 			},
 		},
@@ -994,23 +1002,31 @@ func TestConvert_Filters(t *testing.T) {
 	require.Equal(t, expectedConfig, config)
 }
 
+func TestConvert_Filters_NumericOps(t *testing.T) {
+	gt, eq := 200, 404
+	args := Filters{
+		Application: AttributeFamilies{
+			{Attr: "http_response_status_code", GreaterThan: &gt, Equals: &eq},
+		},
+		Network: AttributeFamilies{
+			{Attr: "dst_port", LessThan: intptr(8080)},
+		},
+	}
+	cfg := args.Convert()
+	require.Equal(t, &gt, cfg.Application["http_response_status_code"].GreaterThan)
+	require.Equal(t, &eq, cfg.Application["http_response_status_code"].Equals)
+	require.Equal(t, 8080, *cfg.Network["dst_port"].LessThan)
+}
+
+func intptr(i int) *int { return &i }
+
 func TestConvert_InjectorWebhook(t *testing.T) {
-	port := 8443
-	timeout := 30 * time.Second
 	args := InjectorWebhook{
-		Enable:   true,
-		Port:     &port,
-		CertPath: "/etc/certs/tls.crt",
-		KeyPath:  "/etc/certs/tls.key",
-		Timeout:  &timeout,
+		ExternalWebhook: "beyla-controller",
 	}
 
 	expectedConfig := beyla.DefaultConfig().Injector.Webhook
-	expectedConfig.Enable = true
-	expectedConfig.Port = 8443
-	expectedConfig.CertPath = "/etc/certs/tls.crt"
-	expectedConfig.KeyPath = "/etc/certs/tls.key"
-	expectedConfig.Timeout = 30 * time.Second
+	expectedConfig.ExternalWebhook = "beyla-controller"
 
 	config := args.Convert()
 	require.Equal(t, expectedConfig, config)
@@ -1026,7 +1042,7 @@ func TestConvert_InjectorSDKExport(t *testing.T) {
 		Logs:    &logs,
 	}
 
-	expectedConfig := beyla.DefaultConfig().Injector.Export
+	expectedConfig := beyla.DefaultConfig().Injector.ExportedSignals
 	expectedConfig.Traces = &traces
 	expectedConfig.Metrics = &metrics
 	expectedConfig.Logs = &logs
@@ -1037,16 +1053,19 @@ func TestConvert_InjectorSDKExport(t *testing.T) {
 
 func TestConvert_InjectorSDKResource(t *testing.T) {
 	addK8s := true
+	addK8sIP := true
 	useLabels := false
 	args := InjectorSDKResource{
 		Attributes:                     map[string]string{"environment": "dev"},
 		AddK8sUIDAttributes:            &addK8s,
+		AddK8sIPAttribute:              &addK8sIP,
 		UseLabelsForResourceAttributes: &useLabels,
 	}
 
 	expectedConfig := beyla.DefaultConfig().Injector.Resources
 	expectedConfig.Attributes = map[string]string{"environment": "dev"}
 	expectedConfig.AddK8sUIDAttributes = true
+	expectedConfig.AddK8sIPAttribute = true
 	expectedConfig.UseLabelsForResourceAttributes = false
 
 	config := args.Convert()
@@ -1054,20 +1073,11 @@ func TestConvert_InjectorSDKResource(t *testing.T) {
 }
 
 func TestConvert_Injector(t *testing.T) {
-	noAutoRestart := true
-	manageSDKVersions := false
-	debug := true
 	args := Injector{
-		OTELEndpoint:      "http://otel-collector:4318",
-		NoAutoRestart:     &noAutoRestart,
-		HostPathVolumeDir: "/var/beyla",
-		SDKPkgVersion:     "1.0.0",
-		HostMountPath:     "/host",
-		ManageSDKVersions: &manageSDKVersions,
-		Propagators:       []string{"tracecontext", "baggage"},
-		EnabledSDKs:       []string{"java", "dotnet"},
-		Debug:             &debug,
-		DefaultSampler:    SamplerConfig{Name: "always_on"},
+		ImageVersion:   "1.0.0",
+		Propagators:    []string{"tracecontext", "baggage"},
+		EnabledSDKs:    []string{"java", "dotnet"},
+		DefaultSampler: SamplerConfig{Name: "always_on"},
 	}
 
 	javaSDK := beylaSvc.InstrumentableType{}
@@ -1077,16 +1087,11 @@ func TestConvert_Injector(t *testing.T) {
 
 	expectedConfig := beyla.DefaultConfig().Injector
 	expectedConfig.Webhook = InjectorWebhook{}.Convert()
-	expectedConfig.Export = InjectorSDKExport{}.Convert()
+	expectedConfig.ExportedSignals = InjectorSDKExport{}.Convert()
 	expectedConfig.Resources = InjectorSDKResource{}.Convert()
-	expectedConfig.NoAutoRestart = true
-	expectedConfig.HostPathVolumeDir = "/var/beyla"
-	expectedConfig.SDKPkgVersion = "1.0.0"
-	expectedConfig.HostMountPath = "/host"
-	expectedConfig.ManageSDKVersions = false
+	expectedConfig.ImageVersion = "1.0.0"
 	expectedConfig.Propagators = []string{"tracecontext", "baggage"}
 	expectedConfig.EnabledSDKs = []beylaSvc.InstrumentableType{javaSDK, dotnetSDK}
-	expectedConfig.Debug = true
 	s := SamplerConfig{Name: "always_on"}.Convert()
 	expectedConfig.DefaultSampler = &s
 
@@ -1095,7 +1100,19 @@ func TestConvert_Injector(t *testing.T) {
 	require.Equal(t, expectedConfig, config)
 }
 
-func TestInjector_Validate(t *testing.T) {
+func TestConvert_Injector_OTELEndpoint(t *testing.T) {
+	args := Injector{
+		OTELEndpoint: "http://otel-collector:4317",
+		OTELProtocol: "grpc",
+	}
+
+	config, err := args.Convert()
+	require.NoError(t, err)
+	require.Equal(t, "http://otel-collector:4317", config.Endpoint)
+	require.Equal(t, otelcfg.Protocol("grpc"), config.Protocol)
+}
+
+func TestConvert_Injector_Errors(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    Injector
@@ -1104,34 +1121,9 @@ func TestInjector_Validate(t *testing.T) {
 		{
 			name: "valid injector config",
 			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:   true,
-					CertPath: "/etc/certs/tls.crt",
-					KeyPath:  "/etc/certs/tls.key",
-				},
-				EnabledSDKs:  []string{"java", "dotnet"},
-				OTELEndpoint: "http://otel-collector:4318",
+				Webhook:     InjectorWebhook{ExternalWebhook: "beyla-controller"},
+				EnabledSDKs: []string{"java", "dotnet"},
 			},
-		},
-		{
-			name: "missing webhook cert path",
-			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:  true,
-					KeyPath: "/etc/certs/tls.key",
-				},
-			},
-			wantErr: "injector.webhook.cert_path must be set",
-		},
-		{
-			name: "missing webhook key path",
-			args: Injector{
-				Webhook: InjectorWebhook{
-					Enable:   true,
-					CertPath: "/etc/certs/tls.crt",
-				},
-			},
-			wantErr: "injector.webhook.key_path must be set",
 		},
 		{
 			name: "invalid enabled sdk",
@@ -1140,31 +1132,30 @@ func TestInjector_Validate(t *testing.T) {
 			},
 			wantErr: "injector.enabled_sdks:",
 		},
-		{
-			name: "invalid otel endpoint",
-			args: Injector{
-				OTELEndpoint: "not-a-url",
-			},
-			wantErr: fmt.Sprintf("injector.otel_endpoint: URL %q must have a scheme and a host", "not-a-url"),
-		},
-		{
-			name: "malformed otel endpoint",
-			args: Injector{
-				OTELEndpoint: "http://[::1",
-			},
-			wantErr: "injector.otel_endpoint:",
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
+			_, err := tt.args.Convert()
 			if tt.wantErr != "" {
 				require.Error(t, err)
 				require.Contains(t, err.Error(), tt.wantErr)
 				return
 			}
 			require.NoError(t, err)
+		})
+	}
+}
+
+func TestStringToGlobAttr_YAMLRoundTrip(t *testing.T) {
+	for _, value := range []string{"default", "frontend-2", "prod-*"} {
+		t.Run(value, func(t *testing.T) {
+			attr, err := stringToGlobAttr(value)
+			require.NoError(t, err)
+
+			out, err := yaml.Marshal(attr)
+			require.NoError(t, err)
+			require.Equal(t, value, strings.TrimSpace(string(out)))
 		})
 	}
 }
@@ -1473,26 +1464,6 @@ func TestArguments_Validate(t *testing.T) {
 				},
 			},
 			wantErr: "invalid sampler configuration in discovery.services[0]: sampler \"traceidratio\" requires an arg parameter",
-		},
-		{
-			name: "invalid injector webhook configuration",
-			args: Arguments{
-				Injector: Injector{
-					Webhook: InjectorWebhook{
-						Enable: true,
-					},
-				},
-			},
-			wantErr: "injector.webhook.cert_path must be set when injector.webhook.enable is true",
-		},
-		{
-			name: "invalid injector otel endpoint configuration",
-			args: Arguments{
-				Injector: Injector{
-					OTELEndpoint: (&url.URL{Path: "missing-host"}).String(),
-				},
-			},
-			wantErr: `injector.otel_endpoint: URL "missing-host" must have a scheme and a host`,
 		},
 	}
 
@@ -1878,59 +1849,6 @@ func TestEBPF_Convert_MapsConfig(t *testing.T) {
 	require.Equal(t, 0, cfg.MapsConfig.GlobalScaleFactor)
 }
 
-func TestInjector_Validate_ImageVolumePath(t *testing.T) {
-	tests := []struct {
-		name    string
-		args    Injector
-		wantErr string
-	}{
-		{
-			name: "image_volume_path alone is valid",
-			args: Injector{ImageVolumePath: "/var/oci"},
-		},
-		{
-			name: "image_volume_path with host_mount_path is invalid",
-			args: Injector{
-				ImageVolumePath: "/var/oci",
-				HostMountPath:   "/host",
-			},
-			wantErr: "injector.image_volume_path and injector.host_mount_path are mutually exclusive",
-		},
-		{
-			name: "image_volume_path with sdk_package_version is invalid",
-			args: Injector{
-				ImageVolumePath: "/var/oci",
-				SDKPkgVersion:   "1.0.0",
-			},
-			wantErr: "injector.image_volume_path and injector.sdk_package_version are mutually exclusive",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := tt.args.Validate()
-			if tt.wantErr != "" {
-				require.Error(t, err)
-				require.Contains(t, err.Error(), tt.wantErr)
-				return
-			}
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestInjector_Convert_ImageVolumePath(t *testing.T) {
-	args := Injector{ImageVolumePath: "/var/oci"}
-	cfg, err := args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, "/var/oci", cfg.ImageVolumePath)
-
-	args = Injector{}
-	cfg, err = args.Convert()
-	require.NoError(t, err)
-	require.Equal(t, "", cfg.ImageVolumePath)
-}
-
 func TestSurveyDisabled(t *testing.T) {
 	comp := &Component{
 		args: Arguments{
@@ -1969,38 +1887,333 @@ func TestSurveyEnabled(t *testing.T) {
 	require.Equal(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
 }
 
-func TestAnthropicPayloadExtraction(t *testing.T) {
-	in := `
-		ebpf {
-			payload_extraction {
-				http {
-					anthropic {
-						enabled = true
-					}
-				}
-			}
-		}
-	`
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+func strptr(s string) *string { return &s }
+
+func TestConvert_EBPF_NewScalars(t *testing.T) {
+	args := EBPF{
+		InstrumentCuda:        "on",
+		TrafficControlBackend: "tcx",
+		MaxTransactionTime:    5 * time.Second,
+		DNSRequestTimeout:     time.Second,
+		BufferSizes:           BufferSizes{HTTP: 1024, MySQL: 512},
+	}
 	cfg, err := args.Convert()
 	require.NoError(t, err)
-	require.True(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.Anthropic.Enabled)
-	require.False(t, cfg.EBPF.PayloadExtraction.HTTP.GenAI.OpenAI.Enabled)
+	require.Equal(t, obiCfg.CudaModeOn, cfg.InstrumentCuda)
+	require.Equal(t, obiCfg.TCBackendTCX, cfg.TCBackend)
+	require.Equal(t, 5*time.Second, cfg.MaxTransactionTime)
+	require.Equal(t, time.Second, cfg.DNSRequestTimeout)
+	require.Equal(t, uint32(1024), cfg.BufferSizes.HTTP)
+	require.Equal(t, uint32(512), cfg.BufferSizes.MySQL)
 }
 
-func TestKubernetesReconnectInitialInterval(t *testing.T) {
-	in := `
-		attributes {
-			kubernetes {
-				enable = "true"
-				reconnect_initial_interval = "5s"
-			}
-		}
-	`
-	var args Arguments
-	require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+func TestValidate_EBPF_Enums(t *testing.T) {
+	bad := Arguments{EBPF: EBPF{InstrumentCuda: "bogus"}}
+	require.ErrorContains(t, bad.Validate(), "ebpf.instrument_cuda")
+
+	badTC := Arguments{EBPF: EBPF{TrafficControlBackend: "bogus"}}
+	require.ErrorContains(t, badTC.Validate(), "ebpf.traffic_control_backend")
+
+	badBuf := Arguments{EBPF: EBPF{BufferSizes: BufferSizes{HTTP: 70000}}}
+	require.ErrorContains(t, badBuf.Validate(), "ebpf.buffer_sizes")
+}
+
+func TestConvert_Attributes_NewScalars(t *testing.T) {
+	args := Attributes{
+		Kubernetes:                    KubernetesDecorator{Enable: "true"},
+		RenameUnresolvedHosts:         strptr("unknown"),
+		RenameUnresolvedHostsOutgoing: strptr("out"),
+		RenameUnresolvedHostsIncoming: strptr("in"),
+		MetricSpanNamesLimit:          50,
+		HostID:                        HostIDConfig{Override: "my-host"},
+		MetadataRetry: MetadataRetry{
+			Timeout:       10 * time.Second,
+			StartInterval: time.Second,
+			MaxInterval:   2 * time.Second,
+		},
+	}
+	cfg := args.Convert()
+	require.Equal(t, "unknown", cfg.RenameUnresolvedHosts)
+	require.Equal(t, "out", cfg.RenameUnresolvedHostsOutgoing)
+	require.Equal(t, "in", cfg.RenameUnresolvedHostsIncoming)
+	require.Equal(t, 50, cfg.MetricSpanNameAggregationLimit)
+	require.Equal(t, "my-host", cfg.HostID.Override)
+	require.Equal(t, 10*time.Second, cfg.MetadataRetry.Timeout)
+	require.Equal(t, time.Second, cfg.MetadataRetry.StartInterval)
+	require.Equal(t, 2*time.Second, cfg.MetadataRetry.MaxInterval)
+}
+
+func TestConvert_Attributes_RenameUnresolvedHostsDisable(t *testing.T) {
+	empty := ""
+	args := Attributes{
+		Kubernetes:            KubernetesDecorator{Enable: "true"},
+		RenameUnresolvedHosts: &empty,
+	}
+	cfg := args.Convert()
+	require.Equal(t, "", cfg.RenameUnresolvedHosts)
+}
+
+func TestConvert_Attributes_RenameUnresolvedHostsDefault(t *testing.T) {
+	args := Attributes{
+		Kubernetes: KubernetesDecorator{Enable: "true"},
+	}
+	cfg := args.Convert()
+	require.Equal(t, beyla.DefaultConfig().Attributes.RenameUnresolvedHosts, cfg.RenameUnresolvedHosts)
+	require.NotEmpty(t, cfg.RenameUnresolvedHosts)
+}
+
+func TestConvert_Attributes_Kubernetes(t *testing.T) {
+	args := Attributes{
+		Kubernetes: KubernetesDecorator{
+			Enable:                   "true",
+			KubeconfigPath:           "/etc/kube/config",
+			ReconnectInitialInterval: 3 * time.Second,
+			DropExternal:             true,
+			ServiceNameTemplate:      "{{.Namespace}}/{{.Name}}",
+			ResourceLabels:           map[string][]string{"service.name": {"app.kubernetes.io/name"}},
+		},
+	}
+	cfg := args.Convert()
+	require.Equal(t, "/etc/kube/config", cfg.Kubernetes.KubeconfigPath)
+	require.Equal(t, 3*time.Second, cfg.Kubernetes.ReconnectInitialInterval)
+	require.True(t, cfg.Kubernetes.DropExternal)
+	require.Equal(t, "{{.Namespace}}/{{.Name}}", cfg.Kubernetes.ServiceNameTemplate)
+	require.Equal(t, map[string][]string{"service.name": {"app.kubernetes.io/name"}}, map[string][]string(cfg.Kubernetes.ResourceLabels))
+}
+
+func TestConvert_Discovery_NewScalars(t *testing.T) {
+	args := Discovery{
+		PollInterval:        5 * time.Second,
+		MinProcessAge:       2 * time.Second,
+		DefaultOtlpGRPCPort: 4319,
+		ExcludeOTelInstrumentedServicesSpanMetrics: true,
+	}
 	cfg, err := args.Convert()
 	require.NoError(t, err)
-	require.Equal(t, 5*time.Second, cfg.Attributes.Kubernetes.ReconnectInitialInterval)
+	require.Equal(t, 5*time.Second, cfg.PollInterval)
+	require.Equal(t, 2*time.Second, cfg.MinProcessAge)
+	require.Equal(t, 4319, cfg.DefaultOtlpGRPCPort)
+	require.True(t, cfg.ExcludeOTelInstrumentedServicesSpanMetrics)
+}
+
+func TestConvert_PayloadExtraction_Protocols(t *testing.T) {
+	args := EBPF{
+		PayloadExtraction: PayloadExtraction{
+			HTTP: HTTPPayloadExtraction{
+				GraphQL:       ProtocolToggle{Enabled: true},
+				Elasticsearch: ProtocolToggle{Enabled: true},
+				AWS:           ProtocolToggle{Enabled: true},
+				JSONRPC:       ProtocolToggle{Enabled: true},
+				SQLPP:         SQLPP{Enabled: true, EndpointPatterns: []string{"/query"}},
+				GenAI: GenAI{
+					OpenAI:    ProtocolToggle{Enabled: true},
+					Anthropic: ProtocolToggle{Enabled: true},
+					Gemini:    ProtocolToggle{Enabled: true},
+					Qwen:      ProtocolToggle{Enabled: true},
+					Bedrock:   ProtocolToggle{Enabled: true},
+					MCP:       ProtocolToggle{Enabled: true},
+					Embedding: ProtocolToggle{Enabled: true},
+					Rerank:    ProtocolToggle{Enabled: true},
+					Retrieval: ProtocolToggle{Enabled: true},
+				},
+			},
+		},
+	}
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	h := cfg.PayloadExtraction.HTTP
+	require.True(t, h.GraphQL.Enabled)
+	require.True(t, h.Elasticsearch.Enabled)
+	require.True(t, h.AWS.Enabled)
+	require.True(t, h.JSONRPC.Enabled)
+	require.True(t, h.SQLPP.Enabled)
+	require.Equal(t, []string{"/query"}, h.SQLPP.EndpointPatterns)
+	require.True(t, h.GenAI.OpenAI.Enabled)
+	require.True(t, h.GenAI.Anthropic.Enabled)
+	require.True(t, h.GenAI.Gemini.Enabled)
+	require.True(t, h.GenAI.Qwen.Enabled)
+	require.True(t, h.GenAI.Bedrock.Enabled)
+	require.True(t, h.GenAI.MCP.Enabled)
+	require.True(t, h.GenAI.Embedding.Enabled)
+	require.True(t, h.GenAI.Rerank.Enabled)
+	require.True(t, h.GenAI.Retrieval.Enabled)
+}
+
+func TestConvert_Enrichment(t *testing.T) {
+	args := Enrichment{
+		Enabled: true,
+		Policy: EnrichmentPolicy{
+			DefaultAction:     EnrichmentDefaultAction{Headers: "exclude", Body: "exclude"},
+			ObfuscationString: "***",
+		},
+		Rules: []EnrichmentRule{
+			{
+				Action: "obfuscate", Type: "headers", Scope: "request",
+				Match: EnrichmentMatch{
+					Patterns:        []string{"authorization", "x-*"},
+					CaseSensitive:   false,
+					URLPathPatterns: []string{"/api/*"},
+					Methods:         []string{"POST"},
+				},
+			},
+			{
+				Action: "obfuscate", Type: "body", Scope: "all",
+				Match: EnrichmentMatch{ObfuscationJSONPaths: []string{"$.password"}},
+			},
+		},
+	}
+	got, err := args.Convert()
+	require.NoError(t, err)
+	require.True(t, got.Enabled)
+	require.Equal(t, obiCfg.HTTPParsingActionExclude, got.Policy.DefaultAction.Headers)
+	require.Equal(t, obiCfg.HTTPParsingActionExclude, got.Policy.DefaultAction.Body)
+	require.Equal(t, "***", got.Policy.ObfuscationString)
+	require.Len(t, got.Rules, 2)
+	require.Equal(t, obiCfg.HTTPParsingActionObfuscate, got.Rules[0].Action)
+	require.Equal(t, obiCfg.HTTPParsingRuleTypeHeaders, got.Rules[0].Type)
+	require.Equal(t, obiCfg.HTTPParsingScopeRequest, got.Rules[0].Scope)
+	require.Len(t, got.Rules[0].Match.Patterns, 2)
+	require.True(t, got.Rules[0].Match.Patterns[0].IsSet())
+	require.Len(t, got.Rules[0].Match.URLPathPatterns, 1)
+	require.Equal(t, []obiCfg.HTTPMethod{obiCfg.HTTPMethodPOST}, got.Rules[0].Match.Methods)
+	require.Equal(t, []string{"$.password"}, jsonPathsToStrings(got.Rules[1].Match.ObfuscationJSONPaths))
+}
+
+func jsonPathsToStrings(in []obiCfg.JSONPathExpr) []string {
+	out := make([]string, len(in))
+	for i := range in {
+		out[i] = in[i].String()
+	}
+	return out
+}
+
+func TestConvert_Enrichment_InvalidGlob(t *testing.T) {
+	args := Enrichment{
+		Enabled: true,
+		Rules: []EnrichmentRule{
+			{Action: "obfuscate", Type: "headers", Scope: "all",
+				Match: EnrichmentMatch{Patterns: []string{"[invalid"}}},
+		},
+	}
+	_, err := args.Convert()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "patterns")
+}
+
+func TestValidate_Enrichment_Enums(t *testing.T) {
+	bad := Arguments{EBPF: EBPF{PayloadExtraction: PayloadExtraction{HTTP: HTTPPayloadExtraction{
+		Enrichment: Enrichment{Rules: []EnrichmentRule{{Action: "bogus", Type: "headers", Scope: "all"}}},
+	}}}}
+	require.ErrorContains(t, bad.Validate(), "enrichment.rule[0].action")
+}
+
+func TestConvert_Metrics_Tuning(t *testing.T) {
+	args := Metrics{
+		ExemplarFilter:       "trace_based",
+		TTL:                  5 * time.Minute,
+		SpanServiceCacheSize: 1000,
+		NativeHistogram: NativeHistogram{
+			BucketFactor:     1.2,
+			MaxBucketNumber:  120,
+			MinResetDuration: 30 * time.Minute,
+		},
+		Buckets: Buckets{
+			DurationHistogram:    []float64{0, 1, 2},
+			RequestSizeHistogram: []float64{0, 100},
+		},
+	}
+	cfg := args.Convert()
+	require.Equal(t, "trace_based", cfg.ExemplarFilter)
+	require.Equal(t, 5*time.Minute, cfg.TTL)
+	require.Equal(t, 1000, cfg.SpanMetricsServiceCacheSize)
+	require.Equal(t, 1.2, cfg.NativeHistogram.BucketFactor)
+	require.Equal(t, uint32(120), cfg.NativeHistogram.MaxBucketNumber)
+	require.Equal(t, 30*time.Minute, cfg.NativeHistogram.MinResetDuration)
+	require.Equal(t, []float64{0, 1, 2}, cfg.Buckets.DurationHistogram)
+	require.Equal(t, []float64{0, 100}, cfg.Buckets.RequestSizeHistogram)
+}
+
+func TestValidate_Metrics_ExemplarFilter(t *testing.T) {
+	bad := Arguments{Metrics: Metrics{ExemplarFilter: "nope"}}
+	require.ErrorContains(t, bad.Validate(), "metrics.exemplar_filter")
+}
+
+func TestConvert_GeoIP_ReverseDNS(t *testing.T) {
+	geo := GeoIP{
+		IPInfoPath:         "/data/ipinfo.mmdb",
+		MaxMindCountryPath: "/data/country.mmdb",
+		MaxMindASNPath:     "/data/asn.mmdb",
+		CacheLen:           1000,
+		CacheTTL:           time.Hour,
+	}
+	nc := beyla.DefaultConfig().NetworkFlows
+	geo.applyToNetwork(&nc)
+	require.Equal(t, "/data/ipinfo.mmdb", nc.GeoIP.IPInfo.Path)
+	require.Equal(t, "/data/country.mmdb", nc.GeoIP.MaxMindInfo.CountryPath)
+	require.Equal(t, "/data/asn.mmdb", nc.GeoIP.MaxMindInfo.ASNPath)
+	require.Equal(t, 1000, nc.GeoIP.CacheLen)
+	require.Equal(t, time.Hour, nc.GeoIP.CacheTTL)
+
+	rdnsArgs := ReverseDNS{Type: "local", CacheLen: 256, CacheTTL: time.Minute}
+	rdnsArgs.applyToNetwork(&nc)
+	require.Equal(t, "local", nc.ReverseDNS.Type)
+	require.Equal(t, 256, nc.ReverseDNS.CacheLen)
+	require.Equal(t, time.Minute, nc.ReverseDNS.CacheTTL)
+}
+
+func TestConvert_Network_NewOptions(t *testing.T) {
+	args := Network{
+		Deduper:          "first_come",
+		DeduperFCTTL:     30 * time.Second,
+		GuessPorts:       "ordinal",
+		ListenInterfaces: "poll",
+		ListenPollPeriod: 10 * time.Second,
+		PrintFlows:       true,
+		GeoIP:            GeoIP{CacheLen: 10},
+		ReverseDNS:       ReverseDNS{Type: "ebpf"},
+	}
+	cfg := args.Convert()
+	require.Equal(t, "first_come", cfg.Deduper)
+	require.Equal(t, 30*time.Second, cfg.DeduperFCTTL)
+	require.Equal(t, "ordinal", string(cfg.GuessPorts))
+	require.Equal(t, "poll", cfg.ListenInterfaces)
+	require.Equal(t, 10*time.Second, cfg.ListenPollPeriod)
+	require.True(t, cfg.Print)
+	require.Equal(t, 10, cfg.GeoIP.CacheLen)
+	require.Equal(t, "ebpf", cfg.ReverseDNS.Type)
+}
+
+func TestConvert_Stats_Enrichment(t *testing.T) {
+	args := Stats{GeoIP: GeoIP{CacheLen: 5}, ReverseDNS: ReverseDNS{Type: "local"}}
+	cfg := args.Convert()
+	require.Equal(t, 5, cfg.GeoIP.CacheLen)
+	require.Equal(t, "local", cfg.ReverseDNS.Type)
+}
+
+func TestValidate_Network_Enums(t *testing.T) {
+	a1 := Arguments{Metrics: Metrics{Network: Network{Deduper: "bogus"}}}
+	require.ErrorContains(t, a1.Validate(), "metrics.network.deduper")
+
+	a2 := Arguments{Metrics: Metrics{Network: Network{GuessPorts: "bogus"}}}
+	require.ErrorContains(t, a2.Validate(), "metrics.network.guess_ports")
+
+	a3 := Arguments{Metrics: Metrics{Network: Network{ListenInterfaces: "bogus"}}}
+	require.ErrorContains(t, a3.Validate(), "metrics.network.listen_interfaces")
+
+	a4 := Arguments{Metrics: Metrics{Network: Network{ReverseDNS: ReverseDNS{Type: "bogus"}}}}
+	require.ErrorContains(t, a4.Validate(), "metrics.network.reverse_dns.type")
+
+	a5 := Arguments{Stats: Stats{ReverseDNS: ReverseDNS{Type: "bogus"}}}
+	require.ErrorContains(t, a5.Validate(), "stats.reverse_dns.type")
+}
+
+func TestConvertGlob_LanguagesAndPIDs(t *testing.T) {
+	svcs := Services{
+		{Name: "app", Languages: "java", PIDs: []uint32{100, 200}},
+	}
+	crit, err := svcs.ConvertGlob()
+	require.NoError(t, err)
+	require.Len(t, crit, 1)
+	require.True(t, crit[0].Languages.IsSet())
+	require.Equal(t, []uint32{100, 200}, crit[0].PIDs)
 }

@@ -8,6 +8,7 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -145,9 +146,13 @@ func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
 	return collector.Metrics{
 		SNMPCollectionDuration: promauto.With(reg).NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: namespace,
-				Name:      "collection_duration_seconds",
-				Help:      "Duration of collections by the SNMP exporter",
+				Namespace:                       namespace,
+				Name:                            "collection_duration_seconds",
+				Help:                            "Duration of collections by the SNMP exporter",
+				Buckets:                         prometheus.DefBuckets,
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  100,
+				NativeHistogramMinResetDuration: 1 * time.Hour,
 			},
 			[]string{"module"},
 		),
@@ -160,10 +165,13 @@ func NewSNMPMetrics(reg prometheus.Registerer) collector.Metrics {
 		),
 		SNMPDuration: promauto.With(reg).NewHistogram(
 			prometheus.HistogramOpts{
-				Namespace: namespace,
-				Name:      "packet_duration_seconds",
-				Help:      "A histogram of latencies for SNMP packets.",
-				Buckets:   buckets,
+				Namespace:                       namespace,
+				Name:                            "packet_duration_seconds",
+				Help:                            "A histogram of latencies for SNMP packets.",
+				Buckets:                         buckets,
+				NativeHistogramBucketFactor:     1.1,
+				NativeHistogramMaxBucketNumber:  100,
+				NativeHistogramMinResetDuration: 1 * time.Hour,
 			},
 		),
 		SNMPPackets: promauto.With(reg).NewCounter(

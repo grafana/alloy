@@ -63,8 +63,11 @@ func TestRuntime(t *testing.T) {
 	}
 
 	var verifyService = func(s serviceState, running bool) {
-		require.Equal(t, running, s.running.Load())
-		require.Equal(t, int32(1), s.runCalled.Load())
+		// running flips async inside the service's Run goroutine.
+		require.EventuallyWithT(t, func(collect *assert.CollectT) {
+			assert.Equal(collect, running, s.running.Load())
+			assert.Equal(collect, int32(1), s.runCalled.Load())
+		}, 2*time.Second, 50*time.Millisecond)
 	}
 
 	var reload = func(ctrl *Runtime, cfg string) {

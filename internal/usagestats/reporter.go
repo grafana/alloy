@@ -15,6 +15,12 @@ import (
 var (
 	reportCheckInterval = time.Minute
 	reportInterval      = 4 * time.Hour
+
+	reportBackoffConfig = backoff.Config{
+		MinBackoff: time.Second,
+		MaxBackoff: 30 * time.Second,
+		MaxRetries: 5,
+	}
 )
 
 // Reporter holds the Alloy seed information and sends report of usage
@@ -56,10 +62,15 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]an
 				continue
 			}
 			rep.logger.Info("reporting Alloy stats", "date", time.Now())
-			if err := rep.reportUsage(ctx, next, metricsFunc()); err != nil {
+			err := rep.reportUsage(ctx, next, metricsFunc())
+			if err != nil {
 				rep.logger.Warn("failed to report usage", "err", err)
-				continue
 			}
+			// Advance the schedule whether or not the report succeeded.
+			// reportUsage already retries with backoff; on persistent failure
+			// (e.g. the endpoint won't resolve) we treat the window as spent and
+			// wait a full interval rather than re-attempting on every tick, which
+			// would otherwise hammer the endpoint indefinitely.
 			rep.lastReport = next
 			next = next.Add(reportInterval)
 		case <-ctx.Done():
@@ -70,11 +81,7 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]an
 
 // reportUsage reports the usage to grafana.com.
 func (rep *Reporter) reportUsage(ctx context.Context, interval time.Time, metrics map[string]any) error {
-	backoff := backoff.New(ctx, backoff.Config{
-		MinBackoff: time.Second,
-		MaxBackoff: 30 * time.Second,
-		MaxRetries: 5,
-	})
+	backoff := backoff.New(ctx, reportBackoffConfig)
 	var errs multierror.MultiError
 	for backoff.Ongoing() {
 		if err := sendReport(ctx, rep.seed, interval, metrics); err != nil {

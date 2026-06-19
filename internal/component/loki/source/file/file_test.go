@@ -600,7 +600,6 @@ func TestDeleteRecreateFile(t *testing.T) {
 
 	runTests(t, func(t *testing.T, match FileMatch) {
 		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
-		defer cancel()
 
 		// Create file to log to.
 		dir := t.TempDir()
@@ -611,9 +610,20 @@ func TestDeleteRecreateFile(t *testing.T) {
 		require.NoError(t, err)
 
 		ch1 := loki.NewLogsReceiver()
+		runErr := make(chan error, 1)
+
+		t.Cleanup(func() {
+			cancel()
+			select {
+			case err := <-runErr:
+				require.NoError(t, err)
+			case <-time.After(10 * time.Second):
+				require.FailNow(t, "timed out waiting for ctrl.Run to exit")
+			}
+		})
 
 		go func() {
-			err := ctrl.Run(ctx, Arguments{
+			runErr <- ctrl.Run(ctx, Arguments{
 				Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{
 					"__path__": f.Name(),
 					"foo":      "bar",
@@ -621,7 +631,6 @@ func TestDeleteRecreateFile(t *testing.T) {
 				ForwardTo: []loki.LogsReceiver{ch1},
 				FileMatch: match,
 			})
-			require.NoError(t, err)
 		}()
 
 		ctrl.WaitRunning(time.Minute)
