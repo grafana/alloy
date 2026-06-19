@@ -56,7 +56,7 @@ Refer to the [profile][profile] documentation for more details on how to use thi
 
 ## Example
 
-You can omit the `?duration=N` segment to return the configured HTTP server write timeout. For most {{< param "PRODUCT_NAME" >}} configurations, you can generate the support bundle then by going to the following URL: 
+You can omit the `?duration=N` segment to use the configured HTTP server write timeout as the default support bundle collection duration. For most {{< param "PRODUCT_NAME" >}} configurations, you can generate the support bundle by going to the following URL: 
 
 ```
 http://localhost:12345/-/support
