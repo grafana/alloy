@@ -19,8 +19,9 @@ func TestRenderGolden(t *testing.T) {
 				AlloyBin:      "/opt/homebrew/opt/grafana-alloy/bin/alloy",
 				ConfigPath:    "/opt/homebrew/etc/grafana-alloy",
 				StoragePath:   "/opt/homebrew/var/lib/grafana-alloy/data",
-				EnvFile:       "/opt/homebrew/etc/grafana-alloy/config.env",
-				ExtraArgsFile: "/opt/homebrew/etc/grafana-alloy/extra-args.txt",
+				EnvFile:           "/opt/homebrew/etc/grafana-alloy/config.env",
+				ExtraArgsFile:     "/opt/homebrew/etc/grafana-alloy/extra-args.txt",
+				OtelExtraArgsFile: "/opt/homebrew/etc/grafana-alloy/otel-extra-args.txt",
 			},
 		},
 		{
@@ -30,8 +31,9 @@ func TestRenderGolden(t *testing.T) {
 				AlloyBin:      "/opt/homebrew/opt/alloy/bin/alloy",
 				ConfigPath:    "/opt/homebrew/etc/alloy/config.alloy",
 				StoragePath:   "/opt/homebrew/var/lib/alloy/data",
-				EnvFile:       "/opt/homebrew/etc/alloy/config.env",
-				ExtraArgsFile: "/opt/homebrew/etc/alloy/extra-args.txt",
+				EnvFile:           "/opt/homebrew/etc/alloy/config.env",
+				ExtraArgsFile:     "/opt/homebrew/etc/alloy/extra-args.txt",
+				OtelExtraArgsFile: "/opt/homebrew/etc/alloy/otel-extra-args.txt",
 			},
 		},
 	}

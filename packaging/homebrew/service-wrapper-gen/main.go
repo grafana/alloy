@@ -36,6 +36,9 @@ type templateData struct {
 	EnvFile string
 	// ExtraArgsFile holds extra command line arguments passed to `alloy run`.
 	ExtraArgsFile string
+	// OtelExtraArgsFile holds extra command line arguments passed to
+	// `alloy otel` (OTel mode uses a separate file from run mode).
+	OtelExtraArgsFile string
 }
 
 func main() {
@@ -56,7 +59,8 @@ func run(args []string) error {
 	fs.StringVar(&data.ConfigPath, "config-path", "", "Config file or directory passed to `alloy run` (required)")
 	fs.StringVar(&data.StoragePath, "storage-path", "", "Value for --storage.path (required)")
 	fs.StringVar(&data.EnvFile, "env-file", "", "Path to the environment file sourced at startup (required)")
-	fs.StringVar(&data.ExtraArgsFile, "extra-args-file", "", "Path to the extra-args file (required)")
+	fs.StringVar(&data.ExtraArgsFile, "extra-args-file", "", "Path to the run-mode extra-args file (required)")
+	fs.StringVar(&data.OtelExtraArgsFile, "otel-extra-args-file", "", "Path to the otel-mode extra-args file (required)")
 	fs.StringVar(&out, "out", "", "Output file path (default: stdout)")
 
 	if err := fs.Parse(args); err != nil {
@@ -89,6 +93,7 @@ func (d templateData) validate() error {
 		{"storage-path", d.StoragePath},
 		{"env-file", d.EnvFile},
 		{"extra-args-file", d.ExtraArgsFile},
+		{"otel-extra-args-file", d.OtelExtraArgsFile},
 	}
 	for _, f := range fields {
 		if f.value == "" {
