@@ -2,17 +2,17 @@ package collector
 
 import (
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/tools/txtar"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
 
@@ -300,21 +300,21 @@ func TestExplainPlansRedactor(t *testing.T) {
 func TestExplainPlansOutput(t *testing.T) {
 	t.Run("invalid json", func(t *testing.T) {
 		notJsonData := []byte("not json data")
-		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		logger := util.TestAlloyLogger(t).Slog()
 		_, err := newExplainPlansOutput(logger, notJsonData)
 		require.Error(t, err)
 		require.ErrorContains(t, err, "failed to get query block: Key path not found")
 	})
 
 	t.Run("unknown operation", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		logger := util.TestAlloyLogger(t).Slog()
 		explainPlanOutput, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"operation\": \"some unknown thing we've never seen before.\"}}"))
 		require.NoError(t, err)
 		require.Equal(t, database_observability.ExplainPlanOutputOperationUnknown, explainPlanOutput.Operation)
 	})
 
 	t.Run("zero rows", func(t *testing.T) {
-		logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+		logger := util.TestAlloyLogger(t).Slog()
 		_, err := newExplainPlansOutput(logger, []byte("{\"query_block\": {\"message\": \"no matching row in const table\"}}"))
 		require.NoError(t, err)
 	})
@@ -1495,7 +1495,7 @@ func TestExplainPlansOutput(t *testing.T) {
 			jsonFile := archive.Files[0]
 			require.Equal(t, fmt.Sprintf("%s.json", test.fname), jsonFile.Name)
 			jsonData := jsonFile.Data
-			logger := log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout))
+			logger := util.TestAlloyLogger(t).Slog()
 			output, err := newExplainPlansOutput(logger, jsonData)
 			require.NoError(t, err, "Failed generate explain plan output: %s", test.fname)
 			require.Equal(t, test.result.Plan, *output)
@@ -1515,7 +1515,7 @@ func TestExplainPlans(t *testing.T) {
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
@@ -1580,10 +1580,15 @@ func TestExplainPlans(t *testing.T) {
 		defer lokiClient.Stop()
 
 		logBuffer := syncbuffer.Buffer{}
+		logger, err := logging.New(&logBuffer, logging.Options{
+			Level:  logging.LevelDebug,
+			Format: logging.FormatLogfmt,
+		})
+		require.NoError(t, err)
 
 		c, err := NewExplainPlans(ExplainPlansArguments{
 			DB:              db,
-			Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+			Logger:          logger.Slog(),
 			ScrapeInterval:  time.Second,
 			PerScrapeRatio:  1,
 			EntryHandler:    lokiClient,
@@ -1816,12 +1821,17 @@ func TestQueryFailureDenylist(t *testing.T) {
 	defer lokiClient.Stop()
 
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
 
 	queryUnderTestHash := "some_schemasome_digest1"
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
-		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		EntryHandler:    lokiClient,
@@ -1907,7 +1917,7 @@ func TestBatchSizeLimitsProcessing(t *testing.T) {
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:             db,
-		Logger:         log.NewLogfmtLogger(log.NewSyncWriter(os.Stdout)),
+		Logger:         util.TestAlloyLogger(t).Slog(),
 		ScrapeInterval: time.Second,
 		PerScrapeRatio: 1,
 		EntryHandler:   lokiClient,
@@ -1948,10 +1958,15 @@ func TestSchemaDenylist(t *testing.T) {
 	defer lokiClient.Stop()
 
 	logBuffer := syncbuffer.Buffer{}
+	logger, err := logging.New(&logBuffer, logging.Options{
+		Level:  logging.LevelDebug,
+		Format: logging.FormatLogfmt,
+	})
+	require.NoError(t, err)
 
 	c, err := NewExplainPlans(ExplainPlansArguments{
 		DB:              db,
-		Logger:          log.NewLogfmtLogger(log.NewSyncWriter(&logBuffer)),
+		Logger:          logger.Slog(),
 		ScrapeInterval:  time.Second,
 		PerScrapeRatio:  1,
 		ExcludeSchemas:  []string{"some_schema"},

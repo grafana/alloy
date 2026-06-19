@@ -106,7 +106,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	// Same as the loki.source.file sync position period
 	bookmarkSyncPeriod := 10 * time.Second
-	winTarget, err := NewTarget(c.opts.SLogger, c.handle, nil, convertConfig(newArgs), bookmarkSyncPeriod)
+	winTarget, err := NewTarget(c.opts.Logger, c.handle, nil, convertConfig(newArgs), bookmarkSyncPeriod)
 	if err != nil {
 		return err
 	}

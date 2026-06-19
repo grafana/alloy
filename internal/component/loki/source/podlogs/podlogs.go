@@ -21,7 +21,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/kubernetes/kubetail"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
-	"github.com/grafana/alloy/internal/slogadapter"
 )
 
 func init() {
@@ -109,7 +108,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	if err != nil && !os.IsExist(err) {
 		return nil, err
 	}
-	positionsFile, err := positions.New(o.SLogger, positions.Config{
+	positionsFile, err := positions.New(o.Logger, positions.Config{
 		SyncPeriod:    10 * time.Second,
 		PositionsFile: filepath.Join(o.DataPath, "positions.yml"),
 	})
@@ -123,9 +122,9 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	var (
-		tailer     = kubetail.NewManager(o.SLogger, nil)
-		reconciler = newReconciler(o.SLogger, tailer, data.(cluster.Cluster))
-		controller = newController(o.SLogger, reconciler)
+		tailer     = kubetail.NewManager(o.Logger, nil)
+		reconciler = newReconciler(o.Logger, tailer, data.(cluster.Cluster))
+		controller = newController(o.Logger, reconciler)
 	)
 
 	c := &Component{
@@ -171,7 +170,7 @@ func (c *Component) Run(ctx context.Context) error {
 		// We cancel consume loop after controller exit.
 		defer cancel()
 		if err := c.controller.Run(ctx); err != nil {
-			c.opts.SLogger.Error("controller exited with error", "err", err)
+			c.opts.Logger.Error("controller exited with error", "err", err)
 		}
 	})
 
@@ -220,9 +219,7 @@ func (c *Component) updateTailer(args Arguments) error {
 		return nil
 	}
 
-	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that uses shared
-	// kubernetes client builder to slog. Part of https://github.com/grafana/alloy/issues/4813.
-	cfg, err := args.Client.BuildRESTConfig(slogadapter.GoKit(c.opts.SLogger.Handler()))
+	cfg, err := args.Client.BuildRESTConfig(c.opts.Logger)
 	if err != nil {
 		return fmt.Errorf("building Kubernetes config: %w", err)
 	}
@@ -297,9 +294,7 @@ func (c *Component) updateController(args Arguments) error {
 		return nil
 	}
 
-	// FIXME(kalleep): Remove slogadapter.GoKit wrapper here once we have migrated all components that uses shared
-	// kubernetes client builder to slog. Part of https://github.com/grafana/alloy/issues/4813.
-	cfg, err := args.Client.BuildRESTConfig(slogadapter.GoKit(c.opts.SLogger.Handler()))
+	cfg, err := args.Client.BuildRESTConfig(c.opts.Logger)
 	if err != nil {
 		return fmt.Errorf("building Kubernetes config: %w", err)
 	}

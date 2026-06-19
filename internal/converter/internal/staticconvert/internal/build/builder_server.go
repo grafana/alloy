@@ -66,10 +66,16 @@ func toWindowsFilter(windowsFilter *server.WindowsCertificateFilter) *http.Windo
 		return nil
 	}
 
-	return &http.WindowsCertificateFilter{
+	// Empty structs/slices and nil are semantically the same, but will be detected as different in DeepEquals.
+	// Normalise them to nil.
+	result := &http.WindowsCertificateFilter{
 		Server: toWindowsServerFilter(windowsFilter.Server),
 		Client: toWindowsClientFilter(windowsFilter.Client),
 	}
+	if result.Server == nil && result.Client == nil {
+		return nil
+	}
+	return result
 }
 
 func toWindowsServerFilter(server *server.WindowsServerFilter) *http.WindowsServerFilter {
@@ -77,13 +83,26 @@ func toWindowsServerFilter(server *server.WindowsServerFilter) *http.WindowsServ
 		return nil
 	}
 
-	return &http.WindowsServerFilter{
+	result := &http.WindowsServerFilter{
 		Store:             server.Store,
 		SystemStore:       server.SystemStore,
 		IssuerCommonNames: server.IssuerCommonNames,
 		TemplateID:        server.TemplateID,
 		RefreshInterval:   server.RefreshInterval,
 	}
+	if len(result.IssuerCommonNames) == 0 {
+		result.IssuerCommonNames = nil
+	}
+	if result.Store == "" &&
+		result.SystemStore == "" &&
+		len(result.IssuerCommonNames) == 0 &&
+		result.TemplateID == "" &&
+		result.RefreshInterval == 0 {
+
+		return nil
+	}
+
+	return result
 }
 
 func toWindowsClientFilter(client *server.WindowsClientFilter) *http.WindowsClientFilter {
@@ -91,9 +110,20 @@ func toWindowsClientFilter(client *server.WindowsClientFilter) *http.WindowsClie
 		return nil
 	}
 
-	return &http.WindowsClientFilter{
+	result := &http.WindowsClientFilter{
 		IssuerCommonNames: client.IssuerCommonNames,
 		SubjectRegEx:      client.SubjectRegEx,
 		TemplateID:        client.TemplateID,
 	}
+	if len(result.IssuerCommonNames) == 0 {
+		result.IssuerCommonNames = nil
+	}
+	if len(result.IssuerCommonNames) == 0 &&
+		result.SubjectRegEx == "" &&
+		result.TemplateID == "" {
+
+		return nil
+	}
+
+	return result
 }

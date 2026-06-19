@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -817,8 +816,7 @@ func TestComponent(t *testing.T) {
 			args.ForwardTo = []loki.LogsReceiver{collector1.Receiver(), collector2.Receiver()}
 
 			opts := component.Options{
-				Logger:         log.NewNopLogger(),
-				SLogger:        logging.NewSlogNop(),
+				Logger:         logging.NewSlogNop(),
 				Registerer:     prometheus.NewRegistry(),
 				OnStateChange:  func(component.Exports) {},
 				GetServiceData: getServiceData,
@@ -941,7 +939,7 @@ func assertEntriesUnordered(t *testing.T, expected, actual []loki.Entry) {
 }
 
 func TestComponent_UpdateInvalidConfig(t *testing.T) {
-	ctrl, err := componenttest.NewControllerFromID(log.NewNopLogger(), "loki.process")
+	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
 	require.NoError(t, err)
 
 	collector := loki.NewCollectingHandler()
@@ -1045,8 +1043,7 @@ func TestJSONLabelsStage(t *testing.T) {
 	// Create and run the component, so that it can process and forwards logs.
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger,
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceDataWithLiveDebugging(liveDebuggingLog),
@@ -1149,15 +1146,33 @@ stage.static_labels {
 	args2.ForwardTo = []loki.LogsReceiver{ch2}
 
 	ctx, ctxCancel := context.WithCancel(t.Context())
-	defer ctxCancel()
+	var (
+		runWG  sync.WaitGroup
+		runErr = make(chan error, 3)
+	)
+	runComponent := func(runFn func() error) {
+		runWG.Add(1)
+		go func() {
+			defer runWG.Done()
+			runErr <- runFn()
+		}()
+	}
+	defer func() {
+		ctxCancel()
+		runWG.Wait()
+		close(runErr)
+		for err := range runErr {
+			require.NoError(t, err)
+		}
+	}()
 
 	// Start the loki.process components.
 	tc1, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
 	require.NoError(t, err)
 	tc2, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.process")
 	require.NoError(t, err)
-	go func() { require.NoError(t, tc1.Run(ctx, args1)) }()
-	go func() { require.NoError(t, tc2.Run(ctx, args2)) }()
+	runComponent(func() error { return tc1.Run(ctx, args1) })
+	runComponent(func() error { return tc2.Run(ctx, args2) })
 	require.NoError(t, tc1.WaitExports(time.Second))
 	require.NoError(t, tc2.WaitExports(time.Second))
 
@@ -1170,8 +1185,8 @@ stage.static_labels {
 	ctrl, err := componenttest.NewControllerFromID(util.TestLogger(t), "loki.source.file")
 	require.NoError(t, err)
 
-	go func() {
-		err := ctrl.Run(ctx, lsf.Arguments{
+	runComponent(func() error {
+		return ctrl.Run(ctx, lsf.Arguments{
 			Targets: []discovery.Target{discovery.NewTargetFromMap(map[string]string{"__path__": f.Name(), "somelbl": "somevalue"})},
 			ForwardTo: []loki.LogsReceiver{
 				tc1.Exports().(Exports).Receiver,
@@ -1182,9 +1197,8 @@ stage.static_labels {
 				SyncPeriod: 10 * time.Second,
 			},
 		})
-		require.NoError(t, err)
-	}()
-	ctrl.WaitRunning(time.Minute)
+	})
+	require.NoError(t, ctrl.WaitRunning(time.Minute))
 
 	// Write a line to the file.
 	_, err = f.Write([]byte("writing some text\n"))
@@ -1197,20 +1211,26 @@ stage.static_labels {
 
 	// The lines were received after processing by each component, with no
 	// race condition between them.
+	seenCh1 := false
+	seenCh2 := false
 	for i := 0; i < 2; i++ {
 		select {
 		case logEntry := <-ch1.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
 			require.Equal(t, "writing some text", logEntry.Line)
 			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "foo"}), logEntry.Labels)
+			seenCh1 = true
 		case logEntry := <-ch2.Chan():
 			require.WithinDuration(t, time.Now(), logEntry.Timestamp, 1*time.Second)
 			require.Equal(t, "writing some text", logEntry.Line)
 			require.Equal(t, wantLabelSet.Clone().Merge(model.LabelSet{"lbl": "bar"}), logEntry.Labels)
+			seenCh2 = true
 		case <-time.After(5 * time.Second):
 			require.FailNow(t, "failed waiting for log line")
 		}
 	}
+	require.True(t, seenCh1, "expected log line from first receiver")
+	require.True(t, seenCh2, "expected log line from second receiver")
 }
 
 type testFrequentUpdate struct {
@@ -1272,8 +1292,7 @@ func startTestFrequentUpdate(t *testing.T, cfg string) *testFrequentUpdate {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger,
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		Registerer:     prometheus.NewRegistry(),
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,
@@ -1631,8 +1650,7 @@ func newTester(t *testing.T) *tester {
 
 	logger := util.TestAlloyLogger(t)
 	opts := component.Options{
-		Logger:         logger,
-		SLogger:        logger.Slog(),
+		Logger:         logger.Slog(),
 		Registerer:     reg,
 		OnStateChange:  func(e component.Exports) {},
 		GetServiceData: getServiceData,

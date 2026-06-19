@@ -1,6 +1,6 @@
 # Grafana Alloy Helm chart
 
-![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.8.2](https://img.shields.io/badge/Version-1.8.2-informational?style=flat-square) ![AppVersion: v1.16.1](https://img.shields.io/badge/AppVersion-v1.16.1-informational?style=flat-square)
+![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.10.0](https://img.shields.io/badge/Version-1.10.0-informational?style=flat-square) ![AppVersion: v1.17.0](https://img.shields.io/badge/AppVersion-v1.17.0-informational?style=flat-square)
 
 Helm chart for deploying [Grafana Alloy][] to Kubernetes.
 
@@ -36,6 +36,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | alloy.clustering.enabled | bool | `false` | Deploy Alloy in a cluster to allow for load distribution. |
 | alloy.clustering.name | string | `""` | Name for the Alloy cluster. Used for differentiating between clusters. |
 | alloy.clustering.portName | string | `"http"` | Name for the port used for clustering, useful if running inside an Istio Mesh |
+| alloy.command | list | `[]` | Override the entrypoint command for the Alloy container. When set, this replaces the image's default entrypoint (the chart-provided `args` are still passed). Useful on Windows where the binary lives at a different path, for example `["C:\\Program Files\\GrafanaLabs\\Alloy\\alloy.exe"]`. Leave empty to use the image's default entrypoint. |
 | alloy.configMap.content | string | `""` | Content to assign to the new ConfigMap.  This is passed into `tpl` allowing for templating from values. |
 | alloy.configMap.create | bool | `true` | Create a new ConfigMap for the config file. |
 | alloy.configMap.key | string | `nil` | Key in ConfigMap to get config from. |
@@ -183,6 +184,7 @@ useful if just using the default DaemonSet isn't sufficient.
 | service.annotations | object | `{}` |  |
 | service.clusterIP | string | `""` | Cluster IP, can be set to None, empty "" or an IP address |
 | service.enabled | bool | `true` | Creates a Service for the controller's pods. |
+| service.externalTrafficPolicy | string | `"Cluster"` | Value for external traffic policy. 'Cluster' or 'Local' |
 | service.internalTrafficPolicy | string | `"Cluster"` | Value for internal traffic policy. 'Cluster' or 'Local' |
 | service.nodePort | int | `31128` | NodePort port. Only takes effect when `service.type: NodePort` |
 | service.type | string | `"ClusterIP"` | Service type |

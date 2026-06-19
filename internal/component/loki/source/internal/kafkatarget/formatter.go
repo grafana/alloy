@@ -16,7 +16,11 @@ func format(lbs labels.Labels, cfg []*relabel.Config) model.LabelSet {
 	if lbs.IsEmpty() {
 		return nil
 	}
-	processed, _ := relabel.Process(lbs, cfg...)
+	lb := labels.NewBuilder(lbs)
+	if !relabel.ProcessBuilder(lb, cfg...) {
+		return nil
+	}
+	processed := lb.Labels()
 	labelOut := model.LabelSet(LabelsToMetric(processed))
 	for k := range labelOut {
 		if strings.HasPrefix(string(k), "__") {

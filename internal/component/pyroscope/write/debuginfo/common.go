@@ -2,12 +2,12 @@ package debuginfo
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/internal/component/pyroscope/write/debuginfoclient"
 )
 
 type Appender interface {
@@ -24,7 +24,7 @@ type Arguments struct {
 	WorkerNum                    int    `alloy:"worker_num,attr,optional"`
 }
 
-func NewUploader(logger log.Logger, client *debuginfoclient.Client,
+func NewUploader(logger *slog.Logger, client *debuginfoclient.Client,
 	metric prometheus.Counter, dataPath string) *Uploader {
 
 	return &Uploader{
@@ -37,7 +37,7 @@ func NewUploader(logger log.Logger, client *debuginfoclient.Client,
 }
 
 type Uploader struct {
-	logger       log.Logger
+	logger       *slog.Logger
 	client       *debuginfoclient.Client
 	uploaderOnce sync.Once
 	uploader     *uploader
@@ -61,13 +61,13 @@ func (c *Uploader) Upload(j UploadJob) {
 		var err error
 		c.uploader, err = c.newUploader(j)
 		if err != nil {
-			_ = level.Error(c.logger).Log("msg", "error initializing debuginfo uploader", "err", err)
+			c.logger.Error("error initializing debuginfo uploader", "err", err)
 		} else {
 			c.uploaderChan <- c.uploader
 		}
 	})
 	if c.uploader == nil {
-		_ = level.Error(c.logger).Log("msg", "debuginfo uploader not initialized")
+		c.logger.Error("debuginfo uploader not initialized")
 		return
 	}
 

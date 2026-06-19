@@ -8,18 +8,18 @@ import (
 func WarningIfUsedInCluster(o component.Options) {
 	data, err := o.GetServiceData(cluster.ServiceName)
 	if err != nil { // this should never happen as all Alloy instances have clustering service.
-		o.SLogger.Warn("error getting clustering service data", "err", err)
+		o.Logger.Warn("error getting clustering service data", "err", err)
 		return
 	}
 
 	clusterData := data.(cluster.Cluster)
 	if clusterData == nil { // this should also never happen, but adding a check just in case
-		o.SLogger.Warn("cluster data is nil", "component", o.ID)
+		o.Logger.Warn("cluster data is nil", "component", o.ID)
 		return
 	}
 
 	if !clusterData.Ready() || len(clusterData.Peers()) > 0 {
-		o.SLogger.Warn(
+		o.Logger.Warn(
 			"detected clustering is configured while using a host-specific exporter - please make sure your configuration is correct",
 			"exporter",
 			o.ID,

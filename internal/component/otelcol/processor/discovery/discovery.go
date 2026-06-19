@@ -97,7 +97,7 @@ var (
 // New creates a new otelcol.exporter.discovery component.
 func New(o component.Options, c Arguments) (*Component, error) {
 	if c.Output.Logs != nil || c.Output.Metrics != nil {
-		o.SLogger.Warn("non-trace output detected; this component only works for traces")
+		o.Logger.Warn("non-trace output detected; this component only works for traces")
 	}
 
 	debugDataPublisher, err := o.GetServiceData(livedebugging.ServiceName)
@@ -121,7 +121,7 @@ func New(o component.Options, c Arguments) (*Component, error) {
 		PodAssociations: c.PodAssociations,
 		NextConsumer:    tracesInterceptor,
 	}
-	consumer, err := promsdconsumer.NewConsumer(consumerOpts, o.SLogger)
+	consumer, err := promsdconsumer.NewConsumer(consumerOpts, o.Logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a traces consumer due to error: %w", err)
 	}
@@ -165,7 +165,7 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	for _, labels := range c.args.Targets {
 		host, err := promsdconsumer.GetHostFromLabels(labels)
 		if err != nil {
-			c.opts.SLogger.Warn("ignoring target, unable to find address", "err", err)
+			c.opts.Logger.Warn("ignoring target, unable to find address", "err", err)
 			continue
 		}
 
