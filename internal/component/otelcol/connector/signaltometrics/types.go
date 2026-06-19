@@ -1,6 +1,7 @@
 package signaltometrics
 
 import (
+	"github.com/grafana/alloy/syntax"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector/config"
 	"go.opentelemetry.io/collector/config/configoptional"
 )
@@ -105,18 +106,22 @@ type Histogram struct {
 	Value string `alloy:"value,attr"`
 }
 
+var _ syntax.Defaulter = (*Histogram)(nil)
+
+// SetToDefault implements syntax.Defaulter, populating the default buckets when
+// a histogram block is defined without any. This means Convert can pass the
+// value straight through.
+func (h *Histogram) SetToDefault() {
+	h.Buckets = append([]float64{}, defaultHistogramBuckets...)
+}
+
 func (h *Histogram) Convert() configoptional.Optional[config.Histogram] {
 	if h == nil {
 		return configoptional.None[config.Histogram]()
 	}
 
-	buckets := h.Buckets
-	if len(buckets) == 0 {
-		buckets = defaultHistogramBuckets
-	}
-
 	return configoptional.Some(config.Histogram{
-		Buckets: append([]float64{}, buckets...),
+		Buckets: append([]float64{}, h.Buckets...),
 		Count:   h.Count,
 		Value:   h.Value,
 	})
@@ -129,18 +134,22 @@ type ExponentialHistogram struct {
 	Value   string `alloy:"value,attr"`
 }
 
+var _ syntax.Defaulter = (*ExponentialHistogram)(nil)
+
+// SetToDefault implements syntax.Defaulter, populating the default max size when
+// an exponential_histogram block is defined without one. This means Convert can
+// pass the value straight through.
+func (eh *ExponentialHistogram) SetToDefault() {
+	eh.MaxSize = defaultExponentialHistogramMaxSize
+}
+
 func (eh *ExponentialHistogram) Convert() configoptional.Optional[config.ExponentialHistogram] {
 	if eh == nil {
 		return configoptional.None[config.ExponentialHistogram]()
 	}
 
-	maxSize := eh.MaxSize
-	if maxSize == 0 {
-		maxSize = defaultExponentialHistogramMaxSize
-	}
-
 	return configoptional.Some(config.ExponentialHistogram{
-		MaxSize: maxSize,
+		MaxSize: eh.MaxSize,
 		Count:   eh.Count,
 		Value:   eh.Value,
 	})

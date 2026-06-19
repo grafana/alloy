@@ -126,6 +126,49 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ErrorMode: ottl.PropagateError,
 			},
 		},
+		{
+			testName: "HistogramAndExponentialHistogramOverrides",
+			cfg: `
+				spans {
+					name = "span.duration"
+					histogram {
+						buckets = [1, 10, 100]
+						value   = "Milliseconds(end_time - start_time)"
+					}
+				}
+
+				logs {
+					name = "log.body.length"
+					exponential_histogram {
+						max_size = 320
+						value    = "Len(body)"
+					}
+				}
+
+				output {}
+			`,
+			expected: config.Config{
+				Spans: []config.MetricInfo{
+					{
+						Name: "span.duration",
+						Histogram: configoptional.Some(config.Histogram{
+							Buckets: []float64{1, 10, 100},
+							Value:   "Milliseconds(end_time - start_time)",
+						}),
+					},
+				},
+				Logs: []config.MetricInfo{
+					{
+						Name: "log.body.length",
+						ExponentialHistogram: configoptional.Some(config.ExponentialHistogram{
+							MaxSize: 320,
+							Value:   "Len(body)",
+						}),
+					},
+				},
+				ErrorMode: ottl.PropagateError,
+			},
+		},
 	}
 
 	for _, tc := range tests {
@@ -152,4 +195,24 @@ func TestArguments_NoSignals(t *testing.T) {
 	var args signaltometrics.Arguments
 	err := syntax.Unmarshal([]byte(`output {}`), &args)
 	require.ErrorContains(t, err, "at least one should be specified")
+}
+
+func TestArguments_EmptyHistogramBuckets(t *testing.T) {
+	// The default buckets are only applied when the buckets attribute is
+	// omitted. An explicit empty list is passed through and rejected during
+	// validation, rather than silently falling back to the defaults.
+	cfg := `
+		spans {
+			name = "span.duration"
+			histogram {
+				buckets = []
+				value   = "Milliseconds(end_time - start_time)"
+			}
+		}
+
+		output {}
+	`
+	var args signaltometrics.Arguments
+	err := syntax.Unmarshal([]byte(cfg), &args)
+	require.ErrorContains(t, err, "histogram buckets missing")
 }

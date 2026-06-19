@@ -30,8 +30,7 @@ otelcol.connector.signaltometrics "default" {
 		unit        = "ms"
 
 		histogram {
-			buckets = [2, 4, 6, 8, 10, 50, 100, 200, 400, 800, 1000, 1400, 2000, 5000, 10000, 15000]
-			value   = "Milliseconds(end_time - start_time)"
+			value = "Milliseconds(end_time - start_time)"
 		}
 	}
 
@@ -46,8 +45,7 @@ otelcol.connector.signaltometrics "default" {
 		conditions = ["severity_number >= SEVERITY_NUMBER_WARN"]
 
 		exponential_histogram {
-			max_size = 160
-			value    = "Len(body)"
+			value = "Len(body)"
 		}
 	}
 	error_mode = "ignore"
