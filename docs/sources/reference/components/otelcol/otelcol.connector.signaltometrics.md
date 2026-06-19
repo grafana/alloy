@@ -245,7 +245,11 @@ The connector generates metrics from the received telemetry according to the con
 
 ### Generate a native histogram from log lines
 
-The following example generates an exponential (native) histogram of log body lengths and forwards it to Prometheus remote write.
+The following example generates an exponential (native) histogram of log body lengths and exports it over OTLP.
+The connector emits an OTLP exponential histogram, which an OTLP-compatible backend stores as a Prometheus native histogram, so the telemetry stays OTLP-native end to end.
+
+The connector emits delta metrics on each incoming batch, so this example routes them through [`otelcol.processor.deltatocumulative`][deltatocumulative] and [`otelcol.processor.interval`][interval] to bound the number of data points produced per minute.
+Refer to [Control the number of data points per minute](#control-the-number-of-data-points-per-minute) for the rationale.
 
 ```alloy
 otelcol.connector.signaltometrics "default" {
@@ -258,17 +262,27 @@ otelcol.connector.signaltometrics "default" {
   }
 
   output {
-    metrics = [otelcol.exporter.prometheus.default.input]
+    metrics = [otelcol.processor.deltatocumulative.default.input]
   }
 }
 
-otelcol.exporter.prometheus "default" {
-  forward_to = [prometheus.remote_write.default.receiver]
+otelcol.processor.deltatocumulative "default" {
+  output {
+    metrics = [otelcol.processor.interval.default.input]
+  }
 }
 
-prometheus.remote_write "default" {
-  endpoint {
-    url = "http://localhost:9090/api/v1/write"
+otelcol.processor.interval "default" {
+  interval = "60s"
+
+  output {
+    metrics = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = "http://localhost:4318"
   }
 }
 ```
@@ -276,6 +290,7 @@ prometheus.remote_write "default" {
 ### Generate metrics from spans
 
 The following example generates a span duration histogram and a request counter grouped by HTTP method.
+As with the previous example, the connector's delta metrics are routed through [`otelcol.processor.deltatocumulative`][deltatocumulative] and [`otelcol.processor.interval`][interval] to bound the number of data points produced per minute.
 
 ```alloy
 otelcol.connector.signaltometrics "default" {
@@ -300,12 +315,49 @@ otelcol.connector.signaltometrics "default" {
   }
 
   output {
+    metrics = [otelcol.processor.deltatocumulative.default.input]
+  }
+}
+
+otelcol.processor.deltatocumulative "default" {
+  output {
+    metrics = [otelcol.processor.interval.default.input]
+  }
+}
+
+otelcol.processor.interval "default" {
+  interval = "60s"
+
+  output {
     metrics = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = "http://localhost:4318"
   }
 }
 ```
 
+### Control the number of data points per minute
+
+`otelcol.connector.signaltometrics` produces metrics whenever it receives a batch of telemetry, using delta temporality.
+It has no flush interval of its own, so the rate at which it produces data points is governed by how often upstream components send it data, not by any scrape interval.
+Exporting these metrics directly can produce many data points per minute for each series, which increases cost on backends that price per data point, such as those contracted to one data point per minute, equivalent to a 60-second scrape interval.
+
+To bound the rate, place an [`otelcol.processor.deltatocumulative`][deltatocumulative] and an [`otelcol.processor.interval`][interval] processor between the connector and the exporter, as shown in the previous examples:
+
+* `deltatocumulative` converts the connector's delta metrics into cumulative temporality.
+  This step is required because `interval` only aggregates cumulative metrics and passes delta metrics through unchanged.
+* `interval` forwards the latest value of each series once per interval.
+  Its default interval is `60s`, which emits one data point per series each minute.
+
+Cumulative temporality is also what Prometheus-compatible backends store natively, so this pipeline suits writing native histograms to Grafana Cloud.
+
 [OTTL]: https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/pkg/ottl
+[deltatocumulative]: ../otelcol.processor.deltatocumulative/
+[interval]: ../otelcol.processor.interval/
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 

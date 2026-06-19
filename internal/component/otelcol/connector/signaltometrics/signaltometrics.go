@@ -68,27 +68,23 @@ func (args *Arguments) SetToDefault() {
 
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
-	otelCfg, err := args.convertImpl()
-	if err != nil {
-		return err
-	}
-	return otelCfg.Validate()
+	return args.convertImpl().Validate()
 }
 
 // Convert implements connector.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
-	return args.convertImpl()
+	return args.convertImpl(), nil
 }
 
 // convertImpl returns the concrete upstream config type so it can be reused by
 // both Convert and Validate.
-func (args Arguments) convertImpl() (*config.Config, error) {
+func (args Arguments) convertImpl() *config.Config {
 	return &config.Config{
 		Spans:      convertMetricInfos(args.Spans),
 		Datapoints: convertMetricInfos(args.Datapoints),
 		Logs:       convertMetricInfos(args.Logs),
 		ErrorMode:  args.ErrorMode,
-	}, nil
+	}
 }
 
 // Extensions implements connector.Arguments.
