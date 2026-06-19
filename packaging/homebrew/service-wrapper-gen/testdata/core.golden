@@ -8,7 +8,21 @@ fi
 extra_args=""
 [ -f "/opt/homebrew/etc/grafana-alloy/extra-args.txt" ] && extra_args=$(cat "/opt/homebrew/etc/grafana-alloy/extra-args.txt")
 
-exec "/opt/homebrew/opt/grafana-alloy/bin/alloy" run \
-  --storage.path="/opt/homebrew/var/lib/grafana-alloy/data" \
-  $extra_args \
-  "/opt/homebrew/etc/grafana-alloy"
+# Run in OTel mode when ALLOY_OTEL_MODE is truthy. The `otel` subcommand has
+# different flags than `run`: it takes a `--config` file URL and does not
+# support `--storage.path`.
+otel_mode=""
+case "${ALLOY_OTEL_MODE:-}" in
+  1 | true | yes | on ) otel_mode="1" ;;
+esac
+
+if [ -n "$otel_mode" ]; then
+  exec "/opt/homebrew/opt/grafana-alloy/bin/alloy" otel \
+    --config="file:/opt/homebrew/etc/grafana-alloy/config.yaml" \
+    $extra_args
+else
+  exec "/opt/homebrew/opt/grafana-alloy/bin/alloy" run \
+    --storage.path="/opt/homebrew/var/lib/grafana-alloy/data" \
+    $extra_args \
+    "/opt/homebrew/etc/grafana-alloy"
+fi
