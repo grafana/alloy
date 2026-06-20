@@ -15,4 +15,5 @@ The supported values for `cloud` are:
 * `"AzureChina"`
 * `"AzureGovernment"`
 
-When `scope` is left empty, Alloy uses the per-cloud Azure Monitor ingestion audience, for example, `https://monitor.azure.com//.default` for `"AzurePublic"`. Set `scope` to request a token for a different audience, such as a custom Microsoft Entra app registration.
+When `scope` is left empty, {{< param "PRODUCT_NAME" >}} uses the per-cloud Azure Monitor ingestion audience, for example, `https://monitor.azure.com//.default` for `"AzurePublic"`.
+Set `scope` to request a token for a different audience, such as a custom Microsoft Entra app registration.
