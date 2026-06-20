@@ -58,6 +58,13 @@ func (c *crdManagerHungRun) GetScrapeConfig(ns, name string) []*config.ScrapeCon
 	return nil
 }
 
+func (c *crdManagerHungRun) CurrentHealth() component.Health {
+	return component.Health{
+		Health:     component.HealthTypeHealthy,
+		UpdateTime: time.Now(),
+	}
+}
+
 func TestRunExit(t *testing.T) {
 	opts := component.Options{
 		Logger:     util.TestAlloyLogger(t),

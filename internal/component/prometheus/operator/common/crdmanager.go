@@ -44,6 +44,7 @@ type crdManagerInterface interface {
 	ClusteringUpdated()
 	DebugInfo() any
 	GetScrapeConfig(ns, name string) []*config.ScrapeConfig
+	CurrentHealth() component.Health
 }
 
 type crdManagerFactory interface {
@@ -301,6 +302,37 @@ func (c *crdManager) DebugInfo() any {
 	return info
 }
 
+// CurrentHealth returns the health of the crdManager, which is Unhealthy if any managed CRD failed to reconcile.
+func (c *crdManager) CurrentHealth() component.Health {
+	c.mut.Lock()
+	defer c.mut.Unlock()
+
+	var errs []string
+	var maxTime time.Time
+	for _, res := range c.debugInfo {
+		if res.ReconcileError != "" {
+			errs = append(errs, fmt.Sprintf("%s/%s: %s", res.Namespace, res.Name, res.ReconcileError))
+			if res.LastReconcile.After(maxTime) {
+				maxTime = res.LastReconcile
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		sort.Strings(errs)
+		return component.Health{
+			Health:     component.HealthTypeUnhealthy,
+			Message:    fmt.Sprintf("error reconciling CRDs: %s", strings.Join(errs, "; ")),
+			UpdateTime: maxTime,
+		}
+	}
+
+	return component.Health{
+		Health:     component.HealthTypeHealthy,
+		UpdateTime: time.Now(),
+	}
+}
+
 func (c *crdManager) GetScrapeConfig(ns, name string) []*config.ScrapeConfig {
 	prefix := fmt.Sprintf("%s/%s/%s", c.kind, ns, name)
 	matches := []*config.ScrapeConfig{}
@@ -540,7 +572,13 @@ func (c *crdManager) addPodMonitor(pm *promopv1.PodMonitor) {
 		c.mut.Unlock()
 	}
 	if err != nil {
+		c.mut.Lock()
+		c.crdsToMapKeys[fmt.Sprintf("%s/%s", pm.Namespace, pm.Name)] = mapKeys
+		c.mut.Unlock()
 		c.addDebugInfo(pm.Namespace, pm.Name, err)
+		if applyErr := c.apply(); applyErr != nil {
+			c.logger.Error("error applying scrape configs after validation error", "name", pm.Name, "err", applyErr)
+		}
 		return
 	}
 	c.mut.Lock()
@@ -597,7 +635,13 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 		c.mut.Unlock()
 	}
 	if err != nil {
+		c.mut.Lock()
+		c.crdsToMapKeys[fmt.Sprintf("%s/%s", sm.Namespace, sm.Name)] = mapKeys
+		c.mut.Unlock()
 		c.addDebugInfo(sm.Namespace, sm.Name, err)
+		if applyErr := c.apply(); applyErr != nil {
+			c.logger.Error("error applying scrape configs after validation error", "name", sm.Name, "err", applyErr)
+		}
 		return
 	}
 	c.mut.Lock()
@@ -642,7 +686,13 @@ func (c *crdManager) addProbe(p *promopv1.Probe) {
 	if err != nil {
 		// TODO(jcreixell): Generate Kubernetes event to inform of this error when running `kubectl get <probe>`.
 		c.logger.Error("error generating scrapeconfig from probe", "name", p.Name, "err", err)
+		c.mut.Lock()
+		c.crdsToMapKeys[fmt.Sprintf("%s/%s", p.Namespace, p.Name)] = nil
+		c.mut.Unlock()
 		c.addDebugInfo(p.Namespace, p.Name, err)
+		if applyErr := c.apply(); applyErr != nil {
+			c.logger.Error("error applying scrape configs after validation error", "name", p.Name, "err", applyErr)
+		}
 		return
 	}
 	c.mut.Lock()
@@ -694,6 +744,12 @@ func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
 	if len(errs) > 0 {
 		c.addDebugInfo(pm.Namespace, pm.Name, errors.Join(errs...))
 		if len(scrapeConfigs) == 0 {
+			c.mut.Lock()
+			c.crdsToMapKeys[objName] = nil
+			c.mut.Unlock()
+			if applyErr := c.apply(); applyErr != nil {
+				c.logger.Error("error applying scrape configs after validation error", "name", pm.Name, "err", applyErr)
+			}
 			return
 		}
 	}

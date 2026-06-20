@@ -167,3 +167,87 @@ func (m *mockScrapeManager) TargetsActive() map[string][]*scrape.Target {
 func (m *mockScrapeManager) ApplyConfig(cfg *config.Config) error {
 	return nil
 }
+
+func TestInvalidConfigReconcileHealth(t *testing.T) {
+	logger := slog.New(slog.DiscardHandler)
+	m := newCrdManager(
+		component.Options{
+			SLogger:        logger,
+			GetServiceData: func(name string) (any, error) { return nil, nil },
+		},
+		cluster.Mock(),
+		logger,
+		&operator.DefaultArguments,
+		KindServiceMonitor,
+		labelstore.New(logger, prometheus.DefaultRegisterer),
+	)
+
+	m.discoveryManager = newMockDiscoveryManager()
+	m.scrapeManager = newMockScrapeManager()
+
+	// 1. Add a valid ServiceMonitor. It should reconcile cleanly and health should be Healthy.
+	targetPort := intstr.FromInt(9090)
+	validSM := &promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "monitoring",
+			Name:      "svcmonitor",
+		},
+		Spec: promopv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"group": "my-group",
+				},
+			},
+			Endpoints: []promopv1.Endpoint{
+				{
+					TargetPort:    &targetPort,
+					ScrapeTimeout: "5s",
+					Interval:      "10s",
+				},
+			},
+		},
+	}
+	m.onAddServiceMonitor(validSM)
+
+	require.Equal(t, component.HealthTypeHealthy, m.CurrentHealth().Health)
+	require.Contains(t, m.discoveryConfigs, "serviceMonitor/monitoring/svcmonitor/0")
+
+	// 2. Update the ServiceMonitor with an invalid configuration (e.g. dropEqual action without a target label).
+	// This should fail validation during GenerateServiceMonitorConfig.
+	invalidSM := &promopv1.ServiceMonitor{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "monitoring",
+			Name:      "svcmonitor",
+		},
+		Spec: promopv1.ServiceMonitorSpec{
+			Selector: metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"group": "my-group",
+				},
+			},
+			Endpoints: []promopv1.Endpoint{
+				{
+					TargetPort: &targetPort,
+					RelabelConfigs: []promopv1.RelabelConfig{
+						{
+							Action: "dropEqual", // case-insensitive Action in Prometheus
+							// Missing TargetLabel which is required for dropEqual
+						},
+					},
+					ScrapeTimeout: "5s",
+					Interval:      "10s",
+				},
+			},
+		},
+	}
+
+	m.onUpdateServiceMonitor(validSM, invalidSM)
+
+	// Health must now be Unhealthy because of the validation error.
+	health := m.CurrentHealth()
+	require.Equal(t, component.HealthTypeUnhealthy, health.Health)
+	require.Contains(t, health.Message, "dropequal action requires 'target_label' value")
+
+	// The configuration should have been deleted/applied (i.e. not present in the discoveryConfigs).
+	require.NotContains(t, m.discoveryConfigs, "serviceMonitor/monitoring/svcmonitor/0")
+}

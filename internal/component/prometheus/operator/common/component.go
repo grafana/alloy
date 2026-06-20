@@ -59,8 +59,17 @@ func New(o component.Options, args component.Arguments, kind string) (*Component
 
 func (c *Component) CurrentHealth() component.Health {
 	c.healthMut.RLock()
-	defer c.healthMut.RUnlock()
-	return c.health
+	componentHealth := c.health
+	c.healthMut.RUnlock()
+
+	c.mut.RLock()
+	manager := c.manager
+	c.mut.RUnlock()
+
+	if manager != nil {
+		componentHealth = component.LeastHealthy(componentHealth, manager.CurrentHealth())
+	}
+	return componentHealth
 }
 
 // Run implements component.Component.
