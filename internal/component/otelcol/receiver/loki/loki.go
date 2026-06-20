@@ -3,11 +3,14 @@ package loki
 
 import (
 	"context"
+	"fmt"
 	"path"
+	"sort"
 	"strings"
 	"sync"
 
 	loki_translator "github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/loki"
+	"github.com/prometheus/common/model"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/plog"
 
@@ -36,10 +39,39 @@ func init() {
 
 var hintAttributes = "loki.attribute.labels"
 
+// LabelsConfig controls which Loki labels are forwarded as OTel log record
+// attributes and allows renaming them during conversion.
+type LabelsConfig struct {
+	// Include is an allowlist of label names. When set, only these labels are
+	// forwarded as attributes; all others are dropped. Mutually exclusive with
+	// Exclude.
+	Include []string `alloy:"include,attr,optional"`
+
+	// Exclude is a blocklist of label names. When set, these labels are dropped
+	// and all others are forwarded. Mutually exclusive with Include.
+	Exclude []string `alloy:"exclude,attr,optional"`
+
+	// Rename maps original label names to new attribute names. Applied after
+	// include/exclude filtering.
+	Rename map[string]string `alloy:"rename,attr,optional"`
+}
+
 // Arguments configures the otelcol.receiver.loki component.
 type Arguments struct {
+	// Labels optionally controls which Loki labels are forwarded and how they
+	// are named in the resulting OTel log record attributes.
+	Labels *LabelsConfig `alloy:"labels,block,optional"`
+
 	// Output configures where to send received data. Required.
 	Output *otelcol.ConsumerArguments `alloy:"output,block"`
+}
+
+// Validate implements syntax.Validator.
+func (a Arguments) Validate() error {
+	if a.Labels != nil && len(a.Labels.Include) > 0 && len(a.Labels.Exclude) > 0 {
+		return fmt.Errorf("the \"include\" and \"exclude\" attributes inside the \"labels\" block are mutually exclusive")
+	}
+	return nil
 }
 
 // Exports holds the receiver that is used to send log entries to the
@@ -98,8 +130,11 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.receiver.Chan():
+			c.mut.RLock()
+			labelsCfg := c.args.Labels
+			c.mut.RUnlock()
 
-			logs := convertLokiEntryToPlog(entry)
+			logs := convertLokiEntryToPlog(entry, labelsCfg)
 
 			// TODO(@tpaschalis) Is there any more handling to be done here?
 			err := c.logsSink.ConsumeLogs(ctx, logs)
@@ -129,8 +164,60 @@ func (c *Component) Update(newConfig component.Arguments) error {
 	return nil
 }
 
-// Create a new Otlp Logs entry from a Promtail entry
-func convertLokiEntryToPlog(lokiEntry loki.Entry) plog.Logs {
+// filterLabels applies the LabelsConfig to a label set, returning a new
+// filtered label set. When cfg is nil, the original set is returned as-is.
+func filterLabels(labels model.LabelSet, cfg *LabelsConfig) model.LabelSet {
+	if cfg == nil {
+		return labels
+	}
+
+	filtered := make(model.LabelSet, len(labels))
+
+	if len(cfg.Include) > 0 {
+		includeSet := make(map[string]struct{}, len(cfg.Include))
+		for _, l := range cfg.Include {
+			includeSet[l] = struct{}{}
+		}
+		for k, v := range labels {
+			if _, ok := includeSet[string(k)]; ok {
+				filtered[k] = v
+			}
+		}
+	} else if len(cfg.Exclude) > 0 {
+		excludeSet := make(map[string]struct{}, len(cfg.Exclude))
+		for _, l := range cfg.Exclude {
+			excludeSet[l] = struct{}{}
+		}
+		for k, v := range labels {
+			if _, ok := excludeSet[string(k)]; !ok {
+				filtered[k] = v
+			}
+		}
+	} else {
+		// No include/exclude: copy all labels.
+		for k, v := range labels {
+			filtered[k] = v
+		}
+	}
+
+	return filtered
+}
+
+// renameLabel returns the renamed key for a label if a rename mapping exists,
+// otherwise returns the original key.
+func renameLabel(key string, cfg *LabelsConfig) string {
+	if cfg != nil && len(cfg.Rename) > 0 {
+		if newName, ok := cfg.Rename[key]; ok {
+			return newName
+		}
+	}
+	return key
+}
+
+// convertLokiEntryToPlog creates a new OTel Logs entry from a Loki entry.
+// The optional LabelsConfig controls which labels are forwarded and how they
+// are named.
+func convertLokiEntryToPlog(lokiEntry loki.Entry, labelsCfg *LabelsConfig) plog.Logs {
 	logs := plog.NewLogs()
 
 	lr := logs.ResourceLogs().AppendEmpty().ScopeLogs().AppendEmpty().LogRecords().AppendEmpty()
@@ -151,11 +238,16 @@ func convertLokiEntryToPlog(lokiEntry loki.Entry) plog.Logs {
 		// because the Collector doesn't do it and we would be more in line with it.
 	}
 
+	// Apply label filtering.
+	filteredLabels := filterLabels(lokiEntry.Labels, labelsCfg)
+
+	// Build the hint attribute key list, applying renames.
 	var lbls []string
-	for key := range lokiEntry.Labels {
-		keyStr := string(key)
+	for key := range filteredLabels {
+		keyStr := renameLabel(string(key), labelsCfg)
 		lbls = append(lbls, keyStr)
 	}
+	sort.Strings(lbls)
 
 	if len(lbls) > 0 {
 		// This hint is defined in the pkg/translator/loki package and the
@@ -166,7 +258,19 @@ func convertLokiEntryToPlog(lokiEntry loki.Entry) plog.Logs {
 		lr.Attributes().PutStr(hintAttributes, strings.Join(lbls, ","))
 	}
 
-	loki_translator.ConvertEntryToLogRecord(&lokiEntry.Entry, &lr, lokiEntry.Labels, true)
+	// Let the upstream translator set timestamps and body from the entry,
+	// and add the filtered labels as log record attributes.
+	loki_translator.ConvertEntryToLogRecord(&lokiEntry.Entry, &lr, filteredLabels, true)
+
+	// Apply renames: overwrite original label keys with new names.
+	if labelsCfg != nil && len(labelsCfg.Rename) > 0 {
+		for origName, newName := range labelsCfg.Rename {
+			if val, ok := lr.Attributes().Get(origName); ok {
+				lr.Attributes().PutStr(newName, val.AsString())
+				lr.Attributes().Remove(origName)
+			}
+		}
+	}
 
 	return logs
 }

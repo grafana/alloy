@@ -42,11 +42,38 @@ You can use the following blocks with `otelcol.receiver.loki`:
 
 | Block              | Description                                        | Required |
 |--------------------|----------------------------------------------------|----------|
+| [`labels`][labels] | Configures selective label forwarding.             | no       |
 | [`output`][output] | Configures where to send converted telemetry data. | yes      |
 
+[labels]: #labels
 [output]: #output
 
 {{< /docs/alloy-config >}}
+
+### `labels`
+
+The `labels` block configures which Loki labels are forwarded as OpenTelemetry log record attributes and allows renaming them during conversion.
+When the `labels` block isn't provided, all Loki labels are forwarded as attributes, preserving backward compatibility.
+
+You can use the following arguments with `labels`:
+
+| Name      | Type              | Description                                                        | Default | Required |
+|-----------|-------------------|--------------------------------------------------------------------|---------|----------|
+| `include` | `list(string)`    | Allowlist of label names to forward. All others are dropped.       |         | no       |
+| `exclude` | `list(string)`    | Blocklist of label names to drop. All others are forwarded.        |         | no       |
+| `rename`  | `map(string)`     | Map of original label names to new attribute names.                |         | no       |
+
+The `include` and `exclude` attributes are mutually exclusive.
+Setting both results in a validation error.
+
+The `rename` attribute is applied after `include` or `exclude` filtering.
+It maps the original Loki label name to the desired OpenTelemetry attribute name.
+Renamed keys are also reflected in the `loki.attribute.labels` hint attribute.
+
+{{< admonition type="note" >}}
+The `filename` label receives special handling: when present, the `log.file.path` and `log.file.name` attributes are always added to the log record regardless of filtering.
+However, the `filename` label itself is subject to the `include` and `exclude` filters.
+{{< /admonition >}}
 
 ### `output`
 
@@ -70,7 +97,9 @@ The following fields are exported and can be referenced by other components:
 
 `otelcol.receiver.loki` doesn't expose any component-specific debug information.
 
-## Example
+## Examples
+
+### Basic usage
 
 This example uses the `otelcol.receiver.loki` component as a bridge between the Loki and OpenTelemetry ecosystems.
 The component exposes a receiver which the `loki.source.file` component uses to send Loki log entries to.
@@ -86,6 +115,60 @@ loki.source.file "default" {
 }
 
 otelcol.receiver.loki "default" {
+  output {
+    logs = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = sys.env("<OTLP_ENDPOINT>")
+  }
+}
+```
+
+### Selective label forwarding with renaming
+
+This example only forwards the `job` label and renames it to `service.name`, dropping all other labels:
+
+```alloy
+loki.source.file "default" {
+  targets = [
+    {__path__ = "/var/log/*.log"},
+  ]
+  forward_to = [otelcol.receiver.loki.default.receiver]
+}
+
+otelcol.receiver.loki "default" {
+  labels {
+    include = ["job"]
+    rename = {
+      job = "service.name",
+    }
+  }
+
+  output {
+    logs = [otelcol.exporter.otlphttp.default.input]
+  }
+}
+
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = sys.env("<OTLP_ENDPOINT>")
+  }
+}
+```
+
+### Excluding specific labels
+
+This example drops high-cardinality labels like `instance` and `stream`, forwarding all others:
+
+```alloy
+otelcol.receiver.loki "default" {
+  labels {
+    exclude = ["instance", "stream"]
+  }
+
   output {
     logs = [otelcol.exporter.otlphttp.default.input]
   }
