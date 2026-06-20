@@ -41,7 +41,7 @@ type tailer struct {
 
 	componentStopping func() bool
 
-	report sync.Once
+	lastErr string
 
 	file          *tail.File
 	encoding      string
@@ -73,7 +73,7 @@ func newTailer(
 			MaxPollFrequency: opts.fileWatch.MaxPollFrequency,
 		},
 		componentStopping: componentStopping,
-		report:            sync.Once{},
+		lastErr:           "",
 		encoding:          opts.encoding,
 		decompression:     opts.decompressionConfig,
 	}
@@ -90,16 +90,16 @@ func (t *tailer) Run(ctx context.Context) {
 	pos, err := t.initRun()
 	if err != nil {
 		// We are retrying tailers until the target has disappeared.
-		// We are mostly interested in this log if this happens directly when
-		// the tailer is scheduled and not on retries.
-		t.report.Do(func() {
+		// We log the error on the first failure and when the error message changes.
+		errStr := err.Error()
+		if t.lastErr != errStr {
 			t.logger.Error("failed to run tailer", "error", err)
-		})
+			t.lastErr = errStr
+		}
 		return
 	}
 
-	// We call report so that retries won't log.
-	t.report.Do(func() {})
+	t.lastErr = ""
 
 	t.metrics.filesActive.Add(1.)
 

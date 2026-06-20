@@ -2,8 +2,10 @@ package file
 
 import (
 	"context"
+	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -587,4 +589,85 @@ func TestTailer_CompressedOnelineFile(t *testing.T) {
 			`5.202.214.160 - - [26/Jan/2019:19:45:25 +0330] "GET / HTTP/1.1" 200 30975 "https://www.zanbil.ir/" "Mozilla/5.0 (Windows NT 6.2; WOW64; rv:21.0) Gecko/20100101 Firefox/21.0" "-"`,
 		)
 	})
+}
+
+type captureHandler struct {
+	mu   sync.Mutex
+	msgs []string
+}
+
+func (h *captureHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return true
+}
+
+func (h *captureHandler) Handle(ctx context.Context, r slog.Record) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.msgs = append(h.msgs, r.Message)
+	return nil
+}
+
+func (h *captureHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return h
+}
+
+func (h *captureHandler) WithGroup(name string) slog.Handler {
+	return h
+}
+
+func TestTailerLogErrorOnFailure(t *testing.T) {
+	ch1 := loki.NewLogsReceiver()
+	tempDir := t.TempDir()
+
+	handler := &captureHandler{}
+	logger := slog.New(handler)
+
+	positionsFile, err := positions.New(logging.NewSlogNop(), positions.Config{
+		SyncPeriod:    50 * time.Millisecond,
+		PositionsFile: filepath.Join(tempDir, "positions.yaml"),
+	})
+	require.NoError(t, err)
+	defer positionsFile.Stop()
+
+	nonExistentPath := filepath.Join(tempDir, "non_existent_file.log")
+
+	tailer := newTailer(
+		newMetrics(nil),
+		logger,
+		ch1,
+		positionsFile,
+		func() bool { return true },
+		sourceOptions{
+			path: nonExistentPath,
+			fileWatch: FileWatch{
+				MinPollFrequency: 25 * time.Millisecond,
+				MaxPollFrequency: 25 * time.Millisecond,
+			},
+			onPositionsFileError: OnPositionsFileErrorRestartBeginning,
+		},
+	)
+
+	// First execution of Run should fail and log.
+	tailer.Run(t.Context())
+
+	handler.mu.Lock()
+	require.Len(t, handler.msgs, 1)
+	require.Contains(t, handler.msgs[0], "failed to run tailer")
+	handler.mu.Unlock()
+
+	// Second execution of Run with same error should not log again.
+	tailer.Run(t.Context())
+
+	handler.mu.Lock()
+	require.Len(t, handler.msgs, 1)
+	handler.mu.Unlock()
+
+	// Third execution of Run with a different error should log again.
+	tailer.key.Path = filepath.Join(tempDir, "different_non_existent_file.log")
+	tailer.Run(t.Context())
+
+	handler.mu.Lock()
+	require.Len(t, handler.msgs, 2)
+	require.Contains(t, handler.msgs[1], "failed to run tailer")
+	handler.mu.Unlock()
 }
