@@ -1,10 +1,5 @@
 //go:build linux && cgo
 
-// Package sdjournal is header-free binding to the systemd
-// journal. Instead of #include-ing <systemd/sd-journal.h> at build time, we
-// declare the handful of sd-journal signatures and constants we use.
-//
-// Only standard glibc headers <dlfcn.h>, <stdlib.h> and <stdint.h> appear in the cgo preamble.
 package sdjournal
 
 /*
@@ -13,77 +8,103 @@ package sdjournal
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <systemd/sd-journal.h>
 
-// Opaque handle.
-typedef struct sd_journal sd_journal;
-
+typedef int (*j_open_fn)(sd_journal *, int);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_open), j_open_fn), "sd_journal_open signature drift");
 static int j_open(void *f, sd_journal **ret, int flags) {
-	int (*fn)(sd_journal **, int) = f;
+	j_open_fn fn = f;
 	return fn(ret, flags);
 }
 
+typedef int (*j_open_directory_fn)(sd_journal **, const char *, int);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_open_directory), j_open_directory_fn), "sd_journal_open_directory signature drift");
 static int j_open_directory(void *f, sd_journal **ret, const char *path, int flags) {
-	int (*fn)(sd_journal **, const char *, int) = f;
+	j_open_directory_fn fn = f;
 	return fn(ret, path, flags);
 }
 
+typedef int (*j_next_fn)(sd_journal *);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_next), j_next_fn), "sd_journal_next signature drift");
 static int j_next(void *f, sd_journal *j) {
-	int (*fn)(sd_journal *) = f;
+	j_next_fn fn = f;
 	return fn(j);
 }
 
+typedef int (*j_previous_fn)(sd_journal *);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_previous), j_previous_fn), "sd_journal_previous signature drift");
 static int j_previous(void *f, sd_journal *j) {
-	int (*fn)(sd_journal *) = f;
+	j_previous_fn fn = f;
 	return fn(j);
 }
 
+typedef void (*j_restart_data_fn)(sd_journal *);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_restart_data), j_restart_data_fn), "sd_journal_restart_data signature drift");
 static void j_restart_data(void *f, sd_journal *j) {
-	void (*fn)(sd_journal *) = f;
+	j_restart_data_fn fn = f;
 	fn(j);
 }
 
+typedef int (*j_enumerate_data_fn)(sd_journal *, const void **, size_t *);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_enumerate_data), j_enumerate_data_fn), "sd_journal_enumerate_data signature drift");
 static int j_enumerate_data(void *f, sd_journal *j, const void **data, size_t *length) {
-	int (*fn)(sd_journal *, const void **, size_t *) = f;
+	j_enumerate_data_fn fn = f;
 	return fn(j, data, length);
 }
 
+typedef void (*j_close_fn)(sd_journal *);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_close), j_close_fn), "sd_journal_close signature drift");
 static void j_close(void *f, sd_journal *j) {
-	void (*fn)(sd_journal *) = f;
+	j_close_fn fn = f;
 	fn(j);
 }
 
+typedef int (*j_wait_fn)(sd_journal *, uint64_t);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_wait), j_wait_fn), "sd_journal_wait signature drift");
 static int j_wait(void *f, sd_journal *j, uint64_t timeout_usec) {
-	int (*fn)(sd_journal *, uint64_t) = f;
+	j_wait_fn fn = f;
 	return fn(j, timeout_usec);
 }
 
+typedef int (*j_test_cursor_fn)(sd_journal *, const char *);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_test_cursor), j_test_cursor_fn), "sd_journal_test_cursor signature drift");
 static int j_test_cursor(void *f, sd_journal *j, const char *cursor) {
-	int (*fn)(sd_journal *, const char *) = f;
+	j_test_cursor_fn fn = f;
 	return fn(j, cursor);
 }
 
+typedef int (*j_get_cursor_fn)(sd_journal *, char **);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_get_cursor), j_get_cursor_fn), "sd_journal_get_cursor signature drift");
 static int j_get_cursor(void *f, sd_journal *j, char **cursor) {
-	int (*fn)(sd_journal *, char **) = f;
+	j_get_cursor_fn fn = f;
 	return fn(j, cursor);
 }
 
+typedef int (*j_seek_cursor_fn)(sd_journal *, const char *);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_seek_cursor), j_seek_cursor_fn), "sd_journal_seek_cursor signature drift");
 static int j_seek_cursor(void *f, sd_journal *j, const char *cursor) {
-	int (*fn)(sd_journal *, const char *) = f;
+	j_seek_cursor_fn fn = f;
 	return fn(j, cursor);
 }
 
+typedef int (*j_get_realtime_usec_fn)(sd_journal *, uint64_t *);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_get_realtime_usec), j_get_realtime_usec_fn), "sd_journal_get_realtime_usec signature drift");
 static int j_get_realtime_usec(void *f, sd_journal *j, uint64_t *usec) {
-	int (*fn)(sd_journal *, uint64_t *) = f;
+	j_get_realtime_usec_fn fn = f;
 	return fn(j, usec);
 }
 
+typedef int (*j_add_match_fn)(sd_journal *, const void *, size_t);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_add_match), j_add_match_fn), "sd_journal_add_match signature drift");
 static int j_add_match(void *f, sd_journal *j, const void *data, size_t size) {
-	int (*fn)(sd_journal *, const void *, size_t) = f;
+	j_add_match_fn fn = f;
 	return fn(j, data, size);
 }
 
+typedef int (*j_seek_realtime_usec_fn)(sd_journal *, uint64_t);
+_Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_seek_realtime_usec), j_seek_realtime_usec_fn), "sd_journal_seek_realtime_usec signature drift");
 static int j_seek_realtime_usec(void *f, sd_journal *j, uint64_t usec) {
-	int (*fn)(sd_journal *, uint64_t) = f;
+	j_seek_realtime_usec_fn fn = f;
 	return fn(j, usec);
 }
 */
@@ -104,15 +125,12 @@ const (
 	// sd_journal_open flag. See sd-journal.h SD_JOURNAL_LOCAL_ONLY.
 	sdJournalLocalOnly = 1
 
-	// sd_journal_wait return codes. See sd-journal.h.
-	//
-	// sdJournalNop: the journal did not change since the last invocation, so we
-	// can just wait again.
-	sdJournalNop = 0
+	// sdJournalNop: the journal did not change since the last invocation.
+	sdJournalNop = int(C.SD_JOURNAL_NOP)
 	// sdJournalAppend: new entries were appended to the end of the journal.
-	sdJournalAppend = 1
+	sdJournalAppend = int(C.SD_JOURNAL_APPEND)
 	// sdJournalInvalidate: journal files were added or removed (rotation, vacuum).
-	sdJournalInvalidate = 2
+	sdJournalInvalidate = int(C.SD_JOURNAL_INVALIDATE)
 )
 
 // Well-known systemd journal field names.
@@ -388,7 +406,7 @@ func (j *Journal) Wait(ctx context.Context) error {
 
 		const waitTime = C.uint64_t(100 * 1000) // 100ms
 		ret := C.j_wait(j.lib.wait, j.journal, waitTime)
-		switch ret {
+		switch int(ret) {
 		case sdJournalNop:
 			// No new entries so wait again.
 			continue
