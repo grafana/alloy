@@ -1,4 +1,4 @@
-//go:build linux && cgo && promtail_journal_enabled
+//go:build linux && cgo
 
 package sdjournal
 
@@ -10,7 +10,7 @@ package sdjournal
 #include <stdint.h>
 #include <systemd/sd-journal.h>
 
-typedef int (*j_open_fn)(sd_journal *, int);
+typedef int (*j_open_fn)(sd_journal **, int);
 _Static_assert(__builtin_types_compatible_p(typeof(&sd_journal_open), j_open_fn), "sd_journal_open signature drift");
 static int j_open(void *f, sd_journal **ret, int flags) {
 	j_open_fn fn = f;
