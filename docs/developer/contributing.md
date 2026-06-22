@@ -16,6 +16,7 @@ For trivial fixes or improvements, pull requests can be opened immediately witho
     Environments][best-practices]
   - The [Uber Go Style Guide][uber-style-guide]
 - Sign our [CLA][], otherwise we're not able to accept contributions.
+- If you use generative AI tools, review our [Generative AI Contribution Policy](./genai.md).
 
 ## Steps to Contribute
 
