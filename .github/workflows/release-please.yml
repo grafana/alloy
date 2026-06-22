@@ -28,7 +28,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
-      - name: Setup tools
+      - name: Setup tools # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
         uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
           version: v2026.5.18
