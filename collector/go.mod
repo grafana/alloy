@@ -355,7 +355,7 @@ require (
 	github.com/bodgit/plumbing v1.3.0 // indirect
 	github.com/bodgit/sevenzip v1.6.1 // indirect
 	github.com/bodgit/windows v1.0.1 // indirect
-	github.com/boynux/squid-exporter v1.10.5-0.20230618153315-c1fae094e18e // indirect
+	github.com/boynux/squid-exporter v1.13.0 // indirect
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0 // indirect
 	github.com/buger/jsonparser v1.1.2 // indirect
 	github.com/burningalchemist/sql_exporter v0.0.0-20260312184457-9bf25f71582f // indirect
