@@ -121,7 +121,7 @@ You can use the following arguments with `prometheus.exporter.cloudwatch`:
 | `fips_disabled`           | `bool`              | Disable use of FIPS endpoints. Set 'true' when running outside of USA regions. | `true`  | no       |
 | `debug`                   | `bool`              | (Deprecated, no-op) Has no effect. Use the global log level instead.           | `false` | no       |
 | `discovery_exported_tags` | `map(list(string))` | List of tags (value) per service (key) to export in all metrics.               | `{}`    | no       |
-| `labels_to_snake_case`    | `bool`              | Output labels on metrics in snake case instead of camel case.                  | `false` | no       |
+| `labels_snake_case`       | `bool`              | Output labels on metrics in snake case instead of camel case.                  | `false` | no       |
 
 If you define the `["name", "type"]` under `"AWS/EC2"` in the `discovery_exported_tags` argument, it exports the name and type tags and its values as labels in all metrics.
 This affects all discovery jobs.
