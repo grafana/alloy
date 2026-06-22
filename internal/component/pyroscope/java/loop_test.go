@@ -62,6 +62,31 @@ func (m *mockAppendable) AppendIngest(ctx context.Context, profile *pyroscope.In
 	return args.Error(0)
 }
 
+func TestLabelsForProfileAddsScopeLabels(t *testing.T) {
+	target := discovery.NewTargetFromMap(map[string]string{
+		labelServiceName: "java-service",
+	})
+
+	lbs := labelsForProfile(target, "jdk.ExecutionSample", "process_cpu")
+
+	require.Equal(t, "java-service", lbs.Get(labelServiceName))
+	require.Equal(t, pyroscope.ScopeNameJava, lbs.Get(pyroscope.LabelOtelScopeName))
+}
+
+func TestLabelsForProfileDoesNotOverrideScopeLabels(t *testing.T) {
+	target := discovery.NewTargetFromMap(map[string]string{
+		labelServiceName:                "java-service",
+		pyroscope.LabelOtelScopeName:    "user-scope",
+		pyroscope.LabelOtelScopeVersion: "user-version",
+	})
+
+	lbs := labelsForProfile(target, "jdk.ExecutionSample", "process_cpu")
+
+	require.Equal(t, "java-service", lbs.Get(labelServiceName))
+	require.Equal(t, "user-scope", lbs.Get(pyroscope.LabelOtelScopeName))
+	require.Equal(t, "user-version", lbs.Get(pyroscope.LabelOtelScopeVersion))
+}
+
 func newTestProfilingLoop(_ *testing.T, profiler *mockProfiler, appendable pyroscope.Appendable) *profilingLoop {
 	reg := prometheus.NewRegistry()
 	output := pyroscope.NewFanout([]pyroscope.Appendable{appendable}, "test-appendable", reg)

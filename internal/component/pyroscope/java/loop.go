@@ -178,13 +178,7 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		metric := req.Metric
 		sz := req.Profile.SizeVT()
 		l := p.logger.With("metric", metric, "sz", sz)
-		ls := labels.NewBuilder(labels.EmptyLabels())
-		for _, l := range jfrpprofPyroscope.Labels(target.AsMap(), profiles.JFREvent, req.Metric, "", spyName) {
-			ls.Set(l.Name, l.Value)
-		}
-		if ls.Get(labelServiceName) == "" {
-			ls.Set(labelServiceName, inferServiceName(target))
-		}
+		ls := labelsForProfile(target, profiles.JFREvent, req.Metric)
 
 		p.lastBytesPerType = append(p.lastBytesPerType, debugInfoBytesPerType{
 			Type:  metric,
@@ -199,7 +193,7 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 			continue
 		}
 		samples := []*pyroscope.RawSample{{RawProfile: profile}}
-		err = p.output.Appender().Append(context.Background(), ls.Labels(), samples)
+		err = p.output.Appender().Append(context.Background(), ls, samples)
 		if err != nil {
 			l.Error("failed to push jfr", "err", err)
 			continue
@@ -213,6 +207,18 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 		p.mutex.Unlock()
 	}
 	return nil
+}
+
+func labelsForProfile(target discovery.Target, jfrEvent, metric string) labels.Labels {
+	ls := labels.NewBuilder(labels.EmptyLabels())
+	for _, l := range jfrpprofPyroscope.Labels(target.AsMap(), jfrEvent, metric, "", spyName) {
+		ls.Set(l.Name, l.Value)
+	}
+	if ls.Get(labelServiceName) == "" {
+		ls.Set(labelServiceName, inferServiceName(target))
+	}
+	pyroscope.AddScopeLabels(ls, pyroscope.ScopeNameJava)
+	return ls.Labels()
 }
 
 func (p *profilingLoop) start() error {
