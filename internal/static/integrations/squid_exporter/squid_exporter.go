@@ -101,7 +101,7 @@ func New(c *Config) (integrations.Integration, error) {
 	}
 
 	seExporter := se.New(&se.CollectorConfig{
-		Hostname: fmt.Sprintf("[%s]", c.Host),
+		Hostname: fmt.Sprintf("%s", c.Host),
 		Port:     c.Port,
 		Login:    c.Username,
 		Password: string(c.Password),
