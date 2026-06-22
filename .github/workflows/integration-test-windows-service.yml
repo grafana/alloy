@@ -20,7 +20,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -36,12 +36,40 @@ jobs:
         run: choco install nsis -y
         shell: pwsh
 
+      - name: Cache NSIS AccessControl plugin
+        id: cache-accesscontrol
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: ${{ runner.temp }}\AccessControl.zip
+          key: nsis-accesscontrol-zip-v1
+
+      - name: Download NSIS AccessControl plugin
+        if: steps.cache-accesscontrol.outputs.cache-hit != 'true'
+        run: |
+          $zipUrl = "https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip"
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
+          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+        shell: pwsh
+
+      # Guard against supply chain attacks.
+      # Runs unconditionally so a poisoned cache entry is caught too, not just a fresh download.
+      # NOTE: This same hash is also pinned in build-tools/build-image/Dockerfile; update both.
+      - name: Verify NSIS AccessControl plugin checksum
+        run: |
+          $expected = "9aa60f9c5c023fda2808af216514d8913d2673bc522d944ee771da032a1bdc10"
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
+          $actual = (Get-FileHash -Algorithm SHA256 -Path $zipPath).Hash.ToLower()
+          if ($actual -ne $expected) {
+            Write-Error "AccessControl.zip checksum mismatch: expected=$expected actual=$actual"
+            exit 1
+          }
+          Write-Host "AccessControl.zip checksum verified ($actual)"
+        shell: pwsh
+
       - name: Install NSIS AccessControl plugin
         run: |
           $nsisPath = "C:\Program Files (x86)\NSIS"
-          $zipUrl = "https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip"
-          $zipPath = "$env:TEMP\AccessControl.zip"
-          Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+          $zipPath = "$env:RUNNER_TEMP\AccessControl.zip"
           Expand-Archive -Path $zipPath -DestinationPath $env:TEMP\AccessControl -Force
           Copy-Item -Path "$env:TEMP\AccessControl\Plugins\*" -Destination "$nsisPath\Plugins\" -Recurse -Force
           New-Item -ItemType Directory -Path "$nsisPath\Plugins\x86-unicode" -Force

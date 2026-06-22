@@ -323,7 +323,7 @@ func (s *Service) registerCollector() error {
 		},
 	})
 
-	if err != nil {
+	if err != nil && !errors.Is(err, errNoopClient) {
 		s.opts.Logger.Error("failed to register collector with remote server", "id", s.args.ID, "name", s.args.Name, "err", err)
 		return err
 	}
