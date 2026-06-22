@@ -28,6 +28,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/healthcheckextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/k8sleaderelector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.147.0
@@ -59,6 +60,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/hostmetricsreceiver v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/influxdbreceiver v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/jaegerreceiver v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sclusterreceiver v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/k8sobjectsreceiver v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kubeletstatsreceiver v0.147.0
@@ -717,7 +719,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/credentialsfile v0.147.0 // indirect
-	github.com/open-telemetry/opentelemetry-collector-contrib/extension/k8sleaderelector v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/aws/ecsutil v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/common v0.147.0 // indirect
