@@ -55,7 +55,7 @@ You can use the following blocks with `prometheus.remote_write`:
 | `endpoint` > `azuread` > [`managed_identity`][managed_identity] | Configure Azure user-assigned managed identity.                            | yes      |
 | `endpoint` > `azuread` > [`oauth`][oauth]                       | Configure Azure OAuth.                                                     | yes      |
 | `endpoint` > `azuread` > [`sdk`][sdk]                           | Configure Azure SDK authentication.                                        | yes      |
-| `endpoint` > `azuread` > [`workload_identity`][workload_identity] | Configure Azure AD Workload Identity.                                    | yes      |
+| `endpoint` > `azuread` > [`workload_identity`][workload_identity] | Configure Microsoft Entra Workload ID.                             | yes      |
 | `endpoint` > [`basic_auth`][basic_auth]                         | Configure `basic_auth` for authenticating to the endpoint.                 | no       |
 | `endpoint` > [`metadata_config`][metadata_config]               | Configuration for how metric metadata is sent.                             | no       |
 | `endpoint` > [`oauth2`][oauth2]                                 | Configure OAuth 2.0 for authenticating to the endpoint.                    | no       |
