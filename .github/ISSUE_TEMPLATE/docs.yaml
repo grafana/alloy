@@ -104,6 +104,7 @@ body:
       - otelcol.exporter.kafka
       - otelcol.exporter.loadbalancing
       - otelcol.exporter.loki
+      - otelcol.exporter.opensearch
       - otelcol.exporter.otlp
       - otelcol.exporter.otlphttp
       - otelcol.exporter.prometheus
