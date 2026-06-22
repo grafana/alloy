@@ -94,6 +94,7 @@ body:
       - otelcol.exporter.awss3
       - otelcol.exporter.datadog
       - otelcol.exporter.debug
+      - otelcol.exporter.elasticsearch
       - otelcol.exporter.faro
       - otelcol.exporter.file
       - otelcol.exporter.googlecloud
