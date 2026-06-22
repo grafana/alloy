@@ -130,6 +130,8 @@ type Registration struct {
 	// any number of underscores or alphanumeric ASCII characters.
 	Name string
 
+	Metadata Metadata
+
 	// Stability is the overall stability level of the component. This is used to make
 	// sure the user is not accidentally using a component that is not yet GA - users
 	// need to explicitly enable less-than-stable components via, for example, a command-line flag.
@@ -157,6 +159,23 @@ type Registration struct {
 // CloneArguments returns a new zero value of the registered Arguments type.
 func (r Registration) CloneArguments() Arguments {
 	return reflect.New(reflect.TypeOf(r.Args)).Interface()
+}
+
+// Metadata holds descriptive information about a component.
+type Metadata struct {
+	// Platforms lists the operating systems the component supports.
+	Platforms []string
+	// Requirements lists prerequisites for running the component.
+	Requirements []Requirement
+}
+
+// Requirement describes a prerequisite for running a component, such as
+// required privileges or capabilities.
+type Requirement struct {
+	// Description is free-form.
+	Description string
+	// Reference is an optional link to more detail about the requirement.
+	Reference string
 }
 
 // Register registers a component. Register will panic if:
