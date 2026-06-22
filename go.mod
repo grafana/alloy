@@ -122,6 +122,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.158.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/elasticsearchexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter v0.158.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudexporter v0.158.0
@@ -274,7 +275,7 @@ require (
 	go.opentelemetry.io/collector/scraper/scraperhelper v0.158.0
 	go.opentelemetry.io/collector/service v0.158.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux v0.45.0
-	go.opentelemetry.io/ebpf-profiler v0.0.0-00010101000000-000000000000
+	go.opentelemetry.io/ebpf-profiler v0.0.202627
 	go.opentelemetry.io/otel v1.44.1-0.20260622141720-fbe3d073ba93
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.44.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.44.0
@@ -969,14 +970,19 @@ require (
 	cloud.google.com/go/secretmanager v1.20.0 // indirect
 	github.com/ClickHouse/ch-go v0.71.0 // indirect
 	github.com/ClickHouse/clickhouse-go/v2 v2.43.0 // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.8.0 // indirect
+	github.com/elastic/go-docappender/v2 v2.14.1 // indirect
+	github.com/elastic/go-structform v0.0.12 // indirect
 	github.com/go-faster/city v1.0.1 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/jackc/pgx/v5 v5.9.2 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/lestrrat-go/strftime v1.2.0 // indirect
 	github.com/nginx/nginx-prometheus-exporter v1.5.1 // indirect
 	github.com/paulmach/orb v0.12.0 // indirect
 	github.com/segmentio/asm v1.2.1 // indirect
 	github.com/sethvargo/go-envconfig v1.3.0 // indirect
+	go.elastic.co/fastjson v1.5.1 // indirect
 )
 
 require (
