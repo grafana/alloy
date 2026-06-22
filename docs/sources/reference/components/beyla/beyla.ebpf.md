@@ -22,18 +22,21 @@ The component exposes metrics that can be collected by a Prometheus scrape compo
 
 ## Permissions
 
-`beyla.ebpf` uses eBPF, which requires elevated privileges.
-{{< param "PRODUCT_NAME" >}} spawns Beyla as a child process and transfers the required capabilities to it via the kernel's inheritable and ambient capability sets, so no `SETPCAP` is required.
+`beyla.ebpf` uses eBPF and needs elevated privileges.
+{{< param "PRODUCT_NAME" >}} spawns Beyla as a child process and transfers the required capabilities through the kernel's inheritable and ambient capability sets.
+You don't need `SETPCAP`.
 
-The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, `CHECKPOINT_RESTORE`, `SYS_RESOURCE` (kernels earlier than 5.11), and `SYS_ADMIN` (only for library-level instrumentation).
-The exact set needed depends on your use case; refer to [Beyla capabilities][] for more information.
+The required capabilities are: `BPF`, `NET_ADMIN`, `NET_RAW`, `PERFMON`, `DAC_READ_SEARCH`, `SYS_PTRACE`, `CHECKPOINT_RESTORE`, `SYS_RESOURCE` on kernels earlier than 5.11, and `SYS_ADMIN` for library-level instrumentation only.
+The exact set depends on your use case.
+Refer to [Beyla capabilities][] for more information.
 
-In Kubernetes, you must also set `hostPID: true` in the Pod spec and configure an [Unconfined AppArmor profile][].
+In Kubernetes, set `hostPID: true` in the Pod spec and configure an [Unconfined AppArmor profile][].
 
 ### Standalone: root
 
-Run {{< param "PRODUCT_NAME" >}} as root. On a standard Linux system, root processes inherit all capabilities from the bounding set, so no additional configuration is required.
-If the bounding set is restricted (for example, by a systemd unit), grant the required capabilities explicitly:
+Run {{< param "PRODUCT_NAME" >}} as root.
+On a standard Linux system, root processes inherit all capabilities from the bounding set, so you don't need extra configuration.
+If systemd or another tool restricts the bounding set, grant the required capabilities explicitly:
 
 ```bash
 setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ep' /path/to/alloy
@@ -41,20 +44,23 @@ setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sy
 
 ### Standalone: non-root
 
-Set file capabilities on the {{< param "PRODUCT_NAME" >}} binary using the `+ip` flag.
-This seeds the permitted set without granting the capabilities to {{< param "PRODUCT_NAME" >}}'s own effective set, so {{< param "PRODUCT_NAME" >}} holds them only to transfer to Beyla:
+Set file capabilities on the {{< param "PRODUCT_NAME" >}} binary with the `+ip` flag.
+This seeds the permitted set but doesn't grant effective capabilities to {{< param "PRODUCT_NAME" >}}, so {{< param "PRODUCT_NAME" >}} holds them only to pass to Beyla:
 
 ```bash
 setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /path/to/alloy
 ```
 
 {{< admonition type="note" >}}
-File capabilities are not scoped to a container boundary and travel with the binary. Treat this as a deliberate security decision.
+File capabilities aren't scoped to a container boundary and travel with the binary.
+Treat this as a deliberate security decision.
 {{< /admonition >}}
 
 ### Kubernetes: privileged
 
-Set `privileged: true` in the container's `securityContext`. This grants all capabilities and disables `seccomp` and AppArmor profiles. This approach is **not recommended** for production environments.
+Set `privileged: true` in the container's `securityContext`.
+This grants all capabilities and disables `seccomp` and AppArmor profiles.
+This approach is **not recommended** for production environments.
 
 ### Kubernetes: unprivileged, root user
 
@@ -85,7 +91,8 @@ Unlike `privileged: true`, this keeps `seccomp` and AppArmor profiles active.
 
 ### Kubernetes: unprivileged, non-root user
 
-For the most restrictive posture, run as a non-root UID. Add `setcap +ip` to your container image (the official {{< param "PRODUCT_NAME" >}} image already includes this):
+For the most restrictive posture, run as a non-root UID.
+Add `setcap +ip` to the binary when you build a custom image:
 
 ```dockerfile
 RUN setcap 'cap_bpf,cap_net_admin,cap_net_raw,cap_perfmon,cap_dac_read_search,cap_sys_ptrace,cap_checkpoint_restore,cap_sys_resource,cap_sys_admin+ip' /bin/alloy
@@ -837,7 +844,7 @@ The matcher tags can be in the `:name` or `{name}` format.
 
 ### `injector`
 
-The `injector` block configures Beyla's SDK injection feature, which automatically instruments services by injecting OpenTelemetry SDKs without requiring eBPF.
+The `injector` block configures the Beyla SDK injection feature, which automatically instruments services by injecting OpenTelemetry SDKs without requiring eBPF.
 
 | Name                     | Type           | Description                                                                                     | Default | Required |
 |--------------------------|----------------|-------------------------------------------------------------------------------------------------|---------|----------|
@@ -924,18 +931,19 @@ The exported targets use the configured [in-memory traffic][] address specified 
 
 ## Observability considerations
 
-`beyla.ebpf` runs Beyla as a separate child process. This isolates failures in Beyla from {{< param "PRODUCT_NAME" >}} but changes how its resource usage and profile data are exposed.
+`beyla.ebpf` runs Beyla as a separate child process.
+This isolates failures in Beyla from {{< param "PRODUCT_NAME" >}} but changes how {{< param "PRODUCT_NAME" >}} exposes resource usage and profile data.
 
 ### Resource metrics
 
-{{< param "PRODUCT_NAME" >}} exposes process-level metrics for the Beyla process under the same name as its own, distinguished by a `subprocess="beyla"` label:
+{{< param "PRODUCT_NAME" >}} exposes process-level metrics for the Beyla process under the same name as its own, with a `subprocess="beyla"` label:
 
 ```promql
 alloy_resources_process_resident_memory_bytes                    # {{< param "PRODUCT_NAME" >}} process only
 alloy_resources_process_resident_memory_bytes{subprocess="beyla"} # Beyla subprocess only
 ```
 
-Dashboards or alerts that previously used `alloy_resources_process_*` to approximate total container resource usage now see only {{< param "PRODUCT_NAME" >}}'s share.
+If you use `alloy_resources_process_*` to approximate total container resource usage, the metrics include only the {{< param "PRODUCT_NAME" >}} process.
 To get the combined figure for both processes, sum across the label:
 
 ```promql
@@ -946,22 +954,24 @@ For container-level limits and OOM monitoring, prefer `kubelet`/cAdvisor metrics
 
 ### Profiling
 
-{{< param "PRODUCT_NAME" >}}'s `/debug/pprof/*` endpoints reflect only {{< param "PRODUCT_NAME" >}}'s own goroutines, allocations, and CPU.
-Profile data for the Beyla process is exposed by Beyla on its own HTTP port and is reachable through the component's reverse-proxy URL, for example:
+The {{< param "PRODUCT_NAME" >}} `/debug/pprof/*` endpoints reflect goroutines, allocations, and CPU from the {{< param "PRODUCT_NAME" >}} process only.
+Beyla exposes profile data on its own HTTP port.
+You can reach it through the component's reverse-proxy URL, for example:
 
 ```
 <alloy>/api/v0/component/beyla.ebpf.<LABEL>/debug/pprof/heap
 ```
 
-The Beyla process only exposes pprof endpoints when {{< param "PRODUCT_NAME" >}} itself has profiling enabled.
-The toggle is the existing `--server.http.enable-pprof` flag (default `true`); when set to `false`, the proxied URL above also returns 404, matching {{< param "PRODUCT_NAME" >}}'s own behavior.
-There is no separate Beyla-specific switch.
+When you enable profiling for {{< param "PRODUCT_NAME" >}}, Beyla also exposes pprof endpoints.
+The toggle is the `--server.http.enable-pprof` flag, which defaults to `true`.
+If you set it to `false`, the proxied URL returns 404, which matches how the {{< param "PRODUCT_NAME" >}} `/debug/pprof/*` endpoints behave.
+Beyla doesn't have a separate switch.
 
 Each `beyla.ebpf` component instance has its own pprof URL scoped by component ID.
-With multiple instances configured (for example, `beyla.ebpf.foo` and `beyla.ebpf.bar`), each is reachable at its own component path with no extra wiring.
+If you define multiple instances, such as `beyla.ebpf.foo` and `beyla.ebpf.bar`, each one is reachable at its own component path without extra configuration.
 
-Continuous-profiling pipelines that previously scraped {{< param "PRODUCT_NAME" >}}'s pprof endpoints to capture Beyla profile data must now also scrape the component's proxied pprof URL.
-The existing scrape job continues to work but only captures {{< param "PRODUCT_NAME" >}}'s own profile.
+To capture Beyla profile data in continuous-profiling pipelines, scrape the component's proxied pprof URL in addition to the {{< param "PRODUCT_NAME" >}} pprof endpoints.
+A scrape job that targets only the {{< param "PRODUCT_NAME" >}} pprof endpoints captures only the {{< param "PRODUCT_NAME" >}} profile.
 
 ## Examples
 
