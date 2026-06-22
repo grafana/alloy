@@ -90,6 +90,6 @@ jobs:
             exit 0
           fi
 
-          git add .
+          git add -- go.mod go.sum collector/
           git commit --amend --no-edit
           git push --force-with-lease
