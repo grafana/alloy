@@ -91,8 +91,6 @@ func run(f flags) error {
 			return fmt.Errorf("failed to decode metadata file: %w", err)
 		}
 
-		fmt.Printf("package %s: %+v\n", pkg, metadata)
-
 		// Generate metadata go file
 		if err := generateMetadataGoFile(pkg, dir, metadata); err != nil {
 			return fmt.Errorf("failed to generate metadata file: %w", err)

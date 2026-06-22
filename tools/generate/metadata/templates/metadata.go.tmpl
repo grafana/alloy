@@ -8,7 +8,7 @@ import (
 
 var metadata = component.Metadata{
 	{{- if .Platforms }}
-	Platforms: []component.Platform{
+	Platforms: []string{
 		{{- range .Platforms }}
 		{{ printf "%q" . }},
 		{{- end }}

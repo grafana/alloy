@@ -13,8 +13,6 @@ import (
 
 // metrics holds a set of journal target metrics.
 type metrics struct {
-	reg prometheus.Registerer
-
 	journalErrors *prometheus.CounterVec
 	journalLines  prometheus.Counter
 }
@@ -23,8 +21,6 @@ type metrics struct {
 // metrics will be registered.
 func newMetrics(reg prometheus.Registerer) *metrics {
 	var m metrics
-	m.reg = reg
-
 	m.journalErrors = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "loki_source_journal_target_parsing_errors_total",
 		Help: "Total number of parsing errors while reading journal messages",

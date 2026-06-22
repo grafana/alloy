@@ -16,24 +16,6 @@ title: loki.source.journal
 
 You can specify multiple `loki.source.journal` components by giving them different labels.
 
-{{< admonition type="note" >}}
-To read from the systemd journal, the `alloy` user must be a member of the `adm` and `systemd-journal` groups.
-Without this group membership, the component starts without error but collects no journal entries.
-
-To add the `alloy` user to both groups:
-
-```bash
-sudo usermod -aG adm,systemd-journal alloy
-```
-
-Restart {{< param "PRODUCT_NAME" >}} to apply the change:
-
-```bash
-sudo systemctl restart alloy
-```
-
-{{< /admonition >}}
-
 ## Usage
 
 ```alloy
@@ -159,6 +141,18 @@ The translation of legacy position file will happens if there is no position fil
 
 * `loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
 * `loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.
+
+<!-- START GENERATED METADATA -->
+
+## Supported platforms
+
+- Linux
+
+## Requirements
+
+- To read from the systemd journal, the `alloy` user must be a member of the `adm` and `systemd-journal` groups. Without this group membership, the component starts without error but collects no journal entries.
+
+<!-- END GENERATED METADATA -->
 
 ## Example
 
