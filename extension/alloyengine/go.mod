@@ -1112,7 +1112,7 @@ replace github.com/openshift/client-go => github.com/openshift/client-go v0.0.0-
 replace github.com/deneonet/benc => github.com/deneonet/benc v1.1.7
 
 // Pin runc to v1.2.8 for compatibility with cadvisor requiring libcontainer/cgroups packages
-replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.2.8
+replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.3.6
 
 // Replace controller-runtime with pinned version
 replace sigs.k8s.io/controller-runtime => sigs.k8s.io/controller-runtime v0.20.4
