@@ -10,7 +10,7 @@ when contributing to the project.
 
 GenAI is a tool that assists you. It is not a substitute for your own understanding, judgment, or
 accountability. By submitting a contribution, you are vouching for it as your own work, regardless
-of which tools helped you produce it. You are expected to understand, review, and stand behind
+of which tools helped you produce it. You are expected to understand, review, and provide rationale for
 everything you submit.
 
 ## Acceptable use
