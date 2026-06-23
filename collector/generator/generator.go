@@ -14,22 +14,28 @@ import (
 var (
 	//go:embed main_alloy.tpl
 	templateMainAlloy []byte
+	//go:embed main_windows.tpl
+	temaplteMainWindows []byte
 )
 
 func main() {
 	log.Println("Generating Alloy OTel Collector main file...")
-
-	path := flag.String("path", "", "path to put generated files")
+	var path string
+	flag.StringVar(&path, "path", "", "path to put generated files")
 	flag.Parse()
 
-	log.Printf("path: %v", *path)
+	log.Printf("path: %v", path)
 
-	if err := copyAlloyMainTemplateFromFile(*path); err != nil {
+	if err := copyAlloyMainTemplateFromFile(path); err != nil {
 		log.Fatalf("failed to copy alloy main template: %v", err)
 	}
 
-	if err := replaceSectionsOfGeneratedMainFile(*path); err != nil {
+	if err := replaceSectionsOfGeneratedMainFile(path); err != nil {
 		log.Fatalf("failed to replace command factory: %v", err)
+	}
+
+	if err := replaceMainWindows(path); err != nil {
+		log.Fatalf("failed to replace main_windows.go: %v", err)
 	}
 }
 
@@ -122,4 +128,11 @@ func addReleasePleaseVersioning(lines []string) ([]string, error) {
 	}
 
 	return lines, nil
+}
+
+func replaceMainWindows(path string) error {
+	if err := os.WriteFile(filepath.Join(path, "main_windows.go"), []byte(temaplteMainWindows), 0o644); err != nil {
+		return fmt.Errorf("error writing file: %w", err)
+	}
+	return nil
 }
