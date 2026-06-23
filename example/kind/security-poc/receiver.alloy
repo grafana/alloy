@@ -1,9 +1,3 @@
-// Local fake-Loki receiver for the security POC.
-// Accepts loki.write pushes from the in-cluster Alloy and prints them to stdout.
-//
-// Run with:  task security-poc:receive
-// The cluster Alloy sends to host.docker.internal:3100 which reaches this listener.
-
 loki.source.api "receiver" {
   http {
     listen_address = "0.0.0.0"

