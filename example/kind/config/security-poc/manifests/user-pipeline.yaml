@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-pipeline
+  namespace: monitoring
+data:
+  # Alloy config fragment served over HTTP by config-server and imported by
+  # Alloy via import.http. This is the attacker-controllable surface in the
+  # POC: whatever ends up here is fetched and executed by Alloy.
+  #
+  # The attacker iterates by editing this file and re-running:
+  #   task deploy:security-poc:user-pipeline
+  module.alloy: |
+    declare "user_pipeline" {
+      // No-op component: a relabel rule with no targets does nothing.
+      discovery.relabel "noop" {
+        targets = []
+      }
+    }

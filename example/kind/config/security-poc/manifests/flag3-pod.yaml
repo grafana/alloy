@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vuln-http-server
+  namespace: monitoring
+  labels:
+    app: vuln-http-server
+  annotations:
+    # Flag 3: discoverable only with Kubernetes API read access to this pod.
+    # Reading pod metadata also leaks the container image + version below,
+    # which an attacker can use to look up known vulnerabilities.
+    security-poc/flag-3: flag_3
+spec:
+  containers:
+    - name: http-echo
+      image: hashicorp/http-echo:0.2.3
+      args:
+        - "-text=hello from the security POC"
+      ports:
+        - containerPort: 5678

@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-server
+  namespace: monitoring
+  labels:
+    app: config-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: config-server
+  template:
+    metadata:
+      labels:
+        app: config-server
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.27-alpine
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /module.alloy
+              port: 80
+            periodSeconds: 1
+          volumeMounts:
+            - name: module
+              mountPath: /usr/share/nginx/html
+              readOnly: true
+      volumes:
+        - name: module
+          configMap:
+            name: user-pipeline
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-server
+  namespace: monitoring
+spec:
+  selector:
+    app: config-server
+  ports:
+    - port: 80
+      targetPort: 80

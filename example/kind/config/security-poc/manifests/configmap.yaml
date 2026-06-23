@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: security-poc-flags
+  namespace: monitoring
+data:
+  # Dummy secret used as a capture-the-flag target for security POC work.
+  SECRET_2: flag_2

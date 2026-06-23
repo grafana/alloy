@@ -1,0 +1,35 @@
+controller:
+  type: deployment
+  replicas: 1
+  # Mount the POC ConfigMap into the Alloy pod as files.
+  volumes:
+    extra:
+      - name: security-poc-flags
+        configMap:
+          name: security-poc-flags
+
+alloy:
+  # POC main config: fetch a config fragment over HTTP from the in-cluster
+  # config-server and run it. The fragment declares a "user_pipeline" custom
+  # component, which we instantiate below. This models an attacker who can
+  # control the configuration that Alloy fetches and executes.
+  configMap:
+    content: |
+      import.http "user_module" {
+        url            = "http://config-server.monitoring.svc/module.alloy"
+        poll_frequency = "1s"
+      }
+
+      user_module.user_pipeline "default" {}
+
+  # Dummy secret used as a capture-the-flag target for security POC work.
+  extraEnv:
+    - name: SECRET_1
+      value: flag_1
+  # Mount the POC ConfigMap so SECRET_2 is readable as a file at
+  # /etc/security-poc/SECRET_2.
+  mounts:
+    extra:
+      - name: security-poc-flags
+        mountPath: /etc/security-poc
+        readOnly: true

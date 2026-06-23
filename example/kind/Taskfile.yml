@@ -40,7 +40,7 @@ tasks:
     deps: [cluster:create]
     vars:
       ALLOY_VALUES_FILE: '{{.ALLOY_VALUES_FILE | default "config/alloy-helm/basic.yaml"}}'
-      ALLOY_CHART_PATH: '{{.TASK_DIR}}/../../operations/helm/charts/alloy'
+      ALLOY_CHART_PATH: '{{.ROOT_DIR}}/../../operations/helm/charts/alloy'
     preconditions:
       - test -f {{.ALLOY_VALUES_FILE}}
     cmds:
@@ -48,6 +48,45 @@ tasks:
         -n monitoring --create-namespace
         -f {{.ALLOY_VALUES_FILE}}
         --wait
+
+  deploy:security-poc:
+    desc: Deploy the security POC Alloy and its extra ConfigMap holding dummy flags
+    deps: [cluster:create]
+    vars:
+      ALLOY_VALUES_FILE: '{{.ROOT_DIR}}/config/security-poc/values.yaml'
+      ALLOY_CHART_PATH: '{{.ROOT_DIR}}/../../operations/helm/charts/alloy'
+      MANIFESTS_DIR: '{{.ROOT_DIR}}/config/security-poc/manifests'
+    preconditions:
+      - test -f {{.ALLOY_VALUES_FILE}}
+      - test -d {{.MANIFESTS_DIR}}
+    cmds:
+      - kubectl --kubeconfig {{.KUBECONFIG}} create namespace monitoring --dry-run=client -o yaml | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
+      - kubectl --kubeconfig {{.KUBECONFIG}} apply -f {{.MANIFESTS_DIR}}
+      # Roll config-server so it serves the just-applied user-pipeline content
+      # immediately, instead of waiting for the kubelet ConfigMap sync (~1 min).
+      # Harmless on a first install (the Deployment is brand new anyway).
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install alloy {{.ALLOY_CHART_PATH}}
+        -n monitoring --create-namespace
+        -f {{.ALLOY_VALUES_FILE}}
+        --wait
+
+  deploy:security-poc:user-pipeline:
+    desc: Reload only the attacker-controlled user-pipeline config served to Alloy
+    deps: [cluster:create]
+    vars:
+      USER_PIPELINE_FILE: '{{.ROOT_DIR}}/config/security-poc/manifests/user-pipeline.yaml'
+    preconditions:
+      - test -f {{.USER_PIPELINE_FILE}}
+    cmds:
+      # Update the ConfigMap (source of truth), then roll config-server so a
+      # fresh pod mounts the new content immediately. The rolling restart keeps
+      # the old pod serving until the new one is Ready, so Alloy's import.http
+      # never sees a failed fetch.
+      - kubectl --kubeconfig {{.KUBECONFIG}} apply -f {{.USER_PIPELINE_FILE}}
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
 
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Onboarding helm chart
@@ -86,4 +125,4 @@ tasks:
     desc: Expose all services on localhost via port-forward
     deps: [deploy:cloud-onboarding:local]
     cmds:
-      - "{{.TASK_DIR}}/config/expose.sh {{.KUBECONFIG}}"
+      - "{{.ROOT_DIR}}/config/expose.sh {{.KUBECONFIG}}"
