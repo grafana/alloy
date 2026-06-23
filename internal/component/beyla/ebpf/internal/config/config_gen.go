@@ -556,6 +556,20 @@ func (b *builder) addJavaagentConfig(config map[string]interface{}) {
 	}
 }
 
+// addJvmRuntimeMetricsConfig adds jvm_runtime_metrics configuration.
+func (b *builder) addJvmRuntimeMetricsConfig(config map[string]interface{}) {
+	m := make(map[string]interface{})
+	if b.args.JVMRuntimeMetrics.Enabled {
+		m["enabled"] = true
+	}
+	if v := b.args.JVMRuntimeMetrics.SamplingInterval; v != 0 {
+		m["sampling_interval"] = v.String()
+	}
+	if len(m) > 0 {
+		config["jvm_runtime_metrics"] = m
+	}
+}
+
 // addNodejsConfig adds nodejs configuration.
 func (b *builder) addNodejsConfig(config map[string]interface{}) {
 	m := make(map[string]interface{})
@@ -670,6 +684,7 @@ func (b *builder) addGeneratedConfig(config map[string]interface{}) {
 	b.addEbpfConfig(config)
 	b.addInjectorConfig(config)
 	b.addJavaagentConfig(config)
+	b.addJvmRuntimeMetricsConfig(config)
 	b.addNodejsConfig(config)
 	b.addRoutesConfig(config)
 	b.addStatsConfig(config)

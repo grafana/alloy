@@ -494,6 +494,10 @@ beyla.ebpf "example" {
 		debug_instrumentation = false
 		enabled = false
 	}
+	jvm_runtime_metrics {
+		enabled = false
+		sampling_interval = "0s"
+	}
 	log_level = ""
 	metrics {
 		allow_service_graph_self_references = false

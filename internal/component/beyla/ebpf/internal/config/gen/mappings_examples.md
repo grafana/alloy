@@ -159,6 +159,7 @@ Schema `$def` names mapped to custom Go type names.
 | `EBPFTracer` | `EBPF` |
 | `HTTPConfig` | `HTTPPayloadExtraction` |
 | `InternalMetricsConfig` | `InternalMetrics` |
+| `JVMRuntimeMetricsConfig` | `JVMRuntimeMetrics` |
 | `JavaConfig` | `Javaagent` |
 | `MapsConfig` | `EBPFMapsConfig` |
 | `NodeJSConfig` | `Nodejs` |

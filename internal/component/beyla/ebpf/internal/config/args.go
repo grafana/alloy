@@ -11,24 +11,25 @@ type Arguments struct {
 	// Deprecated: Use discovery.services instead.
 	Port string `alloy:"open_port,attr,optional"`
 	// Deprecated: Use discovery.services instead.
-	ExecutableName  string                     `alloy:"executable_name,attr,optional"`
-	Debug           bool                       `alloy:"debug,attr,optional"`
-	LogLevel        string                     `alloy:"log_level,attr,optional"`
-	TracePrinter    string                     `alloy:"trace_printer,attr,optional"`
-	EnforceSysCaps  bool                       `alloy:"enforce_sys_caps,attr,optional"`
-	Routes          Routes                     `alloy:"routes,block,optional"`
-	Attributes      Attributes                 `alloy:"attributes,block,optional"`
-	Discovery       Discovery                  `alloy:"discovery,block,optional"`
-	Metrics         Metrics                    `alloy:"metrics,block,optional"`
-	Traces          Traces                     `alloy:"traces,block,optional"`
-	EBPF            EBPF                       `alloy:"ebpf,block,optional"`
-	Filters         Filters                    `alloy:"filters,block,optional"`
-	Output          *otelcol.ConsumerArguments `alloy:"output,block,optional"`
-	Injector        Injector                   `alloy:"injector,block,optional"`
-	Stats           Stats                      `alloy:"stats,block,optional"`
-	InternalMetrics InternalMetrics            `alloy:"internal_metrics,block,optional"`
-	Javaagent       Javaagent                  `alloy:"javaagent,block,optional"`
-	Nodejs          Nodejs                     `alloy:"nodejs,block,optional"`
+	ExecutableName    string                     `alloy:"executable_name,attr,optional"`
+	Debug             bool                       `alloy:"debug,attr,optional"`
+	LogLevel          string                     `alloy:"log_level,attr,optional"`
+	TracePrinter      string                     `alloy:"trace_printer,attr,optional"`
+	EnforceSysCaps    bool                       `alloy:"enforce_sys_caps,attr,optional"`
+	Routes            Routes                     `alloy:"routes,block,optional"`
+	Attributes        Attributes                 `alloy:"attributes,block,optional"`
+	Discovery         Discovery                  `alloy:"discovery,block,optional"`
+	Metrics           Metrics                    `alloy:"metrics,block,optional"`
+	Traces            Traces                     `alloy:"traces,block,optional"`
+	EBPF              EBPF                       `alloy:"ebpf,block,optional"`
+	Filters           Filters                    `alloy:"filters,block,optional"`
+	Output            *otelcol.ConsumerArguments `alloy:"output,block,optional"`
+	Injector          Injector                   `alloy:"injector,block,optional"`
+	Stats             Stats                      `alloy:"stats,block,optional"`
+	InternalMetrics   InternalMetrics            `alloy:"internal_metrics,block,optional"`
+	Javaagent         Javaagent                  `alloy:"javaagent,block,optional"`
+	Nodejs            Nodejs                     `alloy:"nodejs,block,optional"`
+	JVMRuntimeMetrics JVMRuntimeMetrics          `alloy:"jvm_runtime_metrics,block,optional"`
 }
 
 type Attributes struct {

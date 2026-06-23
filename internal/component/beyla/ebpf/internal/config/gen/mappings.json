@@ -10,7 +10,8 @@
     "InternalMetricsConfig": "InternalMetrics",
     "SDKInject":             "Injector",
     "JavaConfig":            "Javaagent",
-    "NodeJSConfig":          "Nodejs"
+    "NodeJSConfig":          "Nodejs",
+    "JVMRuntimeMetricsConfig": "JVMRuntimeMetrics"
   },
 
   "scalar_types": {

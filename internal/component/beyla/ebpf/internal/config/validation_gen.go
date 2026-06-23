@@ -19,6 +19,7 @@ var instrumentationValues = []string{
 	"nats",
 	"redis",
 	"sql",
+	"sunrpc",
 }
 
 // validInstrumentation reports whether v is an accepted "MetricsConfig.instrumentations" value.
@@ -37,13 +38,16 @@ var metricFeatureValues = []string{
 	"all",
 	"application",
 	"application_host",
+	"application_jvm",
 	"application_process",
+	"application_runtime",
 	"application_service_graph",
 	"application_span",
 	"application_span_otel",
 	"application_span_sizes",
 	"ebpf",
 	"network",
+	"network_flow_packets",
 	"network_inter_zone",
 	"stats",
 	"stats_tcp_failed_connections",

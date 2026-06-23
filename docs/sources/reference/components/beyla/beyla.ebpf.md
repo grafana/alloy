@@ -199,6 +199,7 @@ You can use the following blocks with `beyla.ebpf`:
 | `injector` > [`trace_sampler`][sampler]                                | Configures default trace sampling for injected SDKs.                                               | no       |
 | `injector` > [`webhook`][injector webhook]                             | Configures delegation of SDK injection to an external webhook controller.                          | no       |
 | [`stats`][stats]                                                       | Configures stats observability options for Beyla.                                                  | no       |
+| [`jvm_runtime_metrics`][jvm_runtime_metrics]                           | Configures collection of JVM runtime metrics from instrumented Java processes.                     | no       |
 
 [routes]: #routes
 [traces]: #traces
@@ -226,6 +227,7 @@ You can use the following blocks with `beyla.ebpf`:
 [injector export]: #otel_exported_signals
 [injector resources]: #resources
 [stats]: #stats
+[jvm_runtime_metrics]: #jvm_runtime_metrics
 
 {{< /docs/alloy-config >}}
 
@@ -910,6 +912,17 @@ The `stats` block configures stats observability options for Beyla. You must app
 You can set `agent_ip_iface` to `external` (default), `local`, or `name:<interface name>`, for example `name:eth0`.
 
 You can set `agent_ip_type` to `ipv4`, `ipv6`, or `any` (default).
+
+### `jvm_runtime_metrics`
+
+The `jvm_runtime_metrics` block configures collection of JVM runtime metrics, such as heap usage, garbage collection, and thread counts, from instrumented Java processes.
+
+| Name                | Type       | Description                                | Default | Required |
+|---------------------|------------|--------------------------------------------|---------|----------|
+| `enabled`           | `bool`     | Enable collection of JVM runtime metrics.  | `false` | no       |
+| `sampling_interval` | `duration` | How often to sample JVM runtime metrics.   | `""`    | no       |
+
+When `sampling_interval` is unset, Beyla uses its own default interval.
 
 ## Exported fields
 

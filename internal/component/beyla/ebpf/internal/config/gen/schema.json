@@ -105,6 +105,19 @@
       },
       "type": "object"
     },
+    "AvoidedServicesConfig": {
+      "properties": {
+        "disabled": {
+          "type": "boolean",
+          "x-env-var": "OTEL_EBPF_INTERNAL_METRICS_AVOIDED_SERVICES_DISABLED"
+        },
+        "limit": {
+          "type": "integer",
+          "x-env-var": "OTEL_EBPF_INTERNAL_METRICS_AVOIDED_SERVICES_LIMIT"
+        }
+      },
+      "type": "object"
+    },
     "BedrockConfig": {
       "properties": {
         "enabled": {
@@ -127,7 +140,7 @@
         },
         "default_exclude_services": {
           "$ref": "#/$defs/RegexDefinitionCriteria",
-          "description": "DefaultExcludeServices by default prevents self-instrumentation of Beyla as well as related services (Alloy and OpenTelemetry collector) It must be set to an empty string or a different value if self-instrumentation is desired. Use DefaultExcludeInstrument instead",
+          "description": "DefaultExcludeServices by default prevents self-instrumentation of Beyla as well as related services (Alloy and OpenTelemetry collector) It must be set to an empty string or a different value if self-instrumentation is desired.  Use DefaultExcludeInstrument instead",
           "deprecated": true
         },
         "default_otlp_grpc_port": {
@@ -162,7 +175,7 @@
         },
         "exclude_services": {
           "$ref": "#/$defs/RegexDefinitionCriteria",
-          "description": "ExcludeServices works analogously to Services, but the applications matching this section won't be instrumented even if they match the Services selection. Use ExcludeInstrument instead",
+          "description": "ExcludeServices works analogously to Services, but the applications matching this section won't be instrumented even if they match the Services selection.  Use ExcludeInstrument instead",
           "deprecated": true
         },
         "excluded_linux_system_paths": {
@@ -213,7 +226,7 @@
         },
         "services": {
           "$ref": "#/$defs/RegexDefinitionCriteria",
-          "description": "Services selection. If the user defined the BEYLA_EXECUTABLE_NAME or BEYLA_OPEN_PORT variables, they will be automatically added to the services definition criteria, with the lowest preference. Use Instrument instead",
+          "description": "Services selection. If the user defined the BEYLA_EXECUTABLE_NAME or BEYLA_OPEN_PORT variables, they will be automatically added to the services definition criteria, with the lowest preference.  Use Instrument instead",
           "deprecated": true
         },
         "skip_go_specific_tracers": {
@@ -303,17 +316,25 @@
         },
         {
           "type": "string",
-          "pattern": "^(headers|http|tcp)(,(headers|http|tcp))*$",
-          "description": "List of propagation methods to enable (headers/http for HTTP headers, tcp for TCP options), separated by commas",
+          "pattern": "^(headers|tcp)(,(headers|tcp))*$",
+          "description": "Comma-separated list of propagation methods (headers for HTTP headers, tcp for TCP options)",
           "examples": [
             "headers",
             "tcp",
             "headers,tcp"
           ]
+        },
+        {
+          "type": "string",
+          "enum": [
+            "ip"
+          ],
+          "description": "IP options injection has been removed and has no effect",
+          "deprecated": true
         }
       ],
       "title": "Context Propagation Mode",
-      "description": "Configures distributed context propagation. Can be 'all' to enable all methods, 'disabled'/'' to disable, or a list of specific methods: 'headers' (or 'http') for HTTP headers, 'tcp' for TCP options."
+      "description": "Configures distributed context propagation. Can be 'all' to enable all methods, 'disabled'/'' to disable, or a comma-separated list of methods: 'headers' for HTTP headers, 'tcp' for TCP options (e.g. \"headers,tcp\")."
     },
     "CustomRoutesConfig": {
       "properties": {
@@ -613,13 +634,16 @@
           "all",
           "application",
           "application_host",
+          "application_jvm",
           "application_process",
+          "application_runtime",
           "application_service_graph",
           "application_span",
           "application_span_otel",
           "application_span_sizes",
           "ebpf",
           "network",
+          "network_flow_packets",
           "network_inter_zone",
           "stats",
           "stats_tcp_failed_connections",
@@ -1079,6 +1103,9 @@
     },
     "InternalMetricsConfig": {
       "properties": {
+        "avoided_services": {
+          "$ref": "#/$defs/AvoidedServicesConfig"
+        },
         "bpf_metric_scrape_interval": {
           "type": "string",
           "pattern": "^[0-9]+(ms|s|m)$",
@@ -1118,6 +1145,25 @@
         "enabled": {
           "type": "boolean",
           "x-env-var": "OTEL_EBPF_HTTP_JSONRPC_ENABLED"
+        }
+      },
+      "type": "object"
+    },
+    "JVMRuntimeMetricsConfig": {
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "x-env-var": "OBI_JVM_RUNTIME_METRICS_ENABLED"
+        },
+        "sampling_interval": {
+          "type": "string",
+          "pattern": "^[0-9]+(ms|s|m)$",
+          "examples": [
+            "30s",
+            "5m",
+            "1ms"
+          ],
+          "x-env-var": "OBI_JVM_RUNTIME_METRICS_SAMPLING_INTERVAL"
         }
       },
       "type": "object"
@@ -1404,7 +1450,8 @@
               "mqtt",
               "nats",
               "redis",
-              "sql"
+              "sql",
+              "sunrpc"
             ]
           },
           "type": "array",
@@ -1736,7 +1783,8 @@
               "mqtt",
               "nats",
               "redis",
-              "sql"
+              "sql",
+              "sunrpc"
             ]
           },
           "type": "array",
@@ -2328,7 +2376,8 @@
               "mqtt",
               "nats",
               "redis",
-              "sql"
+              "sql",
+              "sunrpc"
             ]
           },
           "type": "array",
@@ -2420,7 +2469,7 @@
     },
     "executable_name": {
       "$ref": "#/$defs/RegexpAttr",
-      "description": "Exec allows selecting the instrumented executable whose complete path contains the Exec value. Use BEYLA_AUTO_TARGET_EXE",
+      "description": "Exec allows selecting the instrumented executable whose complete path contains the Exec value.  Use BEYLA_AUTO_TARGET_EXE",
       "deprecated": true,
       "x-env-var": "BEYLA_EXECUTABLE_NAME"
     },
@@ -2443,6 +2492,9 @@
     },
     "javaagent": {
       "$ref": "#/$defs/JavaConfig"
+    },
+    "jvm_runtime_metrics": {
+      "$ref": "#/$defs/JVMRuntimeMetricsConfig"
     },
     "log_config": {
       "type": "string",
@@ -2506,7 +2558,7 @@
     },
     "service_name": {
       "type": "string",
-      "description": "ServiceName is taken from either BEYLA_SERVICE_NAME env var or OTEL_SERVICE_NAME (for OTEL spec compatibility) Using env and envDefault is a trick to get the value either from one of either variables. Service name should be set in the instrumentation target (env vars, kube metadata...) as this is a reminiscence of past times when we only supported one executable per instance.",
+      "description": "ServiceName is taken from either BEYLA_SERVICE_NAME env var or OTEL_SERVICE_NAME (for OTEL spec compatibility) Using env and envDefault is a trick to get the value either from one of either variables.  Service name should be set in the instrumentation target (env vars, kube metadata...) as this is a reminiscence of past times when we only supported one executable per instance.",
       "deprecated": true,
       "x-env-var": "OTEL_SERVICE_NAME"
     },
