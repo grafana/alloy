@@ -12,7 +12,7 @@ vars:
 
 tasks:
   cluster:create:
-    desc: Create a kind cluster
+    desc: Create the kind cluster (idempotent)
     run: once
     status:
       - test -f {{.KUBECONFIG}} && kubectl --kubeconfig {{.KUBECONFIG}} cluster-info &>/dev/null
@@ -21,22 +21,34 @@ tasks:
       - kind create cluster --config config/kind/multinode.yaml --name {{.CLUSTERNAME}} --kubeconfig {{.KUBECONFIG}}
 
   cluster:delete:
-    desc: Delete the kind cluster
+    desc: Destroy the kind cluster and remove the kubeconfig
     run: once
     cmds:
       - kind delete cluster --name {{.CLUSTERNAME}}
       - rm -rf {{.KUBECONFIG}}
 
   update-helm-repos:
-    desc: Update helm repositories
+    desc: Add and update Grafana / OTel helm repos
     run: once
     cmds:
       - helm repo add grafana https://grafana.github.io/helm-charts
       - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
       - helm repo update
 
+  run:security-poc-loki-receiver:
+    desc: Run a local Alloy receiver (loki.source.api → loki.echo) to print exfiltrated data
+    vars:
+      ALLOY_BIN: '{{.ALLOY_BIN | default (printf "%s/../../build/alloy" .ROOT_DIR)}}'
+      RECEIVER_CONFIG: '{{.ROOT_DIR}}/security-poc/receiver.alloy'
+    preconditions:
+      - sh: test -x {{.ALLOY_BIN}}
+        msg: "Alloy binary not found at {{.ALLOY_BIN}} — run 'SKIP_UI_BUILD=1 make alloy' first, or set ALLOY_BIN=/path/to/alloy"
+      - test -f {{.RECEIVER_CONFIG}}
+    cmds:
+      - '{{.ALLOY_BIN}} run --server.http.listen-addr=0.0.0.0:12346 {{.RECEIVER_CONFIG}}'
+
   deploy:alloy-helm:
-    desc: Deploy local Grafana Alloy helm chart
+    desc: Deploy the local Alloy helm chart (non-POC, basic values)
     deps: [cluster:create]
     vars:
       ALLOY_VALUES_FILE: '{{.ALLOY_VALUES_FILE | default "config/alloy-helm/basic.yaml"}}'
@@ -50,7 +62,7 @@ tasks:
         --wait
 
   deploy:security-poc:
-    desc: Deploy the security POC Alloy and its extra ConfigMap holding dummy flags
+    desc: Deploy all security POC resources (Alloy, flags, config-server, user-pipeline no-op)
     deps: [cluster:create]
     vars:
       ALLOY_VALUES_FILE: '{{.ROOT_DIR}}/config/security-poc/values.yaml'
@@ -73,23 +85,34 @@ tasks:
         --wait
 
   deploy:security-poc:user-pipeline:
-    desc: Reload only the attacker-controlled user-pipeline config served to Alloy
+    desc: Apply user-pipeline.yaml (no-op baseline) and roll config-server
     deps: [cluster:create]
     vars:
       USER_PIPELINE_FILE: '{{.ROOT_DIR}}/config/security-poc/manifests/user-pipeline.yaml'
     preconditions:
       - test -f {{.USER_PIPELINE_FILE}}
     cmds:
-      # Update the ConfigMap (source of truth), then roll config-server so a
-      # fresh pod mounts the new content immediately. The rolling restart keeps
-      # the old pod serving until the new one is Ready, so Alloy's import.http
-      # never sees a failed fetch.
-      - kubectl --kubeconfig {{.KUBECONFIG}} apply -f {{.USER_PIPELINE_FILE}}
+      # Substitute TIMESTAMP with the current Unix epoch before applying so
+      # every deploy gets a unique loki.source.file positions-file key,
+      # forcing a re-read from the start of the file automatically.
+      - sed "s/TIMESTAMP/$(date +%s)/g" {{.USER_PIPELINE_FILE}} | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
+
+  deploy:security-poc:flag1-demo:
+    desc: Inject flag1 exfil config — makes Alloy read config.alloy and ship it to the local receiver
+    deps: [cluster:create]
+    vars:
+      FLAG1_FILE: '{{.ROOT_DIR}}/security-poc/demos/flag1-demo.yaml'
+    preconditions:
+      - test -f {{.FLAG1_FILE}}
+    cmds:
+      - sed "s/TIMESTAMP/$(date +%s)/g" {{.FLAG1_FILE}} | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
 
   deploy:cloud-onboarding:local:
-    desc: Deploy Grafana Cloud Onboarding helm chart
+    desc: Deploy Grafana Cloud Onboarding helm chart (requires .env.credentials)
     deps: [cluster:create, update-helm-repos]
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} upgrade --install grafana-cloud
@@ -102,7 +125,7 @@ tasks:
         --wait
 
   deploy:otelcol:
-    desc: Deploy OpenTelemetry Collector helm chart using Alloy OTel Engine
+    desc: Deploy OpenTelemetry Collector helm chart via Alloy OTel Engine
     deps: [cluster:create, update-helm-repos]
     vars:
       OTELCOL_VALUES_FILE: '{{.OTELCOL_VALUES_FILE | default "config/otelcol-helm/values.yaml"}}'
@@ -116,13 +139,13 @@ tasks:
         --wait
 
   remove:cloud-onboarding:local:
-    desc: Remove Grafana Cloud Onboarding helm chart
+    desc: Uninstall the Grafana Cloud Onboarding helm release
     deps: [update-helm-repos]
     cmds:
       - helm --kubeconfig {{.KUBECONFIG}} uninstall grafana-cloud -n monitoring
 
   expose:
-    desc: Expose all services on localhost via port-forward
+    desc: Port-forward all services to localhost (requires cloud-onboarding deployed)
     deps: [deploy:cloud-onboarding:local]
     cmds:
       - "{{.ROOT_DIR}}/config/expose.sh {{.KUBECONFIG}}"

