@@ -54,8 +54,8 @@ This setting doesn't affect errors during OTTL parsing at configuration time, wh
 You can set `error_mode` to one of the following values:
 
 * `propagate`: Return the error up the pipeline. {{< param "PRODUCT_NAME" >}} drops the payload from the pipeline.
-* `ignore`: Ignore the error and continue to process data. If an error occurs, {{< param "PRODUCT_NAME" >} skips the record and logs the error.
-* `silent`: Ignore the error and continue to process data. If an error occurs, {{< param "PRODUCT_NAME" >} skips the record and doesn't log the error.
+* `ignore`: Ignore the error and continue to process data. If an error occurs, {{< param "PRODUCT_NAME" >}} skips the record and logs the error.
+* `silent`: Ignore the error and continue to process data. If an error occurs, {{< param "PRODUCT_NAME" >}} skips the record and doesn't log the error.
 
 ## Blocks
 
