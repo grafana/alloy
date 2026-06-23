@@ -81,13 +81,8 @@ For new components and larger changes, follow the existing [proposal process][pr
 A proposal or design document must reflect your own reasoning. AI may help you draft it, but you own
 the argument in the public consensus discussion.
 
-If you contribute a [community component][community-components], remember that doing so makes you its
-maintainer. AI can help you author it, but you accept ongoing, human responsibility for maintaining
-it.
-
 [issue-triage]: ./issue-triage.md
 [license]: ../../LICENSE
 [cla]: https://cla-assistant.io/grafana/alloy
 [contributing-deps]: ./contributing.md#dependency-management
 [proposal-process]: ../design/README.md
-[community-components]: ./adding-community-components.md
