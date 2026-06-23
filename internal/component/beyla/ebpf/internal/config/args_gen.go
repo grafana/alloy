@@ -238,6 +238,11 @@ type Javaagent struct {
 	Enabled              *bool         `alloy:"enabled,attr,optional"`
 }
 
+type JVMRuntimeMetrics struct {
+	Enabled          bool          `alloy:"enabled,attr,optional"`
+	SamplingInterval time.Duration `alloy:"sampling_interval,attr,optional"`
+}
+
 type Nodejs struct {
 	Enabled *bool `alloy:"enabled,attr,optional"`
 }
