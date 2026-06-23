@@ -169,6 +169,10 @@ type Metadata struct {
 	Requirements []Requirement
 }
 
+func (md Metadata) IsEmpty() bool {
+	return len(md.Platforms) == 0 && len(md.Requirements) == 0
+}
+
 // Requirement describes a prerequisite for running a component, such as
 // required privileges or capabilities.
 type Requirement struct {
