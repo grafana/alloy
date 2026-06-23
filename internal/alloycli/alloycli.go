@@ -30,6 +30,7 @@ func Command() *cobra.Command {
 		RunCommand(),
 		toolsCommand(),
 		validateCommand(),
+		reviewCommand(),
 	)
 
 	return cmd

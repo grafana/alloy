@@ -1,0 +1,13 @@
+{{ if .Metrics }}
+## Debug metrics
+
+{{ range .Metrics }}* `{{ $.Namespace }}_{{ $.Subsystem }}_{{ .Name }}` ({{ .PromType }}): {{ .Help }}.
+{{ end }}{{ end }}{{ if .Platforms }}
+## Supported platforms
+
+{{ range .Platforms }}- {{ . }}
+{{ end }}{{ end }}{{ if .Requirements }}
+## Requirements
+
+{{ range .Requirements }}- {{ .Description }}{{ if .Reference }} Refer to [the documentation]({{ .Reference }}) for more information.{{ end }}
+{{ end }}{{ end }}

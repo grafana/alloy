@@ -311,7 +311,7 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 		msg, ok = entry.Fields["MESSAGE"]
 		if !ok {
 			t.logger.Debug("received journal entry with no MESSAGE field", "unit", entry.Fields["_SYSTEMD_UNIT"])
-			t.metrics.journalErrors.WithLabelValues(noMessageError).Inc()
+			t.metrics.ParsingErrorsTotal.WithLabelValues(noMessageError).Inc()
 			return journalEmptyStr, nil
 		}
 	}
@@ -319,7 +319,7 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 	addJournalFields(t.builder, entry.Fields)
 	if !relabel.ProcessBuilder(t.builder, t.relabelConfig...) {
 		t.logger.Debug("journal entry dropped by relabel rules", "unit", entry.Fields["_SYSTEMD_UNIT"])
-		t.metrics.journalErrors.WithLabelValues(emptyLabelsError).Inc()
+		t.metrics.ParsingErrorsTotal.WithLabelValues(emptyLabelsError).Inc()
 		return journalEmptyStr, nil
 	}
 
@@ -334,11 +334,11 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 	if len(lset) == 0 {
 		// No labels, drop journal entry
 		t.logger.Debug("received journal entry with no labels", "unit", entry.Fields["_SYSTEMD_UNIT"])
-		t.metrics.journalErrors.WithLabelValues(emptyLabelsError).Inc()
+		t.metrics.ParsingErrorsTotal.WithLabelValues(emptyLabelsError).Inc()
 		return journalEmptyStr, nil
 	}
 
-	t.metrics.journalLines.Inc()
+	t.metrics.LinesTotal.Inc()
 	t.positions.PutString(t.positionPath, "", entry.Cursor)
 
 	t.recv.Chan() <- loki.NewEntry(lset, push.Entry{

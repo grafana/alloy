@@ -1,0 +1,25 @@
+name: loki.source.journal
+
+platforms:
+ - linux
+
+requirements:
+ - description: >
+    To read from the systemd journal, the `alloy` user must be a member of the `adm` and `systemd-journal` groups.
+    Without this group membership, the component starts without error but collects no journal entries.
+
+
+namespace: loki
+subsystem: source_journal_target
+
+metrics:
+  parsing_errors_total:
+    type: CounterVec
+    help: Total number of parsing errors while reading journal messages
+    labels: 
+      - errors
+  lines_total:
+    type: Counter
+    help: Total number of successful journal lines read
+
+
