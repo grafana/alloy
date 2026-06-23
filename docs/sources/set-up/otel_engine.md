@@ -101,7 +101,7 @@ extensions:
       password: <PASSWORD>
   alloyengine:
     config:
-      file: <ALLOY_CONFIG_PATH>
+      path: <ALLOY_CONFIG_PATH>
     flags:
       server.http.listen-addr: 0.0.0.0:12345
 
