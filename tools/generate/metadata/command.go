@@ -177,12 +177,23 @@ func generateMetricsGoFile(dir string, md Metadata) error {
 }
 
 func generateMetadataDocs(root string, md Metadata) error {
+	type metricView struct {
+		Name string
+		Metric
+	}
+
 	type data struct {
 		Platforms    []string
 		Requirements []Requirement
+		Namespace    string
+		Subsystem    string
+		Metrics      []metricView
 	}
 
-	var d data
+	d := data{
+		Namespace: md.Namespace,
+		Subsystem: md.Subsystem,
+	}
 
 	for _, p := range md.Platforms {
 		name := platformDisplayNames[p]
@@ -197,6 +208,18 @@ func generateMetadataDocs(root string, md Metadata) error {
 			Description: strings.TrimSpace(r.Description),
 			Reference:   strings.TrimSpace(r.Reference),
 		})
+	}
+
+	names := make([]string, 0, len(md.Metrics))
+	for name := range md.Metrics {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		m := md.Metrics[name]
+		m.Help = strings.TrimSpace(m.Help)
+		d.Metrics = append(d.Metrics, metricView{Name: name, Metric: m})
 	}
 
 	var buf bytes.Buffer

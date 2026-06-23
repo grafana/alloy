@@ -12,10 +12,7 @@ import (
 )
 
 func reviewCommand() *cobra.Command {
-	r := &alloyReview{
-		configFormat: "alloy",
-		minStability: featuregate.StabilityGenerallyAvailable,
-	}
+	r := &alloyReview{configFormat: "alloy"}
 
 	cmd := &cobra.Command{
 		Use:          "review [flags] file",
@@ -29,8 +26,8 @@ func reviewCommand() *cobra.Command {
 
 	// Config flags
 	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
-	cmd.Flags().BoolVar(&r.configBypassConversionErrors, "config.bypass-conversion-errors", r.configBypassConversionErrors, "Enable bypassing errors when converting")
 	cmd.Flags().StringVar(&r.configExtraArgs, "config.extra-args", r.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
+	cmd.Flags().BoolVar(&r.configBypassConversionErrors, "config.bypass-conversion-errors", r.configBypassConversionErrors, "Enable bypassing errors when converting")
 
 	return cmd
 }
@@ -39,9 +36,6 @@ type alloyReview struct {
 	configFormat                 string
 	configBypassConversionErrors bool
 	configExtraArgs              string
-
-	minStability         featuregate.Stability
-	enableCommunityComps bool
 }
 
 func (v *alloyReview) Run(configFile string) error {

@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"fmt"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -68,6 +69,12 @@ func (m Metric) OptsType() string { return metricKinds[m.Type].OptsType }
 // IsVec reports whether the metric constructor takes a label slice.
 func (m Metric) IsVec() bool { return metricKinds[m.Type].IsVec }
 
+// PromType returns the lowercase base Prometheus type used in documentation,
+// e.g. "CounterVec" becomes "counter".
+func (m Metric) PromType() string {
+	return strings.ToLower(strings.TrimSuffix(string(m.Type), "Vec"))
+}
+
 // MetricType is the kind of Prometheus metric, matching the client_golang
 // constructor names.
 type MetricType string
@@ -98,10 +105,10 @@ func (t *MetricType) UnmarshalYAML(value *yaml.Node) error {
 
 // metricKind holds the code-generation details for a metric type.
 type metricKind struct {
-	GoType   string // struct field type, e.g. "*prometheus.CounterVec"
-	NewFunc  string // constructor, e.g. "prometheus.NewCounterVec"
-	OptsType string // opts type, e.g. "prometheus.CounterOpts"
-	IsVec    bool   // whether the constructor takes a label slice
+	GoType   string
+	NewFunc  string
+	OptsType string
+	IsVec    bool
 }
 
 var metricKinds = map[MetricType]metricKind{

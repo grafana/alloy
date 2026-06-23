@@ -1,5 +1,8 @@
+{{ if .Metrics }}
+## Debug metrics
 
-{{ if .Platforms }}
+{{ range .Metrics }}* `{{ $.Namespace }}_{{ $.Subsystem }}_{{ .Name }}` ({{ .PromType }}): {{ .Help }}.
+{{ end }}{{ end }}{{ if .Platforms }}
 ## Supported platforms
 
 {{ range .Platforms }}- {{ . }}

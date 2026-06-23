@@ -137,12 +137,11 @@ The translation of legacy position file will happens if there is no position fil
 
 `loki.source.journal` is only reported as unhealthy if given an invalid configuration.
 
-## Debug Metrics
-
-* `loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
-* `loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.
-
 <!-- START GENERATED METADATA -->
+## Debug metrics
+
+* `loki_source_journal_target_lines_total` (counter): Total number of successful journal lines read.
+* `loki_source_journal_target_parsing_errors_total` (counter): Total number of parsing errors while reading journal messages.
 
 ## Supported platforms
 
