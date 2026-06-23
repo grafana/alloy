@@ -12,9 +12,10 @@ import (
 
 // Options is a set of options used to construct and configure a Logger.
 type Options struct {
-	Level       Level          `alloy:"level,attr,optional"`
-	Format      Format         `alloy:"format,attr,optional"`
-	Destination LogDestination `alloy:"destination,attr,optional"`
+	Level            Level          `alloy:"level,attr,optional"`
+	Format           Format         `alloy:"format,attr,optional"`
+	Destination      LogDestination `alloy:"destination,attr,optional"`
+	DisableTimestamp bool           `alloy:"disable_timestamp,attr,optional"`
 
 	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
 }

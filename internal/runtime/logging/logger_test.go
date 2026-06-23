@@ -3,6 +3,7 @@ package logging_test
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -122,6 +123,98 @@ func TestLevels(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDisableTimestamp(t *testing.T) {
+	tests := []struct {
+		name   string
+		format logging.Format
+		check  func(*testing.T, string)
+	}{
+		{
+			name:   "logfmt",
+			format: logging.FormatLogfmt,
+			check: func(t *testing.T, output string) {
+				require.NotContains(t, output, "ts=")
+				require.Contains(t, output, "level=info msg=test")
+			},
+		},
+		{
+			name:   "json",
+			format: logging.FormatJSON,
+			check: func(t *testing.T, output string) {
+				var record map[string]any
+				require.NoError(t, json.Unmarshal([]byte(output), &record))
+				require.NotContains(t, record, "ts")
+				require.Equal(t, "test", record["msg"])
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			var buf bytes.Buffer
+			opts := infoLevel()
+			opts.Format = tc.format
+			opts.DisableTimestamp = true
+
+			logger, err := logging.New(&buf, opts)
+			require.NoError(t, err)
+			logger.Slog().Info("test")
+
+			tc.check(t, buf.String())
+		})
+	}
+}
+
+func TestDisableTimestampPreservesNestedTimeAttribute(t *testing.T) {
+	var buf bytes.Buffer
+	opts := infoLevel()
+	opts.DisableTimestamp = true
+
+	logger, err := logging.New(&buf, opts)
+	require.NoError(t, err)
+	logger.Slog().WithGroup("details").Info("test", slog.String("time", "user-value"))
+
+	require.NotContains(t, buf.String(), "ts=")
+	require.Contains(t, buf.String(), "details.time=user-value")
+}
+
+func TestDisableTimestampUpdate(t *testing.T) {
+	var buf bytes.Buffer
+	opts := infoLevel()
+
+	logger, err := logging.New(&buf, opts)
+	require.NoError(t, err)
+	logger.Slog().Info("enabled-before-update")
+	require.Contains(t, buf.String(), "ts=")
+
+	buf.Reset()
+	opts.DisableTimestamp = true
+	require.NoError(t, logger.Update(opts))
+	logger.Slog().Info("disabled-after-update")
+	require.NotContains(t, buf.String(), "ts=")
+
+	buf.Reset()
+	opts.DisableTimestamp = false
+	require.NoError(t, logger.Update(opts))
+	logger.Slog().Info("enabled-after-second-update")
+	require.Contains(t, buf.String(), "ts=")
+}
+
+func TestDisableTimestampBufferedRecord(t *testing.T) {
+	var buf bytes.Buffer
+	logger, err := logging.NewDeferred(&buf)
+	require.NoError(t, err)
+
+	logger.Slog().Info("buffered")
+	require.Empty(t, buf.String())
+
+	opts := infoLevel()
+	opts.DisableTimestamp = true
+	require.NoError(t, logger.Update(opts))
+	require.Contains(t, buf.String(), "msg=buffered")
+	require.NotContains(t, buf.String(), "ts=")
 }
 
 // Test_lokiWriter_nil ensures that writing to a lokiWriter doesn't panic when

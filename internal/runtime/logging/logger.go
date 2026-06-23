@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/common/model"
@@ -36,6 +37,8 @@ type Logger struct {
 	// the optional Windows Event Log.
 	handler      *handler
 	deferredSlog *deferredSlogHandler // Buffers slog output until config is loaded, then delegates to handler.
+
+	disableTimestamp atomic.Bool // controls whether timestamps are omitted from serialized logs.
 }
 
 var _ EnabledAware = (*Logger)(nil)
@@ -76,6 +79,7 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		leveler slog.LevelVar
 		format  formatVar
 	)
+
 	// innerWriter is stable for the life of the Logger; destinations that
 	// want to suppress it (windows_event_log) lazily open an event log via
 	// the writer's own opener instead of swapping the writer.
@@ -83,17 +87,17 @@ func NewDeferred(w io.Writer) (*Logger, error) {
 		innerWriter:    w,
 		eventLogOpener: eventlog.GetEventLogOpener(),
 	}
-	bh := newHandler(writer, &leveler, &format, replace, nil)
 
 	l := &Logger{
 		buffer:       []*bufferedItem{},
 		hasLogFormat: false,
-
-		level:   &leveler,
-		format:  &format,
-		writer:  writer,
-		handler: bh,
+		level:        &leveler,
+		format:       &format,
+		writer:       writer,
 	}
+
+	replacer := replaceWithOptions(&l.disableTimestamp)
+	l.handler = newHandler(writer, &leveler, &format, replacer, nil)
 	l.deferredSlog = newDeferredHandler(l)
 
 	return l, nil
@@ -118,6 +122,7 @@ func (l *Logger) Update(o Options) error {
 	l.bufferMut.Lock()
 	l.level.Set(slogLevel(o.Level).Level())
 	l.format.Set(o.Format)
+	l.disableTimestamp.Store(o.DisableTimestamp)
 	if err := l.writer.SetDestination(o.Destination); err != nil {
 		l.bufferMut.Unlock()
 		return err

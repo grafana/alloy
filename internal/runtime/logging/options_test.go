@@ -88,3 +88,37 @@ func TestOptions_EndToEnd(t *testing.T) {
 		})
 	}
 }
+
+func TestOptionsDisableTimestamp(t *testing.T) {
+	tests := []struct {
+		name   string
+		config string
+		want   bool
+	}{
+		{
+			name:   "omitted",
+			config: `level = "info"`,
+			want:   false,
+		},
+		{
+			name:   "enabled",
+			config: `disable_timestamp = true`,
+			want:   true,
+		},
+		{
+			name:   "explicitly disabled",
+			config: `disable_timestamp = false`,
+			want:   false,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			stubIsWindowsService(t, false)
+
+			var o Options
+			require.NoError(t, syntax.Unmarshal([]byte(tc.config), &o))
+			require.Equal(t, tc.want, o.DisableTimestamp)
+		})
+	}
+}

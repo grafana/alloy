@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -169,6 +170,15 @@ var unsafeKeyCharReplacer = strings.NewReplacer(
 	"\f", "_",
 	"\r", "_",
 )
+
+func replaceWithOptions(disableTimestamp *atomic.Bool) func([]string, slog.Attr) slog.Attr {
+	return func(groups []string, a slog.Attr) slog.Attr {
+		if len(groups) == 0 && a.Key == slog.TimeKey && disableTimestamp.Load() {
+			return slog.Attr{}
+		}
+		return replace(groups, a)
+	}
+}
 
 func replace(groups []string, a slog.Attr) slog.Attr {
 	if len(groups) > 0 {
