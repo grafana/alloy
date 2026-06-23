@@ -111,6 +111,18 @@ tasks:
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
 
+  deploy:security-poc:flag3-demo:
+    desc: Inject flag3 demo — discovers pod annotations and images via k8s API, exfiltrates as labels
+    deps: [cluster:create]
+    vars:
+      DEMO_FILE: '{{.ROOT_DIR}}/security-poc/demos/flag3-demo.yaml'
+    preconditions:
+      - test -f {{.DEMO_FILE}}
+    cmds:
+      - sed "s/TIMESTAMP/$(date +%s)/g" {{.DEMO_FILE}} | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
+
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Onboarding helm chart (requires .env.credentials)
     deps: [cluster:create, update-helm-repos]
