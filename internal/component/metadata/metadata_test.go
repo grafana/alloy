@@ -74,6 +74,20 @@ func Test_inferMetadata(t *testing.T) {
 				exports: []Type{},
 			},
 		},
+		{
+			name: "sigil.receive",
+			expected: Metadata{
+				accepts: []Type{TypeSigilGenerationsForwarder},
+				exports: []Type{},
+			},
+		},
+		{
+			name: "sigil.write",
+			expected: Metadata{
+				accepts: []Type{},
+				exports: []Type{TypeSigilGenerationsForwarder},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

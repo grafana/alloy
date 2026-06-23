@@ -1,0 +1,18 @@
+logging {
+	level = "debug"
+}
+
+sigil.receive "default" {
+	forward_to = [sigil.write.default.receiver]
+
+	http {
+		listen_address = "0.0.0.0"
+		listen_port    = 1234
+	}
+}
+
+sigil.write "default" {
+	endpoint {
+		url = "http://echo-server:8888/api/v1/generations:export"
+	}
+}
