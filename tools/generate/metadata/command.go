@@ -3,12 +3,11 @@ package metadata
 import (
 	"bytes"
 	_ "embed"
-	"errors"
 	"fmt"
 	"go/format"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -21,21 +20,27 @@ import (
 const (
 	fileNameMetadata          = "metadata.yml"
 	fileNameGeneratedMetadata = "generated_metadata.go"
-)
+	fileNameGeneratedMetrics  = "generated_metrics.go"
 
-//go:embed templates/metadata.go.tmpl
-var metadataTemplateSource string
+	generatedDir         = "internal/metadata"
+	generatedPackageName = "metadata"
 
-var metadataTemplate = template.Must(template.New("metadata").Parse(metadataTemplateSource))
-
-//go:embed templates/metadata.md.tmpl
-var metadataDocsTemplateSource string
-
-var metadataDocsTemplate = template.Must(template.New("metadata-docs").Parse(metadataDocsTemplateSource))
-
-const (
 	docsStartMarker = "<!-- START GENERATED METADATA -->"
 	docsEndMarker   = "<!-- END GENERATED METADATA -->"
+)
+
+var (
+	//go:embed templates/metadata.go.tmpl
+	metadataTemplateSource string
+	metadataTemplate       = template.Must(template.New("metadata").Parse(metadataTemplateSource))
+	//go:embed templates/metadata.md.tmpl
+	metadataDocsTemplateSource string
+	metadataDocsTemplate       = template.Must(template.New("metadata-docs").Parse(metadataDocsTemplateSource))
+	//go:embed templates/metrics.go.tmpl
+	metricsTemplateSource string
+	metricsTemplate       = template.Must(template.New("metrics").Funcs(template.FuncMap{
+		"field": toPascalCase,
+	}).Parse(metricsTemplateSource))
 )
 
 var platformDisplayNames = map[Platform]string{
@@ -75,24 +80,18 @@ func run(f flags) error {
 	}
 
 	for _, dir := range result.Dirs() {
-		pkg, err := parsePkg(dir)
-		if err != nil {
-			return err
-		}
-
 		mfile, err := os.Open(filepath.Join(dir, fileNameMetadata))
 		if err != nil {
 			return fmt.Errorf("failed to open metadata file: %w", err)
 		}
 
 		var metadata Metadata
-
 		if err := yaml.NewDecoder(mfile).Decode(&metadata); err != nil {
 			return fmt.Errorf("failed to decode metadata file: %w", err)
 		}
 
 		// Generate metadata go file
-		if err := generateMetadataGoFile(pkg, dir, metadata); err != nil {
+		if err := generateMetadataGoFile(dir, metadata); err != nil {
 			return fmt.Errorf("failed to generate metadata file: %w", err)
 		}
 
@@ -100,9 +99,81 @@ func run(f flags) error {
 		if err := generateMetadataDocs(root, metadata); err != nil {
 			return fmt.Errorf("failed to generate metadata docs: %w", err)
 		}
+
+		// Generate metrics go file
+		if err := generateMetricsGoFile(dir, metadata); err != nil {
+			return fmt.Errorf("failed to generate metrics file: %w", err)
+		}
 	}
 
 	return nil
+}
+
+// writeGeneratedFile renders tmpl with data, gofmts it, and writes it to
+// <dir>/internal/metadata/<fileName>, creating the directory if needed.
+func writeGeneratedFile(dir, fileName string, tmpl *template.Template, data any) error {
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return fmt.Errorf("failed to execute template: %w", err)
+	}
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed to format generated source: %w", err)
+	}
+
+	outDir := filepath.Join(dir, generatedDir)
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create %s: %w", outDir, err)
+	}
+
+	out := filepath.Join(outDir, fileName)
+	if err := os.WriteFile(out, formatted, 0o644); err != nil {
+		return fmt.Errorf("failed to write %s: %w", out, err)
+	}
+
+	return nil
+}
+
+func generateMetricsGoFile(dir string, md Metadata) error {
+	if len(md.Metrics) == 0 {
+		return nil
+	}
+
+	type metricView struct {
+		Name string
+		Metric
+	}
+
+	names := make([]string, 0, len(md.Metrics))
+	for name := range md.Metrics {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	metrics := make([]metricView, 0, len(names))
+	for _, name := range names {
+		m := md.Metrics[name]
+		m.Help = strings.TrimSpace(m.Help)
+		metrics = append(metrics, metricView{
+			Name:   name,
+			Metric: m,
+		})
+	}
+
+	data := struct {
+		Package   string
+		Namespace string
+		Subsystem string
+		Metrics   []metricView
+	}{
+		Package:   generatedPackageName,
+		Namespace: md.Namespace,
+		Subsystem: md.Subsystem,
+		Metrics:   metrics,
+	}
+
+	return writeGeneratedFile(dir, fileNameGeneratedMetrics, metricsTemplate, data)
 }
 
 func generateMetadataDocs(root string, md Metadata) error {
@@ -139,49 +210,12 @@ func generateMetadataDocs(root string, md Metadata) error {
 	return writeBetweenMarkers(docPath, docsStartMarker, docsEndMarker, buf.String())
 }
 
-func generateMetadataGoFile(pkg, dir string, md Metadata) error {
+func generateMetadataGoFile(dir string, md Metadata) error {
 	type data struct {
 		Package string
 		Metadata
 	}
-
-	d := data{
-		Package:  pkg,
-		Metadata: md,
-	}
-
-	var buf bytes.Buffer
-	if err := metadataTemplate.Execute(&buf, d); err != nil {
-		return fmt.Errorf("failed to execute template: %w", err)
-	}
-
-	formatted, err := format.Source(buf.Bytes())
-	if err != nil {
-		return fmt.Errorf("failed to format generated source: %w", err)
-	}
-
-	out := filepath.Join(dir, fileNameGeneratedMetadata)
-	if err := os.WriteFile(out, formatted, 0o644); err != nil {
-		return fmt.Errorf("failed to write %s: %w", out, err)
-	}
-
-	return nil
-}
-
-func parsePkg(dir string) (string, error) {
-	cmd := exec.Command("go", "list", "-f", "{{.Name}}")
-	cmd.Dir = dir
-
-	out, err := cmd.Output()
-	if err != nil {
-		var exitErr *exec.ExitError
-		if errors.As(err, &exitErr) {
-			return "", fmt.Errorf("failed to resolve package name in %s: %s", dir, exitErr.Stderr)
-		}
-		return "", fmt.Errorf("failed to resolve package name in %s: %w", dir, err)
-	}
-
-	return strings.TrimSpace(string(out)), nil
+	return writeGeneratedFile(dir, fileNameGeneratedMetadata, metadataTemplate, data{Package: generatedPackageName, Metadata: md})
 }
 
 func writeBetweenMarkers(path, start, end, content string) error {
@@ -204,4 +238,17 @@ func writeBetweenMarkers(path, start, end, content string) error {
 	out = append(out, contents[endIdx+len(end):]...)
 
 	return os.WriteFile(path, out, 0o644)
+}
+
+func toPascalCase(s string) string {
+	var b strings.Builder
+	for p := range strings.SplitSeq(s, "_") {
+		if p == "" {
+			continue
+		}
+
+		b.WriteString(strings.ToUpper(p[:1]))
+		b.WriteString(p[1:])
+	}
+	return b.String()
 }

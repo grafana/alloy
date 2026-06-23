@@ -6,6 +6,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
+	"github.com/grafana/alloy/internal/component/loki/source/journal/internal/metadata"
 	"github.com/grafana/alloy/internal/featuregate"
 )
 
@@ -13,7 +14,7 @@ func init() {
 	component.Register(component.Registration{
 		Name:      "loki.source.journal",
 		Stability: featuregate.StabilityGenerallyAvailable,
-		Metadata:  metadata,
+		Metadata:  metadata.Metadata,
 		Args:      Arguments{},
 		Build: func(opts component.Options, args component.Arguments) (component.Component, error) {
 			return New(opts, args.(Arguments))

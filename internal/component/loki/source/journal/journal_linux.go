@@ -10,13 +10,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 	"github.com/prometheus/common/model"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
+	"github.com/grafana/alloy/internal/component/loki/source/journal/internal/metadata"
+	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
 )
 
 var _ component.Component = (*Component)(nil)
@@ -24,7 +25,7 @@ var _ component.Component = (*Component)(nil)
 // Component represents reading from a journal
 type Component struct {
 	opts           component.Options
-	metrics        *metrics
+	metrics        *metadata.Metrics
 	recv           loki.LogsReceiver
 	positions      positions.Positions
 	targetsUpdated chan struct{}
@@ -60,8 +61,8 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		metrics:        newMetrics(o.Registerer),
 		opts:           o,
+		metrics:        metadata.NewMetrics(o.Registerer),
 		recv:           loki.NewLogsReceiver(),
 		positions:      positionsFile,
 		fanout:         loki.NewFanout(args.ForwardTo),

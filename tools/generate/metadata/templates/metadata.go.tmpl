@@ -6,7 +6,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 )
 
-var metadata = component.Metadata{
+var Metadata = component.Metadata{
 	{{- if .Platforms }}
 	Platforms: []string{
 		{{- range .Platforms }}
