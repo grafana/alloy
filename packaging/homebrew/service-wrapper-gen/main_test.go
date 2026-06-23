@@ -14,7 +14,7 @@ func TestRenderGolden(t *testing.T) {
 	}{
 		{
 			name:   "homebrew-core",
-			golden: "core.golden",
+			golden: "core.golden.sh",
 			data: templateData{
 				AlloyBin:          "/opt/homebrew/opt/grafana-alloy/bin/alloy",
 				ConfigPath:        "/opt/homebrew/etc/grafana-alloy",
@@ -26,7 +26,7 @@ func TestRenderGolden(t *testing.T) {
 		},
 		{
 			name:   "homebrew-grafana",
-			golden: "grafana.golden",
+			golden: "grafana.golden.sh",
 			data: templateData{
 				AlloyBin:          "/opt/homebrew/opt/alloy/bin/alloy",
 				ConfigPath:        "/opt/homebrew/etc/alloy/config.alloy",
