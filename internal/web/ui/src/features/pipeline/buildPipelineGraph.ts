@@ -132,13 +132,7 @@ export function buildPipelineGraph(
       );
     }
 
-    addEdges(
-      edges,
-      edgeIdSet,
-      innerComponents,
-      (localID) => innerNodeId(component.localID, localID),
-      nameByLocalID
-    );
+    addEdges(edges, edgeIdSet, innerComponents, (localID) => innerNodeId(component.localID, localID), nameByLocalID);
   }
 
   addEdges(edges, edgeIdSet, components, (localID) => localID, nameByLocalID);

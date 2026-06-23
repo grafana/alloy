@@ -49,15 +49,9 @@ function Graph() {
     }
   }
 
-  const baseGraph = useMemo(
-    () => buildPipelineGraph(components, moduleInternals),
-    [components, moduleInternals]
-  );
+  const baseGraph = useMemo(() => buildPipelineGraph(components, moduleInternals), [components, moduleInternals]);
 
-  const graph: PipelineGraphData = useMemo(
-    () => overlayLiveMetrics(baseGraph, debugData),
-    [baseGraph, debugData]
-  );
+  const graph: PipelineGraphData = useMemo(() => overlayLiveMetrics(baseGraph, debugData), [baseGraph, debugData]);
 
   const onNodeClick = (node: PipelineNode) => {
     const nodeModuleID = String(node.meta?.moduleID ?? '');
@@ -87,9 +81,7 @@ function Graph() {
       icon={faDiagramProject}
       controls={controls}
       infoText={
-        <div className={styles.infoText}>
-          Only edges from components that support live debugging show flow rates.
-        </div>
+        <div className={styles.infoText}>Only edges from components that support live debugging show flow rates.</div>
       }
     >
       {error ? (

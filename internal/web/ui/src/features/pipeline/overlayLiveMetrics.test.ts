@@ -81,12 +81,8 @@ describe('overlayLiveMetrics', () => {
 
     const result = overlayLiveMetrics(g, [debug({ targetComponentIDs: [], rate: 7 })]);
 
-    expect(result.edges.find((e) => e.id === 'a->b')!.signalMetrics).toEqual([
-      { signal: SignalKind.Metrics, value: 7 },
-    ]);
-    expect(result.edges.find((e) => e.id === 'a->c')!.signalMetrics).toEqual([
-      { signal: SignalKind.Metrics, value: 7 },
-    ]);
+    expect(result.edges.find((e) => e.id === 'a->b')!.signalMetrics).toEqual([{ signal: SignalKind.Metrics, value: 7 }]);
+    expect(result.edges.find((e) => e.id === 'a->c')!.signalMetrics).toEqual([{ signal: SignalKind.Metrics, value: 7 }]);
   });
 
   it('matches inner (container/local) edge endpoints by localID', () => {

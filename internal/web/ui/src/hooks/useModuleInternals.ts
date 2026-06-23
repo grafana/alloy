@@ -5,10 +5,7 @@ import type { ComponentInfo } from '../features/component/types';
 /**
  * Fetches internal components for each module ID referenced by custom components.
  */
-export function useModuleInternals(
-  components: ComponentInfo[],
-  isRemotecfg: boolean
-): Map<string, ComponentInfo[]> {
+export function useModuleInternals(components: ComponentInfo[], isRemotecfg: boolean): Map<string, ComponentInfo[]> {
   const [internals, setInternals] = useState<Map<string, ComponentInfo[]>>(new Map());
 
   useEffect(() => {
