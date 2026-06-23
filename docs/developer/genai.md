@@ -1,7 +1,7 @@
 # Generative AI Contribution Policy
 
 Generative AI (GenAI) tools such as large language model (LLM) assistants can help you write code,
-documentation, and proposals for Grafana Alloy. This policy explains how to use them responsibly
+documentation, and proposals for Grafana Alloy. This policy explains what is an acceptable use of GenAI tools
 when contributing to the project.
 
 ## Core principle
