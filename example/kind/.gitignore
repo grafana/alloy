@@ -2,3 +2,7 @@
 build/
 # Environment variables for local development
 .env.credentials
+# Security POC dump artifacts (exfiltrated data — never commit)
+*.log
+*.json
+*.txt

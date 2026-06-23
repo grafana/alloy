@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: internal
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+  namespace: internal
+stringData:
+  username: admin
+  password: secret_value_flag_5
+  host: postgres.internal.svc
+  port: "5432"
+  database: production

