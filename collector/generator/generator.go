@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"flag"
 	"fmt"
 	"log"
@@ -10,51 +11,44 @@ import (
 	"strings"
 )
 
+var (
+	//go:embed main_alloy.tpl
+	templateMainAlloy []byte
+)
+
 func main() {
 	log.Println("Generating Alloy OTel Collector main file...")
 
-	otelGeneratedMain := flag.String("main-path", "", "Path to the OTel-generated main.go file")
-	alloyMain := flag.String("main-alloy-path", "", "Path to the generated main_alloy.go file")
+	path := flag.String("path", "", "path to put generated files")
 	flag.Parse()
 
-	log.Printf("otelGeneratedMain: %v", *otelGeneratedMain)
-	log.Printf("alloyMain: %v", *alloyMain)
+	log.Printf("path: %v", *path)
 
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("failed to get working directory: %v", err)
-	}
-
-	templatePath := filepath.Join(dir, "generator", "main_alloy.tpl")
-	if err := copyAlloyMainTemplateFromFile(templatePath, *alloyMain); err != nil {
+	if err := copyAlloyMainTemplateFromFile(*path); err != nil {
 		log.Fatalf("failed to copy alloy main template: %v", err)
 	}
 
-	if err := replaceSectionsOfGeneratedMainFile(*otelGeneratedMain); err != nil {
+	if err := replaceSectionsOfGeneratedMainFile(*path); err != nil {
 		log.Fatalf("failed to replace command factory: %v", err)
 	}
 }
 
 // copyAlloyMainTemplateFromFile copies the template from templatePath to dstPath.
-func copyAlloyMainTemplateFromFile(templatePath, dstPath string) error {
-	data, err := os.ReadFile(templatePath)
-	if err != nil {
-		return fmt.Errorf("read template %s: %w", templatePath, err)
-	}
-	if err := os.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
+func copyAlloyMainTemplateFromFile(path string) error {
+	if err := os.MkdirAll(path, 0o755); err != nil {
 		return fmt.Errorf("create dst dir: %w", err)
 	}
 
-	withGeneratedWarningHeader := append([]byte("// GENERATED CODE: DO NOT EDIT\n"), data...)
-
-	if err := os.WriteFile(dstPath, withGeneratedWarningHeader, 0o644); err != nil {
-		return fmt.Errorf("write template to %s: %w", dstPath, err)
+	if err := os.WriteFile(filepath.Join(path, "main_alloy.go"), templateMainAlloy, 0o644); err != nil {
+		return fmt.Errorf("write template to %s: %w", path, err)
 	}
 	return nil
 }
 
-func replaceSectionsOfGeneratedMainFile(filePath string) error {
-	data, err := os.ReadFile(filePath)
+func replaceSectionsOfGeneratedMainFile(path string) error {
+	main := filepath.Join(path, "main.go")
+
+	data, err := os.ReadFile(main)
 	if err != nil {
 		return fmt.Errorf("read file: %w", err)
 	}
@@ -63,23 +57,23 @@ func replaceSectionsOfGeneratedMainFile(filePath string) error {
 	lines, err = replaceCmdFactory(lines)
 
 	if err != nil {
-		return fmt.Errorf("error replacing command factory in %s: %w", filePath, err)
+		return fmt.Errorf("error replacing command factory in %s: %w", path, err)
 	}
 
 	lines, err = addReleasePleaseVersioning(lines)
 
 	if err != nil {
-		return fmt.Errorf("error setting collector veresion in %s: %w", filePath, err)
+		return fmt.Errorf("error setting collector veresion in %s: %w", path, err)
 	}
 
 	newContent := strings.Join(lines, "\n")
-	fi, err := os.Stat(filePath)
+	fi, err := os.Stat(main)
 	var mode os.FileMode = 0o644
 	if err == nil {
 		mode = fi.Mode()
 	}
 
-	if err := os.WriteFile(filePath, []byte(newContent), mode); err != nil {
+	if err := os.WriteFile(main, []byte(newContent), mode); err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
 
