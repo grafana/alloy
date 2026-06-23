@@ -1175,9 +1175,6 @@ replace github.com/prometheus-community/yet-another-cloudwatch-exporter => githu
 // Use Grafana fork of smimesign (auto-synced from collector/builder-config.yaml)
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
-// Replace OpenTelemetry OBI with Grafana fork (auto-synced from collector/builder-config.yaml)
-replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.328.0
-
 // Replace OpenTelemetry eBPF profiler with Grafana fork (auto-synced from collector/builder-config.yaml)
 replace go.opentelemetry.io/ebpf-profiler => github.com/grafana/opentelemetry-ebpf-profiler v0.0.202602-0.20260326091923-bd31a19190b9
 

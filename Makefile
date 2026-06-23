@@ -174,8 +174,7 @@ GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
 		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
-                -X $(VPREFIX).BuildDate=$(BUILD_DATE) \
-                -X $(BEYLA_PKG).Version=$(BEYLA_VERSION)
+                -X $(VPREFIX).BuildDate=$(BUILD_DATE)
 
 DEFAULT_FLAGS    := $(GO_FLAGS)
 DEBUG_GO_FLAGS   := -ldflags "$(GO_LDFLAGS)" -tags "$(GO_TAGS)"
