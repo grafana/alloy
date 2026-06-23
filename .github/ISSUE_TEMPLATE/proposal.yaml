@@ -89,6 +89,7 @@ body:
       - otelcol.connector.count
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
+      - otelcol.connector.signaltometrics
       - otelcol.connector.spanlogs
       - otelcol.connector.spanmetrics
       - otelcol.exporter.awss3
