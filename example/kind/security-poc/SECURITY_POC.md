@@ -37,50 +37,33 @@ For this POC we explore the scenario where the attacker gained control over the 
 
 ### Flag 1 — secret in an environment variable
 
-- **Value:** `SECRET_1=flag_1`
+- **Value:** `SECRET_1=secret_value_flag_1`
 - **Where:** env var on the Alloy container (`alloy.extraEnv` in `values.yaml`).
-- **Lesson:** secrets passed as env vars leak easily — process listings,
-  `/proc/<pid>/environ`, crash dumps, child processes, and anything that can
-  read the pod spec.
 
-### Flag 2 — secret in a ConfigMap, mounted as a file
+### Flag 2 — secret in a Kubernetes Secret, mounted as a file
 
-- **Value:** `SECRET_2=flag_2`
-- **Where:** ConfigMap `security-poc-flags`, also mounted into the Alloy
+- **Value:** `SECRET_2=secret_value_flag_2`
+- **Where:** Kubernetes Secret `security-poc-flags`, mounted into the Alloy
   container at `/etc/security-poc/SECRET_2`.
-- **Lesson:** ConfigMaps are not secrets — they are plaintext to anyone with
-  read access to the namespace. Mounting one as a file exposes it to anything
-  that can read the container filesystem (or traverse it via a path bug).
 
 ### Flag 3 — secret in a pod annotation
 
-- **Value:** `flag_3` (annotation `security-poc/flag-3` on pod `vuln-http-server`)
+- **Value:** `secret_value_flag_3` (annotation `security-poc/flag-3` on pod `vuln-http-server`)
 - **Where:** metadata on the `vuln-http-server` pod (a tiny `hashicorp/http-echo`).
-- **Lesson:** requires Kubernetes API read access. The same read also reveals
-  the container image and version (`hashicorp/http-echo:0.2.3`), which an
-  attacker uses to look up known CVEs — especially dangerous for
-  internet-facing servers.
 
 ### Flag 4 — secret in an internal HTTP response
 
-- **Value:** `flag_4`
+- **Value:** `secret_value_flag_4`
 - **Where:** `GET http://internal-api.monitoring.svc:8080/internal-endpoint`
   (a small Python stdlib server, pod `internal-api`).
-- **Lesson:** internal-only endpoints are reachable from inside the cluster.
-  If Alloy can be made to fetch arbitrary URLs (SSRF) or is configured to
-  scrape this target, the response body — the flag — is exposed.
 
 ### Flag 5 — unauthenticated shutdown / DoS endpoint
 
 - **Value:** no text flag; the weakness itself is the point.
 - **Where:** `GET http://internal-api.monitoring.svc:8080/quitquitquit`
   returns `shutting down critical server`.
-- **Lesson:** an unauthenticated control endpoint that can take down a
-  critical service is a denial-of-service vector. (In this POC it only returns
-  the message and keeps running; real implementations that actually shut down
-  are the risk being modelled.)
 
-## Verifying a flag
+## Verifying flags are deployed correctly
 
 Always use the kind kubeconfig:
 
@@ -96,6 +79,6 @@ kubectl --kubeconfig build/kubeconfig.yaml -n monitoring get pod vuln-http-serve
 
 # Flag 4 + 5 — internal HTTP server (via port-forward)
 kubectl --kubeconfig build/kubeconfig.yaml -n monitoring port-forward pod/internal-api 8080:8080 &
-curl -s http://localhost:8080/internal-endpoint   # flag_4
+curl -s http://localhost:8080/internal-endpoint   # secret_value_flag_4
 curl -s http://localhost:8080/quitquitquit         # shutting down critical server
 ```

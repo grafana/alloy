@@ -9,7 +9,7 @@ data:
   server.py: |
     from http.server import BaseHTTPRequestHandler, HTTPServer
 
-    FLAG = "flag_4"
+    FLAG = "secret_value_flag_4"
 
     class Handler(BaseHTTPRequestHandler):
         def _respond(self, status, body):

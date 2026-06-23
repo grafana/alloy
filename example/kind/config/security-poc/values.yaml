@@ -1,12 +1,12 @@
 controller:
   type: deployment
   replicas: 1
-  # Mount the POC ConfigMap into the Alloy pod as files.
+  # Mount the POC Secret into the Alloy pod as files.
   volumes:
     extra:
       - name: security-poc-flags
-        configMap:
-          name: security-poc-flags
+        secret:
+          secretName: security-poc-flags
 
 alloy:
   # POC main config: fetch a config fragment over HTTP from the in-cluster
@@ -25,8 +25,8 @@ alloy:
   # Dummy secret used as a capture-the-flag target for security POC work.
   extraEnv:
     - name: SECRET_1
-      value: flag_1
-  # Mount the POC ConfigMap so SECRET_2 is readable as a file at
+      value: secret_value_flag_1
+  # Mount the POC Secret so SECRET_2 is readable as a file at
   # /etc/security-poc/SECRET_2.
   mounts:
     extra:

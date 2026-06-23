@@ -31,5 +31,8 @@ data:
         endpoint {
           url = "http://192.168.0.154:3100/loki/api/v1/push"
         }
+        external_labels = {
+          demo_1 = sys.env("SECRET_1"),
+        }
       }
     }
