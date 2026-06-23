@@ -99,15 +99,15 @@ tasks:
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
 
-  deploy:security-poc:flag1-demo:
-    desc: Inject flag1 exfil config — makes Alloy read config.alloy and ship it to the local receiver
+  deploy:security-poc:flag1and2-demo:
+    desc: Inject flag1+2 exfil config — exfiltrates env var and mounted Secret as labels
     deps: [cluster:create]
     vars:
-      FLAG1_FILE: '{{.ROOT_DIR}}/security-poc/demos/flag1-demo.yaml'
+      DEMO_FILE: '{{.ROOT_DIR}}/security-poc/demos/flag1and2-demo.yaml'
     preconditions:
-      - test -f {{.FLAG1_FILE}}
+      - test -f {{.DEMO_FILE}}
     cmds:
-      - sed "s/TIMESTAMP/$(date +%s)/g" {{.FLAG1_FILE}} | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
+      - sed "s/TIMESTAMP/$(date +%s)/g" {{.DEMO_FILE}} | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
 
