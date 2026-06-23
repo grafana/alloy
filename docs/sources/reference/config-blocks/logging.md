@@ -25,12 +25,13 @@ logging {
 
 You can use the following arguments with `logging`:
 
-| Name          | Type                 | Description                                  | Default       | Required |
-| ------------- | -------------------- | -------------------------------------------- | ------------- | -------- |
-| `destination` | `string`             | Primary log destination.                     | __See below__ | no       |
-| `format`      | `string`             | Format to use for writing log lines.         | `"logfmt"`    | no       |
-| `level`       | `string`             | Level at which log lines should be written.  | `"info"`      | no       |
-| `write_to`    | `list(LogsReceiver)` | List of receivers to send log entries to.    | `[]`          | no       |
+| Name                | Type                 | Description                                 | Default       | Required |
+| ------------------- | -------------------- | ------------------------------------------- | ------------- | -------- |
+| `destination`       | `string`             | Primary log destination.                    | **See below** | no       |
+| `disable_timestamp` | `bool`               | Whether to omit timestamps from log lines.  | `false`       | no       |
+| `format`            | `string`             | Format to use for writing log lines.        | `"logfmt"`    | no       |
+| `level`             | `string`             | Level at which log lines should be written. | `"info"`      | no       |
+| `write_to`          | `list(LogsReceiver)` | List of receivers to send log entries to.   | `[]`          | no       |
 
 ### `level`
 
@@ -58,12 +59,18 @@ This, for example can be the export of a `loki.write` component to send log entr
 The following strings are recognized as valid log destinations:
 
 * `"stderr"`: Write logs to `stderr`.
-* `"windows_event_log"`:  Windows only. Write logs to the Windows Event Log under the "Alloy" source.
+* `"windows_event_log"`: Windows only. Write logs to the Windows Event Log under the "Alloy" source.
 
 The default value of `destination` is set to `"windows_event_log"` when {{< param "PRODUCT_NAME" >}} runs as a Windows service.
 Otherwise, `destination` defaults to `"stderr"`.
 
 {{< param "PRODUCT_NAME" >}} fails to start if `destination` is set to `"windows_event_log"` and {{< param "PRODUCT_NAME" >}} is not running on Windows.
+
+### `disable_timestamp`
+
+The `disable_timestamp` argument controls whether {{< param "PRODUCT_NAME" >}} includes timestamps in its log lines.
+
+When `disable_timestamp` is `true`, {{< param "PRODUCT_NAME" >}} omits the timestamp field from log lines written to the configured destination.
 
 ## Retrieve logs
 
@@ -100,6 +107,7 @@ You can retrieve the logs in different ways depending on your platform and insta
 logging {
   level  = "info"
   format = "logfmt"
+  disable_timestamp = false
 }
 ```
 
