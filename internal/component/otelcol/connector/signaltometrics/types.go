@@ -108,9 +108,7 @@ type Histogram struct {
 
 var _ syntax.Defaulter = (*Histogram)(nil)
 
-// SetToDefault implements syntax.Defaulter, populating the default buckets when
-// a histogram block is defined without any. This means Convert can pass the
-// value straight through.
+// SetToDefault implements syntax.Defaulter
 func (h *Histogram) SetToDefault() {
 	h.Buckets = append([]float64{}, defaultHistogramBuckets...)
 }
@@ -136,9 +134,7 @@ type ExponentialHistogram struct {
 
 var _ syntax.Defaulter = (*ExponentialHistogram)(nil)
 
-// SetToDefault implements syntax.Defaulter, populating the default max size when
-// an exponential_histogram block is defined without one. This means Convert can
-// pass the value straight through.
+// SetToDefault implements syntax.Defaulter
 func (eh *ExponentialHistogram) SetToDefault() {
 	eh.MaxSize = defaultExponentialHistogramMaxSize
 }
