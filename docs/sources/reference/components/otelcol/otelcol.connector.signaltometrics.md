@@ -12,8 +12,8 @@ title: otelcol.connector.signaltometrics
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.connector.signaltometrics` accepts spans, metrics, and logs from other `otelcol` components and generates metrics from them using [OTTL][] expressions.
-You can use it to produce sums, gauges, explicit bucket histograms, and exponential (native) histograms from any signal.
+`otelcol.connector.signaltometrics` accepts spans, metric data points, and logs from other `otelcol` components and generates metrics from them using [OpenTelemetry Transformation Language][OTTL] expressions.
+You can use it to produce sums, gauges, explicit bucket histograms, and exponential native histograms from any signal.
 
 {{< admonition type="note" >}}
 `otelcol.connector.signaltometrics` is a wrapper over the upstream OpenTelemetry Collector Contrib `signaltometrics` connector.
@@ -45,17 +45,17 @@ otelcol.connector.signaltometrics "<LABEL>" {
 
 You can use the following arguments with `otelcol.connector.signaltometrics`:
 
-| Name         | Type     | Description                                                   | Default       | Required |
-| ------------ | -------- | ------------------------------------------------------------- | ------------- | -------- |
-| `error_mode` | `string` | How to react to errors when processing OTTL expressions.      | `"propagate"` | no       |
+| Name         | Type     | Description                                                            | Default       | Required |
+| ------------ | -------- | ---------------------------------------------------------------------- | ------------- | -------- |
+| `error_mode` | `string` | How the connector reacts to errors when it evaluates OTTL expressions. | `"propagate"` | no       |
 
-The `error_mode` argument determines how the connector reacts to errors that occur while evaluating an OTTL condition or expression during runtime data consumption.
-This setting doesn't affect errors during OTTL parsing at configuration time, which always cause a startup failure.
+The `error_mode` argument determines how the connector reacts to errors that occur while it evaluates an OTTL condition or expression during runtime data consumption.
+This setting doesn't affect errors during OTTL parsing at configuration time, which always causes a startup failure.
 You can set `error_mode` to one of the following values:
 
-* `propagate`: Return the error up the pipeline. This results in the payload being dropped from {{< param "PRODUCT_NAME" >}}.
-* `ignore`: Ignore the error and continue processing. If an error occurs, the record is skipped and the error is logged.
-* `silent`: Ignore the error and continue processing. If an error occurs, the record is skipped and the error isn't logged.
+* `propagate`: Return the error up the pipeline. {{< param "PRODUCT_NAME" >}} drops the payload from the pipeline.
+* `ignore`: Ignore the error and continue to process data. If an error occurs, {{< param "PRODUCT_NAME" >} skips the record and logs the error.
+* `silent`: Ignore the error and continue to process data. If an error occurs, {{< param "PRODUCT_NAME" >} skips the record and doesn't log the error.
 
 ## Blocks
 
@@ -111,18 +111,18 @@ The `spans` block configures a metric generated from spans.
 
 You can specify multiple `spans` blocks to define different metrics.
 
-| Name          | Type           | Description                                            | Default | Required |
-| ------------- | -------------- | ------------------------------------------------------ | ------- | -------- |
-| `name`        | `string`       | Name of the generated metric.                          |         | yes      |
-| `conditions`  | `list(string)` | OTTL conditions, ORed together, that select the data.  | `[]`    | no       |
-| `description` | `string`       | Description of the generated metric.                   | `""`    | no       |
-| `unit`        | `string`       | Unit associated with the generated metric.             | `""`    | no       |
+| Name          | Type           | Description                                 | Default | Required |
+| ------------- | -------------- | ------------------------------------------- | ------- | -------- |
+| `name`        | `string`       | Name of the generated metric.               |         | yes      |
+| `conditions`  | `list(string)` | OTTL conditions that filter incoming spans. | `[]`    | no       |
+| `description` | `string`       | Description of the generated metric.        | `""`    | no       |
+| `unit`        | `string`       | Unit associated with the generated metric.  | `""`    | no       |
 
 Each `spans` block must contain exactly one of the [`histogram`][histogram], [`exponential_histogram`][exponential_histogram], [`sum`][sum], or [`gauge`][gauge] blocks, which defines the type of metric to generate.
 
-The `conditions` argument accepts a list of [OTTL][] conditions that are ORed together.
-The connector only processes data into the metric if at least one condition evaluates to `true`.
-If you don't specify any conditions, the connector processes all data.
+The `conditions` argument accepts a list of [OTTL][] conditions that the connector combines with a logical OR.
+The connector processes data into the metric only when at least one condition evaluates to `true`.
+If you don't specify `conditions`, the connector processes all data.
 
 ### `datapoints`
 
@@ -149,7 +149,7 @@ The `attributes` block specifies a data point attribute to group the generated m
 Each unique combination of attribute values generates a separate data point on the metric.
 You can specify multiple `attributes` blocks within a `spans`, `datapoints`, or `logs` block to group by multiple attributes.
 
-The following arguments are supported:
+You can use the following arguments:
 
 | Name            | Type      | Description                                                  | Default | Required |
 | --------------- | --------- | ------------------------------------------------------------ | ------- | -------- |
@@ -158,7 +158,7 @@ The following arguments are supported:
 | `optional`      | `boolean` | Generate the metric even when the attribute is missing.      | `false` | no       |
 
 You can set at most one of `default_value` or `optional` for a given attribute.
-If neither is set, data points that don't have the attribute are dropped from the generated metric.
+If you don't set either option, the connector drops data points that don't have the attribute from the generated metric.
 
 ### `include_resource_attributes`
 
@@ -186,7 +186,7 @@ If you don't specify `count`, each matching record increments the count by one.
 
 ### `exponential_histogram`
 
-The `exponential_histogram` block generates a base-2 exponential (native) histogram metric.
+The `exponential_histogram` block generates a base-2 exponential native histogram metric.
 
 | Name       | Type     | Description                                        | Default | Required |
 | ---------- | -------- | -------------------------------------------------- | ------- | -------- |
@@ -245,7 +245,7 @@ The connector generates metrics from the received telemetry according to the con
 
 ### Generate a native histogram from log lines
 
-The following example generates an exponential (native) histogram of log body lengths and exports it over OTLP.
+The following example generates an exponential native histogram of log body lengths and exports it over OTLP.
 The connector emits an OTLP exponential histogram, which an OTLP-compatible backend stores as a Prometheus native histogram, so the telemetry stays OTLP-native end to end.
 
 The connector emits delta metrics on each incoming batch, so this example routes them through [`otelcol.processor.deltatocumulative`][deltatocumulative] and [`otelcol.processor.interval`][interval] to bound the number of data points produced per minute.
@@ -290,7 +290,7 @@ otelcol.exporter.otlphttp "default" {
 ### Generate metrics from spans
 
 The following example generates a span duration histogram and a request counter grouped by HTTP method.
-As with the previous example, the connector's delta metrics are routed through [`otelcol.processor.deltatocumulative`][deltatocumulative] and [`otelcol.processor.interval`][interval] to bound the number of data points produced per minute.
+As with the previous example, the connector's delta metrics are routed through [`otelcol.processor.deltatocumulative`][deltatocumulative] and [`otelcol.processor.interval`][interval] to limit the number of data points produced per minute.
 
 ```alloy
 otelcol.connector.signaltometrics "default" {
@@ -344,9 +344,9 @@ otelcol.exporter.otlphttp "default" {
 
 `otelcol.connector.signaltometrics` produces metrics whenever it receives a batch of telemetry, using delta temporality.
 It has no flush interval of its own, so the rate at which it produces data points is governed by how often upstream components send it data, not by any scrape interval.
-Exporting these metrics directly can produce many data points per minute for each series, which increases cost on backends that price per data point, such as those contracted to one data point per minute, equivalent to a 60-second scrape interval.
+If you export these metrics directly, it can produce many data points per minute for each series, which increases cost on backends that price per data point, such as those contracted to one data point per minute, equivalent to a 60-second scrape interval.
 
-To bound the rate, place an [`otelcol.processor.deltatocumulative`][deltatocumulative] and an [`otelcol.processor.interval`][interval] processor between the connector and the exporter, as shown in the previous examples:
+To limit the rate, place an [`otelcol.processor.deltatocumulative`][deltatocumulative] and an [`otelcol.processor.interval`][interval] processor between the connector and the exporter, as shown in the previous examples:
 
 * `deltatocumulative` converts the connector's delta metrics into cumulative temporality.
   This step is required because `interval` only aggregates cumulative metrics and passes delta metrics through unchanged.
