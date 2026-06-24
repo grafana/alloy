@@ -166,6 +166,22 @@ components:
 	require.NoError(t, p.CheckComponent("prometheus.scrape"))
 }
 
+func TestLoadFromFile_UnknownField(t *testing.T) {
+	// A typo like "endpointss" must be rejected, not silently ignored.
+	content := `
+components:
+  mode: denylist
+  list: [remote.http]
+endpointss:
+  mode: allowlist
+  patterns: ["https://grafana.com/**"]
+`
+	path := filepath.Join(t.TempDir(), "policy.yaml")
+	require.NoError(t, os.WriteFile(path, []byte(content), 0o600))
+	_, err := securitypolicy.LoadFromFile(path)
+	require.Error(t, err, "unknown field should be rejected to prevent silent policy bypass")
+}
+
 func TestLoadFromFile_Missing(t *testing.T) {
 	_, err := securitypolicy.LoadFromFile("/nonexistent/path/policy.yaml")
 	require.Error(t, err)

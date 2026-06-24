@@ -139,8 +139,10 @@ func LoadFromFile(path string) (*SecurityPolicy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("reading security policy file: %w", err)
 	}
+	dec := yaml.NewDecoder(strings.NewReader(string(data)))
+	dec.KnownFields(true)
 	var p SecurityPolicy
-	if err := yaml.Unmarshal(data, &p); err != nil {
+	if err := dec.Decode(&p); err != nil {
 		return nil, fmt.Errorf("parsing security policy file: %w", err)
 	}
 	return &p, nil

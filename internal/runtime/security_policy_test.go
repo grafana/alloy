@@ -2,11 +2,17 @@ package runtime
 
 import (
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/internal/controller"
 	"github.com/grafana/alloy/internal/runtime/internal/testcomponents"
+	"github.com/grafana/alloy/internal/runtime/internal/worker"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/require"
 )
 
@@ -188,4 +194,63 @@ func TestSecurityPolicy_NilPolicyAllowsAnyEndpoint(t *testing.T) {
 	})
 	require.NoError(t, err)
 	require.NoError(t, ctrl.LoadSource(src, nil, ""))
+}
+
+// TestSecurityPolicy_EnforcedInModuleController tests that endpoint policy is enforced
+// inside module controllers (the code path used by import.http / user_pipeline).
+// This was previously broken because moduleControllerOptions didn't carry the policy.
+func TestSecurityPolicy_EnforcedInModuleController(t *testing.T) {
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
+	require.NoError(t, err)
+
+	policy := &stubPolicy{deniedEndpoints: map[string]bool{"https://evil.com/exfil": true}}
+
+	serviceMap := controller.NewServiceMap([]service.Service{})
+	modCtrlOpts := &moduleControllerOptions{
+		Logger:            s,
+		DataPath:          t.TempDir(),
+		MinStability:      featuregate.StabilityPublicPreview,
+		Reg:               prometheus.NewRegistry(),
+		ModuleRegistry:    newModuleRegistry(),
+		WorkerPool:        worker.NewFixedWorkerPool(1, 100),
+		ServiceMap:        serviceMap,
+		ComponentRegistry: testEgressRegistry(),
+		SecurityPolicy:    policy,
+	}
+
+	modCtrl := newModuleController(modCtrlOpts)
+	mod, err := modCtrl.NewModule("test", nil)
+	require.NoError(t, err)
+
+	// Denied endpoint inside the module must be rejected.
+	err = mod.LoadConfig([]byte(`test.egress "x" { url = "https://evil.com/exfil" }`), nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "endpoint denied by policy")
+}
+
+func TestSecurityPolicy_AllowedEndpointInModuleController(t *testing.T) {
+	s, err := logging.New(io.Discard, logging.DefaultOptions)
+	require.NoError(t, err)
+
+	policy := &stubPolicy{deniedEndpoints: map[string]bool{"https://evil.com/exfil": true}}
+
+	serviceMap := controller.NewServiceMap([]service.Service{})
+	modCtrlOpts := &moduleControllerOptions{
+		Logger:            s,
+		DataPath:          t.TempDir(),
+		MinStability:      featuregate.StabilityPublicPreview,
+		Reg:               prometheus.NewRegistry(),
+		ModuleRegistry:    newModuleRegistry(),
+		WorkerPool:        worker.NewFixedWorkerPool(1, 100),
+		ServiceMap:        serviceMap,
+		ComponentRegistry: testEgressRegistry(),
+		SecurityPolicy:    policy,
+	}
+
+	modCtrl := newModuleController(modCtrlOpts)
+	mod, err := modCtrl.NewModule("test", nil)
+	require.NoError(t, err)
+
+	err = mod.LoadConfig([]byte(`test.egress "x" { url = "https://allowed.com/push" }`), nil)
+	require.NoError(t, err)
 }
