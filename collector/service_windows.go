@@ -132,6 +132,7 @@ func configFromRegistry() (*config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open registry: %w", err)
 	}
+	defer alloyKey.Close()
 
 	args, _, err := alloyKey.GetStringsValue("Arguments")
 	if err != nil {

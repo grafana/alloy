@@ -39,7 +39,6 @@ func main() {
 	}
 }
 
-// copyAlloyMainTemplateFromFile copies the template from templatePath to dstPath.
 func copyAlloyMainTemplateFromFile(path string) error {
 	if err := os.MkdirAll(path, 0o755); err != nil {
 		return fmt.Errorf("create dst dir: %w", err)
