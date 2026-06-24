@@ -67,7 +67,7 @@ Discovery components can find targets from:
 - Kubernetes resources
 - Cloud provider APIs
 - Service registries
-- Container runtimes
+- Container run times
 - File-based configuration
 - HTTP endpoints
 - DNS records
