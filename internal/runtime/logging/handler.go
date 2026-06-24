@@ -7,8 +7,9 @@ import (
 	"log/slog"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
+
+	"go.uber.org/atomic"
 )
 
 // We need an implementation of slog.Handler that always matches the current

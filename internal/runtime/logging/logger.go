@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/common/model"
@@ -14,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
 	"github.com/grafana/loki/pkg/push"
+	"go.uber.org/atomic"
 )
 
 type EnabledAware interface {
