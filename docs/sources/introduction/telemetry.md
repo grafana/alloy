@@ -165,10 +165,10 @@ When telemetry behaves unexpectedly:
 Unexpected behavior usually reflects an unexpected connection or a missing one.
 
 The {{< param "PRODUCT_NAME" >}} UI can help visualize these connections.
-Refer to [Debug](../troubleshoot/debug/) for more information.
+Refer to [Debug](../../troubleshoot/debug/) for more information.
 
 ## Next steps
 
-- [Component reference](../reference/components/) - Detailed behavior of individual components.
-- [Get started](../get-started/) - Learn the fundamentals of {{< param "PRODUCT_NAME" >}} configuration syntax.
-- [Troubleshoot](../troubleshoot/) - Find solutions to common issues and debugging techniques.
+- [Component reference](../../reference/components/) - Detailed behavior of individual components.
+- [Get started](../../get-started/) - Learn the fundamentals of {{< param "PRODUCT_NAME" >}} configuration syntax.
+- [Troubleshoot](../../troubleshoot/) - Find solutions to common issues and debugging techniques.
