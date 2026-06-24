@@ -31,6 +31,7 @@ import (
 	"github.com/grafana/alloy/internal/boringcrypto"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/converter"
+	"github.com/grafana/alloy/internal/securitypolicy"
 	convert_diag "github.com/grafana/alloy/internal/converter/diag"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/readyctx"
@@ -150,6 +151,9 @@ depending on the nature of the reload error.
 		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 
+	// Security flags
+	cmd.Flags().StringVar(&r.securityPolicyPath, "security-policy", "", "Path to a YAML security policy file that restricts which components may be used")
+
 	// Feature flags
 	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
@@ -188,6 +192,8 @@ type alloyRun struct {
 	configExtraArgs              string
 	disableSupportBundle         bool
 	windowsPriority              string
+	securityPolicyPath string
+
 	// Feature flags
 	enableCommunityComps    bool
 	taskShutdownDeadline    time.Duration
@@ -231,6 +237,11 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	if err := fr.checkExperimentalFlags(); err != nil {
 		return err
+	}
+
+	policy, err := securitypolicy.LoadFromFile(fr.securityPolicyPath)
+	if err != nil {
+		return fmt.Errorf("loading security policy: %w", err)
 	}
 
 	// Buffer logs until log format has been determined
@@ -403,6 +414,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		Reg:                  reg,
 		MinStability:         fr.minStability,
 		EnableCommunityComps: fr.enableCommunityComps,
+		SecurityPolicy:       policy,
 		Services: []service.Service{
 			clusterService,
 			httpService,

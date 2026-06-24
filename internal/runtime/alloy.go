@@ -117,6 +117,17 @@ type Options struct {
 
 	// TaskShutdownDeadline is the maximum duration to wait for a component to shut down before giving up and logging an error.
 	TaskShutdownDeadline time.Duration
+
+	// SecurityPolicy restricts which components and features are permitted.
+	// When nil, all components are allowed.
+	SecurityPolicy SecurityPolicyChecker
+}
+
+// SecurityPolicyChecker is satisfied by *securitypolicy.SecurityPolicy and
+// lets the runtime enforce component-level restrictions without a hard import
+// dependency on the securitypolicy package from callers that don't use it.
+type SecurityPolicyChecker interface {
+	CheckComponent(name string) error
 }
 
 // Runtime is the Alloy system.
@@ -200,6 +211,18 @@ func newController(o controllerOptions) (*Runtime, error) {
 	}
 
 	serviceMap := controller.NewServiceMap(o.Services)
+
+	// Wrap the component registry with the security policy check so that both
+	// the root loader and all module controllers share the same gate. We assign
+	// it back to o.ComponentRegistry so the NewModuleController closure below
+	// picks it up automatically.
+	if o.Options.SecurityPolicy != nil {
+		base := o.ComponentRegistry
+		if base == nil {
+			base = component.NewDefaultRegistry(o.MinStability, o.EnableCommunityComps)
+		}
+		o.ComponentRegistry = component.NewPolicyFilteredRegistry(base, o.Options.SecurityPolicy.CheckComponent)
+	}
 
 	loader, err := controller.NewLoader(controller.LoaderOptions{
 		ComponentGlobals: controller.ComponentGlobals{

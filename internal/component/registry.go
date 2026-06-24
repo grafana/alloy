@@ -307,6 +307,27 @@ func NewRegistryMap(
 	}
 }
 
+// NewPolicyFilteredRegistry wraps inner so that check(name) is called before
+// every Get. A non-nil error from check blocks the component lookup.
+// Passing a nil check is equivalent to using inner directly.
+func NewPolicyFilteredRegistry(inner Registry, check func(name string) error) Registry {
+	return policyRegistry{inner: inner, check: check}
+}
+
+type policyRegistry struct {
+	inner Registry
+	check func(name string) error
+}
+
+func (r policyRegistry) Get(name string) (Registration, error) {
+	if r.check != nil {
+		if err := r.check(name); err != nil {
+			return Registration{}, err
+		}
+	}
+	return r.inner.Get(name)
+}
+
 // Get retrieves a component using [component.Get].
 func (m registryMap) Get(name string) (Registration, error) {
 	reg, ok := m.registrations[name]
