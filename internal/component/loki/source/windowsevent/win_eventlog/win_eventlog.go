@@ -30,12 +30,11 @@ package win_eventlog
 import (
 	"bytes"
 	"encoding/xml"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"syscall"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/influxdata/telegraf"
 	"github.com/influxdata/telegraf/plugins/inputs"
 	"golang.org/x/sys/windows"
@@ -343,7 +342,7 @@ func (w *WinEventLog) shouldExcludeEmptyField(field string, fieldType string, fi
 	return false
 }
 
-func EvtSubscribe(logger log.Logger, logName, xquery string) (EvtHandle, error) {
+func EvtSubscribe(logger *slog.Logger, logName, xquery string) (EvtHandle, error) {
 	var logNamePtr, xqueryPtr *uint16
 
 	sigEvent, err := windows.CreateEvent(nil, 0, 0, nil)
@@ -367,12 +366,12 @@ func EvtSubscribe(logger log.Logger, logName, xquery string) (EvtHandle, error) 
 	if err != nil {
 		return 0, err
 	}
-	level.Debug(logger).Log("msg", "Subcribed with handle id", "id", subsHandle)
+	logger.Debug("subscribed with handle id", "id", subsHandle)
 
 	return subsHandle, nil
 }
 
-func EvtSubscribeWithBookmark(logger log.Logger, logName, xquery string, bookMark EvtHandle) (EvtHandle, error) {
+func EvtSubscribeWithBookmark(logger *slog.Logger, logName, xquery string, bookMark EvtHandle) (EvtHandle, error) {
 	var logNamePtr, xqueryPtr *uint16
 
 	sigEvent, err := windows.CreateEvent(nil, 0, 0, nil)
@@ -396,7 +395,7 @@ func EvtSubscribeWithBookmark(logger log.Logger, logName, xquery string, bookMar
 	if err != nil {
 		return 0, err
 	}
-	level.Debug(logger).Log("msg", "Subcribed with handle id", "id", subsHandle)
+	logger.Debug("subscribed with handle id", "id", subsHandle)
 
 	return subsHandle, nil
 }

@@ -41,5 +41,6 @@ collector/otel_engine.exe
 /targets.yaml
 /config.alloy
 
-# claude
+# AI
 CLAUDE.local.md
+.codex/

@@ -8,17 +8,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/IBM/sarama"
-	"github.com/go-kit/log"
 	promconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var TopicPollInterval = 30 * time.Second
@@ -28,7 +27,7 @@ type TopicManager interface {
 }
 
 type TargetSyncer struct {
-	logger log.Logger
+	logger *slog.Logger
 	cfg    Config
 	client loki.EntryHandler
 
@@ -44,7 +43,7 @@ type TargetSyncer struct {
 }
 
 func NewSyncer(
-	logger log.Logger,
+	logger *slog.Logger,
 	cfg Config,
 	pushClient loki.EntryHandler,
 	messageParser MessageParser,
@@ -97,7 +96,7 @@ func NewSyncer(
 		client:       pushClient,
 		close: func() error {
 			if err := group.Close(); err != nil {
-				level.Warn(logger).Log("msg", "error while closing consumer group", "err", err)
+				logger.Warn("error while closing consumer group", "err", err)
 			}
 			return client.Close()
 		},
@@ -202,7 +201,7 @@ func (ts *TargetSyncer) loop() {
 			case <-ts.ctx.Done():
 				return
 			case topics := <-topicChanged:
-				level.Info(ts.logger).Log("msg", "new topics received", "topics", fmt.Sprintf("%+v", topics))
+				ts.logger.Info("new topics received", "topics", fmt.Sprintf("%+v", topics))
 				ts.stop()
 				if len(topics) > 0 { // no topics we don't need to start.
 					ts.start(ts.ctx, topics)
@@ -229,7 +228,7 @@ func (ts *TargetSyncer) loop() {
 			}
 			newTopics, ok, err := ts.fetchTopics()
 			if err != nil {
-				level.Warn(ts.logger).Log("msg", "failed to fetch topics", "err", err)
+				ts.logger.Warn("failed to fetch topics", "err", err)
 				continue
 			}
 			if ok {
@@ -280,7 +279,7 @@ func (ts *TargetSyncer) NewTarget(session sarama.ConsumerGroupSession, claim sar
 	}
 	labelOut := format(labels.FromMap(labelMap), ts.cfg.RelabelConfigs)
 	if len(labelOut) == 0 {
-		level.Warn(ts.logger).Log("msg", "dropping target", "reason", "no labels", "details", details, "discovered_labels", discoveredLabels.String())
+		ts.logger.Warn("dropping target", "reason", "no labels", "details", details, "discovered_labels", discoveredLabels.String())
 		return &runnableDroppedTarget{
 			Target: newDroppedTarget("dropping target, no labels", discoveredLabels),
 			runFn: func() {

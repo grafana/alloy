@@ -4,18 +4,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
+	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/common/model"
 
-	"github.com/grafana/loki/pkg/push"
-
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // Configuration errors.
@@ -68,7 +66,7 @@ func validateMultilineConfig(cfg MultilineConfig) (*regexp.Regexp, error) {
 
 // multilineStage matches lines to determine whether the following lines belong to a block and should be collapsed
 type multilineStage struct {
-	logger  log.Logger
+	logger  *slog.Logger
 	cfg     MultilineConfig
 	regex   *regexp.Regexp
 	streams map[model.Fingerprint]*multilineState
@@ -83,14 +81,14 @@ type multilineState struct {
 }
 
 // newMultilineStage creates a MulitlineStage from config
-func newMultilineStage(logger log.Logger, config MultilineConfig) (Stage, error) {
+func newMultilineStage(logger *slog.Logger, config MultilineConfig) (Stage, error) {
 	regex, err := validateMultilineConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
 	return &multilineStage{
-		logger:  log.With(logger, "component", "stage", "type", "multiline"),
+		logger:  logger.With("stage", "multiline"),
 		cfg:     config,
 		regex:   regex,
 		streams: make(map[model.Fingerprint]*multilineState),
@@ -186,8 +184,8 @@ func (m *multilineStage) Run(in chan Entry) chan Entry {
 				for key, state := range m.streams {
 					if !state.lastSeen.Add(m.cfg.MaxWaitTime).After(now) {
 						if state.currentLines > 0 {
-							if Debug {
-								level.Debug(m.logger).Log("msg", fmt.Sprintf("flush multiline block due to %v timeout", m.cfg.MaxWaitTime), "block", state.buffer.String())
+							if debugEnabled(m.logger) {
+								m.logger.Debug("flush multiline block due to timeout", "timeout", m.cfg.MaxWaitTime, "block", state.buffer.String())
 							}
 							out <- m.flushState(state)
 						}
@@ -215,8 +213,8 @@ func (m *multilineStage) processEntry(key model.Fingerprint, e Entry) []Entry {
 
 	// flush stale block before processing new entry.
 	if hasState && state.currentLines > 0 && time.Since(state.lastSeen) >= m.cfg.MaxWaitTime {
-		if Debug {
-			level.Debug(m.logger).Log("msg", fmt.Sprintf("flush multiline block due to %v timeout", m.cfg.MaxWaitTime), "block", state.buffer.String())
+		if debugEnabled(m.logger) {
+			m.logger.Debug("flush multiline block due to timeout", "timeout", m.cfg.MaxWaitTime, "block", state.buffer.String())
 		}
 		out = append(out, m.flushState(state))
 	}
@@ -225,8 +223,8 @@ func (m *multilineStage) processEntry(key model.Fingerprint, e Entry) []Entry {
 	if !hasState {
 		// Pass through entries until the first start line for this stream.
 		if !isFirstLine {
-			if Debug {
-				level.Debug(m.logger).Log("msg", "pass through entry", "stream", key)
+			if debugEnabled(m.logger) {
+				m.logger.Debug("pass through entry", "stream", key)
 			}
 			return append(out, e)
 		}
@@ -236,8 +234,8 @@ func (m *multilineStage) processEntry(key model.Fingerprint, e Entry) []Entry {
 
 	// Stream is active: flush current block if a new start line arrived.
 	if isFirstLine && state.currentLines > 0 {
-		if Debug {
-			level.Debug(m.logger).Log("msg", "flush multiline block because new start line", "block", state.buffer.String(), "stream", key)
+		if debugEnabled(m.logger) {
+			m.logger.Debug("flush multiline block because new start line", "block", state.buffer.String(), "stream", key)
 		}
 		out = append(out, m.flushState(state))
 	}
@@ -247,10 +245,9 @@ func (m *multilineStage) processEntry(key model.Fingerprint, e Entry) []Entry {
 		state.startLineEntry = e
 	}
 
-	if Debug {
-		level.Debug(m.logger).Log("msg", "processing line", "line", e.Line, "stream", key)
+	if debugEnabled(m.logger) {
+		m.logger.Debug("processing line", "line", e.Line, "stream", key)
 	}
-
 	// Append line to buffer.
 	if state.buffer.Len() > 0 {
 		state.buffer.WriteRune('\n')

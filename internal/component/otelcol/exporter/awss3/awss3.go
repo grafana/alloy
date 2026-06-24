@@ -133,6 +133,7 @@ type S3Uploader struct {
 	Compression         configcompression.Type `alloy:"compression,attr,optional"`
 	ACL                 string                 `alloy:"acl,attr,optional"`
 	StorageClass        string                 `alloy:"storage_class,attr,optional"`
+	UniqueKeyFuncName   string                 `alloy:"unique_key_func_name,attr,optional"`
 
 	RetryMode        string        `alloy:"retry_mode,attr,optional"`
 	RetryMaxAttempts int           `alloy:"retry_max_attempts,attr,optional"`
@@ -169,6 +170,7 @@ func (args *S3Uploader) Convert() awss3exporter.S3UploaderConfig {
 		Compression:         args.Compression,
 		ACL:                 args.ACL,
 		StorageClass:        args.StorageClass,
+		UniqueKeyFuncName:   args.UniqueKeyFuncName,
 		RetryMode:           args.RetryMode,
 		RetryMaxAttempts:    args.RetryMaxAttempts,
 		RetryMaxBackoff:     args.RetryMaxBackoff,

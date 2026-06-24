@@ -8,20 +8,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/regexp"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/loki/source"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/regexp"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/common/model"
-	"github.com/stretchr/testify/require"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestPush(t *testing.T) {
-	opts := defaultOptions(t)
+	opts := defaultOptions()
 
 	ch1, ch2 := loki.NewLogsReceiver(), loki.NewLogsReceiver()
 	args := testArgsWith(t, func(args *Arguments) {
@@ -125,7 +126,7 @@ func TestUpdate_detectsWhenTargetRequiresARestart(t *testing.T) {
 			tc.mutateNewArgs(t, &newArgs)
 
 			comp, err := New(
-				defaultOptions(t),
+				defaultOptions(),
 				args,
 			)
 			require.NoError(t, err)
@@ -182,9 +183,9 @@ var rulesExport = alloy_relabel.Rules{
 	},
 }
 
-func defaultOptions(t *testing.T) component.Options {
+func defaultOptions() component.Options {
 	return component.Options{
-		Logger:        util.TestAlloyLogger(t),
+		Logger:        logging.NewSlogNop(),
 		Registerer:    prometheus.NewRegistry(),
 		OnStateChange: func(e component.Exports) {},
 	}

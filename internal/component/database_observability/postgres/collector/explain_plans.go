@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"math"
 	"regexp"
 	"strconv"
@@ -16,13 +17,11 @@ import (
 
 	"github.com/DataDog/go-sqllexer"
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -191,13 +190,17 @@ func (p *PlanNode) totalCost() *float64 {
 }
 
 type queryInfo struct {
-	datname      string
-	queryId      string
-	queryText    string
-	failureCount int
-	uniqueKey    string
-	calls        int64
-	callsReset   time.Time
+	datname    string
+	queryId    string
+	queryText  string
+	uniqueKey  string
+	calls      int64
+	callsReset time.Time
+}
+
+type processedQueryInfo struct {
+	calls      int64
+	callsReset time.Time
 }
 
 func newQueryInfo(datname, queryId, queryText string, calls int64, callsReset time.Time) *queryInfo {
@@ -221,7 +224,7 @@ type ExplainPlansArguments struct {
 	EntryHandler     loki.EntryHandler
 	DBVersion        string
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type ExplainPlans struct {
@@ -231,14 +234,14 @@ type ExplainPlans struct {
 	dbConnectionFactory databaseConnectionFactory
 	scrapeInterval      time.Duration
 	queryCache          map[string]*queryInfo
-	queryDenylist       map[string]*queryInfo
-	finishedQueryCache  map[string]*queryInfo
+	queryDenylist       map[string]struct{}
+	finishedQueryCache  map[string]processedQueryInfo
 	excludeDatabases    []string
 	excludeUsers        []string
 	perScrapeRatio      float64
 	currentBatchSize    int
 	entryHandler        loki.EntryHandler
-	logger              log.Logger
+	logger              *slog.Logger
 	running             *atomic.Bool
 	ctx                 context.Context
 	cancel              context.CancelFunc
@@ -255,10 +258,10 @@ func NewExplainPlan(args ExplainPlansArguments) (*ExplainPlans, error) {
 		excludeDatabases:    args.ExcludeDatabases,
 		excludeUsers:        args.ExcludeUsers,
 		queryCache:          make(map[string]*queryInfo),
-		queryDenylist:       make(map[string]*queryInfo),
-		finishedQueryCache:  make(map[string]*queryInfo),
+		queryDenylist:       make(map[string]struct{}),
+		finishedQueryCache:  make(map[string]processedQueryInfo),
 		entryHandler:        args.EntryHandler,
-		logger:              log.With(args.Logger, "collector", ExplainPlanCollector),
+		logger:              args.Logger.With("collector", ExplainPlanCollector),
 		running:             atomic.NewBool(false),
 	}
 	// Pre-sanitize the version by removing any trailing characters before semver gets it
@@ -313,7 +316,7 @@ func (c *ExplainPlans) Name() string {
 }
 
 func (c *ExplainPlans) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -328,7 +331,7 @@ func (c *ExplainPlans) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchExplainPlans(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -414,7 +417,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 				nil,
 			)
 			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send denylisted query skip explain plan output", "err", err)
+				c.logger.Error("failed to send denylisted query skip explain plan output", "err", err)
 			}
 			continue
 		}
@@ -425,7 +428,7 @@ func (c *ExplainPlans) populateQueryCache(ctx context.Context) error {
 	}
 
 	c.currentBatchSize = int(math.Ceil(float64(len(c.queryCache)) * c.perScrapeRatio))
-	level.Debug(c.logger).Log("msg", "populated query cache", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
+	c.logger.Debug("populated query cache", "count", len(c.queryCache), "batch_size", c.currentBatchSize)
 	return nil
 }
 
@@ -443,14 +446,16 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 		if processedCount >= c.currentBatchSize {
 			break
 		}
-		logger := log.With(c.logger, "query_id", qi.queryId)
+		logger := c.logger.With("query_id", qi.queryId)
 
 		defer func(nonRecoverableFailureOccurred *bool) {
 			if *nonRecoverableFailureOccurred {
-				qi.failureCount++
-				c.queryDenylist[qi.uniqueKey] = qi
+				c.queryDenylist[qi.uniqueKey] = struct{}{}
 			} else {
-				c.finishedQueryCache[qi.uniqueKey] = qi
+				c.finishedQueryCache[qi.uniqueKey] = processedQueryInfo{
+					calls:      qi.calls,
+					callsReset: qi.callsReset,
+				}
 			}
 			delete(c.queryCache, qi.uniqueKey)
 			processedCount++
@@ -466,14 +471,14 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 				nil,
 			)
 			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send truncated query skip explain plan output", "err", err)
+				c.logger.Error("failed to send truncated query skip explain plan output", "err", err)
 			}
 			continue
 		}
 
 		containsReservedWord, err := database_observability.ContainsReservedKeywords(qi.queryText, database_observability.ExplainReservedWordDenyList, sqllexer.DBMSPostgres)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to check for reserved keywords", "err", err)
+			logger.Error("failed to check for reserved keywords", "err", err)
 			err := c.sendExplainPlansOutput(
 				qi.datname,
 				qi.queryId,
@@ -483,7 +488,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 				nil,
 			)
 			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
+				c.logger.Error("failed to send reserved keyword check error explain plan output", "err", err)
 			}
 			continue
 		}
@@ -498,16 +503,16 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 				nil,
 			)
 			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to send reserved keyword check error explain plan output", "err", err)
+				c.logger.Error("failed to send reserved keyword check error explain plan output", "err", err)
 			}
 			continue
 		}
 
-		logger = log.With(logger, "datname", qi.datname)
+		logger = logger.With("datname", qi.datname)
 
 		byteExplainPlanJSON, err := c.fetchExplainPlanJSON(ctx, *qi)
 		if err != nil {
-			level.Debug(logger).Log("msg", "failed to fetch explain plan json bytes", "err", err)
+			logger.Debug("failed to fetch explain plan json bytes", "err", err)
 			for _, code := range unrecoverablePostgresSQLErrors {
 				if strings.Contains(err.Error(), code) {
 					nonRecoverableFailureOccurred = true
@@ -518,32 +523,32 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 		}
 
 		if len(byteExplainPlanJSON) == 0 {
-			level.Error(logger).Log("msg", "explain plan json bytes is empty")
+			logger.Error("explain plan json bytes is empty")
 			nonRecoverableFailureOccurred = true
 			continue
 		}
 
 		if !utf8.Valid(byteExplainPlanJSON) {
-			level.Error(logger).Log("msg", "explain plan json bytes is not valid UTF-8")
+			logger.Error("explain plan json bytes is not valid UTF-8")
 			nonRecoverableFailureOccurred = true
 			continue
 		}
 
 		redactedByteExplainPlanJSON := database_observability.RedactSql(string(byteExplainPlanJSON))
 
-		level.Debug(logger).Log("msg", "db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
+		logger.Debug("db native explain plan", "db_native_explain_plan", base64.StdEncoding.EncodeToString([]byte(redactedByteExplainPlanJSON)))
 
 		explainPlanOutput, genErr := newExplainPlanOutput(byteExplainPlanJSON)
 		explainPlanOutputJSON, err := json.Marshal(explainPlanOutput)
 		if err != nil {
-			level.Error(logger).Log("msg", "failed to marshal explain plan output", "err", err)
+			logger.Error("failed to marshal explain plan output", "err", err)
 			nonRecoverableFailureOccurred = true
 			continue
 		}
 
 		if genErr != nil {
-			level.Error(logger).Log(
-				"msg", "failed to create explain plan output",
+			logger.Error(
+				"failed to create explain plan output",
 				"incomplete_explain_plan", base64.StdEncoding.EncodeToString(explainPlanOutputJSON),
 				"err", genErr,
 			)
@@ -559,7 +564,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 			"",
 			explainPlanOutput,
 		); err != nil {
-			level.Error(c.logger).Log("msg", "failed to send explain plan output", "err", err)
+			c.logger.Error("failed to send explain plan output", "err", err)
 		}
 	}
 
@@ -599,14 +604,14 @@ func (c *ExplainPlans) fetchExplainPlanJSON(ctx context.Context, qi queryInfo) (
 
 	preparedStatementName := strings.ReplaceAll(fmt.Sprintf("explain_plan_%s", qi.queryId), "-", "_")
 	preparedStatementText := fmt.Sprintf("PREPARE %s AS %s", preparedStatementName, qi.queryText)
-	logger := log.With(c.logger, "query_id", qi.queryId, "datname", qi.datname, "preparedStatementName", preparedStatementName, "preparedStatementText", preparedStatementText)
+	logger := c.logger.With("query_id", qi.queryId, "datname", qi.datname, "preparedStatementName", preparedStatementName, "preparedStatementText", preparedStatementText)
 	if _, err := conn.ExecContext(ctx, preparedStatementText); err != nil {
 		return nil, fmt.Errorf("failed to prepare explain plan: %w", err)
 	}
 
 	defer func() {
 		if _, err := conn.ExecContext(ctx, fmt.Sprintf("DEALLOCATE %s", preparedStatementName)); err != nil {
-			level.Error(logger).Log("msg", "failed to deallocate explain plan", "err", err)
+			logger.Error("failed to deallocate explain plan", "err", err)
 		}
 	}()
 

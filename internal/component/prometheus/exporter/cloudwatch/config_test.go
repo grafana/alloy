@@ -1323,7 +1323,7 @@ func TestCloudwatchComponentConfig(t *testing.T) {
 			logger, err := logging.New(io.Discard, logging.DefaultOptions)
 			require.NoError(t, err)
 
-			converted, err := ConvertToYACE(args, logger)
+			converted, err := ConvertToYACE(args, logger.Slog())
 			if tc.expectConvertErr {
 				require.Error(t, err)
 				return

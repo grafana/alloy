@@ -14,7 +14,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/source/internal/positions"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -129,7 +128,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "loki.source.cloudflare component shutting down")
+		c.opts.Logger.Info("loki.source.cloudflare component shutting down")
 
 		// NOTE: We need to stop posFile first so we don't record entries we are draining.
 		c.posFile.Stop()
@@ -159,7 +158,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	t, err := newTailer(c.metrics, c.opts.Logger, c.handler, c.posFile, newArgs.tailerConfig())
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to create cloudflare target with provided config", "err", err)
+		c.opts.Logger.Error("failed to create cloudflare target with provided config", "err", err)
 		return err
 	}
 	c.tailer = t

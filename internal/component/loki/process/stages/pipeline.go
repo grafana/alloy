@@ -3,9 +3,9 @@ package stages
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
@@ -50,23 +50,21 @@ type StageConfig struct {
 
 // Pipeline pass down a log entry to each stage for mutation and/or label extraction.
 type Pipeline struct {
-	logger    log.Logger
 	stages    []Stage
 	dropCount *prometheus.CounterVec
 }
 
 // NewPipeline creates a new log entry pipeline from a configuration
-func NewPipeline(logger log.Logger, stages []StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
+func NewPipeline(slogger *slog.Logger, stages []StageConfig, registerer prometheus.Registerer, minStability featuregate.Stability) (*Pipeline, error) {
 	st := []Stage{}
 	for _, stage := range stages {
-		newStage, err := New(logger, stage, registerer, minStability)
+		newStage, err := New(slogger, stage, registerer, minStability)
 		if err != nil {
 			return nil, fmt.Errorf("invalid stage config %w", err)
 		}
 		st = append(st, newStage)
 	}
 	return &Pipeline{
-		logger:    log.With(logger, "component", "pipeline"),
 		stages:    st,
 		dropCount: getDropCountMetric(registerer),
 	}, nil
@@ -109,7 +107,10 @@ func (p *Pipeline) Start(in chan loki.Entry, out chan<- loki.Entry) loki.EntryHa
 	}))
 
 	return loki.NewEntryHandler(in, func() {
-		once.Do(func() { cancel() })
+		once.Do(func() {
+			cancel()
+			p.Stop()
+		})
 		wg.Wait()
 		p.Cleanup()
 	})
@@ -136,6 +137,20 @@ func (p *Pipeline) Run(in chan Entry) chan Entry {
 func (p *Pipeline) Cleanup() {
 	for _, s := range p.stages {
 		s.Cleanup()
+	}
+}
+
+// Stop implements Stopper.
+func (p *Pipeline) Stop() {
+	for _, s := range p.stages {
+		stopper, ok := s.(Stopper)
+		if !ok {
+			continue
+		}
+		func() {
+			defer func() { _ = recover() }()
+			stopper.Stop()
+		}()
 	}
 }
 

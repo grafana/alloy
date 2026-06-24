@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/relabel"
 
@@ -89,7 +88,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 // Run implements component.Component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "loki.source.gcplog component shutting down, stopping the targets")
+		c.opts.Logger.Info("loki.source.gcplog component shutting down, stopping the targets")
 
 		c.mut.Lock()
 		defer c.mut.Unlock()
@@ -124,12 +123,12 @@ func (c *Component) Update(args component.Arguments) error {
 		// we should expose as configuration and pass here?
 		t, err := gt.NewPullTarget(c.metrics, c.opts.Logger, c.handler, newArgs.PullTarget, rcs)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog pull target", "err", err)
+			c.opts.Logger.Error("failed to create gcplog pull target", "err", err)
 			return err
 		}
 
 		if err := t.Run(); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start gcplog pull target", "err", err)
+			c.opts.Logger.Error("failed to start gcplog pull target", "err", err)
 			return err
 		}
 		c.target = t
@@ -145,11 +144,11 @@ func (c *Component) Update(args component.Arguments) error {
 
 		t, err := gt.NewPushTarget(c.metrics, c.opts.Logger, c.handler, newArgs.PushTarget, rcs, registry)
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to create gcplog push target", "err", err)
+			c.opts.Logger.Error("failed to create gcplog push target", "err", err)
 			return err
 		}
 		if err := t.Run(); err != nil {
-			level.Error(c.opts.Logger).Log("msg", "failed to start gcplog push target", "err", err)
+			c.opts.Logger.Error("failed to start gcplog push target", "err", err)
 			return err
 		}
 		c.target = t

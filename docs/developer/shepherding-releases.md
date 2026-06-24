@@ -57,6 +57,12 @@ out the section below on modifying a PR's changelog entry after it's been merged
    gh release edit <VERSION>-rc.0 --draft=false --repo grafana/alloy
    ```
 
+> **NOTE:** Publishing is irreversible. This repo enforces
+> [Immutable Releases](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/immutable-releases):
+> once published, a release's Git tag and attached assets are permanently locked, so you can't add,
+> change, or remove assets afterward. Confirm every expected artifact is attached to the draft before
+> you publish.
+
 ### 3. Validate the RC on internal deployments
 
 1. Deploy the RC to internal clusters following the
@@ -76,6 +82,12 @@ cut a new RC and repeat step 3.
 > bypass the guard.
 
 ### 5. When ready, cut the release
+
+> **NOTE:** Publishing is irreversible. This repo enforces
+> [Immutable Releases](https://docs.github.com/en/code-security/supply-chain-security/understanding-your-software-supply-chain/immutable-releases):
+> once published, a release's Git tag and attached assets are permanently locked. Merging the
+> release-please PR only creates a *draft* and attaches artifacts — confirm every artifact is present,
+> then publish as the final step. **This applies to patch releases too, even though they skip the RC.**
 
 1. Merge the release-please PR into `main`.
 2. This will trigger workflows to create a draft release on GitHub, build the release artifacts, and
@@ -128,7 +140,7 @@ channels:
 
 ## Cutting a new PATCH release
 
-The process for this is exactly the same as a minor release with two notable exceptions:
+The process for this is exactly the same as a minor release with a few notable exceptions:
 
 1. Backport your changes to the release branch (which is automatically created after the
    corresponding minor is tagged).
@@ -137,6 +149,7 @@ The process for this is exactly the same as a minor release with two notable exc
    bump**. If they're not, follow the steps below for modifying PR changelog entries, or if you
    truly goofed and backported a feature instead of a fix, revert it and update changelog entries as
    necessary.
+4. Patch releases typically do not have RCs.
 
 ## Modifying a PR's CHANGELOG entry post-merge
 
