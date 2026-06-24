@@ -40,7 +40,7 @@ Do not:
 - Wire up an AI agent to respond automatically to reviewers or other community members on your
   behalf. If you want help from GenAI in a discussion, use it yourself and post in your own words,
   rather than connecting it directly to maintainers.
-
+- Submit PRs or issues which do not follow our defined templates
 Maintainers may close low-effort AI-generated contributions, following the same
 [issue triage process][issue-triage] used for other contributions. When they do, they should explain
 why and, where appropriate, offer guidance on how to improve the contribution. Repeated low-effort
