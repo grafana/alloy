@@ -48,18 +48,15 @@ type Arguments struct {
 
 var _ receiver.Arguments = Arguments{}
 
-// DefaultArguments holds default settings for otelcol.receiver.awsfirehose.
-var DefaultArguments = Arguments{
-	Encoding: "cwmetrics",
-	HTTPServer: otelcol.HTTPServerArguments{
-		Endpoint:              "0.0.0.0:4433",
-		CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
-	},
-}
-
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
-	*args = DefaultArguments
+	*args = Arguments{
+		Encoding: "cwmetrics",
+		HTTPServer: otelcol.HTTPServerArguments{
+			Endpoint:              "0.0.0.0:4433",
+			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+		},
+	}
 	args.DebugMetrics.SetToDefault()
 }
 
