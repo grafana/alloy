@@ -9,5 +9,5 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-COPY build/alloy /bin/alloy
+COPY build/alloy-linux-amd64 /bin/alloy
 ENTRYPOINT ["/bin/alloy"]

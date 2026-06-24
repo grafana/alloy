@@ -1,4 +1,5 @@
 build/
+!build/alloy-linux-amd64
 data/
 data-alloy/
 dist/
