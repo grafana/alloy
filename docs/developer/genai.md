@@ -38,6 +38,9 @@ Do not:
   own.
 - Paste generated text into a discussion as if it were a considered human response without adding
   your own analysis and context.
+- Wire up an AI agent to respond automatically to reviewers or other community members on your
+  behalf. If you want help from GenAI in a discussion, use it yourself and post in your own words,
+  rather than connecting it directly to maintainers.
 
 Maintainers may close low-effort AI-generated contributions, following the same
 [issue triage process][issue-triage] used for other contributions. When they do, they should explain
