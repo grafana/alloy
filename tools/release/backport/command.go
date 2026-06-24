@@ -25,7 +25,6 @@ type backportInfo struct {
 	PRNumber       int
 	OriginalPR     *github.PullRequest
 	MergeCommitSHA string
-	AppIdentity    gh.AppIdentity
 	TargetBranch   string
 	BackportBranch string
 }
@@ -92,12 +91,22 @@ func run(ctx context.Context, flags flags) (retErr error) {
 		}
 	}()
 
-	// --- Git operations: branch, cherry-pick, push, create PR ---
+	// --- Git operations: branch, cherry-pick, create signed API commit, create PR ---
 
-	if err := git.ConfigureUser(info.AppIdentity.Name, info.AppIdentity.Email); err != nil {
+	if err := performBackport(ctx, client, info); err != nil {
 		return err
 	}
 
+	backportPR, err := createBackportPR(ctx, client, info)
+	if err != nil {
+		return fmt.Errorf("creating backport PR: %w", err)
+	}
+	fmt.Printf("✅ Created backport PR: %s\n", backportPR.GetHTMLURL())
+
+	return nil
+}
+
+func performBackport(ctx context.Context, client *gh.Client, info *backportInfo) error {
 	if err := git.Fetch(info.TargetBranch); err != nil {
 		return err
 	}
@@ -112,22 +121,49 @@ func run(ctx context.Context, flags flags) (retErr error) {
 	}
 	defer resetWorkingCopy(originalBranch, info.BackportBranch)
 
-	if err := git.CherryPick(info.MergeCommitSHA, true); err != nil {
-		return err
-	}
-
-	if err := git.Push(info.BackportBranch); err != nil {
-		return err
-	}
-	fmt.Printf("✅ Pushed backport branch: %s\n", info.BackportBranch)
-
-	backportPR, err := createBackportPR(ctx, client, info)
+	changes, baseSHA, err := prepareBackportCommit(ctx, client, info)
 	if err != nil {
-		return fmt.Errorf("creating backport PR: %w", err)
+		return err
 	}
-	fmt.Printf("✅ Created backport PR: %s\n", backportPR.GetHTMLURL())
+	if err := client.CreateBranch(ctx, gh.CreateBranchParams{
+		Branch: info.BackportBranch,
+		SHA:    baseSHA,
+	}); err != nil {
+		return fmt.Errorf("creating backport branch: %w", err)
+	}
+
+	message, err := git.GetCherryPickCommitMessage(info.MergeCommitSHA)
+	if err != nil {
+		return err
+	}
+	commitSHA, err := createBackportCommit(ctx, client, info.BackportBranch, baseSHA, message, changes)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("✅ Created signed backport commit %s on %s\n", commitSHA, info.BackportBranch)
 
 	return nil
+}
+
+func prepareBackportCommit(ctx context.Context, client *gh.Client, info *backportInfo) (git.StagedDiff, string, error) {
+	if err := git.CherryPick(info.MergeCommitSHA, false); err != nil {
+		return git.StagedDiff{}, "", err
+	}
+
+	changes, err := git.GetStagedChanges()
+	if err != nil {
+		return git.StagedDiff{}, "", err
+	}
+	if len(changes.Additions) == 0 && len(changes.Deletions) == 0 {
+		return git.StagedDiff{}, "", fmt.Errorf("cherry-pick of %s produced no staged changes", info.MergeCommitSHA)
+	}
+
+	baseSHA, err := client.GetRefSHA(ctx, info.TargetBranch)
+	if err != nil {
+		return git.StagedDiff{}, "", fmt.Errorf("getting target branch SHA: %w", err)
+	}
+
+	return changes, baseSHA, nil
 }
 
 // resolveBackportInfo gathers all the information needed to perform a
@@ -162,11 +198,6 @@ func resolveBackportInfo(ctx context.Context, client *gh.Client, prNumber int, t
 		return nil, fmt.Errorf("getting PR #%d: %w", prNumber, err)
 	}
 
-	appIdentity, err := client.GetAppIdentity(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("getting app identity: %w", err)
-	}
-
 	mergeCommitSHA := originalPR.GetMergeCommitSHA()
 	if mergeCommitSHA == "" {
 		return nil, fmt.Errorf("PR #%d does not have a merge commit SHA", prNumber)
@@ -191,7 +222,6 @@ func resolveBackportInfo(ctx context.Context, client *gh.Client, prNumber int, t
 		PRNumber:       prNumber,
 		OriginalPR:     originalPR,
 		MergeCommitSHA: mergeCommitSHA,
-		AppIdentity:    appIdentity,
 		TargetBranch:   targetBranch,
 		BackportBranch: backportBranch,
 	}, nil
@@ -212,7 +242,7 @@ func resetWorkingCopy(originalBranch, backportBranch string) {
 }
 
 func createBackportPR(ctx context.Context, client *gh.Client, info *backportInfo) (*github.PullRequest, error) {
-	title := backportPRTitle(info.OriginalPR.GetTitle())
+	title := getBackportPRTitle(info.OriginalPR.GetTitle())
 
 	body := fmt.Sprintf(`## Backport of #%d
 
@@ -242,7 +272,27 @@ This PR backports #%d to %s.
 	})
 }
 
-func backportPRTitle(originalTitle string) string {
+func createBackportCommit(ctx context.Context, client *gh.Client, branch, expectedHeadOID, message string, changes git.StagedDiff) (string, error) {
+	additions := make([]gh.FileAddition, 0, len(changes.Additions))
+	for _, addition := range changes.Additions {
+		additions = append(additions, gh.FileAddition{
+			Path:     addition.Path,
+			Contents: addition.Contents,
+		})
+	}
+
+	headline, body, _ := strings.Cut(strings.TrimSpace(message), "\n")
+	return client.CreateCommitOnBranch(ctx, gh.CreateCommitOnBranchParams{
+		Branch:          branch,
+		ExpectedHeadOID: expectedHeadOID,
+		Headline:        strings.TrimSpace(headline),
+		Body:            strings.TrimSpace(body),
+		Additions:       additions,
+		Deletions:       changes.Deletions,
+	})
+}
+
+func getBackportPRTitle(originalTitle string) string {
 	return fmt.Sprintf("%s [backport]", originalTitle)
 }
 
@@ -281,7 +331,7 @@ Then create a PR from `+"`%s`"+` to `+"`%s`"+` with the title:
 		info.BackportBranch,
 		info.BackportBranch,
 		info.TargetBranch,
-		backportPRTitle(info.OriginalPR.GetTitle()),
+		getBackportPRTitle(info.OriginalPR.GetTitle()),
 	)
 
 	if err := client.CreateIssueComment(ctx, info.PRNumber, comment); err != nil {

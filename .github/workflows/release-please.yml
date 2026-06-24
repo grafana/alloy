@@ -28,19 +28,12 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
-      - name: Setup tools # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
+      - name: Setup tools 🛠️ # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
         uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
           version: v2026.5.18
           sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
           install_args: go node
-
-      - name: Configure Git user
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
-        run: |
-          go run -C tools ./cmd release configure-git-user
 
       - name: Install dependencies 📦
         working-directory: build-tools/release-please-runner
@@ -56,14 +49,14 @@ jobs:
           MANIFEST_FILE: .release-please-manifest.json
         run: node index.js
 
-      - name: Find root release-please branch
+      - name: Find root release-please branch 🔎
         id: root-release-branch
         env:
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
           RELEASE_BRANCH="release-please--branches--${GITHUB_REF_NAME}"
           echo "name=${RELEASE_BRANCH}" >> "${GITHUB_OUTPUT}"
-          if ! git ls-remote --exit-code --heads origin "${RELEASE_BRANCH}" >/dev/null 2>&1; then
+          if ! git fetch --depth=1 origin "refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" >/dev/null 2>&1; then
             echo "No root release-please branch ${RELEASE_BRANCH}; nothing to regenerate."
             echo "exists=false" >> "${GITHUB_OUTPUT}"
             exit 0
@@ -71,25 +64,29 @@ jobs:
 
           echo "exists=true" >> "${GITHUB_OUTPUT}"
 
-      - name: Checkout root release-please branch 🛎️
+      - name: Switch to root release-please branch 🌿
         if: steps.root-release-branch.outputs.exists == 'true'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-        with:
-          ref: ${{ steps.root-release-branch.outputs.name }}
-          fetch-depth: 1
-          token: ${{ steps.app-token.outputs.token }}
-          persist-credentials: true # Needed for subsequent git push.
+        env:
+          RELEASE_BRANCH: ${{ steps.root-release-branch.outputs.name }}
+        run: |
+          git switch -C "${RELEASE_BRANCH}" "refs/remotes/origin/${RELEASE_BRANCH}"
+          git status
 
-      - name: Regenerate collector distro and stage changes
+      - name: Regenerate collector distro and commit changes 🏗️
         if: steps.root-release-branch.outputs.exists == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_BRANCH: ${{ steps.root-release-branch.outputs.name }}
         run: |
           make generate-otel-collector-distro
 
           if [ -z "$(git status --porcelain)" ]; then
-            echo "Collector generation produced no diff; nothing to amend."
+            echo "Collector generation produced no diff; nothing to commit."
             exit 0
           fi
 
           git add -- go.mod go.sum collector/
-          git commit --amend --no-edit
-          git push --force-with-lease
+          go run -C tools ./cmd release commit-worktree \
+            --branch "${RELEASE_BRANCH}" \
+            --message "chore: Regenerate collector distro"

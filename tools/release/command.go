@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/tools/release/backport"
-	"github.com/grafana/alloy/tools/release/configuregituser"
+	"github.com/grafana/alloy/tools/release/commitworktree"
 	"github.com/grafana/alloy/tools/release/createrc"
 	"github.com/grafana/alloy/tools/release/createreleasebranch"
 	"github.com/grafana/alloy/tools/release/enrichreleasenotes"
@@ -21,7 +21,7 @@ func Command() *cobra.Command {
 
 	cmd.AddCommand(
 		backport.Command(),
-		configuregituser.Command(),
+		commitworktree.Command(),
 		createrc.Command(),
 		createreleasebranch.Command(),
 		enrichreleasenotes.Command(),
