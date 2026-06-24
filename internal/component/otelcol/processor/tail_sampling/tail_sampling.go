@@ -84,8 +84,9 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		otelPolicyCfgs = append(otelPolicyCfgs, policyCfg.Convert())
 	}
 
-	// Start from the upstream default config so fields Alloy doesn't expose keep
-	// their upstream defaults, including the unexported sampling strategy.
+	// Build on the factory's default config rather than a zero-value struct: the
+	// processor requires a sampling strategy, but upstream keeps that field
+	// unexported, so CreateDefaultConfig is the only way to set it.
 	cfg := tsp.NewFactory().CreateDefaultConfig().(*tsp.Config)
 	cfg.DecisionWait = args.DecisionWait
 	cfg.DecisionWaitAfterRootReceived = args.DecisionWaitAfterRootReceived

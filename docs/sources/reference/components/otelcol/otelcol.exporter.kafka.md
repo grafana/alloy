@@ -90,7 +90,7 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | `metadata` > [`retry`][retry]                           | Configures how to retry metadata retrieval.                                    | no       |
 | [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                               | no       |
 | [`producer`][producer]                                  | Kafka producer configuration,                                                  | no       |
-| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the kafka producer.                  | no       |
+| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the Kafka producer.                  | no       |
 | [`record_partitioner`][record_partitioner]             | Selects the Kafka record partitioning strategy.                                | no       |
 | `record_partitioner` > [`sticky_key`][sticky_key]      | Configures the sticky-key partitioner.                                         | no       |
 | [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                                | no       |

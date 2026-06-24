@@ -648,7 +648,10 @@ func (w *Storage) Truncate(mint int64) error {
 
 	w.metrics.checkpointCreationTotal.Inc()
 
-	// TODO(x1unix): pass EnableSTStorage when Prometheus will be upgraded
+	// Pass false to disable Prometheus start-timestamp (ST) native storage, an
+	// experimental, off-by-default upstream feature. TODO: expose it as config,
+	// matching how upstream documents the feature flag:
+	// https://prometheus.io/docs/prometheus/latest/feature_flags/#start-timestamp-st-native-storage
 	if _, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint, false); err != nil {
 		w.metrics.checkpointCreationFail.Inc()
 		var cerr *wlog.CorruptionErr
