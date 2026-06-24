@@ -116,7 +116,6 @@ jobs:
         name: windows-executables
         path: |
           ./dist/alloy-windows-amd64.exe
-          ./dist.temp/alloy-service-windows-amd64.exe
         if-no-files-found: error
 
   sign_alloy_windows:

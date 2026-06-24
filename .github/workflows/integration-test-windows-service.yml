@@ -7,7 +7,7 @@ on:
     paths:
       - 'integration-tests/windows-service/**'
       - 'packaging/**'
-      - 'internal/cmd/alloy-service/**'
+      - 'collector/*_windows.go'
       - 'internal/runtime/logging/**'
       - '.github/workflows/integration-test-windows-service.yml'
 
