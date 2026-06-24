@@ -23,7 +23,8 @@ You are welcome to use GenAI tools to:
   reasoning.
 - Translate, summarize, or improve the clarity of text you have written.
 
-In all cases, you remain the author: you read the output, you correct it, and you ensure your contribution meets the project's standards before submitting an issue, pull request, or comment.
+In all cases, you remain the author. You read the output, you correct it, and you ensure your
+contribution meets the project's standards before submitting an issue, pull request, or comment.
 
 ## Not acceptable
 
