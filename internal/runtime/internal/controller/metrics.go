@@ -16,6 +16,7 @@ type controllerMetrics struct {
 	slowComponentThreshold      time.Duration
 	slowComponentEvaluationTime *prometheus.CounterVec
 	graphEdgeConnection         *prometheus.GaugeVec
+	policyViolationsTotal       *prometheus.CounterVec
 }
 
 // newControllerMetrics inits the metrics for the components controller
@@ -76,6 +77,12 @@ func newControllerMetrics(parent, id string) *controllerMetrics {
 		ConstLabels: map[string]string{"controller_path": parent, "controller_id": id},
 	}, []string{"from", "to"})
 
+	cm.policyViolationsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name:        "alloy_security_policy_violations_total",
+		Help:        "Total number of security policy violations detected during config evaluation. Non-zero values indicate blocked attempts to load restricted config.",
+		ConstLabels: map[string]string{"controller_path": parent, "controller_id": id},
+	}, []string{"violation_type"})
+
 	return cm
 }
 
@@ -93,6 +100,7 @@ func (cm *controllerMetrics) Collect(ch chan<- prometheus.Metric) {
 	cm.evaluationQueueSize.Collect(ch)
 	cm.slowComponentEvaluationTime.Collect(ch)
 	cm.graphEdgeConnection.Collect(ch)
+	cm.policyViolationsTotal.Collect(ch)
 }
 
 func (cm *controllerMetrics) Describe(ch chan<- *prometheus.Desc) {
@@ -102,6 +110,7 @@ func (cm *controllerMetrics) Describe(ch chan<- *prometheus.Desc) {
 	cm.evaluationQueueSize.Describe(ch)
 	cm.slowComponentEvaluationTime.Describe(ch)
 	cm.graphEdgeConnection.Describe(ch)
+	cm.policyViolationsTotal.Describe(ch)
 }
 
 type controllerCollector struct {

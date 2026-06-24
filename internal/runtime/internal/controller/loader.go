@@ -185,14 +185,19 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 	l.componentNodeManager.setCustomComponentRegistry(NewCustomComponentRegistry(options.CustomComponentRegistry, options.ArgScope))
 	newGraph, diags := l.loadNewGraph(options.Args, options.ComponentBlocks, options.ConfigBlocks, options.DeclareBlocks)
 	if diags.HasErrors() {
+		for _, d := range diags {
+			if strings.Contains(d.Message, "security policy") {
+				l.cm.policyViolationsTotal.WithLabelValues("component").Inc()
+			}
+		}
 		return diags
 	}
 
 	var (
-		components        = make([]ComponentNode, 0)
-		componentIDs      = make(map[string]ComponentID)
-		services          = make([]*ServiceNode, 0, len(l.services))
-		hasPolicyViolation bool
+		components             = make([]ComponentNode, 0)
+		componentIDs           = make(map[string]ComponentID)
+		services               = make([]*ServiceNode, 0, len(l.services))
+		policyViolationCount   int
 	)
 
 	tracer := l.tracer.Tracer("")
@@ -240,7 +245,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 			if err = l.evaluate(logger, n); err != nil {
 				var policyErr *PolicyViolationError
 				if errors.As(err, &policyErr) {
-					hasPolicyViolation = true
+					policyViolationCount++
 				}
 				var evalDiags diag.Diagnostics
 				if errors.As(err, &evalDiags) {
@@ -296,7 +301,8 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 		return nil
 	})
 
-	if hasPolicyViolation {
+	if policyViolationCount > 0 {
+		l.cm.policyViolationsTotal.WithLabelValues("endpoint").Add(float64(policyViolationCount))
 		// Policy violations are fatal for the entire Apply: the old graph stays in
 		// effect so no partial or unsafe config is ever committed.
 		return diags
