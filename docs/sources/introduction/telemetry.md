@@ -1,32 +1,33 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/introduction/telemetry/
-description: Learn to trace telemetry flow through connected components and defined data paths
+description: Learn how Grafana Alloy moves telemetry through connected components and defined data paths
 menuTitle: Telemetry flow
-title: Trace telemetry flow in Grafana Alloy
+title: How telemetry flows through Grafana Alloy
 weight: 225
 ---
 
-# Trace telemetry flow in {{% param "FULL_PRODUCT_NAME" %}}
+# How telemetry flows through {{% param "FULL_PRODUCT_NAME" %}}
 
-Your {{< param "PRODUCT_NAME" >}} configuration defines components and the connections between them.
-Those connections control how telemetry moves through the system.
-When you trace data flow, you can predict behavior, tune performance, and verify that telemetry reaches the right destinations.
+{{< param "PRODUCT_NAME" >}} moves telemetry through connected components, from sources to backends.
+Your configuration defines those components and the connections between them.
+Understanding that flow helps you read configurations, build pipelines, and know where your data goes.
 
 ## Define every connection explicitly
 
-There are no automatic transformations, no implicit pipelines, and no default processing.
+There are no automatic transformations, implicit pipelines, or default processing.
+You define every connection between components, and telemetry moves only along the paths you create.
 
-- You define every connection between components.
-- You specify every transformation, filter, and routing rule.
-- Telemetry moves only along the paths you create.
+If telemetry changes, a component in your configuration changed it.
+If telemetry reaches a destination, a path leads there.
 
-This requires more explicit configuration but makes behavior predictable and easier to debug.
-If telemetry changes, it's because a component in the configuration changed it.
-If telemetry reaches a destination, it's because a path leads there.
+Components connect through exports, receiver references, and attributes such as `forward_to`.
+Refer to [Build data pipelines](../get-started/components/build-pipelines/) to learn how these connections form pipelines.
 
-## Follow the pipeline pattern
+## Follow the pipeline stages
 
-Telemetry flows through pipelines in four stages:
+Connected components form pipelines.
+Most telemetry pipelines use some combination of four roles: discovery, ingestion, transformation, and output.
+Discovery and transformation are optional, and you can chain multiple components in the same role or branch to multiple outputs.
 
 <!-- vale Grafana.Spelling = NO -->
 
@@ -50,127 +51,43 @@ flowchart LR
 
 <!-- vale Grafana.Spelling = YES -->
 
-Discovery is optional.
-Use it for pull-based collection when you need to find scrape targets dynamically.
-Push-based ingestion and static configurations start at ingestion.
+**Discovery** components find scrape targets for pull-based ingestion components, such as `prometheus.scrape`.
+OpenTelemetry pipelines start at `otelcol.receiver.*` components and skip discovery.
 
-### Discover scrape targets
+**Ingestion** components collect or receive telemetry and convert it to an internal format.
 
-Discovery components find scrape targets and pass them to ingestion components.
-They don't collect telemetry themselves.
+**Transformation** components modify, filter, route, or sample telemetry.
+Connect an ingestion component directly to an output component to skip transformation.
 
-Discovery components can find targets from:
+**Output** components forward telemetry to backends.
 
-- Kubernetes resources
-- Cloud provider APIs
-- Service registries
-- Docker and container engines
-- File-based configuration
-- HTTP endpoints
-- DNS records
+When a component supports multiple signal types, connect each type separately through the pipeline.
 
-### Collect or receive telemetry
+Refer to [Build data pipelines](../get-started/components/build-pipelines/) for multi-stage examples and pipeline patterns.
+Refer to [Choose a component](../collect/choose-component/) to select components by signal type.
 
-Ingestion components receive or collect telemetry from external systems and convert it into internal formats.
+## See how telemetry moves in a configuration
 
-They decode protocols and normalize data.
-They don't filter, sample, or redact telemetry unless a component's documentation says otherwise.
+When you read a configuration, follow the data path from source to destination:
 
-If an ingestion component isn't connected to another component, its telemetry goes nowhere.
+1. Start at ingestion components and note what signal type each one handles.
+1. If the pipeline uses discovery, follow targets from discovery components into ingestion.
+1. Follow each component's output to the next component in the chain.
+1. Note any transformation components and what they change.
+1. Identify where each path ends at an output component.
 
-### Transform telemetry in the pipeline
-
-Transformation components change telemetry between ingestion and output.
-
-Transformation components can:
-
-- Modify fields and labels
-- Filter or drop telemetry
-- Route telemetry to different components
-- Sample traces
-
-Connect an ingestion component directly to an output component and telemetry passes through without modification.
-
-### Send telemetry to destinations
-
-Output components forward telemetry to configured destinations.
-
-For example, an output component might send data to:
-
-- Grafana Mimir or any Prometheus-compatible endpoint with `prometheus.remote_write`
-- Grafana Loki or compatible log storage with `loki.write`
-- Grafana Tempo or any OTLP-compatible endpoint with `otelcol.exporter.otlp`
-- Another telemetry collector with `otelcol.exporter.otlp`
-
-## Map components to pipeline stages
-
-Different component families use different naming conventions, but the flow pattern stays the same:
-
-| Pipeline type | Discovery      | Ingestion            | Transformation        | Output                    |
-| ------------- | -------------- | -------------------- | --------------------- | ------------------------- |
-| OpenTelemetry | —              | `otelcol.receiver.*` | `otelcol.processor.*` | `otelcol.exporter.*`      |
-| Prometheus    | `discovery.*`  | `prometheus.scrape`  | `prometheus.relabel`  | `prometheus.remote_write` |
-| Loki          | `discovery.*`  | `loki.source.*`      | `loki.process`        | `loki.write`              |
-| Pyroscope     | `discovery.*`  | `pyroscope.scrape`   | `pyroscope.relabel`   | `pyroscope.write`         |
-
-This table shows common components.
-Some components don't fit these categories.
-For example, `prometheus.exporter.*` components expose metrics from local or remote systems as scrape targets rather than discover existing targets.
-Refer to the [component reference](../reference/components/) for a complete list.
-
-## Connect each signal type separately
-
-You define metric, log, trace, and profile connections explicitly.
-When a component supports multiple signal types, connect each type to the next component in its pipeline.
-
-Many transformation components, especially `otelcol.processor.*` components, handle multiple signal types.
-Changes to one signal type don't affect another.
-
-OpenTelemetry pipelines often share components across signal types.
-Prometheus, Loki, and Pyroscope pipelines are signal-specific.
-
-## Branch and merge pipelines
-
-Pipelines aren't limited to straight lines.
-
-Telemetry can:
-
-- Branch to multiple downstream components
-- Merge into shared output components
-- Stay isolated from other signal types
-
-One ingestion component can feed one output, multiple outputs, or multiple transformation chains.
-Separate ingestion components can stay isolated, share transformation components, or converge on a shared output.
-
-## Trace data flow in a configuration
-
-To see how telemetry moves in a configuration, trace the data path:
-
-1. Identify discovery components and note which ingestion components receive their targets.
-1. Identify ingestion components and determine what signal type each handles.
-1. Trace where each component sends telemetry.
-1. Review transformation components and what they change.
-1. Identify where each path ends.
-
-Explicit connections let you trace the data path in the configuration.
 Connection order determines execution order, not the textual order of components in the file.
+Pipelines can branch to multiple outputs or share components across paths.
+Refer to [Pipeline patterns](../get-started/components/build-pipelines/#pipeline-patterns) for fan-out and chain processing examples.
 
-### Troubleshoot unexpected telemetry
-
-When telemetry behaves unexpectedly:
-
-- Verify that the ingestion component connects to other components.
-- Trace the full path from ingestion to output.
-- Confirm transformation components sit in the expected position.
-- Ensure the path ends at the correct output component.
-
-Unexpected behavior usually means an unexpected or missing connection.
-
-The {{< param "PRODUCT_NAME" >}} UI can help you visualize these connections.
-Refer to [Debug](../../troubleshoot/debug/) for more information.
+The {{< param "PRODUCT_NAME" >}} UI visualizes these connections.
+Refer to [Debug](../troubleshoot/debug/) to inspect component pipelines in a running instance.
 
 ## Next steps
 
-- Explore the [Component reference](../../reference/components/) for detailed behavior of individual components
-- Follow [Get started](../../get-started/) to learn {{< param "PRODUCT_NAME" >}} configuration syntax
-- Use [Troubleshoot](../../troubleshoot/) to find solutions to common issues and debug techniques
+- Refer to [Get started](../get-started/) to learn configuration syntax and component basics.
+- Refer to [Build data pipelines](../get-started/components/build-pipelines/) to connect components and use pipeline patterns.
+- Refer to [Choose a component](../collect/choose-component/) to select components for metrics, logs, traces, and profiles.
+- Refer to [Collect and forward data](../collect/) for end-to-end collection examples.
+- Refer to [How Alloy works](./how-alloy-works/) for architecture and capabilities.
+- Refer to the [Component reference](../reference/components/) for detailed component behavior.
