@@ -798,7 +798,7 @@ func TestExplainPlanOutput(t *testing.T) {
 							Operation: database_observability.ExplainPlanOutputOperation("Parallel Seq Scan"),
 							Details: database_observability.ExplainPlanNodeDetails{
 								Alias:         stringPtr("e"),
-								Condition:     stringPtr("((hire_date < ?::date) AND (EXTRACT(month FROM hire_date) = EXTRACT(month FROM CURRENT_DATE)))"),
+								Condition:     stringPtr("((hire_date < ?::date) AND (EXTRACT(? FROM hire_date) = EXTRACT(? FROM CURRENT_DATE)))"),
 								EstimatedRows: 486,
 								EstimatedCost: floatPtr(6476.12),
 							},
@@ -1489,7 +1489,7 @@ func TestExplainPlanOutput(t *testing.T) {
 														Alias:         stringPtr("e"),
 														EstimatedRows: 882,
 														EstimatedCost: floatPtr(5151.27),
-														Condition:     stringPtr("(EXTRACT(year FROM hire_date) = ?::numeric)"),
+														Condition:     stringPtr("(EXTRACT(? FROM hire_date) = ?::numeric)"),
 													},
 												},
 											},
