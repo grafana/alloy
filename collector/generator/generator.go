@@ -69,7 +69,7 @@ func replaceSectionsOfGeneratedMainFile(path string) error {
 	lines, err = addReleasePleaseVersioning(lines)
 
 	if err != nil {
-		return fmt.Errorf("error setting collector veresion in %s: %w", path, err)
+		return fmt.Errorf("error setting collector version in %s: %w", path, err)
 	}
 
 	newContent := strings.Join(lines, "\n")
