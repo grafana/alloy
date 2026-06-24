@@ -28,6 +28,8 @@ type ListenerConfig struct {
 	SyslogFormat                scrapeconfig.SyslogFormat `alloy:"syslog_format,attr,optional"`
 	RawFormatOptions            *RawFormatOptions         `alloy:"raw_format_options,block,optional"`
 	RFC3164CiscoComponents      *RFC3164CiscoComponents   `alloy:"rfc3164_cisco_components,block,optional"`
+	UDPQueueSize                int                       `alloy:"udp_queue_size,attr,optional"`
+	UDPHostCacheSize            int                       `alloy:"udp_host_cache_size,attr,optional"`
 }
 
 // RawFormatOptions is alloy syntax mapping to [scrapeconfig.RawFormatOptions] struct.
@@ -63,6 +65,8 @@ var DefaultListenerConfig = ListenerConfig{
 	IdleTimeout:      st.DefaultIdleTimeout,
 	MaxMessageLength: st.DefaultMaxMessageLength,
 	SyslogFormat:     scrapeconfig.SyslogFormatRFC5424,
+	UDPQueueSize:     scrapeconfig.DefaultUDPQueueSize,
+	UDPHostCacheSize: scrapeconfig.DefaultUDPHostCacheSize,
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -140,6 +144,8 @@ func (sc ListenerConfig) Convert() (*scrapeconfig.SyslogTargetConfig, error) {
 		MaxMessageLength:            sc.MaxMessageLength,
 		TLSConfig:                   *sc.TLSConfig.Convert(),
 		SyslogFormat:                sc.SyslogFormat,
+		UDPQueueSize:                sc.UDPQueueSize,
+		UDPHostCacheSize:            sc.UDPHostCacheSize,
 	}
 
 	if sc.RawFormatOptions != nil {

@@ -4,11 +4,13 @@
 package agent
 
 import (
-	"github.com/go-kit/log"
+	"log/slog"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Config controls the Agent integration.
@@ -37,8 +39,8 @@ func (c *Config) Identifier(globals integrations.Globals) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(l log.Logger, globals integrations.Globals) (integrations.Integration, error) {
-	return metricsutils.NewMetricsHandlerIntegration(l, c, c.Common, globals, promhttp.Handler())
+func (c *Config) NewIntegration(_ *slog.Logger, globals integrations.Globals) (integrations.Integration, error) {
+	return metricsutils.NewMetricsHandlerIntegration(c, c.Common, globals, promhttp.Handler())
 }
 
 func init() {

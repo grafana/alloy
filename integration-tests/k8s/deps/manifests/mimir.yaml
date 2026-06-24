@@ -1,0 +1,141 @@
+---
+# Single-pod Mimir running in monolithic mode (target=all,alertmanager) with
+# filesystem storage and inmemory rings. This is intentionally NOT a production
+# configuration; it's the smallest Mimir we can stand up to exercise Alloy's
+# remote_write and alertmanager-config push paths in tests.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mimir-config
+  labels:
+    app: mimir
+data:
+  mimir.yaml: |
+    multitenancy_enabled: false
+
+    server:
+      http_listen_port: 9009
+      grpc_server_max_recv_msg_size: 104857600
+      grpc_server_max_send_msg_size: 104857600
+
+    distributor:
+      ring:
+        kvstore:
+          store: inmemory
+
+    ingester:
+      ring:
+        kvstore:
+          store: inmemory
+        replication_factor: 1
+        final_sleep: 0s
+        min_ready_duration: 0s
+        num_tokens: 512
+
+    blocks_storage:
+      backend: filesystem
+      filesystem:
+        dir: /data/blocks
+      tsdb:
+        dir: /data/tsdb
+      bucket_store:
+        sync_dir: /data/tsdb-sync
+
+    compactor:
+      data_dir: /data/compactor
+      sharding_ring:
+        kvstore:
+          store: inmemory
+
+    store_gateway:
+      sharding_ring:
+        kvstore:
+          store: inmemory
+        replication_factor: 1
+
+    ruler:
+      ring:
+        kvstore:
+          store: inmemory
+
+    ruler_storage:
+      backend: filesystem
+      filesystem:
+        dir: /data/ruler
+
+    alertmanager:
+      data_dir: /data/am-data
+      external_url: http://localhost
+      sharding_ring:
+        replication_factor: 1
+        kvstore:
+          store: inmemory
+
+    alertmanager_storage:
+      backend: filesystem
+      filesystem:
+        dir: /data/am-cfg
+
+    limits:
+      native_histograms_ingestion_enabled: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mimir
+  labels:
+    app: mimir
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mimir
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mimir
+    spec:
+      containers:
+        - name: mimir
+          image: grafana/mimir:2.17.9
+          args:
+            - "-config.file=/etc/mimir/mimir.yaml"
+            - "-target=all,alertmanager"
+          ports:
+            - name: http
+              containerPort: 9009
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 30
+          volumeMounts:
+            - name: config
+              mountPath: /etc/mimir
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          configMap:
+            name: mimir-config
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mimir
+  labels:
+    app: mimir
+spec:
+  selector:
+    app: mimir
+  ports:
+    - name: http
+      port: 9009
+      targetPort: http

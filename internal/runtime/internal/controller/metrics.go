@@ -15,6 +15,7 @@ type controllerMetrics struct {
 	evaluationQueueSize         prometheus.Gauge
 	slowComponentThreshold      time.Duration
 	slowComponentEvaluationTime *prometheus.CounterVec
+	graphEdgeConnection         *prometheus.GaugeVec
 }
 
 // newControllerMetrics inits the metrics for the components controller
@@ -69,6 +70,12 @@ func newControllerMetrics(parent, id string) *controllerMetrics {
 		ConstLabels: map[string]string{"controller_path": parent, "controller_id": id},
 	}, []string{"component_id"})
 
+	cm.graphEdgeConnection = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "alloy_component_graph_connection",
+		Help:        "Indicates that two components are connected in the graph",
+		ConstLabels: map[string]string{"controller_path": parent, "controller_id": id},
+	}, []string{"from", "to"})
+
 	return cm
 }
 
@@ -85,6 +92,7 @@ func (cm *controllerMetrics) Collect(ch chan<- prometheus.Metric) {
 	cm.dependenciesWaitTime.Collect(ch)
 	cm.evaluationQueueSize.Collect(ch)
 	cm.slowComponentEvaluationTime.Collect(ch)
+	cm.graphEdgeConnection.Collect(ch)
 }
 
 func (cm *controllerMetrics) Describe(ch chan<- *prometheus.Desc) {
@@ -93,6 +101,7 @@ func (cm *controllerMetrics) Describe(ch chan<- *prometheus.Desc) {
 	cm.dependenciesWaitTime.Describe(ch)
 	cm.evaluationQueueSize.Describe(ch)
 	cm.slowComponentEvaluationTime.Describe(ch)
+	cm.graphEdgeConnection.Describe(ch)
 }
 
 type controllerCollector struct {

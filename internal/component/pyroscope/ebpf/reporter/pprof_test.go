@@ -4,6 +4,7 @@ package reporter
 
 import (
 	"bytes"
+	"log/slog"
 	"testing"
 
 	"github.com/google/pprof/profile"
@@ -47,7 +48,7 @@ func newReporter() *PPROFReporter {
 		},
 	})
 	return NewPPROF(
-		nil,
+		slog.New(slog.DiscardHandler),
 		&Config{
 			SamplesPerSecond: 97,
 			KernelFrames:     true,

@@ -7,18 +7,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/grafana/alloy/internal/component/otelcol"
-	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
-	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
-	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/util"
-	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"google.golang.org/grpc"
+
+	"github.com/grafana/alloy/internal/component/otelcol"
+	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
+	"github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"
+	"github.com/grafana/alloy/internal/runtime/componenttest"
+	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/syntax"
 )
 
 // Test performs a basic integration test which runs the otelcol.exporter.otlp
@@ -74,7 +74,7 @@ func Test(t *testing.T) {
 		for bo.Ongoing() {
 			err := exports.Input.ConsumeTraces(ctx, createTestTraces())
 			if err != nil {
-				level.Error(l).Log("msg", "failed to send traces", "err", err)
+				l.Error("failed to send traces", "err", err)
 				bo.Wait()
 				continue
 			}

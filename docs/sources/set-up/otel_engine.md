@@ -101,7 +101,7 @@ extensions:
       password: <PASSWORD>
   alloyengine:
     config:
-      file: <ALLOY_CONFIG_PATH>
+      path: <ALLOY_CONFIG_PATH>
     flags:
       server.http.listen-addr: 0.0.0.0:12345
 
@@ -189,7 +189,7 @@ ports:
 alternateConfig:
   extensions:
     health_check:
-      endpoint: 0.0.0.0:13133 # This is necessary for the k8s liveliness check
+      endpoint: 0.0.0.0:13133 # This is necessary for the Kubernetes liveness check
     basicauth/my_auth:
       client_auth:
         username: <USERNAME>

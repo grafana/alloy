@@ -8,7 +8,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/util/glob"
 )
 
@@ -144,7 +143,7 @@ func (c *Component) getWatchedFiles() []discovery.Target {
 	for _, w := range c.watches {
 		newPaths, err := w.getPaths()
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "error getting paths", "path", w.getPath(), "excluded", w.getExcludePath(), "err", err)
+			c.opts.Logger.Error("error getting paths", "path", w.getPath(), "excluded", w.getExcludePath(), "err", err)
 		}
 		paths = append(paths, newPaths...)
 	}

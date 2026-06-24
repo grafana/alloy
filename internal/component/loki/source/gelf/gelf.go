@@ -12,7 +12,6 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/gelf/internal/target"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -76,7 +75,7 @@ type Component struct {
 // Run starts the component.
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", "component shutting down")
+		c.opts.Logger.Info("component shutting down")
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
 			defer c.mut.Unlock()

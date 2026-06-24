@@ -2,13 +2,13 @@
 package process_exporter
 
 import (
-	"github.com/go-kit/log"
+	"log/slog"
+
+	exporter_config "github.com/ncabatoff/process-exporter/config"
 
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
-
-	exporter_config "github.com/ncabatoff/process-exporter/config"
 )
 
 // DefaultConfig holds the default settings for the process_exporter integration.
@@ -51,7 +51,7 @@ func (c *Config) InstanceKey(defaultKey string) (string, error) {
 }
 
 // NewIntegration converts this config into an instance of an integration.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	return New(l, c)
 }
 

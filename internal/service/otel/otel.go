@@ -6,9 +6,9 @@ package otel
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/util"
@@ -21,9 +21,9 @@ type Service struct{}
 
 var _ service.Service = (*Service)(nil)
 
-func New(logger log.Logger) *Service {
+func New(logger *slog.Logger) *Service {
 	if logger == nil {
-		logger = log.NewNopLogger()
+		logger = slog.New(slog.DiscardHandler)
 	}
 
 	// Exemplars are enabled by default with https://github.com/open-telemetry/opentelemetry-go/releases/tag/v1.31.0
@@ -42,7 +42,7 @@ func New(logger log.Logger) *Service {
 	// This is because the services are not started prior to the graph evaluation.
 	err := util.SetupOtelFeatureGates()
 	if err != nil {
-		logger.Log("msg", "failed to set up Otel feature gates", "err", err)
+		logger.Error("failed to set up Otel feature gates", "err", err)
 		return nil
 	}
 

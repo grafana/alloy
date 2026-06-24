@@ -5,12 +5,11 @@ package process
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/user"
 	"path"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	gopsutil "github.com/shirou/gopsutil/v3/process"
 	"golang.org/x/sys/unix"
 
@@ -79,7 +78,7 @@ func convertProcess(p process) discovery.Target {
 	return discovery.NewTargetFromMap(t)
 }
 
-func discover(l log.Logger, cfg *DiscoverConfig) ([]process, error) {
+func discover(l *slog.Logger, cfg *DiscoverConfig) ([]process, error) {
 	processes, err := gopsutil.Processes()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list processes: %w", err)
@@ -92,7 +91,7 @@ func discover(l log.Logger, cfg *DiscoverConfig) ([]process, error) {
 		if errors.Is(e, os.ErrNotExist) {
 			return
 		}
-		_ = level.Error(l).Log("msg", "failed to get process info", "err", e, "pid", pid)
+		l.Error("failed to get process info", "err", e, "pid", pid)
 	}
 	for _, p := range processes {
 		spid := fmt.Sprintf("%d", p.Pid)

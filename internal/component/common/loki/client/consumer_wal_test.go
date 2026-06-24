@@ -4,12 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
@@ -23,9 +21,11 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	autil "github.com/grafana/alloy/internal/util"
 )
 
 func TestWALConsumer(t *testing.T) {
@@ -38,7 +38,7 @@ func TestWALConsumer(t *testing.T) {
 	// start all necessary resources
 	testEndpointConfig, rwReceivedReqs, closeServer := newServerAndEndpointConfig(t)
 
-	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testEndpointConfig)
+	consumer, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, testEndpointConfig)
 	require.NoError(t, err)
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
@@ -95,7 +95,7 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 		MaxSegmentAge: time.Second * 10,
 	}
 
-	consumer, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), walConfig, testEndpointConfig, testEndpointConfig2)
+	consumer, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), walConfig, testEndpointConfig, testEndpointConfig2)
 	require.NoError(t, err)
 
 	receivedRequests := util.NewSyncSlice[util.RemoteWriteRequest]()
@@ -153,14 +153,14 @@ func TestWALConsumer_MultipleConfigs(t *testing.T) {
 
 func TestWALConsumer_InvalidConfig(t *testing.T) {
 	t.Run("no endpoints", func(t *testing.T) {
-		_, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{})
+		_, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), wal.Config{})
 		require.Error(t, err)
 	})
 
 	t.Run("repeated endpoints", func(t *testing.T) {
 		host, _ := url.Parse("http://localhost:3100")
 		config := Config{URL: flagext.URLValue{URL: host}}
-		_, err := NewWALConsumer(log.NewNopLogger(), prometheus.NewRegistry(), wal.Config{}, config, config)
+		_, err := NewWALConsumer(logging.NewSlogNop(), prometheus.NewRegistry(), wal.Config{}, config, config)
 		require.Error(t, err)
 	})
 }
@@ -261,8 +261,8 @@ func TestWALEndpoint(t *testing.T) {
 				QueueConfig:   tc.queueConfig,
 			}
 
-			logger := log.NewLogfmtLogger(os.Stdout)
-			marker := internal.NewNopMarkerHandler()
+			logger := autil.TestAlloyLogger(t).Slog()
+			marker := marker.NewNopTracker()
 
 			endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
 			require.NoError(t, err)
@@ -336,22 +336,20 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 	} {
 		b.Run(name, func(b *testing.B) {
 			b.Run("implementation=wal_nil_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
-					return internal.NewNopMarkerHandler()
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.Tracker {
+					return marker.NewNopTracker()
 				})
 			})
 
 			b.Run("implementation=wal_marker_handler", func(b *testing.B) {
-				runWALEndpointBenchCase(b, bc, func(t *testing.B) internal.MarkerHandler {
+				runWALEndpointBenchCase(b, bc, func(t *testing.B) marker.Tracker {
 					dir := b.TempDir()
-					nopLogger := log.NewNopLogger()
+					nopLogger := logging.NewSlogNop()
 
-					markerFileHandler, err := internal.NewMarkerFileHandler(nopLogger, dir)
+					f, err := marker.NewFile(nopLogger, dir)
 					require.NoError(b, err)
 
-					markerHandler := internal.NewMarkerHandler(markerFileHandler, time.Minute, nopLogger, internal.NewMarkerMetrics(nil).CurryWithId("test"))
-
-					return markerHandler
+					return marker.NewSegmentTracker(f, time.Minute, nopLogger, marker.NewMetrics(nil).CurryWithId("test"))
 				})
 			})
 
@@ -362,7 +360,7 @@ func BenchmarkEndpointImplementations(b *testing.B) {
 	}
 }
 
-func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) internal.MarkerHandler) {
+func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testing.B) marker.Tracker) {
 	reg := prometheus.NewRegistry()
 
 	// Create a buffer channel where we do enqueue received requests
@@ -406,7 +404,7 @@ func runWALEndpointBenchCase(b *testing.B, bc testCase, mhFactory func(t *testin
 		},
 	}
 
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := logging.NewSlogNop()
 	marker := mhFactory(b)
 
 	endpoint, err := newEndpoint(newMetrics(reg), cfg, logger, marker)
@@ -500,10 +498,8 @@ func runEndpointBenchCase(b *testing.B, bc testCase) {
 		},
 	}
 
-	logger := log.NewLogfmtLogger(os.Stdout)
-
 	m := newMetrics(reg)
-	endpoint, err := newEndpoint(m, cfg, logger, internal.NewNopMarkerHandler())
+	endpoint, err := newEndpoint(m, cfg, logging.NewSlogNop(), marker.NewNopTracker())
 	require.NoError(b, err)
 
 	//labels := model.LabelSet{"app": "test"}

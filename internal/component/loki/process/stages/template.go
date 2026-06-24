@@ -6,6 +6,7 @@ import (
 	"encoding"
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"reflect"
 	"regexp"
 	"strings"
@@ -14,11 +15,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"golang.org/x/crypto/sha3"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -104,7 +103,7 @@ func (t Template) parse() (*template.Template, error) {
 }
 
 // newTemplateStage creates a new templateStage
-func newTemplateStage(logger log.Logger, config TemplateConfig) (Stage, error) {
+func newTemplateStage(logger *slog.Logger, config TemplateConfig) (Stage, error) {
 	templ, err := config.Template.parse()
 	// We should not get an error here when built from alloy syntax.
 	if err != nil {
@@ -113,7 +112,7 @@ func newTemplateStage(logger log.Logger, config TemplateConfig) (Stage, error) {
 	return toStage(&templateStage{
 		cfg:      config,
 		template: templ,
-		logger:   logger,
+		logger:   logger.With("stage", "template"),
 	}), nil
 }
 
@@ -121,7 +120,7 @@ func newTemplateStage(logger log.Logger, config TemplateConfig) (Stage, error) {
 type templateStage struct {
 	cfg      TemplateConfig
 	template *template.Template
-	logger   log.Logger
+	logger   *slog.Logger
 }
 
 var bufPool = sync.Pool{
@@ -137,8 +136,8 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 	for k, v := range extracted {
 		s, err := getString(v)
 		if err != nil {
-			if Debug {
-				level.Debug(o.logger).Log("msg", "extracted template could not be converted to a string", "err", err, "type", reflect.TypeOf(v))
+			if debugEnabled(o.logger) {
+				o.logger.Debug("extracted template could not be converted to a string", "err", err, "type", reflect.TypeOf(v))
 			}
 			continue
 		}
@@ -157,8 +156,8 @@ func (o *templateStage) Process(labels model.LabelSet, extracted map[string]any,
 
 	err := o.template.Execute(buf, td)
 	if err != nil {
-		if Debug {
-			level.Debug(o.logger).Log("msg", "failed to execute template on extracted value", "err", err)
+		if debugEnabled(o.logger) {
+			o.logger.Debug("failed to execute template on extracted value", "err", err)
 		}
 		return
 	}
