@@ -85,6 +85,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/kafka"                   // Import otelcol.exporter.kafka
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/loadbalancing"           // Import otelcol.exporter.loadbalancing
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/loki"                    // Import otelcol.exporter.loki
+	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/opensearch"              // Import otelcol.exporter.opensearch
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlp"                    // Import otelcol.exporter.otlp
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/otlphttp"                // Import otelcol.exporter.otlphttp
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/prometheus"              // Import otelcol.exporter.prometheus

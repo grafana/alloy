@@ -419,8 +419,9 @@ require (
 	github.com/elastic/go-freelru v0.16.0 // indirect
 	github.com/elastic/go-grok v0.3.1 // indirect
 	github.com/elastic/go-perf v0.0.0-20260224073651-af0ee0c731b7 // indirect
-	github.com/elastic/go-sysinfo v1.8.1 // indirect
-	github.com/elastic/go-windows v1.0.1 // indirect
+	github.com/elastic/go-structform v0.0.12 // indirect
+	github.com/elastic/go-sysinfo v1.15.3 // indirect
+	github.com/elastic/go-windows v1.0.2 // indirect
 	github.com/elastic/lunes v0.2.0 // indirect
 	github.com/ema/qdisc v1.0.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
@@ -623,7 +624,6 @@ require (
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/jessevdk/go-flags v1.6.1 // indirect
 	github.com/jmespath-community/go-jmespath v1.1.1 // indirect
-	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
@@ -717,6 +717,7 @@ require (
 	github.com/oliver006/redis_exporter v1.86.0 // indirect
 	github.com/open-telemetry/opamp-go v0.23.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/datadogexporter v0.147.0 // indirect
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/opensearchexporter v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/ackextension v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/encoding v0.147.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/googleclientauthextension v0.147.0 // indirect
@@ -765,6 +766,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opencontainers/runtime-spec v1.2.1 // indirect
 	github.com/opencontainers/selinux v1.13.0 // indirect
+	github.com/opensearch-project/opensearch-go/v4 v4.6.0 // indirect
 	github.com/openshift/api v3.9.0+incompatible // indirect
 	github.com/openshift/client-go v0.0.0-20251015124057-db0dee36e235 // indirect
 	github.com/opentracing-contrib/go-grpc v0.1.2 // indirect
@@ -1078,7 +1080,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/gotestsum v1.13.0 // indirect
-	howett.net/plist v1.0.0 // indirect
+	howett.net/plist v1.0.1 // indirect
 	k8s.io/api v0.35.3 // indirect
 	k8s.io/apiextensions-apiserver v0.35.0 // indirect
 	k8s.io/apimachinery v0.35.3 // indirect

@@ -126,6 +126,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/googlecloudpubsubexporter v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/kafkaexporter v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/loadbalancingexporter v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/opensearchexporter v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/syslogexporter v0.147.0
@@ -554,8 +555,8 @@ require (
 	github.com/efficientgo/core v1.0.0-rc.3 // indirect
 	github.com/elastic/go-grok v0.3.1 // indirect
 	github.com/elastic/go-perf v0.0.0-20260224073651-af0ee0c731b7 // indirect
-	github.com/elastic/go-sysinfo v1.8.1 // indirect
-	github.com/elastic/go-windows v1.0.1 // indirect
+	github.com/elastic/go-sysinfo v1.15.3 // indirect
+	github.com/elastic/go-windows v1.0.2 // indirect
 	github.com/elastic/lunes v0.2.0 // indirect
 	github.com/ema/qdisc v1.0.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
@@ -685,7 +686,6 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.4 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/jessevdk/go-flags v1.6.1 // indirect
-	github.com/joeshaw/multierror v0.0.0-20140124173710-69b34d4ec901 // indirect
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/jsimonetti/rtnetlink v1.4.2 // indirect
@@ -964,7 +964,7 @@ require (
 	gopkg.in/ini.v1 v1.67.1 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	howett.net/plist v1.0.0 // indirect
+	howett.net/plist v1.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.35.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260330154417-16be699c7b31 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
@@ -1049,6 +1049,7 @@ require (
 	github.com/containerd/containerd/api v1.9.0 // indirect
 	github.com/containerd/typeurl/v2 v2.2.3 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
+	github.com/elastic/go-structform v0.0.12 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/fatih/semgroup v1.2.0 // indirect
 	github.com/gitleaks/go-gitdiff v0.9.1 // indirect
@@ -1085,6 +1086,7 @@ require (
 	github.com/nwaples/rardecode/v2 v2.2.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/internal/credentialsfile v0.147.0 // indirect
 	github.com/opencontainers/cgroups v0.0.4 // indirect
+	github.com/opensearch-project/opensearch-go/v4 v4.6.0 // indirect
 	github.com/oschwald/maxminddb-golang/v2 v2.2.0 // indirect
 	github.com/paulmach/orb v0.12.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
