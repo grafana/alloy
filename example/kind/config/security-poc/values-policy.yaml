@@ -1,0 +1,51 @@
+# Helm values for the security-policy demo.
+# Deploys the locally-built Alloy image with --security-policy enforcing a component denylist.
+# Use 'task build:alloy-image' before deploying to (re)build and load the image into Kind.
+#
+# imagePullPolicy is Never because the image is loaded directly into Kind's node containerd
+# store via 'kind load docker-image'. Always/IfNotPresent would try to pull from a remote
+# registry and fail. Use 'task build:alloy-image && task deploy:security-poc:alloy-policy'
+# to rebuild and redeploy with a new binary.
+
+image:
+  repository: alloy-security-poc
+  tag: dev
+  pullPolicy: Never
+
+controller:
+  type: deployment
+  replicas: 1
+  volumes:
+    extra:
+      - name: security-poc-flags
+        secret:
+          secretName: security-poc-flags
+      - name: alloy-security-policy
+        configMap:
+          name: alloy-security-policy
+
+alloy:
+  configMap:
+    content: |
+      import.http "user_module" {
+        url            = "http://config-server.monitoring.svc/module.alloy"
+        poll_frequency = "1s"
+      }
+
+      user_module.user_pipeline "default" {}
+
+  extraArgs:
+    - --security-policy=/etc/alloy-policy/policy.yaml
+
+  extraEnv:
+    - name: SECRET_1
+      value: secret_value_flag_1
+
+  mounts:
+    extra:
+      - name: security-poc-flags
+        mountPath: /etc/security-poc
+        readOnly: true
+      - name: alloy-security-policy
+        mountPath: /etc/alloy-policy
+        readOnly: true

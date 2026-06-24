@@ -181,6 +181,46 @@ tasks:
         python3 "{{.DEMOS_DIR}}/extract_labels.py" "{{.FILE}}" -o "$LABELS"
         python3 "{{.DEMOS_DIR}}/decode_fields.py" "$LABELS" | tee "$DECODED"
 
+  build:alloy-image:
+    desc: Build Alloy binary (linux/amd64, CGO disabled) and load image into Kind
+    deps: [cluster:create]
+    vars:
+      IMAGE: alloy-security-poc:dev
+      ALLOY_ROOT: '{{.ROOT_DIR}}/../..'
+    cmds:
+      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 SKIP_UI_BUILD=1 make -C {{.ALLOY_ROOT}} alloy
+      - docker build -f {{.ALLOY_ROOT}}/Dockerfile.kind-dev -t {{.IMAGE}} {{.ALLOY_ROOT}}
+      - kind load docker-image {{.IMAGE}} --name {{.CLUSTERNAME}}
+
+  deploy:security-poc:alloy-policy:
+    desc: Deploy all POC resources + Alloy with component denylist policy (local image)
+    deps: [cluster:create]
+    vars:
+      POLICY_VALUES: '{{.ROOT_DIR}}/config/security-poc/values-policy.yaml'
+      POLICY_FILE: '{{.ROOT_DIR}}/config/security-poc/policy.yaml'
+      ALLOY_CHART_PATH: '{{.ROOT_DIR}}/../../operations/helm/charts/alloy'
+      MANIFESTS_DIR: '{{.ROOT_DIR}}/config/security-poc/manifests'
+    preconditions:
+      - test -f {{.POLICY_VALUES}}
+      - test -f {{.POLICY_FILE}}
+      - test -d {{.MANIFESTS_DIR}}
+    cmds:
+      - kubectl --kubeconfig {{.KUBECONFIG}} create namespace monitoring --dry-run=client -o yaml | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
+      - kubectl --kubeconfig {{.KUBECONFIG}} apply -f {{.MANIFESTS_DIR}}
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
+      # Create/update the ConfigMap that holds the policy file
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring create configmap alloy-security-policy
+          --from-file=policy.yaml={{.POLICY_FILE}}
+          --dry-run=client -o yaml | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
+      - helm --kubeconfig {{.KUBECONFIG}} upgrade --install alloy {{.ALLOY_CHART_PATH}}
+          -n monitoring --create-namespace
+          -f {{.POLICY_VALUES}}
+          --wait
+      # Restart Alloy to pick up the freshly loaded image and new policy ConfigMap
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/alloy
+      - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/alloy --timeout=90s
+
   deploy:cloud-onboarding:local:
     desc: Deploy Grafana Cloud Onboarding helm chart (requires .env.credentials)
     deps: [cluster:create, update-helm-repos]

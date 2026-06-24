@@ -1,0 +1,13 @@
+# Minimal Alloy image for local Kind cluster development.
+# Build the linux/amd64 binary first, then run docker build from the repo root:
+#   CGO_ENABLED=0 GOOS=linux GOARCH=amd64 SKIP_UI_BUILD=1 make alloy
+#   docker build -f Dockerfile.kind-dev -t alloy-security-poc:dev .
+FROM public.ecr.aws/ubuntu/ubuntu:noble@sha256:748740465d0aadaa69ab6e6c295892f17d7a8f44a85090dbb571ec0bb8c5674f
+
+RUN apt-get update \
+    && apt-get install -qy --no-install-recommends ca-certificates tzdata \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY build/alloy /bin/alloy
+ENTRYPOINT ["/bin/alloy"]
