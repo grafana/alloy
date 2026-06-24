@@ -84,13 +84,18 @@ whether generated code is original or where it came from, do not submit it.
 ## Alloy-specific guidance
 
 LLMs frequently hallucinate Alloy configuration syntax, component names, and component arguments,
-and may produce configurations or components that do not match the current schemas. Always validate
-AI-generated code and configuration against the real component definitions and the project's checks.
+and may produce configurations or components that do not match the current schemas. To reduce these
+errors, point the tool at authoritative sources rather than relying on its training data: provide the
+[Alloy documentation][alloy-docs] and the relevant component source code, ideally pinned to the
+specific Alloy version or git tag you are targeting, and ask the tool to validate its output against
+them. Always validate AI-generated code and configuration against the real component definitions and
+the project's checks before submitting.
 
 For new components and larger changes, follow the existing [proposal process][proposal-process].
 A proposal or design document must reflect your own reasoning. AI may help you draft it, but you own
 the argument in the public consensus discussion.
 
+[alloy-docs]: https://grafana.com/docs/alloy/latest/
 [issue-triage]: ./issue-triage.md
 [license]: ../../LICENSE
 [cla]: https://cla-assistant.io/grafana/alloy
