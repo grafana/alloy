@@ -36,8 +36,7 @@ Do not:
 - File automated, bot-driven issues or pull requests from tools that have not been approved by the
   Alloy team. This policy covers humans using AI assistance, not autonomous agents acting on their
   own.
-- Paste generated text into a discussion as if it were a considered human response without adding
-  your own analysis and context.
+- Paste generated text into a discussion without adding your own analysis and context.
 - Wire up an AI agent to respond automatically to reviewers or other community members on your
   behalf. If you want help from GenAI in a discussion, use it yourself and post in your own words,
   rather than connecting it directly to maintainers.
