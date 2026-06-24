@@ -1,19 +1,18 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/introduction/telemetry/
-description: Learn how Grafana Alloy moves telemetry through connected components and defined data paths
+description: Learn to trace telemetry flow through connected components and defined data paths
 menuTitle: Telemetry flow
-title: How Grafana Alloy moves telemetry
+title: Trace telemetry flow in Grafana Alloy
 weight: 225
 ---
 
-# How {{% param "FULL_PRODUCT_NAME" %}} moves telemetry
+# Trace telemetry flow in {{% param "FULL_PRODUCT_NAME" %}}
 
-The {{< param "PRODUCT_NAME" >}} configuration defines components and the connections between them.
-Those connections determine exactly how telemetry moves through the system.
+Your {{< param "PRODUCT_NAME" >}} configuration defines components and the connections between them.
+Those connections control how telemetry moves through the system.
+When you trace data flow, you can predict behavior, tune performance, and verify that telemetry reaches the right destinations.
 
-Understanding telemetry flow makes it easier to reason about behavior, performance, and outcomes.
-
-## The explicit model
+## Define every connection explicitly
 
 {{< param "PRODUCT_NAME" >}} executes exactly what you configure.
 
@@ -21,15 +20,14 @@ Understanding telemetry flow makes it easier to reason about behavior, performan
 - You specify every transformation, filter, and routing rule.
 - Telemetry moves only along the paths you create.
 
-This gives you precise control and makes behavior predictable.
-If telemetry changes, it's because a component in the configuration changed it.
-If telemetry reaches a destination, it's because a path leads there.
+You get precise control and predictable behavior.
+If telemetry changes, a component in your configuration changed it.
+If telemetry reaches a destination, a path leads there.
+There are no automatic transformations, implicit pipelines, or hidden behavior.
 
-There are no automatic transformations, no implicit pipelines, and no hidden behavior.
+## Follow the pipeline pattern
 
-## The pipeline pattern
-
-Telemetry flows through pipelines following this pattern:
+Telemetry flows through pipelines in four stages:
 
 <!-- vale Grafana.Spelling = NO -->
 
@@ -54,10 +52,10 @@ flowchart LR
 <!-- vale Grafana.Spelling = YES -->
 
 Discovery is optional.
-It's used for pull-based collection when you need to find scrape targets dynamically.
-Push-based ingestion and static configurations start directly at ingestion.
+Use it for pull-based collection when you need to find scrape targets dynamically.
+Push-based ingestion and static configurations start at ingestion.
 
-### Discovery
+### Discover scrape targets
 
 Discovery components find scrape targets and pass them to ingestion components.
 They don't collect telemetry themselves.
@@ -67,22 +65,23 @@ Discovery components can find targets from:
 - Kubernetes resources
 - Cloud provider APIs
 - Service registries
-- Container run times
+- Docker and container engines
 - File-based configuration
 - HTTP endpoints
 - DNS records
 
-### Ingestion
+### Collect or receive telemetry
 
 Ingestion components receive or collect telemetry from external systems and convert it into internal formats.
 
-They handle protocol decoding and normalization, but don't perform semantic transformations such as filtering, sampling, or redaction unless explicitly documented for that component.
+They decode protocols and normalize data.
+They don't filter, sample, or redact telemetry unless a component's documentation says otherwise.
 
 If an ingestion component isn't connected to another component, its telemetry goes nowhere.
 
-### Transformation
+### Transform telemetry in the pipeline
 
-Transformation components operate on telemetry between ingestion and output.
+Transformation components change telemetry between ingestion and output.
 
 Transformation components can:
 
@@ -91,22 +90,22 @@ Transformation components can:
 - Route telemetry to different components
 - Sample traces
 
-If you connect an ingestion component directly to an output component, telemetry passes through without modification.
+Connect an ingestion component directly to an output component and telemetry passes through without modification.
 
-### Output
+### Send telemetry to destinations
 
 Output components forward telemetry to configured destinations.
 
 For example, an output component might send data to:
 
-- A metrics backend, such as Grafana Mimir or any Prometheus-compatible endpoint, using `prometheus.remote_write`
-- A log backend, such as Grafana Loki or any compatible log storage, using `loki.write`
-- A tracing backend, such as Grafana Tempo or any OTLP-compatible endpoint, using `otelcol.exporter.otlp`
-- Another telemetry collector using `otelcol.exporter.otlp`
+- Grafana Mimir or any Prometheus-compatible endpoint with `prometheus.remote_write`
+- Grafana Loki or compatible log storage with `loki.write`
+- Grafana Tempo or any OTLP-compatible endpoint with `otelcol.exporter.otlp`
+- Another telemetry collector with `otelcol.exporter.otlp`
 
-## Component names by pipeline type
+## Map components to pipeline stages
 
-Different component families use different naming conventions, but the underlying flow pattern remains the same:
+Different component families use different naming conventions, but the flow pattern stays the same:
 
 | Pipeline type | Discovery      | Ingestion            | Transformation        | Output                    |
 | ------------- | -------------- | -------------------- | --------------------- | ------------------------- |
@@ -116,63 +115,63 @@ Different component families use different naming conventions, but the underlyin
 | Pyroscope     | `discovery.*`  | `pyroscope.scrape`   | `pyroscope.relabel`   | `pyroscope.write`         |
 
 This table shows common components.
-Some components don't fit neatly into these categories.
-For example, `prometheus.exporter.*` components expose metrics from local or remote systems as scrape targets rather than discovering existing targets.
+Some components don't fit these categories.
+For example, `prometheus.exporter.*` components expose metrics from local or remote systems as scrape targets rather than discover existing targets.
 Refer to the [component reference](../reference/components/) for a complete list.
 
-## Signal types
+## Connect each signal type separately
 
-Metric, log, trace, and profile connections are all defined explicitly.
-If a component supports multiple signal types, each type needs its own explicit connection to the next component in its pipeline.
+You define metric, log, trace, and profile connections explicitly.
+When a component supports multiple signal types, connect each type to the next component in its pipeline.
 
-Many transformation components, particularly `otelcol.processor.*` components, handle multiple signal types.
-Processing one signal type doesn't affect data from another.
+Many transformation components, especially `otelcol.processor.*` components, handle multiple signal types.
+Changes to one signal type don't affect another.
 
 OpenTelemetry pipelines often share components across signal types.
 Prometheus, Loki, and Pyroscope pipelines are signal-specific.
 
-## Branch and merge patterns
+## Branch and merge pipelines
 
 Pipelines aren't limited to straight lines.
 
 Telemetry can:
 
-- Branch to multiple receiving components
+- Branch to multiple downstream components
 - Merge into shared output components
-- Remain isolated from other signal types
+- Stay isolated from other signal types
 
-A single ingestion component may feed one output, multiple outputs, or multiple transformation chains.
-Separate ingestion components may remain isolated, share transformation components, or converge on a shared output.
+One ingestion component can feed one output, multiple outputs, or multiple transformation chains.
+Separate ingestion components can stay isolated, share transformation components, or converge on a shared output.
 
-## Read configurations as data flow
+## Trace data flow in a configuration
 
-To understand how telemetry flows in a configuration, trace the data path:
+To see how telemetry moves in a configuration, trace the data path:
 
-1. Identify any discovery components and note which ingestion components receive their targets.
+1. Identify discovery components and note which ingestion components receive their targets.
 1. Identify ingestion components and determine what signal type each handles.
 1. Trace where each component sends telemetry.
-1. Note transformation components and understand their behavior.
+1. Review transformation components and what they change.
 1. Identify where each path ends.
 
 Explicit connections let you trace the data path in the configuration.
-Connection order determines execution order, not the textual order of components in the configuration file.
+Connection order determines execution order, not the textual order of components in the file.
 
-### Troubleshoot
+### Troubleshoot unexpected telemetry
 
 When telemetry behaves unexpectedly:
 
 - Verify that the ingestion component connects to other components.
 - Trace the full path from ingestion to output.
-- Confirm transformation components are in the expected position.
+- Confirm transformation components sit in the expected position.
 - Ensure the path ends at the correct output component.
 
-Unexpected behavior usually reflects an unexpected connection or a missing one.
+Unexpected behavior usually means an unexpected or missing connection.
 
-The {{< param "PRODUCT_NAME" >}} UI can help visualize these connections.
+The {{< param "PRODUCT_NAME" >}} UI can help you visualize these connections.
 Refer to [Debug](../../troubleshoot/debug/) for more information.
 
 ## Next steps
 
-- [Component reference](../../reference/components/) - Detailed behavior of individual components.
-- [Get started](../../get-started/) - Learn the fundamentals of {{< param "PRODUCT_NAME" >}} configuration syntax.
-- [Troubleshoot](../../troubleshoot/) - Find solutions to common issues and debugging techniques.
+- Explore the [Component reference](../../reference/components/) for detailed behavior of individual components
+- Follow [Get started](../../get-started/) to learn {{< param "PRODUCT_NAME" >}} configuration syntax
+- Use [Troubleshoot](../../troubleshoot/) to find solutions to common issues and debug techniques
