@@ -38,6 +38,9 @@ func (f *Fanout) Send(ctx context.Context, entry Entry) error {
 	f.mut.RLock()
 	defer f.mut.RUnlock()
 	for _, recv := range f.children {
+		if recv == nil {
+			continue
+		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -65,6 +68,9 @@ func (f *Fanout) SendBatch(ctx context.Context, batch []Entry) error {
 	defer f.mut.RUnlock()
 	for _, e := range batch {
 		for _, recv := range f.children {
+			if recv == nil {
+				continue
+			}
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
