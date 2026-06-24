@@ -29,7 +29,7 @@ Connected components form pipelines.
 Most telemetry pipelines use some combination of four roles: discovery, ingestion, transformation, and output.
 Discovery and transformation are optional, and you can chain multiple components in the same role or branch to multiple outputs.
 
-<!-- vale Grafana.Spelling = NO -->
+<!-- vale Grafana.WordList = NO -->
 
 {{< mermaid >}}
 flowchart LR
@@ -49,7 +49,7 @@ flowchart LR
   class Discovery,Ingestion,Transformation,Output grafana
 {{< /mermaid >}}
 
-<!-- vale Grafana.Spelling = YES -->
+<!-- vale Grafana.WordList = YES -->
 
 In pull-based pipelines, discovery components pass scrape targets to ingestion components such as `prometheus.scrape`.
 OpenTelemetry pipelines start at `otelcol.receiver.*` and skip discovery.
