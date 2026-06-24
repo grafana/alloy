@@ -10,8 +10,8 @@ A **security policy** in a separate file, passed by CLI flag
 `import.*` and `remotecfg` cannot define or relax it. (If it's a ConfigMap, make it
 immutable, or bake it into the image/PodSpec, so the data-plane RBAC can't edit it.)
 
-We pick the external file because it's the easiest to iterate on and ports to the
-OTel engine. An in-Alloy-config `security_policy {}` block (root-only, "read once"
+We pick the external file because it's the easiest to iterate on in this POC.
+An in-Alloy-config `security_policy {}` block (root-only, "read once"
 service) is also possible and more native, but it must additionally guarantee
 `remotecfg` can't set it, so it's harder to prove correct.
 
@@ -24,16 +24,15 @@ service) is also possible and more native, but it must additionally guarantee
 
 The policy defines:
 
-- **Component allowlist / denylist** — which components may run.
+- **Component and config blocks allowlist / denylist** — which components and config blocks may run.
 - **External endpoint allowlist** — where components may connect.
-- **Connections between components** — optional, `warn` only (legit vs. abuse is
-  domain-specific, so don't hard-block).
+- **Connections between components** — optional allowlist of connections between components.
 - **Signature requirement** — require a verified signature on all fetched config.
 - **Public keys / trust anchors** used to verify those signatures.
 
 ### Signed config
 
-Each config source provides a **JWS** (detached) alongside its content — a sibling
+Each config source can optionally provide a **JWS** (detached) alongside its content — a sibling
 path/URL or a header, TBD per source. Alloy verifies it before evaluating, and
 fails closed:
 
@@ -43,17 +42,15 @@ fails closed:
   (intended collector/fleet);
 - content hash matches the fetched bytes.
 
-For `import.git`, verify native signed commits/tags instead.
-
 ### Enforcement choke points
 
 - Component registry → component gate.
-- Shared HTTP/gRPC dialer → endpoint gate (must be central, or attackers pivot).
+- Shared HTTP/gRPC dialer → endpoint gate (must be central, or attackers can pivot).
 - Config loader → signature gate.
 
 ### Validation command
 
-A dry-run subcommand to check a config against a policy *before* deploying:
+A dry-run subcommand to check a config against a policy *before* deploying, to help iterate on the policy:
 
 ```sh
 alloy security-policy check --security-policy=policy.yaml config.alloy
@@ -69,23 +66,21 @@ It reports:
 
 This makes the policy easy to author iteratively and to debug rejections.
 
+Future extension: automatically generate the policy from the config that is maximally tight.
+
 ### Limits
 
 Signing reduces trust to the signing key — a key/pipeline compromise still produces
-valid configs, so the component and endpoint gates remain essential. The k8s API is
-a legitimate endpoint, so flag 5 needs least-privilege RBAC, not an egress rule.
+valid configs, so the component and endpoint gates remain essential.
 
 ## Grafana Cloud Fleet Management
 
-The same policy becomes a Fleet Management feature: define an **org-wide policy** in
-the Fleet Management UI, and every pipeline is checked against it **before it can be
-saved** (the validation command above, run server-side). Alloys must be **seeded
-with the same policy file** so enforcement also happens at the edge, not just at
-save time. Keeping both in sync is extra work — that's the cost of hardening.
+Fleet Management connections are already over TLS.
 
-Fleet Management can also get extra features, e.g. **certificates** for signing
-config (it's a common source of configs), so collectors verify Fleet-delivered
-config against a Fleet CA instead of managing pinned keys by hand.
+The Alloy's security policies could become a feature of Fleet Management:
+Users can define an **org-wide policy** in
+the Fleet Management UI, and every pipeline is checked against it **before it can be saved** (the validation command above, run server-side).
+Alloys can be **seeded with the same (or a subset of the) policy file** so enforcement also happens at the edge if users desire the extra security.
 
 ## Portability
 

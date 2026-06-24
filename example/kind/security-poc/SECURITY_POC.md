@@ -1,102 +1,48 @@
 # Security POC
 
-A set of intentionally planted "flags" in this local kind cluster, used to build a security POC.
-
-Everything here is deployed by a single task:
-
-```sh
-task deploy:security-poc
-```
-
-This creates the `monitoring` namespace and deploys:
-
-- **Alloy** (1 replica) from the chart, using `config/security-poc/values.yaml`.
-- The extra k8s manifests in `config/security-poc/manifests/`.
-
-> All flag values are dummy strings. Nothing here is a real secret. The cluster is created on purpose for the POC.
-
-## Attack vector
-
 This POC explores what happens when an attacker can control the configuration
 that Alloy runs.
 
 Alloy is configured to fetch part of its config from an in-cluster HTTP server
-using `import.http`, then run whatever it gets back:
+using `import.http`, then run whatever it gets back.
 
-- The Alloy main config (`config/security-poc/values.yaml`) imports a module
-  from `http://config-server.monitoring.svc/module.alloy` with a 1 second
-  poll, and instantiates the `user_pipeline` custom component it declares.
-- That URL is served by the `config-server` pod (nginx), which just serves the
-  `user-pipeline-module` ConfigMap. Today the module is a harmless no-op.
-- Because the poll frequency is 1 second, any change to that ConfigMap is
-  picked up and executed by Alloy almost immediately — no restart needed.
+In practice, there are other import sources, so this could be anything from a Git repository, HTTP endpoint, a local file or Fleet Management server (self-hosted or in Grafana Cloud via API).
 
-For this POC we explore the scenario where the attacker gained control over the configuration that Alloy fetches from the endpoint above. In practice, there are other import sources, so this could be anything from a Git repository, HTTP endpoint, a local file or Fleet Management server (self-hosted or in Grafana Cloud via API).
+## Demonstrated
 
-## Flags
+### Reading environment variables
 
-### Flag 1 — secret in an environment variable
+**Demonstrated:** `SECRET_1=secret_value_flag_1`
 
-- **Value:** `SECRET_1=secret_value_flag_1`
-- **Where:** env var on the Alloy container (`alloy.extraEnv` in `values.yaml`).
+Attacker is able to read environment variables passed to the Alloy process.
 
-### Flag 2 — secret in a Kubernetes Secret, mounted as a file
+### Read access to file system
 
-- **Value:** `SECRET_2=secret_value_flag_2`
-- **Where:** Kubernetes Secret `security-poc-flags`, mounted into the Alloy
+**Demonstrated:** `SECRET_2=secret_value_flag_2` in a Kubernetes Secret `security-poc-flags`, mounted into the Alloy
   container at `/etc/security-poc/SECRET_2`.
 
-### Flag 3 — secret in a pod annotation
+Attacker is able to read arbitrary files in the Alloy container.
 
-- **Value:** `secret_value_flag_3` (annotation `security-poc/flag-3` on pod `vuln-http-server`)
-- **Where:** metadata on the `vuln-http-server` pod (a tiny `hashicorp/http-echo`).
+### Server-side Request Forgery (SSRF) to internal services
 
-### Flag 4 — unauthenticated DoS endpoint on an internal service
+**Demonstrated:** `GET http://internal-api.monitoring.svc:8080/quitquitquit` and `GET http://internal-api.monitoring.svc:8080/internal-endpoint` return `shutting down critical server` and `secret_value_flag_4` respectively.
 
-- **Value:** no text flag; the capability itself is the point.
-- **Where:** `GET http://internal-api.monitoring.svc:8080/quitquitquit`
-  returns `shutting down critical server`.
-- **Bonus:** `GET /internal-endpoint` on the same pod returns `secret_value_flag_4`
-  — demonstrates SSRF to internal services alongside the DoS vector.
+Attacker is able to make requests to internal services. This can help discover further vulnerabilities and pivot.
 
-### Flag 5 — k8s API: full resources (secrets, pods, etc.) enumeration
+### Reconnaissance via Kubernetes API
 
-- **Value:** all resources in the cluster, including secrets.
-- **Where:** `https://kubernetes.default.svc/api/v1/secrets` — the k8s API server,
-  called using Alloy's own mounted ServiceAccount token.
-- **Why it works by default:** the Alloy helm chart grants `get, list, watch` on
-  `secrets` cluster-wide. A compromised pipeline
-  config can use the same credential to enumerate every resource.
+**Demonstrated:** `https://kubernetes.default.svc/api/v1/*` can be used to return manifests of all resources in the cluster, including secrets.
 
-## Verifying flags are deployed correctly
+Attacker is able to enumerate all resources in the cluster, including secrets. This can help discover further vulnerabilities and pivot.
 
-Always use the kind kubeconfig:
+Default RBAC rules in the Alloy helm chart grant `get, list, watch` on `secrets` cluster-wide.
 
-```sh
-# Flag 1 — env var
-kubectl --kubeconfig build/kubeconfig.yaml -n monitoring exec deploy/alloy -c alloy -- printenv SECRET_1
+## Further potential attack vectors
 
-# Flag 2 — mounted file
-kubectl --kubeconfig build/kubeconfig.yaml -n monitoring exec deploy/alloy -c alloy -- cat /etc/security-poc/SECRET_2
+### Cloud metadata service (IMDS)
 
-# Flag 3 — pod annotation
-kubectl --kubeconfig build/kubeconfig.yaml -n monitoring get pod vuln-http-server -o jsonpath='{.metadata.annotations.security-poc/flag-3}'
+On AWS/GCP/Azure, `remote.http` can query `169.254.169.254` with no extra permissions — it returns temporary IAM/service-account credentials. With IMDSv1 it's a single GET; IMDSv2 requires a PUT first to get a session token, which `remote.http` handles via `method = "PUT"`. Stolen credentials can then reach S3, IAM, or any cloud API from outside the cluster.
 
-# Flag 4 — DoS + SSRF (via port-forward)
-kubectl --kubeconfig build/kubeconfig.yaml -n monitoring port-forward pod/internal-api 8080:8080 &
-curl -s http://localhost:8080/quitquitquit         # shutting down critical server
-curl -s http://localhost:8080/internal-endpoint    # secret_value_flag_4 (SSRF bonus)
+### Beyla attack surface
 
-# Flag 5 — list all secrets via k8s API (ServiceAccount token is mounted in pod)
-kubectl --kubeconfig build/kubeconfig.yaml -n monitoring exec deploy/alloy -c alloy -- \
-  sh -c 'curl -sk -H "Authorization: Bearer $(cat /var/run/secrets/kubernetes.io/serviceaccount/token)" \
-  https://kubernetes.default.svc/api/v1/secrets | python3 -c "import sys,json; [print(s[\"metadata\"][\"name\"]) for s in json.load(sys.stdin)[\"items\"]]"'
-```
-
-## Demo notes
-
-- **`kubectl.kubernetes.io/last-applied-configuration` annotation** — `kubectl apply`
-  stores the full resource manifest as a JSON annotation on every object it touches.
-  The flag3 demo's `labelmap` rule picks this up automatically, so every log line
-  arriving at the receiver carries the entire pod spec (env vars, image, ports,
-  volumes, args) as a label value. No extra steps needed — it's already there.
+If attacker controls Alloy config AND Alloy runs with eBPF capabilities: they can wiretap all HTTPS traffic (post-TLS), capture full SQL queries with literal values, read HTTP bodies up to 64KB
