@@ -4,3 +4,10 @@ components:
     - remote.http            # flag 4: DoS / SSRF / arbitrary POST; flag 5: k8s API enumeration
     - loki.source.kubernetes # flag 6: container log exfiltration via k8s API
     - local.file             # flags 1-2: reads mounted Secrets/ConfigMaps as strings
+
+endpoints:
+  mode: allowlist
+  patterns:
+    - https://logs.grafana.net/**       # Grafana Cloud Loki
+    - https://prometheus.grafana.net/** # Grafana Cloud Prometheus remote write
+    - https://*.grafana.com/**          # Grafana Cloud general endpoints
