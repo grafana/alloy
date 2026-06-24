@@ -281,12 +281,12 @@ func createBackportCommit(ctx context.Context, client *gh.Client, branch, expect
 		})
 	}
 
-	headline, body, _ := strings.Cut(strings.TrimSpace(message), "\n")
+	headline, body := git.SplitCommitMessage(message)
 	return client.CreateCommitOnBranch(ctx, gh.CreateCommitOnBranchParams{
 		Branch:          branch,
 		ExpectedHeadOID: expectedHeadOID,
-		Headline:        strings.TrimSpace(headline),
-		Body:            strings.TrimSpace(body),
+		Headline:        headline,
+		Body:            body,
 		Additions:       additions,
 		Deletions:       changes.Deletions,
 	})

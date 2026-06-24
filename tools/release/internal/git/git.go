@@ -21,6 +21,11 @@ var validSHA = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
 
 const commandErrorFormat = "%w:\n%s"
 
+type runOptions struct {
+	args         []string
+	streamOutput bool
+}
+
 // validateBranchName ensures a branch name is safe to use in git commands by preventing things like
 // directory traversal and dangerous patterns.
 func validateBranchName(name string) error {
@@ -49,40 +54,47 @@ func validateSHA(sha string) error {
 }
 
 // run executes a command with stdout/stderr connected to the terminal. Both streams are captured
-// together and returned as a single string.
+// together and returned as a single trimmed string.
 func run(args ...string) (string, error) {
-	var combined bytes.Buffer
-
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Stdout = io.MultiWriter(os.Stdout, &combined)
-	cmd.Stderr = io.MultiWriter(os.Stderr, &combined)
-
-	err := cmd.Run()
-	out := strings.TrimSpace(combined.String())
-	if err != nil {
-		return out, fmt.Errorf(commandErrorFormat, err, out)
-	}
-
-	return out, nil
-}
-
-func output(args ...string) (string, error) {
-	cmd := exec.Command(args[0], args[1:]...)
-	out, err := cmd.CombinedOutput()
+	out, err := runWithBytesOutput(runOptions{
+		args:         args,
+		streamOutput: true,
+	})
 	trimmed := strings.TrimSpace(string(out))
 	if err != nil {
-		return trimmed, fmt.Errorf(commandErrorFormat, err, trimmed)
+		return trimmed, err
 	}
+
 	return trimmed, nil
 }
 
-func outputBytes(args ...string) ([]byte, error) {
-	cmd := exec.Command(args[0], args[1:]...)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf(commandErrorFormat, err, strings.TrimSpace(string(out)))
+func runWithBytesOutput(opts runOptions) ([]byte, error) {
+	var combined bytes.Buffer
+
+	cmd := exec.Command(opts.args[0], opts.args[1:]...)
+	cmd.Stdout = &combined
+	cmd.Stderr = &combined
+	if opts.streamOutput {
+		cmd.Stdout = io.MultiWriter(os.Stdout, &combined)
+		cmd.Stderr = io.MultiWriter(os.Stderr, &combined)
 	}
-	return out, nil
+
+	err := cmd.Run()
+	if err != nil {
+		return combined.Bytes(), fmt.Errorf(commandErrorFormat, err, strings.TrimSpace(combined.String()))
+	}
+
+	return combined.Bytes(), nil
+}
+
+// SplitCommitMessage splits a commit message into the headline and body used by
+// the GitHub API.
+func SplitCommitMessage(message string) (string, string) {
+	headline, body, ok := strings.Cut(strings.TrimSpace(message), "\n")
+	if !ok {
+		return headline, ""
+	}
+	return strings.TrimSpace(headline), strings.TrimSpace(body)
 }
 
 // GetCherryPickCommitMessage returns the commit message git would use for a
@@ -92,7 +104,7 @@ func GetCherryPickCommitMessage(sha string) (string, error) {
 		return "", err
 	}
 
-	message, err := output("git", "log", "-1", "--format=%B", sha)
+	message, err := run("git", "log", "-1", "--format=%B", sha)
 	if err != nil {
 		return "", fmt.Errorf("getting commit message for %s: %w", sha, err)
 	}
@@ -246,7 +258,9 @@ func GetStagedChanges() (StagedDiff, error) {
 }
 
 func getStagedPaths(root, diffFilter string) ([]string, error) {
-	out, err := outputBytes("git", "-C", root, "diff", "--cached", "--no-renames", "--name-only", "--diff-filter="+diffFilter, "-z")
+	out, err := runWithBytesOutput(runOptions{
+		args: []string{"git", "-C", root, "diff", "--cached", "--no-renames", "--name-only", "--diff-filter=" + diffFilter, "-z"},
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -286,7 +300,7 @@ func splitGitPaths(out []byte) ([]string, error) {
 }
 
 func repoRoot() (string, error) {
-	root, err := output("git", "rev-parse", "--show-toplevel")
+	root, err := run("git", "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", fmt.Errorf("getting repository root: %w", err)
 	}
@@ -319,7 +333,9 @@ func readStagedFile(root, path string) (StagedFile, error) {
 		return StagedFile{}, fmt.Errorf("git path escapes repository: %q", path)
 	}
 
-	contents, err := outputBytes("git", "-C", root, "show", ":"+path)
+	contents, err := runWithBytesOutput(runOptions{
+		args: []string{"git", "-C", root, "show", ":" + path},
+	})
 	if err != nil {
 		return StagedFile{}, fmt.Errorf("reading staged file %s from index: %w", path, err)
 	}

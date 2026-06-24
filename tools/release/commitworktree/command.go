@@ -3,7 +3,6 @@ package commitworktree
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -81,7 +80,7 @@ func createCommit(ctx context.Context, client *gh.Client, branch, expectedHeadOI
 		})
 	}
 
-	headline, body := splitCommitMessage(message)
+	headline, body := git.SplitCommitMessage(message)
 	return client.CreateCommitOnBranch(ctx, gh.CreateCommitOnBranchParams{
 		Branch:          branch,
 		ExpectedHeadOID: expectedHeadOID,
@@ -90,12 +89,4 @@ func createCommit(ctx context.Context, client *gh.Client, branch, expectedHeadOI
 		Additions:       additions,
 		Deletions:       changes.Deletions,
 	})
-}
-
-func splitCommitMessage(message string) (string, string) {
-	headline, body, ok := strings.Cut(strings.TrimSpace(message), "\n")
-	if !ok {
-		return headline, ""
-	}
-	return strings.TrimSpace(headline), strings.TrimSpace(body)
 }
