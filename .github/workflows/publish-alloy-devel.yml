@@ -65,9 +65,10 @@ jobs:
     - name: Get the image tag
       id: get-tag
       run: |
-        echo "$(bash ./scripts/image-tag-docker)" > .tag-only
-        echo "grafana/alloy-dev:$(bash ./scripts/image-tag-docker)" > .image-tag
-        echo "tag=$(bash ./scripts/image-tag-docker)" >> "$GITHUB_OUTPUT"
+        TAG="$(bash ./scripts/image-tag-docker)"
+        echo "${TAG}" > .tag-only
+        echo "grafana/alloy-dev:${TAG}" > .image-tag
+        echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       # This step needs to run after "Get the image tag".
       # That's because the login to GAR generates a new file.
