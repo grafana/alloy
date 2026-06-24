@@ -33,8 +33,9 @@ Do not:
   did not read and understand it, do not submit it.
 - Use GenAI as a substitute for human judgment in code review. An AI tool may help you understand a
   change, but the review and its conclusions must be yours.
-- File automated, bot-driven issues or pull requests. This policy covers humans using AI assistance,
-  not autonomous agents acting on their own.
+- File automated, bot-driven issues or pull requests from tools that have not been approved by the
+  Alloy team. This policy covers humans using AI assistance, not autonomous agents acting on their
+  own.
 - Paste generated text into a discussion as if it were a considered human response without adding
   your own analysis and context.
 
@@ -42,6 +43,13 @@ Maintainers may close low-effort AI-generated contributions, following the same
 [issue triage process][issue-triage] used for other contributions. When they do, they should explain
 why and, where appropriate, offer guidance on how to improve the contribution. Repeated low-effort
 submissions will trigger additional review and offending users blocked from further contributing.
+
+## Approved automation
+
+Some automated tools are explicitly approved by the Alloy team and are an acceptable exception to the
+rule against bot-driven contributions. Examples include GitHub Copilot and the automated dependency
+review bot, and the Alloy team may approve more over time. Contributions from these tools are always
+clearly marked as bot-generated so that reviewers can tell them apart from human contributions.
 
 ## Disclosure
 
