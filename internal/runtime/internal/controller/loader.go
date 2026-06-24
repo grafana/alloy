@@ -189,9 +189,10 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 	}
 
 	var (
-		components   = make([]ComponentNode, 0)
-		componentIDs = make(map[string]ComponentID)
-		services     = make([]*ServiceNode, 0, len(l.services))
+		components        = make([]ComponentNode, 0)
+		componentIDs      = make(map[string]ComponentID)
+		services          = make([]*ServiceNode, 0, len(l.services))
+		hasPolicyViolation bool
 	)
 
 	tracer := l.tracer.Tracer("")
@@ -237,6 +238,10 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 			}
 
 			if err = l.evaluate(logger, n); err != nil {
+				var policyErr *PolicyViolationError
+				if errors.As(err, &policyErr) {
+					hasPolicyViolation = true
+				}
 				var evalDiags diag.Diagnostics
 				if errors.As(err, &evalDiags) {
 					diags = append(diags, evalDiags...)
@@ -290,6 +295,12 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 		}
 		return nil
 	})
+
+	if hasPolicyViolation {
+		// Policy violations are fatal for the entire Apply: the old graph stays in
+		// effect so no partial or unsafe config is ever committed.
+		return diags
+	}
 
 	l.componentNodes = components
 	l.serviceNodes = services

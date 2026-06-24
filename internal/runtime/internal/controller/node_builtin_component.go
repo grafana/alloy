@@ -274,6 +274,16 @@ func (cn *BuiltinComponentNode) Evaluate(scope *vm.Scope) error {
 	return err
 }
 
+// PolicyViolationError is returned when a component's egress endpoints violate
+// the security policy. The loader treats this as fatal for the entire Apply()
+// call, preventing partial config from being committed.
+type PolicyViolationError struct {
+	cause error
+}
+
+func (e *PolicyViolationError) Error() string { return e.cause.Error() }
+func (e *PolicyViolationError) Unwrap() error { return e.cause }
+
 func (cn *BuiltinComponentNode) checkEndpointPolicy(args component.Arguments) error {
 	if cn.policyChecker == nil {
 		return nil
@@ -285,7 +295,7 @@ func (cn *BuiltinComponentNode) checkEndpointPolicy(args component.Arguments) er
 	spec := ec.EgressSpec()
 	for _, u := range spec.Endpoints {
 		if err := cn.policyChecker.CheckEndpoint(u); err != nil {
-			return fmt.Errorf("endpoint policy violation: %w", err)
+			return &PolicyViolationError{cause: fmt.Errorf("endpoint policy violation in component %q: %w", cn.componentName, err)}
 		}
 	}
 	if spec.HasDynamic {
