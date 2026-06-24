@@ -29,7 +29,7 @@ In all cases, you remain the author: you read the output, you correct it, and yo
 
 Do not:
 
-- Submit unreviewed, bulk AI-generated content to pull requests, issues or proposals. If you
+- Submit unreviewed, bulk AI-generated content to pull requests, issues, or proposals. If you
   did not read and understand it, do not submit it.
 - Use GenAI as a substitute for human judgment in code review. An AI tool may help you understand a
   change, but the review and its conclusions must be yours.
