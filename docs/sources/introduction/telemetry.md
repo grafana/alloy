@@ -14,16 +14,15 @@ When you trace data flow, you can predict behavior, tune performance, and verify
 
 ## Define every connection explicitly
 
-{{< param "PRODUCT_NAME" >}} executes exactly what you configure.
+There are no automatic transformations, no implicit pipelines, and no default processing.
 
 - You define every connection between components.
 - You specify every transformation, filter, and routing rule.
 - Telemetry moves only along the paths you create.
 
-You get precise control and predictable behavior.
-If telemetry changes, a component in your configuration changed it.
-If telemetry reaches a destination, a path leads there.
-There are no automatic transformations, implicit pipelines, or hidden behavior.
+This requires more explicit configuration but makes behavior predictable and easier to debug.
+If telemetry changes, it's because a component in the configuration changed it.
+If telemetry reaches a destination, it's because a path leads there.
 
 ## Follow the pipeline pattern
 
