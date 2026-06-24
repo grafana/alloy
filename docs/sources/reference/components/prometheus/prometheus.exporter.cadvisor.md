@@ -80,7 +80,7 @@ For Docker, grant permissions using one of these approaches:
 
 For more information about running {{< param "PRODUCT_NAME" >}} without root privileges, refer to [Access and permissions for {{< param "PRODUCT_NAME" >}} on Kubernetes][access-kubernetes].
 
-[access-kubernetes]: ../../../access_permissions/kubernetes/
+[access-kubernetes]: ../../../../access_permissions/kubernetes/
 [nonroot]: ../../../../configure/nonroot/
 
 {{< /tab-content >}}

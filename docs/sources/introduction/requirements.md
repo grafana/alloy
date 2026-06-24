@@ -191,7 +191,7 @@ If something doesn't behave as expected after deployment:
 [http]: ../../reference/http/
 [reference]: ../../reference/
 [run]: ../../reference/cli/run/
-[access-kubernetes]: ../../access_permissions/kubernetes/
+[access-kubernetes]: ../../../access_permissions/kubernetes/
 [deploy]: ../../set-up/deploy/
 [clustering]: ../../get-started/clustering/
 [estimate resource usage]: ../../set-up/estimate-resource-usage/
