@@ -11,7 +11,6 @@
 # Documentation tooling is owned by @grafana/docs-tooling.
 /.github/workflows/deploy-pr-preview.yml                       @grafana/docs-tooling
 /.github/workflows/check_docs.yml                              @grafana/docs-tooling
-/.github/workflows/publish-technical-documentation-release.yml @grafana/docs-tooling
 /docs/docs.mk                                                  @grafana/docs-tooling
 /docs/make-docs                                                @grafana/docs-tooling
 /docs/variables.mk                                             @grafana/docs-tooling
