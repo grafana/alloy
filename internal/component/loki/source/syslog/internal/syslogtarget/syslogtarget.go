@@ -7,12 +7,12 @@ package syslogtarget
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/leodido/go-syslog/v4"
 	"github.com/leodido/go-syslog/v4/rfc3164"
@@ -23,7 +23,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 var (
@@ -52,7 +51,7 @@ type DebugListener interface {
 // nolint:revive
 type SyslogTarget struct {
 	metrics       *Metrics
-	logger        log.Logger
+	logger        *slog.Logger
 	handler       loki.EntryHandler
 	config        *scrapeconfig.SyslogTargetConfig
 	relabelConfig []*relabel.Config
@@ -72,7 +71,7 @@ type message struct {
 
 type TargetParams struct {
 	Metrics       *Metrics
-	Logger        log.Logger
+	Logger        *slog.Logger
 	Handler       loki.EntryHandler
 	Relabel       []*relabel.Config
 	Config        *scrapeconfig.SyslogTargetConfig
@@ -127,11 +126,11 @@ func NewSyslogTarget(params TargetParams) (*SyslogTarget, error) {
 func (t *SyslogTarget) handleMessageError(err error) {
 	var ne net.Error
 	if errors.As(err, &ne) && ne.Timeout() {
-		level.Debug(t.logger).Log("msg", "connection timed out", "err", ne)
+		t.logger.Debug("connection timed out", "err", ne)
 		return
 	}
 
-	level.Warn(t.logger).Log("msg", "error parsing syslog stream", "err", err)
+	t.logger.Warn("error parsing syslog stream", "err", err)
 	t.metrics.syslogParsingErrors.Inc()
 }
 
@@ -183,7 +182,8 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 	}
 
 	originalLabels := lb.Labels()
-	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
+	relabel.ProcessBuilder(lb, t.relabelConfig...)
+	processed := lb.Labels()
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
@@ -207,7 +207,7 @@ func (t *SyslogTarget) handleMessageRFC5424(connLabels labels.Labels, msg *rfc54
 	if t.config.UseRFC5424Message {
 		fullMsg, err := msg.String()
 		if err != nil {
-			level.Debug(t.logger).Log("msg", "failed to convert rfc5424 message to string; using message field instead", "err", err)
+			t.logger.Debug("failed to convert rfc5424 message to string; using message field instead", "err", err)
 		} else {
 			m = fullMsg
 		}
@@ -260,7 +260,8 @@ func (t *SyslogTarget) handleMessageRFC3164(connLabels labels.Labels, msg *rfc31
 	}
 
 	originalLabels := lb.Labels()
-	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
+	relabel.ProcessBuilder(lb, t.relabelConfig...)
+	processed := lb.Labels()
 
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
@@ -305,7 +306,8 @@ func (t *SyslogTarget) handleMessageRaw(connLabels labels.Labels, msg *syslog.Ba
 	}
 
 	originalLabels := lb.Labels()
-	processed, _ := relabel.Process(originalLabels, t.relabelConfig...)
+	relabel.ProcessBuilder(lb, t.relabelConfig...)
+	processed := lb.Labels()
 	filtered := make(model.LabelSet)
 	processed.Range(func(lbl labels.Label) {
 		if strings.HasPrefix(lbl.Name, "__") {
@@ -340,7 +342,7 @@ func (t *SyslogTarget) handleMessage(connLabels labels.Labels, msg syslog.Messag
 	case *syslog.Base:
 		t.handleMessageRaw(connLabels, m)
 	default:
-		level.Error(t.logger).Log("msg", fmt.Sprintf("handleMessage: unsupported message type %T", m))
+		t.logger.Error("unsupported message", "type", fmt.Sprintf("%T", m))
 	}
 }
 

@@ -1,12 +1,15 @@
 import { faBroom, faBug, faCopy, faRoad, faStop } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { Field, Input, Slider } from '@grafana/ui';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 
+import SliderInput from '../components/SliderInput';
 import Page from '../features/layout/Page';
 import { useLiveDebugging } from '../hooks/liveDebugging';
 import styles from './LiveDebugging.module.css';
+
+const MIN_SAMPLE_RATE = 0;
+const MAX_SAMPLE_RATE = 100;
 
 function PageLiveDebugging() {
   const { '*': componentID } = useParams();
@@ -18,6 +21,7 @@ function PageLiveDebugging() {
   const [autoScroll, setAutoScroll] = useState(true);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastScrollTopRef = useRef<number>(0);
+  const filterInputId = useId();
   const { loading, error } = useLiveDebugging(String(componentID), enabled, sampleProb, setData);
 
   const filteredData = data.filter((n) => n.toLowerCase().includes(filterValue.toLowerCase()));
@@ -75,12 +79,8 @@ function PageLiveDebugging() {
     );
   }
 
-  function handleSampleChange(value?: number) {
-    setSliderProb(value ? value : 0);
-  }
-
-  function handleSampleChangeComplete(value?: number) {
-    setSampleProb((value ? value : 0) / 100.0);
+  function handleSampleChangeComplete(value: number) {
+    setSampleProb(value / 100);
     if (enabled) {
       setEnabled(false);
       setTimeout(() => setEnabled(true), 200);
@@ -98,18 +98,15 @@ function PageLiveDebugging() {
   }
 
   const samplingControl = (
-    <div className={styles.slider}>
-      <span className={styles.sliderLabel}>Sample rate</span>
-      <Slider
-        included
-        min={0}
-        max={100}
-        value={sliderProb}
-        orientation="horizontal"
-        onChange={handleSampleChange}
-        onAfterChange={handleSampleChangeComplete}
-      />
-    </div>
+    <SliderInput
+      label="Sample rate"
+      min={MIN_SAMPLE_RATE}
+      max={MAX_SAMPLE_RATE}
+      value={sliderProb}
+      defaultValue={MAX_SAMPLE_RATE}
+      onChange={setSliderProb}
+      onCommit={handleSampleChangeComplete}
+    />
   );
 
   function handleFilterChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -117,9 +114,10 @@ function PageLiveDebugging() {
   }
 
   const filterControl = (
-    <Field className={styles.filter}>
-      <Input placeholder="Filter data..." onChange={handleFilterChange} />
-    </Field>
+    <div className={styles.filter}>
+      <label htmlFor={filterInputId}>Filter</label>
+      <input id={filterInputId} type="text" placeholder="Filter data..." value={filterValue} onChange={handleFilterChange} />
+    </div>
   );
 
   const controls = (

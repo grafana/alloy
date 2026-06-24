@@ -3,10 +3,10 @@ package mssql
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	config_util "github.com/prometheus/common/config"
 	"gopkg.in/yaml.v3"
@@ -102,7 +102,7 @@ func init() {
 }
 
 // NewIntegration creates a new integration from the config.
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	if err := c.validate(); err != nil {
 		return nil, fmt.Errorf("failed to validate config: %w", err)
 	}
@@ -122,6 +122,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 	t, err := sql_exporter.NewTarget(
 		"mssqlintegration",
 		c.ConnectionName,
+		"",
 		string(c.ConnectionString),
 		[]*config.CollectorConfig{
 			&collectorConfig,

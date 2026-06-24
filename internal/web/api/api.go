@@ -6,6 +6,7 @@ package api
 
 import (
 	"encoding/json"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"path"
@@ -13,27 +14,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/prometheus/util/httputil"
+
 	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/service/remotecfg"
-	"github.com/prometheus/prometheus/util/httputil"
 )
 
 // AlloyAPI is a wrapper around the component API.
 type AlloyAPI struct {
 	alloy           service.Host
 	CallbackManager livedebugging.CallbackManager
-	logger          log.Logger
+	logger          *slog.Logger
 }
 
 // NewAlloyAPI instantiates a new Alloy API.
-func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager, l log.Logger) *AlloyAPI {
+func NewAlloyAPI(alloy service.Host, CallbackManager livedebugging.CallbackManager, l *slog.Logger) *AlloyAPI {
 	return &AlloyAPI{alloy: alloy, CallbackManager: CallbackManager, logger: l}
 }
 
@@ -164,7 +164,7 @@ type dataKey struct {
 	Type        livedebugging.DataType
 }
 
-func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var moduleID livedebugging.ModuleID
 		if vars := mux.Vars(r); vars != nil {
@@ -195,7 +195,7 @@ func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger
 				case dataCh <- data:
 				default:
 					if !droppedData {
-						level.Warn(logger).Log("msg", "data throughput is very high, not all debugging data can be sent to the graph")
+						logger.Warn("data throughput is very high, not all debugging data can be sent to the graph")
 						droppedData = true
 					}
 				}
@@ -242,14 +242,14 @@ func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger
 
 				jsonData, err := json.Marshal(dataArray)
 				if err != nil {
-					level.Warn(logger).Log("msg", "error marshalling data, not sending data to the graph", "error", err)
+					logger.Warn("error marshalling data, not sending data to the graph", "error", err)
 					continue
 				}
 
 				// Add |;| delimiter to the end of the data to help with parsing when the msg arrives in multiple chunks
 				_, writeErr := w.Write(append(jsonData, []byte("|;|")...))
 				if writeErr != nil {
-					level.Warn(logger).Log("msg", "error writing data to the graph", "error", writeErr)
+					logger.Warn("error writing data to the graph", "error", writeErr)
 					return
 				}
 				w.(http.Flusher).Flush()
@@ -265,7 +265,7 @@ func graph(h service.Host, callbackManager livedebugging.CallbackManager, logger
 	}
 }
 
-func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager, logger log.Logger) http.HandlerFunc {
+func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager, logger *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		componentID := livedebugging.ComponentID(vars["id"])
@@ -297,7 +297,7 @@ func liveDebugging(h service.Host, callbackManager livedebugging.CallbackManager
 				case dataCh <- data.DataFunc():
 				default:
 					if !droppedData {
-						level.Warn(logger).Log("msg", "data throughput is very high, not all debugging data can be sent the live debugging stream")
+						logger.Warn("data throughput is very high, not all debugging data can be sent the live debugging stream")
 						droppedData = true
 					}
 				}

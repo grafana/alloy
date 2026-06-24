@@ -6,8 +6,9 @@
   taking the time to review the guide.
 
   **NOTE**
-  Your PR title must adhere to Conventional Commit style. For details on this,
-  check out the Contributors Guide linked above.
+  Your PR title must adhere to Conventional Commit style with a capitalized
+  description, e.g. `feat(scope): Add the thing` (not `add the thing`). For
+  details on this, check out the Contributors Guide linked above.
 -->
 
 ### Brief description of Pull Request

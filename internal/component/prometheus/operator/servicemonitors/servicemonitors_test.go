@@ -88,7 +88,7 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 			// Create component options
 			opts := component.Options{
 				ID:         "prometheus.operator.servicemonitors.test",
-				Logger:     logger,
+				Logger:     logger.Slog(),
 				Registerer: prometheus_client.NewRegistry(),
 				GetServiceData: func(name string) (any, error) {
 					switch name {
@@ -176,17 +176,24 @@ func TestServiceMonitorEndToEnd(t *testing.T) {
 				return testFactory.TriggerServiceMonitorAdd(serviceMonitor)
 			}, 10*time.Second, 100*time.Millisecond, "Timeout waiting for manager to be ready")
 
-			// Verify scrape config was registered
-			require.Eventually(t, func() bool {
-				jobNames := testFactory.GetScrapeConfigJobNames()
-				return len(jobNames) == 1
-			}, 5*time.Second, 100*time.Millisecond, "Expected 1 scrape config to be registered")
-
-			// Inject static targets (since k8s service discovery won't work without a real cluster)
+			// This test intentionally uses a fake Kubernetes client and then injects
+			// static targets for scraping. The ServiceMonitor add path is asynchronous,
+			// so we first wait for the expected generated job and then inject targets.
 			jobName := "serviceMonitor/monitoring/test-service-monitor/0"
-			ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
-			require.True(t, ready, "Manager should be ready after TriggerServiceMonitorAdd succeeded")
-			require.NoError(t, err)
+			require.Eventually(t, func() bool {
+				for _, name := range testFactory.GetScrapeConfigJobNames() {
+					if name == jobName {
+						return true
+					}
+				}
+				return false
+			}, 10*time.Second, 100*time.Millisecond, "Expected generated ServiceMonitor job to appear")
+
+			require.EventuallyWithT(t, func(ct *assert.CollectT) {
+				ready, err := testFactory.InjectStaticTargets(jobName, serverAddr)
+				assert.NoError(ct, err, "Expected static target injection to apply cleanly")
+				assert.True(ct, ready, "Expected static target injection to succeed")
+			}, 10*time.Second, 100*time.Millisecond)
 
 			// Wait for metrics to be scraped and forwarded, then verify
 			require.EventuallyWithT(t, func(ct *assert.CollectT) {

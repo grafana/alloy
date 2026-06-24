@@ -90,6 +90,7 @@ Each block only takes effect if you include its corresponding collector in `enab
 | [`tcp`][tcp]                               | Configures the `tcp` collector.                                           | no       |
 | [`textfile`][textfile]                     | Configures the `textfile` collector.                                      | no       |
 | [`text_file`][text_file]                   | (Deprecated: use `textfile` instead) Configures the `textfile` collector. | no       |
+| [`time`][time]                             | Configures the `time` collector.                                          | no       |
 | [`update`][update]                         | Configures the `update` collector.                                        | no       |
 
 [dfsr]: #dfsr
@@ -115,6 +116,7 @@ Each block only takes effect if you include its corresponding collector in `enab
 [textfile]: #textfile
 [text_file]: #text_file-deprecated-use-textfile-instead
 [tcp]: #tcp
+[time]: #time
 [update]: #update
 
 {{< /docs/alloy-config >}}
@@ -464,6 +466,25 @@ The component only reads files with the `.prom` extension inside the specified d
 {{< admonition type="note" >}}
 The `.prom` files must end with an empty line feed for the component to recognize and read them.
 {{< /admonition >}}
+
+### `time`
+
+The time collector exposes the Windows Time Service and other time related metrics.
+If the Windows Time Service is stopped after collection has started, collector metric values reset to 0.
+
+| Name           | Type           | Description                  | Default                                       | Required |
+| -------------- | -------------- | ---------------------------- | --------------------------------------------- | -------- |
+| `enabled_list` | `list(string)` | A list of collectors to use. | `["system_time","clock_source","ntp"]`        | no       |
+
+The collectors specified by `enabled_list` can include the following:
+
+- `clock_source`
+- `ntp`
+- `system_time`
+
+The `ntp` sub-collector reads the Windows Time Service performance counters, which are only available on [Windows Server 2016 or newer][win2016-time-svc-improv]. It produces no metrics on older systems.
+
+[win2016-time-svc-improv]: https://docs.microsoft.com/en-us/windows-server/networking/windows-time-service/windows-server-2016-improvements
 
 ### `update`
 

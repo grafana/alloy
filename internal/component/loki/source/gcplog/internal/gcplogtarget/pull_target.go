@@ -8,13 +8,12 @@ package gcplogtarget
 import (
 	"context"
 	"io"
+	"log/slog"
 	"sync"
 	"time"
 
 	//nolint:staticcheck // TODO: upgrade to v2
 	"cloud.google.com/go/pubsub/v2"
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -29,7 +28,7 @@ import (
 // subscription and converts them to Loki log entries.
 type PullTarget struct {
 	metrics       *Metrics
-	logger        log.Logger
+	logger        *slog.Logger
 	recv          loki.LogsReceiver
 	config        *gcptypes.PullConfig
 	relabelConfig []*relabel.Config
@@ -60,7 +59,7 @@ type subscriber interface {
 // NewPullTarget returns the new instance of PullTarget.
 func NewPullTarget(
 	metrics *Metrics,
-	logger log.Logger,
+	logger *slog.Logger,
 	recv loki.LogsReceiver,
 	config *gcptypes.PullConfig,
 	relabel []*relabel.Config,
@@ -104,7 +103,7 @@ func (t *PullTarget) Run() error {
 					useIncomingTimestamp: t.config.UseIncomingTimestamp,
 				})
 				if err != nil {
-					level.Error(t.logger).Log("msg", "could not parse log entry", "error", err)
+					t.logger.Error("could not parse log entry", "error", err)
 					t.metrics.gcplogErrors.WithLabelValues(t.config.ProjectID).Inc()
 					// NOTE: We want to call Ack here since we cannot process the message.
 					m.Ack()
@@ -123,7 +122,7 @@ func (t *PullTarget) Run() error {
 			})
 
 			if err != nil {
-				level.Error(t.logger).Log("msg", "failed to receive pubsub messages", "error", err)
+				t.logger.Error("failed to receive pubsub messages", "error", err)
 				t.metrics.gcplogErrors.WithLabelValues(t.config.ProjectID).Inc()
 				t.metrics.gcplogTargetLastSuccessScrape.WithLabelValues(t.config.ProjectID, t.config.Subscription).SetToCurrentTime()
 				t.backoff.Wait()

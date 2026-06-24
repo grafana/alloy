@@ -2,11 +2,10 @@ package kubernetes
 
 import (
 	"fmt"
+	"log/slog"
 	"reflect"
 
-	"github.com/go-kit/log"
 	commoncfg "github.com/grafana/alloy/internal/component/common/config"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 	promconfig "github.com/prometheus/common/config"
 	"k8s.io/client-go/rest"
@@ -47,7 +46,7 @@ func (args *ClientArguments) Validate() error {
 }
 
 // BuildRESTConfig converts ClientArguments to a Kubernetes REST config.
-func (args *ClientArguments) BuildRESTConfig(l log.Logger) (*rest.Config, error) {
+func (args *ClientArguments) BuildRESTConfig(l *slog.Logger) (*rest.Config, error) {
 	var (
 		cfg *rest.Config
 		err error
@@ -66,7 +65,7 @@ func (args *ClientArguments) BuildRESTConfig(l log.Logger) (*rest.Config, error)
 		if err != nil {
 			return nil, err
 		}
-		level.Info(l).Log("msg", "Using pod service account via in-cluster config")
+		l.Info("Using pod service account via in-cluster config")
 
 	default:
 		rt, err := promconfig.NewRoundTripperFromConfig(*args.HTTPClientConfig.Convert(), "component.common.kubernetes")

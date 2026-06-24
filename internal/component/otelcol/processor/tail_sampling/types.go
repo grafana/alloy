@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/syntax"
-	"github.com/mitchellh/mapstructure"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/ottl"
 	tsp "github.com/open-telemetry/opentelemetry-collector-contrib/processor/tailsamplingprocessor"
 )

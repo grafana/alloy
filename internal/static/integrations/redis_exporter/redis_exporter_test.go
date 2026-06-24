@@ -8,14 +8,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"gopkg.in/yaml.v2"
-
-	"github.com/grafana/alloy/internal/static/config"
-
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
 	"github.com/prometheus/prometheus/model/textparse"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v2"
+
+	"github.com/grafana/alloy/internal/static/config"
+	"github.com/grafana/alloy/internal/util"
 )
 
 const addr string = "localhost:6379"
@@ -149,10 +148,9 @@ func TestRedisCases(t *testing.T) {
 		},
 	}
 
-	logger := log.NewNopLogger()
-
 	for _, test := range tt {
 		t.Run(test.name, func(t *testing.T) {
+			logger := util.TestAlloyLogger(t).Slog()
 			integration, err := New(logger, &test.cfg)
 
 			if test.expectConstructorError {

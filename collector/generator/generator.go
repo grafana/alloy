@@ -124,7 +124,7 @@ func addReleasePleaseVersioning(lines []string) ([]string, error) {
 	}
 
 	if !versionReplaced {
-		return nil, fmt.Errorf("Version field not found")
+		return nil, fmt.Errorf("version field not found")
 	}
 
 	return lines, nil

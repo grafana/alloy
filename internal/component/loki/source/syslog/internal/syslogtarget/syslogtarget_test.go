@@ -18,7 +18,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/grafana/regexp"
 	"github.com/leodido/go-syslog/v4"
@@ -32,6 +31,7 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	scrapeconfig "github.com/grafana/alloy/internal/component/loki/source/syslog/config"
 	"github.com/grafana/alloy/internal/component/loki/source/syslog/internal/syslogtarget/syslogparser"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 var (
@@ -322,7 +322,7 @@ func Benchmark_SyslogTarget(b *testing.B) {
 			metrics := NewMetrics(nil)
 			tgt, _ := NewSyslogTarget(TargetParams{
 				Metrics: metrics,
-				Logger:  log.NewNopLogger(),
+				Logger:  logging.NewSlogNop(),
 				Handler: handler,
 				Relabel: []*relabel.Config{},
 				Config: &scrapeconfig.SyslogTargetConfig{
@@ -382,15 +382,13 @@ func TestSyslogTarget(t *testing.T) {
 		{"udp octetcounting", ProtocolUDP, fmtOctetCounting},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			w := log.NewSyncWriter(os.Stderr)
-			logger := log.NewLogfmtLogger(w)
 			handler := loki.NewCollectingHandler()
 			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
 			tgt, err := NewSyslogTarget(TargetParams{
 				Metrics: metrics,
-				Logger:  logger,
+				Logger:  logging.NewSlogNop(),
 				Handler: handler,
 				Relabel: relabelConfig(t),
 				Config: &scrapeconfig.SyslogTargetConfig{
@@ -511,15 +509,13 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 		{"tcp octetcounting", ProtocolTCP, fmtOctetCounting},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			w := log.NewSyncWriter(os.Stderr)
-			logger := log.NewLogfmtLogger(w)
 			handler := loki.NewCollectingHandler()
 			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
 			tgt, err := NewSyslogTarget(TargetParams{
 				Metrics: metrics,
-				Logger:  logger,
+				Logger:  logging.NewSlogNop(),
 				Handler: handler,
 				Relabel: []*relabel.Config{},
 				Config: &scrapeconfig.SyslogTargetConfig{
@@ -570,15 +566,13 @@ func TestSyslogTarget_RFC5424Messages(t *testing.T) {
 func TestSyslogTarget_RFC5424MessageEmptyMSGWhenAllowed(t *testing.T) {
 	msg := `<14>1 2026-02-19T14:57:17.097Z secfw-a RT_FLOW - RT_FLOW_SESSION_DENY [junos@2636.1.1.1.2.129 application="UNKNOWN"]`
 
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: []*relabel.Config{},
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -617,15 +611,13 @@ func TestSyslogTarget_RFC5424MessageEmptyMSGWhenNotAllowed(t *testing.T) {
 	// RFC5424 message with empty MSG part (no content after structured data)
 	msg := `<14>1 2026-02-19T14:57:17.097Z secfw-a RT_FLOW - RT_FLOW_SESSION_DENY [junos@2636.1.1.1.2.129 application="UNKNOWN"]`
 
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: []*relabel.Config{},
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -782,15 +774,13 @@ func TestSyslogTarget_RFC3164CiscoComponents(t *testing.T) {
 	relabelCfg := unmarshalRelabelCfg(t, rawRelabelCfg)
 	for _, tc := range cases {
 		t.Run(tc.label, func(t *testing.T) {
-			w := log.NewSyncWriter(os.Stderr)
-			logger := log.NewLogfmtLogger(w)
 			handler := loki.NewCollectingHandler()
 			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
 			tgt, err := NewSyslogTarget(TargetParams{
 				Metrics: metrics,
-				Logger:  logger,
+				Logger:  logging.NewSlogNop(),
 				Handler: handler,
 				Relabel: relabelCfg,
 				Config: &scrapeconfig.SyslogTargetConfig{
@@ -839,15 +829,13 @@ func TestSyslogTarget_CEFRawMessages(t *testing.T) {
 		`Dec 17 12:23:18 Dream-Router CEF:0|Ubiquiti|UniFi Network`,
 	}
 
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: []*relabel.Config{},
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -891,15 +879,13 @@ func TestSyslogTarget_CEFRawMessages(t *testing.T) {
 }
 
 func TestSyslogTarget_RawMessageEmptyDropped(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: []*relabel.Config{},
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -937,15 +923,13 @@ func TestSyslogTarget_RFC3164MessageEmptyDropped(t *testing.T) {
 	// PRI+timestamp only — no hostname, tag, or message. Parser produces nil Message.
 	logLine := "<13>Dec  1 00:00:00"
 
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: []*relabel.Config{},
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -982,15 +966,13 @@ func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
 		{"rfc3164 current year behavior", true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			w := log.NewSyncWriter(os.Stderr)
-			logger := log.NewLogfmtLogger(w)
 			handler := loki.NewCollectingHandler()
 			defer handler.Stop()
 
 			metrics := NewMetrics(nil)
 			tgt, err := NewSyslogTarget(TargetParams{
 				Metrics: metrics,
-				Logger:  logger,
+				Logger:  logging.NewSlogNop(),
 				Handler: handler,
 				Relabel: []*relabel.Config{},
 				Config: &scrapeconfig.SyslogTargetConfig{
@@ -1045,15 +1027,13 @@ func TestSyslogTarget_RFC3164YearSetting(t *testing.T) {
 }
 
 func TestSyslogTarget_TLSConfigWithoutServerCertificate(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	_, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: relabelConfig(t),
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -1067,15 +1047,13 @@ func TestSyslogTarget_TLSConfigWithoutServerCertificate(t *testing.T) {
 }
 
 func TestSyslogTarget_TLSConfigWithoutServerKey(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	_, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: relabelConfig(t),
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -1113,15 +1091,13 @@ func testSyslogTargetWithTLS(t *testing.T, fmtFunc formatFunc) {
 	}
 	defer os.Remove(serverKeyFile.Name())
 
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: relabelConfig(t),
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -1252,15 +1228,13 @@ func testSyslogTargetWithTLSVerifyClientCertificate(t *testing.T, fmtFunc format
 		t.Fatalf("Unable to load client certificate or key: %s", err)
 	}
 
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 
 	metrics := NewMetrics(nil)
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: relabelConfig(t),
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -1337,15 +1311,13 @@ func testSyslogTargetWithTLSVerifyClientCertificate(t *testing.T, fmtFunc format
 }
 
 func TestSyslogTarget_InvalidData(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 	metrics := NewMetrics(nil)
 
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: relabelConfig(t),
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -1375,15 +1347,13 @@ func TestSyslogTarget_InvalidData(t *testing.T) {
 }
 
 func TestSyslogTarget_NonUTF8Message(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	defer handler.Stop()
 	metrics := NewMetrics(nil)
 
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: relabelConfig(t),
 		Config: &scrapeconfig.SyslogTargetConfig{
@@ -1420,14 +1390,12 @@ func TestSyslogTarget_NonUTF8Message(t *testing.T) {
 }
 
 func TestSyslogTarget_IdleTimeout(t *testing.T) {
-	w := log.NewSyncWriter(os.Stderr)
-	logger := log.NewLogfmtLogger(w)
 	handler := loki.NewCollectingHandler()
 	metrics := NewMetrics(nil)
 
 	tgt, err := NewSyslogTarget(TargetParams{
 		Metrics: metrics,
-		Logger:  logger,
+		Logger:  logging.NewSlogNop(),
 		Handler: handler,
 		Relabel: relabelConfig(t),
 		Config: &scrapeconfig.SyslogTargetConfig{

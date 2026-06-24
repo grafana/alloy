@@ -7,7 +7,6 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -41,6 +40,7 @@ func (args *Arguments) SetToDefault() {
 }
 
 var (
+	_ loki.Consumer       = (*Component)(nil)
 	_ component.Component = (*Component)(nil)
 )
 
@@ -79,12 +79,7 @@ func (c *Component) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case entry := <-c.receiver.Chan():
-			structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
-			if err != nil {
-				level.Error(c.opts.Logger).Log("receiver", c.opts.ID, "error", err)
-				structured_metadata = []byte("{}")
-			}
-			level.Info(c.opts.Logger).Log("receiver", c.opts.ID, "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
+			_ = c.ConsumeEntry(ctx, entry)
 		}
 	}
 }
@@ -98,4 +93,34 @@ func (c *Component) Update(args component.Arguments) error {
 	c.args = newArgs
 
 	return nil
+}
+
+func (c *Component) Consume(ctx context.Context, batch loki.Batch) error {
+	return batch.ConsumeStreams(func(stream loki.Stream, created int64) error {
+		logger := c.opts.Logger.With("labels", stream.Labels.String())
+		for _, e := range stream.Entries {
+			sm, err := e.StructuredMetadata.MarshalJSON()
+			if err != nil {
+				logger.Error("failed to marshal structured metadata", "error", err)
+				sm = []byte("{}")
+			}
+			logger.Info("received log entry", "entry", e.Line, "entry_timestamp", e.Timestamp, "structured_metadata", string(sm))
+		}
+		return nil
+	})
+}
+
+// TODO: Remove this when we have moved over to batching.
+func (c *Component) ConsumeEntry(ctx context.Context, entry loki.Entry) error {
+	structured_metadata, err := entry.StructuredMetadata.MarshalJSON()
+	if err != nil {
+		c.opts.Logger.Error("failed to marshal structured metadata", "error", err)
+		structured_metadata = []byte("{}")
+	}
+	c.opts.Logger.Info("received log entry", "entry", entry.Line, "entry_timestamp", entry.Timestamp, "labels", entry.Labels.String(), "structured_metadata", string(structured_metadata))
+	return nil
+}
+
+func (c *Component) String() string {
+	return c.opts.ID + ".receiver"
 }

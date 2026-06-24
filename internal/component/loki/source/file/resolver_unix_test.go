@@ -5,17 +5,17 @@ package file
 import (
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/discovery"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 // TestGlobResolverCaseSensitive verifies that glob patterns are case-sensitive on Unix.
 // An uppercase pattern should NOT match lowercase files.
 func TestGlobResolverCaseSensitive(t *testing.T) {
-	resolver := newGlobResolver(log.NewNopLogger())
+	resolver := newGlobResolver(logging.NewSlogNop())
 
 	// Use uppercase pattern - should NOT match the lowercase .log files on Unix
 	targets := []discovery.Target{
@@ -35,7 +35,7 @@ func TestGlobResolverCaseSensitive(t *testing.T) {
 
 // TestGlobResolverCaseSensitiveMatch verifies that matching case works correctly.
 func TestGlobResolverCaseSensitiveMatch(t *testing.T) {
-	resolver := newGlobResolver(log.NewNopLogger())
+	resolver := newGlobResolver(logging.NewSlogNop())
 
 	// Use lowercase pattern - should match the lowercase .log files
 	targets := []discovery.Target{

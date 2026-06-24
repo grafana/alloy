@@ -3,15 +3,14 @@ package alloyseed
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/google/uuid"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/common/version"
 )
 
@@ -41,16 +40,16 @@ var once sync.Once
 // read and store alloy_seed.json If left empty it will default to $APPDATA or
 // /tmp A unique Alloy seed will be generated when this method is first called,
 // and reused for the lifetime of this Alloy instance.
-func Init(dir string, l log.Logger) {
+func Init(dir string, l *slog.Logger) {
 	if l == nil {
-		l = log.NewNopLogger()
+		l = slog.New(slog.DiscardHandler)
 	}
 	once.Do(func() {
 		loadOrGenerate(dir, l)
 	})
 }
 
-func loadOrGenerate(dir string, l log.Logger) {
+func loadOrGenerate(dir string, l *slog.Logger) {
 	var err error
 	var seed *Seed
 	// list of paths in preference order.
@@ -99,7 +98,7 @@ func generateNew() *Seed {
 func Get() *Seed {
 	// Init should have been called before this. If not, call it now with defaults.
 	once.Do(func() {
-		loadOrGenerate("", log.NewNopLogger())
+		loadOrGenerate("", slog.New(slog.DiscardHandler))
 	})
 	if savedSeed != nil {
 		return savedSeed
@@ -110,21 +109,21 @@ func Get() *Seed {
 }
 
 // readSeedFile reads the Alloy seed file
-func readSeedFile(path string, logger log.Logger) (*Seed, error) {
+func readSeedFile(path string, logger *slog.Logger) (*Seed, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		level.Error(logger).Log("msg", "Reading seed file", "err", err)
+		logger.Error("Reading seed file", "err", err)
 		return nil, err
 	}
 	seed := &Seed{}
 	err = json.Unmarshal(data, seed)
 	if err != nil {
-		level.Error(logger).Log("msg", "Decoding seed file", "err", err)
+		logger.Error("Decoding seed file", "err", err)
 		return nil, err
 	}
 
 	if seed.UID == "" {
-		level.Error(logger).Log("msg", "Seed file has empty uid")
+		logger.Error("Seed file has empty uid")
 	}
 	return seed, nil
 }
@@ -144,15 +143,15 @@ func fileExists(path string) bool {
 }
 
 // writeSeedFile writes the Alloy seed file
-func writeSeedFile(seed *Seed, path string, logger log.Logger) {
+func writeSeedFile(seed *Seed, path string, logger *slog.Logger) {
 	data, err := json.Marshal(*seed)
 	if err != nil {
-		level.Error(logger).Log("msg", "Encoding seed file", "err", err)
+		logger.Error("Encoding seed file", "err", err)
 		return
 	}
 	err = os.WriteFile(path, data, 0644)
 	if err != nil {
-		level.Error(logger).Log("msg", "Writing seed file", "err", err)
+		logger.Error("Writing seed file", "err", err)
 		return
 	}
 }

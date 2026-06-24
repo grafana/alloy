@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/units"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 	"github.com/grafana/dskit/flagext"
 	"github.com/grafana/loki/pkg/push"
@@ -20,8 +19,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/component/common/loki/client/internal"
+	"github.com/grafana/alloy/internal/component/common/loki/client/internal/marker"
 	"github.com/grafana/alloy/internal/loki/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestEndpoint(t *testing.T) {
@@ -336,7 +336,7 @@ func TestEndpoint(t *testing.T) {
 			tt.endpointConfig.QueueConfig.DrainTimeout = 30 * time.Second
 
 			m := newMetrics(reg)
-			c, err := newEndpoint(m, tt.endpointConfig, log.NewNopLogger(), internal.NewNopMarkerHandler())
+			c, err := newEndpoint(m, tt.endpointConfig, logging.NewSlogNop(), marker.NewNopTracker())
 			require.NoError(t, err)
 
 			// Send all the input log entries
@@ -393,7 +393,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 				MinShards:       1,
 				BlockOnOverflow: false,
 			},
-		}, log.NewNopLogger(), internal.NewNopMarkerHandler())
+		}, logging.NewSlogNop(), marker.NewNopTracker())
 		require.NoError(t, err)
 		defer e.stop()
 
@@ -433,7 +433,7 @@ func TestEndpointBlockOnOverflow(t *testing.T) {
 				MinShards:       1,
 				BlockOnOverflow: true,
 			},
-		}, log.NewNopLogger(), internal.NewNopMarkerHandler())
+		}, logging.NewSlogNop(), marker.NewNopTracker())
 		require.NoError(t, err)
 		defer e.stop()
 
