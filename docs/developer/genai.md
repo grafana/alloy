@@ -36,7 +36,7 @@ Do not:
   change, but the review and its conclusions must be yours.
 - File automated, bot-driven issues or pull requests from tools that have not been approved by the
   Alloy team. This policy covers humans using AI assistance, not autonomous agents acting on their
-  own.
+  own, including agentic IDE tools that file pull requests without human review.
 - Paste generated text into a discussion without adding your own analysis and context.
 - Wire up an AI agent to respond automatically to reviewers or other community members on your
   behalf. If you want help from GenAI in a discussion, use it yourself and post in your own words,
