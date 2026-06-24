@@ -45,9 +45,7 @@ endpoints:
         ▼
   SecurityPolicy (loaded once, immutable, threaded into runtime.Options)
         │
-        ├── Phase 1:   Component gate     → component.Registry.Get()
-        ├── Phase 1.1: Config block gate  → node_config.go: NewConfigNode()
-        ├── Phase 1.2: Stdlib func gate   → stdlib.Identifiers filtered at startup
+        ├── Phase 1:   Component + config block + stdlib gates
         ├── Phase 2:   Endpoint gate      → EgressComponent.EgressSpec() at evaluate()
         ├── Phase 3:   JWS signature gate → verify before any config is evaluated
         └── Phase 4:   check subcommand   → alloy security-policy check
@@ -57,9 +55,7 @@ endpoints:
 
 | Phase | File | What it gates | Shippable alone? |
 |-------|------|---------------|-----------------|
-| [1](PHASE_1.md) | components | Which components may instantiate | Yes |
-| [1.1](PHASE_1_1.md) | config_blocks | Which config block types are allowed (`import.*`, etc.) | Yes |
-| [1.2](PHASE_1_2.md) | stdlib_funcs | Which expression functions are allowed (`sys.env`, etc.) | Yes |
+| [1](PHASE_1.md) | components, config_blocks, stdlib_funcs | Component, config block, and stdlib function gates | Yes |
 | [2](PHASE_2.md) | endpoints | Which outbound URLs components may connect to | Yes |
 | [3](PHASE_3.md) | (new field) | Require JWS signature on all fetched config | Yes |
 | [4](PHASE_4.md) | — | `alloy security-policy check` dry-run subcommand | Yes |

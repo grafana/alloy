@@ -1,18 +1,20 @@
-# Phase 1: Component Gate
+# Phase 1: Component, Config Block, and Stdlib Function Gates
 
-Gates which Alloy components may be instantiated at all.
+Gates which components may instantiate, which config block types are allowed, and which expression functions are available.
 
-**Policy field added this phase:** `components` section.
+**Policy fields added this phase:** `components`, `config_blocks`, `stdlib_funcs`.
 
-## What it blocks
+---
 
-Any component whose name is not on the allowlist (or is on the denylist). Examples an operator might deny: `remote.http`, `loki.write`, `otelcol.exporter.otlphttp`.
+## 1. Component gate
 
-## Files to change
+### What it blocks
 
-### New: `internal/securitypolicy/policy.go`
+Any component not on the allowlist (or on the denylist). Examples an operator might deny: `remote.http`, `loki.write`, `otelcol.exporter.otlphttp`.
 
-Shared foundation for all phases. Phase 1 only needs:
+### Files to change
+
+**New: `internal/securitypolicy/policy.go`** — shared foundation for all phases. Phase 1 only needs:
 
 ```go
 package securitypolicy
@@ -23,68 +25,89 @@ type PolicySection struct {
 }
 
 type SecurityPolicy struct {
-    Components PolicySection `yaml:"components"`
+    Components   PolicySection `yaml:"components"`
+    ConfigBlocks PolicySection `yaml:"config_blocks"`
+    StdlibFuncs  PolicySection `yaml:"stdlib_funcs"`
 }
 
-func (p *SecurityPolicy) CheckComponent(name string) error { ... }
-func LoadFromFile(path string) (*SecurityPolicy, error) { ... }
+func (p *SecurityPolicy) CheckComponent(name string) error   { ... }
+func (p *SecurityPolicy) CheckConfigBlock(name string) error { ... }
+func (p *SecurityPolicy) FilterStdlib(ids map[string]any) map[string]any { ... }
+func LoadFromFile(path string) (*SecurityPolicy, error)      { ... }
 ```
 
-`CheckComponent` returns nil if allowed, error if denied. Logic:
-- `mode: allowlist`: allow if name is in List, deny otherwise.
-- `mode: denylist`: deny if name is in List, allow otherwise.
-- Section absent (zero value): allow all.
+`Check*` returns nil if allowed, error if denied. Logic: allowlist = allow if in list, deny otherwise; denylist = deny if in list, allow otherwise; section absent = allow all.
 
-### `internal/alloycli/cmd_run.go`
-
-Add `--security-policy` flag and load the file once before runtime init:
+**`internal/alloycli/cmd_run.go`** — add `--security-policy` flag, load once before runtime init:
 
 ```go
-// on alloyRun struct
-SecurityPolicyPath string
-
-// in RunCommand():
 cmd.Flags().StringVar(&fr.SecurityPolicyPath, "security-policy", "", "Path to security policy file")
-
-// in Run(), before alloy_runtime.New():
-var policy *securitypolicy.SecurityPolicy
-if fr.SecurityPolicyPath != "" {
-    policy, err = securitypolicy.LoadFromFile(fr.SecurityPolicyPath)
-    if err != nil { return err }
-}
+// in Run():
+policy, err = securitypolicy.LoadFromFile(fr.SecurityPolicyPath)
 ```
 
-### `internal/runtime/alloy.go`
+**`internal/runtime/alloy.go`** — add `SecurityPolicy *securitypolicy.SecurityPolicy` to `Options`; thread into `controller.ComponentGlobals`.
 
-Add `SecurityPolicy` to `Options` and thread into `ComponentGlobals`:
-
-```go
-type Options struct {
-    // ... existing fields ...
-    SecurityPolicy *securitypolicy.SecurityPolicy
-}
-```
-
-### `internal/component/registry.go`
-
-Extend `Registry.Get()` to enforce the policy. Pattern follows `featuregate.CheckAllowed`:
+**`internal/component/registry.go`** — extend `Registry.Get()` alongside existing stability/community checks:
 
 ```go
-func (r *Registry) Get(name string, opts GetOptions) (Registration, error) {
-    // ... existing stability/community checks ...
-    if opts.SecurityPolicy != nil {
-        if err := opts.SecurityPolicy.CheckComponent(name); err != nil {
-            return Registration{}, err
-        }
+if opts.SecurityPolicy != nil {
+    if err := opts.SecurityPolicy.CheckComponent(name); err != nil {
+        return Registration{}, err
     }
-    // ... rest of existing logic ...
 }
 ```
 
-`GetOptions` already exists and carries stability/community flags — add `SecurityPolicy` there.
+---
+
+## 2. Config block gate
+
+### What it blocks
+
+Config block types: `import.http`, `import.git`, `import.string`, `import.file`, `logging`, `tracing`, `foreach`, etc. Blocking `import.*` prevents all dynamic config loading.
+
+### Files to change
+
+**`internal/runtime/internal/controller/node_config.go`** — extend `NewConfigNode()`:
+
+```go
+if globals.SecurityPolicy != nil {
+    if err := globals.SecurityPolicy.CheckConfigBlock(block.GetBlockName()); err != nil {
+        diags.Add(diag.SeverityLevelError, block.NamePos.Position(), err.Error())
+        return nil, diags
+    }
+}
+```
+
+`ComponentGlobals` is already threaded in from `runtime.Options` — no new wiring needed.
+
+Note: valid block names are the constants in `internal/nodeconf/importsource/import.go` (`BlockNameFile = "import.file"`, etc.).
+
+---
+
+## 3. Stdlib function gate
+
+### What it blocks
+
+| Function | What it does |
+|----------|-------------|
+| `sys.env` | Reads any env var from the process environment |
+| `env` (deprecated) | Same — legacy alias |
+| `convert.nonsensitive` | Strips the `Secret` type, making a secret readable as plain string |
+
+### Files to change
+
+**`internal/securitypolicy/policy.go`** — `FilterStdlib` returns a copy of the identifiers map with denied functions removed. For `sys.env`, remove the `"env"` key from the nested `sys` map and drop `"sys"` from root if it becomes empty. Do not mutate the global `stdlib.Identifiers` map.
+
+**Injection point in `syntax/vm/vm.go`** (exact location needs tracing): wherever the runtime constructs its root evaluation scope from `stdlib.Identifiers`, replace with `policy.FilterStdlib(stdlib.Identifiers)` when a policy is present.
+
+Note: `stdlib_funcs` list uses dot-path notation — `sys.env` means the `env` key inside the `sys` namespace.
+
+---
 
 ## Testing
 
-- Unit test `PolicySection.Check` with allowlist and denylist modes.
-- Integration test: load a policy denying `remote.http`; verify `registry.Get("remote.http", ...)` returns an error.
-- `alloy validate` should also respect the gate (it uses the same registry).
+- Unit test `PolicySection` with allowlist and denylist modes for each of the three `Check*` / `FilterStdlib` methods.
+- Integration test: deny `remote.http` → `registry.Get` returns error.
+- Integration test: deny `import.http` → config with that block rejected on load.
+- Integration test: deny `sys.env` → expression `sys.env("SECRET")` fails to evaluate.
