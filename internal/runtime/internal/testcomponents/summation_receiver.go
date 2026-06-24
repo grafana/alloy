@@ -3,10 +3,10 @@ package testcomponents
 import (
 	"context"
 
-	"github.com/go-kit/log"
+	"go.uber.org/atomic"
+
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"go.uber.org/atomic"
 )
 
 // testcomponents.summation_receiver sums up the values that it receives via the exported int receiver.
@@ -46,7 +46,6 @@ type SummationReceiverExports struct {
 
 type SummationReceiver struct {
 	opts component.Options
-	log  log.Logger
 
 	sum      atomic.Int32
 	receiver IntReceiver
@@ -54,7 +53,7 @@ type SummationReceiver struct {
 
 // NewSummationReceiver creates a new summation component.
 func NewSummationReceiver(o component.Options, cfg SummationReceiverConfig) (*SummationReceiver, error) {
-	s := &SummationReceiver{opts: o, log: o.Logger}
+	s := &SummationReceiver{opts: o}
 	s.receiver = IntReceiverImpl{
 		incrementSum: func(i int) {
 			s.sum.Add(int32(i))

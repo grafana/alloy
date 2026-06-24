@@ -4,11 +4,11 @@ package irsymcache
 
 import (
 	"fmt"
+	"log/slog"
 	"path"
 	"sync"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -42,7 +42,7 @@ func TestNewFSCache(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resolver, err := NewFSCache(log.NewNopLogger(), tf, tt.opt)
+			resolver, err := NewFSCache(slog.New(slog.DiscardHandler), tf, tt.opt)
 
 			if tt.wantErr {
 				require.Error(t, err)
@@ -154,7 +154,7 @@ func TestResolver_ResolveAddress(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			t.Log(dir)
-			resolver, err := NewFSCache(log.NewNopLogger(), tf, Options{
+			resolver, err := NewFSCache(slog.New(slog.DiscardHandler), tf, Options{
 				Path:        dir,
 				SizeEntries: tt.cacheSize,
 			})
@@ -227,7 +227,7 @@ func testElfRef(filepath string) (md *reporter.ExecutableMetadata) {
 func TestResolver_Cleanup(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	resolver, err := NewFSCache(log.NewNopLogger(), tf, Options{
+	resolver, err := NewFSCache(slog.New(slog.DiscardHandler), tf, Options{
 		Path:        tmpDir,
 		SizeEntries: 1000,
 	})
@@ -249,7 +249,7 @@ func TestResolver_Cleanup(t *testing.T) {
 func TestResolver_Close(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	resolver, err := NewFSCache(log.NewNopLogger(), tf, Options{
+	resolver, err := NewFSCache(slog.New(slog.DiscardHandler), tf, Options{
 		Path:        tmpDir,
 		SizeEntries: 1000,
 	})
@@ -268,7 +268,7 @@ func TestResolver_Close(t *testing.T) {
 }
 
 func BenchmarkCache(b *testing.B) {
-	resolver, err := NewFSCache(log.NewNopLogger(), tf, Options{
+	resolver, err := NewFSCache(slog.New(slog.DiscardHandler), tf, Options{
 		Path:        b.TempDir(),
 		SizeEntries: 2048,
 	})
@@ -342,7 +342,7 @@ func TestFileIDFromStringNoQuotes(t *testing.T) {
 }
 
 func TestResolveAddressEvictionDeadlock(t *testing.T) {
-	resolver, err := NewFSCache(log.NewNopLogger(), tf, Options{
+	resolver, err := NewFSCache(slog.New(slog.DiscardHandler), tf, Options{
 		Path:        t.TempDir(),
 		SizeEntries: 2, // tiny cache so every Add evicts
 	})

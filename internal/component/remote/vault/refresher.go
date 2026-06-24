@@ -3,14 +3,14 @@ package vault
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	vault "github.com/hashicorp/vault/api"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/grafana/alloy/internal/component"
 )
 
 const tokenManagerInitializeTimeout = time.Minute
@@ -21,7 +21,7 @@ type getTokenFunc func(ctx context.Context, client *vault.Client) (*vault.Secret
 // when running, will renew tokens before expiry, and will retrieve new tokens
 // once expired tokens can no longer be renewed.
 type tokenManager struct {
-	log           log.Logger
+	log           *slog.Logger
 	refreshTicker *ticker
 	getter        getTokenFunc
 	onStateChange chan struct{} // Written to when cli or token changes.
@@ -41,7 +41,7 @@ type tokenManager struct {
 }
 
 type tokenManagerOptions struct {
-	Log    log.Logger
+	Log    *slog.Logger
 	Getter getTokenFunc
 
 	ReadCounter, RefreshCounter prometheus.Counter
@@ -99,7 +99,7 @@ func (tm *tokenManager) updateToken(ctx context.Context) (err error) {
 
 	token, err := tm.getter(ctx, tm.cli)
 	if err != nil {
-		level.Error(tm.log).Log("msg", "failed to get token", "err", err)
+		tm.log.Error("failed to get token", "err", err)
 		return err
 	}
 
@@ -130,7 +130,7 @@ func (tm *tokenManager) Run(ctx context.Context) {
 			return
 
 		case <-tm.refreshTicker.Chan():
-			level.Info(tm.log).Log("msg", "refreshing token")
+			tm.log.Info("refreshing token")
 			// Error is handled via setting health and debug info.
 			_ = tm.updateToken(ctx)
 
@@ -178,7 +178,7 @@ func (tm *tokenManager) updateLifecycleWatcher(ctx context.Context) {
 		RenewBehavior: vault.RenewBehaviorIgnoreErrors,
 	})
 	if err != nil {
-		level.Error(tm.log).Log("msg", "failed to create lifetime watcher, lease will not renew automatically", "err", err)
+		tm.log.Error("failed to create lifetime watcher, lease will not renew automatically", "err", err)
 		return
 	}
 
@@ -200,7 +200,7 @@ func (tm *tokenManager) updateLifecycleWatcher(ctx context.Context) {
 
 			case output := <-lw.RenewCh():
 				tm.refreshCounter.Inc()
-				level.Debug(tm.log).Log("msg", "token has renewed")
+				tm.log.Debug("token has renewed")
 				tm.updateDebugInfo(output.RenewedAt)
 			}
 		}

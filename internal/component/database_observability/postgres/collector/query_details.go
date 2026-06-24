@@ -4,18 +4,17 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/DataDog/go-sqllexer"
-	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -54,7 +53,7 @@ type QueryDetailsArguments struct {
 	EntryHandler     loki.EntryHandler
 	TableRegistry    *TableRegistry
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type QueryDetails struct {
@@ -67,7 +66,7 @@ type QueryDetails struct {
 	tableRegistry    *TableRegistry
 	normalizer       *sqllexer.Normalizer
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -84,7 +83,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		entryHandler:     args.EntryHandler,
 		tableRegistry:    args.TableRegistry,
 		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
-		logger:           log.With(args.Logger, "collector", QueryDetailsCollector),
+		logger:           args.Logger.With("collector", QueryDetailsCollector),
 		running:          &atomic.Bool{},
 	}, nil
 }
@@ -94,7 +93,7 @@ func (c *QueryDetails) Name() string {
 }
 
 func (c *QueryDetails) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -109,7 +108,7 @@ func (c *QueryDetails) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchAndAssociate(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -150,13 +149,13 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		var databaseName database
 		err := rs.Scan(&queryID, &queryText, &databaseName)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan result set for pg_stat_statements", "err", err)
+			c.logger.Error("failed to scan result set for pg_stat_statements", "err", err)
 			continue
 		}
 
 		queryText, err = removeComments(c.normalizer, queryText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to remove comments", "err", err)
+			c.logger.Error("failed to remove comments", "err", err)
 			continue
 		}
 
@@ -168,7 +167,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to tokenize table names", "err", err)
+			c.logger.Error("failed to tokenize table names", "err", err)
 			continue
 		}
 
@@ -188,7 +187,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 	}
 
 	if err := rs.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over result set", "err", err)
+		c.logger.Error("failed to iterate over result set", "err", err)
 		return err
 	}
 

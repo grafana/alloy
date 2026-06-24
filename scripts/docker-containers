@@ -29,8 +29,9 @@ if [[ $PUSH_ALLOY_IMAGE == "true"  ]]; then
 	DOCKER_FLAGS="--push"
 fi
 
-export RELEASE_ALLOY_IMAGE=grafana/alloy
-export DEVEL_ALLOY_IMAGE=grafana/alloy-dev
+GAR_MIRROR=us-docker.pkg.dev/grafanalabs-global/dockerhub-alloy-prod-mirror
+export RELEASE_ALLOY_IMAGE=$GAR_MIRROR/alloy
+export DEVEL_ALLOY_IMAGE=$GAR_MIRROR/alloy-dev
 
 # We need to determine what version to assign to built binaries. 
 # If containers are being built from a GitHub Actions tag trigger, 

@@ -19,10 +19,10 @@ fi
 
 DETECTED_TAG=$(git describe --match 'v*' --exact-match 2>/dev/null || echo -n "")
 
-if [ ! -z "${RELEASE_TAG}" ]; then
+if [ -n "${RELEASE_TAG}" ]; then
   echo "${RELEASE_TAG}"
   exit 0
-elif [ ! -z "${DETECTED_TAG}" ]; then
+elif [ -n "${DETECTED_TAG}" ]; then
   echo "${DETECTED_TAG}"
   exit 0
 fi

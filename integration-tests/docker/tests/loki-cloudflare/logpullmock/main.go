@@ -23,7 +23,7 @@ func main() {
 
 func handleHealth(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "ok")
+	_, _ = fmt.Fprintln(w, "ok")
 }
 
 func handleLogpull(w http.ResponseWriter, r *http.Request) {
@@ -62,6 +62,6 @@ func handleLogpull(w http.ResponseWriter, r *http.Request) {
 			e.ClientIP, e.ClientRequestHost, e.ClientRequestMethod, e.ClientRequestURI,
 			e.EdgeResponseBytes, e.EdgeRequestHost, e.EdgeResponseStatus, e.RayID,
 		)
-		fmt.Fprintln(w, line)
+		_, _ = fmt.Fprintln(w, line)
 	}
 }

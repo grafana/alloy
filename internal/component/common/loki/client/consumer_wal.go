@@ -3,10 +3,9 @@ package client
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/tsdb/chunks"
@@ -17,7 +16,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki/wal"
 )
 
-func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Config, cfgs ...Config) (*WALConsumer, error) {
+func NewWALConsumer(logger *slog.Logger, reg prometheus.Registerer, walCfg wal.Config, cfgs ...Config) (*WALConsumer, error) {
 	if len(cfgs) == 0 {
 		return nil, fmt.Errorf("at least one endpoint config must be provided")
 	}
@@ -66,12 +65,12 @@ func NewWALConsumer(logger log.Logger, reg prometheus.Registerer, walCfg wal.Con
 		// series cache whenever a segment is deleted.
 		writer.SubscribeCleanup(adapter)
 
-		watcher := wal.NewWatcher(walCfg.Dir, name, walWatcherMetrics, adapter, log.With(logger, "component", name), walCfg.WatchConfig, tracker)
+		watcher := wal.NewWatcher(walCfg.Dir, name, walWatcherMetrics, adapter, logger.With("component", name), walCfg.WatchConfig, tracker)
 
 		// subscribe watcher to wal write events
 		writer.SubscribeWrite(watcher)
 
-		level.Debug(logger).Log("msg", "starting WAL watcher for endpoint", "endpoint", name)
+		logger.Debug("starting WAL watcher for endpoint", "endpoint", name)
 		watcher.Start()
 
 		m.pairs = append(m.pairs, endpointWatcherPair{
@@ -141,9 +140,9 @@ func (m *WALConsumer) stop(drain bool) {
 	stopWG.Wait()
 }
 
-func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *walEndpointMetrics, tracker marker.Tracker) *walEndpointAdapter {
+func newWalEndpointAdapter(endpoint *endpoint, logger *slog.Logger, metrics *walEndpointMetrics, tracker marker.Tracker) *walEndpointAdapter {
 	c := &walEndpointAdapter{
-		logger:   log.With(logger, "component", "waladapter"),
+		logger:   logger.With("component", "waladapter"),
 		metrics:  metrics,
 		endpoint: endpoint,
 
@@ -160,7 +159,7 @@ func newWalEndpointAdapter(endpoint *endpoint, logger log.Logger, metrics *walEn
 // which allows it to be injected in the wal.Watcher as a destination where to write series and entries. As the watcher
 // reads from the WAL, entries are forwarded here so it can be written to endpoint.
 type walEndpointAdapter struct {
-	logger  log.Logger
+	logger  *slog.Logger
 	metrics *walEndpointMetrics
 
 	endpoint *endpoint
@@ -178,7 +177,7 @@ func (c *walEndpointAdapter) SeriesReset(segmentNum int) {
 	defer c.seriesLock.Unlock()
 	for k, v := range c.seriesSegment {
 		if v <= segmentNum {
-			level.Debug(c.logger).Log("msg", fmt.Sprintf("reclaiming series under segment %d", segmentNum))
+			c.logger.Debug("reclaiming series", "segment", segmentNum)
 			delete(c.seriesSegment, k)
 			delete(c.series, k)
 		}
@@ -228,7 +227,7 @@ func (c *walEndpointAdapter) AppendEntries(entries wal.RefEntries, segment int) 
 		c.tracker.UpdateReceivedData(segment, queuedEntries)
 	} else {
 		// TODO(thepalbi): Add metric here
-		level.Debug(c.logger).Log("msg", "series for entry not found")
+		c.logger.Debug("series for entry not found")
 	}
 
 	// It's safe to assume that upon an AppendEntries call, there will always be at least

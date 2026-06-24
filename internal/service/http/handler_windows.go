@@ -14,6 +14,11 @@ func (args *TLSArguments) winTlsConfig(win *server.WinCertStoreHandler) (*tls.Co
 		ClientAuth:            tls.ClientAuthType(args.ClientAuth),
 		VerifyPeerCertificate: win.VerifyPeer,
 		GetCertificate:        win.CertificateHandler,
+
+		// Advertise HTTP/2 via ALPN so the server negotiates it over TLS;
+		// without this the clustering transport falls back to HTTP/1.1 and
+		// fails to connect.
+		NextProtos: []string{"h2", "http/1.1"},
 	}
 
 	for _, c := range args.CipherSuites {

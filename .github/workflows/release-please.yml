@@ -17,26 +17,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate token 🔐
-        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         id: app-token
         with:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
-      - name: Setup Node.js 🏗️
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+      - name: Setup tools # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          node-version-file: build-tools/release-please-runner/.nvmrc
-          package-manager-cache: false
+          version: v2026.5.18
+          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          install_args: go node
+
+      - name: Configure Git user
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
+        run: |
+          go run -C tools ./cmd release configure-git-user
 
       - name: Install dependencies 📦
         working-directory: build-tools/release-please-runner
-        run: npm install
+        run: npm ci --no-audit --no-fund
 
       - name: Run release-please 🚀
         working-directory: build-tools/release-please-runner
@@ -47,3 +55,41 @@ jobs:
           CONFIG_FILE: release-please-config.json
           MANIFEST_FILE: .release-please-manifest.json
         run: node index.js
+
+      - name: Find root release-please branch
+        id: root-release-branch
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          RELEASE_BRANCH="release-please--branches--${GITHUB_REF_NAME}"
+          echo "name=${RELEASE_BRANCH}" >> "${GITHUB_OUTPUT}"
+          if ! git ls-remote --exit-code --heads origin "${RELEASE_BRANCH}" >/dev/null 2>&1; then
+            echo "No root release-please branch ${RELEASE_BRANCH}; nothing to regenerate."
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "exists=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout root release-please branch 🛎️
+        if: steps.root-release-branch.outputs.exists == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ steps.root-release-branch.outputs.name }}
+          fetch-depth: 1
+          token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: true # Needed for subsequent git push.
+
+      - name: Regenerate collector distro and stage changes
+        if: steps.root-release-branch.outputs.exists == 'true'
+        run: |
+          make generate-otel-collector-distro
+
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Collector generation produced no diff; nothing to amend."
+            exit 0
+          fi
+
+          git add -- go.mod go.sum collector/
+          git commit --amend --no-edit
+          git push --force-with-lease

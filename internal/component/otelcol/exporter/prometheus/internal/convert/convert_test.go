@@ -34,6 +34,7 @@ func TestConverter(t *testing.T) {
 		addMetricSuffixes             bool
 		enableOpenMetrics             bool
 		resourceToTelemetryConversion bool
+		keepIdentifyingResourceAttrs  bool
 	}{
 		{
 			name: "Gauge with metadata",
@@ -473,6 +474,48 @@ func TestConverter(t *testing.T) {
 				target_info{instance="instance",job="myservice",custom_attr="test"} 1.0
 				# TYPE test_metric_seconds gauge
 				test_metric_seconds{instance="instance",job="myservice"} 1234.56
+			`,
+			enableOpenMetrics: true,
+		},
+		{
+			name: "Target info metric with keep_identifying_resource_attributes",
+			input: `{
+				"resource_metrics": [{
+					"resource": {
+						"attributes": [{
+							"key": "service.name",
+							"value": { "stringValue": "myservice" }
+						}, {
+							"key": "service.namespace",
+							"value": { "stringValue": "myns" }
+						}, {
+							"key": "service.instance.id",
+							"value": { "stringValue": "instance" }
+						}, {
+							"key": "custom_attr",
+							"value": { "stringValue": "test" }
+						}]
+					},
+					"scope_metrics": [{
+						"metrics": [{
+							"name": "test_metric_seconds",
+							"gauge": {
+								"data_points": [{
+									"as_double": 1234.56
+								}]
+							}
+						}]
+					}]
+				}]
+			}`,
+			includeTargetInfo:            true,
+			keepIdentifyingResourceAttrs: true,
+			expect: `
+				# HELP target_info Target metadata
+				# TYPE target_info gauge
+				target_info{instance="instance",service_instance_id="instance",service_namespace="myns",job="myns/myservice",service_name="myservice",custom_attr="test"} 1.0
+				# TYPE test_metric_seconds gauge
+				test_metric_seconds{instance="instance",job="myns/myservice"} 1234.56
 			`,
 			enableOpenMetrics: true,
 		},
@@ -1195,14 +1238,15 @@ func TestConverter(t *testing.T) {
 			var app testappender.Appender
 			app.HideTimestamps = !tc.showTimestamps
 
-			l := util.TestLogger(t)
-			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
-				IncludeTargetInfo:             tc.includeTargetInfo,
-				IncludeScopeInfo:              tc.includeScopeInfo,
-				IncludeScopeLabels:            tc.includeScopeLabels,
-				AddMetricSuffixes:             tc.addMetricSuffixes,
-				ResourceToTelemetryConversion: tc.resourceToTelemetryConversion,
-				HonorMetadata:                 true,
+			l := util.TestAlloyLogger(t)
+			conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
+				IncludeTargetInfo:                 tc.includeTargetInfo,
+				IncludeScopeInfo:                  tc.includeScopeInfo,
+				IncludeScopeLabels:                tc.includeScopeLabels,
+				AddMetricSuffixes:                 tc.addMetricSuffixes,
+				ResourceToTelemetryConversion:     tc.resourceToTelemetryConversion,
+				HonorMetadata:                     true,
+				KeepIdentifyingResourceAttributes: tc.keepIdentifyingResourceAttrs,
 			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 
@@ -1407,8 +1451,8 @@ func TestConverterExponentialHistograms(t *testing.T) {
 			require.NoError(t, err)
 
 			var app testappender.Appender
-			l := util.TestLogger(t)
-			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+			l := util.TestAlloyLogger(t)
+			conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
 				HonorMetadata: tc.honorMetadata,
 			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
@@ -1467,8 +1511,8 @@ func TestConverterClassicHistogramToNHCB(t *testing.T) {
 	require.NoError(t, err)
 
 	var app testappender.Appender
-	l := util.TestLogger(t)
-	conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+	l := util.TestAlloyLogger(t)
+	conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
 		ConvertClassicHistogramsToNHCB: true,
 	})
 	require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
@@ -1583,8 +1627,8 @@ func TestExplicitToCustomBucketsHistogram_Layout(t *testing.T) {
 			require.NoError(t, err)
 
 			var app testappender.Appender
-			l := util.TestLogger(t)
-			conv := convert.New(l, appenderAppendable{Inner: &app}, convert.Options{
+			l := util.TestAlloyLogger(t)
+			conv := convert.New(l.Slog(), appenderAppendable{Inner: &app}, convert.Options{
 				ConvertClassicHistogramsToNHCB: true,
 			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
@@ -1669,11 +1713,11 @@ func TestMetadataWrittenAfterSeries(t *testing.T) {
 		metricFamilies: make(map[string]bool),
 	}
 
-	l := util.TestLogger(t)
+	l := util.TestAlloyLogger(t)
 
 	// With HonorMetadata enabled, there should be NO metadata errors because
 	// the series is now created before metadata is written.
-	conv := convert.New(l, appenderAppendable{Inner: app}, convert.Options{
+	conv := convert.New(l.Slog(), appenderAppendable{Inner: app}, convert.Options{
 		HonorMetadata: true,
 	})
 	err = conv.ConsumeMetrics(t.Context(), payload)
@@ -1691,7 +1735,7 @@ func TestMetadataWrittenAfterSeries(t *testing.T) {
 	}
 
 	// With HonorMetadata disabled, no metadata should be written at all
-	conv = convert.New(l, appenderAppendable{Inner: app}, convert.Options{
+	conv = convert.New(l.Slog(), appenderAppendable{Inner: app}, convert.Options{
 		HonorMetadata: false,
 	})
 	err = conv.ConsumeMetrics(t.Context(), payload)

@@ -1,0 +1,10 @@
+# Test rendering with controller.type=deployment and externalHPA: true.
+controller:
+  type: deployment
+  autoscaling:
+    horizontal:
+      externalHPA: true
+alloy:
+  resources:
+    requests:
+      memory: 100Mi

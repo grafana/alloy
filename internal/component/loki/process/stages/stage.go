@@ -194,10 +194,7 @@ func New(slogger *slog.Logger, cfg StageConfig, registerer prometheus.Registerer
 			return nil, err
 		}
 	case cfg.TruncateConfig != nil:
-		s, err = newTruncateStage(slogger, *cfg.TruncateConfig, registerer)
-		if err != nil {
-			return nil, err
-		}
+		s = newTruncateStage(slogger, *cfg.TruncateConfig, registerer)
 	default:
 		panic(fmt.Sprintf("unreachable; should have decoded into one of the StageConfig fields: %+v", cfg))
 	}

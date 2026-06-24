@@ -4,8 +4,8 @@
 # default when running `docker buildx build` or when DOCKER_BUILDKIT=1 is set
 # in environment variables.
 
-# NOTE: The GO_RUNTIME is used to switch between the default Google go runtime and mcr.microsoft.com/oss/go/microsoft/golang:1.22.7-bullseye which is a Microsoft
-# fork of go that allows using windows crypto instead of boring crypto. Details at https://github.com/microsoft/go/tree/microsoft/main/eng/doc/fips
+# NOTE: GO_RUNTIME pins the Go toolchain image that provides the bundled Go and
+# Go-based tools. It's supplied by the build-image workflow; there's no in-tree default.
 ARG GO_RUNTIME=mustoverride
 
 #
@@ -27,7 +27,11 @@ RUN apk add --no-cache helm
 # https://nsis.sourceforge.io/Conda
 # TODO: Why do we use i386? Is it correct?
 FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as nsis
+# Guard against supply chain attacks.
+# sha256sum -c fails the build on mismatch, before the archive is unpacked.
+# NOTE: This same hash is also pinned in .github/workflows/integration-test-windows-service.yml; update both.
 RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip \
+ && echo "9aa60f9c5c023fda2808af216514d8913d2673bc522d944ee771da032a1bdc10  AccessControl.zip" | sha256sum -c - \
  && unzip AccessControl.zip -d /usr/share/nsis/ \
  && mkdir -p /usr/share/nsis/Plugins/x86-unicode \
  && cp /usr/share/nsis/Plugins/i386-unicode/AccessControl.dll /usr/share/nsis/Plugins/x86-unicode/
@@ -38,15 +42,9 @@ FROM ${GO_RUNTIME} as golang
 ENV CONTROLLER_GEN_VERSION v0.9.2
 
 RUN go install sigs.k8s.io/controller-tools/cmd/controller-gen@$CONTROLLER_GEN_VERSION \
- && go install github.com/mitchellh/gox@v1.0.1                                         \
  && go install github.com/tcnksm/ghr@v0.15.0                                           \
- && go install github.com/grafana/tanka/cmd/tk@v0.22.1                                 \
  && go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1                \
  && go install github.com/google/go-jsonnet/cmd/jsonnet@v0.18.0                        \
- && go install github.com/golang/protobuf/protoc-gen-go@v1.3.1                         \
- && go install github.com/gogo/protobuf/protoc-gen-gogoslick@v1.3.0                    \
- && go install github.com/gogo/protobuf/gogoproto/...@v1.3.0                           \
- && go install github.com/ahmetb/gen-crd-api-reference-docs@v0.3.1-0.20220618162802-424739b250f5 \
  && go install github.com/norwoodj/helm-docs/cmd/helm-docs@v1.11.0
 
 #
@@ -72,8 +70,7 @@ RUN apt-get update                                \
  && apt-get install -qy                           \
       build-essential file zip unzip gettext git  \
       jq musl libsystemd-dev nsis                 \
-      rpm ruby ruby-dev rubygems                  \
-      protobuf-compiler libprotobuf-dev yamllint  \
+      rpm ruby ruby-dev rubygems yamllint         \
  && gem install --no-document fpm                 \
  && rm -rf /var/lib/apt/lists/*
 
