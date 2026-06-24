@@ -188,7 +188,7 @@ tasks:
       IMAGE: alloy-security-poc:dev
       ALLOY_ROOT: '{{.ROOT_DIR}}/../..'
     cmds:
-      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 ALLOY_BINARY=build/alloy-linux-amd64 SKIP_UI_BUILD=1 make -C {{.ALLOY_ROOT}} alloy
+      - CGO_ENABLED=0 GOOS=linux GOARCH=amd64 ALLOY_BINARY=build/alloy-linux-amd64 make -C {{.ALLOY_ROOT}} alloy
       - docker build -f {{.ALLOY_ROOT}}/Dockerfile.kind-dev -t {{.IMAGE}} {{.ALLOY_ROOT}}
       - kind load docker-image {{.IMAGE}} --name {{.CLUSTERNAME}}
 
