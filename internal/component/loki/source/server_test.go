@@ -19,7 +19,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	fnet "github.com/grafana/alloy/internal/component/common/net"
-	"github.com/grafana/alloy/internal/util"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func TestServer(t *testing.T) {
@@ -385,7 +385,7 @@ func (r testHandlerRoute) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func newTestServer(t *testing.T, recv loki.LogsBatchReceiver, cfg ServerConfig, logsRoutes ...LogsRoute) *Server {
 	t.Helper()
 
-	srv, err := NewServer(util.TestLogger(t), prometheus.NewRegistry(), recv, cfg)
+	srv, err := NewServer(logging.NewSlogNop(), prometheus.NewRegistry(), recv, cfg)
 	require.NoError(t, err)
 
 	err = srv.Run(logsRoutes, []HandlerRoute{testHandlerRoute{

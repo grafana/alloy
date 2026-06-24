@@ -2,11 +2,10 @@ package gcp_exporter
 
 import (
 	"context"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus-community/stackdriver_exporter/collectors"
 	"github.com/tilinna/clock"
 	"go.uber.org/atomic"
@@ -30,7 +29,7 @@ type SelfPruningDeltaStore[T CounterOrHistogram] struct {
 	mux                          sync.Mutex
 	trackedMetricDescriptorNames map[string]struct{}
 	lastListOperationTime        atomic.Int64
-	logger                       log.Logger
+	logger                       *slog.Logger
 }
 
 // NewSelfPruningDeltaStore provides a configured instance of the SelfPruningDeltaStore which wraps an existing delta
@@ -42,7 +41,7 @@ type SelfPruningDeltaStore[T CounterOrHistogram] struct {
 //
 // This is a short term fix until clustering aware components are completed. This will ensure the in-memory counters
 // are pruned when an exporter instance no longer has targets assigned.
-func NewSelfPruningDeltaStore[T CounterOrHistogram](l log.Logger, wrapping CounterOrHistogramStore[T]) *SelfPruningDeltaStore[T] {
+func NewSelfPruningDeltaStore[T CounterOrHistogram](l *slog.Logger, wrapping CounterOrHistogramStore[T]) *SelfPruningDeltaStore[T] {
 	return &SelfPruningDeltaStore[T]{
 		logger:                       l,
 		wrapping:                     wrapping,
@@ -77,13 +76,13 @@ func (s *SelfPruningDeltaStore[T]) ListMetrics(metricDescriptorName string) []*T
 func (s *SelfPruningDeltaStore[T]) Prune(ctx context.Context) {
 	now := clock.Now(ctx).Unix()
 	if s.shouldPrune(now) {
-		level.Debug(s.logger).Log("msg", "Pruning window breached starting prune")
+		s.logger.Debug("Pruning window breached starting prune")
 		s.mux.Lock()
 		defer s.mux.Unlock()
 		for descriptor := range s.trackedMetricDescriptorNames {
 			// Early eject if ListMetrics is being called again
 			if !s.shouldPrune(now) {
-				level.Debug(s.logger).Log("msg", "Store no longer needs pruned stopping")
+				s.logger.Debug("Store no longer needs pruned stopping")
 				break
 			}
 			// Calling ListMetrics has a side effect of pruning any data outside a configured TTL we want to make sure
@@ -92,9 +91,9 @@ func (s *SelfPruningDeltaStore[T]) Prune(ctx context.Context) {
 			if len(result) == 0 {
 				delete(s.trackedMetricDescriptorNames, descriptor)
 			}
-			level.Debug(s.logger).Log("msg", "Pruning metric descriptor", "metric_descriptor", descriptor, "metrics_remaining", len(result))
+			s.logger.Debug("Pruning metric descriptor", "metric_descriptor", descriptor, "metrics_remaining", len(result))
 		}
-		level.Debug(s.logger).Log("msg", "Pruning finished")
+		s.logger.Debug("Pruning finished")
 	}
 }
 

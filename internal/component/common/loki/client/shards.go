@@ -7,19 +7,18 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/golang/snappy"
 	"github.com/grafana/dskit/backoff"
 	"github.com/prometheus/common/config"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/useragent"
 )
 
@@ -35,7 +34,7 @@ type queuedBatch struct {
 	Batch    *batch
 }
 
-func newQueue(metrics *metrics, logger log.Logger, cfg Config) *queue {
+func newQueue(metrics *metrics, logger *slog.Logger, cfg Config) *queue {
 	// Capacity is the worst case size in bytes desired for the send queue. This value is used to calculate the size of
 	// the buffered channel. The worst case scenario assumed is that every batch buffered in full, hence
 	// the channel capacity would be calculated as: bufferChannelSize = Capacity / BatchSize.
@@ -59,7 +58,7 @@ func newQueue(metrics *metrics, logger log.Logger, cfg Config) *queue {
 type queue struct {
 	cfg     Config
 	metrics *metrics
-	logger  log.Logger
+	logger  *slog.Logger
 	c       chan queuedBatch
 
 	mu sync.Mutex
@@ -106,7 +105,7 @@ func (q *queue) append(tenantID string, entry loki.Entry, segmentNum int) bool {
 
 		// If we could not add entry to batch that means that the configured maxStreams was reached and
 		// we should drop the entry.
-		level.Error(q.logger).Log("msg", "batch add err", "tenant", tenantID, "error", err)
+		q.logger.Error("batch add err", "tenant", tenantID, "error", err)
 		reason := reasonGeneric
 		if errors.Is(err, errMaxStreamsLimitExceeded) {
 			reason = reasonStreamLimited
@@ -206,7 +205,7 @@ func (q *queue) tryEnqueueingBatch(done <-chan struct{}) bool {
 
 // newShards creates a new shards instance for parallel processing of log entries.
 // It validates the configuration and creates an HTTP client for sending batches to Loki.
-func newShards(metrics *metrics, logger log.Logger, markerHandler SentDataMarkerHandler, cfg Config) (*shards, error) {
+func newShards(metrics *metrics, logger *slog.Logger, tracker sentDataTracker, cfg Config) (*shards, error) {
 	if cfg.URL.URL == nil {
 		return nil, errors.New("endpoint needs target URL")
 	}
@@ -224,12 +223,12 @@ func newShards(metrics *metrics, logger log.Logger, markerHandler SentDataMarker
 	client.Timeout = cfg.Timeout
 
 	return &shards{
-		cfg:           cfg,
-		logger:        logger,
-		metrics:       metrics,
-		client:        client,
-		markerHandler: markerHandler,
-		tenants:       make(map[string]struct{}),
+		cfg:     cfg,
+		logger:  logger,
+		metrics: metrics,
+		client:  client,
+		tracker: tracker,
+		tenants: make(map[string]struct{}),
 	}, nil
 }
 
@@ -238,11 +237,11 @@ func newShards(metrics *metrics, logger log.Logger, markerHandler SentDataMarker
 // enabling parallel processing and improved throughput. Each shard has its own queue and worker goroutine.
 // Entries are routed to shards using a hash of their label fingerprint.
 type shards struct {
-	cfg           Config
-	logger        log.Logger
-	metrics       *metrics
-	client        *http.Client
-	markerHandler SentDataMarkerHandler
+	cfg     Config
+	logger  *slog.Logger
+	metrics *metrics
+	client  *http.Client
+	tracker sentDataTracker
 
 	mut     sync.Mutex
 	tenants map[string]struct{}
@@ -309,7 +308,7 @@ func (s *shards) stop() {
 	case <-time.After(s.cfg.QueueConfig.DrainTimeout):
 	}
 
-	level.Warn(s.logger).Log("msg", "failed to flush all queues during shutdown")
+	s.logger.Warn("failed to flush all queues during shutdown")
 
 	// Perform hard shutdown
 	s.cancel()
@@ -402,7 +401,7 @@ func (s *shards) initBatchMetrics(tenantID string) {
 // sendBatch encodes a batch and sends it to Loki with retry logic.
 func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[]byte) {
 	obs := s.metrics.entryLatency.WithLabelValues(s.cfg.URL.Host, tenantID)
-	defer batch.reportAsSentData(s.markerHandler, obs)
+	defer batch.reportAsSentData(s.tracker, obs)
 
 	r, entriesCount := batch.request()
 
@@ -415,7 +414,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 
 	buf, err := encode(r, size, *protoBuf, *snappyBuf)
 	if err != nil {
-		level.Error(s.logger).Log("msg", "error encoding batch", "error", err)
+		s.logger.Error("error encoding batch", "error", err)
 		return
 	}
 
@@ -433,7 +432,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 
 		// Immediately drop rate limited batches to avoid HOL blocking for other tenants not experiencing throttling
 		if s.cfg.DropRateLimitedBatches && batchIsRateLimited(status) {
-			level.Warn(s.logger).Log("msg", "dropping batch due to rate limiting applied at ingester")
+			s.logger.Warn("dropping batch due to rate limiting applied at ingester")
 			s.metrics.droppedBytes.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(bufBytes)
 			s.metrics.droppedEntries.WithLabelValues(s.cfg.URL.Host, tenantID, reasonRateLimited).Add(float64(entriesCount))
 			return
@@ -450,7 +449,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 			break
 		}
 
-		level.Debug(s.logger).Log("msg", "error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
+		s.logger.Debug("error sending batch, will retry", "status", status, "tenant", tenantID, "error", err)
 		s.metrics.batchRetries.WithLabelValues(s.cfg.URL.Host, tenantID).Inc()
 		backoff.Wait()
 
@@ -460,7 +459,7 @@ func (s *shards) sendBatch(tenantID string, batch *batch, protoBuf, snappyBuf *[
 		}
 	}
 
-	level.Error(s.logger).Log("msg", "final error sending batch, no retries left, dropping data", "status", status, "tenant", tenantID, "error", err)
+	s.logger.Error("final error sending batch, no retries left, dropping data", "status", status, "tenant", tenantID, "error", err)
 	// If the reason for the last retry error was rate limiting, count the drops as such, even if the previous errors
 	// were for a different reason
 	dropReason := reasonGeneric
@@ -503,7 +502,7 @@ func (s *shards) send(ctx context.Context, tenantID string, buf []byte) (int, er
 			if req.Header.Get(k) == "" {
 				req.Header.Add(k, v)
 			} else {
-				level.Warn(s.logger).Log("msg", "custom header key already exists, skipping", "key", k)
+				s.logger.Warn("custom header key already exists, skipping", "key", k)
 			}
 		}
 	}

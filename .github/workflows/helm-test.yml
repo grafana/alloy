@@ -9,16 +9,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
+      - name: Setup tools
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
+        with:
+          install_args: helm-docs
+
       - name: Regenerate docs
         run: |
-          docker run --rm \
-            -v "$(pwd)/operations/helm/charts/alloy:/helm-docs" \
-            -u "$(id -u)" \
-            jnorwood/helm-docs
+          make generate-helm-docs
           if ! git diff --exit-code; then
             echo "Helm chart documentation is not up to date. Please run 'make generate-helm-docs' and commit changes!" >&2
             exit 1
@@ -28,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -36,7 +38,7 @@ jobs:
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           # renovate: datasource=github-releases packageName=helm/helm
-          version: v3.10.3
+          version: v3.21.1
 
       - name: Regenerate tests
         run: |
@@ -50,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -59,7 +61,7 @@ jobs:
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
         with:
           # renovate: datasource=github-releases packageName=helm/helm
-          version: v3.10.3
+          version: v3.21.1
 
       - name: Install Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
@@ -97,3 +99,16 @@ jobs:
 
       - name: Test charts
         run: ct install --config ./operations/helm/ct.yaml
+
+      - name: Assert external HPA validation failure
+        run: |
+          set -e
+          cd operations/helm/charts/alloy
+          if helm template . --values ci/external-hpa-validation-failure.yaml > /dev/null 2>&1; then
+            echo "ERROR: expected helm template to fail due to mutually-exclusive flags" >&2
+            exit 1
+          fi
+          helm template . --values ci/external-hpa-validation-failure.yaml 2>&1 \
+            | grep -q "mutually exclusive" \
+            || { echo "ERROR: helm template failed but error message did not match expected text" >&2; exit 1; }
+          echo "OK: external HPA validation fails with expected message"

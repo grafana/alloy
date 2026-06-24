@@ -22,9 +22,9 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          # Only check release-please PR
-          if ! echo "$PR_TITLE" | grep -qE '^chore\(main\): Release'; then
-            echo "✅ Not a release-please PR. Skipping."
+          # Only check root module release-please PRs.
+          if ! echo "$PR_TITLE" | grep -qE '^chore\(main\): Release [0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "✅ Not a root module release-please PR. Skipping."
             exit 0
           fi
 

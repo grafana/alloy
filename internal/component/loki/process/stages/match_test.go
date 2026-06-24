@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -67,7 +68,7 @@ var testMatchLogLineApp2 = `
 func TestMatchStage(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	logger := util.TestAlloyLogger(t)
-	pl, err := NewPipeline(logger, loadConfig(testMatchAlloy), registry, featuregate.StabilityGenerallyAvailable)
+	pl, err := NewPipeline(logger.Slog(), loadConfig(testMatchAlloy), registry, featuregate.StabilityGenerallyAvailable)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +163,7 @@ func TestMatcher(t *testing.T) {
 				"",
 			}
 			logger := util.TestAlloyLogger(t)
-			s, err := newMatcherStage(logger, matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
+			s, err := newMatcherStage(logger.Slog(), matchConfig, prometheus.DefaultRegisterer, featuregate.StabilityGenerallyAvailable)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("withMatcher() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -226,4 +227,36 @@ func TestValidateMatcherConfig(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMatchStage_NewPipelineErrorIsWrapped(t *testing.T) {
+	cfg := StageConfig{
+		MatchConfig: &MatchConfig{
+			Selector: `{app="loki"}`,
+			Action:   MatchActionKeep,
+			Stages: []StageConfig{
+				{RegexConfig: &RegexConfig{Expression: "[unclosed"}},
+			},
+		},
+	}
+
+	logger := util.TestAlloyLogger(t)
+	_, err := New(logger.Slog(), cfg, prometheus.NewRegistry(), featuregate.StabilityGenerallyAvailable)
+	require.ErrorContains(t, err, "match stage failed to create pipeline")
+	require.ErrorContains(t, errors.Unwrap(err), "invalid stage config")
+}
+
+var testMatchNestedLimitAlloy = `
+stage.match {
+		selector = "{app=\"loki\"}"
+		action = "keep"
+		stage.limit {
+				rate  = 0.1
+				burst = 1
+				drop  = false
+		}
+}`
+
+func TestMatchNestedLimitShutdown(t *testing.T) {
+	assertPipelineStopsPromptly(t, testMatchNestedLimitAlloy)
 }

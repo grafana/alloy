@@ -202,7 +202,7 @@ func testArgs() Arguments {
 
 func testOptions(t *testing.T, alloyMetricsReg *client.Registry, fakeCluster *fakeCluster) component.Options {
 	opts := component.Options{
-		Logger:     util.TestAlloyLogger(t),
+		Logger:     util.TestAlloyLogger(t).Slog(),
 		Registerer: alloyMetricsReg,
 		ID:         "prometheus.scrape.test",
 		GetServiceData: func(name string) (any, error) {

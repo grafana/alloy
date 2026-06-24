@@ -1,5 +1,5 @@
-ARG BASE_IMAGE_GO=golang:1.26-windowsservercore-ltsc2022@sha256:b36e6e1036d0746855a215ecc693bdc45879a74a15edc797fc9af6cc3f505863
-ARG BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022@sha256:60612a30303eb5a15ce7f53fa2eecf70bca41d72657de0482fbde601ae5f3403
+ARG BASE_IMAGE_GO=golang:1.26.4-windowsservercore-ltsc2022@sha256:d50fe97a953eb04bfb276a274934411e6b0f7f3155b99edba90260ee6c650fa2
+ARG BASE_IMAGE_WINDOWS=mcr.microsoft.com/windows/nanoserver:ltsc2022@sha256:3680dad0bb773da8efcd9d928eaf4e33817875ab71a43792640ab1bcc0b3c074
 
 FROM ${BASE_IMAGE_GO} AS builder
 
@@ -8,7 +8,7 @@ ARG RELEASE_BUILD=1
 ARG GO_TAGS
 
 ####################
-# The snippet below was taken from tools/build-image/windows/Dockerfile.
+# The snippet below was taken from build-tools/build-image/windows/Dockerfile.
 # This is so that we don't have to run the CI step inside a build image container.
 #
 # TODO: Build Alloy outside of the Dockerfile?
@@ -65,7 +65,7 @@ RUN choco install nodejs.install --version 24.4.0 -y
 RUN git config --global --add safe.directory \*
 
 ####################
-# End of snipped from tools/build-image/windows/Dockerfile.
+# End of snippet from build-tools/build-image/windows/Dockerfile.
 ####################
 
 COPY . /src/alloy

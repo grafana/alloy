@@ -13,7 +13,7 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: config
 data:
-  config.alloy: |-
+  collector.yaml: |-
     logging {
       level = "debug"
     }

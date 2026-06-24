@@ -35,18 +35,20 @@ jobs:
           repo_secrets: |
             SLACK_CHANNEL_ID_ALLOY=slack:channel_id_alloy
 
-      - name: Determine release type 🏷️
+      - name: Check for a final Alloy release 🏷️
         id: release-type
         run: |
-          if [[ "$RELEASE_TAG" == *"-rc"* ]]; then
-            echo "is_rc=true" >> "$GITHUB_OUTPUT"
+          # Announce only final Alloy releases (vX.Y.Z) — not RCs (vX.Y.Z-rc.N) or
+          # component releases (e.g. syntax/v0.2.0).
+          if [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_alloy_release=true" >> "$GITHUB_OUTPUT"
           else
-            echo "is_rc=false" >> "$GITHUB_OUTPUT"
+            echo "is_alloy_release=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Notify internal alloy channel 📢
-        if: steps.release-type.outputs.is_rc == 'false'
-        uses: grafana/shared-workflows/actions/send-slack-message@0941e3408fa4789fec9062c44a2a9e1832146ba6 #v2.0.1
+        if: steps.release-type.outputs.is_alloy_release == 'true'
+        uses: grafana/shared-workflows/actions/send-slack-message@551bc8d50017d3e95d5da3f8a4826e733a208dc0 # send-slack-message/v3.0.2
         env:
           SLACK_MESSAGE: |
             :alloy: :alloy: :alloy:

@@ -13,6 +13,7 @@ import (
 
 	"github.com/grafana/dskit/backoff"
 	"github.com/hashicorp/go-multierror"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/storage"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -206,6 +207,7 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 	}()
 
 	l.cache.ClearModuleExports()
+	l.cm.graphEdgeConnection.Reset()
 
 	// Evaluate all the components.
 	_ = dag.WalkTopological(&newGraph, newGraph.Leaves(), func(n dag.Node) error {
@@ -222,8 +224,17 @@ func (l *Loader) Apply(options ApplyOptions) diag.Diagnostics {
 
 		switch n := n.(type) {
 		case ComponentNode:
+			idStr := n.ID().String()
 			components = append(components, n)
-			componentIDs[n.ID().String()] = n.ID()
+			componentIDs[idStr] = n.ID()
+			outgoing := n.GetDataFlowEdgesTo()
+
+			for _, e := range outgoing {
+				l.cm.graphEdgeConnection.With(prometheus.Labels{
+					"from": idStr,
+					"to":   e,
+				}).Set(1)
+			}
 
 			if err = l.evaluate(logger, n); err != nil {
 				var evalDiags diag.Diagnostics

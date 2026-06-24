@@ -74,3 +74,13 @@ The `/-/support` endpoint returns a [support bundle](../../troubleshoot/support_
 ## `/debug/pprof`
 
 The `/debug/pprof` endpoint returns a pprof Go [profile](../../troubleshoot/profile) that you can use to visualize and analyze profiling data.
+
+## `/graphql`
+
+{{< docs/shared lookup="stability/experimental_feature.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+The `/graphql` endpoint exposes a [GraphQL API](./graphql/) for querying various aspects of {{< param "PRODUCT_NAME" >}}. It is disabled by default. To enable it, set the `--server.http.enable-graphql` flag to `true`.
+
+You can also enable an interactive GraphQL playground at `/graphql/playground` by setting the `--server.http.enable-graphql-playground` flag to `true`.
+
+Refer to the [GraphQL API](./graphql/) documentation for the full schema and example queries.

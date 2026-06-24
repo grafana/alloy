@@ -1,18 +1,17 @@
 package collector
 
 import (
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestHealthCheck(t *testing.T) {
@@ -35,7 +34,7 @@ func TestHealthCheck(t *testing.T) {
 			CollectInterval: 100 * time.Millisecond,
 			ExcludeSchemas:  nil,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -87,17 +86,17 @@ func TestHealthCheck(t *testing.T) {
 			CollectInterval: 100 * time.Millisecond,
 			ExcludeSchemas:  []string{"custom_schema", "another_schema"},
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
-		mock.ExpectQuery(`SHOW GRANTS`).
+		mock.ExpectQuery(showGrantsQuery).
 			WillReturnRows(
 				sqlmock.NewRows([]string{"Grants"}).
 					AddRow("GRANT PROCESS, REPLICATION CLIENT, SELECT, SHOW VIEW ON *.* TO 'user'@'host'"),
 			)
-		mock.ExpectQuery(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema', 'custom_schema', 'another_schema')`).
+		mock.ExpectQuery(performanceSchemaHasRowsQuery([]string{"custom_schema", "another_schema"})).
 			WillReturnRows(
 				sqlmock.NewRows([]string{"COUNT(*)"}).
 					AddRow(100),
@@ -142,7 +141,7 @@ func TestHealthCheck(t *testing.T) {
 				name:             "missing PROCESS and REPLICATION CLIENT grants",
 				failingCheckName: "RequiredGrantsPresent",
 				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SHOW GRANTS`).
+					mock.ExpectQuery(showGrantsQuery).
 						WillReturnRows(
 							sqlmock.NewRows([]string{"Grants"}).
 								AddRow("GRANT SELECT, SHOW VIEW ON *.* TO 'user'@'host'"),
@@ -155,7 +154,7 @@ func TestHealthCheck(t *testing.T) {
 				name:             "missing SELECT on performance_schema",
 				failingCheckName: "RequiredGrantsPresent",
 				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SHOW GRANTS`).
+					mock.ExpectQuery(showGrantsQuery).
 						WillReturnRows(
 							sqlmock.NewRows([]string{"Grants"}).
 								AddRow("GRANT PROCESS, REPLICATION CLIENT, SHOW VIEW ON *.* TO 'user'@'host'").
@@ -169,7 +168,7 @@ func TestHealthCheck(t *testing.T) {
 				name:             "missing SELECT and SHOW VIEW grants",
 				failingCheckName: "RequiredGrantsPresent",
 				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SHOW GRANTS`).
+					mock.ExpectQuery(showGrantsQuery).
 						WillReturnRows(
 							sqlmock.NewRows([]string{"Grants"}).
 								AddRow("GRANT PROCESS, REPLICATION CLIENT ON *.* TO 'user'@'host'").
@@ -183,7 +182,7 @@ func TestHealthCheck(t *testing.T) {
 				name:             "no rows in events statements digest",
 				failingCheckName: "PerformanceSchemaHasRows",
 				customSetup: func(mock sqlmock.Sqlmock) {
-					mock.ExpectQuery(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`).
+					mock.ExpectQuery(performanceSchemaHasRowsQuery(nil)).
 						WillReturnRows(
 							sqlmock.NewRows([]string{"COUNT(*)"}).
 								AddRow(0),
@@ -212,7 +211,7 @@ func TestHealthCheck(t *testing.T) {
 					CollectInterval: 100 * time.Millisecond,
 					ExcludeSchemas:  nil,
 					EntryHandler:    lokiClient,
-					Logger:          log.NewLogfmtLogger(os.Stderr),
+					Logger:          util.TestAlloyLogger(t).Slog(),
 				})
 				require.NoError(t, err)
 
@@ -266,7 +265,7 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 		{
 			name: "RequiredGrantsPresent",
 			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SHOW GRANTS`).
+				mock.ExpectQuery(showGrantsQuery).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"Grants"}).
 							AddRow("GRANT PROCESS, REPLICATION CLIENT, SELECT, SHOW VIEW ON *.* TO 'user'@'host'"),
@@ -276,7 +275,7 @@ func setupExpectQueryAssertions(checkName string, mock sqlmock.Sqlmock, customSe
 		{
 			name: "PerformanceSchemaHasRows",
 			setup: func(mock sqlmock.Sqlmock) {
-				mock.ExpectQuery(`SELECT COUNT(*) FROM performance_schema.events_statements_summary_by_digest WHERE schema_name NOT IN ('mysql', 'performance_schema', 'sys', 'information_schema')`).
+				mock.ExpectQuery(performanceSchemaHasRowsQuery(nil)).
 					WillReturnRows(
 						sqlmock.NewRows([]string{"COUNT(*)"}).
 							AddRow(100),

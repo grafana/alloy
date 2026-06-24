@@ -4,15 +4,15 @@ package process_exporter
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/build"
-	"github.com/grafana/alloy/internal/static/integrations/config"
+	"github.com/ncabatoff/process-exporter/collector"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/ncabatoff/process-exporter/collector"
+	"github.com/grafana/alloy/internal/build"
+	"github.com/grafana/alloy/internal/static/integrations/config"
 )
 
 // Integration is the process_exporter integration. The integration scrapes
@@ -24,7 +24,7 @@ type Integration struct {
 }
 
 // New creates a new instance of the process_exporter integration.
-func New(logger log.Logger, c *Config) (*Integration, error) {
+func New(_ *slog.Logger, c *Config) (*Integration, error) {
 	cfg, err := c.ProcessExporter.ToConfig()
 	if err != nil {
 		return nil, fmt.Errorf("process_names is invalid: %w", err)

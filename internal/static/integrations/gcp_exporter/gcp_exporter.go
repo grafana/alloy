@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/rehttp"
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/multierror"
 	"github.com/prometheus-community/stackdriver_exporter/collectors"
 	"github.com/prometheus-community/stackdriver_exporter/delta"
@@ -22,8 +21,6 @@ import (
 	"google.golang.org/api/option"
 	"gopkg.in/yaml.v2"
 
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -76,7 +73,7 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 	return hex.EncodeToString(hash[:]), nil
 }
 
-func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
 	if err := c.Validate(); err != nil {
 		return nil, err
 	}
@@ -86,14 +83,12 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		return nil, err
 	}
 
-	logger := slog.New(logging.NewSlogGoKitHandler(l))
-
 	var gcpCollectors []prometheus.Collector
 	var counterStores []*SelfPruningDeltaStore[collectors.ConstMetric]
 	var histogramStores []*SelfPruningDeltaStore[collectors.HistogramMetric]
 	for _, projectID := range c.ProjectIDs {
-		counterStore := NewSelfPruningDeltaStore[collectors.ConstMetric](l, delta.NewInMemoryCounterStore(logger, 30*time.Minute))
-		histogramStore := NewSelfPruningDeltaStore[collectors.HistogramMetric](l, delta.NewInMemoryHistogramStore(logger, 30*time.Minute))
+		counterStore := NewSelfPruningDeltaStore[collectors.ConstMetric](l, delta.NewInMemoryCounterStore(l, 30*time.Minute))
+		histogramStore := NewSelfPruningDeltaStore[collectors.HistogramMetric](l, delta.NewInMemoryHistogramStore(l, 30*time.Minute))
 		monitoringCollector, err := collectors.NewMonitoringCollector(
 			projectID,
 			svc,
@@ -113,7 +108,7 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 				// for more info
 				AggregateDeltas: true,
 			},
-			logger,
+			l,
 			counterStore,
 			histogramStore,
 		)
@@ -131,14 +126,14 @@ func (c *Config) NewIntegration(l log.Logger) (integrations.Integration, error) 
 		for {
 			select {
 			case <-ticker.C:
-				level.Debug(l).Log("msg", "Starting delta store pruning", "number_of_stores", len(counterStores)+len(histogramStores))
+				l.Debug("Starting delta store pruning", "number_of_stores", len(counterStores)+len(histogramStores))
 				for _, store := range counterStores {
 					store.Prune(ctx)
 				}
 				for _, store := range histogramStores {
 					store.Prune(ctx)
 				}
-				level.Debug(l).Log("msg", "Finished delta store pruning", "number_of_stores", len(counterStores)+len(histogramStores))
+				l.Debug("Finished delta store pruning", "number_of_stores", len(counterStores)+len(histogramStores))
 			case <-ctx.Done():
 				return ctx.Err()
 			}

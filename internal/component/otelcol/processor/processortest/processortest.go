@@ -2,15 +2,14 @@ package processortest
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/internal/fakeconsumer"
 	"github.com/grafana/alloy/internal/runtime/componenttest"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/dskit/backoff"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/collector/pdata/plog"
@@ -36,7 +35,7 @@ type ProcessorRunConfig struct {
 	TestSignal            Signal
 	AdditionalSignalSends int
 	Ctrl                  *componenttest.Controller
-	L                     log.Logger
+	L                     *slog.Logger
 }
 
 const signalOutputTimeout = 3 * time.Second
@@ -62,7 +61,7 @@ func TestRunProcessor(c ProcessorRunConfig) {
 			for i := 0; i <= c.AdditionalSignalSends; i++ {
 				err := c.TestSignal.ConsumeInput(c.Ctx, exports.Input)
 				if err != nil {
-					level.Error(c.L).Log("msg", "failed to send signal", "err", err)
+					c.L.Error("failed to send signal", "err", err)
 					bo.Wait()
 					continue
 				}

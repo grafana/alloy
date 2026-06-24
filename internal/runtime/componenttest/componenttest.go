@@ -4,22 +4,19 @@ package componenttest
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/atomic"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
-
-	"github.com/go-kit/log"
-	"go.opentelemetry.io/otel/trace/noop"
-
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 // A Controller is a testing controller which controls a single component.
@@ -27,7 +24,7 @@ type Controller struct {
 	PromRegistry prometheus.Registerer
 
 	reg component.Registration
-	log log.Logger
+	log *slog.Logger
 
 	onRun    sync.Once
 	running  chan struct{}
@@ -48,7 +45,7 @@ const (
 
 // NewControllerFromID returns a new testing Controller for the component with
 // the provided name.
-func NewControllerFromID(l log.Logger, componentName string) (*Controller, error) {
+func NewControllerFromID(l *slog.Logger, componentName string) (*Controller, error) {
 	reg, ok := component.Get(componentName)
 	if !ok {
 		return nil, fmt.Errorf("no such component %q", componentName)
@@ -59,9 +56,9 @@ func NewControllerFromID(l log.Logger, componentName string) (*Controller, error
 // NewControllerFromReg registers a new testing Controller for a component with
 // the given registration. This can be used for testing fake components which
 // aren't really registered.
-func NewControllerFromReg(l log.Logger, reg component.Registration) *Controller {
+func NewControllerFromReg(l *slog.Logger, reg component.Registration) *Controller {
 	if l == nil {
-		l = log.NewNopLogger()
+		l = slog.New(slog.DiscardHandler)
 	}
 
 	return &Controller{
@@ -178,18 +175,9 @@ func (c *Controller) buildComponent(dataPath string, args component.Arguments, o
 	c.innerMut.Lock()
 	defer c.innerMut.Unlock()
 
-	writerAdapter := log.NewStdlibAdapter(c.log)
-	l, err := logging.New(writerAdapter, logging.Options{
-		Level:  logging.LevelDebug,
-		Format: logging.FormatLogfmt,
-	})
-	if err != nil {
-		return nil, err
-	}
-
 	opts := component.Options{
 		ID:            c.reg.Name + ".test",
-		Logger:        l,
+		Logger:        c.log,
 		Tracer:        noop.NewTracerProvider(),
 		DataPath:      dataPath,
 		OnStateChange: c.onStateChange,

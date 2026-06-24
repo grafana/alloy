@@ -10,7 +10,6 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 func init() {
@@ -84,7 +83,7 @@ func (t *Ticker) Run(ctx context.Context) error {
 			counter := t.currentCounter
 			t.mutex.Unlock()
 
-			level.Info(t.opts.Logger).Log("msg", "tick", "counter", counter)
+			t.opts.Logger.Info("tick", "counter", counter)
 			t.opts.OnStateChange(TickerExports{Counter: counter})
 			t.counterGauge.Set(float64(counter))
 		}
@@ -101,6 +100,6 @@ func (t *Ticker) Update(args component.Arguments) error {
 	defer t.mutex.Unlock()
 	t.args = cfg
 
-	level.Info(t.opts.Logger).Log("msg", "updated ticker", "cfg", cfg)
+	t.opts.Logger.Info("updated ticker", "cfg", cfg)
 	return nil
 }

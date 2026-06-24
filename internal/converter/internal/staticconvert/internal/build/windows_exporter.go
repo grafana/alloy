@@ -45,7 +45,7 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 		}
 	}
 
-	return &windows.Arguments{
+	args := &windows.Arguments{
 		EnabledCollectors: split(config.EnabledCollectors),
 		Dfsr: windows.DfsrConfig{
 			SourcesEnabled: split(config.Dfsr.SourcesEnabled),
@@ -143,5 +143,43 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Exclude:     config.Net.Exclude,
 			EnabledList: split(config.Net.EnabledList),
 		},
+	}
+
+	normalizeWindowsTimeCollectorDefaults(args)
+	return args
+}
+
+func normalizeWindowsTimeCollectorDefaults(args *windows.Arguments) {
+	var defaults windows.Arguments
+	defaulter, ok := any(&defaults).(interface{ SetToDefault() })
+	if !ok {
+		return
+	}
+	defaulter.SetToDefault()
+
+	// Empty structs/slices and nil are semantically the same, but will be detected as different in DeepEqual.
+	// Normalize them to the defaults representation.
+	normalizeEmptySlicesToDefault(args, &defaults, "Filetime")
+}
+
+func normalizeEmptySlicesToDefault(args *windows.Arguments, defaults *windows.Arguments, fieldName string) {
+	argsField := reflect.ValueOf(args).Elem().FieldByName(fieldName)
+	defaultField := reflect.ValueOf(defaults).Elem().FieldByName(fieldName)
+	if !argsField.IsValid() || !defaultField.IsValid() {
+		return
+	}
+	if argsField.Kind() != reflect.Struct || defaultField.Kind() != reflect.Struct {
+		return
+	}
+
+	for i := 0; i < argsField.NumField(); i++ {
+		argsValue := argsField.Field(i)
+		defaultValue := defaultField.Field(i)
+		if argsValue.Kind() != reflect.Slice || defaultValue.Kind() != reflect.Slice {
+			continue
+		}
+		if argsValue.Len() == 0 && defaultValue.Len() == 0 && argsValue.IsNil() != defaultValue.IsNil() {
+			argsValue.Set(defaultValue)
+		}
 	}
 }
