@@ -10,8 +10,6 @@ import (
 
 var _ Consumer = (*ShardingConsumer)(nil)
 
-var ErrConsumerStopped = errors.New("consumer stopped")
-
 // NewShardingConsumer creates a Consumer which shards streams across a fixed
 // number of shards before forwarding them to the downstream consumer.
 func NewShardingConsumer(shards int, consumer Consumer) *ShardingConsumer {
@@ -60,10 +58,11 @@ func (s *ShardingConsumer) Consume(ctx context.Context, batch Batch) error {
 	if streamLen == 1 {
 		errChans = append(errChans, s.consume(ctx, s.shardFor(batch.streams[0].Labels), batch))
 	} else {
-		batch.ConsumeStreams(func(stream Stream, created int64) {
+		_ = batch.ConsumeStreams(func(stream Stream, created int64) error {
 			streamBatch := NewBatchWithCreatedUnixMicro(created)
 			streamBatch.Add(stream)
 			errChans = append(errChans, s.consume(ctx, s.shardFor(stream.Labels), streamBatch))
+			return nil
 		})
 	}
 
@@ -92,6 +91,7 @@ func (s *ShardingConsumer) consume(ctx context.Context, shard int, batch Batch) 
 
 // ConsumeEntry shards a single entry to the shard selected by the entry's labels.
 // It returns ErrConsumerStopped if called after shutdown begins.
+// TODO: Remove this when we have moved over to batching.
 func (s *ShardingConsumer) ConsumeEntry(ctx context.Context, entry Entry) error {
 	errCh := make(chan error, 1)
 	req := shardingRequest{

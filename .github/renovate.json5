@@ -46,11 +46,13 @@
       "matchManagers": ["github-actions"],
       "groupName": "github-actions dependencies",
       "pinDigests": true,
+      "enabled": true
     },
     {
       "matchManagers": ["gomod"],
       "groupName": "go dependencies",
-      "postUpdateOptions": ["gomodTidy"]
+      "postUpdateOptions": ["gomodTidy"],
+      "enabled": true
     },
     {
       // These are updated in bulk via the key-deps process instead of Renovate.
@@ -76,6 +78,7 @@
         "github.com/grafana/opentelemetry-ebpf-instrumentation",
         "github.com/hashicorp/vault/api/**",
         "github.com/heroku/x",
+        "github.com/influxdata/telegraf", // v1.38.3+ require hashicorp/vault/api/auth/** >= v0.12 which is held
         "github.com/jaegertracing/jaeger-idl",
         "github.com/mackerelio/go-osstat",
         "github.com/ncabatoff/process-exporter",
@@ -125,6 +128,12 @@
     {
       "matchManagers": ["npm"],
       "groupName": "npm dependencies",
+      "enabled": true
+    },
+    {
+      "matchManagers": ["mise"],
+      "groupName": "mise dependencies",
+      "enabled": true
     },
     {
       // Supersede previous rules to require PR creation approval for major versions
