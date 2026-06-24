@@ -18,8 +18,7 @@ concurrency:
   group: "${{ github.ref_name }}-refresh-code-freeze-guard"
   cancel-in-progress: false
 
-permissions:
-  id-token: write
+permissions: {}
 
 env:
   ALLOYBOT_APP_NAME: grafana-alloybot
@@ -50,6 +49,8 @@ jobs:
     needs: determine-mode
     if: needs.determine-mode.outputs.mode == 'freeze'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - name: Generate token 🔐
         uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
@@ -91,6 +92,8 @@ jobs:
     needs: determine-mode
     if: needs.determine-mode.outputs.mode == 'unfreeze'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
     steps:
       - name: Generate token 🔐
         uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # v0.2.3
