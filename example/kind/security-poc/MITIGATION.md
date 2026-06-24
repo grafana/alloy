@@ -25,6 +25,9 @@ service) is also possible and more native, but it must additionally guarantee
 The policy defines:
 
 - **Component and config blocks allowlist / denylist** — which components and config blocks may run.
+- **Stdlib function allowlist / denylist** — which stdlib functions may be called. Some are
+  capabilities in their own right (e.g. `sys.env` reads environment variables, file readers read
+  the filesystem) and are not components, so the component gate alone misses them.
 - **External endpoint allowlist** — where components may connect.
 - **Connections between components** — optional allowlist of connections between components.
 - **Signature requirement** — require a verified signature on all fetched config.
@@ -44,9 +47,17 @@ fails closed:
 
 ### Enforcement choke points
 
-- Component registry → component gate.
-- Shared HTTP/gRPC dialer → endpoint gate (must be central, or attackers can pivot).
+- Component registry → component gate (also gates stdlib functions at evaluation time).
 - Config loader → signature gate.
+- **Endpoint gate — no single choke point exists today.** There is no shared HTTP/gRPC dialer
+  to hook. Outbound connections are built independently across many places: Alloy-native HTTP
+  clients (e.g. `loki.write`, `mimir.write`, `prometheus.scrape`, `remote.http`), OTel exporters
+  (`otelcol.*`, their own clients), and client-go paths (`discovery.kubernetes`,
+  `loki.source.kubernetes`). So the endpoint allowlist must be enforced **per component that
+  egresses**, for every such component. This is repetitive and easy to get wrong: one missed
+  client is a full bypass. We accept this and lean on thorough review — including LLM-assisted
+  review — to find gaps, and on tests that assert each egress component honours the policy.
+  A future refactor toward a central dialer would make this enforceable in one place.
 
 ### Validation command
 
@@ -72,6 +83,43 @@ Future extension: automatically generate the policy from the config that is maxi
 
 Signing reduces trust to the signing key — a key/pipeline compromise still produces
 valid configs, so the component and endpoint gates remain essential.
+
+**Anti-rollback is best-effort.** The monotonic `ver` check needs the last-seen version to
+survive restarts. We can keep it in memory (lost on restart) or in Alloy's data directory (lost
+if the pod/volume is recreated, which is normal in Kubernetes). So `ver` is not a strong control
+on its own — **`exp` (freshness) is the real replay defence**, and `ver` is a best-effort extra.
+
+**Exfil through an allowed endpoint is out of scope.** If config sends data to an endpoint the
+policy permits, attacker-controlled config can stuff secrets into that traffic.
+
+## Complementary mitigations (outside this design)
+
+These are not part of the config-admission layer but reduce blast radius and are worth doing
+alongside it:
+
+- **Tighten the Helm chart RBAC.** The POC works partly because default RBAC grants
+  `get, list, watch` on `secrets` cluster-wide. Scope the ServiceAccount down to what the
+  deployment actually needs (drop `secrets` where unused, prefer namespaced Roles over
+  cluster-wide). This directly limits the Kubernetes reconnaissance and secret-theft vectors,
+  independent of whether config is signed.
+
+- **Kubernetes NetworkPolicy (egress default-deny).** The Alloy helm chart ships a
+  disabled NetworkPolicy (`networkPolicy.enabled: false`). Enabling it with default-deny
+  egress and explicit allow rules blocks SSRF to in-cluster services and the cloud IMDS
+  endpoint (`169.254.169.254/32`) without any Alloy code changes. Limitation: standard
+  NetworkPolicy is L3/L4 only — no hostname matching for external endpoints (CDN IPs
+  churn). Works in kind today (kindnet enforces it).
+
+- **DNS-aware egress policy (Cilium `toFQDNs`).** For hostname-level allowlisting of
+  external endpoints (`metrics.grafana.net`, etc.), Cilium's `CiliumNetworkPolicy` with
+  `toFQDNs` watches DNS responses and enforces policies by resolved IP. Requires replacing
+  kindnet with Cilium as the CNI. The helm chart has no Cilium template today; extra
+  manifests would be needed.
+
+- **Cloud IMDS hardening.** On AWS: enforce IMDSv2 with `HttpPutResponseHopLimit=1` at
+  the EC2 instance level — packets from Pods (hop > 1) cannot reach the metadata service
+  regardless of Alloy config. Zero Alloy changes; pure cloud provider config. GCP and Azure
+  have analogous controls (metadata concealment, managed identity scoping).
 
 ## Grafana Cloud Fleet Management
 
