@@ -274,7 +274,7 @@ func (cn *BuiltinComponentNode) Evaluate(scope *vm.Scope) error {
 	return err
 }
 
-// PolicyViolationError is returned when a component's egress endpoints violate
+// PolicyViolationError is returned when components violate
 // the security policy. The loader treats this as fatal for the entire Apply()
 // call, preventing partial config from being committed.
 type PolicyViolationError struct {

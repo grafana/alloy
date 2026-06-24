@@ -207,10 +207,6 @@ tasks:
     cmds:
       - kubectl --kubeconfig {{.KUBECONFIG}} create namespace monitoring --dry-run=client -o yaml | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
       - kubectl --kubeconfig {{.KUBECONFIG}} apply -f {{.MANIFESTS_DIR}}
-      # Reset user-pipeline to no-op BEFORE starting Alloy with policy.
-      # import.http fetches this synchronously on startup; a policy-violating config
-      # here causes a fatal initial-load failure and a crash loop.
-      - sed "s/TIMESTAMP/$(date +%s)/g" {{.ROOT_DIR}}/config/security-poc/manifests/user-pipeline.yaml | kubectl --kubeconfig {{.KUBECONFIG}} apply -f -
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout restart deployment/config-server
       - kubectl --kubeconfig {{.KUBECONFIG}} -n monitoring rollout status deployment/config-server --timeout=60s
       # Create/update the ConfigMap that holds the policy file
