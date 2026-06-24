@@ -10,18 +10,18 @@ weight: 225
 
 {{< param "PRODUCT_NAME" >}} moves telemetry through connected components, from sources to backends.
 Your configuration defines those components and the connections between them.
-Understanding that flow helps you read configurations, build pipelines, and know where your data goes.
+Follow those connections to see where data enters the pipeline and where it ends up.
 
 ## Define every connection explicitly
 
-There are no automatic transformations, implicit pipelines, or default processing.
+{{< param "PRODUCT_NAME" >}} doesn't transform, route, or process telemetry unless your configuration tells it to.
 You define every connection between components, and telemetry moves only along the paths you create.
 
-If telemetry changes, a component in your configuration changed it.
-If telemetry reaches a destination, a path leads there.
+A changed component alters the telemetry it handles.
+A missing connection means data doesn't reach the next stage.
 
 Components connect through exports, receiver references, and attributes such as `forward_to`.
-Refer to [Build data pipelines](../get-started/components/build-pipelines/) to learn how these connections form pipelines.
+[Build data pipelines](../get-started/components/build-pipelines/) explains how these connections form pipelines.
 
 ## Follow the pipeline stages
 
@@ -51,20 +51,19 @@ flowchart LR
 
 <!-- vale Grafana.Spelling = YES -->
 
-**Discovery** components find scrape targets for pull-based ingestion components, such as `prometheus.scrape`.
-OpenTelemetry pipelines start at `otelcol.receiver.*` components and skip discovery.
+In pull-based pipelines, discovery components pass scrape targets to ingestion components such as `prometheus.scrape`.
+OpenTelemetry pipelines start at `otelcol.receiver.*` and skip discovery.
 
-**Ingestion** components collect or receive telemetry and convert it to an internal format.
+Ingestion collects or receives telemetry and converts it to an internal format.
+Transformation components modify, filter, route, or sample that data.
+You can also connect ingestion directly to output and skip transformation.
 
-**Transformation** components modify, filter, route, or sample telemetry.
-Connect an ingestion component directly to an output component to skip transformation.
-
-**Output** components forward telemetry to backends.
+Output components send telemetry to backends.
 
 When a component supports multiple signal types, connect each type separately through the pipeline.
 
-Refer to [Build data pipelines](../get-started/components/build-pipelines/) for multi-stage examples and pipeline patterns.
-Refer to [Choose a component](../collect/choose-component/) to select components by signal type.
+[Build data pipelines](../get-started/components/build-pipelines/) has multi-stage examples and pipeline patterns.
+[Choose a component](../collect/choose-component/) helps you pick components by signal type.
 
 ## See how telemetry moves in a configuration
 
@@ -78,16 +77,16 @@ When you read a configuration, follow the data path from source to destination:
 
 Connection order determines execution order, not the textual order of components in the file.
 Pipelines can branch to multiple outputs or share components across paths.
-Refer to [Pipeline patterns](../get-started/components/build-pipelines/#pipeline-patterns) for fan-out and chain processing examples.
+[Pipeline patterns](../get-started/components/build-pipelines/#pipeline-patterns) covers fan-out and chain processing.
 
 The {{< param "PRODUCT_NAME" >}} UI visualizes these connections.
-Refer to [Debug](../troubleshoot/debug/) to inspect component pipelines in a running instance.
+Use [Debug](../troubleshoot/debug/) to inspect component pipelines in a running instance.
 
 ## Next steps
 
-- Refer to [Get started](../get-started/) to learn configuration syntax and component basics.
-- Refer to [Build data pipelines](../get-started/components/build-pipelines/) to connect components and use pipeline patterns.
-- Refer to [Choose a component](../collect/choose-component/) to select components for metrics, logs, traces, and profiles.
-- Refer to [Collect and forward data](../collect/) for end-to-end collection examples.
-- Refer to [How Alloy works](./how-alloy-works/) for architecture and capabilities.
-- Refer to the [Component reference](../reference/components/) for detailed component behavior.
+- Start with [Get started](../get-started/) for configuration syntax and component basics.
+- Use [Build data pipelines](../get-started/components/build-pipelines/) to connect components and apply pipeline patterns.
+- Use [Choose a component](../collect/choose-component/) to pick components for metrics, logs, traces, and profiles.
+- Follow [Collect and forward data](../collect/) for end-to-end collection examples.
+- Read [How Alloy works](./how-alloy-works/) for architecture and capabilities.
+- Look up behavior in the [Component reference](../reference/components/).
