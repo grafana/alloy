@@ -68,6 +68,17 @@ func (wa *WalArguments) SetToDefault() {
 	}
 }
 
+// EgressSpec implements component.EgressComponent.
+func (a Arguments) EgressSpec() component.EgressSpec {
+	endpoints := make([]string, 0, len(a.Endpoints))
+	for _, ep := range a.Endpoints {
+		if ep.URL != "" {
+			endpoints = append(endpoints, ep.URL)
+		}
+	}
+	return component.EgressSpec{Endpoints: endpoints}
+}
+
 // Exports holds the receiver that is used to send log entries to the
 // loki.write component.
 type Exports struct {

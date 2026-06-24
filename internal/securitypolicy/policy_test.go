@@ -56,6 +56,53 @@ func TestCheckComponent_UnknownMode(t *testing.T) {
 	require.Error(t, p.CheckComponent("remote.http"))
 }
 
+func TestCheckEndpoint_NilPolicy(t *testing.T) {
+	var p *securitypolicy.SecurityPolicy
+	require.NoError(t, p.CheckEndpoint("https://evil.com/exfil"))
+}
+
+func TestCheckEndpoint_AbsentSection(t *testing.T) {
+	p := &securitypolicy.SecurityPolicy{}
+	require.NoError(t, p.CheckEndpoint("https://anywhere.com/"))
+}
+
+func TestCheckEndpoint_Allowlist(t *testing.T) {
+	p := &securitypolicy.SecurityPolicy{
+		Endpoints: securitypolicy.EndpointsSection{
+			Mode:     "allowlist",
+			Patterns: []string{"https://grafana.com/**", "https://logs.grafana.net/**"},
+		},
+	}
+	require.NoError(t, p.CheckEndpoint("https://grafana.com/loki/api/v1/push"))
+	require.NoError(t, p.CheckEndpoint("https://logs.grafana.net/loki/api/v1/push"))
+	require.Error(t, p.CheckEndpoint("https://evil.com/exfil"))
+	require.Error(t, p.CheckEndpoint("http://192.168.0.1:3100/loki/api/v1/push"))
+}
+
+func TestCheckEndpoint_Denylist(t *testing.T) {
+	p := &securitypolicy.SecurityPolicy{
+		Endpoints: securitypolicy.EndpointsSection{
+			Mode:     "denylist",
+			Patterns: []string{"http://192.168.**/**", "https://evil.com/**"},
+		},
+	}
+	require.Error(t, p.CheckEndpoint("http://192.168.0.1:3100/loki/api/v1/push"))
+	require.Error(t, p.CheckEndpoint("https://evil.com/exfil"))
+	require.NoError(t, p.CheckEndpoint("https://logs.grafana.net/loki/api/v1/push"))
+}
+
+func TestCheckEndpoint_URLNormalization(t *testing.T) {
+	p := &securitypolicy.SecurityPolicy{
+		Endpoints: securitypolicy.EndpointsSection{
+			Mode:     "allowlist",
+			Patterns: []string{"https://grafana.com/**"},
+		},
+	}
+	// Default port stripped, scheme/host lowercased before matching
+	require.NoError(t, p.CheckEndpoint("HTTPS://Grafana.com:443/loki/api/v1/push"))
+	require.Error(t, p.CheckEndpoint("https://evil.com/"))
+}
+
 func TestLoadFromFile_Empty(t *testing.T) {
 	p, err := securitypolicy.LoadFromFile("")
 	require.NoError(t, err)

@@ -124,10 +124,11 @@ type Options struct {
 }
 
 // SecurityPolicyChecker is satisfied by *securitypolicy.SecurityPolicy and
-// lets the runtime enforce component-level restrictions without a hard import
-// dependency on the securitypolicy package from callers that don't use it.
+// lets the runtime enforce component and endpoint restrictions without a hard
+// import dependency on the securitypolicy package from callers that don't use it.
 type SecurityPolicyChecker interface {
 	CheckComponent(name string) error
+	CheckEndpoint(url string) error
 }
 
 // Runtime is the Alloy system.
@@ -232,6 +233,7 @@ func newController(o controllerOptions) (*Runtime, error) {
 			DataPath:             o.DataPath,
 			MinStability:         o.MinStability,
 			EnableCommunityComps: o.EnableCommunityComps,
+			PolicyChecker:        o.Options.SecurityPolicy,
 			OnBlockNodeUpdate: func(cn controller.BlockNode) {
 				// Changed node should be queued for reevaluation.
 				f.updateQueue.Enqueue(&controller.QueuedNode{Node: cn, LastUpdatedTime: time.Now()})

@@ -83,6 +83,7 @@ type ComponentGlobals struct {
 	NewModuleController  func(opts ModuleControllerOpts) ModuleController // Func to generate a module controller.
 	GetServiceData       func(name string) (any, error)                   // Get data for a service.
 	EnableCommunityComps bool                                             // Enables the use of community components.
+	PolicyChecker        component.PolicyChecker                          // Optional endpoint policy; nil = no endpoint gate.
 }
 
 // BuiltinComponentNode is a controller node which manages a builtin component.
@@ -102,6 +103,7 @@ type BuiltinComponentNode struct {
 	exportsType       reflect.Type
 	moduleController  ModuleController
 	OnBlockNodeUpdate func(cn BlockNode) // Informs controller that we need to reevaluate
+	policyChecker     component.PolicyChecker
 
 	mut     sync.RWMutex
 	block   *ast.BlockStmt // Current Alloy block to derive args from
@@ -160,6 +162,7 @@ func NewBuiltinComponentNode(globals ComponentGlobals, reg component.Registratio
 		exportsType:       getExportsType(reg),
 		moduleController:  globals.NewModuleController(ModuleControllerOpts{Id: globalID}),
 		OnBlockNodeUpdate: globals.OnBlockNodeUpdate,
+		policyChecker:     globals.PolicyChecker,
 
 		block: b,
 		eval:  vm.New(b.Body),
@@ -271,6 +274,27 @@ func (cn *BuiltinComponentNode) Evaluate(scope *vm.Scope) error {
 	return err
 }
 
+func (cn *BuiltinComponentNode) checkEndpointPolicy(args component.Arguments) error {
+	if cn.policyChecker == nil {
+		return nil
+	}
+	ec, ok := args.(component.EgressComponent)
+	if !ok {
+		return nil
+	}
+	spec := ec.EgressSpec()
+	for _, u := range spec.Endpoints {
+		if err := cn.policyChecker.CheckEndpoint(u); err != nil {
+			return fmt.Errorf("endpoint policy violation: %w", err)
+		}
+	}
+	if spec.HasDynamic {
+		cn.managedOpts.Logger.Warn("component has dynamic endpoints that cannot be validated against endpoint policy",
+			"component", cn.componentName)
+	}
+	return nil
+}
+
 func (cn *BuiltinComponentNode) evaluate(scope *vm.Scope) error {
 	cn.mut.Lock()
 	defer cn.mut.Unlock()
@@ -283,6 +307,10 @@ func (cn *BuiltinComponentNode) evaluate(scope *vm.Scope) error {
 	// args is always a pointer to the args type, so we want to deference it since
 	// components expect a non-pointer.
 	argsCopyValue := reflect.ValueOf(argsPointer).Elem().Interface()
+
+	if err := cn.checkEndpointPolicy(argsCopyValue); err != nil {
+		return err
+	}
 
 	if cn.managed == nil {
 		// We haven't built the managed component successfully yet.

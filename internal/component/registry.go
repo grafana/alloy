@@ -307,6 +307,30 @@ func NewRegistryMap(
 	}
 }
 
+// EgressSpec describes the outbound endpoints a component connects to.
+type EgressSpec struct {
+	// Endpoints lists the literal outbound URLs resolved from the component's
+	// current arguments. Empty when the component has no static connections.
+	Endpoints []string
+	// HasDynamic is true when the component makes connections to endpoints not
+	// listed in Endpoints (e.g. discovery-driven targets, implicit k8s API access).
+	// These cannot be validated against an endpoint policy at evaluate time.
+	HasDynamic bool
+}
+
+// EgressComponent is implemented by component Arguments structs that can
+// report their outbound endpoints. It is called inside evaluate() after full
+// expression resolution, so all URLs are concrete strings.
+type EgressComponent interface {
+	EgressSpec() EgressSpec
+}
+
+// PolicyChecker validates outbound endpoint URLs against a security policy.
+// Defined here so the controller package can use it without importing securitypolicy.
+type PolicyChecker interface {
+	CheckEndpoint(url string) error
+}
+
 // NewPolicyFilteredRegistry wraps inner so that check(name) is called before
 // every Get. A non-nil error from check blocks the component lookup.
 // Passing a nil check is equivalent to using inner directly.

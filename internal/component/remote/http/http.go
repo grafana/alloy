@@ -59,6 +59,11 @@ func (args *Arguments) SetToDefault() {
 	*args = DefaultArguments
 }
 
+// EgressSpec implements component.EgressComponent.
+func (args Arguments) EgressSpec() component.EgressSpec {
+	return component.EgressSpec{Endpoints: []string{args.URL}}
+}
+
 // Validate implements syntax.Validator.
 func (args *Arguments) Validate() error {
 	if args.PollFrequency <= 0 {
