@@ -103,6 +103,43 @@ func TestCheckEndpoint_URLNormalization(t *testing.T) {
 	require.Error(t, p.CheckEndpoint("https://evil.com/"))
 }
 
+func TestCheckEndpoint_GlobPatterns(t *testing.T) {
+	tests := []struct {
+		name    string
+		pattern string
+		url     string
+		wantErr bool
+	}{
+		// ** crosses path separators
+		{"double-star matches deep path", "https://grafana.com/**", "https://grafana.com/loki/api/v1/push", false},
+		{"double-star matches root slash", "https://grafana.com/**", "https://grafana.com/", false},
+		// * matches within a single hostname segment
+		{"single-star subdomain matches", "https://*.grafana.com/**", "https://logs.grafana.com/push", false},
+		{"single-star subdomain blocks wrong host", "https://*.grafana.com/**", "https://evil.com/push", true},
+		{"single-star does not cross dot", "https://*.grafana.com/**", "https://grafana.com/push", true},
+		// exact host
+		{"exact host matches", "https://logs.grafana.net/**", "https://logs.grafana.net/loki/api/v1/push", false},
+		{"exact host blocks subdomain", "https://logs.grafana.net/**", "https://sub.logs.grafana.net/push", true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			p := &securitypolicy.SecurityPolicy{
+				Endpoints: securitypolicy.EndpointsSection{
+					Mode:     "allowlist",
+					Patterns: []string{tc.pattern},
+				},
+			}
+			err := p.CheckEndpoint(tc.url)
+			if tc.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestLoadFromFile_Empty(t *testing.T) {
 	p, err := securitypolicy.LoadFromFile("")
 	require.NoError(t, err)
