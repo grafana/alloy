@@ -59,8 +59,8 @@ When GenAI generates the **bulk** of a contribution, disclose it. For pull reque
 **"This pull request was substantially generated with AI assistance"** box in the pull request
 template. Minor, incidental help such as autocomplete or small edits does not need to be disclosed.
 
-Disclosure is not a mark against your contribution. It helps reviewers calibrate their attention and
-keeps the project's expectations transparent.
+Disclosure is not a mark against your contribution. It helps reviewers know where to focus, and it
+keeps expectations clear for everyone.
 
 ## Licensing and provenance
 
