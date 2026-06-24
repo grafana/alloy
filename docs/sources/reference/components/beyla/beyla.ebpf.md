@@ -845,7 +845,7 @@ The `webhook` block configures the settings related to communicating with the Ku
 |----------------------------|------------|-----------------------------------------------------------------------------|---------|----------|
 | `external_deployment_name` | `string`   | The namespace/deployment name pair of the Kubernetes injection controller.  | `""`    | no       |
 
-Beyla communicates with the injection controller via specially designed `configmaps` and it needs to watch for the controller restart to 
+Beyla communicates with the injection controller via specially designed `configmaps` and it needs to watch for the controller restart to
 know if the local process information should be updated. For example, if the Kubernetes SDK injection controller was deployed in the
 `beyla-k8s-injector` namespace and the deployment name of the controller is `beyla-k8s-injector-controller-manager`, then set:
 

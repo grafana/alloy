@@ -6,7 +6,9 @@ dist:
   output_path: .
 
 extensions:
-  - gomod: github.com/grafana/alloy/extension/alloyengine v0.1.0
+  - gomod: github.com/grafana/alloy v1.17.0 # x-release-please-version
+    import: github.com/grafana/alloy/extension/alloyengine
+    name: alloyengine
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.147.0
@@ -90,6 +92,7 @@ connectors:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.147.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.147.0
   - gomod: go.opentelemetry.io/collector/connector/forwardconnector v0.147.0
 
@@ -104,8 +107,7 @@ replaces:
   # Local modules.
   - github.com/grafana/alloy => ../
   - github.com/grafana/alloy/syntax => ../syntax
-  - github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
-  # BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY
+  # <BEGIN_SHARED_REPLACE_DIRECTIVES>
   # Replace yaml.v2 with fork
   - gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
   # Replace directives from Loki — Azure SDK
@@ -152,4 +154,4 @@ replaces:
   - github.com/hashicorp/vault/api/auth/aws => github.com/DataDog/vault/api/auth/aws v0.0.0-20250716193101-44fb30472101
   # Work around DataDog split module ambiguity for pkg/util/system/socket by pinning util/system to the same rc stream used by current datadogexporter deps. Remove when https://github.com/open-telemetry/opentelemetry-collector-contrib/pull/45955 (and follow-up releases) fully align DataDog modules.
   - github.com/DataDog/datadog-agent/pkg/util/system => github.com/DataDog/datadog-agent/pkg/util/system v0.76.0-rc.2
-  # END GENERATED REPLACES
+  # <END_SHARED_REPLACE_DIRECTIVES>

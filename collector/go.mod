@@ -5,11 +5,11 @@ module github.com/grafana/alloy/otel_engine
 go 1.26.4
 
 require (
-	github.com/grafana/alloy v0.0.0-00010101000000-000000000000
-	github.com/grafana/alloy/extension/alloyengine v0.1.0
+	github.com/grafana/alloy v1.17.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.147.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter v0.147.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/faroexporter v0.147.0
@@ -1098,8 +1098,6 @@ require (
 replace github.com/grafana/alloy => ../
 
 replace github.com/grafana/alloy/syntax => ../syntax
-
-replace github.com/grafana/alloy/extension/alloyengine => ../extension/alloyengine
 
 replace gopkg.in/yaml.v2 => github.com/rfratto/go-yaml v0.0.0-20211119180816-77389c3526dc
 
