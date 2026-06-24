@@ -77,8 +77,8 @@ When you contribute AI-assisted code or content, you warrant that:
 - Any third-party code or dependencies it introduces are license-compatible and follow the
   [dependency guidance][contributing-deps] in the contributing guide.
 
-Because Alloy vendors and wraps many upstream components, provenance matters. If you are unsure
-whether generated code is original or where it came from, do not submit it.
+Alloy vendors and wraps many upstream components. Provenance matters, so check where generated code came from.
+If you are unsure whether the generated code is original or license-compatible, do not submit it.
 
 ## Alloy-specific guidance
 
