@@ -44,7 +44,7 @@ Do not:
 Maintainers may close low-effort AI-generated contributions, following the same
 [issue triage process][issue-triage] used for other contributions. When they do, they should explain
 why and, where appropriate, offer guidance on how to improve the contribution. Repeated low-effort
-submissions will trigger additional review and offending users blocked from further contributing.
+submissions will trigger stricter review, and maintainers may block repeat offenders from contributing.
 
 ## Approved automation
 
