@@ -28,6 +28,7 @@ func Command() *cobra.Command {
 		fmtCommand(),
 		gqlCommand(),
 		RunCommand(),
+		securityPolicyCommand(),
 		toolsCommand(),
 		validateCommand(),
 	)

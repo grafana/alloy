@@ -1,0 +1,6 @@
+// Benign no-op pipeline — no violations expected
+declare "user_pipeline" {
+  discovery.relabel "noop" {
+    targets = []
+  }
+}

