@@ -78,6 +78,7 @@
         "github.com/grafana/opentelemetry-ebpf-instrumentation",
         "github.com/hashicorp/vault/api/**",
         "github.com/heroku/x",
+        "github.com/influxdata/telegraf", // v1.38.3+ require hashicorp/vault/api/auth/** >= v0.12 which is held
         "github.com/jaegertracing/jaeger-idl",
         "github.com/mackerelio/go-osstat",
         "github.com/ncabatoff/process-exporter",

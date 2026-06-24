@@ -14,6 +14,7 @@ import (
 	countconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector"
 	grafanacloudconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector"
 	servicegraphconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector"
+	signaltometricsconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector"
 	spanmetricsconnector "github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector"
 	forwardconnector "go.opentelemetry.io/collector/connector/forwardconnector"
 	awss3exporter "github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awss3exporter"
@@ -113,7 +114,7 @@ func components() (otelcol.Factories, error) {
 		return otelcol.Factories{}, err
 	}
 	factories.ExtensionModules = make(map[component.Type]string, len(factories.Extensions))
-	factories.ExtensionModules[alloyengine.NewFactory().Type()] = "github.com/grafana/alloy/extension/alloyengine v0.1.0"
+	factories.ExtensionModules[alloyengine.NewFactory().Type()] = "github.com/grafana/alloy v1.17.0"
 	factories.ExtensionModules[basicauthextension.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.151.0"
 	factories.ExtensionModules[bearertokenauthextension.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/extension/bearertokenauthextension v0.151.0"
 	factories.ExtensionModules[headerssetterextension.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/extension/headerssetterextension v0.151.0"
@@ -269,6 +270,7 @@ func components() (otelcol.Factories, error) {
 		countconnector.NewFactory(),
 		grafanacloudconnector.NewFactory(),
 		servicegraphconnector.NewFactory(),
+		signaltometricsconnector.NewFactory(),
 		spanmetricsconnector.NewFactory(),
 		forwardconnector.NewFactory(),
 	)
@@ -279,6 +281,7 @@ func components() (otelcol.Factories, error) {
 	factories.ConnectorModules[countconnector.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/connector/countconnector v0.151.0"
 	factories.ConnectorModules[grafanacloudconnector.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/connector/grafanacloudconnector v0.151.0"
 	factories.ConnectorModules[servicegraphconnector.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/connector/servicegraphconnector v0.151.0"
+	factories.ConnectorModules[signaltometricsconnector.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.151.0"
 	factories.ConnectorModules[spanmetricsconnector.NewFactory().Type()] = "github.com/open-telemetry/opentelemetry-collector-contrib/connector/spanmetricsconnector v0.151.0"
 	factories.ConnectorModules[forwardconnector.NewFactory().Type()] = "go.opentelemetry.io/collector/connector/forwardconnector v0.151.0"
 
