@@ -15,7 +15,7 @@ var (
 	//go:embed main_alloy.tpl
 	templateMainAlloy []byte
 	//go:embed main_windows.tpl
-	temaplteMainWindows []byte
+	templateMainWindows []byte
 )
 
 func main() {
@@ -131,7 +131,7 @@ func addReleasePleaseVersioning(lines []string) ([]string, error) {
 }
 
 func replaceMainWindows(path string) error {
-	if err := os.WriteFile(filepath.Join(path, "main_windows.go"), []byte(temaplteMainWindows), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(path, "main_windows.go"), []byte(templateMainWindows), 0o644); err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
 	return nil
