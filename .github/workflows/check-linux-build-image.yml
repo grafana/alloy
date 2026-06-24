@@ -3,7 +3,7 @@ name: Check Linux build image
 on:
   pull_request:
     paths:
-      - 'tools/build-image/*'
+      - 'build-tools/build-image/*'
       - '.github/workflows/check-linux-build-image.yml'
 
 permissions:
@@ -11,15 +11,10 @@ permissions:
 
 jobs:
   check-linux-build-image:
-    strategy:
-      matrix:
-        build:
-          - runtime: golang:1.26.2-alpine3.23
-          - runtime: mcr.microsoft.com/oss/go/microsoft/golang:1.26.2-bookworm
     runs-on: ubuntu-latest-8-cores
     steps:
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -32,17 +27,17 @@ jobs:
             rm -rf /opt/hostedtoolcache
 
       - name: Setup QEMU
-        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
+        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
       - name: Create test Linux build image
-        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
         with:
           platforms: linux/amd64,linux/arm64
-          context: ./tools/build-image
+          context: ./build-tools/build-image
           push: false
           tags: grafana/alloy-build-image:latest
           build-args: |
-            GO_RUNTIME=${{ matrix.build.runtime }}
+            GO_RUNTIME=golang:1.26.4-alpine3.23

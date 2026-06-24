@@ -3,8 +3,10 @@ on:
   release:
     types: [released]
 
-permissions:
-  contents: read
+permissions: {}
+
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
 
 jobs:
   homebrew-grafana:
@@ -12,34 +14,24 @@ jobs:
     runs-on: ubuntu-latest
     # These permissions are needed to assume roles from Github's OIDC.
     permissions:
-      contents: read
       id-token: write
     steps:
     # TODO: Remove this when we no longer need a forked action in the "Update Homebrew formula" step.
-    - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        persist-credentials: false
-
-    - id: get-secrets
-      uses: grafana/shared-workflows/actions/get-vault-secrets@a37de51f3d713a30a9e4b21bcdfbd38170020593 # get-vault-secrets/v1.3.0
-      with:
-        repo_secrets: |
-          ALLOYBOT_APP_ID=alloybot:app_id
-          ALLOYBOT_PRIVATE_KEY=alloybot:private_key
-        export_env: false
-
-    - uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+    - uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
       id: app-token
       with:
-        app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-        private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-        owner: grafana
-        repositories: alloy,homebrew-grafana
+        github_app: ${{ env.ALLOYBOT_APP_NAME }}
+        permission_set: alloy
+
+    - name: Checkout code
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      with:
+        token: ${{ steps.app-token.outputs.token }}
+        persist-credentials: false
 
     - name: Get GitHub App
       env:
-        APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+        APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
         GH_TOKEN: ${{ steps.app-token.outputs.token }}
       id: get-app
       run: |
@@ -56,7 +48,7 @@ jobs:
         git config --global user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
 
     - name: Get latest release
-      uses: rez0n/actions-github-release@794c12f5e8d629e6ca329cf2e2daeb0f0ce6a3ce # main
+      uses: rez0n/actions-github-release@05fabbd6b2b3ce3383299555ea518faea69b736d # main
       id: latest_release
       with:
         token: ${{ steps.app-token.outputs.token }}
@@ -64,7 +56,10 @@ jobs:
         type: "stable"
 
     - name: Update Homebrew formula
-      if: 'steps.latest_release.outputs.release_id == github.event.release.id'
+      # Only the Alloy binary (vX.Y.Z tags) has a Homebrew formula. The release_id
+      # check alone doesn't exclude component releases (e.g. syntax/v0.2.0):
+      # GitHub's "latest stable" is the component release at publish time.
+      if: steps.latest_release.outputs.release_id == github.event.release.id && startsWith(github.event.release.tag_name, 'v')
       # TODO: Use the upstream once they have this change:
       # https://github.com/dawidd6/action-homebrew-bump-formula/pull/90
       # uses: dawidd6/action-homebrew-bump-formula@v4
@@ -82,5 +77,5 @@ jobs:
         revision: ${{github.sha}}
         # Optional, if don't want to check for already open PRs
         force: false # true
-        user_name: grafana-alloybot[bot]
-        user_email: 879451+grafana-alloybot[bot]@users.noreply.github.com
+        user_name: ${{ env.ALLOYBOT_APP_NAME }}[bot]
+        user_email: 879451+${{ env.ALLOYBOT_APP_NAME }}[bot]@users.noreply.github.com

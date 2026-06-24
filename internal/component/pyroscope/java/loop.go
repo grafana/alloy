@@ -6,13 +6,13 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	jfrpprof "github.com/grafana/jfr-parser/pprof"
 	jfrpprofPyroscope "github.com/grafana/jfr-parser/pprof/pyroscope"
 	"github.com/prometheus/prometheus/model/labels"
@@ -21,13 +21,12 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/java/asprof"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const spyName = "alloy.java"
 
 type profilingLoop struct {
-	logger     log.Logger
+	logger     *slog.Logger
 	output     *pyroscope.Fanout
 	cfg        ProfilingConfig
 	wg         sync.WaitGroup
@@ -53,10 +52,10 @@ type Profiler interface {
 	Execute(argv []string) (string, string, error)
 }
 
-func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profiler Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
+func newProfilingLoop(pid int, target discovery.Target, logger *slog.Logger, profiler Profiler, output *pyroscope.Fanout, cfg ProfilingConfig) *profilingLoop {
 	ctx, cancel := context.WithCancel(context.Background())
 	p := &profilingLoop{
-		logger:   log.With(logger, "pid", pid),
+		logger:   logger.With("pid", pid),
 		output:   output,
 		pid:      pid,
 		target:   target,
@@ -65,7 +64,7 @@ func newProfilingLoop(pid int, target discovery.Target, logger log.Logger, profi
 		cfg:      cfg,
 		profiler: profiler,
 	}
-	_ = level.Debug(p.logger).Log("msg", "new process", "target", fmt.Sprintf("%+v", target))
+	p.logger.Debug("new process", "target", fmt.Sprintf("%+v", target))
 
 	p.wg.Add(1)
 	go func() {
@@ -129,14 +128,14 @@ func (p *profilingLoop) cleanupJFR() {
 
 		jfrFile = p.jfrFile
 		if err := os.Remove(jfrFile); os.IsNotExist(err) {
-			_ = level.Debug(p.logger).Log("msg", "unable to delete jfr file, likely because target process is stopped and was containerized", "path", jfrFile, "err", err)
+			p.logger.Debug("unable to delete jfr file, likely because target process is stopped and was containerized", "path", jfrFile, "err", err)
 			// file not found on the host system, process was likely containerized and we can't delete this file anymore
 			return
 		} else if err != nil {
-			_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file at host path", "path", jfrFile, "err", err)
+			p.logger.Warn("failed to delete jfr file at host path", "path", jfrFile, "err", err)
 		}
 	} else if err != nil {
-		_ = level.Warn(p.logger).Log("msg", "failed to delete jfr file at process path", "path", jfrFile, "err", err)
+		p.logger.Warn("failed to delete jfr file at process path", "path", jfrFile, "err", err)
 	}
 }
 
@@ -156,7 +155,7 @@ func (p *profilingLoop) reset() error {
 	if err != nil {
 		return fmt.Errorf("failed to read jfr file: %w", err)
 	}
-	_ = level.Debug(p.logger).Log("msg", "jfr file read", "len", len(jfrBytes))
+	p.logger.Debug("jfr file read", "len", len(jfrBytes))
 
 	return p.push(jfrBytes, startTime, endTime, int64(sampleRate))
 }
@@ -178,7 +177,7 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 	for _, req := range profiles.Profiles {
 		metric := req.Metric
 		sz := req.Profile.SizeVT()
-		l := log.With(p.logger, "metric", metric, "sz", sz)
+		l := p.logger.With("metric", metric, "sz", sz)
 		ls := labels.NewBuilder(labels.EmptyLabels())
 		for _, l := range jfrpprofPyroscope.Labels(target.AsMap(), profiles.JFREvent, req.Metric, "", spyName) {
 			ls.Set(l.Name, l.Value)
@@ -196,16 +195,16 @@ func (p *profilingLoop) push(jfrBytes []byte, startTime time.Time, endTime time.
 
 		profile, err := req.Profile.MarshalVT()
 		if err != nil {
-			_ = l.Log("msg", "failed to marshal profile", "err", err)
+			l.Error("failed to marshal profile", "err", err)
 			continue
 		}
 		samples := []*pyroscope.RawSample{{RawProfile: profile}}
 		err = p.output.Appender().Append(context.Background(), ls.Labels(), samples)
 		if err != nil {
-			_ = l.Log("msg", "failed to push jfr", "err", err)
+			l.Error("failed to push jfr", "err", err)
 			continue
 		}
-		_ = l.Log("msg", "pushed jfr-pprof")
+		l.Info("pushed jfr-pprof")
 
 		p.mutex.Lock()
 		p.lastPush = time.Now()
@@ -254,7 +253,7 @@ func (p *profilingLoop) start() error {
 		strconv.Itoa(p.pid),
 	)
 
-	_ = level.Debug(p.logger).Log("cmd", strings.Join(argv, " "))
+	p.logger.Debug("starting profiler", "cmd", strings.Join(argv, " "))
 	stdout, stderr, err := p.profiler.Execute(argv)
 	if err != nil {
 		return fmt.Errorf("asprof failed to run: %w %s %s", err, stdout, stderr)
@@ -274,12 +273,12 @@ func (p *profilingLoop) stop() error {
 		"-o", "jfr",
 		strconv.Itoa(p.pid),
 	}
-	_ = level.Debug(p.logger).Log("msg", "asprof", "cmd", strings.Join(argv, " "))
+	p.logger.Debug("asprof", "cmd", strings.Join(argv, " "))
 	stdout, stderr, err := p.profiler.Execute(argv)
 	if err != nil {
 		return fmt.Errorf("asprof failed to run: %w %s %s", err, stdout, stderr)
 	}
-	_ = level.Debug(p.logger).Log("msg", "asprof stopped", "stdout", stdout, "stderr", stderr)
+	p.logger.Debug("asprof stopped", "stdout", stdout, "stderr", stderr)
 	return nil
 }
 
@@ -301,9 +300,9 @@ func (p *profilingLoop) Close() error {
 func (p *profilingLoop) onError(err error) bool {
 	alive := p.alive()
 	if alive {
-		_ = level.Error(p.logger).Log("err", err)
+		p.logger.Error("profile loop error", "err", err)
 	} else {
-		_ = level.Debug(p.logger).Log("err", err)
+		p.logger.Debug("profile loop error", "err", err)
 	}
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -353,7 +352,7 @@ func (p *profilingLoop) getTarget() discovery.Target {
 func (p *profilingLoop) alive() bool {
 	exists, err := gopsutil.PidExists(int32(p.pid))
 	if err != nil {
-		_ = level.Error(p.logger).Log("msg", "failed to check if process is alive", "err", err)
+		p.logger.Error("failed to check if process is alive", "err", err)
 	}
 	return err == nil && exists
 }

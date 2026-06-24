@@ -3,7 +3,7 @@ name: Check Windows build image
 on:
   pull_request:
     paths:
-      - 'tools/build-image/windows/**'
+      - 'build-tools/build-image/windows/**'
 
 permissions:
   contents: read
@@ -12,16 +12,24 @@ jobs:
   check-windows-build-image:
     runs-on: windows-2022
     steps:
+      - name: Ensure Docker is running (Docker issue workaround)
+        id: docker-workaround
+        run: |
+          $dockerState = Get-Service -Name "docker"
+          if ($dockerState.Status -ne "Running") {
+            Start-Service -Name "docker"
+          }
+
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
       - name: Create test Windows build image
-        uses: mr-smithers-excellent/docker-build-push@19d2beefef6bcdc202195fdcb9deb79a4fab5c1f # v6.8
+        uses: mr-smithers-excellent/docker-build-push@05b44e1dd9e03f78e8689bd1a61c750f17907ffe # v6.11
         with:
           image: grafana/alloy-build-image
           tags: latest
           registry: docker.io
           pushImage: false
-          dockerfile: ./tools/build-image/windows/Dockerfile
+          dockerfile: ./build-tools/build-image/windows/Dockerfile

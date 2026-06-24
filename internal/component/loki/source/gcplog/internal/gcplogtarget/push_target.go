@@ -9,12 +9,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -27,7 +26,7 @@ import (
 // PushTarget defines a server for receiving messages from a GCP PubSub push
 // subscription.
 type PushTarget struct {
-	logger  log.Logger
+	logger  *slog.Logger
 	metrics *Metrics
 	recv    loki.LogsReceiver
 
@@ -42,14 +41,13 @@ type PushTarget struct {
 // NewPushTarget constructs a PushTarget.
 func NewPushTarget(
 	metrics *Metrics,
-	logger log.Logger,
+	logger *slog.Logger,
 	recv loki.LogsReceiver,
 	config *gcptypes.PushConfig,
 	relabel []*relabel.Config,
 	reg prometheus.Registerer,
 ) (*PushTarget, error) {
 
-	logger = log.With(logger, "component", "gcp_push")
 	srv, err := fnet.NewTargetServer(logger, "loki_source_gcplog_push", reg, config.Server)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gcp push server: %w", err)
@@ -87,14 +85,14 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&pushMessage); err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("read_error").Inc()
-		level.Warn(p.logger).Log("msg", "failed to read incoming gcp push request", "err", err.Error())
+		p.logger.Warn("failed to read incoming gcp push request", "err", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if err := pushMessage.Validate(); err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("invalid_message").Inc()
-		level.Warn(p.logger).Log("msg", "invalid gcp push request", "err", err.Error())
+		p.logger.Warn("invalid gcp push request", "err", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -107,7 +105,7 @@ func (p *PushTarget) push(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		p.metrics.gcpPushErrors.WithLabelValues("translation").Inc()
-		level.Warn(p.logger).Log("msg", "failed to translate gcp push request", "err", err.Error())
+		p.logger.Warn("failed to translate gcp push request", "err", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -147,7 +145,7 @@ func (p *PushTarget) Details() map[string]string {
 
 // Stop shuts down the push server.
 func (p *PushTarget) Stop() {
-	level.Info(p.logger).Log("msg", "stopping gcp push server")
+	p.logger.Info("stopping gcp push server")
 	// StopAndShutdown tries to gracefully shutdown.
 	// It will stop idle and incoming connections
 	// and try to wait for all in-flight connections

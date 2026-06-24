@@ -6,11 +6,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
 	yaceConf "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/config"
 	yaceModel "github.com/prometheus-community/yet-another-cloudwatch-exporter/pkg/model"
 
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/static/integrations/cloudwatch_exporter"
 	"github.com/grafana/alloy/syntax"
 )
@@ -34,7 +32,6 @@ var defaults = Arguments{
 type Arguments struct {
 	STSRegion             string                `alloy:"sts_region,attr"`
 	FIPSDisabled          bool                  `alloy:"fips_disabled,attr,optional"`
-	Debug                 bool                  `alloy:"debug,attr,optional"`
 	DiscoveryExportedTags TagsPerNamespace      `alloy:"discovery_exported_tags,attr,optional"`
 	Discovery             []DiscoveryJob        `alloy:"discovery,block,optional"`
 	Static                []StaticJob           `alloy:"static,block,optional"`
@@ -44,6 +41,9 @@ type Arguments struct {
 
 	// UseAWSSDKVersion2 is deprecated and has no effect.
 	UseAWSSDKVersion2 bool `alloy:"aws_sdk_version_v2,attr,optional"`
+
+	// Debug is deprecated and has no effect.
+	Debug bool `alloy:"debug,attr,optional"`
 }
 
 // DecoupledScrapeConfig is the configuration for decoupled scraping feature.
@@ -142,7 +142,7 @@ func (a *Arguments) SetToDefault() {
 // ConvertToYACE converts the Alloy config into YACE config model. Note that
 // the conversion is not direct, some values have been opinionated to simplify
 // the config model Alloy exposes for this integration.
-func ConvertToYACE(a Arguments, logger log.Logger) (yaceModel.JobsConfig, error) {
+func ConvertToYACE(a Arguments, logger *slog.Logger) (yaceModel.JobsConfig, error) {
 	// Once the support for deprecated aliases is dropped, this function (convertAliasesToNamespaces) can be removed.
 	convertAliasesToNamespaces(&a, logger)
 
@@ -152,12 +152,12 @@ func ConvertToYACE(a Arguments, logger log.Logger) (yaceModel.JobsConfig, error)
 // convertAliasesToNamespaces converts the deprecated service aliases to their corresponding namespaces.
 // This function is added for the backward compatibility of the deprecated service aliases. This compatibility
 // may be removed in the future.
-func convertAliasesToNamespaces(a *Arguments, logger log.Logger) {
+func convertAliasesToNamespaces(a *Arguments, logger *slog.Logger) {
 	for i, job := range a.Discovery {
 		if job.Type != "" {
 			if svc := yaceConf.SupportedServices.GetService(job.Type); svc == nil {
 				if namespace := getServiceByAlias(job.Type); namespace != "" {
-					level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Type, "namespace", namespace)
+					logger.Warn("service alias is deprecated, use the namespace instead", "alias", job.Type, "namespace", namespace)
 					a.Discovery[i].Type = namespace
 				}
 			}
@@ -167,7 +167,7 @@ func convertAliasesToNamespaces(a *Arguments, logger log.Logger) {
 	for i, job := range a.Static {
 		if svc := yaceConf.SupportedServices.GetService(job.Namespace); svc == nil {
 			if namespace := getServiceByAlias(job.Namespace); namespace != "" {
-				level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", job.Namespace, "namespace", namespace)
+				logger.Warn("service alias is deprecated, use the namespace instead", "alias", job.Namespace, "namespace", namespace)
 				a.Static[i].Namespace = namespace
 			}
 		}
@@ -179,7 +179,7 @@ func convertAliasesToNamespaces(a *Arguments, logger log.Logger) {
 		for namespace, tags := range a.DiscoveryExportedTags {
 			if svc := yaceConf.SupportedServices.GetService(namespace); svc == nil {
 				if ns := getServiceByAlias(namespace); ns != "" {
-					level.Warn(logger).Log("msg", "service alias is deprecated, use the namespace instead", "alias", namespace, "namespace", ns)
+					logger.Warn("service alias is deprecated, use the namespace instead", "alias", namespace, "namespace", ns)
 					newDiscoveryExportedTags[ns] = tags
 				}
 			} else {

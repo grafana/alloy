@@ -3,16 +3,16 @@
 package irsymcache
 
 import (
+	"log/slog"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/pyroscope/lidia"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/ebpf-profiler/libpf"
 )
 
 func TestNativeFrameSymbols(t *testing.T) {
-	resolver, err := NewFSCache(log.NewNopLogger(), TableTableFactory{
+	resolver, err := NewFSCache(slog.New(slog.DiscardHandler), TableTableFactory{
 		Options: []lidia.Option{lidia.WithLines(), lidia.WithFiles()},
 	}, Options{
 		SizeEntries: 1024,

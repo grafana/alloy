@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/shard"
 	"k8s.io/client-go/rest"
 
@@ -83,7 +82,6 @@ func (args *Arguments) Validate() error {
 // watches events from Kubernetes and forwards received events to other Loki
 // components.
 type Component struct {
-	log       log.Logger
 	opts      component.Options
 	positions positions.Positions
 	handler   loki.LogsReceiver
@@ -123,7 +121,6 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 
 	c := &Component{
-		log:       o.Logger,
 		opts:      o,
 		positions: positionsFile,
 		handler:   loki.NewLogsReceiver(),
@@ -164,7 +161,7 @@ func (c *Component) Update(args component.Arguments) error {
 	// Create a new restConfig if we don't have one or if our arguments changed.
 	if c.restConfig == nil || !reflect.DeepEqual(c.args.Client, newArgs.Client) {
 		var err error
-		c.restConfig, err = newArgs.Client.BuildRESTConfig(c.log)
+		c.restConfig, err = newArgs.Client.BuildRESTConfig(c.opts.Logger)
 		if err != nil {
 			return fmt.Errorf("building Kubernetes client config: %w", err)
 		}
@@ -188,7 +185,7 @@ func (c *Component) reconcile() {
 		func(namespace string) string { return namespace },
 		func(_ string, namespace string) (source.Source[string], error) {
 			return newEventController(eventControllerOptions{
-				Log:          c.log,
+				Log:          c.opts.Logger,
 				Config:       c.restConfig,
 				Namespace:    namespace,
 				JobName:      c.args.JobName,

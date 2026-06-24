@@ -4,14 +4,16 @@ package alloycli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+
+	"github.com/spf13/cobra"
 
 	"github.com/grafana/alloy/internal/build"
-	"github.com/spf13/cobra"
 )
 
 func Command() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:     fmt.Sprintf("%s [global options] <subcommand>", os.Args[0]),
+		Use:     fmt.Sprintf("%s [global options] <subcommand>", filepath.Base(os.Args[0])),
 		Short:   "Grafana Alloy",
 		Version: build.Print("alloy"),
 
@@ -24,6 +26,7 @@ func Command() *cobra.Command {
 	cmd.AddCommand(
 		convertCommand(),
 		fmtCommand(),
+		gqlCommand(),
 		RunCommand(),
 		toolsCommand(),
 		validateCommand(),

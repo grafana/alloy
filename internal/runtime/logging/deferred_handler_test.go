@@ -5,11 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
-	"strings"
 	"testing"
 	"testing/slogtest"
 
-	"github.com/go-kit/log/level"
 	"github.com/stretchr/testify/require"
 )
 
@@ -55,25 +53,6 @@ func TestDefferredSlogTester(t *testing.T) {
 	}, results)
 }
 
-func TestDeferredHandlerWritingToBothLoggers(t *testing.T) {
-	bb := &bytes.Buffer{}
-	l, err := NewDeferred(bb)
-	slogger := slog.New(l.deferredSlog)
-	require.NoError(t, err)
-	l.Log("msg", "this should happen before")
-	slogger.Log(t.Context(), slog.LevelInfo, "this should happen after)")
-
-	err = l.Update(Options{
-		Level:   "info",
-		Format:  "json",
-		WriteTo: nil,
-	})
-	require.NoError(t, err)
-	firstIndex := strings.Index(bb.String(), "this should happen before")
-	secondIndex := strings.Index(bb.String(), "this should happen after")
-	require.True(t, firstIndex < secondIndex)
-}
-
 func TestSlogHandle(t *testing.T) {
 	bb := &bytes.Buffer{}
 	bbSl := &bytes.Buffer{}
@@ -113,35 +92,6 @@ func TestSlogHandleWithDifferingLevelAllow(t *testing.T) {
 		WriteTo: nil,
 	})
 	require.NoError(t, err)
-	require.True(t, bb.Len() > 0)
-}
-
-func TestNormalWithDifferingLevelDeny(t *testing.T) {
-	bb := &bytes.Buffer{}
-	l, err := newDeferredTest(bb)
-	require.NoError(t, err)
-	level.Debug(l).Log("msg", "this should not log")
-	err = l.Update(Options{
-		Level:   "error",
-		Format:  "json",
-		WriteTo: nil,
-	})
-	require.NoError(t, err)
-	require.True(t, bb.Len() == 0)
-}
-
-func TestNormalWithDifferingLevelAllow(t *testing.T) {
-	bb := &bytes.Buffer{}
-	l, err := newDeferredTest(bb)
-	require.NoError(t, err)
-	level.Error(l).Log("msg", "this should not log")
-	err = l.Update(Options{
-		Level:   "error",
-		Format:  "json",
-		WriteTo: nil,
-	})
-	require.NoError(t, err)
-	// Since we write logs at info, but change to error then our logInfo should be clean.
 	require.True(t, bb.Len() > 0)
 }
 
@@ -230,7 +180,7 @@ func newLoggers(t *testing.T, bb, bbSl *bytes.Buffer) (*slog.Logger, *slog.Logge
 	require.NoError(t, err)
 
 	jsonH := slog.NewJSONHandler(bbSl, &slog.HandlerOptions{
-		AddSource:   true,
+		AddSource:   false,
 		Level:       nil,
 		ReplaceAttr: testReplace,
 	})

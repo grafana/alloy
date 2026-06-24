@@ -22,9 +22,9 @@ var (
 	errMaxStreamsLimitExceeded = errors.New("streams limit exceeded")
 )
 
-// SentDataMarkerHandler is a slice of the MarkerHandler interface, that the batch interacts with to report the event that
+// sentDataTracker is a subset of the marker.Tracker interface, that the batch interacts with to report the event that
 // all data in the batch has been delivered or a client failed to do so.
-type SentDataMarkerHandler interface {
+type sentDataTracker interface {
 	UpdateSentData(segmentId, dataCount int)
 }
 
@@ -135,9 +135,9 @@ func (b *batch) countForSegment(segmentNum int) {
 }
 
 // reportAsSentData reports sent data counts per segment and observes per-entry propagation latency.
-func (b *batch) reportAsSentData(h SentDataMarkerHandler, obs prometheus.Observer) {
+func (b *batch) reportAsSentData(t sentDataTracker, obs prometheus.Observer) {
 	for seg, data := range b.segmentCounter {
-		h.UpdateSentData(seg, data)
+		t.UpdateSentData(seg, data)
 	}
 
 	now := time.Now().UnixMicro()

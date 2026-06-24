@@ -113,8 +113,8 @@ The following arguments are supported:
 * [`authorization`][authorization] block
 * [`azuread`][azuread] block
 * [`basic_auth`][basic_auth] block
-* [`bearer_token_file`](#endpoint) argument
-* [`bearer_token`](#endpoint) argument
+* [`bearer_token_file`][endpoint] argument
+* [`bearer_token`][endpoint] argument
 * [`oauth2`][oauth2] block
 * [`sigv4`][sigv4] block
 
@@ -550,6 +550,12 @@ Refer to the linked documentation for more details.
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
+[authorization]: #authorization
+[azuread]: #azuread
+[basic_auth]: #basic_auth
+[oauth2]: #oauth2
+[sigv4]: #sigv4
+[endpoint]: #endpoint
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)
 [WAL block]: #wal
 [Stop]: ../../../../set-up/run/

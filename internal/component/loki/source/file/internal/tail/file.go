@@ -5,22 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/dskit/backoff"
 
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 // NewFile creates a new File tailer for the specified file path.
 // It opens the file and seeks to the provided offset if one is specified.
 // The returned File can be used to read lines from the file as they are appended.
 // The caller is responsible for calling Stop() when done to close the file and clean up resources.
-func NewFile(logger log.Logger, cfg *Config) (*File, error) {
+func NewFile(logger *slog.Logger, cfg *Config) (*File, error) {
 	f, err := fileext.OpenFile(cfg.Filename)
 	if err != nil {
 		return nil, err
@@ -68,7 +67,7 @@ func NewFile(logger log.Logger, cfg *Config) (*File, error) {
 // deletion, and modification. File is safe for concurrent use.
 type File struct {
 	cfg    *Config
-	logger log.Logger
+	logger *slog.Logger
 
 	mu        sync.Mutex
 	file      *os.File
@@ -191,20 +190,20 @@ func (f *File) wait() error {
 	event, err := blockUntilEvent(f.ctx, f.file, offset, f.cfg)
 	switch event {
 	case eventModified:
-		level.Debug(f.logger).Log("msg", "file modified")
+		f.logger.Debug("file modified")
 		return nil
 	case eventTruncated:
-		level.Debug(f.logger).Log("msg", "file truncated")
+		f.logger.Debug("file truncated")
 		// We need to reopen the file when it was truncated.
 		return f.reopen(true)
 	case eventDeleted:
-		level.Debug(f.logger).Log("msg", "file deleted")
+		f.logger.Debug("file deleted")
 		// If a file is deleted we want to make sure we drain what's remaining in the open file.
 		f.drain()
 		// If we have any buffered lines after drain we can return here to make sure they are consumed and
 		// we are not blocking on reopening the new file.
 		if len(f.bufferedLines) > 0 {
-			level.Debug(f.logger).Log("msg", "finish reading deleted file before reopen")
+			f.logger.Debug("finish reading deleted file before reopen")
 			return nil
 		}
 		// In polling mode we could miss events when a file is deleted, so before we give up
@@ -274,7 +273,7 @@ func (f *File) reopen(truncated bool) error {
 	if !truncated && err != nil {
 		// We don't action on this error but are logging it, not expecting to see it happen and not sure if we
 		// need to action on it, cf is checked for nil later on to accommodate this
-		level.Debug(f.logger).Log("msg", "stat of old file returned, this is not expected and may result in unexpected behavior")
+		f.logger.Debug("stat of old file returned, this is not expected and may result in unexpected behavior")
 	}
 
 	f.file.Close()
@@ -289,19 +288,19 @@ func (f *File) reopen(truncated bool) error {
 		file, err := fileext.OpenFile(f.cfg.Filename)
 		if err != nil {
 			if os.IsNotExist(err) {
-				level.Debug(f.logger).Log("msg", fmt.Sprintf("waiting for %s to appear...", f.cfg.Filename))
+				f.logger.Debug("waiting for file to appear", "filename", f.cfg.Filename)
 				if err := blockUntilExists(f.ctx, f.cfg); err != nil {
 					return fmt.Errorf("failed to detect creation of %s: %w", f.cfg.Filename, err)
 				}
 				continue
 			}
-			return fmt.Errorf("Unable to open file %s: %s", f.cfg.Filename, err)
+			return fmt.Errorf("unable to open file %s: %s", f.cfg.Filename, err)
 		}
 
 		// File exists and is opened, get information about it.
 		nf, err := file.Stat()
 		if err != nil {
-			level.Debug(f.logger).Log("msg", "failed to stat new file to be tailed, will try to open it again")
+			f.logger.Debug("failed to stat new file to be tailed, will try to open it again")
 			file.Close()
 			backoff.Wait()
 			continue

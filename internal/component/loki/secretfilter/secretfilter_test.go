@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/loki/secretfilter/testhelper"
+	"github.com/grafana/alloy/internal/runtime/logging"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/loki/pkg/push"
@@ -32,6 +33,17 @@ type detectorFunc func(context.Context, detect.Fragment) []report.Finding
 func (f detectorFunc) DetectContext(ctx context.Context, fragment detect.Fragment) []report.Finding {
 	return f(ctx, fragment)
 }
+
+func newTestOptions(t require.TestingT, reg prometheus.Registerer) component.Options {
+	logger := util.TestAlloyLogger(t)
+	return component.Options{
+		Logger:         logger.Slog(),
+		OnStateChange:  func(component.Exports) {},
+		GetServiceData: testhelper.GetServiceData,
+		Registerer:     reg,
+	}
+}
+
 func TestSecretFiltering(t *testing.T) {
 	// One component, one config load; all default cases run through it.
 	RunTestCases(t, testhelper.TestConfigs["default"], DefaultTestCases())
@@ -50,11 +62,7 @@ func TestDefaultRate_Unmarshalled(t *testing.T) {
 // Valid custom config file loading (and [extend] useDefault) is tested in the
 // extend package so it runs in a separate process and avoids gitleaks global state.
 func TestGitleaksConfig_InvalidPath(t *testing.T) {
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-	}
+	opts := newTestOptions(t, nil)
 	args := Arguments{
 		ForwardTo:      []loki.LogsReceiver{loki.NewLogsReceiver()},
 		GitleaksConfig: filepath.Join(t.TempDir(), "nonexistent.gitleaks.toml"),
@@ -86,12 +94,7 @@ func TestRate_ZeroBypassesAll(t *testing.T) {
 		ForwardTo: []loki.LogsReceiver{downstream},
 		Rate:      0,
 	}
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
@@ -123,12 +126,7 @@ func TestRate_OneForwardsProcessedEntry(t *testing.T) {
 		Rate:          1,
 		RedactPercent: 100,
 	}
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
@@ -159,12 +157,7 @@ func TestRate_Half(t *testing.T) {
 		ForwardTo: []loki.LogsReceiver{downstream},
 		Rate:      0.5,
 	}
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	c, err := New(opts, args)
 	require.NoError(t, err)
 
@@ -192,12 +185,7 @@ func TestRate_Half(t *testing.T) {
 
 func TestRedactPercent_FullRedaction(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	args := Arguments{
 		ForwardTo:     []loki.LogsReceiver{loki.NewLogsReceiver()},
 		RedactPercent: 100,
@@ -216,12 +204,7 @@ func TestRedactPercent_FullRedaction(t *testing.T) {
 
 func TestRedactPercent_Partial(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	args := Arguments{
 		ForwardTo:     []loki.LogsReceiver{loki.NewLogsReceiver()},
 		RedactPercent: 80,
@@ -246,12 +229,7 @@ func TestRedactPercent_Partial(t *testing.T) {
 
 func TestRedactWith_CustomPlaceholder(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	args := Arguments{
 		ForwardTo:  []loki.LogsReceiver{loki.NewLogsReceiver()},
 		RedactWith: "***REDACTED***",
@@ -272,12 +250,7 @@ func TestRedactWith_CustomPlaceholder(t *testing.T) {
 // the component defaults to 80% redaction (gitleaks-style: leading 20% + "...").
 func TestDefaultRedactPercent_usesEighty(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	args := Arguments{
 		ForwardTo: []loki.LogsReceiver{loki.NewLogsReceiver()},
 		// RedactWith and RedactPercent left at zero values => effective 80%
@@ -317,8 +290,8 @@ func runBenchmarks(b *testing.B, config string, percentageSecrets int, secretNam
 	args.ForwardTo = []loki.LogsReceiver{ch1}
 
 	opts := component.Options{
-		Logger:         &noopLogger{}, // Disable logging so that it keeps a clean benchmark output
-		OnStateChange:  func(e component.Exports) {},
+		Logger:         logging.NewSlogNop(),
+		OnStateChange:  func(component.Exports) {},
 		GetServiceData: testhelper.GetServiceData,
 	}
 
@@ -370,11 +343,7 @@ func FuzzProcessEntry(f *testing.F) {
 		f.Add(testLog.Log)
 	}
 
-	opts := component.Options{
-		Logger:         util.TestLogger(f),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-	}
+	opts := newTestOptions(f, nil)
 	ch1 := loki.NewLogsReceiver()
 
 	// Create component with default config
@@ -388,12 +357,6 @@ func FuzzProcessEntry(f *testing.F) {
 		entry := loki.Entry{Labels: model.LabelSet{}, Entry: push.Entry{Timestamp: time.Now(), Line: log}}
 		c.processEntry(context.Background(), entry)
 	})
-}
-
-type noopLogger struct{}
-
-func (d *noopLogger) Log(_ ...any) error {
-	return nil
 }
 
 // TestMetrics verifies that the metrics for the secretfilter component are
@@ -441,12 +404,7 @@ func TestMetrics(t *testing.T) {
 			}
 
 			// Create options with the test registry
-			opts := component.Options{
-				Logger:         util.TestLogger(t),
-				OnStateChange:  func(e component.Exports) {},
-				GetServiceData: testhelper.GetServiceData,
-				Registerer:     registry,
-			}
+			opts := newTestOptions(t, registry)
 
 			// Create component
 			c, err := New(opts, args)
@@ -531,12 +489,7 @@ func TestMetrics_NoOriginLabel(t *testing.T) {
 		ForwardTo:   []loki.LogsReceiver{loki.NewLogsReceiver()},
 		OriginLabel: "",
 	}
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -564,13 +517,8 @@ func TestMetrics_NoOriginLabel(t *testing.T) {
 func TestMetricsRegistration(t *testing.T) {
 	registry := prometheus.NewRegistry()
 
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-		ID:             "test_secretfilter",
-	}
+	opts := newTestOptions(t, registry)
+	opts.ID = "test_secretfilter"
 
 	// Create component with empty arguments
 	args := Arguments{
@@ -620,12 +568,7 @@ func TestMetricsMultipleEntries(t *testing.T) {
 		OriginLabel: "job",
 	}
 
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 
 	c, err := New(opts, args)
 	require.NoError(t, err)
@@ -688,12 +631,7 @@ func TestArgumentsUpdate(t *testing.T) {
 	}
 
 	// Create options with the test registry
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 
 	// Create component with initial arguments
 	c, err := New(opts, initialArgs)
@@ -758,12 +696,7 @@ func TestArgumentsUpdate(t *testing.T) {
 
 func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
@@ -791,12 +724,7 @@ func TestProcessingTimeout_ForwardsUnredactedOnTimeout(t *testing.T) {
 
 func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
@@ -824,12 +752,7 @@ func TestProcessingTimeout_DropsOnTimeoutWhenEnabled(t *testing.T) {
 
 func TestProcessingTimeout_NoTimeoutWhenDisabled(t *testing.T) {
 	registry := prometheus.NewRegistry()
-	opts := component.Options{
-		Logger:         util.TestLogger(t),
-		OnStateChange:  func(e component.Exports) {},
-		GetServiceData: testhelper.GetServiceData,
-		Registerer:     registry,
-	}
+	opts := newTestOptions(t, registry)
 	secret := testhelper.FakeSecrets["grafana-api-key"].Value
 	line := "log line with secret " + secret + " end"
 	c, err := New(opts, Arguments{
@@ -893,12 +816,7 @@ func TestTimeoutLabel(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			line := "log line with secret " + secret + " end"
-			c, err := New(component.Options{
-				Logger:         util.TestLogger(t),
-				OnStateChange:  func(e component.Exports) {},
-				GetServiceData: testhelper.GetServiceData,
-				Registerer:     prometheus.NewRegistry(),
-			}, Arguments{
+			c, err := New(newTestOptions(t, prometheus.NewRegistry()), Arguments{
 				ForwardTo:         []loki.LogsReceiver{loki.NewLogsReceiver()},
 				ProcessingTimeout: 10 * time.Millisecond,
 				LabelTimedOut:     tc.labelTimedOut,

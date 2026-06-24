@@ -14,7 +14,6 @@ import (
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	kt "github.com/grafana/alloy/internal/component/loki/source/internal/kafkatarget"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
@@ -122,10 +121,10 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.Lock()
 			defer c.mut.Unlock()
 
-			level.Info(c.opts.Logger).Log("msg", "loki.source.kafka component shutting down, stopping target")
+			c.opts.Logger.Info("loki.source.kafka component shutting down, stopping target")
 			if c.target != nil {
 				if err := c.target.Stop(); err != nil {
-					level.Error(c.opts.Logger).Log("msg", "error while stopping kafka target", "err", err)
+					c.opts.Logger.Error("error while stopping kafka target", "err", err)
 				}
 			}
 		})
@@ -146,14 +145,14 @@ func (c *Component) Update(args component.Arguments) error {
 	if c.target != nil {
 		err := c.target.Stop()
 		if err != nil {
-			level.Error(c.opts.Logger).Log("msg", "error while stopping kafka target", "err", err)
+			c.opts.Logger.Error("error while stopping kafka target", "err", err)
 		}
 	}
 
 	entryHandler := loki.NewEntryHandler(c.handler.Chan(), func() {})
 	t, err := kt.NewSyncer(c.opts.Logger, newArgs.Convert(), entryHandler, &kt.KafkaTargetMessageParser{})
 	if err != nil {
-		level.Error(c.opts.Logger).Log("msg", "failed to create kafka client with provided config", "err", err)
+		c.opts.Logger.Error("failed to create kafka client with provided config", "err", err)
 		return err
 	}
 

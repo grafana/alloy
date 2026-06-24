@@ -22,12 +22,14 @@ concurrency:
   group: agent-bump-beyla-${{ inputs.source_ref }}-${{ inputs.beyla_ref || inputs.beyla_release_tag }}
   cancel-in-progress: true
 
+env:
+  ALLOYBOT_APP_NAME: grafana-alloybot
+
 jobs:
   plan-beyla-update:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: read
       id-token: write
 
     steps:
@@ -38,24 +40,20 @@ jobs:
           export_env: false
           repo_secrets: |
             ANTHROPIC_API_KEY=anthropic-token:token
-            ALLOYBOT_APP_ID=alloybot:app_id
-            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
       - name: Generate token
         id: app-token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         with:
-          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-          owner: grafana
-          repositories: alloy
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ inputs.source_ref }}
           fetch-depth: 1
           token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
@@ -67,7 +65,7 @@ jobs:
         run: mkdir -p .github/agent-output
 
       - name: Run Claude Code plan job
-        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1.0.72
+        uses: anthropics/claude-code-action@d5726de019ec4498aa667642bc3a80fca83aa102 # v1.0.148
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -107,9 +105,7 @@ jobs:
             ## Files the implementation job may update
 
             - `collector/builder-config.yaml`
-            - `dependency-replacements.yaml`
             - `collector/go.mod`
-            - `extension/alloyengine/go.mod`
             - `go.mod`
             - `docs/sources/_index.md.t`
             - `internal/component/beyla/ebpf/args.go`
@@ -117,7 +113,7 @@ jobs:
             - `internal/component/beyla/ebpf/beyla_linux_test.go`
             - `docs/sources/reference/components/beyla/beyla.ebpf.md`
 
-            `go.sum`, `collector/go.sum`, and `extension/alloyengine/go.sum` may change only if required by module updates.
+            `go.sum` and `collector/go.sum` may change only if required by module updates.
 
             ## Required contents of `.github/agent-output/plan.md`
 
@@ -134,7 +130,7 @@ jobs:
 
       - name: Upload plan artifact
         if: always()
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: beyla-update-plan
           path: .github/agent-output/plan.md
@@ -154,8 +150,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
-      contents: write
-      pull-requests: write
       id-token: write
 
     steps:
@@ -166,24 +160,20 @@ jobs:
           export_env: false
           repo_secrets: |
             ANTHROPIC_API_KEY=anthropic-token:token
-            ALLOYBOT_APP_ID=alloybot:app_id
-            ALLOYBOT_PRIVATE_KEY=alloybot:private_key
 
       - name: Generate token
         id: app-token
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         with:
-          app-id: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_APP_ID }}
-          private-key: ${{ fromJSON(steps.get-secrets.outputs.secrets).ALLOYBOT_PRIVATE_KEY }}
-          owner: grafana
-          repositories: alloy
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: ${{ inputs.source_ref }}
           fetch-depth: 1
           token: ${{ steps.app-token.outputs.token }}
+          persist-credentials: false
 
       - name: Download plan artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -200,7 +190,7 @@ jobs:
       - name: Get GitHub App identity
         id: get-app
         env:
-          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
           APP_ID="$(gh api "/apps/${APP_SLUG}" --jq .id)"
@@ -216,7 +206,7 @@ jobs:
           git config user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
 
       - name: Run Claude Code implement job
-        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1.0.72
+        uses: anthropics/claude-code-action@d5726de019ec4498aa667642bc3a80fca83aa102 # v1.0.148
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -251,9 +241,7 @@ jobs:
 
             Update only what is required in these files:
             - `collector/builder-config.yaml`
-            - `dependency-replacements.yaml`
             - `collector/go.mod`
-            - `extension/alloyengine/go.mod`
             - `go.mod`
             - `docs/sources/_index.md.t`
             - `internal/component/beyla/ebpf/args.go`
@@ -261,7 +249,7 @@ jobs:
             - `internal/component/beyla/ebpf/beyla_linux_test.go`
             - `docs/sources/reference/components/beyla/beyla.ebpf.md`
 
-            You may also update `go.sum`, `collector/go.sum`, or `extension/alloyengine/go.sum` if the module changes require it. Do not touch unrelated files.
+            You may also update `go.sum` or `collector/go.sum` if the module changes require it. Do not touch unrelated files.
             Do not create, stage, or commit `.github/agent-output/implement-status.md` or any similar tracking file.
             Prefer updating source-of-truth files and then using the repo Make targets to regenerate derived module files. Do not hand-edit `collector/go.mod` when `make generate-otel-collector-distro` can regenerate it.
 
@@ -269,15 +257,12 @@ jobs:
 
             1. Bump the OBI replacement version derived from Beyla's pinned `.obi-src` SHA in:
                - `collector/builder-config.yaml`
-               - `dependency-replacements.yaml`
 
             2. Bump the Beyla version in:
-               - `extension/alloyengine/go.mod`
                - `go.mod`
                - `docs/sources/_index.md.t`
 
             3. After updating the source-of-truth files, run:
-               - `make generate-module-dependencies`
                - `make generate-otel-collector-distro`
 
             4. Review and keep the generated module changes produced by those Make targets as needed, including:
@@ -285,8 +270,6 @@ jobs:
                - `collector/go.sum`
                - `go.mod`
                - `go.sum`
-               - `extension/alloyengine/go.mod`
-               - `extension/alloyengine/go.sum`
 
             5. Compare the current Alloy Beyla integration against the target Beyla release and add any newly added fields needed for parity in:
                - `internal/component/beyla/ebpf/args.go`
@@ -311,7 +294,7 @@ jobs:
             - Keep docs concise and consistent with existing wording and table format.
             - Do not add compatibility shims unless they are strictly required by the target Beyla release.
             - Do not introduce a new function without also introducing the unit test coverage for it.
-            - `make alloy` is fine as a build check, but it does not replace `make generate-module-dependencies` or `make generate-otel-collector-distro` for dependency and collector regeneration.
+            - `make alloy` is fine as a build check, but it does not replace `make generate-otel-collector-distro` for dependency and collector regeneration.
 
             ## Verification
 

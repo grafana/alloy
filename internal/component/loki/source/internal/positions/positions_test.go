@@ -11,9 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
 func tempFilename(t *testing.T) string {
@@ -55,10 +56,10 @@ func TestLegacyConversion(t *testing.T) {
 	tmpDir := t.TempDir()
 	legacy := writeLegacy(t, tmpDir)
 	positionsPath := filepath.Join(tmpDir, "positions")
-	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
+	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
 	ps, err := readPositionsFile(Config{
 		PositionsFile: positionsPath,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {
@@ -78,10 +79,10 @@ func TestLegacyConversionWithNewFile(t *testing.T) {
 	require.NoError(t, err)
 
 	// In this state nothing should be overwritten.
-	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
+	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
 	ps, err := readPositionsFile(Config{
 		PositionsFile: positionsPath,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {
@@ -100,10 +101,10 @@ func TestLegacyConversionWithNoLegacyFile(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	ConvertLegacyPositionsFile(legacy, positionsPath, log.NewNopLogger())
+	ConvertLegacyPositionsFile(legacy, positionsPath, logging.NewSlogNop())
 	ps, err := readPositionsFile(Config{
 		PositionsFile: positionsPath,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 	require.NoError(t, err)
 	require.Len(t, ps, 1)
 	for k, v := range ps {
@@ -130,7 +131,7 @@ func TestConvertLegacyPositionsFileJournal(t *testing.T) {
 	require.NoError(t, f.Close())
 
 	newFile := filepath.Join(tmpDir, "new.yaml")
-	ConvertLegacyPositionsFileJournal(legacyFile, "oldjob", newFile, "loki.source.journal.test", log.NewNopLogger())
+	ConvertLegacyPositionsFileJournal(legacyFile, "oldjob", newFile, "loki.source.journal.test", logging.NewSlogNop())
 
 	f, err = os.Open(newFile)
 	require.NoError(t, err)
@@ -163,7 +164,7 @@ positions:
 
 		pos, err := readPositionsFile(Config{
 			PositionsFile: temp,
-		}, log.NewNopLogger())
+		}, logging.NewSlogNop())
 
 		require.NoError(t, err)
 		require.Equal(t, "17623", pos[Entry{
@@ -192,7 +193,7 @@ positions:
 
 		pos, err := readPositionsFile(Config{
 			PositionsFile: temp,
-		}, log.NewNopLogger())
+		}, logging.NewSlogNop())
 
 		require.NoError(t, err)
 		require.Equal(t, "17623", pos[Entry{
@@ -216,7 +217,7 @@ func TestReadPositionsEmptyFile(t *testing.T) {
 
 	pos, err := readPositionsFile(Config{
 		PositionsFile: temp,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 
 	require.NoError(t, err)
 	require.NotNil(t, pos)
@@ -235,7 +236,7 @@ func TestReadPositionsFromDir(t *testing.T) {
 
 	_, err = readPositionsFile(Config{
 		PositionsFile: temp,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
@@ -260,7 +261,7 @@ positions:
 
 	_, err = readPositionsFile(Config{
 		PositionsFile: temp,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 
 	require.Error(t, err)
 	require.True(t, strings.Contains(err.Error(), temp)) // error must contain filename
@@ -286,7 +287,7 @@ positions:
 	out, err := readPositionsFile(Config{
 		PositionsFile:     temp,
 		IgnoreInvalidYaml: true,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 
 	require.NoError(t, err)
 	require.Equal(t, map[Entry]string{}, out)
@@ -307,7 +308,7 @@ positions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := New(log.NewNopLogger(), Config{
+	p, err := New(logging.NewSlogNop(), Config{
 		SyncPeriod:    20 * time.Second,
 		PositionsFile: temp,
 		ReadOnly:      true,
@@ -328,7 +329,7 @@ positions:
 		PositionsFile:     temp,
 		IgnoreInvalidYaml: true,
 		ReadOnly:          true,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 
 	require.NoError(t, err)
 	require.Equal(t, map[Entry]string{
@@ -351,7 +352,7 @@ positions:
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := New(log.NewNopLogger(), Config{
+	p, err := New(logging.NewSlogNop(), Config{
 		SyncPeriod:    20 * time.Second,
 		PositionsFile: temp,
 	})
@@ -373,7 +374,7 @@ positions:
 		PositionsFile:     temp,
 		IgnoreInvalidYaml: true,
 		ReadOnly:          false,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 
 	require.NoError(t, err)
 	require.Equal(t, map[Entry]string{
@@ -409,7 +410,7 @@ positions:
 
 	pos, err := readPositionsFile(Config{
 		PositionsFile: temp,
-	}, log.NewNopLogger())
+	}, logging.NewSlogNop())
 
 	require.NoError(t, err)
 	require.Equal(t, "10020", pos[Entry{

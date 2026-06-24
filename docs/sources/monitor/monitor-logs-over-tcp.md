@@ -106,7 +106,7 @@ The logging configuration in this example requires three components:
 
 * `loki.source.api`
 * `loki.process`
-* `loki-write`
+* `loki.write`
 
 #### `loki.source.api`
 
@@ -164,7 +164,7 @@ loki.process "labels" {
 }
 ```
 
-#### `loki-write`
+#### `loki.write`
 
 The [`loki.write`][loki.write] component writes the logs to a Loki destination.
 In this example, the component requires the following argument:

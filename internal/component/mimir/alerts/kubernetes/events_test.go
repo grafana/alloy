@@ -3,14 +3,13 @@ package alerts
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
 
 	"sigs.k8s.io/yaml"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/mimir/alertmanager"
 	monitoringv1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1"
 	monitoringv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/assets"
@@ -27,6 +26,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 
 	"github.com/grafana/alloy/internal/component/common/kubernetes"
+	"github.com/grafana/alloy/internal/mimir/alertmanager"
 	mimirClient "github.com/grafana/alloy/internal/mimir/client"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
@@ -67,14 +67,13 @@ func convertToAlertmanagerType(t *testing.T, alertmanagerConf string) alertmanag
 }
 
 // createTestLoggerWithBuffer creates a logger that writes to a thread-safe buffer for testing
-func createTestLoggerWithBuffer(t *testing.T) (log.Logger, *syncbuffer.Buffer) {
+func createTestLoggerWithBuffer(t *testing.T) (*slog.Logger, *syncbuffer.Buffer) {
 	t.Helper()
 
 	logBuffer := &syncbuffer.Buffer{}
-	logger := log.NewLogfmtLogger(log.NewSyncWriter(logBuffer))
-	logger = log.WithPrefix(logger,
+	logger := slog.New(slog.NewTextHandler(logBuffer, nil))
+	logger = logger.With(
 		"test", t.Name(),
-		"ts", log.DefaultTimestampUTC,
 	)
 
 	return logger, logBuffer
@@ -548,12 +547,12 @@ spec:
 			}
 
 			// Create logger with buffer to capture log messages
-			var testLogger log.Logger
+			var testLogger *slog.Logger
 			var logBuffer *syncbuffer.Buffer
 			if tt.expectLogMessage != "" {
 				testLogger, logBuffer = createTestLoggerWithBuffer(t)
 			} else {
-				testLogger = util.TestLogger(t)
+				testLogger = util.TestAlloyLogger(t).Slog()
 			}
 
 			c := fake.NewClientset(

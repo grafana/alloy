@@ -116,7 +116,7 @@ string.replace(string, substring, replacement)
 `string.split` produces a list by dividing a string at all occurrences of a separator.
 
 ```alloy
-split(list, separator)
+string.split(string, separator)
 ```
 
 ### Examples
