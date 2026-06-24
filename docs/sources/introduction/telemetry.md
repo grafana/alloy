@@ -31,6 +31,8 @@ There are no automatic transformations, no implicit pipelines, and no hidden beh
 
 Telemetry flows through pipelines following this pattern:
 
+<!-- vale Grafana.Spelling = NO -->
+
 {{< mermaid >}}
 flowchart LR
 
@@ -48,6 +50,8 @@ flowchart LR
 
   class Discovery,Ingestion,Transformation,Output grafana
 {{< /mermaid >}}
+
+<!-- vale Grafana.Spelling = YES -->
 
 Discovery is optional.
 It's used for pull-based collection when you need to find scrape targets dynamically.
