@@ -258,6 +258,7 @@ func newController(o controllerOptions) (*Runtime, error) {
 					DataPath:             o.DataPath,
 					MinStability:         o.MinStability,
 					EnableCommunityComps: o.EnableCommunityComps,
+					SecurityPolicy:       o.Options.SecurityPolicy,
 					ID:                   opts.Id,
 					ServiceMap:           serviceMap,
 					WorkerPool:           workerPool,

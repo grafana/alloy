@@ -140,6 +140,7 @@ func newModule(o *moduleOptions) (*module, error) {
 			DataPath:             o.DataPath,
 			MinStability:         o.MinStability,
 			EnableCommunityComps: o.EnableCommunityComps,
+			SecurityPolicy:       o.SecurityPolicy,
 			OnExportsChange: func(exports map[string]any) {
 				if o.export != nil {
 					o.export(exports)
@@ -230,4 +231,7 @@ type moduleControllerOptions struct {
 
 	// EnableCommunityComps enables the use of community components.
 	EnableCommunityComps bool
+
+	// SecurityPolicy is the active security policy; nil means no restrictions.
+	SecurityPolicy SecurityPolicyChecker
 }
