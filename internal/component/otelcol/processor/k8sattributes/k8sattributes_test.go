@@ -47,7 +47,7 @@ func Test_Extract(t *testing.T) {
 	extract := &otelObj.Extract
 	require.Equal(t, []string{"k8s.namespace.name", "k8s.job.name", "k8s.node.name"}, extract.Metadata)
 
-	require.True(t, extract.DeploymentNameFromReplicaSet)
+	require.True(t, extract.DeploymentNameFromReplicaSet) //nolint:staticcheck // deprecated upstream but still defaults to true; asserting that until the field is removed
 }
 
 func Test_ExtractAnnotations(t *testing.T) {
