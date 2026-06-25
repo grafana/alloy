@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -35,8 +36,11 @@ func main() {
 	// graceful shutdown of alloy.
 	// See https://github.com/golang/go/issues/72884
 	if r, _, err := windows.NewLazySystemDLL("kernel32.dll").NewProc("AllocConsole").Call(); r == 0 {
-		logger.Error("failed to run service", "err", err)
-		panic(err)
+		// We get ERROR_ACCESS_DENIED if the process already have a console attached.
+		if !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+			logger.Error("failed to allocate console", "err", err)
+			os.Exit(1)
+		}
 	}
 
 	managerConfig, err := loadConfig()
