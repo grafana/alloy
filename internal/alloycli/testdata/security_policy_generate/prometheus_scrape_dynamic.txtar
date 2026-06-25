@@ -11,3 +11,6 @@ components:
     mode: allowlist
     list:
         - prometheus.scrape
+
+-- expected_dynamic_components --
+prometheus.scrape

@@ -1,0 +1,29 @@
+Static endpoints from prometheus.remote_write are included even though
+prometheus.scrape has dynamic (discovery-driven) endpoints. Dynamic components
+do not suppress the endpoint section.
+
+-- config.alloy --
+prometheus.scrape "default" {
+  targets    = []
+  forward_to = []
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://localhost:9009/api/prom/push"
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - prometheus.remote_write
+        - prometheus.scrape
+endpoints:
+    mode: allowlist
+    list:
+        - http://localhost:9009/api/prom/push
+
+-- expected_dynamic_components --
+prometheus.scrape

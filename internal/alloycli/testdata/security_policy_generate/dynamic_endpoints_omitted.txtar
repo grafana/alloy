@@ -1,4 +1,5 @@
-When endpoints are dynamic the endpoint section is omitted — we cannot build a complete allowlist.
+When a component has only expression-based endpoints (unresolvable statically),
+no endpoint section is generated because there are no known static URLs.
 
 -- config.alloy --
 loki.write "logs" {

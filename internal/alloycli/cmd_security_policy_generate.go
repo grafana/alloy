@@ -56,8 +56,9 @@ type GeneratedPolicy struct {
 	Components []string
 	// Endpoints is the sorted list of literal endpoint URLs found.
 	Endpoints []string
-	// DynamicEndpoints is the count of endpoints that could not be resolved statically.
-	DynamicEndpoints int
+	// DynamicComponents is the list of component names whose endpoints cannot
+	// be resolved statically (e.g. discovery-driven targets).
+	DynamicComponents []string
 }
 
 // GeneratePolicy analyses source and returns the tightest possible policy.
@@ -76,7 +77,7 @@ func GeneratePolicy(source *alloy_runtime.Source) *GeneratedPolicy {
 
 	compSet := map[string]bool{}
 	epSet := map[string]bool{}
-	dynamic := 0
+	dynamicSet := map[string]bool{} // component names with unverifiable endpoints
 
 	for _, block := range blocks {
 		compName := strings.Join(block.Name, ".")
@@ -92,33 +93,37 @@ func GeneratePolicy(source *alloy_runtime.Source) *GeneratedPolicy {
 						epSet[u] = true
 					}
 					if spec.HasDynamic {
-						dynamic++
+						dynamicSet[compName] = true
 					}
 				}
 			} else {
-				// Expression-based args: count as dynamic if it's an egress component.
+				// Expression-based args: flag as dynamic if it's an egress component.
 				if _, ok := registration.Args.(component.EgressComponent); ok {
-					dynamic++
+					dynamicSet[compName] = true
 				}
 			}
 		}
 	}
 
-	gp := &GeneratedPolicy{DynamicEndpoints: dynamic}
+	gp := &GeneratedPolicy{}
 	for name := range compSet {
 		gp.Components = append(gp.Components, name)
 	}
 	for u := range epSet {
 		gp.Endpoints = append(gp.Endpoints, u)
 	}
+	for name := range dynamicSet {
+		gp.DynamicComponents = append(gp.DynamicComponents, name)
+	}
 	sort.Strings(gp.Components)
 	sort.Strings(gp.Endpoints)
+	sort.Strings(gp.DynamicComponents)
 	return gp
 }
 
 // policyYAML marshals a GeneratedPolicy to YAML.
-// If there are dynamic endpoints the endpoints section is omitted (we can't
-// build a correct allowlist without knowing all URLs).
+// Static endpoints are always included. Dynamic components are noted in a
+// comment but do not suppress the endpoint section.
 func policyYAML(gp *GeneratedPolicy) (string, error) {
 	type section struct {
 		Mode string   `yaml:"mode"`
@@ -135,7 +140,7 @@ func policyYAML(gp *GeneratedPolicy) (string, error) {
 		p.Components = &section{Mode: "allowlist", List: gp.Components}
 	}
 
-	if len(gp.Endpoints) > 0 && gp.DynamicEndpoints == 0 {
+	if len(gp.Endpoints) > 0 {
 		p.Endpoints = &section{Mode: "allowlist", List: gp.Endpoints}
 	}
 
@@ -181,8 +186,11 @@ func (sg *alloySecurityPolicyGenerate) Run(configPath string) error {
 	for _, u := range gp.Endpoints {
 		green.Printf("   ✓  %s\n", u)
 	}
-	if gp.DynamicEndpoints > 0 {
-		yellow.Printf("   ⚠️   %d dynamic endpoint(s) — URL resolved at runtime, not included in policy\n", gp.DynamicEndpoints)
+	if len(gp.DynamicComponents) > 0 {
+		yellow.Printf("   ⚠️   %d component(s) have dynamic endpoints (discovery-driven or expression-based):\n", len(gp.DynamicComponents))
+		for _, c := range gp.DynamicComponents {
+			yellow.Printf("       ~  %s\n", c)
+		}
 	}
 	fmt.Println()
 
@@ -198,9 +206,10 @@ func (sg *alloySecurityPolicyGenerate) Run(configPath string) error {
 	dim.Println(strings.Repeat("─", 50))
 	fmt.Println()
 
-	if gp.DynamicEndpoints > 0 {
-		yellow.Println("⚠️   Endpoint allowlist omitted: config contains expression-based endpoints")
-		yellow.Println("    that cannot be resolved statically. Review and add them manually.")
+	if len(gp.DynamicComponents) > 0 {
+		yellow.Println("⚠️   Some components connect to endpoints that cannot be resolved statically.")
+		yellow.Println("    The generated policy covers known static endpoints only.")
+		yellow.Println("    Review dynamic components and add their endpoints manually if needed.")
 		fmt.Println()
 	}
 
