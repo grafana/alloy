@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/walqueue/types"
 	"github.com/prometheus/client_golang/exp/api/remote"
 	"github.com/prometheus/common/version"
@@ -38,6 +39,17 @@ type Persistence struct {
 
 type Exports struct {
 	Receiver storage.Appendable `alloy:"receiver,attr"`
+}
+
+// EgressSpec implements component.EgressComponent.
+func (rc Arguments) EgressSpec() component.EgressSpec {
+	endpoints := make([]string, 0, len(rc.Endpoints))
+	for _, ep := range rc.Endpoints {
+		if ep.URL != "" {
+			endpoints = append(endpoints, ep.URL)
+		}
+	}
+	return component.EgressSpec{Endpoints: endpoints}
 }
 
 // SetToDefault sets the default

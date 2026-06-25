@@ -47,6 +47,14 @@ type Arguments struct {
 	Auth []AuthArguments `alloy:"auth,enum,optional"`
 }
 
+// EgressSpec implements component.EgressComponent.
+func (a Arguments) EgressSpec() component.EgressSpec {
+	if a.Server != "" {
+		return component.EgressSpec{Endpoints: []string{a.Server}}
+	}
+	return component.EgressSpec{}
+}
+
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
 	ClientOptions: ClientOptions{

@@ -1,0 +1,18 @@
+pyroscope.write endpoint URLs are collected.
+
+-- config.alloy --
+pyroscope.write "default" {
+  endpoint {
+    url = "https://profiles.grafana.net"
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - pyroscope.write
+endpoints:
+    mode: allowlist
+    list:
+        - https://profiles.grafana.net

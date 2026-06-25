@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
+	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/util"
@@ -59,6 +60,17 @@ type Arguments struct {
 type TracingOptions struct {
 	JaegerPropagator       bool `alloy:"jaeger_propagator,attr,optional"`
 	TraceContextPropagator bool `alloy:"trace_context_propagator,attr,optional"`
+}
+
+// EgressSpec implements component.EgressComponent.
+func (rc Arguments) EgressSpec() component.EgressSpec {
+	endpoints := make([]string, 0, len(rc.Endpoints))
+	for _, ep := range rc.Endpoints {
+		if ep != nil && ep.URL != "" {
+			endpoints = append(endpoints, ep.URL)
+		}
+	}
+	return component.EgressSpec{Endpoints: endpoints}
 }
 
 // SetToDefault implements syntax.Defaulter.

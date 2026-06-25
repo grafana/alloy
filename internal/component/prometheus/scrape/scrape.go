@@ -140,6 +140,12 @@ type Arguments struct {
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
 
+// EgressSpec implements component.EgressComponent. Scrape targets come from
+// discovery at runtime, so all connections are dynamic.
+func (arg Arguments) EgressSpec() component.EgressSpec {
+	return component.EgressSpec{HasDynamic: true}
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (arg *Arguments) SetToDefault() {
 	*arg = Arguments{

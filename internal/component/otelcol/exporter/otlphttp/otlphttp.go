@@ -53,6 +53,25 @@ type Arguments struct {
 
 var _ exporter.Arguments = Arguments{}
 
+// EgressSpec implements component.EgressComponent.
+func (args Arguments) EgressSpec() component.EgressSpec {
+	seen := map[string]bool{}
+	add := func(u string) {
+		if u != "" {
+			seen[u] = true
+		}
+	}
+	add(args.Client.Endpoint)
+	add(args.TracesEndpoint)
+	add(args.MetricsEndpoint)
+	add(args.LogsEndpoint)
+	endpoints := make([]string, 0, len(seen))
+	for u := range seen {
+		endpoints = append(endpoints, u)
+	}
+	return component.EgressSpec{Endpoints: endpoints}
+}
+
 const (
 	EncodingProto string = "proto"
 	EncodingJSON  string = "json"

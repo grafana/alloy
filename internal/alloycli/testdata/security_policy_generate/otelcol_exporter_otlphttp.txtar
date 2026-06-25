@@ -1,0 +1,18 @@
+otelcol.exporter.otlphttp collects the HTTP endpoint.
+
+-- config.alloy --
+otelcol.exporter.otlphttp "default" {
+  client {
+    endpoint = "https://otelcol.example.com:4318"
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - otelcol.exporter.otlphttp
+endpoints:
+    mode: allowlist
+    list:
+        - https://otelcol.example.com:4318

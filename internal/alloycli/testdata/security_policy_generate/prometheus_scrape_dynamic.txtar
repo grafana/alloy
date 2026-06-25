@@ -1,0 +1,13 @@
+prometheus.scrape has dynamic endpoints (discovery targets) — no endpoint section generated.
+
+-- config.alloy --
+prometheus.scrape "default" {
+  targets    = []
+  forward_to = []
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - prometheus.scrape
