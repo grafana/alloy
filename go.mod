@@ -1108,7 +1108,7 @@ require (
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	github.com/urfave/cli/v3 v3.9.0 // indirect
 	github.com/vultr/govultr/v3 v3.31.1 // indirect
-	github.com/wasilibs/go-re2 v1.9.0 // indirect
+	github.com/wasilibs/go-re2 v1.10.0 // indirect
 	github.com/wasilibs/wazero-helpers v0.0.0-20240620070341-3dff1577cd52 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/collector/internal/componentalias v0.151.0 // indirect
