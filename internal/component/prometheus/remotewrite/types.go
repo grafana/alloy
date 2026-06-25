@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/grafana/alloy/internal/component"
 	types "github.com/grafana/alloy/internal/component/common/config"
 	alloy_relabel "github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -64,6 +65,17 @@ type Arguments struct {
 	ExternalLabels map[string]string  `alloy:"external_labels,attr,optional"`
 	Endpoints      []*EndpointOptions `alloy:"endpoint,block,optional"`
 	WALOptions     WALOptions         `alloy:"wal,block,optional"`
+}
+
+// EgressSpec implements component.EgressComponent.
+func (rc Arguments) EgressSpec() component.EgressSpec {
+	endpoints := make([]string, 0, len(rc.Endpoints))
+	for _, ep := range rc.Endpoints {
+		if ep != nil && ep.URL != "" {
+			endpoints = append(endpoints, ep.URL)
+		}
+	}
+	return component.EgressSpec{Endpoints: endpoints}
 }
 
 // SetToDefault implements syntax.Defaulter.

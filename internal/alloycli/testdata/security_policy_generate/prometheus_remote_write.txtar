@@ -1,0 +1,18 @@
+prometheus.remote_write endpoint URL is collected.
+
+-- config.alloy --
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://localhost:9009/api/prom/push"
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - prometheus.remote_write
+endpoints:
+    mode: allowlist
+    list:
+        - http://localhost:9009/api/prom/push

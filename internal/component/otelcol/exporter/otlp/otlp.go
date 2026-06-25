@@ -46,6 +46,14 @@ type Arguments struct {
 
 var _ exporter.Arguments = Arguments{}
 
+// EgressSpec implements component.EgressComponent.
+func (args Arguments) EgressSpec() component.EgressSpec {
+	if ep := args.Client.Endpoint; ep != "" {
+		return component.EgressSpec{Endpoints: []string{ep}}
+	}
+	return component.EgressSpec{}
+}
+
 // SetToDefault implements syntax.Defaulter.
 func (args *Arguments) SetToDefault() {
 	*args = Arguments{
