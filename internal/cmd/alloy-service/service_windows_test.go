@@ -28,11 +28,11 @@ func Test_serviceManager(t *testing.T) {
 		listenHost := getListenHost(t)
 
 		mgr := newServiceManager(l, serviceManagerConfig{
-			Path:        serviceBinary,
-			Args:        []string{"-listen-addr", listenHost},
-			Environment: []string{"LISTEN=" + listenHost},
+			path:        serviceBinary,
+			args:        []string{"-listen-addr", listenHost},
+			environment: []string{"LISTEN=" + listenHost},
 		})
-		go mgr.Run(componenttest.TestContext(t))
+		go mgr.run(componenttest.TestContext(t))
 
 		util.Eventually(t, func(t require.TestingT) {
 			resp, err := makeServiceRequest(listenHost, "/echo/response", []byte("Hello, world!"))
@@ -51,13 +51,13 @@ func Test_serviceManager(t *testing.T) {
 		listenHost := getListenHost(t)
 
 		mgr := newServiceManager(l, serviceManagerConfig{
-			Path: serviceBinary,
-			Args: []string{"-listen-addr", listenHost},
+			path: serviceBinary,
+			args: []string{"-listen-addr", listenHost},
 		})
 
 		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
 		defer cancel()
-		go mgr.Run(ctx)
+		go mgr.run(ctx)
 
 		util.Eventually(t, func(t require.TestingT) {
 			resp, err := makeServiceRequest(listenHost, "/echo/response", []byte("Hello, world!"))
@@ -80,14 +80,14 @@ func Test_serviceManager(t *testing.T) {
 		var buf syncbuffer.Buffer
 
 		mgr := newServiceManager(l, serviceManagerConfig{
-			Path:   serviceBinary,
-			Args:   []string{"-listen-addr", listenHost},
-			Stdout: &buf,
+			path:   serviceBinary,
+			args:   []string{"-listen-addr", listenHost},
+			stdout: &buf,
 		})
 
 		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
 		defer cancel()
-		go mgr.Run(ctx)
+		go mgr.run(ctx)
 
 		// Test making the request and testing the buffer contents separately,
 		// otherwise we may log to stdout more than we intend to.
@@ -108,14 +108,14 @@ func Test_serviceManager(t *testing.T) {
 		var buf syncbuffer.Buffer
 
 		mgr := newServiceManager(l, serviceManagerConfig{
-			Path:   serviceBinary,
-			Args:   []string{"-listen-addr", listenHost},
-			Stderr: &buf,
+			path:   serviceBinary,
+			args:   []string{"-listen-addr", listenHost},
+			stderr: &buf,
 		})
 
 		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
 		defer cancel()
-		go mgr.Run(ctx)
+		go mgr.run(ctx)
 
 		// Test making the request and testing the buffer contents separately,
 		// otherwise we may log to stderr more than we intend to.

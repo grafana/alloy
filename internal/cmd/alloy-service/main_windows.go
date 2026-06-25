@@ -45,14 +45,14 @@ func main() {
 	}
 
 	cfg := serviceManagerConfig{
-		Path:        managerConfig.ServicePath,
-		Args:        managerConfig.Args,
-		Environment: managerConfig.Environment,
-		Dir:         managerConfig.WorkingDirectory,
+		path:        managerConfig.ServicePath,
+		args:        managerConfig.Args,
+		environment: managerConfig.Environment,
+		dir:         managerConfig.WorkingDirectory,
 
 		// Send logs directly to the event logger.
-		Stdout: eventWriter,
-		Stderr: eventWriter,
+		stdout: eventWriter,
+		stderr: eventWriter,
 	}
 
 	as := &alloyService{logger: logger, cfg: cfg}
@@ -90,7 +90,7 @@ func (as *alloyService) Execute(args []string, r <-chan svc.ChangeRequest, s cha
 			// In case the service manager exits on its own, we cancel our context to
 			// signal to the parent goroutine to exit.
 			defer cancel()
-			sm.Run(ctx)
+			sm.run(ctx)
 		})
 	}
 

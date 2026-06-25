@@ -19,24 +19,24 @@ type serviceManager struct {
 
 // serviceManagerConfig configures a service.
 type serviceManagerConfig struct {
-	// Path to the binary to run.
-	Path string
+	// path to the binary to run.
+	path string
 
-	// Args of the binary to run, not including the command itself.
-	Args []string
+	// args of the binary to run, not including the command itself.
+	args []string
 
-	// Environment of the binary to run, including the command environment itself.
-	Environment []string
+	// environment of the binary to run, including the command environment itself.
+	environment []string
 
-	// Dir specifies the working directory to run the binary from. If Dir is
+	// dir specifies the working directory to run the binary from. If dir is
 	// empty, the working directory of the current process is used.
-	Dir string
+	dir string
 
-	// Stdout and Stderr specify where the process' stdout and stderr will be
+	// stdout and stderr specify where the process' stdout and stderr will be
 	// connected.
 	//
-	// If Stdout or Stderr are nil, they will default to os.DevNull.
-	Stdout, Stderr io.Writer
+	// If stdout or stderr are nil, they will default to os.DevNull.
+	stdout, stderr io.Writer
 }
 
 // newServiceManager creates a new, unstarted serviceManager. Call
@@ -55,13 +55,13 @@ func newServiceManager(l *slog.Logger, cfg serviceManagerConfig) *serviceManager
 	}
 }
 
-// Run starts the serviceManager. The binary associated with the serviceManager
+// run starts the serviceManager. The binary associated with the serviceManager
 // will be run until the provided context is canceled or the binary exits.
 //
 // Intermediate restarts will increase with an exponential backoff, which
 // resets if the binary has been running for longer than the maximum
 // exponential backoff period.
-func (svc *serviceManager) Run(ctx context.Context) {
+func (svc *serviceManager) run(ctx context.Context) {
 	cmd := svc.buildCommand(ctx)
 
 	svc.log.Info("starting program", "command", cmd.String())
@@ -84,12 +84,12 @@ func (svc *serviceManager) Run(ctx context.Context) {
 }
 
 func (svc *serviceManager) buildCommand(ctx context.Context) *exec.Cmd {
-	cmd := exec.CommandContext(ctx, svc.cfg.Path, svc.cfg.Args...)
-	cmd.Dir = svc.cfg.Dir
-	cmd.Stdout = svc.cfg.Stdout
-	cmd.Stderr = svc.cfg.Stderr
+	cmd := exec.CommandContext(ctx, svc.cfg.path, svc.cfg.args...)
+	cmd.Dir = svc.cfg.dir
+	cmd.Stdout = svc.cfg.stdout
+	cmd.Stderr = svc.cfg.stderr
 	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, svc.cfg.Environment...)
+	cmd.Env = append(cmd.Env, svc.cfg.environment...)
 
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP}
 	cmd.Cancel = func() error {
