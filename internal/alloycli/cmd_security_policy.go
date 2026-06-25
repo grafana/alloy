@@ -22,6 +22,7 @@ func securityPolicyCommand() *cobra.Command {
 		Short: "Security policy tools",
 	}
 	cmd.AddCommand(securityPolicyCheckCommand())
+	cmd.AddCommand(securityPolicyGenerateCommand())
 	return cmd
 }
 

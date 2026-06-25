@@ -1,0 +1,19 @@
+Config with components but no egress endpoints produces a component allowlist only.
+
+-- config.alloy --
+declare "user_pipeline" {
+  discovery.kubernetes "pods" {
+    role = "pod"
+  }
+
+  discovery.relabel "filter" {
+    targets = discovery.kubernetes.pods.targets
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - discovery.kubernetes
+        - discovery.relabel

@@ -1,0 +1,14 @@
+When endpoints are dynamic the endpoint section is omitted — we cannot build a complete allowlist.
+
+-- config.alloy --
+loki.write "logs" {
+  endpoint {
+    url = local.file.creds.content
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - loki.write

@@ -1,0 +1,31 @@
+Component and endpoint lists are sorted alphabetically for reproducibility.
+
+-- config.alloy --
+declare "user_pipeline" {
+  remote.http "fetch" {
+    url = "https://internal-api:8080/data"
+  }
+
+  discovery.kubernetes "pods" {
+    role = "pod"
+  }
+
+  loki.write "logs" {
+    endpoint {
+      url = "https://logs.grafana.net/loki/api/v1/push"
+    }
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - discovery.kubernetes
+        - loki.write
+        - remote.http
+endpoints:
+    mode: allowlist
+    list:
+        - https://internal-api:8080/data
+        - https://logs.grafana.net/loki/api/v1/push

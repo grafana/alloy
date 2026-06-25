@@ -1,0 +1,18 @@
+Literal endpoint URLs are included in the endpoint allowlist.
+
+-- config.alloy --
+loki.write "logs" {
+  endpoint {
+    url = "https://logs.grafana.net/loki/api/v1/push"
+  }
+}
+
+-- expected_policy.yaml --
+components:
+    mode: allowlist
+    list:
+        - loki.write
+endpoints:
+    mode: allowlist
+    list:
+        - https://logs.grafana.net/loki/api/v1/push

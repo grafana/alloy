@@ -1,0 +1,7 @@
+Empty config produces empty policy.
+
+-- config.alloy --
+// Nothing here.
+
+-- expected_policy.yaml --
+{}
