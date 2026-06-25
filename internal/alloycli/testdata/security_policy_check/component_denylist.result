@@ -1,4 +1,0 @@
-violations: 2
-dynamic: 0
-component_violation: remote.http fetch
-component_violation: local.file secret

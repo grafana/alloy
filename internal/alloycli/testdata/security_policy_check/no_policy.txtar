@@ -1,0 +1,13 @@
+Empty policy file — all absent sections permit everything.
+
+-- config.alloy --
+remote.http "fetch" {
+  url = "http://anywhere.com/api"
+}
+
+-- policy.yaml --
+# Empty policy — no restrictions.
+
+-- result --
+violations: 0
+dynamic: 0

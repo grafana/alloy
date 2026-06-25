@@ -1,0 +1,24 @@
+remote.http is not on the component allowlist.
+
+-- config.alloy --
+declare "user_pipeline" {
+  remote.http "fetch" {
+    url = "http://example.com/api"
+  }
+
+  discovery.relabel "ok" {
+    targets = []
+  }
+}
+
+-- policy.yaml --
+components:
+  mode: allowlist
+  list:
+    - discovery.relabel
+    - loki.write
+
+-- result --
+violations: 1
+dynamic: 0
+component_violation: remote.http fetch

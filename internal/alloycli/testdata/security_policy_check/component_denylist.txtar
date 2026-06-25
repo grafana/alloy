@@ -1,0 +1,29 @@
+Two components blocked by denylist.
+
+-- config.alloy --
+declare "user_pipeline" {
+  remote.http "fetch" {
+    url = "http://internal-api:8080/secret"
+  }
+
+  local.file "secret" {
+    filename = "/etc/secrets/token"
+  }
+
+  discovery.relabel "ok" {
+    targets = []
+  }
+}
+
+-- policy.yaml --
+components:
+  mode: denylist
+  list:
+    - remote.http
+    - local.file
+
+-- result --
+violations: 2
+dynamic: 0
+component_violation: remote.http fetch
+component_violation: local.file secret

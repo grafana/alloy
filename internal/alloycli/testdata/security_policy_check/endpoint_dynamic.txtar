@@ -1,0 +1,21 @@
+URL from another component's export cannot be verified statically.
+
+-- config.alloy --
+declare "user_pipeline" {
+  loki.write "logs" {
+    endpoint {
+      url = local.file.creds.content
+    }
+  }
+}
+
+-- policy.yaml --
+endpoints:
+  mode: allowlist
+  patterns:
+    - https://logs.grafana.net/**
+
+-- result --
+violations: 0
+dynamic: 1
+dynamic_endpoint: loki.write logs

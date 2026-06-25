@@ -1,8 +1,0 @@
-// loki.write to an approved Grafana Cloud endpoint — passes endpoint allowlist.
-declare "user_pipeline" {
-  loki.write "logs" {
-    endpoint {
-      url = "https://logs.grafana.net/loki/api/v1/push"
-    }
-  }
-}

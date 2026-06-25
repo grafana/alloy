@@ -1,3 +1,0 @@
-violations: 0
-dynamic: 1
-dynamic_endpoint: loki.write logs

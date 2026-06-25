@@ -1,0 +1,18 @@
+Benign config — no policy violations expected.
+
+-- config.alloy --
+declare "user_pipeline" {
+  discovery.relabel "noop" {
+    targets = []
+  }
+}
+
+-- policy.yaml --
+components:
+  mode: denylist
+  list:
+    - remote.http
+
+-- result --
+violations: 0
+dynamic: 0

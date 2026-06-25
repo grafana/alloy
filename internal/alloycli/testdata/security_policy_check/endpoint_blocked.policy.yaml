@@ -1,4 +1,0 @@
-endpoints:
-  mode: allowlist
-  patterns:
-    - https://logs.grafana.net/**

@@ -1,4 +1,0 @@
-components:
-  mode: denylist
-  list:
-    - remote.http

@@ -1,0 +1,21 @@
+loki.write to an approved Grafana Cloud endpoint passes the allowlist.
+
+-- config.alloy --
+declare "user_pipeline" {
+  loki.write "logs" {
+    endpoint {
+      url = "https://logs.grafana.net/loki/api/v1/push"
+    }
+  }
+}
+
+-- policy.yaml --
+endpoints:
+  mode: allowlist
+  patterns:
+    - https://logs.grafana.net/**
+
+-- result --
+violations: 0
+dynamic: 0
+endpoint_allowed: loki.write logs https://logs.grafana.net/loki/api/v1/push
