@@ -1,0 +1,6 @@
+// Benign config — no policy violations expected.
+declare "user_pipeline" {
+  discovery.relabel "noop" {
+    targets = []
+  }
+}

@@ -1,0 +1,4 @@
+// Empty policy (no sections) — everything is allowed.
+remote.http "fetch" {
+  url = "http://anywhere.com/api"
+}

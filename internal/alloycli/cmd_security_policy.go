@@ -53,20 +53,119 @@ type alloySecurityPolicyCheck struct {
 	configFormat string
 }
 
-// checkResult holds per-component findings.
-type checkResult struct {
-	name             string // e.g. "remote.http"
-	label            string // e.g. "exfil"
-	componentBlocked bool
-	blockReason      string
-	endpoints        []endpointResult
+// componentFinding holds the result of checking one component block.
+type componentFinding struct {
+	// Name is the component type, e.g. "remote.http".
+	Name string
+	// Label is the block label, e.g. "exfil".
+	Label string
+	// ComponentViolation is set when the component itself is denied by policy.
+	ComponentViolation string
+	// EndpointFindings is the per-endpoint results (only populated when the
+	// component passes the component gate and implements EgressComponent).
+	EndpointFindings []endpointFinding
 }
 
-type endpointResult struct {
-	url       string
-	blocked   bool
-	reason    string
-	dynamic   bool // cannot be verified statically
+type endpointFinding struct {
+	URL       string
+	Violation string // non-empty = denied; empty = allowed
+	Dynamic   bool   // true when URL cannot be resolved statically
+}
+
+// PolicyCheckReport is the output of CheckConfig — pure data, no I/O.
+// It is exported so tests can inspect it directly.
+type PolicyCheckReport struct {
+	Components   []componentFinding
+	ConfigBlocks []string // informational: names of import.http etc. config blocks
+	Violations   int
+	Dynamic      int
+}
+
+// CheckConfig loads and checks configPath against policy. Separated from
+// rendering so tests can call it without touching stdout.
+func CheckConfig(policy *securitypolicy.SecurityPolicy, configPath, configFormat string) (*PolicyCheckReport, error) {
+	sources, err := loadSourceFiles(configPath, configFormat, false, "")
+	if err != nil {
+		return nil, fmt.Errorf("loading config: %w", err)
+	}
+
+	source, err := alloy_runtime.ParseSources(sources)
+	if err != nil {
+		return nil, fmt.Errorf("parsing config: %w", err)
+	}
+
+	return CheckSource(policy, source), nil
+}
+
+// CheckSource checks an already-parsed source against policy. Exported for
+// testing without filesystem access.
+func CheckSource(policy *securitypolicy.SecurityPolicy, source *alloy_runtime.Source) *PolicyCheckReport {
+	report := &PolicyCheckReport{}
+
+	for _, b := range source.Configs() {
+		q := b.GetBlockName()
+		if b.Label != "" {
+			q = fmt.Sprintf("%s %q", q, b.Label)
+		}
+		report.ConfigBlocks = append(report.ConfigBlocks, q)
+	}
+
+	reg := component.NewDefaultRegistry(featuregate.StabilityGenerallyAvailable, true)
+
+	// Collect top-level components + those nested inside declare blocks.
+	blocks := source.Components()
+	for _, decl := range source.Declares() {
+		for _, stmt := range decl.Body {
+			if b, ok := stmt.(*alloyast.BlockStmt); ok {
+				blocks = append(blocks, b)
+			}
+		}
+	}
+
+	for _, block := range blocks {
+		compName := strings.Join(block.Name, ".")
+		f := componentFinding{Name: compName, Label: block.Label}
+
+		if err := policy.CheckComponent(compName); err != nil {
+			f.ComponentViolation = err.Error()
+			report.Violations++
+			report.Components = append(report.Components, f)
+			continue
+		}
+
+		// Endpoint gate: best-effort on literal-value configs.
+		if registration, regErr := reg.Get(compName); regErr == nil {
+			argsPtr := registration.CloneArguments()
+			scope := vm.NewScope(map[string]any{"module_path": ""})
+			if evalErr := vm.New(block.Body).Evaluate(scope, argsPtr); evalErr == nil {
+				if ec, ok := argsPtr.(component.EgressComponent); ok {
+					spec := ec.EgressSpec()
+					for _, u := range spec.Endpoints {
+						ef := endpointFinding{URL: u}
+						if endpointErr := policy.CheckEndpoint(u); endpointErr != nil {
+							ef.Violation = endpointErr.Error()
+							report.Violations++
+						}
+						f.EndpointFindings = append(f.EndpointFindings, ef)
+					}
+					if spec.HasDynamic {
+						f.EndpointFindings = append(f.EndpointFindings, endpointFinding{Dynamic: true})
+						report.Dynamic++
+					}
+				}
+			} else {
+				// Expression-based args: if the type implements EgressComponent, warn.
+				if _, ok := registration.Args.(component.EgressComponent); ok {
+					f.EndpointFindings = append(f.EndpointFindings, endpointFinding{Dynamic: true})
+					report.Dynamic++
+				}
+			}
+		}
+
+		report.Components = append(report.Components, f)
+	}
+
+	return report
 }
 
 func (sc *alloySecurityPolicyCheck) Run(configPath string) error {
@@ -86,141 +185,62 @@ func (sc *alloySecurityPolicyCheck) Run(configPath string) error {
 		return fmt.Errorf("loading policy: %w", err)
 	}
 
-	sources, err := loadSourceFiles(configPath, sc.configFormat, false, "")
+	report, err := CheckConfig(policy, configPath, sc.configFormat)
 	if err != nil {
-		return fmt.Errorf("loading config: %w", err)
+		return err
 	}
 
-	source, err := alloy_runtime.ParseSources(sources)
-	if err != nil {
-		return fmt.Errorf("parsing config: %w", err)
-	}
-
-	reg := component.NewDefaultRegistry(featuregate.StabilityGenerallyAvailable, true)
-
-	// Collect all component blocks: top-level + those nested inside declare blocks.
-	allComponentBlocks := source.Components()
-	for _, decl := range source.Declares() {
-		for _, stmt := range decl.Body {
-			if b, ok := stmt.(*alloyast.BlockStmt); ok {
-				allComponentBlocks = append(allComponentBlocks, b)
-			}
-		}
-	}
-
-	var results []checkResult
-	violations := 0
-	dynamic := 0
-
-	for _, block := range allComponentBlocks {
-		compName := strings.Join(block.Name, ".")
-		label := block.Label
-		r := checkResult{name: compName, label: label}
-
-		// Phase 1: component gate
-		if err := policy.CheckComponent(compName); err != nil {
-			r.componentBlocked = true
-			r.blockReason = err.Error()
-			violations++
-		}
-
-		// Phase 2: endpoint gate (best-effort on literal values)
-		if !r.componentBlocked {
-			if registration, regErr := reg.Get(compName); regErr == nil {
-				argsPtr := registration.CloneArguments()
-				scope := vm.NewScope(map[string]any{"module_path": ""})
-				if evalErr := vm.New(block.Body).Evaluate(scope, argsPtr); evalErr == nil {
-					// Args decoded — check if it declares egress endpoints
-					if ec, ok := argsPtr.(component.EgressComponent); ok {
-						spec := ec.EgressSpec()
-						for _, u := range spec.Endpoints {
-							ep := endpointResult{url: u}
-							if endpointErr := policy.CheckEndpoint(u); endpointErr != nil {
-								ep.blocked = true
-								ep.reason = endpointErr.Error()
-								violations++
-							}
-							r.endpoints = append(r.endpoints, ep)
-						}
-						if spec.HasDynamic {
-							r.endpoints = append(r.endpoints, endpointResult{dynamic: true})
-							dynamic++
-						}
-					}
-				} else {
-					// Could not evaluate (expression-based args) — flag as unverifiable if EgressComponent
-					if _, ok := registration.Args.(component.EgressComponent); ok {
-						r.endpoints = append(r.endpoints, endpointResult{dynamic: true})
-						dynamic++
-					}
-				}
-			}
-		}
-
-		results = append(results, r)
-	}
-
-	// Print component results
 	bold.Println("📋  Component & Endpoint Policy")
 	fmt.Println()
 
-	for _, r := range results {
-		qualifier := r.name
-		if r.label != "" {
-			qualifier = fmt.Sprintf("%s %q", r.name, r.label)
+	for _, f := range report.Components {
+		qualifier := f.Name
+		if f.Label != "" {
+			qualifier = fmt.Sprintf("%s %q", f.Name, f.Label)
 		}
-		if r.componentBlocked {
+		if f.ComponentViolation != "" {
 			red.Printf("   ❌  %s\n", qualifier)
-			dim.Printf("       %s\n", r.blockReason)
+			dim.Printf("       %s\n", f.ComponentViolation)
 		} else {
 			green.Printf("   ✅  %s\n", qualifier)
 		}
-		for _, ep := range r.endpoints {
-			if ep.dynamic {
+		for _, ep := range f.EndpointFindings {
+			switch {
+			case ep.Dynamic:
 				yellow.Printf("       ⚠️   endpoint cannot be verified statically — enforced at runtime\n")
-			} else if ep.blocked {
-				red.Printf("       ❌  endpoint %q\n", ep.url)
-				dim.Printf("           %s\n", ep.reason)
-			} else {
-				green.Printf("       🌐  endpoint %q\n", ep.url)
-				dim.Printf("           allowed by endpoint policy\n")
+			case ep.Violation != "":
+				red.Printf("       ❌  endpoint %q\n", ep.URL)
+				dim.Printf("           %s\n", ep.Violation)
+			default:
+				green.Printf("       🌐  endpoint %q — allowed\n", ep.URL)
 			}
 		}
 	}
 
-	// Config blocks (informational)
-	configBlocks := source.Configs()
-	if len(configBlocks) > 0 {
+	if len(report.ConfigBlocks) > 0 {
 		fmt.Println()
 		bold.Println("📦  Config Blocks")
 		fmt.Println()
-		for _, b := range configBlocks {
-			name := b.GetBlockName()
-			label := b.Label
-			qualifier := name
-			if label != "" {
-				qualifier = fmt.Sprintf("%s %q", name, label)
-			}
-			dim.Printf("   ℹ️   %s  (runtime-only validation)\n", qualifier)
+		for _, name := range report.ConfigBlocks {
+			dim.Printf("   ℹ️   %s  (runtime-only validation)\n", name)
 		}
 	}
 
-	// Summary
 	fmt.Println()
 	fmt.Println(strings.Repeat("─", 60))
 	fmt.Println()
 
 	switch {
-	case violations > 0:
-		red.Printf("❌  %d policy violation(s) — this config would be REJECTED at runtime.\n", violations)
-		if dynamic > 0 {
-			yellow.Printf("⚠️   %d endpoint(s) could not be verified statically.\n", dynamic)
+	case report.Violations > 0:
+		red.Printf("❌  %d policy violation(s) — this config would be REJECTED at runtime.\n", report.Violations)
+		if report.Dynamic > 0 {
+			yellow.Printf("⚠️   %d endpoint(s) could not be verified statically.\n", report.Dynamic)
 		}
 		fmt.Println()
 		os.Exit(1)
-	case dynamic > 0:
+	case report.Dynamic > 0:
 		green.Println("✅  No violations found.")
-		yellow.Printf("⚠️   %d endpoint(s) could not be verified statically — check runtime logs.\n", dynamic)
+		yellow.Printf("⚠️   %d endpoint(s) could not be verified statically — check runtime logs.\n", report.Dynamic)
 	default:
 		green.Println("✅  No violations found. Config is consistent with the security policy.")
 	}

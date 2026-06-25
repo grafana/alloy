@@ -1,0 +1,5 @@
+components:
+  mode: denylist
+  list:
+    - remote.http
+    - local.file

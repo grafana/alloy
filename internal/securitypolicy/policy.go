@@ -143,6 +143,10 @@ func LoadFromFile(path string) (*SecurityPolicy, error) {
 	dec.KnownFields(true)
 	var p SecurityPolicy
 	if err := dec.Decode(&p); err != nil {
+		if err.Error() == "EOF" {
+			// Empty file — no sections configured, treat as nil (allow all).
+			return nil, nil
+		}
 		return nil, fmt.Errorf("parsing security policy file: %w", err)
 	}
 	return &p, nil

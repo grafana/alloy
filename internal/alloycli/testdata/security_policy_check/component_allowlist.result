@@ -1,0 +1,3 @@
+violations: 1
+dynamic: 0
+component_violation: remote.http fetch

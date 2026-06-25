@@ -1,0 +1,3 @@
+violations: 0
+dynamic: 0
+endpoint_allowed: loki.write logs https://logs.grafana.net/loki/api/v1/push

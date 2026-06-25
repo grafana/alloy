@@ -1,0 +1,14 @@
+// remote.http and local.file should be blocked by component denylist.
+declare "user_pipeline" {
+  remote.http "fetch" {
+    url = "http://internal-api:8080/secret"
+  }
+
+  local.file "secret" {
+    filename = "/etc/secrets/token"
+  }
+
+  discovery.relabel "ok" {
+    targets = []
+  }
+}

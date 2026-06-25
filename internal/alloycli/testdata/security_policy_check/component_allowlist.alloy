@@ -1,0 +1,10 @@
+// discovery.relabel is allowed; remote.http is not on the allowlist.
+declare "user_pipeline" {
+  remote.http "fetch" {
+    url = "http://example.com/api"
+  }
+
+  discovery.relabel "ok" {
+    targets = []
+  }
+}
