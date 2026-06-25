@@ -7,6 +7,7 @@ import (
 	"os"
 	"sync"
 
+	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/svc"
 
 	// Embed application manifest for Windows builds
@@ -16,6 +17,7 @@ import (
 const serviceName = "Alloy"
 
 func main() {
+
 	eventWriter, err := newWriter()
 	if err != nil {
 		// Ideally the logger never fails to be created, since if it does, there's
@@ -28,6 +30,13 @@ func main() {
 		AddSource: false,
 		Level:     slog.LevelDebug,
 	}))
+
+	// Allocate a console that our child process will inherit. With it we can send a break event triggering
+	// graceful shutdown of alloy.
+	if r, _, err := windows.NewLazySystemDLL("kernel32.dll").NewProc("AllocConsole").Call(); r == 0 {
+		logger.Error("failed to run service", "err", err)
+		panic(err)
+	}
 
 	managerConfig, err := loadConfig()
 	if err != nil {
@@ -65,8 +74,8 @@ func (as *alloyService) Execute(args []string, r <-chan svc.ChangeRequest, s cha
 		s <- svc.Status{State: svc.Stopped}
 	}()
 
-	var workers sync.WaitGroup
-	defer workers.Wait()
+	var wg sync.WaitGroup
+	defer wg.Wait()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -77,14 +86,12 @@ func (as *alloyService) Execute(args []string, r <-chan svc.ChangeRequest, s cha
 	{
 		sm := newServiceManager(as.logger, as.cfg)
 
-		workers.Add(1)
-		go func() {
+		wg.Go(func() {
 			// In case the service manager exits on its own, we cancel our context to
 			// signal to the parent goroutine to exit.
 			defer cancel()
-			defer workers.Done()
 			sm.Run(ctx)
-		}()
+		})
 	}
 
 	s <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}

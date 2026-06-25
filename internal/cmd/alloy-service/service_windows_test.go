@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/phayes/freeport"
@@ -19,8 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/syncbuffer"
 )
-
-const goosWindows = "windows"
 
 func Test_serviceManager(t *testing.T) {
 	l := util.TestLogger(t)
@@ -73,12 +70,7 @@ func Test_serviceManager(t *testing.T) {
 
 		util.Eventually(t, func(t require.TestingT) {
 			_, err := makeServiceRequest(listenHost, "/echo/response", []byte("Hello, world!"))
-
-			if runtime.GOOS == goosWindows {
-				require.ErrorContains(t, err, "No connection could be made")
-			} else {
-				require.ErrorContains(t, err, "connection refused")
-			}
+			require.ErrorContains(t, err, "No connection could be made")
 		})
 	})
 
@@ -144,10 +136,7 @@ func buildExampleService(t *testing.T, l *slog.Logger) string {
 
 	stdlog := slog.NewLogLogger(l.Handler(), slog.LevelDebug)
 
-	servicePath := filepath.Join(t.TempDir(), "example-service")
-	if runtime.GOOS == goosWindows {
-		servicePath = servicePath + ".exe"
-	}
+	servicePath := filepath.Join(t.TempDir(), "example-service.exe")
 
 	cmd := exec.Command(
 		"go", "build",

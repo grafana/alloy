@@ -6,6 +6,9 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"syscall"
+
+	"golang.org/x/sys/windows"
 )
 
 // serviceManager manages an individual binary.
@@ -87,5 +90,11 @@ func (svc *serviceManager) buildCommand(ctx context.Context) *exec.Cmd {
 	cmd.Stderr = svc.cfg.Stderr
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, svc.cfg.Environment...)
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP}
+	cmd.Cancel = func() error {
+		return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(cmd.Process.Pid))
+	}
+
 	return cmd
 }
