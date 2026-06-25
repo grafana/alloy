@@ -58,6 +58,9 @@ type Config struct {
 	EnableShards             bool               `yaml:"enable_shards,omitempty"`
 	EnableFCV                bool               `yaml:"enable_fcv,omitempty"`
 	EnablePBMMetrics         bool               `yaml:"enable_pbm_metrics,omitempty"`
+	CollStatsLimit           int                `yaml:"collstats_limit,omitempty"`
+	GlobalConnPool           bool               `yaml:"global_conn_pool" default:"true"`
+	ProfileTimeTS            int                `yaml:"profile_time_ts,omitempty" default:"30"`
 }
 
 // UnmarshalYAML implements yaml.Unmarshaler for Config
@@ -115,6 +118,9 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		EnableShards:             c.EnableShards,
 		EnableFCV:                c.EnableFCV,
 		EnablePBMMetrics:         c.EnablePBMMetrics,
+		CollStatsLimit:           c.CollStatsLimit,
+		GlobalConnPool:           c.GlobalConnPool,
+		ProfileTimeTS:            c.ProfileTimeTS,
 	})
 
 	return integrations.NewHandlerIntegration(c.Name(), exp.Handler()), nil
