@@ -390,7 +390,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 	var wg sync.WaitGroup
 	defer wg.Wait()
 
-	ctx, cancel := interruptContext(ctx)
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	if err := fr.checkExperimentalFlags(); err != nil {
@@ -745,25 +745,6 @@ func addDeprecatedFlags(fset *pflag.FlagSet) {
 	}
 	deprecateFlagByName(fset, "cluster.use-discovery-v1")
 	deprecateFlagByName(fset, "feature.prometheus.metric-validation-scheme")
-}
-
-func interruptContext(parent context.Context) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(parent)
-
-	go func() {
-		defer cancel()
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-		select {
-		case <-sig:
-		case <-ctx.Done():
-		}
-		signal.Stop(sig)
-
-		fmt.Fprintln(os.Stderr, "interrupt received")
-	}()
-
-	return ctx, cancel
 }
 
 func splitPeers(s, sep string) []string {
