@@ -33,6 +33,7 @@ func main() {
 
 	// Allocate a console that our child process will inherit. With it we can send a break event triggering
 	// graceful shutdown of alloy.
+	// See https://github.com/golang/go/issues/72884
 	if r, _, err := windows.NewLazySystemDLL("kernel32.dll").NewProc("AllocConsole").Call(); r == 0 {
 		logger.Error("failed to run service", "err", err)
 		panic(err)

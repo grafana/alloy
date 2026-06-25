@@ -53,7 +53,7 @@ func run() error {
 		_, _ = w.Write([]byte(strings.Join(os.Environ(), "\n")))
 	})
 
-	ctx, cancel := signal.NotifyContext(context.Background, os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	var (

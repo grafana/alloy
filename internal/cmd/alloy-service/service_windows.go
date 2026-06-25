@@ -43,7 +43,7 @@ type serviceManagerConfig struct {
 // [service.Run] to start the serviceManager.
 //
 // Logs from the serviceManager will be sent to w. Logs from the managed
-// service will be written to cfg.Stdout and cfg.Stderr as appropriate.
+// service will be written to cfg.stdout and cfg.stderr as appropriate.
 func newServiceManager(l *slog.Logger, cfg serviceManagerConfig) *serviceManager {
 	if l == nil {
 		l = slog.New(slog.DiscardHandler)
@@ -91,9 +91,12 @@ func (svc *serviceManager) buildCommand(ctx context.Context) *exec.Cmd {
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, svc.cfg.environment...)
 
+	// Put the child in its own process group so we can target it specifically
+	// with a console control event.
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP}
 	cmd.Cancel = func() error {
 		return windows.GenerateConsoleCtrlEvent(windows.CTRL_BREAK_EVENT, uint32(cmd.Process.Pid))
+
 	}
 
 	return cmd
