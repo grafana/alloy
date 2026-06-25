@@ -52,7 +52,7 @@
       // Update only direct Go module dependencies automatically. Omit indirect
       // dependencies.
       "matchManagers": ["gomod"],
-      "matchDepTypes": ["require"],
+      "matchDepTypes": ["require", "tool"],
       "groupName": "go dependencies",
       "postUpdateOptions": ["gomodTidy"],
       "enabled": true
