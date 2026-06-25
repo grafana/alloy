@@ -1,13 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"sync"
+	"syscall"
 )
 
 func main() {
@@ -17,12 +22,9 @@ func main() {
 }
 
 func run() error {
-	var (
-		listenAddr = "0.0.0.0:8080"
-	)
-
+	var listenAddr string
 	fs := flag.NewFlagSet(os.Args[0], flag.ExitOnError)
-	fs.StringVar(&listenAddr, "listen-addr", listenAddr, "Address to listen for traffic on.")
+	fs.StringVar(&listenAddr, "listen-addr", "0.0.0.0:8080", "Address to listen for traffic on.")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		return err
@@ -51,7 +53,21 @@ func run() error {
 		_, _ = w.Write([]byte(strings.Join(os.Environ(), "\n")))
 	})
 
-	srv := &http.Server{Handler: mux}
-	_ = srv.Serve(lis)
+	ctx, cancel := signal.NotifyContext(context.Background, os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	var (
+		wg  sync.WaitGroup
+		srv = &http.Server{Handler: mux}
+	)
+	wg.Go(func() {
+		_ = srv.Serve(lis)
+	})
+
+	<-ctx.Done()
+	_ = srv.Shutdown(context.Background())
+	wg.Wait()
+
+	fmt.Fprintln(os.Stdout, "graceful shutdown")
 	return nil
 }

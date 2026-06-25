@@ -129,6 +129,34 @@ func Test_serviceManager(t *testing.T) {
 			require.Equal(t, []byte("Hello, world!"), buf.Bytes())
 		})
 	})
+
+	t.Run("gracefully shuts down service binary", func(t *testing.T) {
+		listenHost := getListenHost(t)
+		var buf syncbuffer.Buffer
+
+		mgr := newServiceManager(l, serviceManagerConfig{
+			path:   serviceBinary,
+			args:   []string{"-listen-addr", listenHost},
+			stdout: &buf,
+		})
+		ctx, cancel := context.WithCancel(componenttest.TestContext(t))
+		defer cancel()
+		go mgr.run(ctx)
+
+		// Wait until it's actually serving.
+		util.Eventually(t, func(t require.TestingT) {
+			_, err := makeServiceRequest(listenHost, "/echo/response", []byte("hi"))
+			require.NoError(t, err)
+		})
+
+		// Stop it
+		cancel()
+
+		// The child must have run its graceful handler before exiting.
+		util.Eventually(t, func(t require.TestingT) {
+			require.Contains(t, buf.String(), "graceful shutdown")
+		})
+	})
 }
 
 func buildExampleService(t *testing.T, l *slog.Logger) string {
