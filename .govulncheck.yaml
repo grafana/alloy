@@ -25,3 +25,15 @@ ignore:
       — Alloy never processes plugin installs. Same upstream-fix story
       as GO-2026-4887 (only fixed in github.com/moby/moby/v2).
     expires: 2027-01-01
+
+  - id: GO-2026-5662
+    reason: |
+      Stored XSS via metric names and label values in the Prometheus web UI
+      tooltips and metrics explorer (CVE-2026-40179). Alloy embeds
+      Prometheus as a library for scrape/TSDB/remote-write and never serves
+      that web UI, so the vulnerable rendering path is unreachable.
+      govulncheck flags it only because the advisory has no symbol-level
+      data and matches generic tsdb/remote-write symbols Alloy does call. No
+      fix on the v3.12 GA branch (v0.312.0); revisit when a v3.12.x backport
+      lands or we move to v3.13.
+    expires: 2027-01-01
