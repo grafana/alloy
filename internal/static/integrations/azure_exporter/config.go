@@ -17,7 +17,6 @@ import (
 	"github.com/webdevops/go-common/azuresdk/cloudconfig"
 	"gopkg.in/yaml.v3"
 
-	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/static/integrations"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/metricsutils"
@@ -112,7 +111,7 @@ func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error
 
 	return Exporter{
 		cfg:               *c,
-		logger:            slogadapter.NewZap(l).Sugar(),
+		logger:            l,
 		ConcurrencyConfig: concurrencyConfig,
 	}, nil
 }

@@ -27,7 +27,11 @@ RUN apk add --no-cache helm
 # https://nsis.sourceforge.io/Conda
 # TODO: Why do we use i386? Is it correct?
 FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11 as nsis
+# Guard against supply chain attacks.
+# sha256sum -c fails the build on mismatch, before the archive is unpacked.
+# NOTE: This same hash is also pinned in .github/workflows/integration-test-windows-service.yml; update both.
 RUN wget -nv https://nsis.sourceforge.io/mediawiki/images/4/4a/AccessControl.zip \
+ && echo "9aa60f9c5c023fda2808af216514d8913d2673bc522d944ee771da032a1bdc10  AccessControl.zip" | sha256sum -c - \
  && unzip AccessControl.zip -d /usr/share/nsis/ \
  && mkdir -p /usr/share/nsis/Plugins/x86-unicode \
  && cp /usr/share/nsis/Plugins/i386-unicode/AccessControl.dll /usr/share/nsis/Plugins/x86-unicode/

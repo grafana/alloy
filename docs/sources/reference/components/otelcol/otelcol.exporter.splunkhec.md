@@ -51,7 +51,6 @@ You can use the following blocks with `otelcol.exporter.splunkhec`:
 | Block                                                      | Description                                                                    | Required |
 |------------------------------------------------------------|--------------------------------------------------------------------------------|----------|
 | [`splunk`][splunk]                                         | Configures the Splunk HEC exporter.                                            | yes      |
-| `splunk` > [`batcher`][batcher]                            | (Deprecated) Configures batching requests based on a timeout and a minimum number of items. | no       |
 | `splunk` > [`heartbeat`][heartbeat]                        | Configures the exporters heartbeat settings.                                   | no       |
 | `splunk` > [`otel_to_hec_fields`][otel_to_hec_fields]      | Configures mapping of OpenTelemetry to HEC Fields.                             | no       |
 | `splunk` > [`telemetry`][telemetry]                        | Configures the exporters telemetry.                                            | no       |
@@ -66,7 +65,6 @@ You can use the following blocks with `otelcol.exporter.splunkhec`:
 [otel_to_hec_fields]: #otel_to_hec_fields
 [telemetry]: #telemetry
 [heartbeat]: #heartbeat
-[batcher]: #batcher
 [client]: #client
 [otel_attrs_to_hec_metadata]: #otel_attrs_to_hec_metadata
 [retry_on_failure]: #retry_on_failure
@@ -103,20 +101,6 @@ The following arguments are supported:
 | `splunk_app_name`            | `string` | Used to track telemetry for Splunk Apps by name.                                                                       | `"Alloy"`                      | no       |
 | `splunk_app_version`         | `string` | Used to track telemetry by App version.                                                                                | `""`                           | no       |
 | `use_multi_metrics_format`   | `bool`   | Use multi-metrics format to save space during ingestion.                                                               | `false`                        | no       |
-
-#### `batcher`
-
-{{< admonition type="warning" >}}
-The `batcher` block is deprecated and will be removed in a future release. Use the `sending_queue` > `batch` block instead.
-{{< /admonition >}}
-
-| Name            | Type       | Description                                                                                                                                                                                               | Default   | Required |
-|-----------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------|----------|
-| `enabled`       | `bool`     | Whether to not enqueue batches before sending to the consumerSender.                                                                                                                                      | `false`   | no       |
-| `flush_timeout` | `duration` | The time after which a batch will be sent regardless of its size.                                                                                                                                         | `"200ms"` | no       |
-| `max_size`      | `uint`     | The maximum size of a batch. If the batch exceeds this value, it's broken up into smaller batches. Must be greater than or equal to `min_size`. Set this value to zero to disable the maximum size limit. | `0`       | no       |
-| `min_size`      | `uint`     | The minimum size of a batch.                                                                                                                                                                              | `8192`    | no       |
-| `sizer`         | `string`   | The unit of measure for the batch size. Must be one of `items`, `bytes`, or `requests`.                                                                                                                   | `"items"` | no       |
 
 #### `heartbeat`
 
@@ -385,10 +369,6 @@ otelcol.exporter.splunkhec "default" {
 
         heartbeat {
             interval = "5s"
-        }
-
-        batcher {
-            flush_timeout = "200ms"
         }
 
         telemetry {

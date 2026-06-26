@@ -181,7 +181,7 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n/\nsum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])) * 100 \n",
+               "expr": "(\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n  or ignoring(le)\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", status_code=~\"2..\", host=~\"$url\"}[$__rate_interval]))\n)\n/\n(\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n  or ignoring(le)\n  sum by(${groupby}) (rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval]))\n) * 100\n",
                "instant": false,
                "legendFormat": "__auto",
                "range": true
@@ -207,21 +207,21 @@
          "targets": [
             {
                "datasource": "${datasource}",
-               "expr": "histogram_quantile(\n  0.99,\n  sum by (le, ${groupby}) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "expr": "histogram_quantile(\n  0.99,\n  sum by (${groupby}) (\n    rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\nor ignoring(le)\nhistogram_quantile(\n  0.99,\n  sum by (le, ${groupby}) (\n    rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
                "instant": false,
                "legendFormat": "{{${groupby}}} p99",
                "range": true
             },
             {
                "datasource": "${datasource}",
-               "expr": "histogram_quantile(\n  0.95,\n  sum by (le, ${groupby}) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "expr": "histogram_quantile(\n  0.95,\n  sum by (${groupby}) (\n    rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\nor ignoring(le)\nhistogram_quantile(\n  0.95,\n  sum by (le, ${groupby}) (\n    rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
                "instant": false,
                "legendFormat": "{{${groupby}}} p95",
                "range": true
             },
             {
                "datasource": "${datasource}",
-               "expr": "histogram_quantile(\n  0.50,\n  sum by (le, ${groupby}) (\n\trate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
+               "expr": "histogram_quantile(\n  0.50,\n  sum by (${groupby}) (\n    rate(loki_write_request_duration_seconds{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\nor ignoring(le)\nhistogram_quantile(\n  0.50,\n  sum by (le, ${groupby}) (\n    rate(loki_write_request_duration_seconds_bucket{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\", instance=~\"$instance\", host=~\"$url\"}[$__rate_interval])\n  )\n)\n",
                "instant": false,
                "legendFormat": "{{${groupby}}} p50",
                "range": true
