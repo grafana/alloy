@@ -117,24 +117,6 @@ dist/alloy-boringcrypto-linux-arm64: generate-ui
 	$(PACKAGING_VARS) ALLOY_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy
 
 #
-# alloy-service release binaries.
-#
-# alloy-service release binaries are intermediate build assets used for
-# producing Windows system packages. As such, they are built in a dist.temp
-# directory instead of the normal dist directory.
-#
-# Only targets needed for system packages are used here.
-#
-
-dist-alloy-service-binaries: dist.temp/alloy-service-windows-amd64.exe
-
-dist.temp/alloy-service-windows-amd64.exe: GO_TAGS += embedalloyui
-dist.temp/alloy-service-windows-amd64.exe: GOOS    := windows
-dist.temp/alloy-service-windows-amd64.exe: GOARCH  := amd64
-dist.temp/alloy-service-windows-amd64.exe: generate-ui generate-winmanifest
-	$(PACKAGING_VARS) SERVICE_BINARY=$@ "$(MAKE)" -f $(PARENT_MAKEFILE) alloy-service
-
-#
 # DEB and RPM alloy packages.
 #
 
@@ -215,7 +197,7 @@ endif
 #
 
 .PHONY: dist-alloy-installer-windows
-dist-alloy-installer-windows: dist/alloy-windows-amd64.exe dist.temp/alloy-service-windows-amd64.exe
+dist-alloy-installer-windows: dist/alloy-windows-amd64.exe
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else

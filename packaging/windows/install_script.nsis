@@ -1,6 +1,6 @@
 # This script does the following:
 #
-# 1. Installs alloy-windows-amd64.exe, alloy-service-amd64.exe, and logo.ico.
+# 1. Installs alloy-windows-amd64.exe and logo.ico.
 # 2. Creates a Start Menu shortcut.
 # 3. Builds an uninstaller.
 # 4. Adds uninstall information to the registry for Add/Remove Programs.
@@ -93,8 +93,12 @@ Section "install"
     SetOutPath "$INSTDIR"
 
   File "..\..\dist\alloy-windows-amd64.exe"
-  File "..\..\dist.temp\alloy-service-windows-amd64.exe"
   File "logo.ico"
+
+  # Remove the legacy service wrapper binary left by older installations. Alloy
+  # now runs as the Windows service directly, so the wrapper is no longer used.
+  # The preemptive "net stop" above released any lock on it.
+  Delete "$INSTDIR\alloy-service-windows-amd64.exe"
 
   # Create an uninstaller at the same pathFunctionEnd
   WriteUninstaller "$INSTDIR\uninstall.exe"
@@ -128,7 +132,14 @@ Section "install"
   ${EndIf}
 
   # Create the service.
-  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto $AuthFlag binpath= "\"$INSTDIR\alloy-service-windows-amd64.exe\""'
+  nsExec::ExecToLog 'sc create "Alloy" start= delayed-auto $AuthFlag binpath= "\"$INSTDIR\alloy-windows-amd64.exe\""'
+  Pop $0
+
+  # On upgrades the service already exists, so the "sc create" above is a no-op
+  # and leaves the old binpath untouched. Repoint it at the current Alloy binary
+  # so installs that previously used the service wrapper migrate to running Alloy
+  # directly.
+  nsExec::ExecToLog 'sc config "Alloy" binpath= "\"$INSTDIR\alloy-windows-amd64.exe\""'
   Pop $0
 
   # Start the service.

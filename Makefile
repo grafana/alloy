@@ -26,7 +26,6 @@
 ##
 ##   binaries       Compiles all binaries.
 ##   alloy          Compiles Alloy to $(ALLOY_BINARY)
-##   alloy-service  Compiles internal/cmd/alloy-service to $(SERVICE_BINARY)
 ##
 ## Targets for building Docker images:
 ##
@@ -72,7 +71,6 @@
 ##   ALLOY_IMAGE_WINDOWS  Image name:tag built by `make alloy-image-windows`
 ##   BUILD_IMAGE          Image name:tag used by USE_CONTAINER=1
 ##   ALLOY_BINARY         Output path of `make alloy` (default build/alloy)
-##   SERVICE_BINARY       Output path of `make alloy-service` (default build/alloy-service)
 ##   GOOS                 Override OS to build binaries for
 ##   GOARCH               Override target architecture to build binaries for
 ##   GOARM                Override ARM version (6 or 7) when GOARCH=arm
@@ -90,7 +88,6 @@ include build-tools/make/*.mk
 ALLOY_IMAGE          		?= grafana/alloy:latest
 ALLOY_IMAGE_WINDOWS  		?= grafana/alloy:windowsservercore-ltsc2022
 ALLOY_BINARY         		?= build/alloy
-SERVICE_BINARY       		?= build/alloy-service
 ALLOYLINT_BINARY     		?= build/alloylint
 BUILDER_USER         		?= $(shell whoami)
 BUILDER_HOST         		?= $(shell hostname)
@@ -262,14 +259,6 @@ ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
 	cd ./collector && $(GO_ENV) go build $(GO_FLAGS) -o ../$(ALLOY_BINARY) .
-endif
-
-# alloy-service is not included in binaries since it's Windows-only.
-alloy-service:
-ifeq ($(USE_CONTAINER),1)
-	$(RERUN_IN_CONTAINER)
-else
-	$(GO_ENV) go build $(GO_FLAGS) -o $(SERVICE_BINARY) ./internal/cmd/alloy-service
 endif
 
 alloylint:
