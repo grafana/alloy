@@ -61,3 +61,14 @@ ignore:
       (only moby/moby/v2 v2.0.0-beta.14). Revisit once google/cadvisor drops
       the legacy docker/docker dependency.
     expires: 2027-01-01
+
+  - id: GO-2026-5662
+    reason: |
+      Stored XSS via metric names and label values in the Prometheus web UI
+      tooltips and metrics explorer (CVE-2026-40179). Alloy embeds Prometheus
+      as a library for scrape/TSDB/remote-write and never serves that web UI,
+      so the vulnerable rendering path is unreachable. govulncheck flags it
+      only because the advisory has no symbol-level data and matches generic
+      tsdb/remote-write symbols Alloy does call. No fix on the prometheus
+      v3.12 line; revisit when a v3.12.x backport lands or we move to v3.13.
+    expires: 2027-01-01
