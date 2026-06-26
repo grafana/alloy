@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/percona/mongodb_exporter/exporter"
@@ -58,6 +59,8 @@ type Config struct {
 	EnableShards             bool               `yaml:"enable_shards,omitempty"`
 	EnableFCV                bool               `yaml:"enable_fcv,omitempty"`
 	EnablePBMMetrics         bool               `yaml:"enable_pbm_metrics,omitempty"`
+	CollStatsNamespaces      string             `name:"collstats_colls,omitempty"`
+	IndexStatsCollections    string             `name:"indexstats_colls,omitempty"`
 	CollStatsLimit           int                `yaml:"collstats_limit,omitempty"`
 	GlobalConnPool           bool               `yaml:"global_conn_pool" default:"true"`
 	ProfileTimeTS            int                `yaml:"profile_time_ts,omitempty" default:"30"`
@@ -96,6 +99,15 @@ func init() {
 
 // New creates a new mongodb_exporter integration.
 func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
+	collStatsNamespaces := []string{}
+	if c.CollStatsNamespaces != "" {
+		collStatsNamespaces = strings.Split(c.CollStatsNamespaces, ",")
+	}
+	indexStatsCollections := []string{}
+	if c.IndexStatsCollections != "" {
+		indexStatsCollections = strings.Split(c.IndexStatsCollections, ",")
+	}
+
 	exp := exporter.New(&exporter.Opts{
 		URI:                      string(c.URI),
 		Logger:                   logger,
@@ -118,6 +130,8 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		EnableShards:             c.EnableShards,
 		EnableFCV:                c.EnableFCV,
 		EnablePBMMetrics:         c.EnablePBMMetrics,
+		CollStatsNamespaces:      collStatsNamespaces,
+		IndexStatsCollections:    indexStatsCollections,
 		CollStatsLimit:           c.CollStatsLimit,
 		GlobalConnPool:           c.GlobalConnPool,
 		ProfileTimeTS:            c.ProfileTimeTS,
