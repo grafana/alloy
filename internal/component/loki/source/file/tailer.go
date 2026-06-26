@@ -216,7 +216,7 @@ func (t *tailer) tail(ctx context.Context, pos int64) {
 			default:
 			}
 
-			line, err := t.file.Next()
+			line, err := t.file.Read()
 			if !errors.Is(err, io.EOF) {
 				return line, err
 			}

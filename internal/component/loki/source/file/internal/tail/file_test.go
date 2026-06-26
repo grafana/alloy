@@ -543,7 +543,7 @@ func startFromEndTest(t *testing.T, name string, encoder, appendEncoder *encodin
 	verify := func(t *testing.T, f *File, line *Line) {
 		t.Helper()
 		for {
-			got, err := f.Next()
+			got, err := f.Read()
 			if errors.Is(err, io.EOF) {
 				require.NoError(t, f.Wait(t.Context()))
 				continue
@@ -665,7 +665,7 @@ func createCompressedFile(t *testing.T, name, compression string, reader io.Read
 
 func verifyResult(t *testing.T, f *File, expectedLine *Line, expectedErr error) {
 	t.Helper()
-	line, err := f.Next()
+	line, err := f.Read()
 	require.ErrorIs(t, err, expectedErr)
 	if expectedLine == nil {
 		require.Nil(t, line)
@@ -694,7 +694,7 @@ func BenchmarkFile(b *testing.B) {
 		require.NoError(b, err)
 		for {
 			var err error
-			benchLine, err = file.Next()
+			benchLine, err = file.Read()
 			if errors.Is(err, io.EOF) {
 				break
 			}

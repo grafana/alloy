@@ -75,12 +75,12 @@ type File struct {
 	bufferedLines []Line
 }
 
-// Next returns the next available line from the file.
+// Read returns the next available line from the file.
 // When no complete line is available it returns io.EOF. On io.EOF the caller
-// should call Wait to block until more data is available and then call Next
+// should call Wait to block until more data is available and then call Read
 // again, or call Flush to read any remaining partial line. Any other error
 // indicates an unrecoverable read or decode failure.
-func (f *File) Next() (*Line, error) {
+func (f *File) Read() (*Line, error) {
 	// If we have buffered lines from a previous file rotation, return them first.
 	// These are lines that were read from the old file handle before it was closed,
 	// ensuring we don't lose any data during file rotation.
