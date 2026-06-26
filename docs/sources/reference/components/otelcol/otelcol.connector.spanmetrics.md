@@ -179,6 +179,8 @@ The default dimensions are:
 
 The default dimensions are always added if not listed in `exclude_dimensions`. If no additional dimensions are specified, only the default ones will be added.
 
+Alloy always excludes the `collector.instance.id` dimension. The connector adds it by default, but Alloy doesn't set a stable `collector.instance.id`, so it would otherwise be a random value that changes on every restart.
+
 The following attributes are supported:
 
 | Name      | Type     | Description                                      | Default | Required |
