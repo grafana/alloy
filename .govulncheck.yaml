@@ -9,13 +9,13 @@ ignore:
   - id: GO-2026-4887
     reason: |
       Moby AuthZ plugin bypass (CVE-2026-34040). Reachable from Alloy only
-      because OTel components transitively import github.com/docker/docker.
-      The vulnerability is server-side (Docker daemon processing API
-      requests through an AuthZ plugin) — Alloy never runs as a Docker
-      daemon, only as a client. The fix exists in moby v2.0.0-beta.8 but
-      the legacy github.com/docker/docker module path will never get a
-      patched release; revisit once the OTel dep tree migrates to
-      github.com/moby/moby/v2.
+      because the cadvisor static integration (via github.com/google/cadvisor)
+      imports the legacy github.com/docker/docker client. The vulnerability is
+      server-side (Docker daemon processing API requests through an AuthZ
+      plugin) — Alloy never runs as a Docker daemon, only as a client. The fix
+      exists in moby v2.0.0-beta.8 but the legacy github.com/docker/docker
+      module path will never get a patched release; revisit once
+      google/cadvisor drops the legacy github.com/docker/docker dependency.
     expires: 2027-01-01
 
   - id: GO-2026-4883
@@ -24,4 +24,40 @@ ignore:
       Vulnerable code path is `docker plugin install` on a Docker daemon
       — Alloy never processes plugin installs. Same upstream-fix story
       as GO-2026-4887 (only fixed in github.com/moby/moby/v2).
+    expires: 2027-01-01
+
+  - id: GO-2026-5746
+    reason: |
+      Docker PUT /containers/{id}/archive runs a container binary on the
+      host (CVE-2026-41567, RCE). Daemon-side handler. The vulnerable
+      github.com/docker/docker enters the build only through the cadvisor
+      static integration (github.com/google/cadvisor still uses the legacy
+      docker/docker client); Alloy uses it for outbound Docker API queries
+      and never runs dockerd or serves that handler, so it's unreachable.
+      Prometheus's own Docker/Swarm SD already moved to github.com/moby/moby
+      and isn't flagged here. No fix in github.com/docker/docker (only
+      moby/moby/v2 v2.0.0-beta.14). Same story as GO-2026-4887/4883; revisit
+      once google/cadvisor drops the legacy docker/docker dependency.
+    expires: 2027-01-01
+
+  - id: GO-2026-5668
+    reason: |
+      Race in docker cp lets a container create arbitrary empty host files
+      via symlink swap (CVE-2026-41568). Daemon-side docker cp path. The
+      only reachable importer of github.com/docker/docker is the cadvisor
+      integration (via github.com/google/cadvisor); Alloy makes outbound
+      Docker API calls only, never runs dockerd or docker cp. No fix in
+      github.com/docker/docker (only moby/moby/v2 v2.0.0-beta.14). Revisit
+      once google/cadvisor drops the legacy docker/docker dependency.
+    expires: 2027-01-01
+
+  - id: GO-2026-5617
+    reason: |
+      Race in docker cp redirects a bind mount to an arbitrary host path
+      (CVE-2026-42306). Daemon-side docker cp path, unreachable: Alloy pulls
+      github.com/docker/docker only through the cadvisor integration (via
+      github.com/google/cadvisor) and uses it for outbound Docker API
+      queries, never dockerd or docker cp. No fix in github.com/docker/docker
+      (only moby/moby/v2 v2.0.0-beta.14). Revisit once google/cadvisor drops
+      the legacy docker/docker dependency.
     expires: 2027-01-01
