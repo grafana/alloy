@@ -720,24 +720,28 @@ Many Payment Card Industry environments require these numbers to be redacted.
 
 The following arguments are supported:
 
-| Name          | Type     | Description                                                    | Default          | Required |
-| ------------- | -------- | -------------------------------------------------------------- | ---------------- | -------- |
-| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.  | `""`             | no       |
-| `min_length`  | `int`    | Minimum length of digits to consider                           | `13`             | no       |
-| `replacement` | `string` | String to substitute the matched patterns with.                | `"**REDACTED**"` | no       |
-| `source`      | `string` | Source of the data to parse.                                   | `""`             | no       |
+| Name          | Type     | Description                                                                  | Default          | Required |
+| ------------- | -------- | ---------------------------------------------------------------------------- | ---------------- | -------- |
+| `delimiters`  | `string` | A list containing delimiters to accept as part of the number.                | `""`             | no       |
+| `min_length`  | `int`    | Minimum length of digits to consider                                         | `13`             | no       |
+| `replacement` | `string` | String to substitute the matched patterns with.                              | `"**REDACTED**"` | no       |
+| `skip_regex`  | `string` | A regular expression identifying substrings to exclude from Luhn evaluation. | `""`             | no       |
+| `source`      | `string` | Source of the data to parse.                                                 | `""`             | no       |
 
 The `source` field defines the source of data to search.
 When `source` is missing or empty, the stage parses the log line itself, but it can also be used to parse a previously extracted value.
 
-If you want the Luhn algorithm to identify numbers with delimiters, for example `4032-0325-1354-8443`, you can configure the `delimiters` field with the expected delimiters.
+If you want the Luhn algorithm to identify numbers with delimiters, for example `4242-4242-4242-4242`, you can configure the `delimiters` field with the expected delimiters.
+
+When `skip_regex` is set to a non-empty regular expression, any substring matching it is excluded from Luhn evaluation.
+This is useful when log lines contain values, such as UUIDs, whose digit groups happen to pass the Luhn check, which would otherwise cause them to be incorrectly redacted.
 
 #### Example
 
 The following example log line contains an approved credit card number.
 
 ```alloy
-time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032032513548443" extra="user=example_name"
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242424242424242" extra="user=example_name"
 
 stage.luhn {
     replacement = "**DELETED**"
@@ -755,7 +759,7 @@ time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit 
 The following example log line contains an approved credit card number, represented with dash characters between each group of four digits.
 
 ```alloy
-time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4032-0325-1354-8443" extra="user=example_name"
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242-4242-4242-4242" extra="user=example_name"
 
 stage.luhn {
     replacement = "**DELETED**"
@@ -767,6 +771,27 @@ The stage parses the log line, redacts the credit card number, and produces the 
 
 ```text
 time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" extra="user=example_name"
+```
+
+#### Example with `skip_regex`
+
+The following example log line contains both a credit card number and a session UUID whose last segment (`424242424242`) is itself a 12-digit Luhn-valid number.
+Without `skip_regex`, the stage would incorrectly redact part of the UUID.
+
+```alloy
+time=2012-11-01T22:08:41+00:00 app=loki level=WARN duration=125 message="credit card approved 4242424242424242" session="a3f1b2e4-c5d6-7e8f-4242-424242424242"
+
+stage.luhn {
+    replacement = "**DELETED**"
+    min_length  = 12
+    skip_regex  = `[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`
+}
+```
+
+The stage redacts the credit card number but leaves the UUID intact:
+
+```text
+time=2012-11-01T22:08:41+00:00 app=loki level=INFO duration=125 message="credit card approved **DELETED**" session="a3f1b2e4-c5d6-7e8f-4242-424242424242"
 ```
 
 ### `stage.match`

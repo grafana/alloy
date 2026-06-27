@@ -1,6 +1,8 @@
 package stages
 
 import (
+	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -15,10 +17,12 @@ type LuhnFilterConfig struct {
 	Source      *string `alloy:"source,attr,optional"`
 	MinLength   int     `alloy:"min_length,attr,optional"`
 	Delimiters  string  `alloy:"delimiters,attr,optional"`
+	SkipRegex   string  `alloy:"skip_regex,attr,optional"`
 }
 
-// validateLuhnFilterConfig validates the LuhnFilterConfig.
-func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
+// validateLuhnFilterConfig validates the LuhnFilterConfig and returns the compiled
+// skip_regex expression, if one was configured.
+func validateLuhnFilterConfig(c *LuhnFilterConfig) (*regexp.Regexp, error) {
 	if c.Replacement == "" {
 		c.Replacement = "**REDACTED**"
 	}
@@ -26,24 +30,34 @@ func validateLuhnFilterConfig(c *LuhnFilterConfig) error {
 		c.MinLength = 13
 	}
 	if c.Source != nil && *c.Source == "" {
-		return ErrEmptyRegexStageSource
+		return nil, ErrEmptyRegexStageSource
 	}
-	return nil
+	if c.SkipRegex == "" {
+		return nil, nil
+	}
+	skipRegex, err := regexp.Compile(c.SkipRegex)
+	if err != nil {
+		return nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
+	}
+	return skipRegex, nil
 }
 
 // newLuhnFilterStage creates a new LuhnFilterStage.
 func newLuhnFilterStage(config LuhnFilterConfig) (Stage, error) {
-	if err := validateLuhnFilterConfig(&config); err != nil {
+	skipRegex, err := validateLuhnFilterConfig(&config)
+	if err != nil {
 		return nil, err
 	}
 	return toStage(&luhnFilterStage{
-		config: &config,
+		config:    &config,
+		skipRegex: skipRegex,
 	}), nil
 }
 
 // luhnFilterStage applies Luhn algorithm filtering to log entries.
 type luhnFilterStage struct {
-	config *LuhnFilterConfig
+	config    *LuhnFilterConfig
+	skipRegex *regexp.Regexp
 }
 
 // Process implements Stage.
@@ -65,18 +79,43 @@ func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]an
 		return
 	}
 
-	// Replace Luhn-valid numbers in the input.
+	var skipRanges [][2]int
+	if r.skipRegex != nil {
+		skipRanges = findSkipRanges(*input, r.skipRegex)
+	}
+
 	if r.config.Delimiters != "" {
-		updatedEntry := replaceLuhnValidNumbersWithDelimiters(*input, r.config.Replacement, r.config.MinLength, r.config.Delimiters)
-		*entry = updatedEntry
+		*entry = replaceLuhnValidNumbersWithDelimiters(*input, r.config.Replacement, r.config.MinLength, r.config.Delimiters, skipRanges)
 	} else {
-		updatedEntry := replaceLuhnValidNumbers(*input, r.config.Replacement, r.config.MinLength)
-		*entry = updatedEntry
+		*entry = replaceLuhnValidNumbers(*input, r.config.Replacement, r.config.MinLength, skipRanges)
 	}
 }
 
+// findSkipRanges returns the byte ranges of all matches of skipRegex found in input.
+func findSkipRanges(input string, skipRegex *regexp.Regexp) [][2]int {
+	matches := skipRegex.FindAllStringIndex(input, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	ranges := make([][2]int, len(matches))
+	for i, m := range matches {
+		ranges[i] = [2]int{m[0], m[1]}
+	}
+	return ranges
+}
+
+// isInSkipRange reports whether the byte position pos falls within any of the given ranges.
+func isInSkipRange(pos int, ranges [][2]int) bool {
+	for _, r := range ranges {
+		if pos >= r[0] && pos < r[1] {
+			return true
+		}
+	}
+	return false
+}
+
 // replaceLuhnValidNumbers scans the input for Luhn-valid numbers and replaces them.
-func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
+func replaceLuhnValidNumbers(input, replacement string, minLength int, skipRanges [][2]int) string {
 	var sb strings.Builder
 	var currentNumber strings.Builder
 
@@ -101,7 +140,13 @@ func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
 	}
 
 	// Iterate over the input, replacing Luhn-valid numbers.
-	for _, char := range input {
+	for pos, char := range input {
+		// Characters that fall inside a skip_regex match are passed through unchanged.
+		if len(skipRanges) > 0 && isInSkipRange(pos, skipRanges) {
+			flushNumber()
+			sb.WriteRune(char)
+			continue
+		}
 		// If the character is a digit, add it to the current number.
 		if unicode.IsDigit(char) {
 			currentNumber.WriteRune(char)
@@ -118,7 +163,7 @@ func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
 
 // replaceLuhnValidNumbersWithDelimiters scans the input for Luhn-valid numbers with delimiter support and replaces them.
 // These are separate functions to keep the base case as fast as possible, if no delimiters are needed.
-func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength int, delimiters string) string {
+func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength int, delimiters string, skipRanges [][2]int) string {
 	var sb strings.Builder
 	var currentNumber strings.Builder
 	var currentString strings.Builder
@@ -150,7 +195,13 @@ func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength 
 	}
 
 	// Iterate over the input, replacing Luhn-valid numbers.
-	for _, char := range input {
+	for pos, char := range input {
+		// Characters that fall inside a skip_regex match are passed through unchanged.
+		if len(skipRanges) > 0 && isInSkipRange(pos, skipRanges) {
+			flushNumber()
+			sb.WriteRune(char)
+			continue
+		}
 		// If the character is a digit, add it to the current number.
 		if unicode.IsDigit(char) {
 			currentNumber.WriteRune(char)
