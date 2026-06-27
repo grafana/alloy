@@ -17,6 +17,7 @@ import (
 
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/token/builder"
 	"github.com/grafana/alloy/syntax/vm"
@@ -216,6 +217,59 @@ func TestDecodeMap(t *testing.T) {
 			eval := vm.New(expr)
 			actual := Target{}
 			require.NoError(t, eval.Evaluate(scope, &actual))
+			require.Equal(t, NewTargetFromMap(tc.expected), actual)
+		})
+	}
+}
+
+func TestDecodeMapWithSecretValues(t *testing.T) {
+	// A non-secret OptionalSecret value (such as local.file.<name>.content with
+	// is_secret = false) used as a target value must decode to its underlying
+	// string, not the Go struct's default formatting. A genuine secret is not
+	// usable as a target value and must be rejected rather than leaked into a
+	// label. See https://github.com/grafana/alloy/issues/6163.
+	type testCase struct {
+		name      string
+		input     string
+		scope     map[string]any
+		expected  map[string]string
+		expectErr bool
+	}
+
+	tests := []testCase{
+		{
+			name:     "non-secret OptionalSecret",
+			input:    `{ "__address__" = optional }`,
+			scope:    map[string]any{"optional": alloytypes.OptionalSecret{IsSecret: false, Value: "10.0.0.1:9090"}},
+			expected: map[string]string{"__address__": "10.0.0.1:9090"},
+		},
+		{
+			name:      "secret OptionalSecret",
+			input:     `{ "__address__" = optional }`,
+			scope:     map[string]any{"optional": alloytypes.OptionalSecret{IsSecret: true, Value: "10.0.0.1:9090"}},
+			expectErr: true,
+		},
+		{
+			name:      "Secret",
+			input:     `{ "__address__" = secret }`,
+			scope:     map[string]any{"secret": alloytypes.Secret("10.0.0.1:9090")},
+			expectErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			scope := vm.NewScope(tc.scope)
+			expr, err := parser.ParseExpression(tc.input)
+			require.NoError(t, err)
+			eval := vm.New(expr)
+			actual := Target{}
+			err = eval.Evaluate(scope, &actual)
+			if tc.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
 			require.Equal(t, NewTargetFromMap(tc.expected), actual)
 		})
 	}
