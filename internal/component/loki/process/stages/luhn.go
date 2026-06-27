@@ -1,6 +1,7 @@
 package stages
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -9,12 +10,15 @@ import (
 	"github.com/prometheus/common/model"
 )
 
+var uuidRegex = regexp.MustCompile(`[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}`)
+
 // LuhnFilterConfig configures a processing stage that filters out Luhn-valid numbers.
 type LuhnFilterConfig struct {
 	Replacement string  `alloy:"replacement,attr,optional"`
 	Source      *string `alloy:"source,attr,optional"`
 	MinLength   int     `alloy:"min_length,attr,optional"`
 	Delimiters  string  `alloy:"delimiters,attr,optional"`
+	IgnoreUUID  bool    `alloy:"ignore_uuid,attr,optional"`
 }
 
 // validateLuhnFilterConfig validates the LuhnFilterConfig.
@@ -65,18 +69,43 @@ func (r *luhnFilterStage) Process(labels model.LabelSet, extracted map[string]an
 		return
 	}
 
-	// Replace Luhn-valid numbers in the input.
+	var uuidRanges [][2]int
+	if r.config.IgnoreUUID {
+		uuidRanges = findUUIDRanges(*input)
+	}
+
 	if r.config.Delimiters != "" {
-		updatedEntry := replaceLuhnValidNumbersWithDelimiters(*input, r.config.Replacement, r.config.MinLength, r.config.Delimiters)
-		*entry = updatedEntry
+		*entry = replaceLuhnValidNumbersWithDelimiters(*input, r.config.Replacement, r.config.MinLength, r.config.Delimiters, uuidRanges)
 	} else {
-		updatedEntry := replaceLuhnValidNumbers(*input, r.config.Replacement, r.config.MinLength)
-		*entry = updatedEntry
+		*entry = replaceLuhnValidNumbers(*input, r.config.Replacement, r.config.MinLength, uuidRanges)
 	}
 }
 
+// findUUIDRanges returns the byte ranges of all UUIDs found in input.
+func findUUIDRanges(input string) [][2]int {
+	matches := uuidRegex.FindAllStringIndex(input, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	ranges := make([][2]int, len(matches))
+	for i, m := range matches {
+		ranges[i] = [2]int{m[0], m[1]}
+	}
+	return ranges
+}
+
+// isInUUIDRange reports whether the byte position pos falls within any of the given ranges.
+func isInUUIDRange(pos int, ranges [][2]int) bool {
+	for _, r := range ranges {
+		if pos >= r[0] && pos < r[1] {
+			return true
+		}
+	}
+	return false
+}
+
 // replaceLuhnValidNumbers scans the input for Luhn-valid numbers and replaces them.
-func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
+func replaceLuhnValidNumbers(input, replacement string, minLength int, uuidRanges [][2]int) string {
 	var sb strings.Builder
 	var currentNumber strings.Builder
 
@@ -101,7 +130,13 @@ func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
 	}
 
 	// Iterate over the input, replacing Luhn-valid numbers.
-	for _, char := range input {
+	for pos, char := range input {
+		// Characters that fall inside a UUID are passed through unchanged.
+		if len(uuidRanges) > 0 && isInUUIDRange(pos, uuidRanges) {
+			flushNumber()
+			sb.WriteRune(char)
+			continue
+		}
 		// If the character is a digit, add it to the current number.
 		if unicode.IsDigit(char) {
 			currentNumber.WriteRune(char)
@@ -118,7 +153,7 @@ func replaceLuhnValidNumbers(input, replacement string, minLength int) string {
 
 // replaceLuhnValidNumbersWithDelimiters scans the input for Luhn-valid numbers with delimiter support and replaces them.
 // These are separate functions to keep the base case as fast as possible, if no delimiters are needed.
-func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength int, delimiters string) string {
+func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength int, delimiters string, uuidRanges [][2]int) string {
 	var sb strings.Builder
 	var currentNumber strings.Builder
 	var currentString strings.Builder
@@ -150,7 +185,13 @@ func replaceLuhnValidNumbersWithDelimiters(input, replacement string, minLength 
 	}
 
 	// Iterate over the input, replacing Luhn-valid numbers.
-	for _, char := range input {
+	for pos, char := range input {
+		// Characters that fall inside a UUID are passed through unchanged.
+		if len(uuidRanges) > 0 && isInUUIDRange(pos, uuidRanges) {
+			flushNumber()
+			sb.WriteRune(char)
+			continue
+		}
 		// If the character is a digit, add it to the current number.
 		if unicode.IsDigit(char) {
 			currentNumber.WriteRune(char)
