@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -106,7 +107,7 @@ func (u *userAgentStage) Process(labels model.LabelSet, extracted map[string]int
 	}
 
 	if client.UserAgent.Major != "" {
-		extracted["useragent_browser_version"] = fmt.Sprintf("%s.%s.%s", client.UserAgent.Major, client.UserAgent.Minor, client.UserAgent.Patch)
+		extracted["useragent_browser_version"] = userAgentVersion(client.UserAgent.Major, client.UserAgent.Minor, client.UserAgent.Patch)
 	}
 
 	// Extract OS information
@@ -115,7 +116,7 @@ func (u *userAgentStage) Process(labels model.LabelSet, extracted map[string]int
 	}
 
 	if client.Os.Major != "" {
-		extracted["useragent_os_version"] = fmt.Sprintf("%s.%s.%s", client.Os.Major, client.Os.Minor, client.Os.Patch)
+		extracted["useragent_os_version"] = userAgentVersion(client.Os.Major, client.Os.Minor, client.Os.Patch)
 	}
 
 	// Extract device information
@@ -139,4 +140,14 @@ func (u *userAgentStage) Process(labels model.LabelSet, extracted map[string]int
 // Name implements Stage
 func (u *userAgentStage) Name() string {
 	return StageTypeUserAgent
+}
+
+func userAgentVersion(parts ...string) string {
+	version := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part != "" {
+			version = append(version, part)
+		}
+	}
+	return strings.Join(version, ".")
 }

@@ -1978,7 +1978,7 @@ truncated: label,line
 
 ### `stage.useragent`
 
-The `stage.useragent` inner block configures a processing stage that parses user-agent strings and extracts browser, operating system, and device information using the uap-core library.
+The `stage.useragent` inner block configures a processing stage that uses the uap-core library to parse user-agent strings and extract browser, operating system, and device information.
 
 The following arguments are supported:
 

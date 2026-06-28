@@ -61,7 +61,7 @@ func TestUserAgentStage_Process(t *testing.T) {
 				"useragent_browser":         "Chrome",
 				"useragent_browser_version": "91.0.4472",
 				"useragent_os":              "Windows",
-				"useragent_os_version":      "10...",
+				"useragent_os_version":      "10",
 			},
 		},
 		{
@@ -81,9 +81,9 @@ func TestUserAgentStage_Process(t *testing.T) {
 			input:  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
 			expected: map[string]interface{}{
 				"useragent_browser":         "Firefox",
-				"useragent_browser_version": "89.0.",
+				"useragent_browser_version": "89.0",
 				"useragent_os":              "Windows",
-				"useragent_os_version":      "10...",
+				"useragent_os_version":      "10",
 			},
 		},
 		{
@@ -94,7 +94,7 @@ func TestUserAgentStage_Process(t *testing.T) {
 				"useragent_browser":         "Mobile Safari",
 				"useragent_browser_version": "14.1.1",
 				"useragent_os":              "iOS",
-				"useragent_os_version":      "14.6.",
+				"useragent_os_version":      "14.6",
 				"useragent_device":          "iPhone",
 				"useragent_device_brand":    "Apple",
 				"useragent_device_model":    "iPhone",
@@ -117,16 +117,16 @@ func TestUserAgentStage_Process(t *testing.T) {
 			// Check that expected fields are present (allowing for version flexibility)
 			for key, expectedValue := range test.expected {
 				require.Contains(t, extracted, key)
-				if key == "useragent_browser" || key == "useragent_os" || key == "useragent_device" || key == "useragent_device_brand" || key == "useragent_device_model" {
-					require.Equal(t, expectedValue, extracted[key])
-				}
-				// For version fields, just check they contain the major version
-				if key == "useragent_browser_version" || key == "useragent_os_version" {
-					require.Contains(t, extracted[key].(string), expectedValue.(string)[:2])
-				}
+				require.Equal(t, expectedValue, extracted[key])
 			}
 		})
 	}
+}
+
+func TestUserAgentVersion(t *testing.T) {
+	require.Equal(t, "91.0.4472", userAgentVersion("91", "0", "4472"))
+	require.Equal(t, "89.0", userAgentVersion("89", "0", ""))
+	require.Equal(t, "10", userAgentVersion("10", "", ""))
 }
 
 func TestUserAgentStage_ProcessWithSource(t *testing.T) {
@@ -153,7 +153,8 @@ func TestUserAgentStage_Name(t *testing.T) {
 	stage, err := newUserAgentStage(log.NewNopLogger(), config)
 	require.NoError(t, err)
 
-	require.Equal(t, StageTypeUserAgent, stage.(*stageProcessor).Name())
+	processor := stage.(*stageProcessor).Processor.(*userAgentStage)
+	require.Equal(t, StageTypeUserAgent, processor.Name())
 }
 
 func TestUserAgentStage_NewWithInvalidRegexFile(t *testing.T) {
