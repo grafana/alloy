@@ -143,6 +143,44 @@ func (series *memorySeries) WriteNativeHistogramTo(app storage.Appender, ts time
 	return nil
 }
 
+// WriteSTZeroSampleTo appends a synthetic zero sample at the start timestamp st
+// ahead of the sample at t. The appender rejects start timestamps that are not
+// strictly older than the sample or that would be out of order; the caller is
+// expected to tolerate those errors.
+func (series *memorySeries) WriteSTZeroSampleTo(app storage.Appender, t, st int64) error {
+	series.Lock()
+	defer series.Unlock()
+
+	newID, err := app.AppendSTZeroSample(series.id, series.labels, t, st)
+	if err != nil {
+		return err
+	}
+
+	if newID != series.id {
+		series.id = newID
+	}
+
+	return nil
+}
+
+// WriteHistogramSTZeroSampleTo appends a synthetic empty histogram at the start
+// timestamp st ahead of the histogram at t. See WriteSTZeroSampleTo.
+func (series *memorySeries) WriteHistogramSTZeroSampleTo(app storage.Appender, t, st int64, h *histogram.Histogram, fh *histogram.FloatHistogram) error {
+	series.Lock()
+	defer series.Unlock()
+
+	newID, err := app.AppendHistogramSTZeroSample(series.id, series.labels, t, st, h, fh)
+	if err != nil {
+		return err
+	}
+
+	if newID != series.id {
+		series.id = newID
+	}
+
+	return nil
+}
+
 type memoryMetadata struct {
 	sync.Mutex
 

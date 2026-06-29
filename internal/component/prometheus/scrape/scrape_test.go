@@ -831,6 +831,70 @@ func testScrapingAllMetricTypes(t *testing.T, enableTypeAndUnitLabels bool) {
 	t.Logf("Successfully scraped %d samples with %d metadata entries and %d histograms", len(actualSamples), len(actualMetadata), len(actualHistograms))
 }
 
+// TestScrapingCreatedTimestampZeroIngestion verifies that, with
+// created_timestamp_zero_ingestion enabled, scraping a counter that exposes a
+// created timestamp injects a synthetic zero sample at that timestamp ahead of
+// the real sample.
+func TestScrapingCreatedTimestampZeroIngestion(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	// client_golang counters expose a created timestamp, carried inline by the
+	// protobuf scrape format and as a `_created` series in OpenMetrics.
+	reg := prometheus_client.NewRegistry()
+	reg.MustRegister(setupTestCounter())
+	serverAddr := startMetricsServer(t, reg)
+
+	appender := testappender.NewCollectingAppender()
+	mockAppendable := testappender.ConstantAppendable{Inner: appender}
+
+	opts := newComponentOpts(t)
+
+	var args Arguments
+	args.SetToDefault()
+	args.CreatedTimestampZeroIngestion = true
+	args.Targets = []discovery.Target{
+		discovery.NewTargetFromLabelSet(model.LabelSet{"__address__": model.LabelValue(serverAddr)}),
+	}
+	args.ForwardTo = []storage.Appendable{mockAppendable}
+	args.ScrapeInterval = 50 * time.Millisecond
+	args.ScrapeTimeout = 25 * time.Millisecond
+	args.JobName = "test_job"
+	args.MetricsPath = "/metrics"
+	args.ScrapeProtocols = []string{
+		"PrometheusProto",
+		"OpenMetricsText1.0.0",
+		"OpenMetricsText0.0.1",
+		"PrometheusText0.0.4",
+	}
+	require.NoError(t, args.Validate())
+
+	scrapeComponent, err := New(opts, args)
+	require.NoError(t, err)
+	go scrapeComponent.Run(ctx)
+
+	sampleFor := func(samples map[string]*testappender.MetricSample, name string) *testappender.MetricSample {
+		for _, s := range samples {
+			if s.Labels.Get("__name__") == name {
+				return s
+			}
+		}
+		return nil
+	}
+
+	require.EventuallyWithT(t, func(collectT *assert.CollectT) {
+		zero := sampleFor(appender.CollectedSTZeroSamples(), "test_counter_total")
+		require.NotNil(collectT, zero, "expected a created-timestamp zero sample for test_counter_total")
+		require.Equal(collectT, 0.0, zero.Value, "the injected sample value must be zero")
+
+		real := sampleFor(appender.CollectedSamples(), "test_counter_total")
+		require.NotNil(collectT, real, "expected the real counter sample")
+		require.Equal(collectT, 42.5, real.Value)
+		// The zero sample sits at the created timestamp, strictly before the real sample.
+		require.Less(collectT, zero.Timestamp, real.Timestamp, "zero sample must precede the real sample")
+	}, 10*time.Second, 100*time.Millisecond, "Should have injected a created-timestamp zero sample")
+}
+
 // --- Helpers for TestRuntimeUpdate ---
 
 // defaultFastScrapeArgs returns Arguments with defaults pointing at addr, a 50 ms

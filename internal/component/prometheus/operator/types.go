@@ -60,6 +60,10 @@ type ScrapeOptions struct {
 
 	// EnableTypeAndUnitLabels controls whether the metric's type and unit should be added as labels.
 	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
+
+	// CreatedTimestampZeroIngestion controls whether the created timestamp is parsed from the
+	// scraped metrics and injected as a synthetic zero sample, marking a counter reset.
+	CreatedTimestampZeroIngestion bool `alloy:"created_timestamp_zero_ingestion,attr,optional"`
 }
 
 func (s *ScrapeOptions) GlobalConfig() promconfig.GlobalConfig {
