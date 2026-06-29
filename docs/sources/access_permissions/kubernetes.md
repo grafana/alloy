@@ -21,8 +21,6 @@ The [{{< param "PRODUCT_NAME" >}} Docker container image][image] defines two use
 - A `root` user.
 - A non-root user named `alloy` with UID `473` and GID `473`.
 
-You can configure a non-root user when you deploy Alloy in Kubernetes.
-
 {{< admonition type="note" >}}
 Components like [beyla.ebpf][beyla-ebpf-note] and [pyroscope.ebpf][pyroscope-ebpf-note] need root or additional Linux capabilities.
 Don't set `capabilities.drop: [ALL]` when these components are in your configuration.
