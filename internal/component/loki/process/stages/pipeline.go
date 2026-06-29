@@ -64,9 +64,14 @@ func NewPipeline(slogger *slog.Logger, stages []StageConfig, registerer promethe
 		}
 		st = append(st, newStage)
 	}
+	dropCount, err := getDropCountMetric(registerer)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Pipeline{
 		stages:    st,
-		dropCount: getDropCountMetric(registerer),
+		dropCount: dropCount,
 	}, nil
 }
 
