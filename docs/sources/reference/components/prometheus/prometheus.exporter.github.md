@@ -50,14 +50,6 @@ When provided, `api_token_file` takes precedence over `api_token`.
 
 You can't use both token authentication and GitHub App authentication simultaneously.
 
-### Latest release metric
-
-`prometheus.exporter.github` exposes `github_repo_latest_release_info` in addition to the metrics from `github_exporter`.
-
-The `github_repo_latest_release_info` metric has a value of `1` for the latest published full release for each repository.
-Use the `tag` label to get the GitHub tag name for that release.
-The metric includes the `repo`, `user`, `release`, `tag`, `created_at`, and `published_at` labels.
-
 ## Blocks
 
 The `prometheus.exporter.github` component doesn't support any blocks. You can configure this component with arguments.
