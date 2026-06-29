@@ -126,7 +126,7 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		GitHubResultsPerPage:     100,
 		GithubToken:              token,
 		GitHubApp:                hasGitHubAppAuth,
-		GitHubRateLimitEnabled:   true,
+		GitHubRateLimitEnabled:   false,
 		GitHubRateLimit:          c.GitHubRateLimit,
 		FetchRepoReleasesEnabled: true,
 		FetchOrgsConcurrency:     1,
@@ -152,6 +152,6 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 
 	return integrations.NewCollectorIntegration(
 		c.Name(),
-		integrations.WithCollectors(ghExporter),
+		integrations.WithCollectors(ghExporter, newRateLimitCollector(logger, ghExporter.Client)),
 	), nil
 }

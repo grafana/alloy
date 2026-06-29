@@ -981,6 +981,7 @@ require (
 	github.com/99designs/gqlgen v0.17.91
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/extension/googleclientauthextension v0.56.0
 	github.com/charmbracelet/huh v1.0.0
+	github.com/google/go-github/v76 v76.0.0
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
 	github.com/open-telemetry/opentelemetry-collector-contrib/connector/signaltometricsconnector v0.151.0
@@ -1069,7 +1070,6 @@ require (
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/gofri/go-github-pagination v1.0.1 // indirect
 	github.com/google/gnostic v0.7.1 // indirect
-	github.com/google/go-github/v76 v76.0.0 // indirect
 	github.com/google/go-github/v84 v84.0.0 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
 	github.com/hashicorp/go-msgpack/v2 v2.1.5 // indirect

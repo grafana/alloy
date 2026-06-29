@@ -131,4 +131,8 @@ func TestReleaseDownloadMetricIncludesTag(t *testing.T) {
 	body, err := io.ReadAll(rec.Body)
 	require.NoError(t, err)
 	require.Contains(t, string(body), `github_repo_release_downloads{created_at="2026-06-02T00:00:00Z",name="alloy-linux-amd64.zip",release="Alloy v1.2.3",repo="alloy",tag="v1.2.3",user="grafana"} 42`)
+	require.Contains(t, string(body), "github_rate_limit 5000")
+	require.Contains(t, string(body), "github_rate_remaining 4999")
+	require.Contains(t, string(body), "github_rate_reset 1.78e+09")
+	require.NotContains(t, string(body), `github_rate_limit{resource=`)
 }
