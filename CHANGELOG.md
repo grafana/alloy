@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.1](https://github.com/grafana/alloy/compare/v1.17.0...v1.17.1) (2026-06-29)
+
+
+### Bug Fixes 🐛
+
+* Back off usage reporting on persistent failure instead of retrying every minute [backport] ([#6505](https://github.com/grafana/alloy/issues/6505)) ([36e1a8f](https://github.com/grafana/alloy/commit/36e1a8f19cfc48bdc036d6b21c653fe7e32bfe14))
+
 ## [1.17.0](https://github.com/grafana/alloy/compare/v1.16.0...v1.17.0) (2026-06-11)
 
 
