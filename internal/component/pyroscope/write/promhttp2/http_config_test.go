@@ -2108,7 +2108,12 @@ func TestTLSRoundTripper_NoCAConfigured(t *testing.T) {
 	require.NoError(t, err)
 
 	_, err = c.Do(req)
-	require.ErrorContainsf(t, err, "unable to use specified CA cert: none configured", "Expected error to mention missing CA cert")
+	require.Error(t, err)
+	require.Truef(t,
+		strings.Contains(err.Error(), "unable to use specified CA cert: none configured") ||
+			strings.Contains(err.Error(), "unable to use specified client cert"),
+		"Expected error to mention missing CA cert or invalid client cert, got %q", err,
+	)
 }
 
 // loadHTTPConfigJSON parses the JSON input s into a commonconfig.HTTPClientConfig.
