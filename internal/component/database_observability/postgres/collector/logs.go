@@ -512,31 +512,6 @@ func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
 	return reconstructed, true
 }
 
-// isContinuationLine checks if a line is part of a multi-line PostgreSQL error
-func isContinuationLine(line string) bool {
-	if strings.HasPrefix(line, "\t") {
-		return true
-	}
-
-	continuationKeywords := []string{
-		"DETAIL:",
-		"HINT:",
-		"CONTEXT:",
-		"STATEMENT:",
-		"QUERY:",
-		"LOCATION:",
-	}
-
-	trimmedLine := strings.TrimSpace(line)
-	for _, keyword := range continuationKeywords {
-		if strings.HasPrefix(trimmedLine, keyword) {
-			return true
-		}
-	}
-
-	return false
-}
-
 // extractRemoteSegment returns the %r portion of a prefixed line. Skip past
 // the timestamp's HH:MM:SS before scanning for the colon that ends %m.
 func extractRemoteSegment(line string, lastColonBeforeAt int) string {
