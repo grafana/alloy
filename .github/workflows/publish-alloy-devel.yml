@@ -39,7 +39,37 @@ jobs:
     with:
       img-name: alloy-devel
       dev: true
-        
+
+  sign_linux_container:
+    needs: publish_linux_container
+    if: ${{ needs.publish_linux_container.outputs.image != '' }}
+    uses: ./.github/workflows/sign-and-attest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      image: ${{ needs.publish_linux_container.outputs.image }}
+
+  sign_linux_boringcrypto_container:
+    needs: publish_linux_boringcrypto_container
+    if: ${{ needs.publish_linux_boringcrypto_container.outputs.image != '' }}
+    uses: ./.github/workflows/sign-and-attest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      image: ${{ needs.publish_linux_boringcrypto_container.outputs.image }}
+
+  sign_windows_container:
+    needs: publish_windows_container
+    if: ${{ needs.publish_windows_container.outputs.image != '' }}
+    uses: ./.github/workflows/sign-and-attest.yml
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      image: ${{ needs.publish_windows_container.outputs.image }}
+
   update_deployment_tools:
     name: Update deployment_tools
     runs-on: ubuntu-latest
