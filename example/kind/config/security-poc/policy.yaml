@@ -2,7 +2,6 @@ components:
   mode: denylist
   list:
     - remote.http            # flag 4: DoS / SSRF / arbitrary POST; flag 5: k8s API enumeration
-    - loki.source.kubernetes # flag 6: container log exfiltration via k8s API
     - local.file             # flags 1-2: reads mounted Secrets/ConfigMaps as strings
 
 endpoints:

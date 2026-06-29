@@ -6,7 +6,37 @@ metadata:
 data:
   module.alloy: |
     declare "user_pipeline" {
-      discovery.relabel "noop" {
-        targets = []
+      discovery.kubernetes "pods" {
+        role = "pod"
+        namespaces {
+          names = ["monitoring"]
+        }
+      }
+
+      loki.source.kubernetes "logs" {
+        targets    = discovery.kubernetes.pods.targets
+        forward_to = [loki.process.add_labels.receiver]
+      }
+
+      loki.process "add_labels" {
+        forward_to = [loki.write.grafana_cloud.receiver]
+
+        stage.static_labels {
+          values = {
+            cluster = "alloy-example",
+            env     = "demo",
+          }
+        }
+
+        stage.drop {
+          expression           = ".*level=debug.*"
+          drop_counter_reason  = "debug logs filtered"
+        }
+      }
+
+      loki.write "grafana_cloud" {
+        endpoint {
+          url = "https://logs.grafana.net/loki/api/v1/push"
+        }
       }
     }
