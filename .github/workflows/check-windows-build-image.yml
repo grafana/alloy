@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check-windows-build-image:
-    runs-on: windows-2022
+    runs-on: windows-2025
     steps:
       - name: Ensure Docker is running (Docker issue workaround)
         id: docker-workaround
