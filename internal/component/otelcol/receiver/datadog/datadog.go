@@ -35,8 +35,7 @@ func init() {
 type Arguments struct {
 	HTTPServer otelcol.HTTPServerArguments `alloy:",squash"`
 
-	ReadTimeout      time.Duration `alloy:"read_timeout,attr,optional"`
-	TraceIDCacheSize int           `alloy:"trace_id_cache_size,attr,optional"`
+	TraceIDCacheSize int `alloy:"trace_id_cache_size,attr,optional"`
 
 	Intake *IntakeArguments `alloy:"intake,block,optional"`
 
@@ -101,8 +100,8 @@ func (args *Arguments) SetToDefault() {
 		HTTPServer: otelcol.HTTPServerArguments{
 			Endpoint:              "localhost:8126",
 			CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+			ReadTimeout:           60 * time.Second,
 		},
-		ReadTimeout: 60 * time.Second,
 	}
 	args.DebugMetrics.SetToDefault()
 }
@@ -116,7 +115,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	cfg := &datadogreceiver.Config{
 		ServerConfig:     *convertedHttpServer,
-		ReadTimeout:      args.ReadTimeout,
+		ReadTimeout:      args.HTTPServer.ReadTimeout,
 		TraceIDCacheSize: args.TraceIDCacheSize,
 	}
 

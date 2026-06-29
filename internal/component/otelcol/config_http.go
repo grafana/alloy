@@ -33,6 +33,11 @@ type HTTPServerArguments struct {
 	CompressionAlgorithms []string         `alloy:"compression_algorithms,attr,optional"`
 
 	KeepAlivesEnabled *bool `alloy:"keep_alives_enabled,attr,optional"`
+
+	IdleTimeout       time.Duration `alloy:"idle_timeout,attr,optional"`
+	ReadTimeout       time.Duration `alloy:"read_timeout,attr,optional"`
+	WriteTimeout      time.Duration `alloy:"write_timeout,attr,optional"`
+	ReadHeaderTimeout time.Duration `alloy:"read_header_timeout,attr,optional"`
 }
 
 var DefaultCompressionAlgorithms = []string{"", "gzip", "zstd", "zlib", "snappy", "deflate", "lz4"}
@@ -72,6 +77,21 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		keepAliveEnabled = *args.KeepAlivesEnabled
 	}
 
+	// Source the timeout defaults from upstream so they can't drift from confighttp.
+	defaults := otelconfighttp.NewDefaultServerConfig()
+	idleTimeout := defaults.IdleTimeout
+	if args.IdleTimeout != 0 {
+		idleTimeout = args.IdleTimeout
+	}
+	readHeaderTimeout := defaults.ReadHeaderTimeout
+	if args.ReadHeaderTimeout != 0 {
+		readHeaderTimeout = args.ReadHeaderTimeout
+	}
+	writeTimeout := defaults.WriteTimeout
+	if args.WriteTimeout != 0 {
+		writeTimeout = args.WriteTimeout
+	}
+
 	return configoptional.Some(otelconfighttp.ServerConfig{
 		NetAddr:               confignet.AddrConfig{Endpoint: args.Endpoint, Transport: confignet.TransportTypeTCP},
 		TLS:                   args.TLS.Convert(),
@@ -81,6 +101,10 @@ func (args *HTTPServerArguments) Convert() (configoptional.Optional[otelconfight
 		IncludeMetadata:       args.IncludeMetadata,
 		CompressionAlgorithms: copyStringSlice(args.CompressionAlgorithms),
 		Auth:                  authentication,
+		IdleTimeout:           idleTimeout,
+		ReadHeaderTimeout:     readHeaderTimeout,
+		WriteTimeout:          writeTimeout,
+		ReadTimeout:           args.ReadTimeout,
 	}), nil
 }
 
