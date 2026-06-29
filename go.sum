@@ -1582,6 +1582,8 @@ github.com/keybase/go-keychain v0.0.1 h1:way+bWYa6lDppZoZcgMbYsvC7GxljxrskdNInRt
 github.com/keybase/go-keychain v0.0.1/go.mod h1:PdEILRW3i9D8JcdM+FmY6RwkHGnhHxXwkPPMeUgOK1k=
 github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253 h1:07JX4vP+dfMyNxuJxWMOthUKVfKE/JhwMEz7wP4k7AI=
 github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253/go.mod h1:z+KVSl/9Oh8y0mvQwpIc5HnrNLUqPl6qEiq9pHwfQaU=
+github.com/kgeckhart/yet-another-cloudwatch-exporter v0.64.1-0.20260629154816-440211eac126 h1:2zGI/FxipO2lZzr2rc01KloYc+i6sZfT1qrvHAO7pjg=
+github.com/kgeckhart/yet-another-cloudwatch-exporter v0.64.1-0.20260629154816-440211eac126/go.mod h1:gsTwbxTbhpPpcurDJZP4JNzAUaxSUBnAsB4KOhMEbCE=
 github.com/kisielk/errcheck v1.1.0/go.mod h1:EZBBE59ingxPouuu3KfxchcWSUPOHkagtvWXihfKN4Q=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
@@ -2168,8 +2170,6 @@ github.com/prometheus-community/stackdriver_exporter v0.18.0 h1:nB7JwloiBziunauj
 github.com/prometheus-community/stackdriver_exporter v0.18.0/go.mod h1:f7T7XXRVc390sVc7rk2yNflf+RkClE4mlfsaSsW2K5Q=
 github.com/prometheus-community/windows_exporter v0.31.3 h1:v5HRhiSL/AgFtp96GjUATrtRMedNhjaMHogJBecgFSE=
 github.com/prometheus-community/windows_exporter v0.31.3/go.mod h1:tlw5aYgPu1kFassCBSBwnDBFHUlwznekAVJ0xiDuIko=
-github.com/prometheus-community/yet-another-cloudwatch-exporter v0.64.0 h1:1jz6+dRL2jjMTuIbyd8cJa522kMQbu75/wt9VXJIaWQ=
-github.com/prometheus-community/yet-another-cloudwatch-exporter v0.64.0/go.mod h1:gsTwbxTbhpPpcurDJZP4JNzAUaxSUBnAsB4KOhMEbCE=
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0 h1:m2SZ2z5edgk0nXx7W6VHLfIsKZwgKbr+E5c2RNYyJB8=
 github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.91.0/go.mod h1:Gfzi4500QCMnptFIQc8YdDi8YZ4QA0vs22LROWZ3+YU=
 github.com/prometheus-operator/prometheus-operator/pkg/client v0.91.0 h1:WnKN4vTCEkqh4fVQ4q8XWJTXGUS3IPeEgLANVNWy4fk=
