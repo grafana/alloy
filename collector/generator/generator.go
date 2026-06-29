@@ -18,6 +18,8 @@ var (
 	templateMainWindows []byte
 )
 
+const fileHeader = "// GENERATED CODE: DO NOT EDIT\n\n"
+
 func main() {
 	log.Println("Generating Alloy OTel Collector main file...")
 	var path string
@@ -44,7 +46,7 @@ func copyAlloyMainTemplateFromFile(path string) error {
 		return fmt.Errorf("create dst dir: %w", err)
 	}
 
-	if err := os.WriteFile(filepath.Join(path, "main_alloy.go"), templateMainAlloy, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(path, "main_alloy.go"), append([]byte(fileHeader), templateMainAlloy...), 0o644); err != nil {
 		return fmt.Errorf("write template to %s: %w", path, err)
 	}
 	return nil
@@ -130,7 +132,7 @@ func addReleasePleaseVersioning(lines []string) ([]string, error) {
 }
 
 func replaceMainWindows(path string) error {
-	if err := os.WriteFile(filepath.Join(path, "main_windows.go"), templateMainWindows, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(path, "main_windows.go"), append([]byte(fileHeader), templateMainWindows...), 0o644); err != nil {
 		return fmt.Errorf("error writing file: %w", err)
 	}
 	return nil

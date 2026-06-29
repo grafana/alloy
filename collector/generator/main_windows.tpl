@@ -1,5 +1,3 @@
-// GENERATED CODE: DO NOT EDIT
-
 //go:build windows
 
 package main
