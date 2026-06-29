@@ -1,5 +1,30 @@
 //go:build linux && cgo && promtail_journal_enabled
 
+// Package sdjournal is a minimal wrapper over libsystemd's sd-journal API.
+//
+// We don't link libsystemd at build time. Instead openLib resolves each
+// function at runtime with dlopen/dlsym, so the default Alloy binary has no
+// hard dependency on libsystemd. It is only needed when loki.source.journal
+// runs.
+//
+// dlsym returns an untyped void*, which Go can't call directly, so for
+// each function we define a tiny C wrapper (named j_<func>) that casts the
+// void* back to the real signature and calls it.
+//
+// To wrap a new sd_journal_<x> function, copy its real signature from
+// systemd/sd-journal.h and, following the existing examples in the cgo preamble
+// below, add:
+//  1. a typedef for that signature,
+//  2. a _Static_assert(... "drift") that checks our typedef still matches the
+//     header (this is the safety net: a mismatch fails the build),
+//  3. a j_<x> wrapper that casts the void* and calls the function.
+//
+// Then, on the Go side:
+//  4. add a field for it to the lib struct and dlsym it in openLib,
+//  5. add the Go method that calls C.j_<x>.
+//
+// The _Static_assert checks only run when this package is compiled against the
+// systemd headers, which CI does via the promtail_journal_enabled build.
 package sdjournal
 
 /*
@@ -267,7 +292,7 @@ func openLib() (*lib, error) {
 	}
 
 	journalLib = l
-	return l, nil
+	return journalLib, nil
 }
 
 func dlsym(handle unsafe.Pointer, name string) (unsafe.Pointer, error) {
