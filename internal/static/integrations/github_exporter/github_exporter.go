@@ -136,9 +136,10 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		APIMetrics: exporter.AddMetrics(),
 		Config:     conf,
 	}
+	latestReleaseCollector := newLatestReleaseCollector(logger, &conf)
 
 	return integrations.NewCollectorIntegration(
 		c.Name(),
-		integrations.WithCollectors(&ghExporter),
+		integrations.WithCollectors(&ghExporter, latestReleaseCollector),
 	), nil
 }
