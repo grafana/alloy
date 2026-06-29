@@ -196,9 +196,9 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
-When `deployment_name_from_replicaset` is set to `true`, the processor will extract deployment name from replicaset name by trimming pod template hash. This will disable watching for replicaset resources, which can be useful in environments with limited RBAC permissions as the processor will not need `get`, `watch`, and `list` permissions for replicasets.
+When `deployment_name_from_replicaset` is set to `true`, the processor extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets.
 
-Alloy's default remains `false`, which differs from the upstream default of `true` since v0.153.
+The Alloy default remains `false`, which differs from the upstream default of `true` since v0.153.
 
 [semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes
 

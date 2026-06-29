@@ -177,7 +177,7 @@ The default dimensions are:
 * `span.kind`
 * `status.code`
 
-The default dimensions are always added if not listed in `exclude_dimensions`. If no additional dimensions are specified, only the default ones will be added.
+The default dimensions are always added if not listed in `exclude_dimensions`. If no additional dimensions are specified, only the default ones are added.
 
 Alloy always excludes the `collector.instance.id` dimension. The connector adds it by default, but Alloy doesn't set a stable `collector.instance.id`, so it would otherwise be a random value that changes on every restart.
 
