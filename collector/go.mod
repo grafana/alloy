@@ -1135,6 +1135,8 @@ replace github.com/prometheus/mysqld_exporter => github.com/grafana/mysqld_expor
 
 replace github.com/prometheus/node_exporter => github.com/grafana/node_exporter v0.18.1-grafana-r01.0.20251024135609-318b01780c89
 
+replace github.com/prometheus-community/yet-another-cloudwatch-exporter => github.com/kgeckhart/yet-another-cloudwatch-exporter v0.64.1-0.20260629154816-440211eac126
+
 replace github.com/github/smimesign => github.com/grafana/smimesign v0.2.1-0.20220408144937-2a5adf3481d3
 
 replace go.opentelemetry.io/obi => github.com/grafana/opentelemetry-ebpf-instrumentation v1.32.1
