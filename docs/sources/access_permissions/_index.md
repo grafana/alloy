@@ -9,7 +9,7 @@ weight: 95
 # Access and permissions for {{% param "FULL_PRODUCT_NAME" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} collects telemetry from hosts, containers, and APIs, then forwards it to observability backends.
-That work requires read access to logs, process data, and cluster resources, plus credentials for remote write and similar endpoints.
+That telemetry collection requires read access to logs, process data, and cluster resources, plus credentials for remote write and similar endpoints.
 Your configuration determines which permissions {{< param "PRODUCT_NAME" >}} needs, and your deployment platform determines how you enforce them.
 
 The following settings are common permission options.
