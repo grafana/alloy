@@ -35,6 +35,11 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 		SyslogFormat:         syslogFormat,
 	}
 
+	// If the listen protocol is not set, use the default.
+	if listenerConfig.ListenProtocol == "" {
+		listenerConfig.ListenProtocol = syslog.DefaultListenerConfig.ListenProtocol
+	}
+
 	// If the syslog format is not set, use the default.
 	if listenerConfig.SyslogFormat == "" {
 		listenerConfig.SyslogFormat = syslog.DefaultListenerConfig.SyslogFormat
