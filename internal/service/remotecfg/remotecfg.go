@@ -26,6 +26,12 @@ import (
 	"github.com/grafana/alloy/syntax/ast"
 )
 
+// RemoteConfigService is the interface for accessing the remotecfg service
+// via host.GetService. Allows alternative implementations (e.g. stubs).
+type RemoteConfigService interface {
+	GetCachedAstFile() *ast.File
+}
+
 // Service implements a service for remote configuration.
 // The default value of ch is nil; this means it will block forever if the
 // remotecfg service is not configured. In addition, we're keeping track of
@@ -323,7 +329,7 @@ func (s *Service) registerCollector() error {
 		},
 	})
 
-	if err != nil {
+	if err != nil && !errors.Is(err, errNoopClient) {
 		s.opts.Logger.Error("failed to register collector with remote server", "id", s.args.ID, "name", s.args.Name, "err", err)
 		return err
 	}

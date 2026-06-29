@@ -21,10 +21,12 @@ jobs:
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         persist-credentials: false
-    - name: Setup Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        go-version-file: go.mod
+        version: v2026.5.18
+        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        install_args: go
     - name: Build Alloy image
       run: make alloy-image
     - name: Build prom-gen image
@@ -51,23 +53,12 @@ jobs:
       uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       with:
         persist-credentials: false
-    - name: Setup Go
-      uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+    - name: Setup tools
+      uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4.0.1
       with:
-        go-version-file: go.mod
-    - name: Install Helm
-      uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-      with:
-        version: v3.21.1
-    - name: Install kind
-      env:
-        KIND_VERSION: v0.24.0
-        KIND_SHA256: b89aada5a39d620da3fcd16435b7f28d858927dd53f92cbac77686b0588b600d
-      run: |
-        curl -fLo ./kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"
-        echo "${KIND_SHA256}  ./kind" | sha256sum -c -
-        chmod +x ./kind
-        sudo mv ./kind /usr/local/bin/kind
+        version: v2026.5.18
+        sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+        install_args: go helm kind
     - name: Download images artifact
       uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
       with:

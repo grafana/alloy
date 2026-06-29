@@ -58,14 +58,14 @@ func (cg *ConfigGenerator) GenerateServiceMonitorConfig(m *promopv1.ServiceMonit
 	if ep.Params != nil {
 		cfg.Params = ep.Params
 	}
-	if ep.Scheme != "" {
-		cfg.Scheme = ep.Scheme
+	if ep.Scheme != nil && *ep.Scheme != "" {
+		cfg.Scheme = string(*ep.Scheme)
 	}
 	if ep.FollowRedirects != nil {
 		cfg.HTTPClientConfig.FollowRedirects = *ep.FollowRedirects
 	}
-	if ep.EnableHttp2 != nil {
-		cfg.HTTPClientConfig.EnableHTTP2 = *ep.EnableHttp2
+	if ep.EnableHTTP2 != nil {
+		cfg.HTTPClientConfig.EnableHTTP2 = *ep.EnableHTTP2
 	}
 	if ep.TLSConfig != nil {
 		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateTLSConfig(*ep.TLSConfig, m.Namespace); err != nil {

@@ -56,6 +56,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `include_file_owner_name`       | `bool`                     | Whether to include the file owner's name in the log entry.                                 | `false`   | no       |
 | `include_file_path_resolved`    | `bool`                     | Whether to include the resolved file path in the log entry.                                | `false`   | no       |
 | `include_file_path`             | `bool`                     | Whether to include the file path in the log entry.                                         | `false`   | no       |
+| `include_file_permissions`      | `bool`                     | Whether to include the file permissions in the log entry.                                  | `false`   | no       |
 | `include_file_record_number`    | `bool`                     | Whether to include the file record number in the log entry.                                | `false`   | no       |
 | `max_batches`                   | `int`                      | The maximum number of batches to process concurrently.                                     | `10`      | no       |
 | `max_concurrent_files`          | `int`                      | The maximum number of files to read concurrently.                                          | `10`      | no       |

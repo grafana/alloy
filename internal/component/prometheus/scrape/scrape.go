@@ -360,6 +360,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		c.opts.Logger,
 		func(s string) (*promlogging.JSONFileLogger, error) { return promlogging.NewJSONFileLogger(s) },
 		interceptor,
+		nil,
 		unregisterer)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create scrape manager: %w", err)

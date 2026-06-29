@@ -72,6 +72,7 @@ import (
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/count"                  // Import otelcol.connector.count
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/host_info"              // Import otelcol.connector.host_info
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/servicegraph"           // Import otelcol.connector.servicegraph
+	_ "github.com/grafana/alloy/internal/component/otelcol/connector/signaltometrics"        // Import otelcol.connector.signaltometrics
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/spanlogs"               // Import otelcol.connector.spanlogs
 	_ "github.com/grafana/alloy/internal/component/otelcol/connector/spanmetrics"            // Import otelcol.connector.spanmetrics
 	_ "github.com/grafana/alloy/internal/component/otelcol/exporter/awss3"                   // Import otelcol.exporter.awss3exporter
