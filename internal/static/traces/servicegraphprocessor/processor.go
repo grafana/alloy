@@ -4,11 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
-	util "github.com/grafana/alloy/internal/util/log"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/consumer"
 	"go.opentelemetry.io/collector/pdata/ptrace"
@@ -93,12 +91,12 @@ type processor struct {
 	httpSuccessCodeMap map[int]struct{}
 	grpcSuccessCodeMap map[int]struct{}
 
-	logger  log.Logger
+	logger  *slog.Logger
 	closeCh chan struct{}
 }
 
 func newProcessor(nextConsumer consumer.Traces, cfg *Config, set otelprocessor.Settings) (*processor, error) {
-	logger := log.With(util.Logger, "component", "service graphs")
+	logger := slog.New(slog.DiscardHandler).With("component", "service graphs")
 
 	if cfg.Wait == 0 {
 		cfg.Wait = DefaultWait
@@ -253,9 +251,9 @@ func (p *processor) ConsumeTraces(ctx context.Context, td ptrace.Traces) error {
 
 	if err := p.consume(td); err != nil {
 		if errors.As(err, &tooManySpansError{}) {
-			level.Warn(p.logger).Log("msg", "skipped processing of spans", "maxItems", p.maxItems, "err", err)
+			p.logger.Warn("skipped processing of spans", "maxItems", p.maxItems, "err", err)
 		} else {
-			level.Error(p.logger).Log("msg", "failed consuming traces", "err", err)
+			p.logger.Error("failed consuming traces", "err", err)
 		}
 		return nil
 	}

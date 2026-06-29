@@ -84,7 +84,7 @@ func (cg *ConfigGenerator) generateHTTPScrapeConfigConfig(m *promopv1alpha1.Scra
 	httpSDConfig := &http.SDConfig{
 		HTTPClientConfig: commonConfig.DefaultHTTPClientConfig,
 		RefreshInterval:  model.Duration(30 * time.Second), // Default refresh interval
-		URL:              httpSD.URL,
+		URL:              string(httpSD.URL),
 	}
 
 	// Set refresh interval if specified
@@ -156,7 +156,7 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 		// Prometheus Operator ScrapeConfig CRD requires spec.scheme to be uppercase "HTTP" or "HTTPS", but
 		// the implementation expects lowercase "http" or "https" in the final scrape configuration. So, we
 		// have to lowercase the schema.
-		cfg.Scheme = strings.ToLower(*m.Spec.Scheme)
+		cfg.Scheme = strings.ToLower(string(*m.Spec.Scheme))
 	}
 	if m.Spec.TLSConfig != nil {
 		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*m.Spec.TLSConfig, m.Namespace); err != nil {

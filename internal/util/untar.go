@@ -32,8 +32,7 @@ func Untar(tarPath string, destPath string) error {
 			return err
 		}
 
-		// Protect from a zip slip.
-		// https://security.snyk.io/research/zip-slip-vulnerability
+		// Protect from zip-slip style path traversal in archive entries.
 		if strings.Contains(header.Name, `../`) ||
 			strings.Contains(header.Name, `..\`) {
 

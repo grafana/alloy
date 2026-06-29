@@ -6,14 +6,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/syntax/alloytypes"
+	vault "github.com/hashicorp/vault/api"
 	"github.com/oklog/run"
 
-	vault "github.com/hashicorp/vault/api"
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 func init() {
@@ -133,7 +131,6 @@ type Exports struct {
 // Component implements the remote.vault component.
 type Component struct {
 	opts    component.Options
-	log     log.Logger
 	metrics *metrics
 
 	mut  sync.RWMutex
@@ -155,7 +152,6 @@ var (
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:    opts,
-		log:     opts.Logger,
 		metrics: newMetrics(opts.Registerer),
 	}
 
@@ -212,7 +208,7 @@ func (c *Component) Update(args component.Arguments) error {
 		// NOTE(rfratto): we pass 0 for the refresh interval because we don't
 		// support refreshing the auth token on an interval.
 		mgr, err := newTokenManager(tokenManagerOptions{
-			Log:    log.With(c.log, "token_type", "auth"),
+			Log:    c.opts.Logger.With("token_type", "auth"),
 			Client: newClient,
 			Getter: c.getAuthToken,
 
@@ -229,7 +225,7 @@ func (c *Component) Update(args component.Arguments) error {
 
 	if c.secretManager == nil {
 		mgr, err := newTokenManager(tokenManagerOptions{
-			Log:             log.With(c.log, "token_type", "secret"),
+			Log:             c.opts.Logger.With("token_type", "secret"),
 			Client:          newClient,
 			Getter:          c.getSecret,
 			RefreshInterval: newArgs.RereadFrequency,
@@ -289,8 +285,8 @@ func (c *Component) exportSecret(secret *vault.Secret) {
 
 		default:
 			// Non-string secrets are ignored.
-			level.Warn(c.log).Log(
-				"msg", "found field in secret which cannot be converted into a string",
+			c.opts.Logger.Warn(
+				"found field in secret which cannot be converted into a string",
 				"key", key,
 				"type", fmt.Sprintf("%T", value),
 			)

@@ -1,15 +1,13 @@
 package cluster
 
 import (
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 	"github.com/prometheus/client_golang/prometheus"
-
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 type clusterState int
@@ -56,7 +54,7 @@ type Cluster interface {
 
 // alloyCluster implements the Cluster interface and manages the admission control logic.
 type alloyCluster struct {
-	log     log.Logger
+	log     *slog.Logger
 	sharder shard.Sharder
 	opts    Options
 
@@ -70,7 +68,7 @@ type alloyCluster struct {
 
 var _ Cluster = (*alloyCluster)(nil)
 
-func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts Options, log log.Logger) *alloyCluster {
+func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts Options, log *slog.Logger) *alloyCluster {
 	c := &alloyCluster{
 		log:                   log,
 		sharder:               sharder,
@@ -97,7 +95,7 @@ func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts O
 	// Register metrics if clustering is enabled and metrics are provided
 	if opts.EnableClustering && opts.Metrics != nil {
 		if err := opts.Metrics.Register(minClusterSizeGauge); err != nil {
-			level.Warn(log).Log("msg", "failed to register minimum cluster size metric", "err", err)
+			log.Warn("failed to register minimum cluster size metric", "err", err)
 		} else {
 			// Set the gauge to the configured minimum cluster size
 			minClusterSizeGauge.Set(float64(opts.MinimumClusterSize))
@@ -105,7 +103,7 @@ func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts O
 
 		// Register the cluster ready gauge that was created above
 		if err := opts.Metrics.Register(c.clusterReadyGauge); err != nil {
-			level.Warn(log).Log("msg", "failed to register cluster ready metric", "err", err)
+			log.Warn("failed to register cluster ready metric", "err", err)
 		}
 	}
 
@@ -177,8 +175,8 @@ func (c *alloyCluster) transitionToStateReady() {
 		c.deadlineTimer.Stop()
 		c.deadlineTimer = nil
 	}
-	level.Info(c.log).Log(
-		"msg", "minimum cluster size reached, marking cluster as ready to admit traffic",
+	c.log.Info(
+		"minimum cluster size reached, marking cluster as ready to admit traffic",
 		"minimum_cluster_size", c.opts.MinimumClusterSize,
 		"peers_count", len(c.sharder.Peers()),
 	)
@@ -203,8 +201,8 @@ func (c *alloyCluster) transitionToStateNotReady() {
 			c.transitionToStateDeadlinePassed()
 		})
 	}
-	level.Warn(c.log).Log(
-		"msg", "minimum cluster size requirements are not met - marking cluster as not ready for traffic",
+	c.log.Warn(
+		"minimum cluster size requirements are not met - marking cluster as not ready for traffic",
 		"minimum_cluster_size", c.opts.MinimumClusterSize,
 		"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
 		"peers_count", len(c.sharder.Peers()),
@@ -214,8 +212,8 @@ func (c *alloyCluster) transitionToStateNotReady() {
 // transitionToStateDeadlinePassed is called when the deadline timer expires. rwMutex must be locked for writes by the caller.
 func (c *alloyCluster) transitionToStateDeadlinePassed() {
 	if c.clusterState == stateReady {
-		level.Info(c.log).Log(
-			"msg", "minimum cluster size deadline passed, but cluster is already ready to admit traffic - ignoring",
+		c.log.Info(
+			"minimum cluster size deadline passed, but cluster is already ready to admit traffic - ignoring",
 			"minimum_cluster_size", c.opts.MinimumClusterSize,
 			"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
 			"peers_count", len(c.sharder.Peers()),
@@ -228,8 +226,8 @@ func (c *alloyCluster) transitionToStateDeadlinePassed() {
 	c.clusterState = stateDeadlinePassed
 	c.clusterReadyGauge.Set(1)
 
-	level.Warn(c.log).Log(
-		"msg", "deadline passed, marking cluster as ready to admit traffic",
+	c.log.Warn(
+		"deadline passed, marking cluster as ready to admit traffic",
 		"minimum_cluster_size", c.opts.MinimumClusterSize,
 		"minimum_size_wait_timeout", c.opts.MinimumSizeWaitTimeout,
 		"peers_count", len(c.sharder.Peers()),

@@ -7,6 +7,7 @@ package journal
 // to other loki components.
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -16,9 +17,9 @@ import (
 
 	"github.com/coreos/go-systemd/v22/sdjournal"
 	"github.com/grafana/alloy/internal/loki/promtail/scrapeconfig"
+	"github.com/grafana/alloy/internal/loki/util"
 	"github.com/grafana/loki/pkg/push"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
@@ -106,7 +107,9 @@ type tailer struct {
 	positionPath  string
 	relabelConfig []*relabel.Config
 	config        *scrapeconfig.JournalTargetConfig
-	labels        model.LabelSet
+
+	builder *labels.Builder
+	labels  labels.Labels
 
 	r     journalReader
 	until chan time.Time
@@ -158,6 +161,8 @@ func newTailerWithReader(
 		entryFunc = defaultJournalEntryFunc
 	}
 
+	lbls := labels.FromMap(util.ModelLabelSetToMap(targetConfig.Labels))
+
 	until := make(chan time.Time)
 	t := &tailer{
 		metrics:       metrics,
@@ -166,7 +171,8 @@ func newTailerWithReader(
 		positions:     pos,
 		positionPath:  positionPath,
 		relabelConfig: relabelConfig,
-		labels:        targetConfig.Labels,
+		labels:        lbls,
+		builder:       labels.NewBuilder(lbls),
 		config:        targetConfig,
 
 		until: until,
@@ -180,7 +186,7 @@ func newTailerWithReader(
 		maxAge, err = time.ParseDuration(targetConfig.MaxAge)
 	}
 	if err != nil {
-		return nil, errors.Wrap(err, "parsing journal reader 'max_age' config value")
+		return nil, fmt.Errorf("parsing journal reader 'max_age' config value: %w", err)
 	}
 
 	cb := journalConfigBuilder{
@@ -205,7 +211,7 @@ func newTailerWithReader(
 	cfg := t.generateJournalConfig(cb)
 	t.r, err = readerFunc(cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating journal reader")
+		return nil, fmt.Errorf("creating journal reader: %w", err)
 	}
 
 	go func() {
@@ -217,13 +223,11 @@ func newTailerWithReader(
 				}
 
 				if err == syscall.EBADMSG || err == io.EOF || strings.HasPrefix(err.Error(), "failed to iterate journal:") {
-					t.logger.Error("unable to follow journal", "err", err.Error())
+					t.logger.Error("unable to follow journal", "err", err)
 					return
 				}
-
-				t.logger.Error("received unexpected error while following the journal", "err", err.Error())
+				t.logger.Error("received unexpected error while following the journal", "err", err)
 			}
-
 			// prevent tight loop
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -288,6 +292,7 @@ func (t *tailer) generateJournalConfig(
 }
 
 func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
+	defer t.builder.Reset(t.labels)
 	ts := time.Unix(0, int64(entry.RealtimeTimestamp)*int64(time.Microsecond))
 
 	var msg string
@@ -311,25 +316,22 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 		}
 	}
 
-	entryLabels := makeJournalFields(entry.Fields)
-
-	// Add constant labels
-	for k, v := range t.labels {
-		entryLabels[string(k)] = string(v)
+	addJournalFields(t.builder, entry.Fields)
+	if !relabel.ProcessBuilder(t.builder, t.relabelConfig...) {
+		t.logger.Debug("journal entry dropped by relabel rules", "unit", entry.Fields["_SYSTEMD_UNIT"])
+		t.metrics.journalErrors.WithLabelValues(emptyLabelsError).Inc()
+		return journalEmptyStr, nil
 	}
 
-	processedLabels, _ := relabel.Process(labels.FromMap(entryLabels), t.relabelConfig...)
-
-	processedLabelsMap := processedLabels.Map()
-	lbls := make(model.LabelSet, len(processedLabelsMap))
-	for k, v := range processedLabelsMap {
-		if k[0:2] == "__" {
-			continue
+	lset := make(model.LabelSet)
+	t.builder.Range(func(l labels.Label) {
+		if strings.HasPrefix(l.Name, "__") {
+			return
 		}
+		lset[model.LabelName(l.Name)] = model.LabelValue(l.Value)
+	})
 
-		lbls[model.LabelName(k)] = model.LabelValue(v)
-	}
-	if len(lbls) == 0 {
+	if len(lset) == 0 {
 		// No labels, drop journal entry
 		t.logger.Debug("received journal entry with no labels", "unit", entry.Fields["_SYSTEMD_UNIT"])
 		t.metrics.journalErrors.WithLabelValues(emptyLabelsError).Inc()
@@ -339,10 +341,11 @@ func (t *tailer) formatter(entry *sdjournal.JournalEntry) (string, error) {
 	t.metrics.journalLines.Inc()
 	t.positions.PutString(t.positionPath, "", entry.Cursor)
 
-	t.recv.Chan() <- loki.NewEntry(lbls, push.Entry{
+	t.recv.Chan() <- loki.NewEntry(lset, push.Entry{
 		Line:      msg,
 		Timestamp: ts,
 	})
+
 	return journalEmptyStr, nil
 }
 
@@ -353,15 +356,19 @@ func (t *tailer) Stop() error {
 	return err
 }
 
-func makeJournalFields(fields map[string]string) map[string]string {
-	result := make(map[string]string, len(fields))
+const (
+	labelNamePrefix = "__journal_"
+	fieldPriority   = "PRIORITY"
+)
+
+func addJournalFields(br *labels.Builder, fields map[string]string) {
 	for k, v := range fields {
-		if k == "PRIORITY" {
-			result[fmt.Sprintf("__journal_%s_%s", strings.ToLower(k), "keyword")] = makeJournalPriority(v)
+		if k == fieldPriority {
+			br.Set(labelNamePrefix+"priority_keyword", makeJournalPriority(v))
 		}
-		result[fmt.Sprintf("__journal_%s", strings.ToLower(k))] = v
+		br.Set(labelNamePrefix+strings.ToLower(k), v)
 	}
-	return result
+	return
 }
 
 func makeJournalPriority(priority string) string {

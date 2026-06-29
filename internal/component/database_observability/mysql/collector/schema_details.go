@@ -6,17 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -102,7 +101,7 @@ type SchemaDetailsArguments struct {
 	ExcludeSchemas  []string
 	EntryHandler    loki.EntryHandler
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type SchemaDetails struct {
@@ -119,7 +118,7 @@ type SchemaDetails struct {
 	// now allows overriding time.Now() in tests
 	now func() time.Time
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -174,7 +173,7 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		entryHandler:    args.EntryHandler,
 		lastEmittedAt:   map[string]time.Time{},
 		now:             time.Now,
-		logger:          log.With(args.Logger, "collector", SchemaDetailsCollector),
+		logger:          args.Logger.With("collector", SchemaDetailsCollector),
 		running:         &atomic.Bool{},
 	}
 
@@ -186,7 +185,7 @@ func (c *SchemaDetails) Name() string {
 }
 
 func (c *SchemaDetails) Start(ctx context.Context) error {
-	level.Debug(c.logger).Log("msg", "collector started")
+	c.logger.Debug("collector started")
 
 	c.running.Store(true)
 	ctx, cancel := context.WithCancel(ctx)
@@ -201,7 +200,7 @@ func (c *SchemaDetails) Start(ctx context.Context) error {
 
 		for {
 			if err := c.extractSchema(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -242,7 +241,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		var schema, tableName, tableType string
 		var createTime, updateTime time.Time
 		if err := rs.Scan(&schema, &tableName, &tableType, &createTime, &updateTime); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan tables", "err", err)
+			c.logger.Error("failed to scan tables", "err", err)
 			break
 		}
 		tables = append(tables, &tableInfo{
@@ -277,7 +276,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	}
 
 	if len(tables) == 0 {
-		level.Info(c.logger).Log("msg", "no tables detected from information_schema.tables")
+		c.logger.Info("no tables detected from information_schema.tables")
 		return nil
 	}
 
@@ -310,7 +309,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 
 		specs, err := c.fetchSchemaSpecs(ctx, schema, tableNames)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to fetch schema specs", "schema", schema, "err", err)
+			c.logger.Error("failed to fetch schema specs", "schema", schema, "err", err)
 			continue
 		}
 
@@ -318,20 +317,20 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			fullyQualifiedTable := fullyQualifiedName(table.schema, table.tableName)
 
 			if err := c.fetchCreateStatement(ctx, fullyQualifiedTable, table); err != nil {
-				level.Error(c.logger).Log("msg", "failed to get table create statement", "schema", table.schema, "table", table.tableName, "err", err)
+				c.logger.Error("failed to get table create statement", "schema", table.schema, "table", table.tableName, "err", err)
 				continue
 			}
 
 			spec, ok := specs[table.tableName]
 			if !ok {
 				// This might happen if a table is dropped between the tables query and the metadata queries.
-				level.Warn(c.logger).Log("msg", "no bulk metadata rows for table", "schema", table.schema, "table", table.tableName)
+				c.logger.Warn("no bulk metadata rows for table", "schema", table.schema, "table", table.tableName)
 				continue
 			}
 
 			b64Spec, err := encodeTableSpec(spec)
 			if err != nil {
-				level.Error(c.logger).Log("msg", "failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
+				c.logger.Error("failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
 				continue
 			}
 			table.b64TableSpec = b64Spec
@@ -356,7 +355,7 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 func (c *SchemaDetails) fetchCreateStatement(ctx context.Context, fullyQualifiedTable string, table *tableInfo) error {
 	row := c.dbConnection.QueryRowContext(ctx, showCreateTable+" "+fullyQualifiedTable)
 	if err := row.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to show create table", "schema", table.schema, "table", table.tableName, "err", err)
+		c.logger.Error("failed to show create table", "schema", table.schema, "table", table.tableName, "err", err)
 		return err
 	}
 
@@ -364,16 +363,16 @@ func (c *SchemaDetails) fetchCreateStatement(ctx context.Context, fullyQualified
 	switch table.tableType {
 	case "BASE TABLE":
 		if err := row.Scan(&tableName, &createStmt); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan create table", "schema", table.schema, "table", table.tableName, "err", err)
+			c.logger.Error("failed to scan create table", "schema", table.schema, "table", table.tableName, "err", err)
 			return err
 		}
 	case "VIEW":
 		if err := row.Scan(&tableName, &createStmt, &characterSetClient, &collationConnection); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan create view", "schema", table.schema, "table", table.tableName, "err", err)
+			c.logger.Error("failed to scan create view", "schema", table.schema, "table", table.tableName, "err", err)
 			return err
 		}
 	default:
-		level.Error(c.logger).Log("msg", "unknown table type", "schema", table.schema, "table", table.tableName, "table_type", table.tableType)
+		c.logger.Error("unknown table type", "schema", table.schema, "table", table.tableName, "table_type", table.tableType)
 		return fmt.Errorf("unknown table type: %s", table.tableType)
 	}
 	table.b64CreateStmt = base64.StdEncoding.EncodeToString([]byte(createStmt))
@@ -410,7 +409,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 
 	colRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectColumnNames, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query schema columns", "schema", schema, "err", err)
+		c.logger.Error("failed to query schema columns", "schema", schema, "err", err)
 		return nil, err
 	}
 	defer colRS.Close()
@@ -419,7 +418,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 		var tableName, columnName, isNullable, columnType, columnKey, extra string
 		var columnDefault sql.NullString
 		if err := colRS.Scan(&tableName, &columnName, &columnDefault, &isNullable, &columnType, &columnKey, &extra); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan schema columns", "schema", schema, "err", err)
+			c.logger.Error("failed to scan schema columns", "schema", schema, "err", err)
 			return nil, err
 		}
 
@@ -444,13 +443,13 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 	}
 
 	if err := colRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over schema columns result set", "schema", schema, "err", err)
+		c.logger.Error("failed to iterate over schema columns result set", "schema", schema, "err", err)
 		return nil, err
 	}
 
 	idxRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectIndexNames, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query schema indexes", "schema", schema, "err", err)
+		c.logger.Error("failed to query schema indexes", "schema", schema, "err", err)
 		return nil, err
 	}
 	defer idxRS.Close()
@@ -464,14 +463,14 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 		var seqInIndex, nonUnique int
 		var columnName, expression, nullable sql.NullString
 		if err := idxRS.Scan(&tableName, &indexName, &seqInIndex, &columnName, &expression, &nullable, &nonUnique, &indexType); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan schema indexes", "schema", schema, "err", err)
+			c.logger.Error("failed to scan schema indexes", "schema", schema, "err", err)
 			return nil, err
 		}
 
 		// mysql docs describe column and expression as mutually exclusive,
 		// but at least one of them must be present.
 		if !columnName.Valid && !expression.Valid {
-			level.Error(c.logger).Log("msg", "index without a column or expression", "schema", schema, "table", tableName, "index", indexName)
+			c.logger.Error("index without a column or expression", "schema", schema, "table", tableName, "index", indexName)
 			continue
 		}
 
@@ -483,7 +482,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 			if nIndexes := len(spec.Indexes); nIndexes > 0 && spec.Indexes[nIndexes-1].Name == indexName {
 				lastIndex := &spec.Indexes[nIndexes-1]
 				if len(lastIndex.Columns)+len(lastIndex.Expressions) != seqInIndex-1 {
-					level.Error(c.logger).Log("msg", "unexpected index ordinal position", "schema", schema, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns), "len_expressions", len(lastIndex.Expressions))
+					c.logger.Error("unexpected index ordinal position", "schema", schema, "table", tableName, "index", indexName, "seq", seqInIndex, "len_columns", len(lastIndex.Columns), "len_expressions", len(lastIndex.Expressions))
 					continue
 				}
 
@@ -513,13 +512,13 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 	}
 
 	if err := idxRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over schema indexes result set", "schema", schema, "err", err)
+		c.logger.Error("failed to iterate over schema indexes result set", "schema", schema, "err", err)
 		return nil, err
 	}
 
 	fkRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectForeignKeys, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
-		level.Error(c.logger).Log("msg", "failed to query schema foreign keys", "schema", schema, "err", err)
+		c.logger.Error("failed to query schema foreign keys", "schema", schema, "err", err)
 		return nil, err
 	}
 	defer fkRS.Close()
@@ -527,7 +526,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 	for fkRS.Next() {
 		var tableName, constraintName, columnName, referencedTableName, referencedColumnName string
 		if err := fkRS.Scan(&tableName, &constraintName, &columnName, &referencedTableName, &referencedColumnName); err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan schema foreign keys", "schema", schema, "err", err)
+			c.logger.Error("failed to scan schema foreign keys", "schema", schema, "err", err)
 			return nil, err
 		}
 
@@ -541,7 +540,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 	}
 
 	if err := fkRS.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate over schema foreign keys result set", "schema", schema, "err", err)
+		c.logger.Error("failed to iterate over schema foreign keys result set", "schema", schema, "err", err)
 		return nil, err
 	}
 

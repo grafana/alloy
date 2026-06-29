@@ -2,12 +2,11 @@ package github_exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"net/url"
 
 	gh_config "github.com/githubexporter/github-exporter/config"
 	"github.com/githubexporter/github-exporter/exporter"
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	config_util "github.com/prometheus/common/config"
 
 	"github.com/grafana/alloy/internal/static/integrations"
@@ -77,8 +76,8 @@ func (c *Config) InstanceKey(_ string) (string, error) {
 }
 
 // NewIntegration creates a new github_exporter
-func (c *Config) NewIntegration(logger log.Logger) (integrations.Integration, error) {
-	return New(logger, c)
+func (c *Config) NewIntegration(l *slog.Logger) (integrations.Integration, error) {
+	return New(l, c)
 }
 
 func init() {
@@ -87,11 +86,11 @@ func init() {
 }
 
 // New creates a new github_exporter integration.
-func New(logger log.Logger, c *Config) (integrations.Integration, error) {
+func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	conf := gh_config.Config{}
 	err := conf.SetAPIURL(c.APIURL)
 	if err != nil {
-		level.Error(logger).Log("msg", "api url is invalid", "err", err)
+		logger.Error("api url is invalid", "err", err)
 		return nil, err
 	}
 	conf.SetRepositories(c.Repositories)
@@ -109,8 +108,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 
 	// Configure GitHub App authentication if required fields are present
 	if hasGitHubAppAuth {
-		level.Debug(logger).Log("msg", "github authentication method", "method", "GitHub App")
-
+		logger.Debug("github authentication method", "method", "GitHub App")
 		conf.SetGitHubApp(true)
 		conf.SetGitHubAppKeyPath(c.GitHubAppKeyPath)
 		conf.SetGitHubAppId(c.GitHubAppID)
@@ -118,18 +116,18 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 		conf.SetGitHubRateLimit(c.GitHubRateLimit)
 		err = conf.SetAPITokenFromGitHubApp()
 		if err != nil {
-			level.Error(logger).Log("msg", "unable to authenticate with GitHub App", "err", err)
+			logger.Error("unable to authenticate with GitHub App", "err", err)
 			return nil, err
 		}
 	} else if c.APIToken != "" {
-		level.Debug(logger).Log("msg", "github authentication method", "method", "API Token")
+		logger.Debug("github authentication method", "method", "API Token")
 
 		conf.SetAPIToken(string(c.APIToken))
 	} else if c.APITokenFile != "" {
-		level.Debug(logger).Log("msg", "github authentication method", "method", "API Token File")
+		logger.Debug("github authentication method", "method", "API Token File")
 		err = conf.SetAPITokenFromFile(c.APITokenFile)
 		if err != nil {
-			level.Error(logger).Log("msg", "unable to load GitHub API token from file", "err", err)
+			logger.Error("unable to load GitHub API token from file", "err", err)
 			return nil, err
 		}
 	}

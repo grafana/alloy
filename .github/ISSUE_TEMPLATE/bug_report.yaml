@@ -89,6 +89,7 @@ body:
       - otelcol.connector.count
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
+      - otelcol.connector.signaltometrics
       - otelcol.connector.spanlogs
       - otelcol.connector.spanmetrics
       - otelcol.exporter.awss3
@@ -137,6 +138,7 @@ body:
       - otelcol.receiver.jaeger
       - otelcol.receiver.kafka
       - otelcol.receiver.loki
+      - otelcol.receiver.nginx
       - otelcol.receiver.opencensus
       - otelcol.receiver.otlp
       - otelcol.receiver.prometheus
@@ -230,6 +232,12 @@ body:
       label: Logs
       description: Provide logs relevant to the issue. Remove sensitive information before sharing. This will be formatted into a code block; don't add backtick code fences.
       render: text
+  - type: checkboxes
+    attributes:
+      label: AI disclosure
+      description: See the [Generative AI Contribution Policy](https://github.com/grafana/alloy/blob/main/docs/developer/genai.md).
+      options:
+        - label: This issue was substantially generated with AI assistance.
   - type: dropdown
     attributes:
       label: Tip

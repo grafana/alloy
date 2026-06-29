@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate token 🔐
-        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         id: app-token
         with:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
@@ -84,7 +84,7 @@ jobs:
             core.setOutput('labels', JSON.stringify(backportLabels));
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           token: ${{ steps.app-token.outputs.token }}
           ref: ${{ github.event.repository.default_branch }}
@@ -104,12 +104,10 @@ jobs:
           LABELS: ${{ steps.pr-info.outputs.labels }}
           PR_NUMBER: ${{ steps.pr-number.outputs.pr_number }}
         run: |
-          cd tools
-
           # Use while-read loop to safely handle labels with special characters
           echo "${LABELS}" | jq -r '.[]' | while IFS= read -r label; do
             echo "🍒 Processing backport for label: $label"
-            go run ./release/backport \
+            go run -C tools ./cmd release backport \
               --pr "${PR_NUMBER}" \
               --label "$label" || echo "⚠️ Backport for $label failed, moving to next..."
           done

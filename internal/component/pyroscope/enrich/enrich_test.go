@@ -2,9 +2,9 @@ package enrich
 
 import (
 	"context"
+	"log/slog"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/stretchr/testify/require"
@@ -17,7 +17,7 @@ import (
 func TestEnricher(t *testing.T) {
 	// Create basic component options
 	opts := component.Options{
-		Logger:        log.NewNopLogger(),
+		Logger:        slog.New(slog.DiscardHandler),
 		OnStateChange: func(e component.Exports) {},
 		Registerer:    prometheus.NewRegistry(),
 	}
@@ -165,7 +165,7 @@ func TestUpdate(t *testing.T) {
 	})
 
 	comp, err := New(component.Options{
-		Logger:        log.NewNopLogger(),
+		Logger:        slog.New(slog.DiscardHandler),
 		OnStateChange: func(e component.Exports) {},
 		Registerer:    prometheus.NewRegistry(),
 	}, Arguments{
@@ -197,7 +197,7 @@ func TestName(t *testing.T) {
 	})
 
 	comp, err := New(component.Options{
-		Logger:        log.NewNopLogger(),
+		Logger:        slog.New(slog.DiscardHandler),
 		OnStateChange: func(e component.Exports) {},
 		Registerer:    prometheus.NewRegistry(),
 	}, Arguments{

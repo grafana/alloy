@@ -1,7 +1,8 @@
 package blackbox_exporter_v2
 
 import (
-	"github.com/go-kit/log"
+	"log/slog"
+
 	"github.com/grafana/alloy/internal/static/integrations/blackbox_exporter"
 	integrations_v2 "github.com/grafana/alloy/internal/static/integrations/v2"
 	"github.com/grafana/alloy/internal/static/integrations/v2/common"
@@ -65,14 +66,14 @@ func init() {
 }
 
 // NewIntegration creates a new blackbox integration.
-func (c *Config) NewIntegration(log log.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
+func (c *Config) NewIntegration(l *slog.Logger, globals integrations_v2.Globals) (integrations_v2.Integration, error) {
 	var blackbox_config blackbox_config.Config
 	err := yaml.Unmarshal(c.BlackboxConfig, &blackbox_config)
 	if err != nil {
 		return nil, err
 	}
 
-	modules, err := blackbox_exporter.LoadBlackboxConfig(log, c.BlackboxConfigFile, c.BlackboxTargets, &blackbox_config)
+	modules, err := blackbox_exporter.LoadBlackboxConfig(l, c.BlackboxConfigFile, c.BlackboxTargets, &blackbox_config)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func (c *Config) NewIntegration(log log.Logger, globals integrations_v2.Globals)
 	bbh := &blackboxHandler{
 		cfg:     c,
 		modules: modules,
-		log:     log,
+		log:     l,
 	}
 	return bbh, nil
 }

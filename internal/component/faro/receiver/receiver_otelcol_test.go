@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/phayes/freeport"
+	"github.com/stretchr/testify/require"
+
 	"github.com/grafana/alloy/internal/component/otelcol"
 	"github.com/grafana/alloy/internal/component/otelcol/auth"
 	"github.com/grafana/alloy/internal/component/otelcol/auth/headers"
@@ -16,8 +19,6 @@ import (
 	"github.com/grafana/alloy/internal/runtime/componenttest"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/syntax"
-	"github.com/phayes/freeport"
-	"github.com/stretchr/testify/require"
 )
 
 func TestWithOtelcolConsumer(t *testing.T) {

@@ -53,6 +53,7 @@ func TestAlloyUnmarshalWithDefaultConfig(t *testing.T) {
 	require.Equal(t, defaultArgs.Net.Include, args.Net.Include)
 	require.Equal(t, defaultArgs.Net.Exclude, args.Net.Exclude)
 	require.Equal(t, defaultArgs.Net.EnabledList, args.Net.EnabledList)
+	require.Equal(t, defaultArgs.Time.EnabledList, args.Time.EnabledList)
 }
 
 // This is a copy of the getDefaultPath() function in:
@@ -90,6 +91,7 @@ func TestDefaultConfig(t *testing.T) {
 		DNS:      DNSConfig{EnabledList: []string{"metrics", "wmi_stats"}},
 		Update:   UpdateConfig{Online: false, ScrapeInterval: 6 * time.Hour},
 		Net:      NetConfig{Include: "^.+$", Exclude: "^$", EnabledList: []string{"metrics", "nic_info"}},
+		Time:     TimeConfig{EnabledList: []string{"system_time", "clock_source", "ntp"}},
 	}
 
 	var args Arguments

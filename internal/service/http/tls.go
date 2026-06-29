@@ -131,6 +131,13 @@ func (args *TLSArguments) tlsConfig() (*tls.Config, error) {
 		MaxVersion: uint16(args.MaxVersion),
 		ClientAuth: tls.ClientAuthType(args.ClientAuth),
 
+		// Advertise HTTP/2 via ALPN. The HTTP server is served over a manually
+		// wrapped TLS listener (not http.Server.ServeTLS), so the stdlib never
+		// injects "h2" itself. Without this, ALPN falls back to HTTP/1.1 and
+		// HTTP/2 clients that rely on negotiation — notably the clustering
+		// transport — fail to connect over TLS.
+		NextProtos: []string{"h2", "http/1.1"},
+
 		GetCertificate: func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 			return args.tlsCertificate()
 		},

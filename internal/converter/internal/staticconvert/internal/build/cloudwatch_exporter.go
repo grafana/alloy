@@ -16,7 +16,6 @@ func toCloudwatchExporter(config *cloudwatch_exporter.Config) *cloudwatch.Argume
 	return &cloudwatch.Arguments{
 		STSRegion:             config.STSRegion,
 		FIPSDisabled:          config.FIPSDisabled,
-		Debug:                 config.Debug,
 		DiscoveryExportedTags: config.Discovery.ExportedTags,
 		Discovery:             toDiscoveryJobs(config.Discovery.Jobs),
 		Static:                toStaticJobs(config.Static),

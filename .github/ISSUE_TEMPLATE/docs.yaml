@@ -92,6 +92,7 @@ body:
       - otelcol.connector.count
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
+      - otelcol.connector.signaltometrics
       - otelcol.connector.spanlogs
       - otelcol.connector.spanmetrics
       - otelcol.exporter.awss3
@@ -140,6 +141,7 @@ body:
       - otelcol.receiver.jaeger
       - otelcol.receiver.kafka
       - otelcol.receiver.loki
+      - otelcol.receiver.nginx
       - otelcol.receiver.opencensus
       - otelcol.receiver.otlp
       - otelcol.receiver.prometheus
