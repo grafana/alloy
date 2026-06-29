@@ -523,6 +523,7 @@ func (c *crdManager) addPodMonitor(pm *promopv1.PodMonitor) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.args.ScrapeClasses,
 	}
 	mapKeys := []string{}
 	for i, ep := range pm.Spec.PodMetricsEndpoints {
@@ -579,6 +580,7 @@ func (c *crdManager) addServiceMonitor(sm *promopv1.ServiceMonitor) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.args.ScrapeClasses,
 	}
 
 	mapKeys := []string{}
@@ -636,6 +638,7 @@ func (c *crdManager) addProbe(p *promopv1.Probe) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.args.ScrapeClasses,
 	}
 	var pmc *config.ScrapeConfig
 	pmc, err = gen.GenerateProbeConfig(p)
@@ -684,6 +687,7 @@ func (c *crdManager) addScrapeConfig(pm *promopv1alpha1.ScrapeConfig) {
 		Client:                   &c.args.Client,
 		AdditionalRelabelConfigs: c.args.RelabelConfigs,
 		ScrapeOptions:            c.args.Scrape,
+		ScrapeClasses:            c.args.ScrapeClasses,
 	}
 	mapKeys := []string{}
 	scrapeConfigs, errs := gen.GenerateScrapeConfigConfigs(pm)
