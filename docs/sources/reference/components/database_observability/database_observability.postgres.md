@@ -27,16 +27,16 @@ database_observability.postgres "<LABEL>" {
 
 You can use the following arguments with `database_observability.postgres`:
 
-| Name                       | Type                 | Description                                                 | Default | Required |
-|----------------------------|----------------------|-------------------------------------------------------------|---------|----------|
-| `data_source_name`         | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
-| `forward_to`               | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
-| `targets`                  | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
-| `disable_collectors`       | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
-| `enable_collectors`        | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
-| `exclude_databases`        | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
-| `exclude_users`            | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
-| `exclude_current_user`     | `bool`               | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
+| Name                 | Type                 | Description                                                 | Default | Required |
+|----------------------|----------------------|-------------------------------------------------------------|---------|----------|
+| `data_source_name`   | `secret`             | [Data Source Name][] for the Postgres server to connect to. |         | yes      |
+| `forward_to`         | `list(LogsReceiver)` | Where to forward log entries after processing.              |         | yes      |
+| `targets`            | `list(map(string))`  | List of external targets to scrape for Prometheus metrics.  |         | no       |
+| `disable_collectors` | `list(string)`       | A list of collectors to disable from the default set.       |         | no       |
+| `enable_collectors`  | `list(string)`       | A list of collectors to enable on top of the default set.   |         | no       |
+| `exclude_databases`  | `list(string)`       | A list of databases to exclude from monitoring.             | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_users`      | `list(string)`       | A list of users to exclude from monitoring.                 | `["azuresu", "cloudsqladmin", "db-o11y", "rdsadmin"]` | no       |
+| `exclude_current_user` | `bool`             | Exclude from activity monitoring the user that Alloy uses to connect to the database. The resolved username is automatically added to `exclude_users`, if not already present. | `true` | no       |
 
 [Data Source Name]: https://pkg.go.dev/github.com/lib/pq#hdr-URL_connection_strings-NewConfig
 
