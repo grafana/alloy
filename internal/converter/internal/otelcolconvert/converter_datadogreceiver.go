@@ -46,10 +46,8 @@ func toDatadogReceiver(state *State, id componentstatus.InstanceID, cfg *datadog
 		nextTraces  = state.Next(id, pipeline.SignalTraces)
 	)
 
-	return &datadog.Arguments{
-		HTTPServer:  *toHTTPServerArguments(&cfg.ServerConfig),
-		ReadTimeout: cfg.ReadTimeout,
-
+	args := &datadog.Arguments{
+		HTTPServer:   *toHTTPServerArguments(&cfg.ServerConfig),
 		DebugMetrics: common.DefaultValue[datadog.Arguments]().DebugMetrics,
 
 		Output: &otelcol.ConsumerArguments{
@@ -57,4 +55,6 @@ func toDatadogReceiver(state *State, id componentstatus.InstanceID, cfg *datadog
 			Traces:  ToTokenizedConsumers(nextTraces),
 		},
 	}
+	args.HTTPServer.ReadTimeout = cfg.ReadTimeout
+	return args
 }
