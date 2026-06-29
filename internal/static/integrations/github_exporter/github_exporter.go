@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
+	"os"
+	"strings"
 
 	gh_config "github.com/githubexporter/github-exporter/config"
 	"github.com/githubexporter/github-exporter/exporter"
@@ -87,15 +89,11 @@ func init() {
 
 // New creates a new github_exporter integration.
 func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
-	conf := gh_config.Config{}
-	err := conf.SetAPIURL(c.APIURL)
+	apiURL, err := url.Parse(c.APIURL)
 	if err != nil {
 		logger.Error("api url is invalid", "err", err)
 		return nil, err
 	}
-	conf.SetRepositories(c.Repositories)
-	conf.SetOrganisations(c.Organizations)
-	conf.SetUsers(c.Users)
 
 	// Determine authentication method and validate
 	hasTokenAuth := c.APIToken != "" || c.APITokenFile != ""
@@ -106,39 +104,54 @@ func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 		return nil, err
 	}
 
-	// Configure GitHub App authentication if required fields are present
-	if hasGitHubAppAuth {
-		logger.Debug("github authentication method", "method", "GitHub App")
-		conf.SetGitHubApp(true)
-		conf.SetGitHubAppKeyPath(c.GitHubAppKeyPath)
-		conf.SetGitHubAppId(c.GitHubAppID)
-		conf.SetGitHubAppInstallationId(c.GitHubAppInstallationID)
-		conf.SetGitHubRateLimit(c.GitHubRateLimit)
-		err = conf.SetAPITokenFromGitHubApp()
-		if err != nil {
-			logger.Error("unable to authenticate with GitHub App", "err", err)
-			return nil, err
-		}
-	} else if c.APIToken != "" {
-		logger.Debug("github authentication method", "method", "API Token")
-
-		conf.SetAPIToken(string(c.APIToken))
-	} else if c.APITokenFile != "" {
+	var token string
+	if c.APITokenFile != "" {
 		logger.Debug("github authentication method", "method", "API Token File")
-		err = conf.SetAPITokenFromFile(c.APITokenFile)
+		tokenBytes, err := os.ReadFile(c.APITokenFile)
 		if err != nil {
 			logger.Error("unable to load GitHub API token from file", "err", err)
 			return nil, err
 		}
+		token = strings.TrimSpace(string(tokenBytes))
+	} else if c.APIToken != "" {
+		logger.Debug("github authentication method", "method", "API Token")
+		token = string(c.APIToken)
 	}
 
-	ghExporter := exporter.Exporter{
-		APIMetrics: exporter.AddMetrics(),
-		Config:     conf,
+	conf := gh_config.Config{
+		ApiUrl:                   apiURL,
+		Repositories:             c.Repositories,
+		Organisations:            c.Organizations,
+		Users:                    c.Users,
+		GitHubResultsPerPage:     100,
+		GithubToken:              token,
+		GitHubApp:                hasGitHubAppAuth,
+		GitHubRateLimitEnabled:   true,
+		GitHubRateLimit:          c.GitHubRateLimit,
+		FetchRepoReleasesEnabled: true,
+		FetchOrgsConcurrency:     1,
+		FetchOrgReposConcurrency: 1,
+		FetchReposConcurrency:    1,
+		FetchUsersConcurrency:    1,
+	}
+
+	if hasGitHubAppAuth {
+		logger.Debug("github authentication method", "method", "GitHub App")
+		conf.GitHubAppConfig = &gh_config.GitHubAppConfig{
+			GitHubAppKeyPath:        c.GitHubAppKeyPath,
+			GitHubAppId:             c.GitHubAppID,
+			GitHubAppInstallationId: c.GitHubAppInstallationID,
+		}
+	}
+
+	ghExporter, err := exporter.NewExporter(&conf)
+	if err != nil {
+		logger.Error("unable to create GitHub exporter", "err", err)
+		return nil, err
 	}
 
 	return integrations.NewCollectorIntegration(
 		c.Name(),
-		integrations.WithCollectors(&ghExporter),
+		integrations.WithCollectors(ghExporter),
 	), nil
 }

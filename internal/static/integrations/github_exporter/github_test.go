@@ -1,6 +1,9 @@
 package github_exporter
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -72,4 +75,60 @@ github_app_key_path: /etc/github-app-key.pem
 	_, err = New(util.TestAlloyLogger(t).Slog(), &cfg)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "cannot use both token authentication and GitHub App authentication")
+}
+
+func TestReleaseDownloadMetricIncludesTag(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		switch r.URL.Path {
+		case "/api/v3/repos/grafana/alloy":
+			_, _ = w.Write([]byte(`{
+				"name": "alloy",
+				"owner": {"login": "grafana"},
+				"license": {"key": "apache-2.0"},
+				"language": "Go"
+			}`))
+		case "/api/v3/repos/grafana/alloy/releases":
+			_, _ = w.Write([]byte(`[{
+				"name": "Alloy v1.2.3",
+				"tag_name": "v1.2.3",
+				"assets": [{
+					"name": "alloy-linux-amd64.zip",
+					"download_count": 42,
+					"created_at": "2026-06-02T00:00:00Z"
+				}]
+			}]`))
+		case "/api/v3/repos/grafana/alloy/pulls":
+			_, _ = w.Write([]byte(`[]`))
+		case "/api/v3/rate_limit":
+			_, _ = w.Write([]byte(`{
+				"resources": {
+					"core": {"limit": 5000, "remaining": 4999, "reset": 1780000000}
+				},
+				"rate": {"limit": 5000, "remaining": 4999, "reset": 1780000000}
+			}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	integration, err := New(util.TestAlloyLogger(t).Slog(), &Config{
+		APIURL:       server.URL,
+		Repositories: []string{"grafana/alloy"},
+	})
+	require.NoError(t, err)
+
+	handler, err := integration.MetricsHandler()
+	require.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	require.Equal(t, http.StatusOK, rec.Code)
+	body, err := io.ReadAll(rec.Body)
+	require.NoError(t, err)
+	require.Contains(t, string(body), `github_repo_release_downloads{created_at="2026-06-02T00:00:00Z",name="alloy-linux-amd64.zip",release="Alloy v1.2.3",repo="alloy",tag="v1.2.3",user="grafana"} 42`)
 }
