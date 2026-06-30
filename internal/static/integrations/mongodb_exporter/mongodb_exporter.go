@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/percona/mongodb_exporter/exporter"
@@ -59,8 +58,8 @@ type Config struct {
 	EnableShards             bool               `yaml:"enable_shards,omitempty"`
 	EnableFCV                bool               `yaml:"enable_fcv,omitempty"`
 	EnablePBMMetrics         bool               `yaml:"enable_pbm_metrics,omitempty"`
-	CollStatsNamespaces      string             `name:"collstats_colls,omitempty"`
-	IndexStatsCollections    string             `name:"indexstats_colls,omitempty"`
+	CollStatsNamespaces      []string           `yaml:"collstats_colls,omitempty"`
+	IndexStatsCollections    []string           `yaml:"indexstats_colls,omitempty"`
 	CollStatsLimit           int                `yaml:"collstats_limit,omitempty"`
 	GlobalConnPool           bool               `yaml:"global_conn_pool" default:"true"`
 	ProfileTimeTS            int                `yaml:"profile_time_ts,omitempty" default:"30"`
@@ -99,13 +98,13 @@ func init() {
 
 // New creates a new mongodb_exporter integration.
 func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
-	collStatsNamespaces := []string{}
-	if c.CollStatsNamespaces != "" {
-		collStatsNamespaces = strings.Split(c.CollStatsNamespaces, ",")
+	collStatsNamespaces := c.CollStatsNamespaces
+	if collStatsNamespaces == nil {
+		collStatsNamespaces = []string{}
 	}
-	indexStatsCollections := []string{}
-	if c.IndexStatsCollections != "" {
-		indexStatsCollections = strings.Split(c.IndexStatsCollections, ",")
+	indexStatsCollections := c.IndexStatsCollections
+	if indexStatsCollections == nil {
+		indexStatsCollections = []string{}
 	}
 
 	exp := exporter.New(&exporter.Opts{
