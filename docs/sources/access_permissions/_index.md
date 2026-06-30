@@ -73,7 +73,7 @@ For the full upstream guidance, refer to [OpenTelemetry Collector configuration 
 When you must expose a listener beyond localhost, enable TLS on the receiver's `http`, `grpc`, or equivalent block, or on an exporter's `client` block.
 Set the `auth` attribute on that block and reference an `otelcol.auth.*` component's `handler` export for credentials.
 Not every auth component supports server-side authentication.
-Refer to the [otelcol component reference][otelcol] for compatible options and component-specific TLS settings.
+Refer to the [`otelcol` component reference][otelcol] for compatible options and component-specific TLS settings.
 
 Don't set `insecure_skip_verify = true` in production on outbound connections.
 Refer to the TLS settings in the [component reference][components] for the component you configure, such as [`prometheus.remote_write`][prometheus-remote-write] or [`otelcol.exporter.otlp`][otelcol-exporter-otlp].
