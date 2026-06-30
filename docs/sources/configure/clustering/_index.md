@@ -2,54 +2,49 @@
 canonical: https://grafana.com/docs/alloy/latest/configure/clustering/
 aliases:
   - ../tasks/configure-alloy-clustering/ # /docs/alloy/latest/tasks/configure-alloy-clustering/
-description: Learn how to configure Grafana Alloy clustering in an existing installation
+description: Learn how to configure Grafana Alloy clustering
 menuTitle: Clustering
-title: Configure Grafana Alloy clustering in an existing installation
+title: Configure clustering
 weight: 100
 ---
 
-# Configure {{% param "PRODUCT_NAME" %}} clustering in an existing installation
+# Configure clustering
 
-You can configure {{< param "PRODUCT_NAME" >}} to run with [clustering][] so that individual {{< param "PRODUCT_NAME" >}}s can work together for workload distribution and high availability.
+You can configure {{< param "PRODUCT_NAME" >}} to run with [clustering][] so that individual {{< param "PRODUCT_NAME" >}} instances can work together for workload distribution and high availability.
 
-This topic describes how to add clustering to an existing installation.
+To configure clustering, complete these two steps:
 
-## Configure {{% param "PRODUCT_NAME" %}} clustering with Helm Chart
+1. **Enable clustering in {{< param "PRODUCT_NAME" >}}**: Configure {{< param "PRODUCT_NAME" >}} itself to join a cluster using Helm Chart settings or command-line flags.
+1. **Enable clustering in components**: Add a `clustering` block to each component that should participate in workload distribution.
 
-This section guides you through enabling clustering when {{< param "PRODUCT_NAME" >}} is installed on Kubernetes using the {{< param "PRODUCT_NAME" >}} [Helm chart][install-helm].
+{{< admonition type="note" >}}
+Cluster mode at the {{< param "PRODUCT_NAME" >}} level doesn't automatically distribute workload.
+You must also enable clustering in each component that should participate in the cluster.
+{{< /admonition >}}
 
-### Before you begin
+## Enable clustering in components
 
-- Ensure that your `values.yaml` file has `controller.type` set to `statefulset`.
+Several components support workload distribution through clustering, including `prometheus.scrape`, `loki.source.kubernetes`, and `pyroscope.scrape`.
+Refer to [Distribute workload across cluster nodes][distribute-workload] for the complete list.
 
-### Steps
+To enable clustering in a component, add a `clustering` block with `enabled = true`:
 
-To configure clustering:
+```alloy
+prometheus.scrape "example" {
+  targets    = discovery.kubernetes.pods.targets
+  forward_to = [prometheus.remote_write.default.receiver]
 
-1. Amend your existing `values.yaml` file to add `clustering.enabled=true` inside the `alloy` block.
+  clustering {
+    enabled = true
+  }
+}
+```
 
-   ```yaml
-   alloy:
-     clustering:
-       enabled: true
-   ```
+## Next steps
 
-1. Upgrade your installation to use the new `values.yaml` file:
+- [Configure {{< param "PRODUCT_NAME" >}} for clustering][configure-alloy]: Enable clustering in your {{< param "PRODUCT_NAME" >}} installation.
+- [Distribute workload across cluster nodes][distribute-workload]: Configure components to distribute workload.
 
-   ```bash
-   helm upgrade <RELEASE_NAME> -f values.yaml
-   ```
-
-   Replace the following:
-
-   - _`<RELEASE_NAME>`_: The name of the installation you chose when you installed the Helm chart.
-
-1. Use the {{< param "PRODUCT_NAME" >}} [UI][] to verify the cluster status:
-
-   1. Click **Clustering** in the navigation bar.
-
-   1. Ensure that all expected nodes appear in the resulting table.
-
-[clustering]: ../clustering/
-[install-helm]: ../../set-up/install/kubernetes/
-[UI]: ../../troubleshoot/debug/#component-detail-page
+[clustering]: ../../get-started/clustering/
+[configure-alloy]: ./configure-alloy/
+[distribute-workload]: ./distribute-workload/
