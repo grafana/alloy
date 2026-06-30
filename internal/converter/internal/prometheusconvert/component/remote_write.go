@@ -132,11 +132,20 @@ func toAzureAD(azureADConfig *azuread.AzureADConfig) *remotewrite.AzureADConfig 
 
 	res := &remotewrite.AzureADConfig{
 		Cloud: azureADConfig.Cloud,
+		Scope: azureADConfig.Scope,
 	}
 
 	if azureADConfig.ManagedIdentity != nil {
 		res.ManagedIdentity = &remotewrite.ManagedIdentityConfig{
 			ClientID: azureADConfig.ManagedIdentity.ClientID,
+		}
+	}
+
+	if azureADConfig.WorkloadIdentity != nil {
+		res.WorkloadIdentity = &remotewrite.WorkloadIdentityConfig{
+			ClientID:      azureADConfig.WorkloadIdentity.ClientID,
+			TenantID:      azureADConfig.WorkloadIdentity.TenantID,
+			TokenFilePath: azureADConfig.WorkloadIdentity.TokenFilePath,
 		}
 	}
 
