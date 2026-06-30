@@ -23,8 +23,8 @@ Use only what matches your components and environment.
    Refer to [Pipeline resource limits](#pipeline-resource-limits).
 1. Avoid `insecure_skip_verify = true` in production.
    Refer to the TLS settings in the [component][components] reference, for example [`prometheus.remote_write`][prometheus-remote-write].
-1. Store credentials outside configuration files when you can.
-   Refer to [Types and values][types-values].
+1. Store credentials outside configuration files when you can, and review collected telemetry for accidental secret exposure before you export it.
+   Refer to [Secrets and credentials](#secrets-and-credentials).
 1. On Kubernetes, set RBAC to the permissions your configuration uses.
    Refer to [Access and permissions on Kubernetes][kubernetes].
 1. For container deployments on Kubernetes, set `readOnlyRootFilesystem: true` and `allowPrivilegeEscalation: false` when your volume mounts and components allow it.
@@ -91,6 +91,11 @@ Refer to [OpenTelemetry Collector configuration best practices][otel-security-be
 
 ## Secrets and credentials
 
+Credentials can enter your observability stack in two ways: values you load into {{< param "PRODUCT_NAME" >}} configuration, and sensitive data that applications write into log lines {{< param "PRODUCT_NAME" >}} collects.
+Handle each separately.
+
+### Configuration credentials
+
 Store authentication tokens, passwords, and similar values outside plain configuration when you can.
 The following patterns load secrets at runtime.
 Pair them with the `secret` type described in [Types and values][types-values] so credentials don't appear in the UI or component exports.
@@ -99,6 +104,14 @@ Pair them with the `secret` type described in [Types and values][types-values] s
 - [`remote.vault`][remote-vault] loads secrets from HashiCorp Vault.
 - [`remote.kubernetes.secret`][remote-k8s-secret] loads secrets from the cluster.
 - [`remote.s3`][remote-s3] loads configuration or secrets from AWS S3.
+
+### Secrets in collected data
+
+Log lines can contain API keys, tokens, and passwords that applications print to `stdout` or write to log files.
+Runtime loading and the `secret` type don't apply to those values because they travel with the telemetry to your backends.
+
+Prevent secrets from appearing in logs at the application source where you can.
+Restrict access to observability backends that store log data.
 
 ## Next steps
 
@@ -123,6 +136,7 @@ Pair them with the `secret` type described in [Types and values][types-values] s
 [sys-env]: ../reference/stdlib/sys/#sys.env
 [remote-k8s-secret]: ../reference/components/remote/remote.kubernetes.secret/
 [remote-s3]: ../reference/components/remote/remote.s3/
+[loki-secretfilter]: ../reference/components/loki/loki.secretfilter/
 [types-values]: ../get-started/expressions/types_and_values/
 [components]: ../reference/components/
 [beyla-ebpf]: ../reference/components/beyla/beyla.ebpf/
