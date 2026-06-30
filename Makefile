@@ -111,7 +111,7 @@ RELEASE_BUILD        		?= 0
 GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
 
 # Beyla embedding configuration
-BEYLA_VERSION        ?= v3.24.0
+BEYLA_VERSION        ?= v3.25.0
 BEYLA_BINARY_DIR     := internal/component/beyla/ebpf
 BEYLA_CONFIG_DIR     := $(BEYLA_BINARY_DIR)/internal/config
 BEYLA_BINARY_AMD64   := $(BEYLA_BINARY_DIR)/binaries/amd64/beyla
