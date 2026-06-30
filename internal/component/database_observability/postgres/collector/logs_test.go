@@ -391,47 +391,6 @@ func TestLogsCollector_StartStop(t *testing.T) {
 	}, 5*time.Second, 100*time.Millisecond)
 }
 
-func TestExtractSeverity(t *testing.T) {
-	tests := []struct {
-		message  string
-		expected string
-	}{
-		{"ERROR:  canceling statement", "ERROR"},
-		{"FATAL:  too many connections", "FATAL"},
-		{"PANIC:  system failure", "PANIC"},
-		{"LOG:  connection received", "LOG"},
-		{"no colon here", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.message, func(t *testing.T) {
-			require.Equal(t, tt.expected, extractSeverity(tt.message))
-		})
-	}
-}
-
-func TestIsBareContinuationLine(t *testing.T) {
-	tests := []struct {
-		line     string
-		expected bool
-	}{
-		{"DETAIL:  some detail", true},
-		{"HINT:  some hint", true},
-		{"CONTEXT:  some context", true},
-		{"STATEMENT:  SELECT 1", true},
-		{"  DETAIL:  with whitespace", true},
-		{"\tIndented line", false}, // TAB-continuation handled by appendToStatement, not this fn
-		{"2025-01-12 10:30:45 UTC:app-user@db:[123]:ERROR:  normal log", false},
-		{"", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.line, func(t *testing.T) {
-			require.Equal(t, tt.expected, isBareContinuationLine(tt.line))
-		})
-	}
-}
-
 func TestLogsCollector_SQLStateExtraction(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
 	registry := prometheus.NewRegistry()

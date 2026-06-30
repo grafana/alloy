@@ -271,17 +271,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	// Bare (no log_line_prefix) STATEMENT continuation, matched to the single
-	// in-flight pending error.
-	if isBareContinuationLine(line) {
-		if l.enableErrorLogs {
-			if stmt, ok := strings.CutPrefix(strings.TrimSpace(line), "STATEMENT:"); ok {
-				l.attachStatement(strings.TrimSpace(stmt))
-			}
-		}
-		return nil
-	}
-
 	isFormat := logFormatRegex.MatchString(line)
 
 	// A new prefixed line means any in-flight ERROR+STATEMENT pair is complete;
@@ -441,26 +430,6 @@ func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
 	return reconstructed, true
 }
 
-func isBareContinuationLine(line string) bool {
-	continuationKeywords := []string{
-		"DETAIL:",
-		"HINT:",
-		"CONTEXT:",
-		"STATEMENT:",
-		"QUERY:",
-		"LOCATION:",
-	}
-
-	trimmedLine := strings.TrimSpace(line)
-	for _, keyword := range continuationKeywords {
-		if strings.HasPrefix(trimmedLine, keyword) {
-			return true
-		}
-	}
-
-	return false
-}
-
 // appendStatement appends a TAB-continuation line to the in-flight STATEMENT's SQL.
 func (l *Logs) appendStatement(line string) {
 	l.pendingMu.Lock()
@@ -589,13 +558,6 @@ func (l *Logs) flushExpiredPending() {
 	if p.hasStatement {
 		l.emitErrorEntry(p)
 	}
-}
-
-func extractSeverity(message string) string {
-	if idx := strings.Index(message, ":"); idx > 0 {
-		return strings.TrimSpace(message[:idx])
-	}
-	return ""
 }
 
 func truncateString(s string, maxLen int) string {
