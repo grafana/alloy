@@ -214,6 +214,12 @@ body:
       description: How do you propose we implement the functionality?
     validations:
       required: true
+  - type: checkboxes
+    attributes:
+      label: AI disclosure
+      description: See the [Generative AI Contribution Policy](https://github.com/grafana/alloy/blob/main/docs/developer/genai.md).
+      options:
+        - label: This issue was substantially generated with AI assistance.
   - type: dropdown
     attributes:
       label: Tip

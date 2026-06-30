@@ -45,14 +45,17 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				TopicFromMetadataKey: "",
 				Encoding:             "",
 			},
-			Topic:                                "",
 			IncludeMetadataKeys:                  []string(nil),
 			TopicFromAttribute:                   "",
-			Encoding:                             "",
 			PartitionTracesByID:                  false,
 			PartitionMetricsByResourceAttributes: false,
 			PartitionLogsByResourceAttributes:    false,
 			PartitionLogsByTraceID:               false,
+			RecordPartitioner: kafkaexporter.RecordPartitionerConfig{
+				StickyKey: &kafkaexporter.StickyKeyPartitionerConfig{
+					Hasher: "sarama_compat",
+				},
+			},
 			BackOffConfig: configretry.BackOffConfig{
 				Enabled:             true,
 				InitialInterval:     5 * time.Second,
@@ -112,9 +115,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: func() kafkaexporter.Config {
 				cfg := defaultExpected()
 
-				cfg.Topic = ""
-				cfg.Encoding = ""
-
 				cfg.Logs.Topic = "test_default_topic"
 				cfg.Logs.Encoding = "otlp_proto"
 
@@ -138,9 +138,6 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			`,
 			expected: func() kafkaexporter.Config {
 				cfg := defaultExpected()
-
-				cfg.Topic = ""
-				cfg.Encoding = ""
 
 				cfg.Logs.Topic = "otlp_logs"
 				cfg.Logs.Encoding = "otlp_json"
@@ -342,13 +339,16 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					FlushMaxMessages:       101,
 					AllowAutoTopicCreation: true,
 				},
-				Topic:                                "",
 				IncludeMetadataKeys:                  []string(nil),
 				TopicFromAttribute:                   "my-attr",
-				Encoding:                             "",
 				PartitionTracesByID:                  true,
 				PartitionMetricsByResourceAttributes: true,
 				PartitionLogsByResourceAttributes:    true,
+				RecordPartitioner: kafkaexporter.RecordPartitionerConfig{
+					StickyKey: &kafkaexporter.StickyKeyPartitionerConfig{
+						Hasher: "sarama_compat",
+					},
+				},
 			},
 		},
 	}

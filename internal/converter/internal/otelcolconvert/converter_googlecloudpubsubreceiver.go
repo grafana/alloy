@@ -61,7 +61,13 @@ func toGoogleCloudPubSubReceiver(state *State, id componentstatus.InstanceID, cf
 		IgnoreEncodingError: cfg.IgnoreEncodingError,
 		ClientID:            cfg.ClientID,
 		Timeout:             cfg.TimeoutSettings.Timeout,
-		DebugMetrics:        common.DefaultValue[otelconfig.DebugMetricsArguments](),
+		FlowControl: googlecloudpubsub.FlowControlConfig{
+			TriggerAckBatchDuration: cfg.FlowControlConfig.TriggerAckBatchDuration,
+			StreamAckDeadline:       cfg.FlowControlConfig.StreamAckDeadline,
+			MaxOutstandingMessages:  cfg.FlowControlConfig.MaxOutstandingMessages,
+			MaxOutstandingBytes:     cfg.FlowControlConfig.MaxOutstandingBytes,
+		},
+		DebugMetrics: common.DefaultValue[otelconfig.DebugMetricsArguments](),
 		Output: &otelcol.ConsumerArguments{
 			Metrics: ToTokenizedConsumers(state.Next(id, pipeline.SignalLogs)),
 			Logs:    ToTokenizedConsumers(state.Next(id, pipeline.SignalMetrics)),

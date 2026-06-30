@@ -61,6 +61,13 @@ jobs:
           fi
           echo "Tag ${TAG_NAME} exists in repository"
 
+      - name: Wait for release image to mirror to DockerHub
+        if: steps.validate.outputs.is_alloy == 'true'
+        uses: grafana/shared-workflows/actions/wait-for-docker-publish@cd185787ec303639a71383384e1b0d424b7422fb # wait-for-docker-publish/v0.2.0
+        with:
+          image: grafana/alloy:${{ steps.tag.outputs.tag }}
+          timeout: 10m
+
       - name: Trigger ArgoCD Workflow
         if: steps.validate.outputs.is_alloy == 'true'
         uses: grafana/shared-workflows/actions/trigger-argo-workflow@a37de51f3d713a30a9e4b21bcdfbd38170020593 # v1.3.0

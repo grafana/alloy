@@ -21,6 +21,7 @@ package alertmanager
 
 import (
 	"github.com/prometheus/alertmanager/config"
+	commoncfg "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
 	"gopkg.in/yaml.v2"
 )
@@ -77,24 +78,24 @@ type GlobalConfig struct {
 	SMTPAuthIdentity      string          `yaml:"smtp_auth_identity,omitempty" json:"smtp_auth_identity,omitempty"`
 	SMTPRequireTLS        *bool           `yaml:"smtp_require_tls,omitempty" json:"smtp_require_tls,omitempty"`
 	SMTPTLSConfig         *TLSConfig      `yaml:"smtp_tls_config,omitempty" json:"smtp_tls_config,omitempty"`
-	SlackAPIURL           *config.URL     `yaml:"slack_api_url,omitempty" json:"slack_api_url,omitempty"`
+	SlackAPIURL           *commoncfg.URL  `yaml:"slack_api_url,omitempty" json:"slack_api_url,omitempty"`
 	SlackAPIURLFile       string          `yaml:"slack_api_url_file,omitempty" json:"slack_api_url_file,omitempty"`
-	PagerdutyURL          *config.URL     `yaml:"pagerduty_url,omitempty" json:"pagerduty_url,omitempty"`
-	HipchatAPIURL         *config.URL     `yaml:"hipchat_api_url,omitempty" json:"hipchat_api_url,omitempty"`
+	PagerdutyURL          *commoncfg.URL  `yaml:"pagerduty_url,omitempty" json:"pagerduty_url,omitempty"`
+	HipchatAPIURL         *commoncfg.URL  `yaml:"hipchat_api_url,omitempty" json:"hipchat_api_url,omitempty"`
 	HipchatAuthToken      string          `yaml:"hipchat_auth_token,omitempty" json:"hipchat_auth_token,omitempty"`
-	OpsGenieAPIURL        *config.URL     `yaml:"opsgenie_api_url,omitempty" json:"opsgenie_api_url,omitempty"`
+	OpsGenieAPIURL        *commoncfg.URL  `yaml:"opsgenie_api_url,omitempty" json:"opsgenie_api_url,omitempty"`
 	OpsGenieAPIKey        string          `yaml:"opsgenie_api_key,omitempty" json:"opsgenie_api_key,omitempty"`
 	OpsGenieAPIKeyFile    string          `yaml:"opsgenie_api_key_file,omitempty" json:"opsgenie_api_key_file,omitempty"`
-	WeChatAPIURL          *config.URL     `yaml:"wechat_api_url,omitempty" json:"wechat_api_url,omitempty"`
+	WeChatAPIURL          *commoncfg.URL  `yaml:"wechat_api_url,omitempty" json:"wechat_api_url,omitempty"`
 	WeChatAPISecret       string          `yaml:"wechat_api_secret,omitempty" json:"wechat_api_secret,omitempty"`
 	WeChatAPICorpID       string          `yaml:"wechat_api_corp_id,omitempty" json:"wechat_api_corp_id,omitempty"`
-	VictorOpsAPIURL       *config.URL     `yaml:"victorops_api_url,omitempty" json:"victorops_api_url,omitempty"`
+	VictorOpsAPIURL       *commoncfg.URL  `yaml:"victorops_api_url,omitempty" json:"victorops_api_url,omitempty"`
 	VictorOpsAPIKey       string          `yaml:"victorops_api_key,omitempty" json:"victorops_api_key,omitempty"`
 	VictorOpsAPIKeyFile   string          `yaml:"victorops_api_key_file,omitempty" json:"victorops_api_key_file,omitempty"`
-	TelegramAPIURL        *config.URL     `yaml:"telegram_api_url,omitempty" json:"telegram_api_url,omitempty"`
-	WebexAPIURL           *config.URL     `yaml:"webex_api_url,omitempty" json:"webex_api_url,omitempty"`
-	JiraAPIURL            *config.URL     `yaml:"jira_api_url,omitempty" json:"jira_api_url,omitempty"`
-	RocketChatAPIURL      *config.URL     `yaml:"rocketchat_api_url,omitempty" json:"rocketchat_api_url,omitempty"`
+	TelegramAPIURL        *commoncfg.URL  `yaml:"telegram_api_url,omitempty" json:"telegram_api_url,omitempty"`
+	WebexAPIURL           *commoncfg.URL  `yaml:"webex_api_url,omitempty" json:"webex_api_url,omitempty"`
+	JiraAPIURL            *commoncfg.URL  `yaml:"jira_api_url,omitempty" json:"jira_api_url,omitempty"`
+	RocketChatAPIURL      *commoncfg.URL  `yaml:"rocketchat_api_url,omitempty" json:"rocketchat_api_url,omitempty"`
 	RocketChatToken       string          `yaml:"rocketchat_token,omitempty" json:"rocketchat_token,omitempty"`
 	RocketChatTokenFile   string          `yaml:"rocketchat_token_file,omitempty" json:"rocketchat_token_file,omitempty"`
 	RocketChatTokenID     string          `yaml:"rocketchat_token_id,omitempty" json:"rocketchat_token_id,omitempty"`

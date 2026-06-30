@@ -203,7 +203,7 @@ func TestReplaceConfigValidation(t *testing.T) {
 	for tName, tt := range tests {
 		tt := tt
 		t.Run(tName, func(t *testing.T) {
-			_, err := getExpressionRegex(tt.config)
+			_, _, err := validateReplaceConfig(tt.config)
 			if (err != nil) != (tt.err != nil) {
 				t.Errorf("ReplaceConfig.validate() expected error = %v, actual error = %v", tt.err, err)
 				return
