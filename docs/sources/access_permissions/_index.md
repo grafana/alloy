@@ -19,6 +19,8 @@ Use only what matches your components and environment.
 1. When your components allow it, run {{< param "PRODUCT_NAME" >}} as a non-root user on [Linux][linux], [Kubernetes][kubernetes], or a dedicated service account on [Windows][windows].
 1. Restrict network exposure: bind the HTTP server and OpenTelemetry receivers to localhost when remote access isn't required, and use TLS and authentication when you expose listeners or connect to remote backends.
    Refer to [Network exposure](#network-exposure).
+1. Include [`otelcol.processor.memory_limiter`][otelcol-processor-memory-limiter] and [`otelcol.processor.batch`][otelcol-processor-batch] on every OpenTelemetry pipeline to protect against memory exhaustion under traffic spikes.
+   Refer to [Pipeline resource limits](#pipeline-resource-limits).
 1. Avoid `insecure_skip_verify = true` in production.
    Refer to the TLS settings in the [component][components] reference, for example [`prometheus.remote_write`][prometheus-remote-write].
 1. Store credentials outside configuration files when you can.
@@ -76,6 +78,17 @@ Refer to the [otelcol component reference][otelcol] for compatible options and c
 Don't set `insecure_skip_verify = true` in production on outbound connections.
 Refer to the TLS settings in the [component reference][components] for the component you configure, such as [`prometheus.remote_write`][prometheus-remote-write] or [`otelcol.exporter.otlp`][otelcol-exporter-otlp].
 
+## Pipeline resource limits
+
+OpenTelemetry receivers can accept sudden traffic spikes large enough to exhaust process memory.
+The upstream OpenTelemetry Collector security guidance treats [`otelcol.processor.memory_limiter`][otelcol-processor-memory-limiter] and [`otelcol.processor.batch`][otelcol-processor-batch] as security controls, not only operational tuning.
+
+Place `otelcol.processor.memory_limiter` immediately after each receiver in the pipeline.
+It drops telemetry and triggers garbage collection when memory use exceeds configured soft and hard limits.
+Follow it with `otelcol.processor.batch`, which batches data before export and reduces outbound request volume.
+
+Refer to [OpenTelemetry Collector configuration best practices][otel-security-best-practices] for related guidance on queue sizes, filters, and exporter timeouts.
+
 ## Secrets and credentials
 
 Store authentication tokens, passwords, and similar values outside plain configuration when you can.
@@ -102,6 +115,8 @@ Pair them with the `secret` type described in [Types and values][types-values] s
 [prometheus-remote-write]: ../reference/components/prometheus/prometheus.remote_write/
 [otelcol-exporter-otlp]: ../reference/components/otelcol/otelcol.exporter.otlp/
 [otelcol-receiver-otlp]: ../reference/components/otelcol/otelcol.receiver.otlp/
+[otelcol-processor-memory-limiter]: ../reference/components/otelcol/otelcol.processor.memory_limiter/
+[otelcol-processor-batch]: ../reference/components/otelcol/otelcol.processor.batch/
 [otelcol]: ../reference/components/otelcol/
 [otel-security-best-practices]: https://opentelemetry.io/docs/security/config-best-practices/
 [remote-vault]: ../reference/components/remote/remote.vault/
