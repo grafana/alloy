@@ -21,7 +21,8 @@ It lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collecto
 {{< param "PRODUCT_NAME" >}} supports two runtime engines and an extension:
 
 - **{{< param "DEFAULT_ENGINE" >}}**: The default {{< param "PRODUCT_NAME" >}} runtime and [configuration syntax](../get-started/syntax/).
-  This remains the default, stable experience with [backward compatibility](../introduction/backward-compatibility/) guarantees for {{< param "PRODUCT_NAME" >}} users.
+- **{{< param "DEFAULT_ENGINE" >}}**: The default {{< param "PRODUCT_NAME" >}} runtime and [configuration syntax](../../get-started/syntax/).
+This remains the default, stable experience with [backward compatibility](../backward-compatibility/) guarantees for {{< param "PRODUCT_NAME" >}} users.
 
 - **{{< param "OTEL_ENGINE" >}}**: The standard OpenTelemetry Collector runtime embedded within {{< param "PRODUCT_NAME" >}}.
   It uses [upstream collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) for pipelines and components.
