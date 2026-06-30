@@ -6,6 +6,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -13,6 +15,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -153,22 +156,32 @@ func (c *Component) serveHTTP(w http.ResponseWriter, r *http.Request) {
 
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		if errors.Is(err, context.Canceled) {
-			// Client disconnected or Alloy is shutting down
 			c.opts.Logger.Debug("proxy request cancelled", "err", err)
 			return
 		}
-		if ready {
-			c.opts.Logger.Error("proxy error", "err", err)
-			http.Error(w, "subprocess unavailable", http.StatusBadGateway)
-		} else {
+		if !ready {
 			c.opts.Logger.Debug("proxy error (subprocess initializing)", "err", err)
-			// Return empty 200 so scrapers don't log warnings during startup.
 			w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 			w.WriteHeader(http.StatusOK)
+			return
 		}
+		if isSubprocessGoneErr(err) {
+			c.opts.Logger.Warn("subprocess connection unavailable", "err", err)
+		} else {
+			c.opts.Logger.Error("proxy error", "err", err)
+		}
+		http.Error(w, "subprocess unavailable", http.StatusBadGateway)
 	}
 
 	proxy.ServeHTTP(w, r)
+}
+
+func isSubprocessGoneErr(err error) bool {
+	return errors.Is(err, io.EOF) ||
+		errors.Is(err, net.ErrClosed) ||
+		errors.Is(err, syscall.ECONNRESET) ||
+		errors.Is(err, syscall.ECONNREFUSED) ||
+		errors.Is(err, syscall.EPIPE)
 }
 
 func resolveTargetAddr(addr string, profilePort int, path string) (targetAddr string, ok bool) {
