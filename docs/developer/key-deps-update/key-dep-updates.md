@@ -126,6 +126,100 @@ Here is a summary of the relationships between the key dependencies of Alloy.
    - Depends on: OpenTelemetry Collector Contrib (internal/exp/metrics, pkg/pdatautil, processor/deltatocumulativeprocessor)
    - Does NOT depend on: Beyla
 
+## Common traps and hard-won lessons
+
+The bullets here are judgment calls the "Steps to update key dependencies" section does not spell out. They are recurring failure modes that cost time to relearn on every run. Each subsection names which step they apply to.
+
+### Versions and relationships (Step 2)
+
+- **Compatibility cliffs: sometimes no released version works.**
+  - Problem: cross-dependency API coupling can leave no *released* version of one key dependency compiling against any single release of another.
+  - Fix: pin a pre-release tag or a `main`-branch snapshot to bridge them. Prefer a tagged RC over a raw snapshot.
+  - Example: otel-contrib v0.147 to v0.149 calls the old 5-arg `scrape.NewManager` while v0.150+ needs the new `AppendableV2` signature (prom #17872), so no released prom v0.311.x fit either. Bridged with `prometheus v0.312.0-rc.0`.
+
+- **A GA release can re-couple the stack.**
+  - Problem: a GA cut often runs a blanket CVE-driven `go get -u` that floats the whole OTel stack to a newer minor.
+  - Fix: the last RC before GA can be the cleaner pin.
+  - Example: prom GA `v0.312.0` pulled deltatocumulative to v0.153 and collector core to v1.59 via a 46-dependency refresh (prometheus#18812); `v0.312.0-rc.0` stayed v0.151-aligned.
+
+- **Forced minimum bumps carry their own breaking changes.**
+  - Problem: an older version of a key dependency may import a package a newer transitive dependency removed, forcing a minimum bump that carries an unrelated user-facing breaking change.
+  - Fix: check the release you're forced onto for unrelated breaks, not just the API you came for.
+  - Example: Loki v3.6.x imports the removed `tsdb/errors` package, forcing a bump to v3.7.1. That release also brings loki#19991 (`fix!`: parsed labels should not override structured metadata).
+
+### Forks (Step 3)
+
+- **A minimal one-commit fork can be lower-risk than upstream main.**
+  - Problem: the reflex "drop the fork, point at upstream main" frequently breaks the build, because main has moved an unrelated transitive dependency the rest of the graph isn't ready for.
+  - Fix: keep a single-patch fork on the graph's version line. Remove it on a coordinated graph-wide uplift, not because upstream tagged a release.
+  - Example: prom-operator main has the slog `rulefmt.Parse` fix but also bumped `client-go` to v0.36.2 (`HasSyncedChecker`), breaking pinned `controller-runtime v0.20.4` and otel-contrib's `k8sattributesprocessor` (still client-go v0.35.4 through otel v0.154). Kept a 1-line `v0.91.0`+slog fork instead.
+
+### Modules and conflict resolution (Step 4)
+
+- **Don't let `tidy` downgrade main.**
+  - Problem: after a rebase or merge, `go mod tidy` can silently select versions *below* what main already requires (renovate bumps), and it won't raise a direct dependency back up on its own.
+  - Fix: take the higher version per module, reconcile, and check explicitly for downgrades before you continue.
+  - Example: one rebase surfaced 16 such traps (secretsmanager, pgx/v5, go-git, zerolog, …).
+
+- **Hold the OTel stack uniform.**
+  - Problem: when main introduced a new OTel component since your branch diverged, `tidy` can float the whole stack to a newer minor.
+  - Fix: pin the new component to your target version in `collector/builder-config.yaml`. After regenerating, grep for any otel module off the uniform version and bump the stragglers.
+  - Example: `nginxreceiver`, `signaltometricsconnector`, and a few collector-core modules came in at the old minor and had to be pinned to v0.151.0.
+
+- **Bump dependencies at their source of truth, not the generated file.**
+  - Problem: if you force a version straggler in `go.mod` when `collector/builder-config.yaml` owns it, the next regenerate reverts it and it surfaces as `make generate` drift.
+  - Fix: bump it in the builder-config.
+  - Example: the lone `httpsprovider` straggler was raised in builder-config, not go.mod, to keep the stable stack uniform without drift.
+
+- **Verify the commit, not just the working tree.**
+  - Problem: `go build`, `test`, and `lint` run against the working tree, so they stay green even when a merge or amend captured pre-regeneration files.
+  - Fix: regenerate the files first, then stage the updated files, and check `git status` before you push.
+  - Example: a merge commit once captured a stale `components.go` (missing a connector) while every local check passed against the regenerated tree.
+
+### Compilation (Step 6)
+
+- **Build the upstream Config from `CreateDefaultConfig()`, not a zero-value struct.**
+  - Problem: when upstream adds a new *required* field with a non-zero factory default, a fresh struct ships a zero value that breaks at runtime. Roughly 39 of 50 otelcol components build from a fresh struct, so this recurs.
+  - Fix: build the Config from `CreateDefaultConfig()` so factory defaults are present.
+  - Example: googlecloudpubsub `flow_control` shipped zeros, so `StreamAckDeadline=0` was rejected by the API and `TriggerAckBatchDuration=0` caused a hot-loop.
+
+### Tests, docs, and change notes (Steps 7, 9, and 10)
+
+- **Newly-required upstream config: expose it, don't hardcode.**
+  - Problem: if upstream makes a field required, hardcoding its default hides it from users.
+  - Fix: expose it as Alloy config defaulting to the upstream factory value (zero behavior change unless set). Keep the scope tight and defer *purely-optional* new fields to a follow-up.
+  - Example: exposed kafka `record_partitioner` and googlecloudpubsub `flow_control`, parked the optional ones. The `tail_sampling` processor's `sampling_strategy` couldn't be exposed at all because upstream keeps the type unexported through v0.154, so it needs a reflection shim.
+
+- **A major bump can regress runtime *defaults*, not just APIs.**
+  - Problem: even when everything compiles, default behaviors can quietly change from the prior major.
+  - Fix: check that defaults still match, and build config via `Load` on empty input so populated defaults (like the scrape fallback protocol) survive.
+  - Example: after the Prometheus v3 bump, `prometheus.operator.*` scraping silently stopped for ServiceMonitors with no explicit protocol (#4291).
+
+- **Accept upstream default flips unless accepting would harm users.**
+  - Problem: when upstream changes a default, the test golden moves, and silently updating the fixture hides a user-facing change.
+  - Fix: accept the new default and document it in the release notes. Keep Alloy's old default only when accepting would harm users, and then document the divergence and the reason in the component docs.
+  - Examples: v0.153 accepted the k8sattributes `deployment_name_from_replicaset` (`true`) and filter/transform `error_mode` (`ignore`) flips with release notes. It kept Alloy's exclusion of the spanmetrics `collector.instance.id` dimension because accepting it stamps an unstable id on every series and multiplies active series on each restart, recorded as a divergence in the component doc.
+
+- **Dropping a fork whose patch landed upstream is not a user-facing change.**
+  - Problem: retiring a fork because its fix is now in the target version can look like a behavior change, but behavior is continuous across the swap.
+  - Fix: verify continuity before calling something a breaking change, and don't flag this in the release notes.
+  - Example: dropping the `grafana/prometheus` fork looked like a `sent_batch_duration` change but wasn't. Both the fork and the target rc.0 carried the same fix.
+
+- **Flag no-op-upstream fields as deprecations.**
+  - Problem: a field that still parses but does nothing upstream now is misleading if left as-is or silently removed.
+  - Fix: add a deprecation note rather than removing it silently.
+  - Example: kafka `resolve_canonical_bootstrap_servers_only` became a no-op after the franz-go migration.
+
+- **Scope release notes to components actually in the released distro.**
+  - Problem: a change to a component that doesn't ship yet isn't user-facing, so a release note for it is noise.
+  - Fix: check that the component ships in the latest release before noting it, and skip notes for ones not yet exposed.
+  - Example: the `otelcol.receiver.awss3` change was left out of the changelog because the component wasn't in the latest release (#5128).
+
+- **Link component docs to the `OTEL_VERSION` variable, not a hardcoded tag.**
+  - Problem: a hardcoded upstream-source tag in component docs rots on every bump.
+  - Fix: use `{{< param "OTEL_VERSION" >}}` so the link tracks each bump.
+  - Example: raised in review on `otelcol.processor.filter.md` (#5784), the templated form is the repo convention, though the stale `<OTEL_VERSION>` angle-bracket form still lingers in shared links.
+
 ## Steps to update key dependencies
 
 Don't write anything in this document. Create a separate document called 'deps-update-<version>-YYYY-MM-DD.md' in the root of the repository. This is your output file where you will write all the output as required.
