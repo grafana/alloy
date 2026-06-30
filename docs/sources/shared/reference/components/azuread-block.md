@@ -4,9 +4,10 @@ description: Shared content, azuread block
 headless: true
 ---
 
-| Name    | Type     | Description      | Default         | Required |
-| ------- | -------- | ---------------- | --------------- | -------- |
-| `cloud` | `string` | The Azure Cloud. | `"AzurePublic"` | no       |
+| Name    | Type     | Description                                              | Default         | Required |
+|---------|----------|----------------------------------------------------------|-----------------|----------|
+| `cloud` | `string` | The Azure Cloud.                                         | `"AzurePublic"` | no       |
+| `scope` | `string` | Custom OAuth 2.0 scope to request when acquiring tokens. |                 | no       |
 
 The supported values for `cloud` are:
 
