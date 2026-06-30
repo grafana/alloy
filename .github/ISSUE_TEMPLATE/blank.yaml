@@ -19,6 +19,7 @@ body:
       # Do not manually edit it.
       # Start components list
       - beyla.ebpf
+      - database_observability.mssql
       - database_observability.mysql
       - database_observability.postgres
       - discovery.azure

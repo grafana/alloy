@@ -45,6 +45,7 @@ The following components, grouped by namespace, _export_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="database_observability" >}}
+- [database_observability.mssql](../components/database_observability/database_observability.mssql)
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
@@ -129,6 +130,7 @@ The following components, grouped by namespace, _consume_ Targets.
 <!-- START GENERATED SECTION: CONSUMERS OF Targets -->
 
 {{< collapse title="database_observability" >}}
+- [database_observability.mssql](../components/database_observability/database_observability.mssql)
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
@@ -261,6 +263,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 <!-- START GENERATED SECTION: CONSUMERS OF Loki `LogsReceiver` -->
 
 {{< collapse title="database_observability" >}}
+- [database_observability.mssql](../components/database_observability/database_observability.mssql)
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
 {{< /collapse >}}
