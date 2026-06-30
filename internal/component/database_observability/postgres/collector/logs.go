@@ -24,7 +24,7 @@ const OP_ERROR = "error"
 
 const (
 	LogsCollector         = "logs"
-	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a:"
+	expectedLogLinePrefix = "%m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a"
 	selectLogTimezone     = `SELECT setting FROM pg_settings WHERE name = 'log_timezone';`
 )
 
@@ -47,32 +47,17 @@ var supportedSeverities = map[string]struct{}{
 	"PANIC": {},
 }
 
+// pendingError holds an ERROR/FATAL/PANIC line awaiting its STATEMENT
+// continuation. The SQL builder accumulates the STATEMENT keyword line plus any
+// TAB-prefixed continuation lines that follow.
 type pendingError struct {
 	receivedAt time.Time
+	severity   string
+	datname    string
+	timestamp  time.Time
 
-	severity      string
-	sqlstate      string
-	sqlstateClass string
-	datname       string
-	user          string
-
-	timestamp       time.Time
-	clientAddr      string
-	clientPort      string
-	pid             string
-	backendStart    string
-	xid             string
-	sessionID       string
-	applicationName string
-	errorMessage    string
-}
-
-// statementBuffer accumulates a STATEMENT continuation across the keyword line
-// and the zero-or-more TAB-prefixed lines that follow.
-type statementBuffer struct {
-	pid        string
-	receivedAt time.Time
-	sql        strings.Builder
+	sql          strings.Builder
+	hasStatement bool
 }
 
 type LogsArguments struct {
@@ -113,12 +98,13 @@ type Logs struct {
 	validLogsThisMinute   int
 	invalidLogsThisMinute int
 
-	pendingErrors       map[string]*pendingError
+	// op="error" pairing state. PostgreSQL's logging collector writes each
+	// message (the ERROR line, its STATEMENT, and continuations) atomically and
+	// contiguously per backend, so a single in-flight pending is sufficient —
+	// no PID-keyed map is needed.
+	pending             *pendingError
 	pendingMu           sync.Mutex
 	pendingErrorTimeout time.Duration
-
-	currentStatement *statementBuffer
-	statementMu      sync.Mutex
 
 	startTime time.Time
 }
@@ -135,7 +121,6 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 		excludeUsers:        args.ExcludeUsers,
 		enableErrorLogs:     args.EnableErrorLogs,
 		db:                  args.DB,
-		pendingErrors:       make(map[string]*pendingError),
 		pendingErrorTimeout: 5 * time.Second,
 		ctx:                 ctx,
 		cancel:              cancel,
@@ -281,21 +266,28 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	if strings.HasPrefix(line, "\t") {
 		if l.enableErrorLogs {
-			l.appendToStatement(line)
+			l.appendStatement(line)
 		}
 		return nil
 	}
 
-	// Bare-keyword continuations are only emitted when log_line_prefix is empty.
+	// Bare (no log_line_prefix) STATEMENT continuation, matched to the single
+	// in-flight pending error.
 	if isBareContinuationLine(line) {
 		if l.enableErrorLogs {
-			l.processBareContinuation(line)
+			if stmt, ok := strings.CutPrefix(strings.TrimSpace(line), "STATEMENT:"); ok {
+				l.attachStatement(strings.TrimSpace(stmt))
+			}
 		}
 		return nil
 	}
 
-	if l.enableErrorLogs && logFormatRegex.MatchString(line) {
-		l.flushStatement()
+	isFormat := logFormatRegex.MatchString(line)
+
+	// A new prefixed line means any in-flight ERROR+STATEMENT pair is complete;
+	// emit it before handling this line.
+	if l.enableErrorLogs && isFormat {
+		l.flushPending()
 	}
 
 	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
@@ -306,7 +298,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	if !logFormatRegex.MatchString(line) {
+	if !isFormat {
 		l.trackInvalidFormat()
 		l.parseErrors.Inc()
 		return fmt.Errorf("log line does not match expected format")
@@ -347,7 +339,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		}
 	}
 
-	// Parse log line prefix format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a:
+	// Parse log line prefix format: %m:%r:%u@%d:[%p]:%l:%e:%s:%v:%x:%c:%q%a
 	atIdx := strings.Index(line, "@")
 	afterAt := line[atIdx+1:]
 	pidMarkerIdx := strings.Index(afterAt, ":[")
@@ -376,19 +368,11 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
-	pidStart := strings.Index(afterAt, "[")
-	pidEnd := strings.Index(afterAt, "]")
-	pid := ""
-	if pidStart != -1 && pidEnd > pidStart {
-		pid = afterAt[pidStart+1 : pidEnd]
-	}
-
 	if hasStatement {
 		if statementIdx := strings.Index(line, ":STATEMENT:"); statementIdx != -1 {
-			stmt := strings.TrimSpace(line[statementIdx+len(":STATEMENT:"):])
-			l.startStatement(pid, stmt)
-			return nil
+			l.attachStatement(strings.TrimSpace(line[statementIdx+len(":STATEMENT:"):]))
 		}
+		return nil
 	}
 
 	messageStart := -1
@@ -413,78 +397,23 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		user,
 	).Inc()
 
-	if !l.enableErrorLogs || pid == "" {
+	if !l.enableErrorLogs {
 		return nil
 	}
 
-	clientAddr, clientPort := parseRemote(extractRemoteSegment(line, lastColonBeforeAt))
-	backendStart, xidRaw, sessionID, applicationName := parsePrefixTail(line, atIdx, pidEnd)
-	xid := xidRaw
-	if xid == "0" {
-		xid = ""
-	}
-
-	errorMessage := ""
-	if msgBody := line[messageStart+len(severity)+1:]; len(msgBody) > 0 {
-		errorMessage = strings.TrimLeft(msgBody, " ")
-		errorMessage = strings.TrimRight(errorMessage, " \t")
-	}
-
-	// A prior pending error from this PID is displaced and never reaches
-	// op="error" — pg_errors_total still counts it. This keeps the op count
-	// equal to "errors with captured SQL".
+	// Start a new pending error awaiting its STATEMENT. Any prior un-flushed
+	// pending is displaced here (no STATEMENT captured → no op="error" entry);
+	// pg_errors_total still counted it above.
 	l.pendingMu.Lock()
-	l.pendingErrors[pid] = &pendingError{
-		receivedAt:      time.Now(),
-		severity:        severity,
-		sqlstate:        sqlstateCode,
-		sqlstateClass:   sqlstateClass,
-		datname:         database,
-		user:            user,
-		timestamp:       parsedTimestamp,
-		clientAddr:      clientAddr,
-		clientPort:      clientPort,
-		pid:             pid,
-		backendStart:    backendStart,
-		xid:             xid,
-		sessionID:       sessionID,
-		applicationName: applicationName,
-		errorMessage:    errorMessage,
+	l.pending = &pendingError{
+		receivedAt: time.Now(),
+		severity:   severity,
+		datname:    database,
+		timestamp:  parsedTimestamp,
 	}
 	l.pendingMu.Unlock()
 
 	return nil
-}
-
-// parsePrefixTail extracts %s, %x, %c, %a from a prefix-formatted line.
-// The prefix ends `...:<%c>:<%a>:KEYWORD:`. Between `]` (after [%p]) and the
-// `:` before %a sits `%l:%e:%s:%v:%x:%c`, and %s contributes 3 colon-separated
-// fields (HH:MM:SS), so the segment splits into exactly 8 parts.
-func parsePrefixTail(line string, atIdx, pidEnd int) (backendStart, xidRaw, sessionID, applicationName string) {
-	kwStart := findKeywordPos(line)
-	if kwStart == -1 {
-		return
-	}
-	appEnd := strings.LastIndex(line[:kwStart], ":")
-	appStart := strings.LastIndex(line[:appEnd], ":") + 1
-	if appStart > 0 && appStart < appEnd {
-		applicationName = line[appStart:appEnd]
-	}
-
-	segL := atIdx + 1 + pidEnd + 2
-	segR := appStart - 1
-	if segL >= segR || segR > len(line) {
-		return
-	}
-	parts := strings.Split(line[segL:segR], ":")
-	if len(parts) < 8 {
-		return
-	}
-	// parts: %l, %e, HH, MM, SS+tz, %v, %x, %c
-	backendStart = parts[2] + ":" + parts[3] + ":" + parts[4]
-	xidRaw = parts[6]
-	sessionID = parts[7]
-	return
 }
 
 // resolveAbsolute returns a trustworthy UTC instant. time.Parse fabricates a
@@ -512,49 +441,6 @@ func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
 	return reconstructed, true
 }
 
-// extractRemoteSegment returns the %r portion of a prefixed line. Skip past
-// the timestamp's HH:MM:SS before scanning for the colon that ends %m.
-func extractRemoteSegment(line string, lastColonBeforeAt int) string {
-	if len(line) < 30 {
-		return ""
-	}
-	rel := strings.Index(line[20:], ":")
-	if rel < 0 {
-		return ""
-	}
-	rStart := 20 + rel + 1
-	if rStart >= lastColonBeforeAt {
-		return ""
-	}
-	return line[rStart:lastColonBeforeAt]
-}
-
-func parseRemote(s string) (host, port string) {
-	if s == "" || s == "[local]" {
-		return s, ""
-	}
-	open := strings.LastIndex(s, "(")
-	close := strings.LastIndex(s, ")")
-	if open == -1 || close == -1 || close <= open {
-		return s, ""
-	}
-	return s[:open], s[open+1 : close]
-}
-
-func findKeywordPos(line string) int {
-	keywords := []string{"ERROR", "FATAL", "PANIC", "STATEMENT", "DETAIL", "HINT", "CONTEXT", "QUERY", "LOCATION"}
-	best := -1
-	for _, kw := range keywords {
-		if idx := strings.Index(line, ":"+kw+":"); idx != -1 && (best == -1 || idx < best) {
-			best = idx
-		}
-	}
-	if best == -1 {
-		return -1
-	}
-	return best + 1 // skip the leading ':'
-}
-
 func isBareContinuationLine(line string) bool {
 	continuationKeywords := []string{
 		"DETAIL:",
@@ -575,89 +461,52 @@ func isBareContinuationLine(line string) bool {
 	return false
 }
 
-// processBareContinuation matches a no-prefix STATEMENT to the most recent
-// pending error — PostgreSQL's ereport mutex emits ERROR + STATEMENT
-// contiguously per backend.
-func (l *Logs) processBareContinuation(line string) {
-	trimmed := strings.TrimSpace(line)
-	if !strings.HasPrefix(trimmed, "STATEMENT:") {
+// appendStatement appends a TAB-continuation line to the in-flight STATEMENT's SQL.
+func (l *Logs) appendStatement(line string) {
+	l.pendingMu.Lock()
+	defer l.pendingMu.Unlock()
+	if l.pending == nil || !l.pending.hasStatement {
 		return
 	}
-	stmt := strings.TrimSpace(strings.TrimPrefix(trimmed, "STATEMENT:"))
+	if l.pending.sql.Len() > 0 {
+		l.pending.sql.WriteByte('\n')
+	}
+	l.pending.sql.WriteString(strings.TrimLeft(line, "\t"))
+}
 
+// attachStatement records the STATEMENT keyword line's SQL onto the pending error.
+func (l *Logs) attachStatement(sql string) {
 	l.pendingMu.Lock()
-	var bestPID string
-	var bestEntry *pendingError
-	for pid, p := range l.pendingErrors {
-		if bestEntry == nil || p.receivedAt.After(bestEntry.receivedAt) {
-			bestPID = pid
-			bestEntry = p
-		}
+	defer l.pendingMu.Unlock()
+	if l.pending == nil {
+		return
 	}
-	if bestEntry != nil {
-		delete(l.pendingErrors, bestPID)
+	if l.pending.sql.Len() > 0 {
+		l.pending.sql.WriteByte('\n')
 	}
+	l.pending.sql.WriteString(sql)
+	l.pending.hasStatement = true
+}
+
+// flushPending emits the pending error if its STATEMENT was captured, then
+// clears it. A pending without a STATEMENT is left in place — it is displaced
+// by the next error or dropped on timeout.
+func (l *Logs) flushPending() {
+	l.pendingMu.Lock()
+	p := l.pending
+	if p == nil || !p.hasStatement {
+		l.pendingMu.Unlock()
+		return
+	}
+	l.pending = nil
 	l.pendingMu.Unlock()
 
-	l.emitErrorEntry(bestEntry, stmt)
+	l.emitErrorEntry(p)
 }
 
-func (l *Logs) startStatement(pid, initialSQL string) {
-	l.statementMu.Lock()
-	defer l.statementMu.Unlock()
-
-	l.flushStatementLocked()
-	l.currentStatement = &statementBuffer{
-		pid:        pid,
-		receivedAt: time.Now(),
-	}
-	l.currentStatement.sql.WriteString(initialSQL)
-}
-
-func (l *Logs) appendToStatement(line string) {
-	l.statementMu.Lock()
-	defer l.statementMu.Unlock()
-
-	if l.currentStatement == nil {
-		return
-	}
-	if l.currentStatement.sql.Len() > 0 {
-		l.currentStatement.sql.WriteByte('\n')
-	}
-	l.currentStatement.sql.WriteString(strings.TrimLeft(line, "\t"))
-}
-
-func (l *Logs) flushStatement() {
-	l.statementMu.Lock()
-	defer l.statementMu.Unlock()
-	l.flushStatementLocked()
-}
-
-func (l *Logs) flushStatementLocked() {
-	if l.currentStatement == nil {
-		return
-	}
-	sb := l.currentStatement
-	l.currentStatement = nil
-
-	stmt := strings.TrimSpace(sb.sql.String())
+func (l *Logs) emitErrorEntry(p *pendingError) {
+	stmt := strings.TrimSpace(p.sql.String())
 	if stmt == "" {
-		return
-	}
-
-	var entry *pendingError
-	l.pendingMu.Lock()
-	if e, ok := l.pendingErrors[sb.pid]; ok {
-		entry = e
-		delete(l.pendingErrors, sb.pid)
-	}
-	l.pendingMu.Unlock()
-
-	l.emitErrorEntry(entry, stmt)
-}
-
-func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
-	if entry == nil {
 		return
 	}
 	fp, _, err := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
@@ -665,8 +514,7 @@ func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
 		return
 	}
 
-	body := buildErrorLine(entry, fp)
-	ts := entry.timestamp
+	ts := p.timestamp
 	if ts.IsZero() {
 		ts = time.Now()
 	}
@@ -674,37 +522,26 @@ func (l *Logs) emitErrorEntry(entry *pendingError, stmt string) {
 	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
 		OP_ERROR,
-		body,
+		buildErrorLine(p, fp),
 		ts.UnixNano(),
 	)
 }
 
-// buildErrorLine assembles the logfmt body for one ERROR + STATEMENT pair.
-// The SQL is not emitted; consumers join on (query_fingerprint, pid) to
-// recover it from the query_samples / query_details streams.
-func buildErrorLine(entry *pendingError, fp string) string {
+// buildErrorLine assembles the minimal logfmt body for one ERROR + STATEMENT
+// pair: just the fields needed to compute per-query error rate. The SQL text
+// and error-detail fields are intentionally omitted (deferred to a follow-up
+// PR); consumers recover the SQL by joining on query_fingerprint.
+func buildErrorLine(p *pendingError, fp string) string {
 	type kv struct{ k, v string }
 	fields := []kv{
-		{"severity", entry.severity},
-		{"sqlstate", entry.sqlstate},
-		{"sqlstate_class", entry.sqlstateClass},
-		{"xid", entry.xid},
-		{"datname", entry.datname},
+		{"severity", p.severity},
+		{"datname", p.datname},
 		{"query_fingerprint", fp},
-		{"pid", entry.pid},
-		{"backend_start", entry.backendStart},
-		{"application_name", entry.applicationName},
-		{"client_addr", entry.clientAddr},
-		{"client_port", entry.clientPort},
-		{"session_id", entry.sessionID},
-		{"user", entry.user},
-		{"error_message", entry.errorMessage},
 	}
 
 	var b strings.Builder
 	for _, f := range fields {
-		// error_message is always emitted, even when empty.
-		if f.v == "" && f.k != "error_message" {
+		if f.v == "" {
 			continue
 		}
 		if b.Len() > 0 {
@@ -734,26 +571,24 @@ func logfmtQuote(v string) string {
 	return b.String()
 }
 
-// flushExpiredPending drops pending entries older than pendingErrorTimeout.
-// The statement buffer flushes FIRST so it can consume its matching pending
-// before the pending is expired — both share approximately the same
-// receivedAt, so without this order they'd expire on the same ticker fire.
+// flushExpiredPending handles a pending error older than pendingErrorTimeout
+// that no following log line has flushed: emit it if its STATEMENT was captured
+// (its continuations have all arrived by now), otherwise drop it.
 func (l *Logs) flushExpiredPending() {
 	deadline := time.Now().Add(-l.pendingErrorTimeout)
 
-	l.statementMu.Lock()
-	if l.currentStatement != nil && l.currentStatement.receivedAt.Before(deadline) {
-		l.flushStatementLocked()
-	}
-	l.statementMu.Unlock()
-
 	l.pendingMu.Lock()
-	for pid, p := range l.pendingErrors {
-		if p.receivedAt.Before(deadline) {
-			delete(l.pendingErrors, pid)
-		}
+	p := l.pending
+	if p == nil || !p.receivedAt.Before(deadline) {
+		l.pendingMu.Unlock()
+		return
 	}
+	l.pending = nil
 	l.pendingMu.Unlock()
+
+	if p.hasStatement {
+		l.emitErrorEntry(p)
+	}
 }
 
 func extractSeverity(message string) string {

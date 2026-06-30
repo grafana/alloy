@@ -940,6 +940,22 @@ func parseLogfmt(t *testing.T, s string) map[string]string {
 	return out
 }
 
+// requireOnlyFields asserts the parsed logfmt entry contains exactly the given
+// keys and no others — pinning the minimal v1 op="error" field set so any
+// re-added error-detail field fails the test until its own PR lands.
+func requireOnlyFields(t *testing.T, fields map[string]string, allowed ...string) {
+	t.Helper()
+	allow := make(map[string]struct{}, len(allowed))
+	for _, k := range allowed {
+		allow[k] = struct{}{}
+		require.Containsf(t, fields, k, "expected field %q to be present", k)
+	}
+	for k := range fields {
+		_, ok := allow[k]
+		require.Truef(t, ok, "unexpected field %q in minimal op=error entry", k)
+	}
+}
+
 func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	registry := prometheus.NewRegistry()
 	receiver := loki.NewLogsReceiver()
@@ -992,21 +1008,13 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	require.NoError(t, fpErr)
 
 	require.Equal(t, "ERROR", fields["severity"])
-	require.Equal(t, "42P01", fields["sqlstate"])
-	require.Equal(t, "42", fields["sqlstate_class"])
 	require.Equal(t, "books_store", fields["datname"])
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
-	require.Equal(t, pid, fields["pid"])
-	require.Equal(t, "[unknown]", fields["application_name"])
-	require.Equal(t, "127.0.0.1", fields["client_addr"])
-	require.Equal(t, "54321", fields["client_port"])
-	require.Equal(t, "69fa58c6.30", fields["session_id"])
-	require.Equal(t, "user", fields["user"])
-	require.Contains(t, fields["error_message"], `relation "missing" does not exist`)
-	_, hasStatement := fields["statement"]
-	require.False(t, hasStatement, "statement field must not be emitted on error entries")
-	_, hasXid := fields["xid"]
-	require.False(t, hasXid, "xid must be omitted when %x = 0")
+
+	// v1 emits only the bare-minimum field set needed for per-query error
+	// rate. Error-detail fields (sqlstate, pid, client/session, error_message,
+	// the SQL text, etc.) are deferred to a follow-up PR and must be absent.
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
 }
 
 func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
@@ -1094,8 +1102,11 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 
 	body := strings.TrimPrefix(got[0].Line, `level="info" `)
 	fields := parseLogfmt(t, body)
-	require.Equal(t, "42P02", fields["sqlstate"])
-	require.Equal(t, "err two", fields["error_message"])
+	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"], "the second error's STATEMENT is the one matched")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
 }
 
 // TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement exercises the
@@ -1149,10 +1160,9 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 	require.NoError(t, fpErr)
 
 	require.Equal(t, "ERROR", fields["severity"])
-	require.Equal(t, "40001", fields["sqlstate"])
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
-	_, hasStatement := fields["statement"]
-	require.False(t, hasStatement, "statement field must not be emitted on error entries")
+	// The multi-line STATEMENT is the behavior under test; fields stay minimal.
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
 }
 
 // TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an
@@ -1205,50 +1215,6 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 	fields := parseLogfmt(t, body)
 	expectedFP, _, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog, 0)
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
-}
-
-func TestLogsCollector_IncludesXidWhenNonZero(t *testing.T) {
-	registry := prometheus.NewRegistry()
-	receiver := loki.NewLogsReceiver()
-	entryCh := make(chan loki.Entry, 8)
-
-	c, err := NewLogs(LogsArguments{
-		Receiver:        receiver,
-		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
-		Logger:          logging.NewSlogNop(),
-		Registry:        registry,
-		EnableErrorLogs: true,
-	})
-	require.NoError(t, err)
-	// Default pendingErrorTimeout — happy-path test, no timeout-race coverage here.
-	require.NoError(t, c.Start(context.Background()))
-	t.Cleanup(c.Stop)
-
-	ts := c.startTime.Add(10 * time.Second).UTC()
-	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
-	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
-	pid := "77"
-
-	// %x = 12345 (non-zero).
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1(11111):user@books_store:[" + pid + "]:1:23505:" + ts2 + ":2/9:12345:69fa58c6.4d:[unknown]:ERROR:  duplicate key violates unique constraint",
-	}}
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1(11111):user@books_store:[" + pid + "]:2:23505:" + ts2 + ":2/9:12345:69fa58c6.4d:[unknown]:STATEMENT:  INSERT INTO t (a) VALUES (1)",
-	}}
-	// Next prefix line flushes the buffered STATEMENT deterministically.
-	receiver.Chan() <- loki.Entry{Entry: push.Entry{
-		Timestamp: time.Now(),
-		Line:      ts1 + ":127.0.0.1(11111):user@books_store:[" + pid + "]:3:00000:" + ts2 + ":2/9:12345:69fa58c6.4d:[unknown]:LOG:  duration: 0.001 ms",
-	}}
-
-	got := drainEntries(t, entryCh, 1, 2*time.Second)
-	require.Len(t, got, 1)
-	body := strings.TrimPrefix(got[0].Line, `level="info" `)
-	fields := parseLogfmt(t, body)
-	require.Equal(t, "12345", fields["xid"])
 }
 
 // TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled confirms that
