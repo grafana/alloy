@@ -62,6 +62,7 @@ processors:
 receivers:
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awscloudwatchreceiver v0.151.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsecscontainermetricsreceiver v0.151.0
+  - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awsfirehosereceiver v0.151.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/awss3receiver v0.151.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/cloudflarereceiver v0.151.0
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/receiver/datadogreceiver v0.151.0

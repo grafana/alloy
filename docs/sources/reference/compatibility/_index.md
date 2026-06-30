@@ -397,6 +397,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.processor.transform](../components/otelcol/otelcol.processor.transform)
 - [otelcol.receiver.awscloudwatch](../components/otelcol/otelcol.receiver.awscloudwatch)
 - [otelcol.receiver.awsecscontainermetrics](../components/otelcol/otelcol.receiver.awsecscontainermetrics)
+- [otelcol.receiver.awsfirehose](../components/otelcol/otelcol.receiver.awsfirehose)
 - [otelcol.receiver.awss3](../components/otelcol/otelcol.receiver.awss3)
 - [otelcol.receiver.cloudflare](../components/otelcol/otelcol.receiver.cloudflare)
 - [otelcol.receiver.datadog](../components/otelcol/otelcol.receiver.datadog)
