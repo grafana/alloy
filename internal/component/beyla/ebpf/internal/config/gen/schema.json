@@ -86,6 +86,10 @@
         },
         "select": {
           "$ref": "#/$defs/Selection"
+        },
+        "sensitive_query_params": {
+          "$ref": "#/$defs/SensitiveQueryParamsConfig",
+          "description": "SensitiveQueryParams controls which query-parameter keys are redacted in url.full and url.query."
         }
       },
       "type": "object",
@@ -2240,6 +2244,23 @@
     "Selection": {
       "additionalProperties": {
         "$ref": "#/$defs/InclusionLists"
+      },
+      "type": "object"
+    },
+    "SensitiveQueryParamsConfig": {
+      "properties": {
+        "add": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "remove": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
       },
       "type": "object"
     },
