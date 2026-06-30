@@ -198,7 +198,7 @@ When `otel_annotations` is set to `true`, annotations such as `resource.opentele
 
 When `deployment_name_from_replicaset` is set to `true`, the processor extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets.
 
-The Alloy default remains `false`, which differs from the upstream default of `true` since v0.153.
+The {{< param "PRODUCT_NAME" >}} default remains `false`, which differs from the upstream default of `true` since v0.153.
 
 [semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes
 

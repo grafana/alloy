@@ -177,9 +177,12 @@ The default dimensions are:
 * `span.kind`
 * `status.code`
 
-The default dimensions are always added if not listed in `exclude_dimensions`. If no additional dimensions are specified, only the default ones are added.
+{{< param "PRODUCT_NAME" >}} adds the default dimensions unless you list them in `exclude_dimensions`.
+If you don't specify additional dimensions, {{< param "PRODUCT_NAME" >}} adds only the default ones.
 
-Alloy always excludes the `collector.instance.id` dimension. The connector adds it by default, but Alloy doesn't set a stable `collector.instance.id`, so it would otherwise be a random value that changes on every restart.
+{{< param "PRODUCT_NAME" >}} always excludes the `collector.instance.id` dimension to keep the metric series stable across restarts.
+`otelcol.connector.spanmetrics` adds this dimension by default, populated from a resource attribute of the same name.
+Because {{< param "PRODUCT_NAME" >}} never sets that attribute, the connector would otherwise fall back to a random value that changes on every restart, fragmenting the metric series and breaking `rate()` continuity.
 
 The following attributes are supported:
 
