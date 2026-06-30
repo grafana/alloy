@@ -1,0 +1,3 @@
+# Enable RBAC permissions required by the Beyla SDK injection controller.
+sdkInjectionController:
+  enabled: true
