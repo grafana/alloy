@@ -146,8 +146,5 @@ func toWindowsExporter(config *windows_exporter.Config) *windows.Arguments {
 			Exclude:     config.Net.Exclude,
 			EnabledList: split(config.Net.EnabledList),
 		},
-		Time: windows.TimeConfig{
-			EnabledList: split(config.Time.EnabledList),
-		},
 	}
 }
