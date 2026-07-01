@@ -242,6 +242,62 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			},
 		},
 		{
+			testName: "includeCollectorInstanceID",
+			cfg: `
+			include_collector_instance_id = true
+
+			histogram {
+				explicit {}
+			}
+
+			output {}
+			`,
+			expected: spanmetricsconnector.Config{
+				Dimensions:               []spanmetricsconnector.Dimension{},
+				CallsDimensions:          []spanmetricsconnector.Dimension{},
+				ExcludeDimensions:        []string(nil),
+				TimestampCacheSize:       &defaultTimestampCacheSize,
+				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
+				ResourceMetricsCacheSize: 1000,
+				Histogram: spanmetricsconnector.HistogramConfig{
+					Dimensions:  []spanmetricsconnector.Dimension{},
+					Disable:     false,
+					Unit:        0,
+					Exponential: configoptional.None[spanmetricsconnector.ExponentialHistogramConfig](),
+					Explicit: configoptional.Some(spanmetricsconnector.ExplicitHistogramConfig{
+						Buckets: []time.Duration{
+							2 * time.Millisecond,
+							4 * time.Millisecond,
+							6 * time.Millisecond,
+							8 * time.Millisecond,
+							10 * time.Millisecond,
+							50 * time.Millisecond,
+							100 * time.Millisecond,
+							200 * time.Millisecond,
+							400 * time.Millisecond,
+							800 * time.Millisecond,
+							1 * time.Second,
+							1400 * time.Millisecond,
+							2 * time.Second,
+							5 * time.Second,
+							10 * time.Second,
+							15 * time.Second,
+						},
+					}),
+				},
+				MetricsFlushInterval: 60 * time.Second,
+				Namespace:            "traces.span.metrics",
+				Exemplars: spanmetricsconnector.ExemplarsConfig{
+					Enabled:         false,
+					MaxPerDataPoint: 5,
+				},
+				Events: spanmetricsconnector.EventsConfig{
+					Enabled:    false,
+					Dimensions: []spanmetricsconnector.Dimension{},
+				},
+			},
+		},
+		{
 			testName: "invalidAggregationTemporality",
 			cfg: `
 			aggregation_temporality = "badVal"

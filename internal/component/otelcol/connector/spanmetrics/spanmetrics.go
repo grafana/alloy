@@ -93,6 +93,13 @@ type Arguments struct {
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	IncludeInstrumentationScope []string `alloy:"include_instrumentation_scope,attr,optional"`
+
+	// IncludeCollectorInstanceID allows the connector to add its own collector.instance.id
+	// dimension, which upstream uses to satisfy the Single Writer Principle for
+	// multi-instance deployments. Alloy suppresses this dimension by default because Alloy
+	// never populates the collector.instance.id resource attribute itself, so leaving it on
+	// would churn a fresh random UUID into the dimension set on every restart.
+	IncludeCollectorInstanceID bool `alloy:"include_collector_instance_id,attr,optional"`
 }
 
 var (
@@ -171,12 +178,11 @@ func FromOTelAggregationTemporality(temporality string) string {
 	}
 }
 
-// Convert implements connector.Arguments.
-// collectorInstanceIDDimension is the dimension the spanmetrics connector fills with
-// a random UUID when collector.instance.id is absent from the resource. Alloy never
-// sets it, so we exclude it unconditionally.
+// collectorInstanceIDDimension is the dimension the spanmetrics connector fills with a
+// random UUID to satisfy the Single Writer Principle across multi-instance deployments.
 const collectorInstanceIDDimension = "collector.instance.id"
 
+// Convert implements connector.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	dimensions := make([]spanmetricsconnector.Dimension, 0, len(args.Dimensions))
 	for _, d := range args.Dimensions {
@@ -199,11 +205,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	excludeDimensions := append([]string(nil), args.ExcludeDimensions...)
-	// The connector adds a collector.instance.id dimension by default (beta gate
-	// connector.spanmetrics.includeCollectorInstanceID), but Alloy never populates
-	// that resource attribute, so the connector mints a fresh random UUID per build —
-	// a churning, meaningless label that breaks rate() continuity. Always suppress it.
-	if !slices.Contains(excludeDimensions, collectorInstanceIDDimension) {
+	// Suppress collector.instance.id unless the user opts in, since Alloy never populates
+	// the underlying resource attribute and the connector would otherwise mint a fresh
+	// random UUID into the dimension on every restart.
+	if !args.IncludeCollectorInstanceID && !slices.Contains(excludeDimensions, collectorInstanceIDDimension) {
 		excludeDimensions = append(excludeDimensions, collectorInstanceIDDimension)
 	}
 

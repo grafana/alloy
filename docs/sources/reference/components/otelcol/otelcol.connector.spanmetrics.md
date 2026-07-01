@@ -78,6 +78,7 @@ You can use the following arguments with `otelcol.connector.spanmetrics`:
 | `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                                            | `[]`                    | no       |
 | `aggregation_cardinality_limit`   | `number`       | The maximum number of unique combinations of dimensions that will be tracked for metrics aggregation. | `0`                     | no       |
 | `include_instrumentation_scope`   | `list(string)` | A list of instrumentation scope names to include from the traces.                                     | `[]`                    | no       |
+| `include_collector_instance_id`   | `bool`         | Whether to add a `collector.instance.id` dimension to satisfy the Single Writer Principle.             | `false`                 | no       |
 
 The supported values for `aggregation_temporality` are:
 
@@ -180,9 +181,13 @@ The default dimensions are:
 {{< param "PRODUCT_NAME" >}} adds the default dimensions unless you list them in `exclude_dimensions`.
 If you don't specify additional dimensions, {{< param "PRODUCT_NAME" >}} adds only the default ones.
 
-{{< param "PRODUCT_NAME" >}} always excludes the `collector.instance.id` dimension to keep the metric series stable across restarts.
+By default, {{< param "PRODUCT_NAME" >}} excludes the `collector.instance.id` dimension to keep the metric series stable across restarts.
 `otelcol.connector.spanmetrics` adds this dimension by default, populated from a resource attribute of the same name.
 Because {{< param "PRODUCT_NAME" >}} never sets that attribute, the connector would otherwise fall back to a random value that changes on every restart, fragmenting the metric series and breaking `rate()` continuity.
+
+If you run multiple {{< param "PRODUCT_NAME" >}} instances that send spanmetrics to the same backend, set `include_collector_instance_id` to `true` so each instance's metrics carry a unique `collector.instance.id`, satisfying the [Single Writer Principle][single-writer-principle] and avoiding series collisions between instances.
+
+[single-writer-principle]: https://opentelemetry.io/docs/specs/otel/metrics/data-model/#single-writer
 
 The following attributes are supported:
 
