@@ -119,12 +119,13 @@ Section "install"
   Call CreateConfig
   Call CreateDataDirectory
   Call InitializeRegistry
+  Call RegisterEventSource
 
   ${If} $User != ""
     StrCpy $AuthFlag "obj= $\"$User$\""
     ${If} $Password != ""
       StrCpy $AuthFlag "$AuthFlag password= $\"$Password$\""
-    ${EndIf}  
+    ${EndIf}
   ${EndIf}
 
   # Create the service.
@@ -246,6 +247,20 @@ Function InitializeRegistry
   ${EndIf}
 
   Return
+FunctionEnd
+
+# RegisterEventSource pre-creates the Windows Event Log source for Alloy so
+# that a non-admin service account can open the source without needing write
+# access to HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application. Without
+# this, alloy-service.exe fails on first start under a dedicated service
+# account and the SCM reports error 1053 (timeout waiting to connect).
+Function RegisterEventSource
+  !define EVENTLOGKEY "HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\Alloy"
+
+  nsExec::ExecToLog 'Reg.exe add "${EVENTLOGKEY}" /v EventMessageFile /t REG_EXPAND_SZ /d "%SystemRoot%\System32\EventCreate.exe" /f'
+  Pop $0
+  nsExec::ExecToLog 'Reg.exe add "${EVENTLOGKEY}" /v TypesSupported   /t REG_DWORD     /d 7 /f'
+  Pop $0
 FunctionEnd
 
 Function SetFolderPermissions
