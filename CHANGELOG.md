@@ -1,5 +1,54 @@
 # Changelog
 
+## [1.18.0](https://github.com/grafana/alloy/compare/v1.17.0...v1.18.0) (2026-07-01)
+
+
+### ⚠ BREAKING CHANGES
+
+* `otelcol.receiver.kafka` and `otelcol.exporter.kafka`: `resolve_canonical_bootstrap_servers_only` is now a no-op and deprecated. The upstream migration from migration from `sarama` to `franz-go dropped the behavior. The argument still parses but no longer resolves bootstrap server addresses.
+* `otelcol.exporter.splunkhec` — `batcher` block removed (upstream deletion in otel-contrib v0.151). Configs using it will fail to load. Migration: move the equivalent fields under `sending_queue.batch` (`enabled` → presence of the block; `flush_timeout`/`sizer`/`min_size`/`max_size` keep their names).
+
+### Features 🌟
+
+* Add alloy.command to override the Alloy Helm container entrypoint ([#6509](https://github.com/grafana/alloy/issues/6509)) ([fea3056](https://github.com/grafana/alloy/commit/fea3056107bf6506ee5ab090c42c08a5e3796e5b))
+* Add k8sleaderelector Extension and k8scluster Receiver to OTel Engine ([#6450](https://github.com/grafana/alloy/issues/6450)) ([24fc846](https://github.com/grafana/alloy/commit/24fc84634920e01fbc289ad421aa0ca5605ed238))
+* Add otelcol.connector.signaltometrics component ([#6410](https://github.com/grafana/alloy/issues/6410)) ([887ca3f](https://github.com/grafana/alloy/commit/887ca3f1f8a162e484cacc88de4baed72bbf8272))
+* **database_observability.sql_server:** Add scaffolding for sql_server `schema_details` collector ([#6624](https://github.com/grafana/alloy/issues/6624)) ([0cedb33](https://github.com/grafana/alloy/commit/0cedb331e6f1985aada77f3c5e549811a2a085d4))
+* **Helm Chart:** Make service.externalTrafficPolicy avaliable ([#4511](https://github.com/grafana/alloy/issues/4511)) ([a987e33](https://github.com/grafana/alloy/commit/a987e33af93f6756c32d776c37a6af4484b66183))
+* Inline config support for Alloy Otel Extension ([#6442](https://github.com/grafana/alloy/issues/6442)) ([53589bd](https://github.com/grafana/alloy/commit/53589bd0b7d2261580cf3448d059f573907a86a2))
+* Make alloyengine extension OCB-able ([#6395](https://github.com/grafana/alloy/issues/6395)) ([b6c5b20](https://github.com/grafana/alloy/commit/b6c5b2075840f874a7e9a01a7ac5e21da0275af7))
+* **metrics:** Add native histogram support for self-monitoring metrics ([#6385](https://github.com/grafana/alloy/issues/6385)) ([6045de1](https://github.com/grafana/alloy/commit/6045de1264724c23fa4e3d6423f109b7585088aa))
+* **prometheus.exporter.windows:** Add time collector to the Windows exporter ([#6517](https://github.com/grafana/alloy/issues/6517)) ([6289603](https://github.com/grafana/alloy/commit/62896033de73b65cb64227f2fcdb6e88d8d91d52))
+* **pyroscope.ebpf:** Add no_kernel_version_check argument ([#6475](https://github.com/grafana/alloy/issues/6475)) ([020d74c](https://github.com/grafana/alloy/commit/020d74cc572d55879cdf2500f92e0046dd463f09))
+* Upgrade Prometheus to v3.12.0 (GA) and OpenTelemetry Collector to v0.153.0 ([#6597](https://github.com/grafana/alloy/issues/6597)) ([118a5d1](https://github.com/grafana/alloy/commit/118a5d1e1c22c3beac3abc355b62aa440cce9f0d))
+* Upgrade Prometheus to v3.12.0-rc.0, otel-contrib to v0.151.0, Loki to v3.7.1 ([#6240](https://github.com/grafana/alloy/issues/6240)) ([b4b6747](https://github.com/grafana/alloy/commit/b4b674749ecdd5b9e8e73e98ff58bf842f98d40e))
+* Upgrade to Beyla 3.22 ([#6452](https://github.com/grafana/alloy/issues/6452)) ([1cb72f6](https://github.com/grafana/alloy/commit/1cb72f65db6f4fdaea8c763cf3fe74abf246fe39))
+
+
+### Bug Fixes 🐛
+
+* Back off usage reporting on persistent failure instead of retrying every minute ([#6478](https://github.com/grafana/alloy/issues/6478)) ([0a1d139](https://github.com/grafana/alloy/commit/0a1d13919326e9321ece2d0694e5a0b42a691233))
+* Beyla glob parsing ([#6525](https://github.com/grafana/alloy/issues/6525)) ([beddf1b](https://github.com/grafana/alloy/commit/beddf1bbc99dfffa98df4d2d9b9017b94f2b45c9))
+* Bump moduledeps fixtures to go 1.26.4 ([#6521](https://github.com/grafana/alloy/issues/6521)) ([9d27acd](https://github.com/grafana/alloy/commit/9d27acd3141fc593b87cc99a3fc6411f0abd72c7))
+* **ci:** Only stamp BuildDate for release builds ([#6541](https://github.com/grafana/alloy/issues/6541)) ([59ed586](https://github.com/grafana/alloy/commit/59ed586439f0bbdf57c519f606dd0d6b0431cae6)), closes [#4266](https://github.com/grafana/alloy/issues/4266)
+* **database_observability.mysql:** Simplify denylist in-memory map for `explain_plans` collector ([#6473](https://github.com/grafana/alloy/issues/6473)) ([18fe267](https://github.com/grafana/alloy/commit/18fe2673d33435005832b07919251d8f0173ce1f))
+* **database_observability:** Explain-plan conditions now redact ([7e8e72d](https://github.com/grafana/alloy/commit/7e8e72d39c4219b2957cf3810a9b3e914213987e))
+* **deps:** Update high-confidence go dependencies ([#6558](https://github.com/grafana/alloy/issues/6558)) ([bd61eeb](https://github.com/grafana/alloy/commit/bd61eeb0a38344ab6c2b650e024842e0e5505a82)), closes [#6547](https://github.com/grafana/alloy/issues/6547)
+* Don't emit error log when remotecfg is unused ([#6483](https://github.com/grafana/alloy/issues/6483)) ([d0f30ea](https://github.com/grafana/alloy/commit/d0f30ea9befdd6e8cc948a47140391531f25fa7d))
+* **loki.process:** Log logfmt decode failures at debug instead of error ([#6599](https://github.com/grafana/alloy/issues/6599)) ([66990eb](https://github.com/grafana/alloy/commit/66990ebbbe51345b2598f2f1ad1a093e8934e58e))
+* **loki.process:** Prevent data race for metircs ([#6519](https://github.com/grafana/alloy/issues/6519)) ([2ae1848](https://github.com/grafana/alloy/commit/2ae18487d006f1ef2c2979d630b831ff1bd321cf))
+* Make go mod tidy resilient to transient module-proxy failures ([#6491](https://github.com/grafana/alloy/issues/6491)) ([23e04c9](https://github.com/grafana/alloy/commit/23e04c920b5c2fd4b2cba8c719f3f17d852b351a))
+* **prometheus.exporter.cloudwatch:** Stop forcing legacy metric-name validation process-wide ([#6616](https://github.com/grafana/alloy/issues/6616)) ([fabebf8](https://github.com/grafana/alloy/commit/fabebf8e61d6db35943730dbe5f0239fafc25ae7))
+* **promethues.exporter.mongodb:** Add currentop_slow_time argument ([#6539](https://github.com/grafana/alloy/issues/6539)) ([dd48729](https://github.com/grafana/alloy/commit/dd48729d2b705faeb21a08d1d20fd19aa8546b6b))
+* Remove duplicate Time field in windows exporter ([#6633](https://github.com/grafana/alloy/issues/6633)) ([a97ec91](https://github.com/grafana/alloy/commit/a97ec91d4ae98964b744ecc78a77bcd053530f07))
+* Remove extra bracketing of squid exporter host ([#6573](https://github.com/grafana/alloy/issues/6573)) ([4259b8f](https://github.com/grafana/alloy/commit/4259b8ff6dc3fe46fa2eee6b9a501f0fc64eb93b))
+* **security/web/ui:** Update web/ui vite to v7.3.5 [SECURITY] ([#6497](https://github.com/grafana/alloy/issues/6497)) ([d2bb8c0](https://github.com/grafana/alloy/commit/d2bb8c06a610fa2b7ddf64bc2589d380e6da2572))
+* Skip noop error log at collector registration ([#6543](https://github.com/grafana/alloy/issues/6543)) ([80968d4](https://github.com/grafana/alloy/commit/80968d44c4275ba4abd642063e177abac421c3c5))
+* Stabilize ServiceMonitor e2e target injection sequencing ([#6523](https://github.com/grafana/alloy/issues/6523)) ([cddef2d](https://github.com/grafana/alloy/commit/cddef2d3d2e6cdb158f3989807b6fcbf8008be1d))
+* Stabilize Windows CI in Loki tests and static converter ([#6524](https://github.com/grafana/alloy/issues/6524)) ([7284c0d](https://github.com/grafana/alloy/commit/7284c0dc6eecb0146e711ac9dbbad63abd574b89))
+* **web/ui:** Bump esbuild to 0.28.1 ([#6522](https://github.com/grafana/alloy/issues/6522)) ([a2b3981](https://github.com/grafana/alloy/commit/a2b3981a3737c369ccce6abf53dd8b57768e88a5))
+* **windows_service:** Gracefully terminate alloy when service is stopped ([#6593](https://github.com/grafana/alloy/issues/6593)) ([d3969ba](https://github.com/grafana/alloy/commit/d3969ba04081edb92cac50a7b37f674c3552e2d2))
+
 ## [1.17.0](https://github.com/grafana/alloy/compare/v1.16.0...v1.17.0) (2026-06-11)
 
 
