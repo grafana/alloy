@@ -85,8 +85,9 @@ type Logs struct {
 	logTimezone     atomic.Pointer[time.Location]
 	lastLogTimezone atomic.Pointer[string]
 
-	errorsBySQLState *prometheus.CounterVec
-	parseErrors      prometheus.Counter
+	errorsBySQLState      *prometheus.CounterVec
+	parseErrors           prometheus.Counter
+	logsProcessingEnabled prometheus.Gauge
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -151,10 +152,27 @@ func (l *Logs) initMetrics() {
 		},
 	)
 
+	// Report whether logs processing (op="error" emission) is enabled for this
+	// instance so consumers can detect which servers produce op="error" entries.
+	l.logsProcessingEnabled = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "database_observability",
+			Name:      "logs_processing_enabled",
+			Help:      "Whether logs processing (error-log capture) is enabled for this database instance.",
+		},
+	)
+
 	l.registry.MustRegister(
 		l.errorsBySQLState,
 		l.parseErrors,
+		l.logsProcessingEnabled,
 	)
+
+	enabled := 0.0
+	if l.enableErrorLogs {
+		enabled = 1.0
+	}
+	l.logsProcessingEnabled.Set(enabled)
 }
 
 func (l *Logs) Name() string {
@@ -222,6 +240,7 @@ func (l *Logs) Stop() {
 
 	l.registry.Unregister(l.errorsBySQLState)
 	l.registry.Unregister(l.parseErrors)
+	l.registry.Unregister(l.logsProcessingEnabled)
 }
 
 func (l *Logs) Stopped() bool {
