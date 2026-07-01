@@ -153,7 +153,8 @@ func maybeBuildImages(cfg config) error {
 	}
 	if err := util.Step("make alloy-image", func() error {
 		// Pass ALLOY_IMAGE so a custom --alloy-image flag picks the right tag.
-		return harness.RunCommand("make", "alloy-image", "ALLOY_IMAGE="+cfg.alloyImage)
+		// Pin VERSION so Alloy reports a deterministic build version.
+		return harness.RunCommand("make", "alloy-image", "ALLOY_IMAGE="+cfg.alloyImage, "VERSION=123.456.789")
 	}); err != nil {
 		return err
 	}
