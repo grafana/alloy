@@ -20,12 +20,26 @@ var (
 // newWriter creates a new writer which writes to the Windows Event
 // Logger.
 func newWriter() (*writer, error) {
+	// Fast path: if the event source is already registered, open it directly.
+	// eventlog.InstallAsEventCreate opens the parent EventLog\Application key
+	// with CREATE_SUB_KEY access, which requires admin. When Alloy runs under a
+	// dedicated non-admin service account, that call fails with "Access is
+	// denied" even though the source already exists, causing the process to
+	// exit before svc.Run can report back to the SCM (surfacing as service
+	// error 1053).
+	if el, err := eventlog.Open(serviceName); err == nil {
+		runtime.SetFinalizer(el, func(li *eventlog.Log) {
+			_ = li.Close()
+		})
+		return &writer{el: el}, nil
+	}
+
 	eventTypes := uint32(eventlog.Info | eventlog.Warning | eventlog.Error)
 
 	// Install the event source. This will fail with an error string saying "already
 	// exists" if it has been installed before.
-	err := eventlog.InstallAsEventCreate(serviceName, eventTypes)
-	if err != nil && !strings.Contains(err.Error(), "already exists") {
+	if err := eventlog.InstallAsEventCreate(serviceName, eventTypes); err != nil &&
+		!strings.Contains(err.Error(), "already exists") {
 		return nil, err
 	}
 
