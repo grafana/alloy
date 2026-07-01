@@ -4,6 +4,7 @@ package github
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,9 +20,10 @@ import (
 
 // Client wraps the GitHub API client with repository context.
 type Client struct {
-	api   *github.Client
-	owner string
-	repo  string
+	api        *github.Client
+	owner      string
+	repo       string
+	graphqlURL string
 }
 
 // ClientConfig holds configuration for creating a new Client.
@@ -65,8 +67,26 @@ type FindCherryPickedCommitParams struct {
 	OriginalSHA string
 }
 
+// FileAddition represents a file addition or update for CreateCommitOnBranch.
+type FileAddition struct {
+	Path     string
+	Contents []byte
+}
+
+// CreateCommitOnBranchParams holds parameters for CreateCommitOnBranch.
+type CreateCommitOnBranchParams struct {
+	Branch          string
+	ExpectedHeadOID string
+	Headline        string
+	Body            string
+	Additions       []FileAddition
+	Deletions       []string
+}
+
 // BackportLabelColor is the hex color for backport labels (without '#' prefix).
 const BackportLabelColor = "63a504"
+
+const defaultGraphQLURL = "https://api.github.com/graphql"
 
 // CreateLabelParams holds parameters for CreateLabel.
 type CreateLabelParams struct {
@@ -109,9 +129,10 @@ func NewClient(ctx context.Context, cfg ClientConfig) *Client {
 	tc := oauth2.NewClient(ctx, ts)
 
 	return &Client{
-		api:   github.NewClient(tc),
-		owner: cfg.Owner,
-		repo:  cfg.Repo,
+		api:        github.NewClient(tc),
+		owner:      cfg.Owner,
+		repo:       cfg.Repo,
+		graphqlURL: defaultGraphQLURL,
 	}
 }
 
@@ -239,30 +260,6 @@ func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
 	return nil
 }
 
-// ReadManifest reads the release-please manifest from the repository.
-func (c *Client) ReadManifest(ctx context.Context, ref string) (map[string]string, error) {
-	fileContent, _, _, err := c.api.Repositories.GetContents(
-		ctx, c.owner, c.repo,
-		".release-please-manifest.json",
-		&github.RepositoryContentGetOptions{Ref: ref},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("getting manifest file: %w", err)
-	}
-
-	content, err := fileContent.GetContent()
-	if err != nil {
-		return nil, fmt.Errorf("decoding manifest content: %w", err)
-	}
-
-	var manifest map[string]string
-	if err := json.Unmarshal([]byte(content), &manifest); err != nil {
-		return nil, fmt.Errorf("parsing manifest JSON: %w", err)
-	}
-
-	return manifest, nil
-}
-
 // GetAppIdentity returns the GitHub App's identity for use in git commits.
 // It checks for APP_SLUG environment variable and fetches the bot user ID from the API.
 // The bot user ID is required for GitHub to properly attribute commits.
@@ -315,11 +312,11 @@ func (c *Client) GetPR(ctx context.Context, number int) (*github.PullRequest, er
 // CreatePR creates a new pull request.
 func (c *Client) CreatePR(ctx context.Context, p CreatePRParams) (*github.PullRequest, error) {
 	newPR := &github.NewPullRequest{
-		Title: github.String(p.Title),
-		Head:  github.String(p.Head),
-		Base:  github.String(p.Base),
-		Body:  github.String(p.Body),
-		Draft: github.Bool(p.Draft),
+		Title: new(p.Title),
+		Head:  new(p.Head),
+		Base:  new(p.Base),
+		Body:  new(p.Body),
+		Draft: new(p.Draft),
 	}
 
 	pr, _, err := c.api.PullRequests.Create(ctx, c.owner, c.repo, newPR)
@@ -328,6 +325,95 @@ func (c *Client) CreatePR(ctx context.Context, p CreatePRParams) (*github.PullRe
 	}
 
 	return pr, nil
+}
+
+// CreateCommitOnBranch creates a commit through GitHub's GraphQL API.
+//
+// Do not add custom author, committer, or signature fields here. GitHub only
+// applies bot signature verification when the authenticated App request omits
+// those fields.
+func (c *Client) CreateCommitOnBranch(ctx context.Context, p CreateCommitOnBranchParams) (string, error) {
+	if p.Branch == "" {
+		return "", fmt.Errorf("branch is required")
+	}
+	if p.ExpectedHeadOID == "" {
+		return "", fmt.Errorf("expected head OID is required")
+	}
+	if p.Headline == "" {
+		return "", fmt.Errorf("commit headline is required")
+	}
+	if len(p.Additions) == 0 && len(p.Deletions) == 0 {
+		return "", fmt.Errorf("at least one file addition or deletion is required")
+	}
+
+	additions := make([]map[string]string, 0, len(p.Additions))
+	for _, addition := range p.Additions {
+		if addition.Path == "" {
+			return "", fmt.Errorf("addition path is required")
+		}
+		additions = append(additions, map[string]string{
+			"path":     addition.Path,
+			"contents": base64.StdEncoding.EncodeToString(addition.Contents),
+		})
+	}
+
+	deletions := make([]map[string]string, 0, len(p.Deletions))
+	for _, deletion := range p.Deletions {
+		if deletion == "" {
+			return "", fmt.Errorf("deletion path is required")
+		}
+		deletions = append(deletions, map[string]string{
+			"path": deletion,
+		})
+	}
+
+	message := map[string]string{
+		"headline": p.Headline,
+	}
+	if p.Body != "" {
+		message["body"] = p.Body
+	}
+
+	input := map[string]any{
+		"branch": map[string]string{
+			"repositoryNameWithOwner": c.owner + "/" + c.repo,
+			"branchName":              p.Branch,
+		},
+		"message":         message,
+		"expectedHeadOid": p.ExpectedHeadOID,
+		"fileChanges": map[string]any{
+			"additions": additions,
+			"deletions": deletions,
+		},
+	}
+
+	const mutation = `
+mutation CreateCommitOnBranch($input: CreateCommitOnBranchInput!) {
+  createCommitOnBranch(input: $input) {
+    commit {
+      oid
+    }
+  }
+}`
+
+	var result struct {
+		Data struct {
+			CreateCommitOnBranch struct {
+				Commit struct {
+					OID string `json:"oid"`
+				} `json:"commit"`
+			} `json:"createCommitOnBranch"`
+		} `json:"data"`
+	}
+
+	if err := c.GraphQL(ctx, mutation, map[string]any{"input": input}, &result); err != nil {
+		return "", fmt.Errorf("creating commit on branch %s: %w", p.Branch, err)
+	}
+	if result.Data.CreateCommitOnBranch.Commit.OID == "" {
+		return "", fmt.Errorf("createCommitOnBranch returned an empty commit oid")
+	}
+
+	return result.Data.CreateCommitOnBranch.Commit.OID, nil
 }
 
 // FindCherryPickedCommit searches the commit history of a branch for a commit
@@ -364,19 +450,6 @@ func (c *Client) FindCherryPickedCommit(ctx context.Context, p FindCherryPickedC
 	}
 
 	return nil, nil
-}
-
-// IsBranchMergedInto checks if the source branch is fully merged into the target branch.
-// Returns true if target contains all commits from source (i.e., source is behind or equal to target).
-func (c *Client) IsBranchMergedInto(ctx context.Context, source, target string) (bool, error) {
-	comparison, _, err := c.api.Repositories.CompareCommits(ctx, c.owner, c.repo, target, source, nil)
-	if err != nil {
-		return false, fmt.Errorf("comparing branches: %w", err)
-	}
-
-	// If source is "behind" or "identical" to target, it means target already has all of source's commits
-	status := comparison.GetStatus()
-	return status == "behind" || status == "identical", nil
 }
 
 // EnsureLabel creates a label if it doesn't already exist.
@@ -425,16 +498,6 @@ func (c *Client) UpdateReleaseBody(ctx context.Context, releaseID int64, body st
 	return nil
 }
 
-// DeleteBranch deletes the branch ref on the remote.
-func (c *Client) DeleteBranch(ctx context.Context, branch string) error {
-	ref := "refs/heads/" + branch
-	_, err := c.api.Git.DeleteRef(ctx, c.owner, c.repo, ref)
-	if err != nil {
-		return fmt.Errorf("deleting branch %s: %w", branch, err)
-	}
-	return nil
-}
-
 // CreateIssueComment adds a comment to an issue or pull request.
 func (c *Client) CreateIssueComment(ctx context.Context, issueNumber int, body string) error {
 	comment := &github.IssueComment{
@@ -469,7 +532,7 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 		return fmt.Errorf("marshaling graphql request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.github.com/graphql", bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.graphqlURL, bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("creating graphql request: %w", err)
 	}
@@ -483,12 +546,31 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 	}
 	defer resp.Body.Close()
 
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("reading graphql response: %w", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("graphql request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+	var payload struct {
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(respBody, &payload); err != nil {
+		return fmt.Errorf("decoding graphql response: %w", err)
+	}
+	if len(payload.Errors) > 0 {
+		messages := make([]string, 0, len(payload.Errors))
+		for _, graphQLError := range payload.Errors {
+			messages = append(messages, graphQLError.Message)
+		}
+		return fmt.Errorf("graphql errors: %s", strings.Join(messages, "; "))
+	}
+	if err := json.Unmarshal(respBody, result); err != nil {
 		return fmt.Errorf("decoding graphql response: %w", err)
 	}
 
