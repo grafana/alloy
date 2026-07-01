@@ -9,10 +9,12 @@ import (
 
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
@@ -387,47 +389,6 @@ func TestLogsCollector_StartStop(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return collector.Stopped()
 	}, 5*time.Second, 100*time.Millisecond)
-}
-
-func TestExtractSeverity(t *testing.T) {
-	tests := []struct {
-		message  string
-		expected string
-	}{
-		{"ERROR:  canceling statement", "ERROR"},
-		{"FATAL:  too many connections", "FATAL"},
-		{"PANIC:  system failure", "PANIC"},
-		{"LOG:  connection received", "LOG"},
-		{"no colon here", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.message, func(t *testing.T) {
-			require.Equal(t, tt.expected, extractSeverity(tt.message))
-		})
-	}
-}
-
-func TestIsContinuationLine(t *testing.T) {
-	tests := []struct {
-		line     string
-		expected bool
-	}{
-		{"\tIndented line", true},
-		{"DETAIL:  some detail", true},
-		{"HINT:  some hint", true},
-		{"CONTEXT:  some context", true},
-		{"STATEMENT:  SELECT 1", true},
-		{"  DETAIL:  with whitespace", true},
-		{"2025-01-12 10:30:45 UTC:app-user@db:[123]:ERROR:  normal log", false},
-		{"", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.line, func(t *testing.T) {
-			require.Equal(t, tt.expected, isContinuationLine(tt.line))
-		})
-	}
 }
 
 func TestLogsCollector_SQLStateExtraction(t *testing.T) {
@@ -864,4 +825,332 @@ func TestLogsCollector_ExcludeUsers(t *testing.T) {
 		}
 	}
 	require.Equal(t, float64(1), totalCount, "only the non-excluded user log should be counted")
+}
+
+// drainEntries reads up to want entries from the handler's channel within
+// timeout. Returns whatever arrived in order.
+func drainEntries(t *testing.T, ch chan loki.Entry, want int, timeout time.Duration) []loki.Entry {
+	t.Helper()
+	out := make([]loki.Entry, 0, want)
+	deadline := time.Now().Add(timeout)
+	for len(out) < want && time.Now().Before(deadline) {
+		select {
+		case e := <-ch:
+			out = append(out, e)
+		case <-time.After(25 * time.Millisecond):
+		}
+	}
+	return out
+}
+
+// parseLogfmt is a minimal logfmt parser for tests. Supports bare and
+// double-quoted values with `\"` and `\\` escapes. It does NOT round-trip
+// arbitrary escapes — only what buildErrorLine emits.
+func parseLogfmt(t *testing.T, s string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for i := 0; i < len(s); {
+		// Skip whitespace.
+		for i < len(s) && s[i] == ' ' {
+			i++
+		}
+		if i >= len(s) {
+			break
+		}
+		// Read key.
+		ks := i
+		for i < len(s) && s[i] != '=' && s[i] != ' ' {
+			i++
+		}
+		if i >= len(s) || s[i] != '=' {
+			break
+		}
+		key := s[ks:i]
+		i++ // consume '='
+		// Read value.
+		var val string
+		if i < len(s) && s[i] == '"' {
+			i++
+			var b strings.Builder
+			for i < len(s) {
+				c := s[i]
+				if c == '\\' && i+1 < len(s) {
+					b.WriteByte(s[i+1])
+					i += 2
+					continue
+				}
+				if c == '"' {
+					i++
+					break
+				}
+				b.WriteByte(c)
+				i++
+			}
+			val = b.String()
+		} else {
+			vs := i
+			for i < len(s) && s[i] != ' ' {
+				i++
+			}
+			val = s[vs:i]
+		}
+		out[key] = val
+	}
+	return out
+}
+
+// requireOnlyFields asserts the parsed logfmt entry contains exactly the given
+// keys and no others — pinning the minimal v1 op="error" field set so any
+// re-added error-detail field fails the test until its own PR lands.
+func requireOnlyFields(t *testing.T, fields map[string]string, allowed ...string) {
+	t.Helper()
+	allow := make(map[string]struct{}, len(allowed))
+	for _, k := range allowed {
+		allow[k] = struct{}{}
+		require.Containsf(t, fields, k, "expected field %q to be present", k)
+	}
+	for k := range fields {
+		_, ok := allow[k]
+		require.Truef(t, ok, "unexpected field %q in minimal op=error entry", k)
+	}
+}
+
+// startErrorLogs builds and starts a logs collector with op="error" emission
+// enabled, returning it with its receiver and entry channel. A non-zero timeout
+// overrides pendingErrorTimeout before Start (the run loop reads it once at
+// startup, so the timeout/race tests must set it here).
+func startErrorLogs(t *testing.T, timeout time.Duration) (*Logs, loki.LogsReceiver, chan loki.Entry) {
+	t.Helper()
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+	c, err := NewLogs(LogsArguments{
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          logging.NewSlogNop(),
+		Registry:        prometheus.NewRegistry(),
+		EnableErrorLogs: true,
+	})
+	require.NoError(t, err)
+	if timeout > 0 {
+		c.pendingErrorTimeout = timeout
+	}
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+	return c, receiver, entryCh
+}
+
+// logTS returns a log-line timestamp after the collector's start time (so it
+// passes the historical-log filter), formatted as PostgreSQL emits it.
+func logTS(c *Logs) string {
+	return c.startTime.Add(10 * time.Second).UTC().Format("2006-01-02 15:04:05.000 MST")
+}
+
+func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "12345"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P01:STATEMENT:  SELECT * FROM missing WHERE id = $1"}}
+	// The next prefix line flushes the buffered STATEMENT deterministically.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	require.Equal(t, "error", string(got[0].Labels["op"]))
+
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1", fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, "books_store", fields["datname"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+
+	// v1 emits only the bare-minimum field set; error-detail fields (sqlstate,
+	// pid, client/session, error_message, the SQL text, …) are deferred.
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+}
+
+func TestLogsCollector_TimedOutPendingDoesNotEmitErrorEntry(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
+	ts := logTS(c)
+
+	// FATAL with no following STATEMENT.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[99999]:1:53300:FATAL:  too many connections"}}
+
+	// pg_errors_total increments immediately.
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "books_store", "user")) == 1
+	}, 1*time.Second, 50*time.Millisecond)
+
+	// No entry should arrive even after the timeout window.
+	got := drainEntries(t, entryCh, 1, 400*time.Millisecond)
+	require.Len(t, got, 0, "no STATEMENT → no Loki entry")
+}
+
+func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "55555"
+
+	// ERROR #1 displaced by ERROR #2 from the same backend.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:1:42P01:ERROR:  err one"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:2:42P02:ERROR:  err two"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:3:42P02:STATEMENT:  SELECT 2"}}
+	// The next prefix line flushes the buffered STATEMENT.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[" + pid + "]:4:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 2, 1*time.Second)
+	require.Len(t, got, 1, "exactly one entry: only the second error's STATEMENT was matched")
+
+	body := strings.TrimPrefix(got[0].Line, `level="info" `)
+	fields := parseLogfmt(t, body)
+	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"], "the second error's STATEMENT is the one matched")
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+}
+
+// TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement exercises the
+// production shape: STATEMENT keyword line carries the prefix and is followed
+// by TAB-prefixed continuations. The next prefix line flushes the buffer.
+func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 0)
+	ts := logTS(c)
+	pid := "38"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:4:40001:ERROR:  could not serialize access due to concurrent update"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:5:40001:STATEMENT:  WITH target_books AS ("}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tSELECT id FROM books WHERE id = $1"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\t)"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(), Line: "\tUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"}}
+	// The next prefix line flushes the buffered STATEMENT.
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:6:00000:LOG:  duration: 1.234 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 2*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+
+	expectedSQL := "WITH target_books AS (\nSELECT id FROM books WHERE id = $1\n)\nUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
+	expectedFP, _, fpErr := fingerprint.Fingerprint(expectedSQL, fingerprint.SourceLog, 0)
+	require.NoError(t, fpErr)
+
+	require.Equal(t, "ERROR", fields["severity"])
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+	// The multi-line STATEMENT is the behavior under test; fields stay minimal.
+	requireOnlyFields(t, fields, "severity", "datname", "query_fingerprint")
+}
+
+// TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry pins that an
+// ERROR+STATEMENT pair with no following log line still emits when the pending
+// expires: flushExpiredPending emits a pending that has its STATEMENT rather
+// than dropping it. The 500ms timeout is generous against goroutine starvation
+// under parallel-test contention.
+func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 500*time.Millisecond)
+	ts := logTS(c)
+	pid := "310"
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:4:40001:ERROR:  could not serialize access due to concurrent update"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::app-user@books_store:[" + pid + "]:5:40001:STATEMENT:  INSERT INTO t (a) VALUES ($1)"}}
+
+	got := drainEntries(t, entryCh, 1, 3*time.Second)
+	require.Len(t, got, 1)
+	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
+	expectedFP, _, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog, 0)
+	require.Equal(t, expectedFP, fields["query_fingerprint"])
+}
+
+// TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled confirms that
+// with EnableErrorLogs explicitly false the component still increments
+// pg_errors_total but never forwards an op="error" Loki entry.
+func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T) {
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:        receiver,
+		EntryHandler:    loki.NewEntryHandler(entryCh, func() {}),
+		Logger:          logging.NewSlogNop(),
+		Registry:        prometheus.NewRegistry(),
+		EnableErrorLogs: false, // explicitly off
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := logTS(c)
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[12345]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[12345]:2:42P01:STATEMENT:  SELECT * FROM missing WHERE id = $1"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[12345]:3:00000:LOG:  duration: 0.001 ms"}}
+
+	// Wait for the buffering / flush logic to settle. pg_errors_total should
+	// have incremented (gating doesn't touch it).
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "books_store", "user")) >= 1
+	}, 2*time.Second, 50*time.Millisecond)
+
+	// No Loki entries should have flowed.
+	select {
+	case e := <-entryCh:
+		t.Fatalf("expected no op=error entry; got one: %s", e.Line)
+	case <-time.After(300 * time.Millisecond):
+		// good — silence
+	}
+}
+
+// TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled pins that omitting
+// EnableErrorLogs from LogsArguments yields the disabled behavior:
+// pg_errors_total still increments, but no op="error" Loki entry appears.
+func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
+	receiver := loki.NewLogsReceiver()
+	entryCh := make(chan loki.Entry, 8)
+
+	c, err := NewLogs(LogsArguments{
+		Receiver:     receiver,
+		EntryHandler: loki.NewEntryHandler(entryCh, func() {}),
+		Logger:       logging.NewSlogNop(),
+		Registry:     prometheus.NewRegistry(),
+		// EnableErrorLogs intentionally omitted — defaults to false
+	})
+	require.NoError(t, err)
+	require.NoError(t, c.Start(context.Background()))
+	t.Cleanup(c.Stop)
+
+	ts := logTS(c)
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[12345]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+
+	// Counter should still increment.
+	require.Eventually(t, func() bool {
+		return testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42P01", "42", "books_store", "user")) >= 1
+	}, 2*time.Second, 50*time.Millisecond)
+
+	// And no Loki entry should appear.
+	select {
+	case e := <-entryCh:
+		t.Fatalf("expected no op=error entry; got one: %s", e.Line)
+	case <-time.After(300 * time.Millisecond):
+		// good
+	}
 }

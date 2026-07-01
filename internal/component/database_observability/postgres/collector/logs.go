@@ -15,7 +15,12 @@ import (
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
+	"github.com/grafana/alloy/internal/runtime/logging"
 )
+
+const OP_ERROR = "error"
 
 const (
 	LogsCollector         = "logs"
@@ -42,6 +47,19 @@ var supportedSeverities = map[string]struct{}{
 	"PANIC": {},
 }
 
+// pendingError holds an ERROR/FATAL/PANIC line awaiting its STATEMENT
+// continuation. The SQL builder accumulates the STATEMENT keyword line plus any
+// TAB-prefixed continuation lines that follow.
+type pendingError struct {
+	receivedAt time.Time
+	severity   string
+	datname    string
+	timestamp  time.Time
+
+	sql          strings.Builder
+	hasStatement bool
+}
+
 type LogsArguments struct {
 	Receiver         loki.LogsReceiver
 	EntryHandler     loki.EntryHandler
@@ -49,6 +67,7 @@ type LogsArguments struct {
 	Registry         *prometheus.Registry
 	ExcludeDatabases []string
 	ExcludeUsers     []string
+	EnableErrorLogs  bool
 	DB               *sql.DB
 }
 
@@ -60,13 +79,15 @@ type Logs struct {
 	receiver         loki.LogsReceiver
 	excludeDatabases []string
 	excludeUsers     []string
+	enableErrorLogs  bool
 
 	db              *sql.DB
 	logTimezone     atomic.Pointer[time.Location]
 	lastLogTimezone atomic.Pointer[string]
 
-	errorsBySQLState *prometheus.CounterVec
-	parseErrors      prometheus.Counter
+	errorsBySQLState      *prometheus.CounterVec
+	parseErrors           prometheus.Counter
+	logsProcessingEnabled prometheus.Gauge
 
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -78,6 +99,14 @@ type Logs struct {
 	validLogsThisMinute   int
 	invalidLogsThisMinute int
 
+	// op="error" pairing state. PostgreSQL's logging collector writes each
+	// message (the ERROR line, its STATEMENT, and continuations) atomically and
+	// contiguously per backend, so a single in-flight pending is sufficient —
+	// no PID-keyed map is needed.
+	pending             *pendingError
+	pendingMu           sync.Mutex
+	pendingErrorTimeout time.Duration
+
 	startTime time.Time
 }
 
@@ -85,17 +114,19 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{
-		logger:           args.Logger.With("collector", LogsCollector),
-		entryHandler:     args.EntryHandler,
-		registry:         args.Registry,
-		receiver:         args.Receiver,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		db:               args.DB,
-		ctx:              ctx,
-		cancel:           cancel,
-		stopped:          atomic.NewBool(false),
-		startTime:        time.Now(),
+		logger:              args.Logger.With("collector", LogsCollector),
+		entryHandler:        args.EntryHandler,
+		registry:            args.Registry,
+		receiver:            args.Receiver,
+		excludeDatabases:    args.ExcludeDatabases,
+		excludeUsers:        args.ExcludeUsers,
+		enableErrorLogs:     args.EnableErrorLogs,
+		db:                  args.DB,
+		pendingErrorTimeout: 5 * time.Second,
+		ctx:                 ctx,
+		cancel:              cancel,
+		stopped:             atomic.NewBool(false),
+		startTime:           time.Now(),
 	}
 
 	l.initMetrics()
@@ -121,10 +152,27 @@ func (l *Logs) initMetrics() {
 		},
 	)
 
+	// Report whether logs processing (op="error" emission) is enabled for this
+	// instance so consumers can detect which servers produce op="error" entries.
+	l.logsProcessingEnabled = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: "database_observability",
+			Name:      "logs_processing_enabled",
+			Help:      "Whether logs processing (error-log capture) is enabled for this database instance.",
+		},
+	)
+
 	l.registry.MustRegister(
 		l.errorsBySQLState,
 		l.parseErrors,
+		l.logsProcessingEnabled,
 	)
+
+	enabled := 0.0
+	if l.enableErrorLogs {
+		enabled = 1.0
+	}
+	l.logsProcessingEnabled.Set(enabled)
 }
 
 func (l *Logs) Name() string {
@@ -192,6 +240,7 @@ func (l *Logs) Stop() {
 
 	l.registry.Unregister(l.errorsBySQLState)
 	l.registry.Unregister(l.parseErrors)
+	l.registry.Unregister(l.logsProcessingEnabled)
 }
 
 func (l *Logs) Stopped() bool {
@@ -200,6 +249,17 @@ func (l *Logs) Stopped() bool {
 
 func (l *Logs) run() {
 	l.logger.Debug("collector running, waiting for log entries")
+
+	var tickerC <-chan time.Time
+	if l.enableErrorLogs {
+		tickPeriod := l.pendingErrorTimeout / 2
+		if tickPeriod < 50*time.Millisecond {
+			tickPeriod = 50 * time.Millisecond
+		}
+		t := time.NewTicker(tickPeriod)
+		defer t.Stop()
+		tickerC = t.C
+	}
 
 	for {
 		select {
@@ -214,6 +274,8 @@ func (l *Logs) run() {
 					"line_preview", truncateString(entry.Entry.Line, 100),
 				)
 			}
+		case <-tickerC:
+			l.flushExpiredPending()
 		}
 	}
 }
@@ -221,15 +283,30 @@ func (l *Logs) run() {
 func (l *Logs) parseTextLog(entry loki.Entry) error {
 	line := entry.Entry.Line
 
-	if isContinuationLine(line) {
+	if strings.HasPrefix(line, "\t") {
+		if l.enableErrorLogs {
+			l.appendStatement(line)
+		}
 		return nil
 	}
 
-	if !strings.Contains(line, "ERROR:") && !strings.Contains(line, "FATAL:") && !strings.Contains(line, "PANIC:") {
+	isFormat := logFormatRegex.MatchString(line)
+
+	// A new prefixed line means any in-flight ERROR+STATEMENT pair is complete;
+	// emit it before handling this line.
+	if l.enableErrorLogs && isFormat {
+		l.flushPending()
+	}
+
+	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
+		strings.Contains(line, "FATAL:") ||
+		strings.Contains(line, "PANIC:")
+	hasStatement := l.enableErrorLogs && strings.Contains(line, ":STATEMENT:")
+	if !hasErrorKeyword && !hasStatement {
 		return nil
 	}
 
-	if !logFormatRegex.MatchString(line) {
+	if !isFormat {
 		l.trackInvalidFormat()
 		l.parseErrors.Inc()
 		return fmt.Errorf("log line does not match expected format")
@@ -237,12 +314,13 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 
 	l.trackValidFormat()
 
+	var parsedTimestamp time.Time
 	if len(line) > 30 {
 		colonIdx := strings.Index(line[20:], ":")
 		if colonIdx > 0 {
 			timestampStr := strings.TrimSpace(line[:20+colonIdx])
 
-			// Format: "YYYY-MM-DD HH:MM:SS[.mmm] TZ:..." where TZ can be GMT, UTC, -03, etc.
+			// "YYYY-MM-DD HH:MM:SS[.mmm] TZ:..." where TZ can be GMT, UTC, -03, etc.
 			for _, layout := range []string{
 				"2006-01-02 15:04:05.000 MST",
 				"2006-01-02 15:04:05.000 -07",
@@ -254,6 +332,14 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 					absolute, ok := l.resolveAbsolute(logTimestamp)
 					if ok && !absolute.After(l.startTime) {
 						return nil // Skip historical log
+					}
+					// Record the timestamp for the op="error" entry, preferring the
+					// timezone-resolved instant; fall back to the raw parse when the
+					// log_timezone can't be resolved (same case main declines to skip).
+					if ok {
+						parsedTimestamp = absolute
+					} else {
+						parsedTimestamp = logTimestamp
 					}
 					break
 				}
@@ -280,7 +366,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	// Extract SQLSTATE from format: [pid]:line_number:SQLSTATE:...
 	pidEndIdx := strings.Index(afterAt, "]")
 	afterPid := afterAt[pidEndIdx+1:]
 
@@ -291,7 +376,13 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
-	// Find severity keyword (ERROR:, FATAL:, PANIC:)
+	if hasStatement {
+		if statementIdx := strings.Index(line, ":STATEMENT:"); statementIdx != -1 {
+			l.attachStatement(strings.TrimSpace(line[statementIdx+len(":STATEMENT:"):]))
+		}
+		return nil
+	}
+
 	messageStart := -1
 	severity := ""
 	for sev := range supportedSeverities {
@@ -306,10 +397,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	if _, ok := supportedSeverities[severity]; !ok {
-		return nil
-	}
-
 	l.errorsBySQLState.WithLabelValues(
 		severity,
 		sqlstateCode,
@@ -317,6 +404,22 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		database,
 		user,
 	).Inc()
+
+	if !l.enableErrorLogs {
+		return nil
+	}
+
+	// Start a new pending error awaiting its STATEMENT. Any prior un-flushed
+	// pending is displaced here (no STATEMENT captured → no op="error" entry);
+	// pg_errors_total still counted it above.
+	l.pendingMu.Lock()
+	l.pending = &pendingError{
+		receivedAt: time.Now(),
+		severity:   severity,
+		datname:    database,
+		timestamp:  parsedTimestamp,
+	}
+	l.pendingMu.Unlock()
 
 	return nil
 }
@@ -346,36 +449,134 @@ func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
 	return reconstructed, true
 }
 
-// isContinuationLine checks if a line is part of a multi-line PostgreSQL error
-func isContinuationLine(line string) bool {
-	if strings.HasPrefix(line, "\t") {
-		return true
+// appendStatement appends a TAB-continuation line to the in-flight STATEMENT's SQL.
+func (l *Logs) appendStatement(line string) {
+	l.pendingMu.Lock()
+	defer l.pendingMu.Unlock()
+	if l.pending == nil || !l.pending.hasStatement {
+		return
 	}
-
-	continuationKeywords := []string{
-		"DETAIL:",
-		"HINT:",
-		"CONTEXT:",
-		"STATEMENT:",
-		"QUERY:",
-		"LOCATION:",
+	if l.pending.sql.Len() > 0 {
+		l.pending.sql.WriteByte('\n')
 	}
-
-	trimmedLine := strings.TrimSpace(line)
-	for _, keyword := range continuationKeywords {
-		if strings.HasPrefix(trimmedLine, keyword) {
-			return true
-		}
-	}
-
-	return false
+	l.pending.sql.WriteString(strings.TrimLeft(line, "\t"))
 }
 
-func extractSeverity(message string) string {
-	if idx := strings.Index(message, ":"); idx > 0 {
-		return strings.TrimSpace(message[:idx])
+// attachStatement records the STATEMENT keyword line's SQL onto the pending error.
+func (l *Logs) attachStatement(sql string) {
+	l.pendingMu.Lock()
+	defer l.pendingMu.Unlock()
+	if l.pending == nil {
+		return
 	}
-	return ""
+	if l.pending.sql.Len() > 0 {
+		l.pending.sql.WriteByte('\n')
+	}
+	l.pending.sql.WriteString(sql)
+	l.pending.hasStatement = true
+}
+
+// flushPending emits the pending error if its STATEMENT was captured, then
+// clears it. A pending without a STATEMENT is left in place — it is displaced
+// by the next error or dropped on timeout.
+func (l *Logs) flushPending() {
+	l.pendingMu.Lock()
+	p := l.pending
+	if p == nil || !p.hasStatement {
+		l.pendingMu.Unlock()
+		return
+	}
+	l.pending = nil
+	l.pendingMu.Unlock()
+
+	l.emitErrorEntry(p)
+}
+
+func (l *Logs) emitErrorEntry(p *pendingError) {
+	stmt := strings.TrimSpace(p.sql.String())
+	if stmt == "" {
+		return
+	}
+	fp, _, err := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
+	if err != nil {
+		return
+	}
+
+	ts := p.timestamp
+	if ts.IsZero() {
+		ts = time.Now()
+	}
+
+	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+		logging.LevelInfo,
+		OP_ERROR,
+		buildErrorLine(p, fp),
+		ts.UnixNano(),
+	)
+}
+
+// buildErrorLine assembles the minimal logfmt body for one ERROR + STATEMENT
+// pair: just the fields needed to compute per-query error rate. The SQL text
+// and error-detail fields are intentionally omitted (deferred to a follow-up
+// PR); consumers recover the SQL by joining on query_fingerprint.
+func buildErrorLine(p *pendingError, fp string) string {
+	type kv struct{ k, v string }
+	fields := []kv{
+		{"severity", p.severity},
+		{"datname", p.datname},
+		{"query_fingerprint", fp},
+	}
+
+	var b strings.Builder
+	for _, f := range fields {
+		if f.v == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(f.k)
+		b.WriteByte('=')
+		b.WriteString(logfmtQuote(f.v))
+	}
+	return b.String()
+}
+
+func logfmtQuote(v string) string {
+	if !strings.ContainsAny(v, " =\"\\") {
+		return v
+	}
+	var b strings.Builder
+	b.Grow(len(v) + 2)
+	b.WriteByte('"')
+	for _, r := range v {
+		if r == '"' || r == '\\' {
+			b.WriteByte('\\')
+		}
+		b.WriteRune(r)
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
+// flushExpiredPending handles a pending error older than pendingErrorTimeout
+// that no following log line has flushed: emit it if its STATEMENT was captured
+// (its continuations have all arrived by now), otherwise drop it.
+func (l *Logs) flushExpiredPending() {
+	deadline := time.Now().Add(-l.pendingErrorTimeout)
+
+	l.pendingMu.Lock()
+	p := l.pending
+	if p == nil || !p.receivedAt.Before(deadline) {
+		l.pendingMu.Unlock()
+		return
+	}
+	l.pending = nil
+	l.pendingMu.Unlock()
+
+	if p.hasStatement {
+		l.emitErrorEntry(p)
+	}
 }
 
 func truncateString(s string, maxLen int) string {
