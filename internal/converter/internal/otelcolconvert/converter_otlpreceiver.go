@@ -54,8 +54,8 @@ func toOtelcolReceiverOTLP(state *State, id componentstatus.InstanceID, cfg *otl
 	)
 
 	return &otlp.Arguments{
-		GRPC: (*otlp.GRPCServerArguments)(toGRPCServerArguments(cfg.GRPC.Get())),
-		HTTP: toHTTPConfigArguments(cfg.HTTP),
+		GRPC: (*otlp.GRPCServerArguments)(toGRPCServerArguments(cfg.Protocols.GRPC.Get())),
+		HTTP: toHTTPConfigArguments(cfg.Protocols.HTTP),
 
 		DebugMetrics: common.DefaultValue[otlp.Arguments]().DebugMetrics,
 

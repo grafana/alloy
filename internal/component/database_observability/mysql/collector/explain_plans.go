@@ -366,11 +366,10 @@ func parseUnionResultNode(logger *slog.Logger, unionResultNode []byte) (database
 }
 
 type queryInfo struct {
-	schemaName   string
-	digest       string
-	queryText    string
-	failureCount int
-	uniqueKey    string
+	schemaName string
+	digest     string
+	queryText  string
+	uniqueKey  string
 }
 
 func newQueryInfo(schemaName, digest, queryText string) *queryInfo {
@@ -409,7 +408,7 @@ type ExplainPlans struct {
 	dbVersion        string
 	scrapeInterval   time.Duration
 	queryCache       map[string]*queryInfo
-	queryDenylist    map[string]*queryInfo
+	queryDenylist    map[string]struct{}
 	excludeSchemas   []string
 	perScrapeRatio   float64
 	currentBatchSize int
@@ -431,7 +430,7 @@ func NewExplainPlans(args ExplainPlansArguments) (*ExplainPlans, error) {
 		excludeSchemas: args.ExcludeSchemas,
 		lastSeen:       args.InitialLookback,
 		queryCache:     make(map[string]*queryInfo),
-		queryDenylist:  make(map[string]*queryInfo),
+		queryDenylist:  make(map[string]struct{}),
 		entryHandler:   args.EntryHandler,
 		logger:         args.Logger.With("collector", ExplainPlansCollector),
 		running:        atomic.NewBool(false),
@@ -586,8 +585,7 @@ func (c *ExplainPlans) fetchExplainPlans(ctx context.Context) error {
 		}
 
 		if c.processExplainPlan(ctx, qi) {
-			qi.failureCount++
-			c.queryDenylist[qi.uniqueKey] = qi
+			c.queryDenylist[qi.uniqueKey] = struct{}{}
 		}
 		delete(c.queryCache, qi.uniqueKey)
 		processedCount++

@@ -38,3 +38,4 @@
 - [ ] Documentation added
 - [ ] Tests updated
 - [ ] Config converters updated
+- [ ] This pull request was substantially generated with AI assistance (see the [GenAI policy](https://github.com/grafana/alloy/blob/main/docs/developer/genai.md))

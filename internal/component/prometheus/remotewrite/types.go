@@ -306,9 +306,8 @@ func (c *OAuthConfig) toPrometheusType() *azuread.OAuthConfig {
 	}
 
 	return &azuread.OAuthConfig{
-		ClientID: c.ClientID,
-		// TODO(ptodev): Upstream a change to make this an opaque string.
-		ClientSecret: string(c.ClientSecret),
+		ClientID:     c.ClientID,
+		ClientSecret: common.Secret(c.ClientSecret),
 		TenantID:     c.TenantID,
 	}
 }
