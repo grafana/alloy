@@ -136,6 +136,9 @@ type Arguments struct {
 	HonorMetadata bool `alloy:"honor_metadata,attr,optional"`
 	// Whether the metric's type and unit should be added as labels.
 	EnableTypeAndUnitLabels bool `alloy:"enable_type_and_unit_labels,attr,optional"`
+	// Whether to parse the created timestamp from the scraped metrics and inject
+	// a zero sample at that timestamp, marking a counter reset.
+	CreatedTimestampZeroIngestion bool `alloy:"created_timestamp_zero_ingestion,attr,optional"`
 
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 }
@@ -310,6 +313,10 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		return nil, fmt.Errorf("enable_type_and_unit_labels is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
+	if args.CreatedTimestampZeroIngestion && !o.MinStability.Permits(featuregate.StabilityExperimental) {
+		return nil, fmt.Errorf("created_timestamp_zero_ingestion is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	}
+
 	alloyAppendable := prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls)
 	scrapeOptions := &scrape.Options{
 		HTTPClientOptions: []config_util.HTTPClientOption{
@@ -320,6 +327,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		// otelcol.receiver.prometheus gets metadata from context
 		PassMetadataInContext:   args.HonorMetadata,
 		EnableTypeAndUnitLabels: args.EnableTypeAndUnitLabels,
+		// ParseST extracts the created timestamp from the scrape formats;
+		// EnableStartTimestampZeroIngestion injects it as a synthetic zero sample.
+		// Prometheus' created-timestamp-zero-ingestion feature sets both together.
+		ParseST:                           args.CreatedTimestampZeroIngestion,
+		EnableStartTimestampZeroIngestion: args.CreatedTimestampZeroIngestion,
 	}
 
 	unregisterer := util.WrapWithUnregisterer(o.Registerer)

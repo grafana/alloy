@@ -10,6 +10,7 @@ package convert
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math"
@@ -21,6 +22,7 @@ import (
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/exemplar"
+	"github.com/prometheus/prometheus/model/histogram"
 	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/metadata"
 	"github.com/prometheus/prometheus/model/timestamp"
@@ -79,6 +81,12 @@ type Options struct {
 	// (https://opentelemetry.io/docs/specs/semconv/resource/service/).
 	// Only affects target_info; regular metric series are unchanged.
 	KeepIdentifyingResourceAttributes bool
+	// EnableCreatedTimestampZeroIngestion controls whether a synthetic zero
+	// sample is injected at the OTLP start timestamp ahead of each cumulative
+	// (counter, histogram, summary) sample, marking the point at which the
+	// series started or was reset. This mirrors Prometheus' scrape-time
+	// created-timestamp-zero-ingestion feature.
+	EnableCreatedTimestampZeroIngestion bool
 }
 
 var _ consumer.Metrics = (*Converter)(nil)
@@ -358,7 +366,45 @@ func (conv *Converter) consumeGauge(app storage.Appender, memResource *memorySer
 
 type otelcolDataPoint interface {
 	Timestamp() pcommon.Timestamp
+	StartTimestamp() pcommon.Timestamp
 	Flags() pmetric.DataPointFlags
+}
+
+// writeCreatedTimestampZeroSample injects a synthetic zero sample at the data
+// point's start timestamp ahead of the real sample, marking the point at which
+// the cumulative series started or reset. It is a no-op unless the feature is
+// enabled and the data point carries a start timestamp. The appender rejects
+// start timestamps that are not strictly older than the sample
+// (ErrSTNewerThanSample) or that would be out of order (ErrOutOfOrderST); both
+// are expected - the latter is the steady-state case for long-lived counters -
+// and are not logged.
+func (conv *Converter) writeCreatedTimestampZeroSample(app storage.Appender, series *memorySeries, dp otelcolDataPoint) {
+	if !conv.getOpts().EnableCreatedTimestampZeroIngestion || dp.StartTimestamp() == 0 {
+		return
+	}
+
+	t := timestamp.FromTime(dp.Timestamp().AsTime())
+	st := timestamp.FromTime(dp.StartTimestamp().AsTime())
+	if err := series.WriteSTZeroSampleTo(app, t, st); err != nil &&
+		!errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
+		conv.log.Debug("failed to inject created-timestamp zero sample", "series", series.labels.String(), "err", err)
+	}
+}
+
+// writeCreatedTimestampZeroHistogram is the native-histogram counterpart of
+// writeCreatedTimestampZeroSample. h carries the shape (schema, zero threshold,
+// custom values) that the synthetic empty histogram replicates.
+func (conv *Converter) writeCreatedTimestampZeroHistogram(app storage.Appender, series *memorySeries, dp otelcolDataPoint, h *histogram.Histogram, fh *histogram.FloatHistogram) {
+	if !conv.getOpts().EnableCreatedTimestampZeroIngestion || dp.StartTimestamp() == 0 {
+		return
+	}
+
+	t := timestamp.FromTime(dp.Timestamp().AsTime())
+	st := timestamp.FromTime(dp.StartTimestamp().AsTime())
+	if err := series.WriteHistogramSTZeroSampleTo(app, t, st, h, fh); err != nil &&
+		!errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
+		conv.log.Debug("failed to inject created-timestamp zero histogram", "series", series.labels.String(), "err", err)
+	}
 }
 
 func writeSeries(app storage.Appender, series *memorySeries, dp otelcolDataPoint, val float64) error {
@@ -484,6 +530,12 @@ func (conv *Converter) consumeSum(app storage.Appender, memResource *memorySerie
 
 		memSeries := conv.getOrCreateSeries(memResource, memScope, metricName, dp.Attributes())
 
+		// Only counters carry counter-reset semantics; non-monotonic sums become
+		// gauges, for which a start timestamp is meaningless.
+		if convType == model.MetricTypeCounter {
+			conv.writeCreatedTimestampZeroSample(app, memSeries, dp)
+		}
+
 		val := getNumberDataPointValue(dp)
 		if err := writeSeries(app, memSeries, dp, val); err != nil {
 			conv.log.Error("failed to write metric sample", "metric_name", metricName, "err", err)
@@ -542,6 +594,7 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			sumMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_sum", dp.Attributes())
 			sumMetricVal := dp.Sum()
 
+			conv.writeCreatedTimestampZeroSample(app, sumMetric, dp)
 			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
 				conv.log.Error("failed to write histogram sum sample", "metric_name", metricName, "err", err)
 			}
@@ -552,6 +605,7 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			countMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_count", dp.Attributes())
 			countMetricVal := float64(dp.Count())
 
+			conv.writeCreatedTimestampZeroSample(app, countMetric, dp)
 			if err := writeSeries(app, countMetric, dp, countMetricVal); err != nil {
 				conv.log.Error("failed to write histogram count sample", "metric_name", metricName, "err", err)
 			}
@@ -607,6 +661,7 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			bucket := conv.getOrCreateSeries(memResource, memScope, metricName+"_bucket", dp.Attributes(), bucketLabel)
 			bucketVal := float64(count)
 
+			conv.writeCreatedTimestampZeroSample(app, bucket, dp)
 			if err := writeSeries(app, bucket, dp, bucketVal); err != nil {
 				conv.log.Error("failed to write histogram bucket sample", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 			}
@@ -633,6 +688,7 @@ func (conv *Converter) consumeHistogram(app storage.Appender, memResource *memor
 			infBucket := conv.getOrCreateSeries(memResource, memScope, metricName+"_bucket", dp.Attributes(), bucketLabel)
 			infBucketVal := float64(dp.Count())
 
+			conv.writeCreatedTimestampZeroSample(app, infBucket, dp)
 			if err := writeSeries(app, infBucket, dp, infBucketVal); err != nil {
 				conv.log.Error("failed to write histogram bucket sample", "metric_name", metricName, "bucket", bucketLabel.Value, "err", err)
 			}
@@ -673,6 +729,7 @@ func (conv *Converter) writeClassicHistogramAsNHCB(app storage.Appender, memReso
 		return
 	}
 
+	conv.writeCreatedTimestampZeroHistogram(app, memSeries, dp, &h, nil)
 	if err := memSeries.WriteNativeHistogramTo(app, ts, &h, nil); err != nil {
 		conv.log.Error("failed to write native histogram with custom buckets", "metric_name", metricName, "err", err)
 		return
@@ -723,6 +780,7 @@ func (conv *Converter) consumeExponentialHistogram(app storage.Appender, memReso
 			continue
 		}
 
+		conv.writeCreatedTimestampZeroHistogram(app, memSeries, dp, &promHistogram, nil)
 		if err := memSeries.WriteNativeHistogramTo(app, ts, &promHistogram, nil); err != nil {
 			conv.log.Error("failed to write native histogram", "metric_name", metricName, "err", err)
 			continue
@@ -793,6 +851,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			sumMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_sum", dp.Attributes())
 			sumMetricVal := dp.Sum()
 
+			conv.writeCreatedTimestampZeroSample(app, sumMetric, dp)
 			if err := writeSeries(app, sumMetric, dp, sumMetricVal); err != nil {
 				conv.log.Error("failed to write summary sum sample", "metric_name", metricName, "err", err)
 			}
@@ -803,6 +862,7 @@ func (conv *Converter) consumeSummary(app storage.Appender, memResource *memoryS
 			countMetric := conv.getOrCreateSeries(memResource, memScope, metricName+"_count", dp.Attributes())
 			countMetricVal := float64(dp.Count())
 
+			conv.writeCreatedTimestampZeroSample(app, countMetric, dp)
 			if err := writeSeries(app, countMetric, dp, countMetricVal); err != nil {
 				conv.log.Error("failed to write histogram count sample", "metric_name", metricName, "err", err)
 			}
