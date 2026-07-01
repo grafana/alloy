@@ -1,4 +1,4 @@
-package mssql
+package sql_server
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/common/relabel"
 	"github.com/grafana/alloy/internal/component/database_observability"
-	"github.com/grafana/alloy/internal/component/database_observability/mssql/collector"
+	"github.com/grafana/alloy/internal/component/database_observability/sql_server/collector"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
 	http_service "github.com/grafana/alloy/internal/service/http"
@@ -30,7 +30,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
-const name = "database_observability.mssql"
+const name = "database_observability.sql_server"
 
 // selectServerInfo returns a stable identifier for the server instance plus
 // its product version, used to derive a server_id label and to expose the

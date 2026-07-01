@@ -1,24 +1,24 @@
 ---
-canonical: https://grafana.com/docs/alloy/latest/reference/components/database_observability.mssql/
-description: Learn about database_observability.mssql
-title: database_observability.mssql
+canonical: https://grafana.com/docs/alloy/latest/reference/components/database_observability.sql_server/
+description: Learn about database_observability.sql_server
+title: database_observability.sql_server
 labels:
   stage: experimental
   products:
     - oss
 ---
 
-# `database_observability.mssql`
+# `database_observability.sql_server`
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`database_observability.mssql` connects to a Microsoft SQL Server database and collects observability data.
+`database_observability.sql_server` connects to a Microsoft SQL Server database and collects observability data.
 The component forwards this data as log entries to Loki receivers and exports targets for Prometheus scraping.
 
 ## Usage
 
 ```alloy
-database_observability.mssql "<LABEL>" {
+database_observability.sql_server "<LABEL>" {
   data_source_name = <DATA_SOURCE_NAME>
   forward_to       = [<LOKI_RECEIVERS>]
 }
@@ -26,7 +26,7 @@ database_observability.mssql "<LABEL>" {
 
 ## Arguments
 
-You can use the following arguments with `database_observability.mssql`:
+You can use the following arguments with `database_observability.sql_server`:
 
 | Name                | Type                 | Description                                                              | Default | Required |
 |---------------------|----------------------|--------------------------------------------------------------------------|---------|----------|
@@ -45,7 +45,7 @@ The following collectors are configurable:
 
 ## Blocks
 
-You can use the following blocks with `database_observability.mssql`:
+You can use the following blocks with `database_observability.sql_server`:
 
 {{< docs/alloy-config >}}
 
@@ -66,8 +66,8 @@ You can use the following blocks with `database_observability.mssql`:
 ## Example
 
 ```alloy
-database_observability.mssql "orders_db" {
-  data_source_name = "sqlserver://user:pass@mssql:1433"
+database_observability.sql_server "orders_db" {
+  data_source_name = "sqlserver://user:pass@server:1433"
   forward_to       = [loki.write.logs_service.receiver]
 }
 
@@ -94,12 +94,12 @@ Replace the following:
 
 ## Compatible components
 
-`database_observability.mssql` can accept arguments from the following components:
+`database_observability.sql_server` can accept arguments from the following components:
 
 - Components that export [Targets](../../../compatibility/#targets-exporters)
 - Components that export [Loki `LogsReceiver`](../../../compatibility/#loki-logsreceiver-exporters)
 
-`database_observability.mssql` has exports that can be consumed by the following components:
+`database_observability.sql_server` has exports that can be consumed by the following components:
 
 - Components that consume [Targets](../../../compatibility/#targets-consumers)
 

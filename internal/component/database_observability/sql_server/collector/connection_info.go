@@ -63,7 +63,7 @@ func (c *ConnectionInfo) Start(ctx context.Context) error {
 		providerRegion       = "unknown"
 		providerAccount      = "unknown"
 		dbInstanceIdentifier = "unknown"
-		engine               = "mssql"
+		engine               = "sql_server"
 	)
 
 	if c.CloudProvider != nil {
