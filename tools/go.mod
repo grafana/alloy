@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/google/go-github/v57 v57.0.0
-	github.com/openai/openai-go/v3 v3.39.0
+	github.com/openai/openai-go/v3 v3.41.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/mod v0.37.0
