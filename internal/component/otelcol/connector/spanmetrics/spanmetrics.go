@@ -93,6 +93,12 @@ type Arguments struct {
 	DebugMetrics otelcolCfg.DebugMetricsArguments `alloy:"debug_metrics,block,optional"`
 
 	IncludeInstrumentationScope []string `alloy:"include_instrumentation_scope,attr,optional"`
+
+	// IncludeCollectorInstanceID adds the connector's collector.instance.id dimension, which
+	// upstream uses to satisfy the Single Writer Principle in multi-instance deployments.
+	// Its value is a random UUID per connector instance that changes on every rebuild, so a
+	// single Alloy suppresses it by default to keep the series stable.
+	IncludeCollectorInstanceID bool `alloy:"include_collector_instance_id,attr,optional"`
 }
 
 var (
@@ -171,12 +177,11 @@ func FromOTelAggregationTemporality(temporality string) string {
 	}
 }
 
-// Convert implements connector.Arguments.
-// collectorInstanceIDDimension is the dimension the spanmetrics connector fills with
-// a random UUID when collector.instance.id is absent from the resource. Alloy never
-// sets it, so we exclude it unconditionally.
+// collectorInstanceIDDimension is the dimension the spanmetrics connector fills with a
+// random UUID to satisfy the Single Writer Principle across multi-instance deployments.
 const collectorInstanceIDDimension = "collector.instance.id"
 
+// Convert implements connector.Arguments.
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	dimensions := make([]spanmetricsconnector.Dimension, 0, len(args.Dimensions))
 	for _, d := range args.Dimensions {
@@ -199,11 +204,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	excludeDimensions := append([]string(nil), args.ExcludeDimensions...)
-	// The connector adds a collector.instance.id dimension by default (beta gate
-	// connector.spanmetrics.includeCollectorInstanceID), but Alloy never populates
-	// that resource attribute, so the connector mints a fresh random UUID per build —
-	// a churning, meaningless label that breaks rate() continuity. Always suppress it.
-	if !slices.Contains(excludeDimensions, collectorInstanceIDDimension) {
+	// Suppress collector.instance.id unless the user opts in. The connector sets it to a
+	// random UUID per instance that changes on every rebuild, so for a single Alloy it just
+	// fragments the series. It's only useful across multiple instances (Single Writer).
+	if !args.IncludeCollectorInstanceID && !slices.Contains(excludeDimensions, collectorInstanceIDDimension) {
 		excludeDimensions = append(excludeDimensions, collectorInstanceIDDimension)
 	}
 
