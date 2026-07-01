@@ -1,18 +1,14 @@
 package main
 
 import (
-	_ "embed"
-	"strings"
+	"github.com/grafana/alloy/internal/build"
 )
 
-//go:embed VERSION
-var versionString string
-
+// CollectorVersion returns the version reported by the OTel Collector
+// distribution. It follows the Alloy build version so every version source stays
+// consistent — including builds with a pinned VERSION (e.g. integration tests),
+// where native otelcol components then report that same version. build.Version is
+// already normalized to include a "v" prefix.
 func CollectorVersion() string {
-	return CollectorVersionFromFile(versionString)
-}
-
-func CollectorVersionFromFile(fileContents string) string {
-	versionStringWithoutComment := strings.Split(fileContents, "#")[0]
-	return "v" + strings.TrimSpace(versionStringWithoutComment)
+	return build.Version
 }
