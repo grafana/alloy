@@ -1,0 +1,114 @@
+{
+  "name_overrides": {
+    "RoutesConfig":         "Routes",
+    "EBPFTracer":           "EBPF",
+    "MapsConfig":           "EBPFMapsConfig",
+    "PayloadExtraction":    "PayloadExtraction",
+    "HTTPConfig":           "HTTPPayloadExtraction",
+    "StatsConfig":          "Stats",
+    "BeylaDiscoveryConfig":   "Discovery",
+    "InternalMetricsConfig": "InternalMetrics",
+    "SDKInject":             "Injector",
+    "JavaConfig":            "Javaagent",
+    "NodeJSConfig":          "Nodejs",
+    "JVMRuntimeMetricsConfig": "JVMRuntimeMetrics"
+  },
+
+  "scalar_types": {
+    "InstrumentableType": "string"
+  },
+
+  "field_aliases": {
+    "ownerKinds":     "owner_kinds",
+    "ownerNames":     "owner_names",
+    "podAnnotations": "pod_annotations",
+    "podLabels":      "pod_labels"
+  },
+
+  "pointer_fields": [
+    "SDKExportedSignals.logs",
+    "SDKExportedSignals.metrics",
+    "SDKExportedSignals.traces",
+    "Discovery.exclude_otel_instrumented_services",
+    "Javaagent.enabled",
+    "Nodejs.enabled"
+  ],
+
+  "enum_validators": {
+    "Instrumentation": "MetricsConfig.instrumentations",
+    "MetricFeature":   "Features",
+    "SamplerName":     "SamplerConfig.name",
+    "TracePrinter":    "trace_printer"
+  },
+
+  "exclude_toplevel": [
+    "channel_buffer_len", "channel_send_timeout", "channel_send_timeout_panic",
+    "shutdown_timeout", "name_resolver", "target_pids", "processes", "topology",
+    "service_name", "service_namespace", "AutoTargetExe", "AutoTargetLanguage",
+    "log_config", "log_format",
+    "otel_traces_export", "otel_metrics_export", "prometheus_export",
+    "profile_port", "health_check", "grafana"
+  ],
+
+  "aliases": {
+    "prometheus_export.extra_resource_attributes": {
+      "alloy_key": "extra_resource_labels",
+      "warn": true
+    },
+    "prometheus_export.extra_span_resource_attributes": {
+      "alloy_key": "extra_span_resource_labels",
+      "warn": true
+    },
+    "filter": {
+      "alloy_key": "filters",
+      "warn": false
+    }
+  },
+
+  "multi_section": [
+    {
+      "alloy_path": "metrics",
+      "yaml_section": "prometheus_export",
+      "alloy_fields": [
+        "features",
+        "instrumentations",
+        "allow_service_graph_self_references",
+        "extra_resource_labels",
+        "extra_span_resource_labels",
+        "native_histograms",
+        "exemplar_filter",
+        "ttl"
+      ]
+    },
+    {
+      "alloy_path": "metrics.network",
+      "yaml_section": "network"
+    }
+  ],
+
+"flatten_transforms": [
+    {
+      "schema_type": "GlobAttributes",
+      "extra_schema_types": ["RegexSelector"],
+      "prefix": "k8s_",
+      "alloy_block": "kubernetes",
+      "go_slice_type": "Services",
+      "go_item_type": "Service"
+    }
+  ],
+
+  "map_keyed_by": {
+    "AttributeFamilies": "attr",
+    "Selections": "attr"
+  },
+
+  "inject_wrappers": [
+    {
+      "schema_path": "ebpf.payload_extraction.http",
+      "schema_key": "genai",
+      "alloy_fields": ["openai", "anthropic", "gemini", "bedrock", "embedding", "mcp", "qwen", "rerank", "retrieval"]
+    }
+  ],
+
+  "manual_sections": ["traces", "attributes", "filter", "internal_metrics"]
+}
