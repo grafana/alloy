@@ -84,6 +84,6 @@ Run:
 - `~/go/bin` must be on PATH (`export PATH="$PATH:$(go env GOPATH)/bin"`). The VM update script handles this, but ad-hoc shells need it explicitly.
 - `CGO_ENABLED=1` is the default. `libsystemd-dev` is required on Linux for the build to link.
 - Docker daemon is not started automatically. Before running tests without the `nodocker` tag: `sudo dockerd &` then `sudo chmod 666 /var/run/docker.sock`. Uses `fuse-overlayfs` storage driver (nested Firecracker VM).
-- First `make lint` on a cold cache takes ~10 min (module download + analysis). Cached runs ~30s.
+- First `make lint` on a cold cache takes ~10 min (module download + analysis) and can even fail: the lint wrapper runs `golangci-lint run --timeout=10m` per module, and the large `collector` module can exceed that timeout (exits status 4) on a cold build cache. Warm the cache first (e.g. `SKIP_UI_BUILD=1 make alloy` or run any test) and re-run; cached runs finish in ~30s with `0 issues`.
 - `SKIP_UI_BUILD=1` saves ~90s when not touching UI code. The UI must be built at least once for the embedded web server at `:12345` to serve pages.
 - `.nvmrc` says Node 24.x; Node 22.x (pre-installed) works for builds. Only matters for exact CI parity on UI lint.
