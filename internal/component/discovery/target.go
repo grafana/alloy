@@ -15,6 +15,7 @@ import (
 
 	"github.com/grafana/alloy/internal/runtime/equality"
 	"github.com/grafana/alloy/syntax"
+	"github.com/grafana/alloy/syntax/alloytypes"
 )
 
 type Target struct {
@@ -219,7 +220,23 @@ func (t *Target) ConvertFrom(src any) error {
 			case v.IsString():
 				strValue = v.Text()
 			case v.Reflect().CanInterface():
-				strValue = fmt.Sprintf("%v", v.Reflect().Interface())
+				// Some capsule values wrap a string and are commonly used as
+				// target values, such as the content exported by local.file.
+				// Use the wrapped string rather than the Go struct's default
+				// formatting, which would otherwise render something like
+				// "{false value}". A genuine secret is never usable as a target
+				// value, so reject it rather than leak its contents into a label.
+				switch raw := v.Reflect().Interface().(type) {
+				case alloytypes.Secret:
+					return fmt.Errorf("target::ConvertFrom: cannot use a secret as a target value")
+				case alloytypes.OptionalSecret:
+					if raw.IsSecret {
+						return fmt.Errorf("target::ConvertFrom: cannot use a secret as a target value")
+					}
+					strValue = raw.Value
+				default:
+					strValue = fmt.Sprintf("%v", raw)
+				}
 			default:
 				return fmt.Errorf("target::ConvertFrom: cannot convert value that can't be interfaced to (e.g. unexported struct field)")
 			}
