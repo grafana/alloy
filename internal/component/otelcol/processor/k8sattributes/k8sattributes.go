@@ -66,6 +66,7 @@ func (args *Arguments) SetToDefault() {
 		},
 	}
 	args.WaitForMetadataTimeout = 10 * time.Second
+	args.ExtractConfig.SetToDefault()
 	args.DebugMetrics.SetToDefault()
 }
 

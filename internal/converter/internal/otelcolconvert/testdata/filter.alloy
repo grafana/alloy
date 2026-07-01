@@ -15,8 +15,6 @@ otelcol.receiver.otlp "default" {
 }
 
 otelcol.processor.filter "default_ottl" {
-	error_mode = "ignore"
-
 	traces {
 		span      = ["attributes[\"container.name\"] == \"app_container_1\"", "resource.attributes[\"host.name\"] == \"localhost\"", "name == \"app_3\""]
 		spanevent = ["attributes[\"grpc\"] == true", "IsMatch(name, \".*grpc.*\")"]
