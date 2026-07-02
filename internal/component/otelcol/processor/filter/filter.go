@@ -53,7 +53,8 @@ var (
 
 // DefaultArguments holds default settings for Arguments.
 var DefaultArguments = Arguments{
-	ErrorMode: ottl.PropagateError,
+	// Matches the upstream default since v0.153 (the processor.filter.defaultErrorModeIgnore gate is on by default).
+	ErrorMode: ottl.IgnoreError,
 }
 
 // SetToDefault implements syntax.Defaulter.

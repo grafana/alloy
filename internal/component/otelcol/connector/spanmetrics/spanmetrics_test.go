@@ -42,7 +42,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
 				CallsDimensions:          []spanmetricsconnector.Dimension{},
-				ExcludeDimensions:        nil,
+				ExcludeDimensions:        []string{"collector.instance.id"},
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
@@ -96,7 +96,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			expected: spanmetricsconnector.Config{
 				Dimensions:               []spanmetricsconnector.Dimension{},
 				CallsDimensions:          []spanmetricsconnector.Dimension{},
-				ExcludeDimensions:        nil,
+				ExcludeDimensions:        []string{"collector.instance.id"},
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
 				TimestampCacheSize:       &defaultTimestampCacheSize,
@@ -170,7 +170,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 					{Name: "http.status_code", Default: nil},
 					{Name: "http.method", Default: getStringPtr("GET")},
 				},
-				ExcludeDimensions:        []string{"test_exclude_dim1", "test_exclude_dim2"},
+				ExcludeDimensions:        []string{"test_exclude_dim1", "test_exclude_dim2", "collector.instance.id"},
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_DELTA",
 				ResourceMetricsCacheSize: 12345,
 				TimestampCacheSize:       &timestampCacheSize,
@@ -221,6 +221,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				Dimensions:               []spanmetricsconnector.Dimension{},
 				AggregationTemporality:   "AGGREGATION_TEMPORALITY_CUMULATIVE",
 				ResourceMetricsCacheSize: 1000,
+				ExcludeDimensions:        []string{"collector.instance.id"},
 				TimestampCacheSize:       &defaultTimestampCacheSize,
 				Histogram: spanmetricsconnector.HistogramConfig{
 					Dimensions:  []spanmetricsconnector.Dimension{},
