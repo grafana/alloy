@@ -2,57 +2,35 @@ package main
 
 import (
 	"io"
-	"runtime"
 	"strings"
 
-	"golang.org/x/sys/windows/svc/eventlog"
+	"github.com/grafana/alloy/internal/runtime/logging/eventlog"
 )
 
 // writer sends writes to the Windows Event Log.
 type writer struct {
-	el *eventlog.Log
+	el eventlog.EventLog
 }
 
 var (
 	_ io.Writer = (*writer)(nil)
 )
 
-// newWriter creates a new writer which writes to the Windows Event
-// Logger.
+// newWriter creates a new writer which writes to the Windows Event Log.
+//
+// It uses the shared event log opener from internal/runtime/logging/eventlog,
+// which pre-checks whether the source is already registered before attempting
+// to install it. That lets a dedicated non-admin service account start the
+// service when the Alloy installer (or a prior admin run) has already
+// registered the "Alloy" event source, avoiding the CREATE_SUB_KEY access
+// requirement of eventlog.InstallAsEventCreate that would otherwise cause the
+// service to exit before svc.Run can report back to the SCM (surfacing as
+// service error 1053).
 func newWriter() (*writer, error) {
-	// Fast path: if the event source is already registered, open it directly.
-	// eventlog.InstallAsEventCreate opens the parent EventLog\Application key
-	// with CREATE_SUB_KEY access, which requires admin. When Alloy runs under a
-	// dedicated non-admin service account, that call fails with "Access is
-	// denied" even though the source already exists, causing the process to
-	// exit before svc.Run can report back to the SCM (surfacing as service
-	// error 1053).
-	if el, err := eventlog.Open(serviceName); err == nil {
-		runtime.SetFinalizer(el, func(li *eventlog.Log) {
-			_ = li.Close()
-		})
-		return &writer{el: el}, nil
-	}
-
-	eventTypes := uint32(eventlog.Info | eventlog.Warning | eventlog.Error)
-
-	// Install the event source. This will fail with an error string saying "already
-	// exists" if it has been installed before.
-	if err := eventlog.InstallAsEventCreate(serviceName, eventTypes); err != nil &&
-		!strings.Contains(err.Error(), "already exists") {
-		return nil, err
-	}
-
-	el, err := eventlog.Open(serviceName)
+	el, err := eventlog.GetEventLogOpener()(serviceName)
 	if err != nil {
 		return nil, err
 	}
-
-	// Ensure the logger gets closed when GC runs.
-	runtime.SetFinalizer(el, func(li *eventlog.Log) {
-		_ = li.Close()
-	})
-
 	return &writer{el: el}, nil
 }
 
