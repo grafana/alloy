@@ -3,6 +3,7 @@ package spanmetrics
 
 import (
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/grafana/alloy/internal/component"
@@ -171,6 +172,11 @@ func FromOTelAggregationTemporality(temporality string) string {
 }
 
 // Convert implements connector.Arguments.
+// collectorInstanceIDDimension is the dimension the spanmetrics connector fills with
+// a random UUID when collector.instance.id is absent from the resource. Alloy never
+// sets it, so we exclude it unconditionally.
+const collectorInstanceIDDimension = "collector.instance.id"
+
 func (args Arguments) Convert() (otelcomponent.Config, error) {
 	dimensions := make([]spanmetricsconnector.Dimension, 0, len(args.Dimensions))
 	for _, d := range args.Dimensions {
@@ -193,6 +199,13 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	excludeDimensions := append([]string(nil), args.ExcludeDimensions...)
+	// The connector adds a collector.instance.id dimension by default (beta gate
+	// connector.spanmetrics.includeCollectorInstanceID), but Alloy never populates
+	// that resource attribute, so the connector mints a fresh random UUID per build —
+	// a churning, meaningless label that breaks rate() continuity. Always suppress it.
+	if !slices.Contains(excludeDimensions, collectorInstanceIDDimension) {
+		excludeDimensions = append(excludeDimensions, collectorInstanceIDDimension)
+	}
 
 	timestampCacheSize := args.TimestampCacheSize
 
