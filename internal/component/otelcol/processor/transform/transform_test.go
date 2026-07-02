@@ -26,7 +26,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: map[string]any{
-				"error_mode":         "propagate",
+				"error_mode":         "ignore",
 				"trace_statements":   []any{},
 				"metric_statements":  []any{},
 				"log_statements":     []any{},
@@ -718,7 +718,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			output {}
 			`,
 			expected: map[string]any{
-				"error_mode": "propagate",
+				"error_mode": "ignore",
 				"trace_statements": []any{
 					map[string]any{
 						"context": "span",

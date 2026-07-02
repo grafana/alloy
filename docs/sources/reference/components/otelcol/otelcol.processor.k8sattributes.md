@@ -148,7 +148,7 @@ The following attributes are supported:
 
 | Name                              | Type           | Description                                                                              | Default     | Required |
 |-----------------------------------|----------------|------------------------------------------------------------------------------------------|-------------|----------|
-| `deployment_name_from_replicaset` | `bool`         | Whether to set the deployment name by trimming the hash from the end of the replica set. | `false`     | no       |
+| `deployment_name_from_replicaset` | `bool`         | Whether to set the deployment name by trimming the hash from the end of the replica set. | `true`      | no       |
 | `metadata`                        | `list(string)` | Pre-configured metadata keys to add.                                                     | _See below_ | no       |
 | `otel_annotations`                | `bool`         | Whether to set the [recommended resource attributes][semantic conventions].              | `false`     | no       |
 
@@ -196,7 +196,7 @@ By default, if `metadata` isn't specified, the following fields are extracted an
 
 When `otel_annotations` is set to `true`, annotations such as `resource.opentelemetry.io/exampleResource` will be translated to the `exampleResource` resource attribute, etc.
 
-When `deployment_name_from_replicaset` is set to `true`, the processor will extract deployment name from replicaset name by trimming pod template hash. This will disable watching for replicaset resources, which can be useful in environments with limited RBAC permissions as the processor will not need `get`, `watch`, and `list` permissions for replicasets.
+When `deployment_name_from_replicaset` is set to `true`, the processor extracts the deployment name from the ReplicaSet name by trimming the Pod template hash. This disables watching for ReplicaSet resources, which can be useful in environments with limited RBAC permissions as the processor doesn't need `get`, `watch`, and `list` permissions for ReplicaSets.
 
 [semantic conventions]: https://opentelemetry.io/docs/specs/semconv/non-normative/k8s-attributes
 

@@ -7,8 +7,6 @@ otelcol.receiver.awsecscontainermetrics "default" {
 }
 
 otelcol.processor.filter "default" {
-	error_mode = "ignore"
-
 	metrics {
 		metric = ["metric.name != \"ecs.task.memory.reserved\" and metric.name != \"ecs.task.memory.utilized\""]
 	}
