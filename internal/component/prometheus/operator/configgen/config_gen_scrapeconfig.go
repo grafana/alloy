@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alecthomas/units"
 	promopv1alpha1 "github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring/v1alpha1"
 	"github.com/prometheus-operator/prometheus-operator/pkg/namespacelabeler"
 	commonConfig "github.com/prometheus/common/config"
@@ -157,6 +158,14 @@ func (cg *ConfigGenerator) commonScrapeConfigConfig(m *promopv1alpha1.ScrapeConf
 		// the implementation expects lowercase "http" or "https" in the final scrape configuration. So, we
 		// have to lowercase the schema.
 		cfg.Scheme = strings.ToLower(string(*m.Spec.Scheme))
+	}
+	if m.Spec.EnableCompression != nil {
+		cfg.EnableCompression = *m.Spec.EnableCompression
+	}
+	if m.Spec.BodySizeLimit != nil {
+		if cfg.BodySizeLimit, err = units.ParseBase2Bytes(string(*m.Spec.BodySizeLimit)); err != nil {
+			return nil, fmt.Errorf("parsing bodySizeLimit from scrapeConfig: %w", err)
+		}
 	}
 	if m.Spec.TLSConfig != nil {
 		if cfg.HTTPClientConfig.TLSConfig, err = cg.generateSafeTLS(*m.Spec.TLSConfig, m.Namespace); err != nil {
