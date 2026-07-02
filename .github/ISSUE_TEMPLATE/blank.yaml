@@ -21,6 +21,7 @@ body:
       - beyla.ebpf
       - database_observability.mysql
       - database_observability.postgres
+      - database_observability.sql_server
       - discovery.azure
       - discovery.consul
       - discovery.consulagent
@@ -89,6 +90,7 @@ body:
       - otelcol.connector.count
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
+      - otelcol.connector.signaltometrics
       - otelcol.connector.spanlogs
       - otelcol.connector.spanmetrics
       - otelcol.exporter.awss3

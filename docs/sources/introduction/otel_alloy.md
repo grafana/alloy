@@ -21,7 +21,8 @@ It lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collecto
 {{< param "PRODUCT_NAME" >}} supports two runtime engines and an extension:
 
 - **{{< param "DEFAULT_ENGINE" >}}**: The default {{< param "PRODUCT_NAME" >}} runtime and [configuration syntax](../get-started/syntax/).
-  This remains the default, stable experience with [backward compatibility](../introduction/backward-compatibility/) guarantees for {{< param "PRODUCT_NAME" >}} users.
+- **{{< param "DEFAULT_ENGINE" >}}**: The default {{< param "PRODUCT_NAME" >}} runtime and [configuration syntax](../../get-started/syntax/).
+This remains the default, stable experience with [backward compatibility](../backward-compatibility/) guarantees for {{< param "PRODUCT_NAME" >}} users.
 
 - **{{< param "OTEL_ENGINE" >}}**: The standard OpenTelemetry Collector runtime embedded within {{< param "PRODUCT_NAME" >}}.
   It uses [upstream collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) for pipelines and components.
@@ -49,6 +50,7 @@ The following sections list all included components:
 - [headerssetter](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/headerssetterextension/README.md)
 - [healthcheck](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/healthcheckextension/README.md)
 - [jaegerremotesampling](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/jaegerremotesampling/README.md)
+- [k8sleaderelector](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/k8sleaderelector/README.md)
 - [oauth2clientauth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/oauth2clientauthextension/README.md)
 - [pprof](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/pprofextension/README.md)
 - [sigv4auth](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/extension/sigv4authextension/README.md)
@@ -82,6 +84,7 @@ The following sections list all included components:
 - [hostmetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/hostmetricsreceiver/README.md)
 - [influxdb](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/influxdbreceiver/README.md)
 - [jaeger](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/jaegerreceiver/README.md)
+- [k8sclusterreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sclusterreceiver/README.md)
 - [k8sobjectsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/k8sobjectsreceiver/README.md)
 - [kafka](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kafkareceiver/README.md)
 - [kubeletstatsreceiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/receiver/kubeletstatsreceiver/README.md)
@@ -101,6 +104,7 @@ The following sections list all included components:
 - [count](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/countconnector/README.md)
 - [grafanacloud](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/grafanacloudconnector/README.md)
 - [servicegraph](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/servicegraphconnector/README.md)
+- [signaltometrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/signaltometricsconnector/README.md)
 - [spanmetrics](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}/connector/spanmetricsconnector/README.md)
 - [forward](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}/connector/forwardconnector/README.md)
 
@@ -149,6 +153,62 @@ The following sections list all included components:
 {{< /collapse >}}
 
 To view the full list of components and their versions, refer to the [OpenTelemetry Collector Builder manifest](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml).
+
+## Custom builds with the OpenTelemetry Collector Builder (OCB)
+
+The {{< param "OTEL_ENGINE" >}} is generated from a declarative [OpenTelemetry Collector Builder (OCB)](https://opentelemetry.io/docs/collector/custom-collector/) manifest.
+If you need additional components or want to remove bundled components, edit the manifest and build a customized {{< param "PRODUCT_NAME" >}} binary.
+Grafana doesn't offer commercial support for custom builds.
+
+### 1. Clone the {{< param "PRODUCT_NAME" >}} repository
+
+Clone the Git repository and change to the repository root.
+The following steps assume you run commands from this directory.
+
+```shell
+git clone https://github.com/grafana/alloy.git
+cd alloy
+```
+
+To build from a **specific release**, fetch tags and check out the tag after you clone:
+
+```shell
+git fetch --tags
+git checkout <RELEASE_TAG>
+```
+
+Replace _`<RELEASE_TAG>`_ with the [release tag](https://github.com/grafana/alloy/releases) you want.
+
+### 2. Start from the checked-in manifest
+
+The source manifest is [`collector/builder-config.yaml`](https://github.com/grafana/alloy/blob/main/collector/builder-config.yaml) in your checkout.
+You can:
+
+- **Remove** a component: delete its `- gomod: ...` line from the appropriate section.
+- **Add** a component: append a line that points at the module path and version you want.
+  Follow the same `- gomod:` pattern as the other entries.
+
+### 3. Build the {{< param "PRODUCT_NAME" >}} binary
+
+Build the full {{< param "PRODUCT_NAME" >}} binary:
+
+```shell
+make alloy
+```
+
+The binary in `build/` behaves like a standard `alloy` build.
+Use [`alloy otel`](../../reference/cli/otel/) to run collector YAML against your custom bundle.
+
+### 4. Build a Docker image
+
+To create an image like the Grafana {{< param "PRODUCT_NAME" >}} image:
+
+```shell
+make alloy-image <ALLOY_IMAGE>=<REGISTRY>/<IMAGE_NAME>
+```
+
+Replace _`<ALLOY_IMAGE>`_ with your image repository and image name.
+If you don't set the image repository and image name, the build defaults to `grafana/alloy`.
 
 ## Next steps
 

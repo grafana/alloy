@@ -66,9 +66,11 @@ You can use the following blocks with `otelcol.receiver.googlecloudpubsub`:
 | -------------------------------- | -------------------------------------------------------------------------- | -------- |
 | [`output`][output]               | Configures where to send received telemetry data.                          | yes      |
 | [`debug_metrics`][debug_metrics] | Configures the metrics that this component generates to monitor its state. | no       |
+| [`flow_control`][flow_control]   | Tunes Pub/Sub acknowledgement batching and outstanding-message limits.     | no       |
 
 [debug_metrics]: #debug_metrics
 [output]: #output
+[flow_control]: #flow_control
 
 {{< /docs/alloy-config >}}
 
@@ -81,6 +83,19 @@ You can use the following blocks with `otelcol.receiver.googlecloudpubsub`:
 ### `debug_metrics`
 
 {{< docs/shared lookup="reference/components/otelcol-debug-metrics-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `flow_control`
+
+The `flow_control` block tunes how the receiver acknowledges Pub/Sub messages and bounds outstanding work.
+
+The following arguments are supported:
+
+| Name                         | Type       | Description                                                          | Default | Required |
+| ---------------------------- | ---------- | -------------------------------------------------------------------- | ------- | -------- |
+| `trigger_ack_batch_duration` | `duration` | Maximum time to wait before sending acknowledgements.                | `"10s"` | no       |
+| `stream_ack_deadline`        | `duration` | Acknowledgement deadline to use for the Pub/Sub stream.              | `"60s"` | no       |
+| `max_outstanding_messages`   | `int`      | Maximum number of outstanding messages. `0` uses the client default. | `0`     | no       |
+| `max_outstanding_bytes`      | `int`      | Maximum number of outstanding bytes. `0` uses the client default.    | `0`     | no       |
 
 ## Exported fields
 

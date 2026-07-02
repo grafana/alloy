@@ -111,10 +111,13 @@ func newMetrics() *metrics {
 			Help:      "Total number of retries across all events, partitioned by event type.",
 		}, []string{"type"}),
 		lokiClientTiming: prometheus.NewHistogramVec(prometheus.HistogramOpts{
-			Subsystem: "loki_rules",
-			Name:      "loki_client_request_duration_seconds",
-			Help:      "Duration of requests to the Loki API.",
-			Buckets:   instrument.DefBuckets,
+			Subsystem:                       "loki_rules",
+			Name:                            "loki_client_request_duration_seconds",
+			Help:                            "Duration of requests to the Loki API.",
+			Buckets:                         instrument.DefBuckets,
+			NativeHistogramBucketFactor:     1.1,
+			NativeHistogramMaxBucketNumber:  100,
+			NativeHistogramMinResetDuration: 1 * time.Hour,
 		}, instrument.HistogramCollectorBuckets),
 	}
 }

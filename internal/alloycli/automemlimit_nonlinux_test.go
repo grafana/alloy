@@ -16,7 +16,11 @@ import (
 func TestNoMemlimitErrorLogs(t *testing.T) {
 	buffer := bytes.NewBuffer(nil)
 
-	l, err := logging.New(buffer, logging.DefaultOptions)
+	l, err := logging.New(buffer, logging.Options{
+		Level:       logging.LevelDefault,
+		Format:      logging.FormatDefault,
+		Destination: logging.LogDestinationStderr,
+	})
 	require.NoError(t, err)
 
 	applyAutoMemLimit(l)

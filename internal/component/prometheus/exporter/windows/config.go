@@ -55,6 +55,7 @@ type Arguments struct {
 	NetFramework       NetFrameworkConfig       `alloy:"netframework,block,optional"`
 	DNS                DNSConfig                `alloy:"dns,block,optional"`
 	Net                NetConfig                `alloy:"net,block,optional"`
+	Time               TimeConfig               `alloy:"time,block,optional"`
 }
 
 // Convert converts the component's Arguments to the integration's Config.
@@ -90,6 +91,7 @@ func (a *Arguments) Convert(logger *slog.Logger) *windows_integration.Config {
 		Update:             a.Update.Convert(),
 		DNS:                a.DNS.Convert(),
 		Net:                a.Net.Convert(),
+		Time:               a.Time.Convert(),
 	}
 }
 
@@ -491,6 +493,18 @@ type DNSConfig struct {
 // Convert converts the component's DNSConfig to the integration's DNSConfig.
 func (t DNSConfig) Convert() windows_integration.DNSConfig {
 	return windows_integration.DNSConfig{
+		EnabledList: strings.Join(t.EnabledList, ","),
+	}
+}
+
+// TimeConfig handles settings for the windows_exporter time collector
+type TimeConfig struct {
+	EnabledList []string `alloy:"enabled_list,attr,optional"`
+}
+
+// Convert converts the component's TimeConfig to the integration's TimeConfig.
+func (t TimeConfig) Convert() windows_integration.TimeConfig {
+	return windows_integration.TimeConfig{
 		EnabledList: strings.Join(t.EnabledList, ","),
 	}
 }

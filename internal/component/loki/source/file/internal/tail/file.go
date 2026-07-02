@@ -2,12 +2,10 @@ package tail
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/grafana/dskit/backoff"
@@ -15,10 +13,10 @@ import (
 	"github.com/grafana/alloy/internal/component/loki/source/file/internal/tail/fileext"
 )
 
-// NewFile creates a new File tailer for the specified file path.
+// NewFile creates a new File for the specified file path.
 // It opens the file and seeks to the provided offset if one is specified.
 // The returned File can be used to read lines from the file as they are appended.
-// The caller is responsible for calling Stop() when done to close the file and clean up resources.
+// The caller is responsible for calling Close() when done to clean up resources.
 func NewFile(logger *slog.Logger, cfg *Config) (*File, error) {
 	f, err := fileext.OpenFile(cfg.Filename)
 	if err != nil {
@@ -48,28 +46,26 @@ func NewFile(logger *slog.Logger, cfg *Config) (*File, error) {
 	}
 
 	cfg.WatcherConfig.MinPollFrequency = min(cfg.WatcherConfig.MinPollFrequency, cfg.WatcherConfig.MaxPollFrequency)
-	ctx, cancel := context.WithCancel(context.Background())
-
 	return &File{
 		cfg:       cfg,
 		logger:    logger,
 		file:      f,
 		reader:    reader,
-		ctx:       ctx,
-		cancel:    cancel,
 		signature: sig,
-		waitAtEOF: cfg.Compression == "",
 	}, nil
 }
 
 // File represents a file being tailed. It provides methods to read lines
 // from the file as they are appended, handling file events such as truncation,
-// deletion, and modification. File is safe for concurrent use.
+// deletion, and modification.
+//
+// File is not safe for concurrent use: Next, Flush, Wait, and Close must all be
+// called from a single goroutine. Cancellation is driven through the context
+// passed to Wait rather than by closing the file from another goroutine.
 type File struct {
 	cfg    *Config
 	logger *slog.Logger
 
-	mu        sync.Mutex
 	file      *os.File
 	reader    *reader
 	signature *signature
@@ -77,29 +73,14 @@ type File struct {
 	// bufferedLines stores lines that were read from an old file handle before
 	// it was closed during file rotation.
 	bufferedLines []Line
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	// waitAtEOF controls whether we should wait for file events
-	// when we get EOF
-	waitAtEOF bool
 }
 
-// Next reads and returns the next line from the file.
-// It blocks until a line is available, file is closed or unrecoverable error occurs.
-// If file was closed context.Canceled is returned.
+// Next returns the next available line from the file.
+// When no complete line is available it returns io.EOF. On io.EOF the caller
+// should call Wait to block until more data is available and then call Next
+// again, or call Flush to read any remaining partial line. Any other error
+// indicates an unrecoverable read or decode failure.
 func (f *File) Next() (*Line, error) {
-	select {
-	case <-f.ctx.Done():
-		return nil, f.ctx.Err()
-	default:
-	}
-
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-read:
 	// If we have buffered lines from a previous file rotation, return them first.
 	// These are lines that were read from the old file handle before it was closed,
 	// ensuring we don't lose any data during file rotation.
@@ -111,31 +92,23 @@ read:
 
 	text, err := f.reader.next()
 	if err != nil {
-		if errors.Is(err, io.EOF) && f.waitAtEOF {
-			if err := f.wait(); err != nil {
-				return nil, err
-			}
-			goto read
-		}
-
-		// If we should wait at EOF we go an unexpected error
-		// here and can just return.
-		if f.waitAtEOF {
-			return nil, err
-		}
-
-		if !errors.Is(err, io.EOF) {
-			return nil, err
-		}
-
-		// If we should return at EOF we want to flush all remaining
-		// data from reader.
-		text, err = f.reader.flush()
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
 
+	return f.makeLine(text)
+}
+
+// Flush returns any remaining data at the end of the file not
+// terminated by a newline. It returns io.EOF if there is nothing left.
+func (f *File) Flush() (*Line, error) {
+	text, err := f.reader.flush()
+	if err != nil {
+		return nil, err
+	}
+	return f.makeLine(text)
+}
+
+func (f *File) makeLine(text string) (*Line, error) {
 	offset := f.reader.position()
 
 	// Recompute signature if we've crossed a threshold and haven't reached it yet.
@@ -157,11 +130,7 @@ read:
 }
 
 // Size returns the current size of the file in bytes.
-// It is safe to call concurrently with other File methods.
 func (f *File) Size() (int64, error) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
 	fi, err := f.file.Stat()
 	if err != nil {
 		return 0, err
@@ -169,25 +138,21 @@ func (f *File) Size() (int64, error) {
 	return fi.Size(), nil
 }
 
-// Stop closes the file and cancels any ongoing wait operations.
-// After Stop is called, Next() will return errors for any subsequent calls.
-// It is safe to call Stop multiple times.
-func (f *File) Stop() error {
-	f.cancel()
-	f.mu.Lock()
-	defer f.mu.Unlock()
+// Close closes the underlying file and releases its resources.
+func (f *File) Close() error {
 	return f.file.Close()
 }
 
-// wait blocks until a file event is detected (modification, truncation, or deletion).
-// Returns an error if the context is canceled or an unrecoverable error occurs.
-func (f *File) wait() error {
+// Wait blocks until a file event is detected (modification, truncation, or deletion).
+// It returns once the caller should resume calling Next, or an error if ctx is canceled
+// or the wait fails.
+func (f *File) Wait(ctx context.Context) error {
 	offset, err := f.offset()
 	if err != nil {
 		return err
 	}
 
-	event, err := blockUntilEvent(f.ctx, f.file, offset, f.cfg)
+	event, err := blockUntilEvent(ctx, f.file, offset, f.cfg)
 	switch event {
 	case eventModified:
 		f.logger.Debug("file modified")
@@ -195,7 +160,7 @@ func (f *File) wait() error {
 	case eventTruncated:
 		f.logger.Debug("file truncated")
 		// We need to reopen the file when it was truncated.
-		return f.reopen(true)
+		return f.reopen(ctx, true)
 	case eventDeleted:
 		f.logger.Debug("file deleted")
 		// If a file is deleted we want to make sure we drain what's remaining in the open file.
@@ -208,7 +173,7 @@ func (f *File) wait() error {
 		}
 		// In polling mode we could miss events when a file is deleted, so before we give up
 		// we try to reopen the file.
-		return f.reopen(false)
+		return f.reopen(ctx, false)
 	default:
 		return err
 	}
@@ -268,7 +233,7 @@ func (f *File) drain() {
 // which could cause the poller to hang on an open file handle to a file no longer being
 // written to. It saves the current file handle info to ensure we only start tailing a
 // different file instance.
-func (f *File) reopen(truncated bool) error {
+func (f *File) reopen(ctx context.Context, truncated bool) error {
 	cf, err := f.file.Stat()
 	if !truncated && err != nil {
 		// We don't action on this error but are logging it, not expecting to see it happen and not sure if we
@@ -278,7 +243,7 @@ func (f *File) reopen(truncated bool) error {
 
 	f.file.Close()
 
-	backoff := backoff.New(f.ctx, backoff.Config{
+	backoff := backoff.New(ctx, backoff.Config{
 		MinBackoff: f.cfg.WatcherConfig.MinPollFrequency,
 		MaxBackoff: f.cfg.WatcherConfig.MaxPollFrequency,
 		MaxRetries: 20,
@@ -289,7 +254,7 @@ func (f *File) reopen(truncated bool) error {
 		if err != nil {
 			if os.IsNotExist(err) {
 				f.logger.Debug("waiting for file to appear", "filename", f.cfg.Filename)
-				if err := blockUntilExists(f.ctx, f.cfg); err != nil {
+				if err := blockUntilExists(ctx, f.cfg); err != nil {
 					return fmt.Errorf("failed to detect creation of %s: %w", f.cfg.Filename, err)
 				}
 				continue

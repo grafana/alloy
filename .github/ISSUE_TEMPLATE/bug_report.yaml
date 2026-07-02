@@ -21,6 +21,7 @@ body:
       - beyla.ebpf
       - database_observability.mysql
       - database_observability.postgres
+      - database_observability.sql_server
       - discovery.azure
       - discovery.consul
       - discovery.consulagent
@@ -89,6 +90,7 @@ body:
       - otelcol.connector.count
       - otelcol.connector.host_info
       - otelcol.connector.servicegraph
+      - otelcol.connector.signaltometrics
       - otelcol.connector.spanlogs
       - otelcol.connector.spanmetrics
       - otelcol.exporter.awss3
@@ -231,6 +233,12 @@ body:
       label: Logs
       description: Provide logs relevant to the issue. Remove sensitive information before sharing. This will be formatted into a code block; don't add backtick code fences.
       render: text
+  - type: checkboxes
+    attributes:
+      label: AI disclosure
+      description: See the [Generative AI Contribution Policy](https://github.com/grafana/alloy/blob/main/docs/developer/genai.md).
+      options:
+        - label: This issue was substantially generated with AI assistance.
   - type: dropdown
     attributes:
       label: Tip

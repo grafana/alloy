@@ -8,7 +8,8 @@ import (
 
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/rulefmt"
-	"gopkg.in/yaml.v3"
+	"github.com/prometheus/prometheus/promql/parser"
+	"go.yaml.in/yaml/v3"
 )
 
 type MimirRuleGroup struct {
@@ -51,7 +52,7 @@ func (g *MimirRuleGroups) Validate(node mimirRuleGroups) (errs []error) {
 			}
 
 			// TODO: add support for choosing validation scheme: https://github.com/grafana/alloy/issues/4122
-			for _, node := range r.Validate(ruleNode, model.LegacyValidation) {
+			for _, node := range r.Validate(ruleNode, model.LegacyValidation, parser.NewParser(parser.Options{})) {
 				var ruleName string
 				if r.Alert != "" {
 					ruleName = r.Alert

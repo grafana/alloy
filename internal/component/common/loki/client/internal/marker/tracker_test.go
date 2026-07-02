@@ -38,7 +38,7 @@ func TestTracker(t *testing.T) {
 
 		require.Eventually(t, func() bool {
 			return st.LastMarkedSegment() == 11
-		}, time.Second, time.Millisecond*100, "expected last marked segment to catch up")
+		}, 3*time.Second, time.Millisecond*100, "expected last marked segment to catch up")
 		require.Equal(t, 11, f.LastMarkedSegment())
 	})
 

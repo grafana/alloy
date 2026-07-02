@@ -20,9 +20,9 @@ func (b *ConfigBuilder) appendLogging(config *server.Config) {
 }
 
 func toLogging(config *server.Config) *logging.Options {
-	return &logging.Options{
-		Level:       logging.Level(config.LogLevel.String()),
-		Format:      logging.Format(config.LogFormat),
-		Destination: logging.LogDestinationStderr,
-	}
+	opts := &logging.Options{}
+	opts.SetToDefault()
+	opts.Level = logging.Level(config.LogLevel.String())
+	opts.Format = logging.Format(config.LogFormat)
+	return opts
 }

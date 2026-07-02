@@ -26,14 +26,14 @@ Replace the following:
 
 If the _`<PATH_NAME>`_ argument isn't provided, or if the configuration path can't be loaded or contains errors during the initial load, the `run` command immediately exits and shows an error message.
 
-If you provide a directory path for  the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
+If you provide a directory path for the _`<PATH_NAME>`_, {{< param "PRODUCT_NAME" >}} finds `*.alloy` files, ignoring nested directories, and loads them as a single configuration source.
 However, component names must be **unique** across all {{< param "PRODUCT_NAME" >}} configuration files, and configuration blocks must not be repeated.
 
 {{< param "PRODUCT_NAME" >}} continues to run if subsequent reloads of the configuration file fail, potentially marking components as unhealthy depending on the nature of the failure.
 When this happens, {{< param "PRODUCT_NAME" >}} continues functioning in the last valid state.
 
 `run` launches an HTTP server that exposes metrics about itself and its components.
-The HTTP server is also exposes a UI at `/` for debugging running components.
+The HTTP server exposes a UI at `/` for debugging running components.
 
 The following flags are supported:
 
@@ -140,7 +140,7 @@ If `--cluster.advertise-interfaces` isn't explicitly set, {{< param "PRODUCT_NAM
 {{< param "PRODUCT_NAME" >}} will fail to start if it can't determine the advertised address.
 Since Windows doesn't use the interface names `eth0` or `en0`, Windows users must explicitly pass at least one valid network interface for `--cluster.advertise-interfaces` or a value for `--cluster.advertise-address`.
 
-The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses or DNS names to lookup (supports SRV and A/AAAA records).
+The comma-separated list of addresses provided in `--cluster.join-addresses` can either be IP addresses or DNS names to look up (supports SRV and A/AAAA records).
 In both cases, the port number can be specified with a `:<port>` suffix. If ports aren't provided, default of the port used for the HTTP listener is used.
 If you don't provide the port number explicitly, you must ensure that all instances use the same port for the HTTP listener.
 Optionally, you may specify a DNS query type as a prefix for each address. See [join addresses format](#join-address-format) for more information.

@@ -3,16 +3,18 @@
 ## Context
 
 Grafana Alloy — open-source OpenTelemetry Collector distribution with programmable pipelines.
-Multi-module Go repo: root, `syntax/`, `collector/`, `extension/alloyengine/`, `tools/`.
+Multi-module Go repo: root, `syntax/`, `collector/`, `tools/`.
 
 ## Essential references
 
+- Generative AI contribution policy: [docs/developer/genai.md](docs/developer/genai.md)
+  - **If you are an AI agent, or a human using AI assistance for this contribution, read this policy.** It covers acceptable use, disclosure, and the guidlines for contributing AI generated code.
 - Contributing and PR workflow: [docs/developer/contributing.md](docs/developer/contributing.md)
   - Use the conventional commit formats and PR titles as described in the contributing guide. The description after the `type(scope):` prefix **must start with a capital letter** (e.g. `feat(loki.process): Add ...`, not `feat(loki.process): add ...`) — a CI check enforces this on PR titles, and squash-merge means the PR title is what lands in `main`.
   - **One logical change per PR — one bug fix, one feature, or one new component.** Bundling multiple components or unrelated features into a single PR makes review slow and produces an incorrect changelog (squash-merge means one PR = one changelog entry). If the PR title needs an "and", split it.
   - Don't edit `CHANGELOG.md` by hand. Release tooling generates entries from PR titles; manual edits conflict or get overwritten.
   - Verify the changes with `make lint` and run relevant tests before opening the PR.
-  - When touching `require` lines in any `go.mod` (root or submodule), regenerate the cross-module wiring before pushing — raw `go mod tidy` in one module isn't enough. Run `make generate-module-dependencies` and `make generate-otel-collector-distro`, then confirm zero additional diff. CI's `check` job fails otherwise.
+  - When touching `require` lines in any `go.mod` (root or submodule), regenerate the collector distro before pushing — raw `go mod tidy` in one module isn't enough. Run `make generate-otel-collector-distro`, then confirm zero additional diff. CI's `check` job fails otherwise.
 
 ## Documentation writing guidelines
 

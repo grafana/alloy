@@ -51,7 +51,7 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 | `partition_logs_by_resource_attributes`    | `bool`         | Whether to include the hash of sorted resource attributes as the message partitioning key in log messages sent to Kafka.    | `false`              | no       |
 | `partition_logs_by_trace_id`               | `bool`         | Whether to use the 16-bit hex string of the trace ID as the message partitioning key in log messages sent to Kafka.         | `false`              | no       |
 | `partition_traces_by_id`                   | `bool`         | Whether to include the trace ID as the message key in trace messages sent to Kafka.                                         | `false`              | no       |
-| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                           | `false`              | no       |
+| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IP addresses during startup. Deprecated: now a no-op after the upstream Kafka client migration from `sarama` to `franz-go`. | `false`              | no       |
 | `timeout`                                  | `duration`     | The timeout for every attempt to send data to the backend.                                                                  | `"5s"`               | no       |
 | `topic_from_attribute`                     | `string`       | A resource attribute whose value should be used as the message's topic.                                                     | `""`                 | no       |
 | `topic`                                    | `string`       | (Deprecated) Kafka topic to send to.                                                                                        | _See below_          | no       |
@@ -90,7 +90,9 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 | `metadata` > [`retry`][retry]                           | Configures how to retry metadata retrieval.                                    | no       |
 | [`metrics`][metrics]                                    | Configures how to send metrics to Kafka brokers.                               | no       |
 | [`producer`][producer]                                  | Kafka producer configuration,                                                  | no       |
-| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the kafka producer.                  | no       |
+| `producer` > [`compression_params`][compression_params] | Configures the compression parameters for the Kafka producer.                  | no       |
+| [`record_partitioner`][record_partitioner]             | Selects the Kafka record partitioning strategy.                                | no       |
+| `record_partitioner` > [`sticky_key`][sticky_key]      | Configures the sticky-key partitioner.                                         | no       |
 | [`retry_on_failure`][retry_on_failure]                  | Configures retry mechanism for failed requests.                                | no       |
 | [`sending_queue`][sending_queue]                        | Configures batching of data before sending.                                    | no       |
 | `sending_queue` > [`batch`][batch]                      | Configures batching requests based on a timeout and a minimum number of items. | no       |
@@ -115,6 +117,8 @@ You can use the following blocks with `otelcol.exporter.kafka`:
 [batch]: #batch
 [producer]: #producer
 [compression_params]: #compression_params
+[record_partitioner]: #record_partitioner
+[sticky_key]: #sticky_key
 [debug_metrics]: #debug_metrics
 
 {{< /docs/alloy-config >}}
@@ -238,6 +242,28 @@ The following levels are valid combinations of `compression` and `level`:
 | `zstd`      | `11`  | SpeedBestCompression   |
 
 `lz4` and `snappy` do not currently support compression levels in this component.
+
+### `record_partitioner`
+
+The `record_partitioner` block selects how the exporter assigns records to Kafka partitions.
+When this block is omitted, the exporter uses the `sticky_key` partitioner with the `sarama_compat` hasher.
+
+The following arguments are supported:
+
+| Name           | Type      | Description                                             | Default | Required |
+| -------------- | --------- | ------------------------------------------------------- | ------- | -------- |
+| `round_robin`  | `boolean` | Distribute records across partitions in round-robin.    | `false` | no       |
+| `least_backup` | `boolean` | Route records to the partition with the least backlog.  | `false` | no       |
+
+### `sticky_key`
+
+The `sticky_key` block configures the sticky-key partitioner, which hashes a record's key to pick a partition.
+
+The following argument is supported:
+
+| Name     | Type     | Description                                     | Default           | Required |
+| -------- | -------- | ----------------------------------------------- | ----------------- | -------- |
+| `hasher` | `string` | Hash algorithm used to map record keys to partitions. | `"sarama_compat"` | no       |
 
 ### `retry_on_failure`
 

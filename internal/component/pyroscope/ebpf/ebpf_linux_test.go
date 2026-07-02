@@ -85,6 +85,26 @@ sample_rate = 239
 			},
 		},
 		{
+			name: "with-no-kernel-version-check",
+			in: `
+	targets = [{"service_name" = "foo", "container_id"= "cid"}]
+	forward_to = []
+	no_kernel_version_check = true
+	`,
+			expected: func() Arguments {
+				x := NewDefaultArguments()
+				x.Targets = []discovery.Target{
+					discovery.NewTargetFromMap(map[string]string{
+						"container_id": "cid",
+						"service_name": "foo",
+					}),
+				}
+				x.ForwardTo = []pyroscope.Appendable{}
+				x.NoKernelVersionCheck = true
+				return x
+			},
+		},
+		{
 			name: "syntax-problem",
 			in: `
 targets = [{"service_name" = "foo", "container_id"= "cid"}]
@@ -106,6 +126,18 @@ collect_interval = 3s"
 			require.Equal(t, tt.expected(), arg)
 		})
 	}
+}
+
+func TestConvertNoKernelVersionCheck(t *testing.T) {
+	args := NewDefaultArguments()
+	cfg, err := args.Convert()
+	require.NoError(t, err)
+	require.False(t, cfg.NoKernelVersionCheck)
+
+	args.NoKernelVersionCheck = true
+	cfg, err = args.Convert()
+	require.NoError(t, err)
+	require.True(t, cfg.NoKernelVersionCheck)
 }
 
 func TestReconstructionAfterError(t *testing.T) {

@@ -89,6 +89,7 @@ type Resolver struct {
 	IncludeFilePathResolved   bool `alloy:"include_file_path_resolved,attr,optional"`
 	IncludeFileOwnerName      bool `alloy:"include_file_owner_name,attr,optional"`
 	IncludeFileOwnerGroupName bool `alloy:"include_file_owner_group_name,attr,optional"`
+	IncludeFilePermissions    bool `alloy:"include_file_permissions,attr,optional"`
 }
 
 type MatchCriteria struct {
