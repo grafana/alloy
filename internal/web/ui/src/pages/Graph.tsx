@@ -51,16 +51,23 @@ function Graph() {
 
   const baseGraph = useMemo(() => buildPipelineGraph(components, moduleInternals), [components, moduleInternals]);
 
-  const graph: PipelineGraphData = useMemo(() => overlayLiveMetrics(baseGraph, debugData), [baseGraph, debugData]);
+  const liveGraph: PipelineGraphData = useMemo(() => overlayLiveMetrics(baseGraph, debugData), [baseGraph, debugData]);
 
-  const onNodeClick = (node: PipelineNode) => {
-    const nodeModuleID = String(node.meta?.moduleID ?? '');
-    const localID = String(node.meta?.localID ?? node.id);
+  // Give each node an `href` to its component page. The graph renders these as
+  // real anchors, so clicks follow native browser semantics: a plain click
+  // opens in the same tab, while ⌘/ctrl/middle-click open a new tab and the
+  // browser's "open in new tab" / "copy link address" context menu works.
+  const graph: PipelineGraphData = useMemo(() => {
     const baseUrl = globalThis.window.location.origin + pathPrefix;
-    const remoteCfgPrefix = nodeModuleID.startsWith('remotecfg/') ? 'remotecfg/' : '';
-    const path = nodeModuleID !== '' ? `component/${nodeModuleID}/${localID}` : `component/${localID}`;
-    globalThis.window.open(baseUrl + remoteCfgPrefix + path, '_blank');
-  };
+    const nodes = liveGraph.nodes.map((node: PipelineNode) => {
+      const nodeModuleID = String(node.meta?.moduleID ?? '');
+      const localID = String(node.meta?.localID ?? node.id);
+      const remoteCfgPrefix = nodeModuleID.startsWith('remotecfg/') ? 'remotecfg/' : '';
+      const path = nodeModuleID !== '' ? `component/${nodeModuleID}/${localID}` : `component/${localID}`;
+      return { ...node, href: baseUrl + remoteCfgPrefix + path };
+    });
+    return { ...liveGraph, nodes };
+  }, [liveGraph, pathPrefix]);
 
   const controls = (
     <SliderInput
@@ -89,7 +96,7 @@ function Graph() {
       ) : (
         components.length > 0 && (
           <div className={styles.graphWrapper}>
-            <PipelineGraph graph={graph} onNodeClick={onNodeClick} theme="light" />
+            <PipelineGraph graph={graph} theme="light" />
           </div>
         )
       )}
