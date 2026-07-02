@@ -108,14 +108,8 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   // Use relative base path so assets work when served from any path prefix
   // The <base> tag in index.html will be set at runtime by the Go server
-  base: './',
-  resolve: {
-    // Force a single copy of React across the app and any linked packages
-    // (e.g. the symlinked @grafana/alloy-pipeline-graph library, which ships
-    // its own node_modules/react). Without this, Vite bundles two copies of
-    // React and hooks fail at runtime with "Cannot read properties of null
-    // (reading 'useContext')".
-    dedupe: ['react', 'react-dom'],
+  base: './',build: {
+    chunkSizeWarningLimit: 750,
   },
   test: {
     environment: 'jsdom',
