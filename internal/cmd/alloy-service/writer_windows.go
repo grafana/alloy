@@ -17,15 +17,6 @@ var (
 )
 
 // newWriter creates a new writer which writes to the Windows Event Log.
-//
-// It uses the shared event log opener from internal/runtime/logging/eventlog,
-// which pre-checks whether the source is already registered before attempting
-// to install it. That lets a dedicated non-admin service account start the
-// service when the Alloy installer (or a prior admin run) has already
-// registered the "Alloy" event source, avoiding the CREATE_SUB_KEY access
-// requirement of eventlog.InstallAsEventCreate that would otherwise cause the
-// service to exit before svc.Run can report back to the SCM (surfacing as
-// service error 1053).
 func newWriter() (*writer, error) {
 	el, err := eventlog.GetEventLogOpener()(serviceName)
 	if err != nil {

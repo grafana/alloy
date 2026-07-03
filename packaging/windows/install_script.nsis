@@ -251,9 +251,7 @@ FunctionEnd
 
 # RegisterEventSource pre-creates the Windows Event Log source for Alloy so
 # that a non-admin service account can open the source without needing write
-# access to HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application. Without
-# this, alloy-service.exe fails on first start under a dedicated service
-# account and the SCM reports error 1053 (timeout waiting to connect).
+# access to HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application.
 Function RegisterEventSource
   !define EVENTLOGKEY "HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\Alloy"
 
