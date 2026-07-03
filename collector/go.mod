@@ -832,7 +832,7 @@ require (
 	github.com/prometheus/mysqld_exporter v0.18.0 // indirect
 	github.com/prometheus/node_exporter v1.10.2 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
-	github.com/prometheus/procfs v0.20.1 // indirect
+	github.com/prometheus/procfs v0.21.0 // indirect
 	github.com/prometheus/prometheus v0.312.0 // indirect
 	github.com/prometheus/sigv4 v0.4.1 // indirect
 	github.com/prometheus/snmp_exporter v0.29.0 // indirect
