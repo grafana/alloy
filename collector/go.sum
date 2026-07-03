@@ -1650,6 +1650,8 @@ github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a h1:0usWxe5SGXKQo
 github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a/go.mod h1:3OETvrxfELvGsU2RoGGWercfeZ4bCL3+SOwzIWtJH/Q=
 github.com/mholt/archives v0.1.5 h1:Fh2hl1j7VEhc6DZs2DLMgiBNChUux154a1G+2esNvzQ=
 github.com/mholt/archives v0.1.5/go.mod h1:3TPMmBLPsgszL+1As5zECTuKwKvIfj6YcwWPpeTAXF4=
+github.com/michel-laterman/proxy-connect-dialer-go v0.1.0 h1:Q8asukpmyrEheocd+R+6YEI4jcm62sHHalgTMG+LoLw=
+github.com/michel-laterman/proxy-connect-dialer-go v0.1.0/go.mod h1:HTlVkRAqzTRPYbWxgAiwMT9HRZMOqP3Mx7+toa3yJjc=
 github.com/microsoft/go-mssqldb v1.9.7 h1:I+JEk79gYsc6bdVzDHFSSYE9dtNa7dxRwJ0WQbt6i8w=
 github.com/microsoft/go-mssqldb v1.9.7/go.mod h1:yYMPDufyoF2vVuVCUGtZARr06DKFIhMrluTcgWlXpr4=
 github.com/miekg/dns v1.1.25/go.mod h1:bPDLeHnStXmXAq1m/Ch/hvfNHr14JKNPMBo3VZKjuso=
@@ -1848,6 +1850,8 @@ github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2client
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.153.0/go.mod h1:gUSi0KWIJEHfQzViOZGQjon/Z3QIW9lGVdv+TrZ1rn0=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.153.0 h1:kc08hn60NuQH7Nq612cVACKGF0OE1Aczi4Cp2b3DKfE=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampcustommessages v0.153.0/go.mod h1:cCs8yIxZMSpl1DGXKkTqa7uzGUVdkfGY7QnmyiRINMk=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.153.0 h1:bu2UQffM8aPoY5RwWncZOv5y2rr00Hh9W068d3RRj3o=
+github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.153.0/go.mod h1:71zv2hfUjZcUkVt7UH/rQLQDP9URTz3p1PPTb65J8ts=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.153.0 h1:z9dPgyLkQ1vO5hsGt9V2bOumMqU7UJ8VRkg1KV2SoTY=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.153.0/go.mod h1:bDFc1hg/hmp53d6CFa6llLIM4wqwgYBA2+fZx955Vxk=
 github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.153.0 h1:rB15qpZwWQ4Jks3Hh2tSA5iOK3PNPYs9uWtJZPkJHG8=
