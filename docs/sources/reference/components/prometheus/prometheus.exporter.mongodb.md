@@ -34,31 +34,6 @@ prometheus.exporter.mongodb "<LABEL>" {
 
 You can use the following arguments with `prometheus.exporter.mongodb`:
 
-| Name                           | Type       | Description                                                                                                                            | Default | Required |
-| ------------------------------ | ---------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
-| `mongodb_uri`                  | `secret`   | MongoDB node connection URI.                                                                                                           |         | yes      |
-| `collect_all`                  | `bool`     | Enables all collectors.                                                                                                                | `true`  | no       |
-| `compatible_mode`              | `bool`     | Enables metric names compatible with `mongodb_exporter` <v0.20.0.                                                                      | `true`  | no       |
-| `currentop_slow_time`          | `duration` | Minimum running time of an operation before it's reported by the currentop collector.                                                  | `"1m"`  | no       |
-| `direct_connect`               | `bool`     | Whether or not a direct connect should be made. Direct connections aren't valid if multiple hosts are specified or an SRV URI is used. | `false` | no       |
-| `discovering_mode`             | `bool`     | Whether or not to enable autodiscover collections.                                                                                     | `false` | no       |
-| `enable_coll_stats`            | `bool`     | Enables collecting collection statistics.                                                                                              | `false` | no       |
-| `enable_currentop_metrics`     | `bool`     | Enables collecting current operation metrics.                                                                                          | `false` | no       |
-| `enable_db_stats_free_storage` | `bool`     | Enables collecting free storage statistics from `dbStats`.                                                                             | `false` | no       |
-| `enable_db_stats`              | `bool`     | Enables collecting database statistics.                                                                                                | `false` | no       |
-| `enable_diagnostic_data`       | `bool`     | Enables collecting diagnostic data.                                                                                                    | `false` | no       |
-| `enable_fcv`                   | `bool`     | Enables collecting Feature Compatibility Version (FCV) metrics.                                                                        | `false` | no       |
-| `enable_index_stats`           | `bool`     | Enables collecting index statistics.                                                                                                   | `false` | no       |
-| `enable_pbm_metrics`           | `bool`     | Enables collecting Percona Backup for MongoDB (PBM) metrics.                                                                           | `false` | no       |
-| `enable_profile`               | `bool`     | Enables collecting profile metrics.                                                                                                    | `false` | no       |
-| `enable_replicaset_config`     | `bool`     | Enables collecting replica set configuration.                                                                                          | `false` | no       |
-| `enable_replicaset_status`     | `bool`     | Enables collecting replica set status.                                                                                                 | `false` | no       |
-| `enable_shards`                | `bool`     | Enables collecting sharding information.                                                                                               | `false` | no       |
-| `enable_top_metrics`           | `bool`     | Enables collecting top metrics.                                                                                                        | `false` | no       |
-| `collstats_colls`              | `list(string)` | List of `database.collection` values to get `$collStats`                                                                           | `[]`    | no       |
-| `indexstats_colls`             | `list(string)` | List of `database.collection` values to get `$indexStats`                                                                          | `[]`    | no       |
-| `collstats_limit`              | `int`      | Disable collstats, dbstats, topmetrics and indexstats collector if there are more than collections. 0=No limit                                                                                                                                                                                  | `30`    | no       |
-| `global_conn_pool`             | `bool`     | Use global connection pool instead of creating new pool for each http request                                                          | `0`     | no       |
 |              Name              |      Type      |                                                              Description                                                               | Default | Required |
 | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
 | `mongodb_uri`                  | `secret`       | MongoDB node connection URI.                                                                                                           |         | yes      |
