@@ -40,6 +40,11 @@ func (s *ScrapeConfigBuilder) AppendSyslogConfig() {
 		listenerConfig.SyslogFormat = syslog.DefaultListenerConfig.SyslogFormat
 	}
 
+	// If the listen protocol is not set, use the default (promtail defaults to tcp).
+	if listenerConfig.ListenProtocol == "" {
+		listenerConfig.ListenProtocol = syslog.DefaultListenerConfig.ListenProtocol
+	}
+
 	if fmtOpts := s.cfg.SyslogConfig.RawFormatOptions; fmtOpts != nil {
 		listenerConfig.RawFormatOptions = &syslog.RawFormatOptions{
 			UseNullTerminatorDelimiter: fmtOpts.UseNullTerminatorDelimiter,

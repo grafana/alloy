@@ -45,6 +45,10 @@ scrape_configs:
       syslog_format: raw
       raw_format_options:
         use_null_terminator_delimiter: true
+  - job_name: test_default_protocol
+    syslog:
+      listen_address: localhost:4000
+      idle_timeout: 1m
 
 tracing: { enabled: false }
 server: { register_instrumentation: false }
