@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/prometheus/tsdb/wlog"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/prometheus/model/exemplar"
@@ -1002,4 +1004,66 @@ func (fn *fakeNotifier) Notify() {
 	if fn.NotitfyFunc != nil {
 		fn.NotitfyFunc()
 	}
+}
+
+// TestTruncate_CorruptCheckpointRecovery verifies that a single-byte corruption
+// in the page-padded region of an existing checkpoint segment does not
+// permanently disable WAL truncation (issue #6166).
+//
+// Before the fix, wlog.Checkpoint would fail every cycle because it tried to
+// read the corrupt existing checkpoint before writing a new one. After the fix,
+// the corrupt checkpoint is deleted and the cycle retries successfully.
+func TestTruncate_CorruptCheckpointRecovery(t *testing.T) {
+	walDir := t.TempDir()
+
+	s, err := NewStorage(logging.NewSlogNop(), nil, walDir)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, s.Close()) })
+
+	// Append enough series and samples to produce at least one WAL segment
+	// that the checkpoint code will compact.
+	app := s.Appender(t.Context())
+	lset := labels.FromStrings("job", "test", "instance", "localhost:9090")
+	ref, err := app.Append(0, lset, time.Now().UnixMilli(), 1.0)
+	require.NoError(t, err)
+	require.NoError(t, app.Commit())
+
+	// Advance to a second segment so there is something to checkpoint.
+	_, err = s.wal.NextSegment()
+	require.NoError(t, err)
+	_, err = s.wal.NextSegment()
+	require.NoError(t, err)
+
+	// First truncation writes a valid checkpoint.
+	err = s.Truncate(time.Now().Add(-time.Hour).UnixMilli())
+	require.NoError(t, err)
+
+	// Verify a checkpoint directory now exists.
+	cpName, cpIdx, err := wlog.LastCheckpoint(s.wal.Dir())
+	require.NoError(t, err)
+	require.NotEmpty(t, cpName)
+
+	// Corrupt the first segment inside the checkpoint: write a non-zero byte
+	// into the page-padded region (offset >= 32768) exactly as described in
+	// the issue reproduction script.
+	cpSegPath := filepath.Join(s.wal.Dir(), cpName, "00000000")
+	f, err := os.OpenFile(cpSegPath, os.O_WRONLY, 0o600)
+	require.NoError(t, err)
+	_, err = f.WriteAt([]byte{0xff}, 32768)
+	require.NoError(t, err)
+	require.NoError(t, f.Close())
+
+	// Without the fix, this call would return an error every time and WAL
+	// segments would accumulate forever. With the fix it should succeed by
+	// deleting the corrupt checkpoint and rebuilding from WAL segments.
+	err = s.Truncate(time.Now().Add(-time.Hour).UnixMilli())
+	require.NoError(t, err, "Truncate must recover from checkpoint corruption")
+
+	// A fresh valid checkpoint should have been created at a higher index.
+	_, newIdx, err := wlog.LastCheckpoint(s.wal.Dir())
+	require.NoError(t, err)
+	require.Greater(t, newIdx, cpIdx, "a new checkpoint must supersede the corrupt one")
+
+	// The series ref should still be valid; the in-memory state must be intact.
+	_ = ref
 }

@@ -657,8 +657,26 @@ func (w *Storage) Truncate(mint int64) error {
 		var cerr *wlog.CorruptionErr
 		if errors.As(err, &cerr) {
 			w.metrics.walCorruptionsTotal.Inc()
+			// A corrupt checkpoint file permanently blocks every subsequent truncation
+			// cycle because wlog.Checkpoint re-reads the existing checkpoint before
+			// writing a new one. The checkpoint is a compaction of WAL segments that
+			// are still present on disk, so deleting it is safe: the next
+			// wlog.Checkpoint call will rebuild from those segments instead.
+			if _, cpIdx, cpErr := wlog.LastCheckpoint(w.wal.Dir()); cpErr == nil {
+				if delErr := wlog.DeleteCheckpoints(w.wal.Dir(), cpIdx+1); delErr != nil {
+					w.logger.Error("could not delete corrupt checkpoint", "err", delErr)
+				} else {
+					w.logger.Warn("deleted corrupt checkpoint, retrying", "checkpoint_index", cpIdx, "corruption_err", err)
+					_, err = wlog.Checkpoint(w.logger, w.wal, first, last, keep, mint, false)
+					if err != nil {
+						w.metrics.checkpointCreationFail.Inc()
+					}
+				}
+			}
 		}
-		return fmt.Errorf("create checkpoint: %w", err)
+		if err != nil {
+			return fmt.Errorf("create checkpoint: %w", err)
+		}
 	}
 	if err := w.wal.Truncate(last + 1); err != nil {
 		// If truncating fails, we'll just try again at the next checkpoint.
