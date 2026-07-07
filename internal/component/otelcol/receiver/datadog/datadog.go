@@ -118,7 +118,6 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 
 	cfg := &datadogreceiver.Config{
 		ServerConfig:     *convertedHttpServer,
-		ReadTimeout:      args.HTTPServer.ReadTimeout,
 		TraceIDCacheSize: args.TraceIDCacheSize,
 	}
 

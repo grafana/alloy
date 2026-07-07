@@ -1,5 +1,6 @@
 otelcol.receiver.datadog "default" {
 	idle_timeout        = "0s"
+	read_timeout        = "0s"
 	write_timeout       = "0s"
 	read_header_timeout = "0s"
 
