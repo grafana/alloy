@@ -120,11 +120,16 @@ If `service_name` isn't specified and couldn't be inferred, then it's set to `un
 
 The following labels are automatically injected to the scraped profiles so that they can be linked to a scrape target:
 
-| Label            | Description                                                      |
-| ---------------- | ---------------------------------------------------------------- |
-| `"job"`          | The `job_name` that the target belongs to.                       |
-| `"instance"`     | The `__address__` or `<host>:<port>` of the scrape target's URL. |
-| `"service_name"` | The inferred Pyroscope service name.                             |
+| Label                  | Description                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `"job"`                | The `job_name` that the target belongs to.                                   |
+| `"instance"`           | The `__address__` or `<host>:<port>` of the scrape target's URL.             |
+| `"service_name"`       | The inferred Pyroscope service name.                                         |
+| `"otel.scope.name"`    | The instrumentation scope name, set to `com.grafana.alloy/pyroscope.scrape`. |
+| `"otel.scope.version"` | The {{< param "PRODUCT_NAME" >}} version that produced the profile.          |
+
+{{< param "PRODUCT_NAME" >}} only sets `otel.scope.name` and `otel.scope.version` if they aren't already present on the scraped profile.
+`otel.scope.version` is only set when `otel.scope.name` matches the default value.
 
 #### `scrape_interval`
 
