@@ -169,12 +169,17 @@ func (c *crdManager) Run(ctx context.Context) error {
 	}
 
 	// Start prometheus service discovery manager
+	managerErrCh := make(chan error, 2)
 	c.discoveryManager = discovery.NewManager(ctx, c.logger, unregisterer, sdMetrics, discovery.Name(c.opts.ID))
 	go func() {
 		err := c.discoveryManager.Run()
-		if err != nil {
-			c.logger.Error("discovery manager stopped", "err", err)
+		if ctx.Err() != nil {
+			return
 		}
+		if err == nil {
+			err = errors.New("discovery manager stopped")
+		}
+		managerErrCh <- fmt.Errorf("discovery manager stopped: %w", err)
 	}()
 
 	// Start prometheus scrape manager.
@@ -195,10 +200,13 @@ func (c *crdManager) Run(ctx context.Context) error {
 	targetSetsChan := make(chan map[string][]*targetgroup.Group)
 	go func() {
 		err := c.scrapeManager.Run(targetSetsChan)
-		c.logger.Info("scrape manager stopped")
-		if err != nil {
-			c.logger.Error("scrape manager failed", "err", err)
+		if ctx.Err() != nil {
+			return
 		}
+		if err == nil {
+			err = errors.New("scrape manager stopped")
+		}
+		managerErrCh <- fmt.Errorf("scrape manager stopped: %w", err)
 	}()
 
 	// run informers after everything else is running
@@ -213,6 +221,8 @@ func (c *crdManager) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
+		case err := <-managerErrCh:
+			return err
 		case m := <-c.discoveryManager.SyncCh():
 			cachedTargets = m
 			if c.args.Clustering.Enabled {

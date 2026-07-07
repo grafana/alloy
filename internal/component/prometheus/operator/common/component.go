@@ -89,6 +89,10 @@ func (c *Component) Run(ctx context.Context) error {
 			return nil
 		case err := <-errChan:
 			c.reportHealth(err)
+			if cancel != nil {
+				cancel()
+			}
+			return err
 		case <-c.onUpdate:
 			c.mut.Lock()
 			manager := c.crdManagerFactory.New(c.opts, c.cluster, c.opts.Logger, c.config, c.kind, c.ls)
