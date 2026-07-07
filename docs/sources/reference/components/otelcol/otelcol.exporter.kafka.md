@@ -58,6 +58,10 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 
 {{< admonition type="warning" >}}
 The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 {{< /admonition >}}
 
 When `topic_from_metadata_key` is set in a signal-specific block, it will take precedence over `topic_from_attribute` and `topic` arguments.
