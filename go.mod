@@ -205,7 +205,7 @@ require (
 	github.com/prometheus/memcached_exporter v0.13.0
 	github.com/prometheus/mysqld_exporter v0.18.0
 	github.com/prometheus/node_exporter v1.10.2
-	github.com/prometheus/procfs v0.20.1
+	github.com/prometheus/procfs v0.21.0
 	github.com/prometheus/prometheus v0.312.0
 	github.com/prometheus/sigv4 v0.4.1
 	github.com/prometheus/snmp_exporter v0.29.0 // if you update the snmp_exporter version, make sure to update the SNMP_VERSION in _index
