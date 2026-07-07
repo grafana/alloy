@@ -137,6 +137,7 @@ function PageLiveDebugging() {
       </div>
       <div className={styles.debugLink}>
         <button
+          type="button"
           aria-pressed={autoScroll}
           className={`${styles.toggleButton} ${autoScroll ? styles.toggleButtonActive : ''}`}
           onClick={() => setAutoScroll((enabled) => !enabled)}
