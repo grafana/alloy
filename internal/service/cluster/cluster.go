@@ -127,6 +127,22 @@ type Component interface {
 // "clustering".
 type ComponentBlock struct {
 	Enabled bool `alloy:"enabled,attr"`
+
+	// LabelsToHash, when non-empty, restricts the set of target labels used to
+	// compute the ownership hash for clustered target distribution. Only the
+	// listed label names are hashed; all other labels are ignored for sharding
+	// purposes.
+	//
+	// Use this when targets carry volatile labels (e.g. pre-signed URL
+	// parameters such as __param_sig or __param_exp) that differ across nodes
+	// or over time, causing nodes to disagree on ownership and producing
+	// duplicate scrapes or gaps. Listing only the stable labels that uniquely
+	// identify a logical target (e.g. __metrics_path__) gives deterministic,
+	// consistent sharding.
+	//
+	// When unset, all non-meta labels (__address__, __metrics_path__,
+	// __param_*, __scheme__) are hashed, which is the historical default.
+	LabelsToHash []string `alloy:"labels_to_hash,attr,optional"`
 }
 
 var (
