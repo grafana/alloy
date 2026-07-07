@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -18,13 +17,6 @@ var validBranchName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._/-]*$`)
 
 // validSHA matches a git SHA (hex string, 7-40 chars).
 var validSHA = regexp.MustCompile(`^[0-9a-f]{7,40}$`)
-
-const commandErrorFormat = "%w:\n%s"
-
-type runOptions struct {
-	args         []string
-	streamOutput bool
-}
 
 // validateBranchName ensures a branch name is safe to use in git commands by preventing things like
 // directory traversal and dangerous patterns.
@@ -54,62 +46,21 @@ func validateSHA(sha string) error {
 }
 
 // run executes a command with stdout/stderr connected to the terminal. Both streams are captured
-// together and returned as a single trimmed string.
+// together and returned as a single string.
 func run(args ...string) (string, error) {
-	out, err := runWithBytesOutput(runOptions{
-		args:         args,
-		streamOutput: true,
-	})
-	trimmed := strings.TrimSpace(string(out))
-	if err != nil {
-		return trimmed, err
-	}
-
-	return trimmed, nil
-}
-
-func runWithBytesOutput(opts runOptions) ([]byte, error) {
 	var combined bytes.Buffer
 
-	cmd := exec.Command(opts.args[0], opts.args[1:]...)
-	cmd.Stdout = &combined
-	cmd.Stderr = &combined
-	if opts.streamOutput {
-		cmd.Stdout = io.MultiWriter(os.Stdout, &combined)
-		cmd.Stderr = io.MultiWriter(os.Stderr, &combined)
-	}
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.Stdout = io.MultiWriter(os.Stdout, &combined)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &combined)
 
 	err := cmd.Run()
+	out := strings.TrimSpace(combined.String())
 	if err != nil {
-		return combined.Bytes(), fmt.Errorf(commandErrorFormat, err, strings.TrimSpace(combined.String()))
+		return out, fmt.Errorf("%w:\n%s", err, out)
 	}
 
-	return combined.Bytes(), nil
-}
-
-// SplitCommitMessage splits a commit message into the headline and body used by
-// the GitHub API.
-func SplitCommitMessage(message string) (string, string) {
-	headline, body, ok := strings.Cut(strings.TrimSpace(message), "\n")
-	if !ok {
-		return headline, ""
-	}
-	return strings.TrimSpace(headline), strings.TrimSpace(body)
-}
-
-// GetCherryPickCommitMessage returns the commit message git would use for a
-// cherry-pick committed with -x.
-func GetCherryPickCommitMessage(sha string) (string, error) {
-	if err := validateSHA(sha); err != nil {
-		return "", err
-	}
-
-	message, err := run("git", "log", "-1", "--format=%B", sha)
-	if err != nil {
-		return "", fmt.Errorf("getting commit message for %s: %w", sha, err)
-	}
-
-	return fmt.Sprintf("%s\n\n(cherry picked from commit %s)", strings.TrimRight(message, "\n"), sha), nil
+	return out, nil
 }
 
 // BranchExistsOnRemote checks if a branch exists on the remote using git ls-remote.
@@ -190,10 +141,49 @@ func CurrentBranch() (string, error) {
 	return out, nil
 }
 
+// GetHeadCommitMessage returns the full commit message for HEAD.
+func GetHeadCommitMessage() (string, error) {
+	message, err := run("git", "log", "-1", "--format=%B")
+	if err != nil {
+		return "", fmt.Errorf("getting HEAD commit message: %w", err)
+	}
+	return message, nil
+}
+
+// CommitAuthor is the author identity recorded on a git commit.
+type CommitAuthor struct {
+	Name  string
+	Email string
+}
+
+// GetHeadCommitAuthor returns the author identity for HEAD.
+func GetHeadCommitAuthor() (CommitAuthor, error) {
+	out, err := run("git", "log", "-1", "--format=%an%x00%ae")
+	if err != nil {
+		return CommitAuthor{}, fmt.Errorf("getting HEAD commit author: %w", err)
+	}
+
+	name, email, ok := strings.Cut(out, "\x00")
+	if !ok || name == "" || email == "" {
+		return CommitAuthor{}, fmt.Errorf("HEAD commit author is incomplete")
+	}
+
+	return CommitAuthor{Name: name, Email: email}, nil
+}
+
 // AbortCherryPick attempts to abort an in-progress cherry-pick.
 func AbortCherryPick() error {
 	if err := exec.Command("git", "cherry-pick", "--abort").Run(); err != nil {
 		return fmt.Errorf("aborting cherry-pick: %w", err)
+	}
+	return nil
+}
+
+// ResetLastCommit resets HEAD back one commit while keeping that commit's
+// changes in the working tree.
+func ResetLastCommit() error {
+	if _, err := run("git", "reset", "HEAD^"); err != nil {
+		return fmt.Errorf("resetting last commit into working tree: %w", err)
 	}
 	return nil
 }
@@ -215,130 +205,4 @@ func DeleteLocalBranch(branch string) error {
 		return fmt.Errorf("deleting local branch %s: %w", branch, err)
 	}
 	return nil
-}
-
-// StagedFile represents a staged file addition or modification.
-type StagedFile struct {
-	Path     string
-	Contents []byte
-}
-
-// StagedDiff contains staged additions/modifications and deletions.
-type StagedDiff struct {
-	Additions []StagedFile
-	Deletions []string
-}
-
-// GetStagedChanges returns the staged changes in the repository, using paths
-// relative to the repository root.
-func GetStagedChanges() (StagedDiff, error) {
-	root, err := repoRoot()
-	if err != nil {
-		return StagedDiff{}, err
-	}
-
-	additionPaths, err := getStagedPaths(root, "ACMRT")
-	if err != nil {
-		return StagedDiff{}, fmt.Errorf("listing staged additions: %w", err)
-	}
-	deletionPaths, err := getStagedPaths(root, "D")
-	if err != nil {
-		return StagedDiff{}, fmt.Errorf("listing staged deletions: %w", err)
-	}
-
-	changes := StagedDiff{Deletions: deletionPaths}
-
-	for _, path := range additionPaths {
-		if err := appendStagedAddition(root, path, &changes); err != nil {
-			return StagedDiff{}, err
-		}
-	}
-
-	return changes, nil
-}
-
-func getStagedPaths(root, diffFilter string) ([]string, error) {
-	out, err := runWithBytesOutput(runOptions{
-		args: []string{"git", "-C", root, "diff", "--cached", "--no-renames", "--name-only", "--diff-filter=" + diffFilter, "-z"},
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return splitGitPaths(out)
-}
-
-func appendStagedAddition(root, path string, changes *StagedDiff) error {
-	addition, err := readStagedFile(root, path)
-	if err != nil {
-		return err
-	}
-	changes.Additions = append(changes.Additions, addition)
-	return nil
-}
-
-func splitGitPaths(out []byte) ([]string, error) {
-	if len(out) == 0 {
-		return nil, nil
-	}
-
-	tokens := strings.Split(string(out), "\x00")
-	if tokens[len(tokens)-1] == "" {
-		tokens = tokens[:len(tokens)-1]
-	}
-
-	paths := make([]string, 0, len(tokens))
-	for _, token := range tokens {
-		path, err := cleanGitPath(token)
-		if err != nil {
-			return nil, err
-		}
-		paths = append(paths, path)
-	}
-
-	return paths, nil
-}
-
-func repoRoot() (string, error) {
-	root, err := run("git", "rev-parse", "--show-toplevel")
-	if err != nil {
-		return "", fmt.Errorf("getting repository root: %w", err)
-	}
-	return root, nil
-}
-
-func cleanGitPath(path string) (string, error) {
-	if path == "" {
-		return "", fmt.Errorf("git path is empty")
-	}
-	if filepath.IsAbs(path) {
-		return "", fmt.Errorf("git path must be relative: %q", path)
-	}
-
-	clean := filepath.ToSlash(filepath.Clean(path))
-	if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
-		return "", fmt.Errorf("git path escapes repository: %q", path)
-	}
-
-	return clean, nil
-}
-
-func readStagedFile(root, path string) (StagedFile, error) {
-	fullPath := filepath.Join(root, filepath.FromSlash(path))
-	rel, err := filepath.Rel(root, fullPath)
-	if err != nil {
-		return StagedFile{}, fmt.Errorf("checking path %s: %w", path, err)
-	}
-	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
-		return StagedFile{}, fmt.Errorf("git path escapes repository: %q", path)
-	}
-
-	contents, err := runWithBytesOutput(runOptions{
-		args: []string{"git", "-C", root, "show", ":" + path},
-	})
-	if err != nil {
-		return StagedFile{}, fmt.Errorf("reading staged file %s from index: %w", path, err)
-	}
-
-	return StagedFile{Path: path, Contents: contents}, nil
 }

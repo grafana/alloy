@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/google/go-github/v57/github"
@@ -33,8 +34,8 @@ func Command() *cobra.Command {
 	var flags flags
 
 	cmd := &cobra.Command{
-		Use:   "backport",
-		Short: "Cherry-pick a squash-merged PR to a release branch and open a backport PR",
+		Use:   "prepare-backport",
+		Short: "Prepare a squash-merged PR cherry-pick for a backport PR",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(cmd.Context(), flags)
 		},
@@ -73,7 +74,7 @@ func run(ctx context.Context, flags flags) (retErr error) {
 		return err
 	}
 	if info == nil {
-		return nil
+		return setGitHubOutput("skipped", "true")
 	}
 
 	if flags.dryRun {
@@ -91,79 +92,47 @@ func run(ctx context.Context, flags flags) (retErr error) {
 		}
 	}()
 
-	// --- Git operations: branch, cherry-pick, create signed API commit, create PR ---
-
-	if err := performBackport(ctx, client, info); err != nil {
+	commitMessage, err := prepareBackportWorkspace(info)
+	if err != nil {
 		return err
 	}
 
-	backportPR, err := createBackportPR(ctx, client, info)
-	if err != nil {
-		return fmt.Errorf("creating backport PR: %w", err)
+	if err := writeBackportOutputs(info, commitMessage); err != nil {
+		return err
 	}
-	fmt.Printf("✅ Created backport PR: %s\n", backportPR.GetHTMLURL())
+	fmt.Printf("✅ Prepared backport branch %s for pull request creation\n", info.BackportBranch)
 
 	return nil
 }
 
-func performBackport(ctx context.Context, client *gh.Client, info *backportInfo) error {
+func prepareBackportWorkspace(info *backportInfo) (string, error) {
 	if err := git.Fetch(info.TargetBranch); err != nil {
-		return err
+		return "", err
 	}
 
-	originalBranch, err := git.CurrentBranch()
+	if err := git.CheckoutNewBranch(info.TargetBranch, "origin/"+info.TargetBranch); err != nil {
+		return "", err
+	}
+
+	if err := git.CherryPick(info.MergeCommitSHA, true); err != nil {
+		return "", err
+	}
+
+	message, err := git.GetHeadCommitMessage()
 	if err != nil {
-		return err
+		return "", err
 	}
-
-	if err := git.CheckoutNewBranch(info.BackportBranch, "origin/"+info.TargetBranch); err != nil {
-		return err
-	}
-	defer resetWorkingCopy(originalBranch, info.BackportBranch)
-
-	changes, baseSHA, err := prepareBackportCommit(ctx, client, info)
+	author, err := git.GetHeadCommitAuthor()
 	if err != nil {
-		return err
+		return "", err
 	}
-	if err := client.CreateBranch(ctx, gh.CreateBranchParams{
-		Branch: info.BackportBranch,
-		SHA:    baseSHA,
-	}); err != nil {
-		return fmt.Errorf("creating backport branch: %w", err)
+	message = appendOriginalAuthorTrailer(message, author)
+
+	if err := git.ResetLastCommit(); err != nil {
+		return "", err
 	}
 
-	message, err := git.GetCherryPickCommitMessage(info.MergeCommitSHA)
-	if err != nil {
-		return err
-	}
-	commitSHA, err := createBackportCommit(ctx, client, info.BackportBranch, baseSHA, message, changes)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("✅ Created signed backport commit %s on %s\n", commitSHA, info.BackportBranch)
-
-	return nil
-}
-
-func prepareBackportCommit(ctx context.Context, client *gh.Client, info *backportInfo) (git.StagedDiff, string, error) {
-	if err := git.CherryPick(info.MergeCommitSHA, false); err != nil {
-		return git.StagedDiff{}, "", err
-	}
-
-	changes, err := git.GetStagedChanges()
-	if err != nil {
-		return git.StagedDiff{}, "", err
-	}
-	if len(changes.Additions) == 0 && len(changes.Deletions) == 0 {
-		return git.StagedDiff{}, "", fmt.Errorf("cherry-pick of %s produced no staged changes", info.MergeCommitSHA)
-	}
-
-	baseSHA, err := client.GetRefSHA(ctx, info.TargetBranch)
-	if err != nil {
-		return git.StagedDiff{}, "", fmt.Errorf("getting target branch SHA: %w", err)
-	}
-
-	return changes, baseSHA, nil
+	return message, nil
 }
 
 // resolveBackportInfo gathers all the information needed to perform a
@@ -227,24 +196,45 @@ func resolveBackportInfo(ctx context.Context, client *gh.Client, prNumber int, t
 	}, nil
 }
 
-// resetWorkingCopy restores the repository to a clean state so subsequent
-// backports in the same run can proceed.
-func resetWorkingCopy(originalBranch, backportBranch string) {
-	fmt.Println("🧹 Resetting working copy for next backport...")
-	_ = git.AbortCherryPick()
-	_ = git.ResetHard()
-	if err := git.Checkout(originalBranch); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to checkout %s: %v\n", originalBranch, err)
+func writeBackportOutputs(info *backportInfo, commitMessage string) error {
+	bodyPath, err := writeBackportBody(info)
+	if err != nil {
+		return err
 	}
-	if err := git.DeleteLocalBranch(backportBranch); err != nil {
-		fmt.Fprintf(os.Stderr, "Warning: failed to delete local branch %s: %v\n", backportBranch, err)
+
+	outputs := map[string]string{
+		"skipped":        "false",
+		"branch":         info.BackportBranch,
+		"base":           info.TargetBranch,
+		"title":          getBackportPRTitle(info.OriginalPR.GetTitle()),
+		"body_path":      bodyPath,
+		"commit_message": commitMessage,
 	}
+
+	for name, value := range outputs {
+		if err := setGitHubOutput(name, value); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func createBackportPR(ctx context.Context, client *gh.Client, info *backportInfo) (*github.PullRequest, error) {
-	title := getBackportPRTitle(info.OriginalPR.GetTitle())
+func writeBackportBody(info *backportInfo) (string, error) {
+	dir := os.Getenv("RUNNER_TEMP")
+	if dir == "" {
+		dir = os.TempDir()
+	}
 
-	body := fmt.Sprintf(`## Backport of #%d
+	safeBranch := strings.NewReplacer("/", "-").Replace(info.BackportBranch)
+	bodyPath := filepath.Join(dir, fmt.Sprintf("%s.md", safeBranch))
+	if err := os.WriteFile(bodyPath, []byte(getBackportPRBody(info)), 0o600); err != nil {
+		return "", fmt.Errorf("writing backport PR body: %w", err)
+	}
+	return bodyPath, nil
+}
+
+func getBackportPRBody(info *backportInfo) string {
+	return fmt.Sprintf(`## Backport of #%d
 
 This PR backports #%d to %s.
 
@@ -263,37 +253,46 @@ This PR backports #%d to %s.
 		info.OriginalPR.GetUser().GetLogin(),
 		info.OriginalPR.GetBody(),
 	)
-
-	return client.CreatePR(ctx, gh.CreatePRParams{
-		Title: title,
-		Head:  info.BackportBranch,
-		Base:  info.TargetBranch,
-		Body:  body,
-	})
-}
-
-func createBackportCommit(ctx context.Context, client *gh.Client, branch, expectedHeadOID, message string, changes git.StagedDiff) (string, error) {
-	additions := make([]gh.FileAddition, 0, len(changes.Additions))
-	for _, addition := range changes.Additions {
-		additions = append(additions, gh.FileAddition{
-			Path:     addition.Path,
-			Contents: addition.Contents,
-		})
-	}
-
-	headline, body := git.SplitCommitMessage(message)
-	return client.CreateCommitOnBranch(ctx, gh.CreateCommitOnBranchParams{
-		Branch:          branch,
-		ExpectedHeadOID: expectedHeadOID,
-		Headline:        headline,
-		Body:            body,
-		Additions:       additions,
-		Deletions:       changes.Deletions,
-	})
 }
 
 func getBackportPRTitle(originalTitle string) string {
 	return fmt.Sprintf("%s [backport]", originalTitle)
+}
+
+func appendOriginalAuthorTrailer(message string, author git.CommitAuthor) string {
+	if author.Name == "" || author.Email == "" {
+		return message
+	}
+
+	trailer := fmt.Sprintf("Co-authored-by: %s <%s>", author.Name, author.Email)
+	if strings.Contains(message, trailer) {
+		return message
+	}
+
+	return strings.TrimRight(message, "\n") + "\n\n" + trailer
+}
+
+func setGitHubOutput(name, value string) error {
+	outputPath := os.Getenv("GITHUB_OUTPUT")
+	if outputPath == "" {
+		return nil
+	}
+
+	outputFile, err := os.OpenFile(outputPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
+	if err != nil {
+		return fmt.Errorf("opening GITHUB_OUTPUT: %w", err)
+	}
+	defer outputFile.Close()
+
+	delimiter := "EOF"
+	for strings.Contains(value, delimiter) {
+		delimiter += "_EOF"
+	}
+
+	if _, err := fmt.Fprintf(outputFile, "%s<<%s\n%s\n%s\n", name, delimiter, value, delimiter); err != nil {
+		return fmt.Errorf("writing GITHUB_OUTPUT %s: %w", name, err)
+	}
+	return nil
 }
 
 func commentOnBackportFailure(ctx context.Context, client *gh.Client, info *backportInfo, backportErr error) {

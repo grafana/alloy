@@ -4,7 +4,6 @@ package github
 import (
 	"bytes"
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,10 +19,9 @@ import (
 
 // Client wraps the GitHub API client with repository context.
 type Client struct {
-	api        *github.Client
-	owner      string
-	repo       string
-	graphqlURL string
+	api   *github.Client
+	owner string
+	repo  string
 }
 
 // ClientConfig holds configuration for creating a new Client.
@@ -52,41 +50,14 @@ type CreateTagParams struct {
 	Message string
 }
 
-// CreatePRParams holds parameters for CreatePR.
-type CreatePRParams struct {
-	Title string
-	Head  string
-	Base  string
-	Body  string
-	Draft bool
-}
-
 // FindCherryPickedCommitParams holds parameters for FindCherryPickedCommit.
 type FindCherryPickedCommitParams struct {
 	Branch      string
 	OriginalSHA string
 }
 
-// FileAddition represents a file addition or update for CreateCommitOnBranch.
-type FileAddition struct {
-	Path     string
-	Contents []byte
-}
-
-// CreateCommitOnBranchParams holds parameters for CreateCommitOnBranch.
-type CreateCommitOnBranchParams struct {
-	Branch          string
-	ExpectedHeadOID string
-	Headline        string
-	Body            string
-	Additions       []FileAddition
-	Deletions       []string
-}
-
 // BackportLabelColor is the hex color for backport labels (without '#' prefix).
 const BackportLabelColor = "63a504"
-
-const defaultGraphQLURL = "https://api.github.com/graphql"
 
 // CreateLabelParams holds parameters for CreateLabel.
 type CreateLabelParams struct {
@@ -129,10 +100,9 @@ func NewClient(ctx context.Context, cfg ClientConfig) *Client {
 	tc := oauth2.NewClient(ctx, ts)
 
 	return &Client{
-		api:        github.NewClient(tc),
-		owner:      cfg.Owner,
-		repo:       cfg.Repo,
-		graphqlURL: defaultGraphQLURL,
+		api:   github.NewClient(tc),
+		owner: cfg.Owner,
+		repo:  cfg.Repo,
 	}
 }
 
@@ -309,113 +279,6 @@ func (c *Client) GetPR(ctx context.Context, number int) (*github.PullRequest, er
 	return pr, nil
 }
 
-// CreatePR creates a new pull request.
-func (c *Client) CreatePR(ctx context.Context, p CreatePRParams) (*github.PullRequest, error) {
-	newPR := &github.NewPullRequest{
-		Title: new(p.Title),
-		Head:  new(p.Head),
-		Base:  new(p.Base),
-		Body:  new(p.Body),
-		Draft: new(p.Draft),
-	}
-
-	pr, _, err := c.api.PullRequests.Create(ctx, c.owner, c.repo, newPR)
-	if err != nil {
-		return nil, fmt.Errorf("creating pull request: %w", err)
-	}
-
-	return pr, nil
-}
-
-// CreateCommitOnBranch creates a commit through GitHub's GraphQL API.
-//
-// Do not add custom author, committer, or signature fields here. GitHub only
-// applies bot signature verification when the authenticated App request omits
-// those fields.
-func (c *Client) CreateCommitOnBranch(ctx context.Context, p CreateCommitOnBranchParams) (string, error) {
-	if p.Branch == "" {
-		return "", fmt.Errorf("branch is required")
-	}
-	if p.ExpectedHeadOID == "" {
-		return "", fmt.Errorf("expected head OID is required")
-	}
-	if p.Headline == "" {
-		return "", fmt.Errorf("commit headline is required")
-	}
-	if len(p.Additions) == 0 && len(p.Deletions) == 0 {
-		return "", fmt.Errorf("at least one file addition or deletion is required")
-	}
-
-	additions := make([]map[string]string, 0, len(p.Additions))
-	for _, addition := range p.Additions {
-		if addition.Path == "" {
-			return "", fmt.Errorf("addition path is required")
-		}
-		additions = append(additions, map[string]string{
-			"path":     addition.Path,
-			"contents": base64.StdEncoding.EncodeToString(addition.Contents),
-		})
-	}
-
-	deletions := make([]map[string]string, 0, len(p.Deletions))
-	for _, deletion := range p.Deletions {
-		if deletion == "" {
-			return "", fmt.Errorf("deletion path is required")
-		}
-		deletions = append(deletions, map[string]string{
-			"path": deletion,
-		})
-	}
-
-	message := map[string]string{
-		"headline": p.Headline,
-	}
-	if p.Body != "" {
-		message["body"] = p.Body
-	}
-
-	input := map[string]any{
-		"branch": map[string]string{
-			"repositoryNameWithOwner": c.owner + "/" + c.repo,
-			"branchName":              p.Branch,
-		},
-		"message":         message,
-		"expectedHeadOid": p.ExpectedHeadOID,
-		"fileChanges": map[string]any{
-			"additions": additions,
-			"deletions": deletions,
-		},
-	}
-
-	const mutation = `
-mutation CreateCommitOnBranch($input: CreateCommitOnBranchInput!) {
-  createCommitOnBranch(input: $input) {
-    commit {
-      oid
-    }
-  }
-}`
-
-	var result struct {
-		Data struct {
-			CreateCommitOnBranch struct {
-				Commit struct {
-					OID string `json:"oid"`
-				} `json:"commit"`
-			} `json:"createCommitOnBranch"`
-		} `json:"data"`
-	}
-
-	if err := c.GraphQL(ctx, mutation, map[string]any{"input": input}, &result); err != nil {
-		return "", fmt.Errorf("creating commit on branch %s: %w", p.Branch, err)
-	}
-	if result.Data.CreateCommitOnBranch.Commit.OID == "" {
-		return "", fmt.Errorf("createCommitOnBranch returned an empty commit oid")
-	}
-
-	return result.Data.CreateCommitOnBranch.Commit.OID, nil
-}
-
 // FindCherryPickedCommit searches the commit history of a branch for a commit
 // message containing the original commit SHA. It returns nil when no matching
 // commit is found.
@@ -532,7 +395,7 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 		return fmt.Errorf("marshaling graphql request: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.graphqlURL, bytes.NewReader(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://api.github.com/graphql", bytes.NewReader(body))
 	if err != nil {
 		return fmt.Errorf("creating graphql request: %w", err)
 	}
