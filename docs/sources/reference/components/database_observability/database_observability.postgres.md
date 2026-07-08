@@ -78,7 +78,7 @@ You can use the following blocks with `database_observability.postgres`:
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
 | [`health_check`][health_check]               | Configure the health check collector.   | no       |
-| [`logs_processing`][logs_processing]         | Configure the logs collector.           | no       |
+| [`logs`][logs]         | Configure the logs collector.           | no       |
 | [`prometheus_exporter`][prometheus_exporter] | Configure the embedded postgres_exporter. | no       |
 
 [cloud_provider]: #cloud_provider
@@ -90,7 +90,7 @@ You can use the following blocks with `database_observability.postgres`:
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
 [health_check]: #health_check
-[logs_processing]: #logs_processing
+[logs]: #logs
 [prometheus_exporter]: #prometheus_exporter
 
 {{< /docs/alloy-config >}}
@@ -169,11 +169,11 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1h"`  | no       |
 
-### `logs_processing`
+### `logs`
 
-| Name                | Type   | Description                                                                                                                  | Default | Required |
-|---------------------|--------|------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `enable_error_logs` | `bool` | Emit `op="error"` Loki entries that pair PostgreSQL `ERROR`/`FATAL`/`PANIC` log lines with their `STATEMENT:` continuations. | `false` | no       |
+| Name                | Type   | Description                                                                                                                          | Default | Required |
+|---------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `enable_error_logs` | `bool` | Emit `op="error_message"` Loki entries that pair PostgreSQL `ERROR`/`FATAL`/`PANIC` log lines with their `STATEMENT:` continuations. | `false` | no       |
 
 ### `prometheus_exporter`
 

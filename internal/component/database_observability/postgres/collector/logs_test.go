@@ -159,6 +159,42 @@ func TestLogsCollector_SkipsNonErrors(t *testing.T) {
 	}
 }
 
+// TestLogsCollector_DoesNotCountEmbeddedSeverityKeyword pins the robustness of
+// severity detection: a non-error line whose text embeds an "ERROR:" keyword
+// (here a LOG-level logged statement, as emitted with log_statement=all) must
+// not be counted as an error. The line's real leading label (LOG) shadows the
+// embedded keyword.
+func TestLogsCollector_DoesNotCountEmbeddedSeverityKeyword(t *testing.T) {
+	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 10), func() {})
+	registry := prometheus.NewRegistry()
+
+	collector, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: entryHandler,
+		Logger:       logging.NewSlogNop(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	ts := collector.startTime.Add(10 * time.Second).UTC()
+	ts1 := ts.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := ts.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// A LOG-level statement line whose SQL text embeds an "ERROR:" keyword.
+	// SQLSTATE is 00000 (successful completion).
+	logLine := ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:00000:" + ts2 +
+		":25/112:0:693c34cb.2398::psqlLOG:  statement: SELECT 'ERROR:' AS msg"
+
+	require.NoError(t, collector.parseTextLog(loki.Entry{Entry: push.Entry{Line: logLine}}))
+
+	mfs, _ := registry.Gather()
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			require.Equal(t, 0, len(mf.GetMetric()), "a LOG line with an embedded ERROR: keyword must not be counted")
+		}
+	}
+}
+
 func TestLogsCollector_MetricSumming(t *testing.T) {
 	entryHandler := loki.NewEntryHandler(make(chan loki.Entry, 100), func() {})
 	registry := prometheus.NewRegistry()
@@ -960,10 +996,10 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 
 	got := drainEntries(t, entryCh, 1, 2*time.Second)
 	require.Len(t, got, 1)
-	require.Equal(t, "error", string(got[0].Labels["op"]))
+	require.Equal(t, "error_message", string(got[0].Labels["op"]))
 
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
-	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1", fingerprint.SourceLog, 0)
+	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1", fingerprint.SourceLog)
 	require.NoError(t, fpErr)
 
 	require.Equal(t, "ERROR", fields["severity"])
@@ -1014,7 +1050,7 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 
 	body := strings.TrimPrefix(got[0].Line, `level="info" `)
 	fields := parseLogfmt(t, body)
-	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog, 0)
+	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog)
 	require.NoError(t, fpErr)
 	require.Equal(t, "ERROR", fields["severity"])
 	require.Equal(t, expectedFP, fields["query_fingerprint"], "the second error's STATEMENT is the one matched")
@@ -1045,7 +1081,7 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
 
 	expectedSQL := "WITH target_books AS (\nSELECT id FROM books WHERE id = $1\n)\nUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
-	expectedFP, _, fpErr := fingerprint.Fingerprint(expectedSQL, fingerprint.SourceLog, 0)
+	expectedFP, _, fpErr := fingerprint.Fingerprint(expectedSQL, fingerprint.SourceLog)
 	require.NoError(t, fpErr)
 
 	require.Equal(t, "ERROR", fields["severity"])
@@ -1072,7 +1108,7 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 	got := drainEntries(t, entryCh, 1, 3*time.Second)
 	require.Len(t, got, 1)
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
-	expectedFP, _, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog, 0)
+	expectedFP, _, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog)
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
 }
 

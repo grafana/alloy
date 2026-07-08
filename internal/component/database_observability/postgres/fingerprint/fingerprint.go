@@ -14,31 +14,25 @@ import (
 	pg_query "github.com/pganalyze/pg_query_go/v6"
 )
 
-// Source determines which sentinel is chosen when both parse and repair fail.
+// Source records where a query text came from. Both current sources carry
+// untruncated text, so an unparsable query always maps to the unparsable
+// sentinel; the value is retained so callers can record query provenance.
 type Source int
 
 const (
 	SourcePgStatStatements Source = iota
-	SourcePgStatActivity
 	SourceLog
 )
 
-const (
-	SentinelTruncated  = "<truncated query>"
-	SentinelUnparsable = "<unparsable query>"
-)
+const SentinelUnparsable = "<unparsable query>"
 
 var ErrEmpty = errors.New("fingerprint: empty query text")
 
-var (
-	sentinelTruncatedFp  = FingerprintOf(SentinelTruncated)
-	sentinelUnparsableFp = FingerprintOf(SentinelUnparsable)
-)
+var sentinelUnparsableFp = FingerprintOf(SentinelUnparsable)
 
 // Fingerprint parses query and returns its fingerprint, falling back to a
-// quote/paren repair pass and then to a sentinel hash. trackActivityQuerySize
-// is consulted only when source == SourcePgStatActivity.
-func Fingerprint(query string, source Source, trackActivityQuerySize int) (fp string, repaired bool, err error) {
+// quote/paren repair pass and then to the unparsable sentinel hash.
+func Fingerprint(query string, source Source) (fp string, repaired bool, err error) {
 	if strings.TrimSpace(query) == "" {
 		return "", false, ErrEmpty
 	}
@@ -51,7 +45,7 @@ func Fingerprint(query string, source Source, trackActivityQuerySize int) (fp st
 		return fp, true, nil
 	}
 
-	return sentinelFingerprint(query, source, trackActivityQuerySize), true, nil
+	return sentinelUnparsableFp, true, nil
 }
 
 // FingerprintOf hashes a known sentinel string deterministically.
@@ -60,13 +54,6 @@ func FingerprintOf(text string) string {
 		return fp
 	}
 	return formatHash(pg_query.HashXXH3_64([]byte(text), 0xee))
-}
-
-func sentinelFingerprint(query string, source Source, trackActivityQuerySize int) string {
-	if source == SourcePgStatActivity && trackActivityQuerySize > 0 && len(query) == trackActivityQuerySize-1 {
-		return sentinelTruncatedFp
-	}
-	return sentinelUnparsableFp
 }
 
 // repair closes unclosed single/double quotes and balances unclosed parens.

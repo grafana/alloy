@@ -20,7 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-const OP_ERROR = "error"
+const OP_ERROR_MESSAGE = "error_message"
 
 const (
 	LogsCollector         = "logs"
@@ -45,6 +45,18 @@ var supportedSeverities = map[string]struct{}{
 	"ERROR": {},
 	"FATAL": {},
 	"PANIC": {},
+}
+
+// pgLogLabels are the leading labels PostgreSQL writes at the start of a log
+// message: message severities plus the detail/continuation labels. We scan the
+// full set (not just supportedSeverities) to find a line's real leading label
+// so an "ERROR:"/"FATAL:"/"PANIC:" substring appearing later in the message or
+// in a logged SQL statement (e.g. on a LOG or STATEMENT line) is shadowed by
+// that line's actual label and not miscounted as an error.
+var pgLogLabels = []string{
+	"DEBUG5", "DEBUG4", "DEBUG3", "DEBUG2", "DEBUG1",
+	"PANIC", "FATAL", "ERROR", "WARNING", "NOTICE", "INFO", "LOG",
+	"STATEMENT", "DETAIL", "HINT", "CONTEXT", "QUERY", "LOCATION",
 }
 
 // pendingError holds an ERROR/FATAL/PANIC line awaiting its STATEMENT
@@ -94,17 +106,16 @@ type Logs struct {
 	stopped *atomic.Bool
 	wg      sync.WaitGroup
 
-	formatCheckMutex      sync.Mutex
 	lastFormatWarning     time.Time
 	validLogsThisMinute   int
 	invalidLogsThisMinute int
 
-	// op="error" pairing state. PostgreSQL's logging collector writes each
-	// message (the ERROR line, its STATEMENT, and continuations) atomically and
-	// contiguously per backend, so a single in-flight pending is sufficient —
-	// no PID-keyed map is needed.
+	// op="error" pairing state, owned exclusively by the run goroutine
+	// (parseTextLog and flushExpiredPending both run there), so it needs no lock.
+	// PostgreSQL's logging collector writes each message (the ERROR line, its
+	// STATEMENT, and continuations) atomically and contiguously per backend, so a
+	// single in-flight pending is sufficient — no PID-keyed map is needed.
 	pending             *pendingError
-	pendingMu           sync.Mutex
 	pendingErrorTimeout time.Duration
 
 	startTime time.Time
@@ -383,17 +394,31 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
-	messageStart := -1
-	severity := ""
-	for sev := range supportedSeverities {
-		idx := strings.Index(line, sev+":")
-		if idx != -1 && (messageStart == -1 || idx < messageStart) {
-			messageStart = idx
-			severity = sev
+	// Determine the message's real severity: the leftmost PostgreSQL log label
+	// after the SQLSTATE field. Anchoring past the SQLSTATE keeps a database or
+	// user literally named after a label (e.g. "LOG") from matching, and
+	// scanning the full label set shadows a severity keyword that appears inside
+	// the message text or a logged statement.
+	searchFrom := 0
+	if sqlstateCode != "" {
+		if idx := strings.Index(line, ":"+sqlstateCode+":"); idx != -1 {
+			searchFrom = idx + len(sqlstateCode) + 2
 		}
 	}
 
-	if messageStart == -1 {
+	severity := ""
+	labelAt := -1
+	for _, label := range pgLogLabels {
+		idx := strings.Index(line[searchFrom:], label+":")
+		if idx != -1 && (labelAt == -1 || idx < labelAt) {
+			labelAt = idx
+			severity = label
+		}
+	}
+
+	// A non-error message (LOG/WARNING/STATEMENT/…) or no recognizable label:
+	// don't count it, even if it contains an error keyword in its text.
+	if _, ok := supportedSeverities[severity]; !ok {
 		return nil
 	}
 
@@ -412,14 +437,12 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	// Start a new pending error awaiting its STATEMENT. Any prior un-flushed
 	// pending is displaced here (no STATEMENT captured → no op="error" entry);
 	// pg_errors_total still counted it above.
-	l.pendingMu.Lock()
 	l.pending = &pendingError{
 		receivedAt: time.Now(),
 		severity:   severity,
 		datname:    database,
 		timestamp:  parsedTimestamp,
 	}
-	l.pendingMu.Unlock()
 
 	return nil
 }
@@ -451,8 +474,6 @@ func (l *Logs) resolveAbsolute(parsed time.Time) (time.Time, bool) {
 
 // appendStatement appends a TAB-continuation line to the in-flight STATEMENT's SQL.
 func (l *Logs) appendStatement(line string) {
-	l.pendingMu.Lock()
-	defer l.pendingMu.Unlock()
 	if l.pending == nil || !l.pending.hasStatement {
 		return
 	}
@@ -464,8 +485,6 @@ func (l *Logs) appendStatement(line string) {
 
 // attachStatement records the STATEMENT keyword line's SQL onto the pending error.
 func (l *Logs) attachStatement(sql string) {
-	l.pendingMu.Lock()
-	defer l.pendingMu.Unlock()
 	if l.pending == nil {
 		return
 	}
@@ -480,14 +499,11 @@ func (l *Logs) attachStatement(sql string) {
 // clears it. A pending without a STATEMENT is left in place — it is displaced
 // by the next error or dropped on timeout.
 func (l *Logs) flushPending() {
-	l.pendingMu.Lock()
 	p := l.pending
 	if p == nil || !p.hasStatement {
-		l.pendingMu.Unlock()
 		return
 	}
 	l.pending = nil
-	l.pendingMu.Unlock()
 
 	l.emitErrorEntry(p)
 }
@@ -497,7 +513,7 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	if stmt == "" {
 		return
 	}
-	fp, _, err := fingerprint.Fingerprint(stmt, fingerprint.SourceLog, 0)
+	fp, _, err := fingerprint.Fingerprint(stmt, fingerprint.SourceLog)
 	if err != nil {
 		return
 	}
@@ -509,7 +525,7 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 
 	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
-		OP_ERROR,
+		OP_ERROR_MESSAGE,
 		buildErrorLine(p, fp),
 		ts.UnixNano(),
 	)
@@ -565,14 +581,11 @@ func logfmtQuote(v string) string {
 func (l *Logs) flushExpiredPending() {
 	deadline := time.Now().Add(-l.pendingErrorTimeout)
 
-	l.pendingMu.Lock()
 	p := l.pending
 	if p == nil || !p.receivedAt.Before(deadline) {
-		l.pendingMu.Unlock()
 		return
 	}
 	l.pending = nil
-	l.pendingMu.Unlock()
 
 	if p.hasStatement {
 		l.emitErrorEntry(p)
@@ -588,16 +601,11 @@ func truncateString(s string, maxLen int) string {
 
 // trackValidFormat tracks that we've seen a valid log format this minute
 func (l *Logs) trackValidFormat() {
-	l.formatCheckMutex.Lock()
-	defer l.formatCheckMutex.Unlock()
 	l.validLogsThisMinute++
 }
 
 // trackInvalidFormat tracks invalid format and emits warning once per minute if ALL logs were invalid
 func (l *Logs) trackInvalidFormat() {
-	l.formatCheckMutex.Lock()
-	defer l.formatCheckMutex.Unlock()
-
 	l.invalidLogsThisMinute++
 
 	// Emit warning once per minute if ALL logs were invalid
