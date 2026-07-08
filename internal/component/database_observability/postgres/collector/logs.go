@@ -53,11 +53,21 @@ var supportedSeverities = map[string]struct{}{
 // so an "ERROR:"/"FATAL:"/"PANIC:" substring appearing later in the message or
 // in a logged SQL statement (e.g. on a LOG or STATEMENT line) is shadowed by
 // that line's actual label and not miscounted as an error.
+//
+// A match requires the label be followed by ":  " (colon, two spaces) — the
+// exact separator PostgreSQL emits — so a label-like substring in the
+// client-controlled application_name (%a, which sits between the SQLSTATE
+// anchor and the real label, e.g. an app named "etl-LOG:worker") does not
+// shadow the message's actual label.
 var pgLogLabels = []string{
-	"DEBUG5", "DEBUG4", "DEBUG3", "DEBUG2", "DEBUG1",
+	"DEBUG5", "DEBUG4", "DEBUG3", "DEBUG2", "DEBUG1", "DEBUG",
 	"PANIC", "FATAL", "ERROR", "WARNING", "NOTICE", "INFO", "LOG",
 	"STATEMENT", "DETAIL", "HINT", "CONTEXT", "QUERY", "LOCATION",
 }
+
+// pgLabelSeparator is what PostgreSQL writes between a log label and the
+// message text.
+const pgLabelSeparator = ":  "
 
 // pendingError holds an ERROR/FATAL/PANIC line awaiting its STATEMENT
 // continuation. The SQL builder accumulates the STATEMENT keyword line plus any
@@ -312,8 +322,8 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
 		strings.Contains(line, "FATAL:") ||
 		strings.Contains(line, "PANIC:")
-	hasStatement := l.enableErrorLogs && strings.Contains(line, ":STATEMENT:")
-	if !hasErrorKeyword && !hasStatement {
+	hasStatementKeyword := l.enableErrorLogs && strings.Contains(line, "STATEMENT:")
+	if !hasErrorKeyword && !hasStatementKeyword {
 		return nil
 	}
 
@@ -387,18 +397,12 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
-	if hasStatement {
-		if statementIdx := strings.Index(line, ":STATEMENT:"); statementIdx != -1 {
-			l.attachStatement(strings.TrimSpace(line[statementIdx+len(":STATEMENT:"):]))
-		}
-		return nil
-	}
-
-	// Determine the message's real severity: the leftmost PostgreSQL log label
-	// after the SQLSTATE field. Anchoring past the SQLSTATE keeps a database or
-	// user literally named after a label (e.g. "LOG") from matching, and
-	// scanning the full label set shadows a severity keyword that appears inside
-	// the message text or a logged statement.
+	// Classify the message once by its real label: the leftmost PostgreSQL log
+	// label (with PostgreSQL's ":  " separator) after the SQLSTATE field.
+	// Anchoring past the SQLSTATE keeps a database or user literally named
+	// after a label (e.g. "LOG") from matching, and scanning the full label set
+	// shadows a severity or STATEMENT keyword that appears inside the message
+	// text or a logged SQL statement.
 	searchFrom := 0
 	if sqlstateCode != "" {
 		if idx := strings.Index(line, ":"+sqlstateCode+":"); idx != -1 {
@@ -406,24 +410,32 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		}
 	}
 
-	severity := ""
+	label := ""
 	labelAt := -1
-	for _, label := range pgLogLabels {
-		idx := strings.Index(line[searchFrom:], label+":")
+	for _, candidate := range pgLogLabels {
+		idx := strings.Index(line[searchFrom:], candidate+pgLabelSeparator)
 		if idx != -1 && (labelAt == -1 || idx < labelAt) {
 			labelAt = idx
-			severity = label
+			label = candidate
 		}
 	}
 
-	// A non-error message (LOG/WARNING/STATEMENT/…) or no recognizable label:
+	if label == "STATEMENT" {
+		if l.enableErrorLogs {
+			sqlStart := searchFrom + labelAt + len("STATEMENT:")
+			l.attachStatement(strings.TrimSpace(line[sqlStart:]))
+		}
+		return nil
+	}
+
+	// A non-error message (LOG/WARNING/DETAIL/…) or no recognizable label:
 	// don't count it, even if it contains an error keyword in its text.
-	if _, ok := supportedSeverities[severity]; !ok {
+	if _, ok := supportedSeverities[label]; !ok {
 		return nil
 	}
 
 	l.errorsBySQLState.WithLabelValues(
-		severity,
+		label,
 		sqlstateCode,
 		sqlstateClass,
 		database,
@@ -439,7 +451,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	// pg_errors_total still counted it above.
 	l.pending = &pendingError{
 		receivedAt: time.Now(),
-		severity:   severity,
+		severity:   label,
 		datname:    database,
 		timestamp:  parsedTimestamp,
 	}

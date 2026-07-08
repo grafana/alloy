@@ -1190,3 +1190,58 @@ func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 		// good
 	}
 }
+
+// TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword pins that an
+// ERROR line whose message text contains a STATEMENT keyword is still counted
+// in pg_errors_total when enable_error_logs is on: the line is classified by
+// its leftmost real label (ERROR), not diverted to the statement-attach path.
+func TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword(t *testing.T) {
+	if !fingerprint.Supported() {
+		t.Skip("enable_error_logs requires a cgo build")
+	}
+	registry := prometheus.NewRegistry()
+	c, err := NewLogs(LogsArguments{
+		Receiver:        loki.NewLogsReceiver(),
+		EntryHandler:    loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
+		Logger:          logging.NewSlogNop(),
+		Registry:        registry,
+		EnableErrorLogs: true,
+	})
+	require.NoError(t, err)
+
+	ts := c.startTime.Add(10 * time.Second).UTC().Format("2006-01-02 15:04:05.000 MST")
+	line := ts + `::user@books_store:[123]:1:42601:ERROR:  syntax error at or near "STATEMENT:  SELECT"`
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "42601", "42", "books_store", "user"))
+	require.Equal(t, float64(1), got, "an ERROR line with an embedded STATEMENT keyword must still be counted")
+}
+
+// TestLogsCollector_AppNameLabelDoesNotShadowSeverity pins that a label-like
+// substring in the client-controlled application_name (%a sits between the
+// SQLSTATE anchor and the real severity) cannot shadow the message's actual
+// label: matching requires PostgreSQL's ":  " separator.
+func TestLogsCollector_AppNameLabelDoesNotShadowSeverity(t *testing.T) {
+	registry := prometheus.NewRegistry()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
+		Logger:       logging.NewSlogNop(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	tsBase := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := tsBase.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := tsBase.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+
+	// application_name "etl-LOG:worker" contains "LOG:" before the real ERROR label.
+	line := ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:57014:" + ts2 +
+		":25/112:0:693c34cb.2398::etl-LOG:workerERROR:  canceling statement"
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "books_store", "app-user"))
+	require.Equal(t, float64(1), got, "a label-like application_name must not shadow the real severity")
+}
