@@ -146,7 +146,7 @@ The following arguments are supported:
 
 A match occurs if at least one item in the lists matches.
 
-One of `services`, `span_names`, `span_kinds`, [`attribute`][attribute], [`resource`][resource], or [`library`]library] must be specified with a non-empty value for a valid configuration.
+One of `services`, `span_names`, `span_kinds`, [`attribute`][attribute], [`resource`][resource], or [`library`][library] must be specified with a non-empty value for a valid configuration.
 
 ### `name`
 
