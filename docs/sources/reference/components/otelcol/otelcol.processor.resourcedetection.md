@@ -96,7 +96,7 @@ The following order is recommended for AWS:
 1. [`ecs`][ecs]
 1. [`ec2`][ec2]
 
-There are several delectors which are not configured through blocks:
+There are several detectors which are not configured through blocks:
 
 [ec2]: #ec2
 [ecs]: #ecs
