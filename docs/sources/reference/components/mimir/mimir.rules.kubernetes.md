@@ -73,11 +73,11 @@ You can use the following arguments with `mimir.rules.kubernetes`:
 
 You can provide at most one of the following:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
+* [`authorization`](#authorization) block
+* [`basic_auth`](#basic_auth) block
 * [`bearer_token_file`][arguments] argument
 * [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+* [`oauth2`](#oauth2) block
 
  [arguments]: #arguments
  [gem-path-prefix]: https://grafana.com/docs/mimir/latest/references/http-api/
@@ -155,7 +155,7 @@ You can use the following blocks with `mimir.rules.kubernetes`:
 ### `extra_query_matchers`
 
 The `extra_query_matchers` block has no attributes.
-It contains zero or more [matcher][] blocks.
+It contains zero or more [matcher](#matcher) blocks.
 These blocks let you add extra label matchers to all queries that the `mimir.rules.kubernetes` component discovers.
 The algorithm of adding the label matchers to queries is the same as the one provided by the [`promtool promql label-matchers set` command](https://prometheus.io/docs/prometheus/latest/command-line/promtool/#promtool-promql).
 
