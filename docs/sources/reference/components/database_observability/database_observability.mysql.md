@@ -90,10 +90,14 @@ You can use the following blocks with `database_observability.mysql`:
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`](#aws), [`azure`](#azure), or [`gcp`](#gcp) blocks.
+It contains zero or more [`aws`][], [`azure`][], or [`gcp`][] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
+
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
 
 ### `aws`
 
