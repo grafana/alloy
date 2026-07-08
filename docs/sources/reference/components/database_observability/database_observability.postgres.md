@@ -78,7 +78,6 @@ You can use the following blocks with `database_observability.postgres`:
 | [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
 | [`explain_plans`][explain_plans]   | Configure the explain plans collector.            | no       |
 | [`health_check`][health_check]               | Configure the health check collector.   | no       |
-| [`logs`][logs]         | Configure the logs collector.           | no       |
 | [`prometheus_exporter`][prometheus_exporter] | Configure the embedded postgres_exporter. | no       |
 
 [cloud_provider]: #cloud_provider
@@ -90,7 +89,6 @@ You can use the following blocks with `database_observability.postgres`:
 [schema_details]: #schema_details
 [explain_plans]: #explain_plans
 [health_check]: #health_check
-[logs]: #logs
 [prometheus_exporter]: #prometheus_exporter
 
 {{< /docs/alloy-config >}}
@@ -168,16 +166,6 @@ The `cache_enabled`, `cache_size`, and `cache_ttl` settings are deprecated: they
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1h"`  | no       |
-
-### `logs`
-
-| Name                | Type   | Description                                                                                                                          | Default | Required |
-|---------------------|--------|--------------------------------------------------------------------------------------------------------------------------------------|---------|----------|
-| `enable_error_logs` | `bool` | Emit `op="error_message"` Loki entries that pair PostgreSQL `ERROR`/`FATAL`/`PANIC` log lines with their `STATEMENT:` continuations. | `false` | no       |
-
-`enable_error_logs` requires an {{< param "PRODUCT_NAME" >}} binary built with cgo enabled.
-Official release binaries and Docker images are cgo-enabled.
-On a binary built with `CGO_ENABLED=0`, setting `enable_error_logs` makes the component report an unhealthy status.
 
 ### `prometheus_exporter`
 
