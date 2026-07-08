@@ -52,7 +52,6 @@ You can use the following arguments with `discovery.marathon`:
 * [`bearer_token`](#arguments) argument
 * [`oauth2`](#oauth2) block
 
-
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
 ## Blocks
