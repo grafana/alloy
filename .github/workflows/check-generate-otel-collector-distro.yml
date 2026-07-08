@@ -15,6 +15,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Debounce release-please PR updates
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--branches--')
+        # Debounce this check on release PRs while the generated-files update is pushed.
+        run: sleep 30
+
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:

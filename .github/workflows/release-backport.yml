@@ -117,6 +117,12 @@ jobs:
           go-version-file: tools/go.mod
           cache-dependency-path: tools/go.sum
 
+      - name: Configure git committer 🪪
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
+        run: go run -C tools ./cmd release configure-git-user
+
       - name: Prepare backport cherry-pick 🍒
         id: prepare
         env:

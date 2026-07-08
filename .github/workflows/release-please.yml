@@ -27,7 +27,8 @@ jobs:
         with:
           ref: ${{ github.ref_name }}
           token: ${{ steps.app-token.outputs.token }}
-          persist-credentials: false
+          fetch-depth: 0
+          persist-credentials: true # Required for fetching release-please branches
 
       - name: Setup tools 🛠️ # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
         uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
@@ -62,13 +63,18 @@ jobs:
           fi
 
           echo "name=${RELEASE_BRANCH}" >> "${GITHUB_OUTPUT}"
-          if ! git fetch --depth=1 origin "refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}" >/dev/null 2>&1; then
-            echo "No root release-please branch ${RELEASE_BRANCH}; nothing to regenerate."
-            echo "exists=false" >> "${GITHUB_OUTPUT}"
-            exit 0
-          fi
+          for attempt in 1 2 3; do
+            if git fetch origin "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}"; then
+              echo "exists=true" >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
 
-          echo "exists=true" >> "${GITHUB_OUTPUT}"
+            echo "Fetch attempt ${attempt} failed for ${RELEASE_BRANCH}; retrying."
+            sleep "$((attempt * 2))"
+          done
+
+          echo "No root release-please branch ${RELEASE_BRANCH}; nothing to regenerate."
+          echo "exists=false" >> "${GITHUB_OUTPUT}"
 
       - name: Stage root release-please changes 🌿
         if: steps.root-release-branch.outputs.exists == 'true'
