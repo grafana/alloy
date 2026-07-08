@@ -2,27 +2,14 @@
 
 package fingerprint
 
-import "errors"
+// Supported reports whether SQL fingerprinting is available in this build.
+// libpg_query requires cgo, so the CGO_ENABLED=0 cross-compile target gets
+// stubs that keep the rest of the codebase building without it. Callers that
+// need real fingerprints must check Supported() and fail loudly.
+func Supported() bool { return false }
 
-// Source records where a query text came from. See the cgo build for details.
-type Source int
-
-const (
-	SourcePgStatStatements Source = iota
-	SourceLog
-)
-
-const SentinelUnparsable = "<unparsable query>"
-
-var ErrEmpty = errors.New("fingerprint: empty query text")
-
-// Fingerprint is a no-op under !cgo. libpg_query requires cgo; the cross-
-// compile target (CGO_ENABLED=0) gets stubs so the rest of the codebase
-// builds without it. Callers treat err != nil as "no fingerprint, skip emit".
-func Fingerprint(query string, source Source) (string, bool, error) {
-	return "", false, ErrEmpty
+func Fingerprint(query string) (string, error) {
+	return "", ErrEmpty
 }
 
 func FingerprintOf(text string) string { return "" }
-
-func SentinelKind(fp string) string { return "" }

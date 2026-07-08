@@ -513,7 +513,7 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 	if stmt == "" {
 		return
 	}
-	fp, _, err := fingerprint.Fingerprint(stmt, fingerprint.SourceLog)
+	fp, err := fingerprint.Fingerprint(stmt)
 	if err != nil {
 		return
 	}

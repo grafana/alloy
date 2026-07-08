@@ -999,7 +999,7 @@ func TestLogsCollector_EmitsErrorEntry_OnErrorPlusStatement(t *testing.T) {
 	require.Equal(t, "error_message", string(got[0].Labels["op"]))
 
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
-	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1", fingerprint.SourceLog)
+	expectedFP, fpErr := fingerprint.Fingerprint("SELECT * FROM missing WHERE id = $1")
 	require.NoError(t, fpErr)
 
 	require.Equal(t, "ERROR", fields["severity"])
@@ -1050,7 +1050,7 @@ func TestLogsCollector_DisplacedPendingEmitsExactlyOneEntry(t *testing.T) {
 
 	body := strings.TrimPrefix(got[0].Line, `level="info" `)
 	fields := parseLogfmt(t, body)
-	expectedFP, _, fpErr := fingerprint.Fingerprint("SELECT 2", fingerprint.SourceLog)
+	expectedFP, fpErr := fingerprint.Fingerprint("SELECT 2")
 	require.NoError(t, fpErr)
 	require.Equal(t, "ERROR", fields["severity"])
 	require.Equal(t, expectedFP, fields["query_fingerprint"], "the second error's STATEMENT is the one matched")
@@ -1081,7 +1081,7 @@ func TestLogsCollector_EmitsErrorEntry_PrefixedMultiLineStatement(t *testing.T) 
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
 
 	expectedSQL := "WITH target_books AS (\nSELECT id FROM books WHERE id = $1\n)\nUPDATE books SET sold = true FROM target_books WHERE books.id = target_books.id"
-	expectedFP, _, fpErr := fingerprint.Fingerprint(expectedSQL, fingerprint.SourceLog)
+	expectedFP, fpErr := fingerprint.Fingerprint(expectedSQL)
 	require.NoError(t, fpErr)
 
 	require.Equal(t, "ERROR", fields["severity"])
@@ -1108,7 +1108,7 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 	got := drainEntries(t, entryCh, 1, 3*time.Second)
 	require.Len(t, got, 1)
 	fields := parseLogfmt(t, strings.TrimPrefix(got[0].Line, `level="info" `))
-	expectedFP, _, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)", fingerprint.SourceLog)
+	expectedFP, _ := fingerprint.Fingerprint("INSERT INTO t (a) VALUES ($1)")
 	require.Equal(t, expectedFP, fields["query_fingerprint"])
 }
 
