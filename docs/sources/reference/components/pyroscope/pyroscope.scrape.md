@@ -150,15 +150,15 @@ If `scrape_interval` is long:
   * Lower resource consumption.
 * Disadvantages:
   * More profiles may be lost if the application being scraped crashes.
-  * If the [delta argument][delta-argument] is set to `true`, the batch size of each remote write to Pyroscope may be bigger.
+  * If the [delta argument][] is set to `true`, the batch size of each remote write to Pyroscope may be bigger.
     The Pyroscope database may need to be tuned with higher limits.
-  * If the [delta argument][delta-argument] is set to `true`, there is a larger risk of reaching the HTTP server timeouts of the application being scraped.
+  * If the [delta argument][] is set to `true`, there is a larger risk of reaching the HTTP server timeouts of the application being scraped.
 
 For example, consider this situation:
 
 * `pyroscope.scrape` is configured with a `scrape_interval` of `"60s"`.
 * The application being scraped is running an HTTP server with a timeout of 30 seconds.
-* Any scrape HTTP requests where the [delta argument][delta-argument] is set to `true` will fail, because they will attempt to run for 59 seconds.
+* Any scrape HTTP requests where the [delta argument][] is set to `true` will fail, because they will attempt to run for 59 seconds.
 
 [delta argument]: #delta-argument
 
@@ -214,7 +214,9 @@ You can use the following blocks with `pyroscope.scrape`:
 {{< /docs/alloy-config >}}
 
 Any omitted blocks take on their default values.
-For example, if `profile.mutex` isn't specified in the configuration, the defaults documented in [profile.mutex](#profilemutex) are used.
+For example, if `profile.mutex` isn't specified in the configuration, the defaults documented in [profile.mutex][] are used.
+
+[profile.mutex]: #profilemutex
 
 ### `authorization`
 
@@ -267,7 +269,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                 | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/block"` | no       |
 
-For more information about the `delta` argument, see the [delta argument][delta-argument] section.
+For more information about the `delta` argument, see the [delta argument][] section.
 
 ### `profile.custom`
 
@@ -307,7 +309,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `false`           | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/fgprof"` | no       |
 
-For more information about the `delta` argument, see the [delta argument][delta-argument] section.
+For more information about the `delta` argument, see the [delta argument][] section.
 
 [fgprof]: https://github.com/felixge/fgprof
 
@@ -359,7 +361,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                     | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/goroutine"` | no       |
 
-Refer to [delta argument][delta-argument] for more information about the `delta` argument.
+Refer to [delta argument][] for more information about the `delta` argument.
 
 ### `profile.memory`
 
@@ -373,7 +375,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                  | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/allocs"` | no       |
 
-Refer to [delta argument][delta-argument] for more information about the `delta` argument.
+Refer to [delta argument][] for more information about the `delta` argument.
 
 ### `profile.mutex`
 
@@ -387,7 +389,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                 | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/mutex"` | no       |
 
-Refer to [delta argument][delta-argument] for more information about the `delta` argument.
+Refer to [delta argument][] for more information about the `delta` argument.
 
 ### `profile.process_cpu`
 
@@ -401,7 +403,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                   | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/profile"` | no       |
 
-For more information about the `delta` argument, see the [delta argument][delta-argument] section.
+For more information about the `delta` argument, see the [delta argument][] section.
 
 ### `tls_config`
 
