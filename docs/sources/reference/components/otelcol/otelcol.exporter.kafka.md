@@ -65,7 +65,7 @@ The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][log
 {{< /admonition >}}
 
 When `topic_from_metadata_key` is set in a signal-specific block, it will take precedence over `topic_from_attribute` and `topic` arguments.
-When `topic_from_attribute` is set, it will take precedence over the `topic` arguments in [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
+When `topic_from_attribute` is set, it will take precedence over the `topic` arguments in [`logs`](#logs), [`metrics`](#metrics), and [`traces`](#traces) blocks.
 
 `partition_traces_by_id` doesn't have any effect on Jaeger encoding exporters since Jaeger exporters include trace ID as the message key by default.
 

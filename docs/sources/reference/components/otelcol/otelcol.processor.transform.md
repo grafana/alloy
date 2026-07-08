@@ -188,7 +188,7 @@ The supported values for `context` are:
 * `scope`: Use when interacting only with OTLP instrumentation scope (for example, the name of the instrumentation scope).
 * `log`: Use when interacting only with OTLP logs.
 
-Refer to [OTTL Context][] for more information about how to use contexts.
+Refer to [OTTL Context](#ottl-context) for more information about how to use contexts.
 
 `conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
 The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 
@@ -216,7 +216,7 @@ The supported values for `context` are:
 * `metric`: Use when interacting only with individual OTLP metrics.
 * `datapoint`: Use when interacting only with individual OTLP metric data points.
 
-Refer to [OTTL Context][] for more information about how to use contexts.
+Refer to [OTTL Context](#ottl-context) for more information about how to use contexts.
 
 `conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
 The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 
@@ -285,7 +285,7 @@ The supported values for `context` are:
 * `span`: Use when interacting only with OTLP spans.
 * `spanevent`: Use when interacting only with OTLP span events.
 
-Refer to [OTTL Context][] for more information about how to use contexts.
+Refer to [OTTL Context](#ottl-context) for more information about how to use contexts.
 
 `conditions` is a list of multiple `where` clauses which will be processed as global conditions for the accompanying set of statements. 
 The conditions are ORed together, which means only one condition needs to evaluate to true in order for the statements 

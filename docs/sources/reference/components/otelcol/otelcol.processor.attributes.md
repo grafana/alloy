@@ -159,12 +159,12 @@ consider a processor such as [otelcol.processor.tail_sampling][].
 
 One of the following is also required:
 
-* For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+* For spans, one of `services`, `span_names`, `span_kinds`, [attribute](#attribute), [resource](#resource), or [library](#library) must be specified with a non-empty value for a valid configuration.
   The `log_bodies`, `log_severity_texts`, `log_severity`, and `metric_names` attributes are invalid.
-* For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+* For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute](#attribute), [resource](#resource), or [library](#library) must be specified with a non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `metric_names`, and `services` attributes are invalid.
 * For metrics, `metric_names` must be specified with a valid non-empty value for a valid configuration.
-  The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute][], [resource][], and [library][] attributes are invalid.
+  The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute](#attribute), [resource](#resource), and [library](#library) attributes are invalid.
 
 If the configuration includes filters which are specific to a particular signal type, it's best to include only that signal type in the component's output.
 For example, adding a `span_names` filter could cause the component to error if logs are configured in the component's outputs.
@@ -197,12 +197,12 @@ The `include` block provides an option to include data being fed into the [actio
 
 One of the following is also required:
 
-* For spans, one of `services`, `span_names`, `span_kinds`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+* For spans, one of `services`, `span_names`, `span_kinds`, [attribute](#attribute), [resource](#resource), or [library](#library) must be specified with a non-empty value for a valid configuration.
   The `log_bodies`, `log_severity_texts`, `log_severity`, and `metric_names` attributes are invalid.
-* For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
+* For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute](#attribute), [resource](#resource), or [library](#library) must be specified with a non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `metric_names`, and `services` attributes are invalid.
 * For metrics, one of `metric_names` or `resources` must be specified with a valid non-empty value for a valid configuration.
-  The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute][], [resource][], and [library][] attributes are invalid.
+  The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute](#attribute), [resource](#resource), and [library](#library) attributes are invalid.
 
 If the configuration includes filters which are specific to a particular signal type, it's best to include only that signal type in the component's output.
 For example, adding a `span_names` filter could cause the component to error if logs are configured in the component's outputs.

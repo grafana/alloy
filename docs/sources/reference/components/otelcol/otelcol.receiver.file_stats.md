@@ -112,11 +112,11 @@ You can use the following blocks with `otelcol.receiver.file_stats`:
 The `metrics` block configures the set of metrics that will be sent to downstream components.
 It accepts no arguments, but contains other blocks for individual metrics:
 
-* The [`file.atime`][file.atime] block
-* The [`file.count`][file.count] block
-* The [`file.ctime`][file.ctime] block
-* The [`file.mtime`][file.mtime] block
-* The [`file.size`][file.size] block
+* The [`file.atime`](#fileatime) block
+* The [`file.count`](#filecount) block
+* The [`file.ctime`](#filectime) block
+* The [`file.mtime`](#filemtime) block
+* The [`file.size`](#filesize) block
 
 Refer to the documentation of individual metric blocks for whether that metric is enabled by default.
 
@@ -171,8 +171,8 @@ The `file.size` block configures the `file.size` metric.
 The `resource_attributes` block configures resource attributes for metrics sent to downstream components.
 It accepts no arguments, but contains other blocks for configuring individual resource attributes:
 
-* The [`file.name`][file.name] block
-* The [`file.path`][file.path] block
+* The [`file.name`](#filename) block
+* The [`file.path`](#filepath) block
 
 Refer to the documentation of individual resource attribute blocks for whether that resource attribute is enabled by default.
 

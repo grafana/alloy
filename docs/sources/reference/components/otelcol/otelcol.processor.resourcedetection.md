@@ -82,19 +82,19 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 {{< /column-list >}}
 
 You can customize most detectors with the relevant block.
-For example, you can customize the `ec2` detector with the [ec2][] block.
-If you omit the [ec2][] block, the defaults specified in the [ec2][] block documentation are used.
+For example, you can customize the `ec2` detector with the [ec2](#ec2) block.
+If you omit the [ec2](#ec2) block, the defaults specified in the [ec2](#ec2) block documentation are used.
 
 If multiple detectors are inserting the same attribute name, the first detector to insert wins.
 For example, if you had `detectors = ["eks", "ec2"]` then `cloud.platform` will be `aws_eks` instead of `ec2`.
 
 The following order is recommended for AWS:
 
-1. [`lambda`][lambda]
-1. [`elasticbeanstalk`][elasticbeanstalk]
-1. [`eks`][eks]
-1. [`ecs`][ecs]
-1. [`ec2`][ec2]
+1. [`lambda`](#lambda)
+1. [`elasticbeanstalk`](#elasticbeanstalk)
+1. [`eks`](#eks)
+1. [`ecs`](#ecs)
+1. [`ec2`](#ec2)
 
 There are several delectors which are not configured through blocks:
 
@@ -198,10 +198,10 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                            | Description                                                                           | Required |
 | -------------------------------- | ------------------------------------------------------------------------------------- | -------- |
-| [`cloud.provider`][res-attr-cfg] | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.region`][res-attr-cfg]   | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`host.id`][res-attr-cfg]        | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`host.name`][res-attr-cfg]      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`cloud.provider`](#resource-attribute-configuration) | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.region`](#resource-attribute-configuration)   | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`host.id`](#resource-attribute-configuration)        | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`host.name`](#resource-attribute-configuration)      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
 
 Example values:
 
@@ -223,9 +223,9 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                              | Required |
 | ---------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
-| [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.    | no       |
-| [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.    | no       |
-| [`k8s.cluster.name`][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `false` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.    | no       |
+| [`cloud.provider`](#resource-attribute-configuration)   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.    | no       |
+| [`k8s.cluster.name`](#resource-attribute-configuration) | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `false` by default. | no       |
 
 Example values:
 
@@ -271,17 +271,17 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                      | Description                                                                                     | Required |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------- | -------- |
-| [`azure.resourcegroup.name`][res-attr-cfg] | Toggles the `azure.resourcegroup.name` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`azure.vm.name`][res-attr-cfg]            | Toggles the `azure.vm.name` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`azure.vm.scaleset.name`][res-attr-cfg]   | Toggles the `azure.vm.scaleset.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`azure.vm.size`][res-attr-cfg]            | Toggles the `azure.vm.size` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`cloud.account.id`][res-attr-cfg]         | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.         | no       |
-| [`cloud.availability_zone`][res-attr-cfg]  | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `false` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]           | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.           | no       |
-| [`cloud.provider`][res-attr-cfg]           | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.           | no       |
-| [`cloud.region`][res-attr-cfg]             | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.             | no       |
-| [`host.id`][res-attr-cfg]                  | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                  | no       |
-| [`host.name`][res-attr-cfg]                | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.                | no       |
+| [`azure.resourcegroup.name`](#resource-attribute-configuration) | Toggles the `azure.resourcegroup.name` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`azure.vm.name`](#resource-attribute-configuration)            | Toggles the `azure.vm.name` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`azure.vm.scaleset.name`](#resource-attribute-configuration)   | Toggles the `azure.vm.scaleset.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`azure.vm.size`](#resource-attribute-configuration)            | Toggles the `azure.vm.size` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`cloud.account.id`](#resource-attribute-configuration)         | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.         | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration)  | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `false` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)           | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [`cloud.provider`](#resource-attribute-configuration)           | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [`cloud.region`](#resource-attribute-configuration)             | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.             | no       |
+| [`host.id`](#resource-attribute-configuration)                  | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                  | no       |
+| [`host.name`](#resource-attribute-configuration)                | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.                | no       |
 
 Example values:
 
@@ -319,9 +319,9 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                          | Description                                                                         | Required |
 | ------------------------------ | ----------------------------------------------------------------------------------- | -------- |
-| [`cloud.region`][res-attr-cfg] | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`host.id`][res-attr-cfg]      | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.      | no       |
-| [`host.name`][res-attr-cfg]    | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.    | no       |
+| [`cloud.region`](#resource-attribute-configuration) | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`host.id`](#resource-attribute-configuration)      | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`host.name`](#resource-attribute-configuration)    | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.    | no       |
 
 ### `debug_metrics`
 
@@ -335,7 +335,7 @@ The `digitalocean` block supports the following attributes:
 
 | Attribute             | Type                                  | Description                                  | Default | Required |
 | --------------------- | ------------------------------------- | -------------------------------------------- | ------- | -------- |
-| `resource_attributes` | [`resource_attributes`][res-attr-cfg] | Configures which resource attributes to add. |         | no       |
+| `resource_attributes` | [`resource_attributes`](#resource-attribute-configuration) | Configures which resource attributes to add. |         | no       |
 
 #### `digitalocean` > `resource_attributes`
 
@@ -343,10 +343,10 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                            | Description                                                                           | Required |
 | -------------------------------- | ------------------------------------------------------------------------------------- | -------- |
-| [`cloud.provider`][res-attr-cfg] | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.region`][res-attr-cfg]   | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`host.id`][res-attr-cfg]        | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`host.name`][res-attr-cfg]      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`cloud.provider`](#resource-attribute-configuration) | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.region`](#resource-attribute-configuration)   | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`host.id`](#resource-attribute-configuration)        | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`host.name`](#resource-attribute-configuration)      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
 
 Example values:
 
@@ -371,8 +371,8 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                       | Description                                                                      | Required |
 | --------------------------- | -------------------------------------------------------------------------------- | -------- |
-| [`host.name`][res-attr-cfg] | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`os.type`][res-attr-cfg]   | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`host.name`](#resource-attribute-configuration) | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`os.type`](#resource-attribute-configuration)   | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.   | no       |
 
 ### `ec2`
 
@@ -418,15 +418,15 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.account.id`][res-attr-cfg]        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`host.id`][res-attr-cfg]                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
-| [`host.image.id`][res-attr-cfg]           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
-| [`host.name`][res-attr-cfg]               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`host.type`][res-attr-cfg]               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.account.id`](#resource-attribute-configuration)        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration) | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.provider`](#resource-attribute-configuration)          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`](#resource-attribute-configuration)            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`host.id`](#resource-attribute-configuration)                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`host.image.id`](#resource-attribute-configuration)           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [`host.name`](#resource-attribute-configuration)               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`host.type`](#resource-attribute-configuration)               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
 
 ### `ecs`
 
@@ -447,21 +447,21 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`aws.ecs.cluster.arn`][res-attr-cfg]     | Toggles the `aws.ecs.cluster.arn` resource attribute. Sets `enabled` to `true` by default.     | no       |
-| [`aws.ecs.launchtype`][res-attr-cfg]      | Toggles the `aws.ecs.launchtype` resource attribute. Sets `enabled` to `true` by default.      | no       |
-| [`aws.ecs.task.arn`][res-attr-cfg]        | Toggles the `aws.ecs.task.arn` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`aws.ecs.task.family`][res-attr-cfg]     | Toggles the `aws.ecs.task.family` resource attribute. Sets `enabled` to `true` by default.     | no       |
-| [`aws.ecs.task.id`][res-attr-cfg]         | Toggles the `aws.ecs.task.id` resource attribute. Sets `enabled` to `true` by default.         | no       |
-| [`aws.ecs.task.revision`][res-attr-cfg]   | Toggles the `aws.ecs.task.revision` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`aws.log.group.arns`][res-attr-cfg]      | Toggles the `aws.log.group.arns` resource attribute. Sets `enabled` to `true` by default.      | no       |
-| [`aws.log.group.names`][res-attr-cfg]     | Toggles the `aws.log.group.names` resource attribute. Sets `enabled` to `true` by default.     | no       |
-| [`aws.log.stream.arns`][res-attr-cfg]     | Toggles the `aws.log.stream.arns` resource attribute. Sets `enabled` to `true` by default.     | no       |
-| [`aws.log.stream.names`][res-attr-cfg]    | Toggles the `aws.log.stream.names` resource attribute. Sets `enabled` to `true` by default.    | no       |
-| [`cloud.account.id`][res-attr-cfg]        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`aws.ecs.cluster.arn`](#resource-attribute-configuration)     | Toggles the `aws.ecs.cluster.arn` resource attribute. Sets `enabled` to `true` by default.     | no       |
+| [`aws.ecs.launchtype`](#resource-attribute-configuration)      | Toggles the `aws.ecs.launchtype` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`aws.ecs.task.arn`](#resource-attribute-configuration)        | Toggles the `aws.ecs.task.arn` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`aws.ecs.task.family`](#resource-attribute-configuration)     | Toggles the `aws.ecs.task.family` resource attribute. Sets `enabled` to `true` by default.     | no       |
+| [`aws.ecs.task.id`](#resource-attribute-configuration)         | Toggles the `aws.ecs.task.id` resource attribute. Sets `enabled` to `true` by default.         | no       |
+| [`aws.ecs.task.revision`](#resource-attribute-configuration)   | Toggles the `aws.ecs.task.revision` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`aws.log.group.arns`](#resource-attribute-configuration)      | Toggles the `aws.log.group.arns` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`aws.log.group.names`](#resource-attribute-configuration)     | Toggles the `aws.log.group.names` resource attribute. Sets `enabled` to `true` by default.     | no       |
+| [`aws.log.stream.arns`](#resource-attribute-configuration)     | Toggles the `aws.log.stream.arns` resource attribute. Sets `enabled` to `true` by default.     | no       |
+| [`aws.log.stream.names`](#resource-attribute-configuration)    | Toggles the `aws.log.stream.names` resource attribute. Sets `enabled` to `true` by default.    | no       |
+| [`cloud.account.id`](#resource-attribute-configuration)        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration) | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.provider`](#resource-attribute-configuration)          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`](#resource-attribute-configuration)            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
 
 ### `eks`
 
@@ -485,10 +485,10 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                              | Required |
 | ---------------------------------- | ---------------------------------------------------------------------------------------- | -------- |
-| [`cloud.account.id`][res-attr-cfg] | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `false` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.    | no       |
-| [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.    | no       |
-| [`k8s.cluster.name`][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `false` by default. | no       |
+| [`cloud.account.id`](#resource-attribute-configuration) | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `false` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.    | no       |
+| [`cloud.provider`](#resource-attribute-configuration)   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.    | no       |
+| [`k8s.cluster.name`](#resource-attribute-configuration) | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `false` by default. | no       |
 
 Example values:
 
@@ -513,11 +513,11 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                             | Required |
 | ---------------------------------- | --------------------------------------------------------------------------------------- | -------- |
-| [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`deployment.envir`][res-attr-cfg] | Toggles the `deployment.envir` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`service.instance`][res-attr-cfg] | Toggles the `service.instance` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`service.version`][res-attr-cfg]  | Toggles the `service.version` resource attribute. Sets `enabled` to `true` by default.  | no       |
+| [`cloud.platform`](#resource-attribute-configuration)   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`cloud.provider`](#resource-attribute-configuration)   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`deployment.envir`](#resource-attribute-configuration) | Toggles the `deployment.envir` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`service.instance`](#resource-attribute-configuration) | Toggles the `service.instance` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`service.version`](#resource-attribute-configuration)  | Toggles the `service.version` resource attribute. Sets `enabled` to `true` by default.  | no       |
 
 Example values:
 
@@ -546,26 +546,26 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                                   | Description                                                                                                  | Required |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------- |
-| [`cloud.account.id`][res-attr-cfg]                      | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.                      | no       |
-| [`cloud.availability_zone`][res-attr-cfg]               | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`cloud.platform`][res-attr-cfg]                        | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                        | no       |
-| [`cloud.provider`][res-attr-cfg]                        | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                        | no       |
-| [`cloud.region`][res-attr-cfg]                          | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.                          | no       |
-| [`faas.instance`][res-attr-cfg]                         | Toggles the `faas.instance` resource attribute. Sets `enabled` to `true` by default.                         | no       |
-| [`faas.id`][res-attr-cfg]                               | Deprecated. Removed upstream and has no effect.                                                              | no       |
-| [`faas.name`][res-attr-cfg]                             | Toggles the `faas.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
-| [`faas.version`][res-attr-cfg]                          | Toggles the `faas.version` resource attribute. Sets `enabled` to `true` by default.                          | no       |
-| [`gcp.cloud_run.job.execution`][res-attr-cfg]           | Toggles the `gcp.cloud_run.job.execution` resource attribute. Sets `enabled` to `true` by default.           | no       |
-| [`gcp.cloud_run.job.task_index`][res-attr-cfg]          | Toggles the `gcp.cloud_run.job.task_index` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`gcp.gce.instance.group_manager.name`][res-attr-cfg]   | Toggles the `gcp.gce.instance.group_manager.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`gcp.gce.instance.group_manager.region`][res-attr-cfg] | Toggles the `gcp.gce.instance.group_manager.region` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`gcp.gce.instance.group_manager.zone`][res-attr-cfg]   | Toggles the `gcp.gce.instance.group_manager.zone` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`gcp.gce.instance.hostname`][res-attr-cfg]             | Toggles the `gcp.gce.instance.hostname` resource attribute. Sets `enabled` to `false` by default.            | no       |
-| [`gcp.gce.instance.name`][res-attr-cfg]                 | Toggles the `gcp.gce.instance.name` resource attribute. Sets `enabled` to `false` by default.                | no       |
-| [`host.id`][res-attr-cfg]                               | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                               | no       |
-| [`host.name`][res-attr-cfg]                             | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
-| [`host.type`][res-attr-cfg]                             | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.                             | no       |
-| [`k8s.cluster.name`][res-attr-cfg]                      | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default.                      | no       |
+| [`cloud.account.id`](#resource-attribute-configuration)                      | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.                      | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration)               | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.platform`](#resource-attribute-configuration)                        | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.                        | no       |
+| [`cloud.provider`](#resource-attribute-configuration)                        | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                        | no       |
+| [`cloud.region`](#resource-attribute-configuration)                          | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.                          | no       |
+| [`faas.instance`](#resource-attribute-configuration)                         | Toggles the `faas.instance` resource attribute. Sets `enabled` to `true` by default.                         | no       |
+| [`faas.id`](#resource-attribute-configuration)                               | Deprecated. Removed upstream and has no effect.                                                              | no       |
+| [`faas.name`](#resource-attribute-configuration)                             | Toggles the `faas.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [`faas.version`](#resource-attribute-configuration)                          | Toggles the `faas.version` resource attribute. Sets `enabled` to `true` by default.                          | no       |
+| [`gcp.cloud_run.job.execution`](#resource-attribute-configuration)           | Toggles the `gcp.cloud_run.job.execution` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [`gcp.cloud_run.job.task_index`](#resource-attribute-configuration)          | Toggles the `gcp.cloud_run.job.task_index` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`gcp.gce.instance.group_manager.name`](#resource-attribute-configuration)   | Toggles the `gcp.gce.instance.group_manager.name` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`gcp.gce.instance.group_manager.region`](#resource-attribute-configuration) | Toggles the `gcp.gce.instance.group_manager.region` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`gcp.gce.instance.group_manager.zone`](#resource-attribute-configuration)   | Toggles the `gcp.gce.instance.group_manager.zone` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`gcp.gce.instance.hostname`](#resource-attribute-configuration)             | Toggles the `gcp.gce.instance.hostname` resource attribute. Sets `enabled` to `false` by default.            | no       |
+| [`gcp.gce.instance.name`](#resource-attribute-configuration)                 | Toggles the `gcp.gce.instance.name` resource attribute. Sets `enabled` to `false` by default.                | no       |
+| [`host.id`](#resource-attribute-configuration)                               | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                               | no       |
+| [`host.name`](#resource-attribute-configuration)                             | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [`host.type`](#resource-attribute-configuration)                             | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.                             | no       |
+| [`k8s.cluster.name`](#resource-attribute-configuration)                      | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default.                      | no       |
 
 #### Google Compute Engine (GCE) metadata
 
@@ -657,14 +657,14 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                               | Description                                                                                              | Required |
 | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.provider`][res-attr-cfg]                    | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                    | no       |
-| [`heroku.app.id`][res-attr-cfg]                     | Toggles the `heroku.app.id` resource attribute. Sets `enabled` to `true` by default.                     | no       |
-| [`heroku.dyno.id`][res-attr-cfg]                    | Toggles the `heroku.dyno.id` resource attribute. Sets `enabled` to `true` by default.                    | no       |
-| [`heroku.release.commit`][res-attr-cfg]             | Toggles the `heroku.release.commit` resource attribute. Sets `enabled` to `true` by default.             | no       |
-| [`heroku.release.creation_timestamp`][res-attr-cfg] | Toggles the `heroku.release.creation_timestamp` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`service.instance.id`][res-attr-cfg]               | Toggles the `service.instance.id` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`service.name`][res-attr-cfg]                      | Toggles the `service.name` resource attribute. Sets `enabled` to `true` by default.                      | no       |
-| [`service.version`][res-attr-cfg]                   | Toggles the `service.version` resource attribute. Sets `enabled` to `true` by default.                   | no       |
+| [`cloud.provider`](#resource-attribute-configuration)                    | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.                    | no       |
+| [`heroku.app.id`](#resource-attribute-configuration)                     | Toggles the `heroku.app.id` resource attribute. Sets `enabled` to `true` by default.                     | no       |
+| [`heroku.dyno.id`](#resource-attribute-configuration)                    | Toggles the `heroku.dyno.id` resource attribute. Sets `enabled` to `true` by default.                    | no       |
+| [`heroku.release.commit`](#resource-attribute-configuration)             | Toggles the `heroku.release.commit` resource attribute. Sets `enabled` to `true` by default.             | no       |
+| [`heroku.release.creation_timestamp`](#resource-attribute-configuration) | Toggles the `heroku.release.creation_timestamp` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`service.instance.id`](#resource-attribute-configuration)               | Toggles the `service.instance.id` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`service.name`](#resource-attribute-configuration)                      | Toggles the `service.name` resource attribute. Sets `enabled` to `true` by default.                      | no       |
+| [`service.version`](#resource-attribute-configuration)                   | Toggles the `service.version` resource attribute. Sets `enabled` to `true` by default.                   | no       |
 
 When [Heroku dyno metadata][] is active, Heroku applications publish information through environment variables.
 These environment variables map to resource attributes as follows:
@@ -692,7 +692,7 @@ The `hetzner` block supports the following attributes:
 
 | Attribute             | Type                                  | Description                                  | Default | Required |
 | --------------------- | ------------------------------------- | -------------------------------------------- | ------- | -------- |
-| `resource_attributes` | [`resource_attributes`][res-attr-cfg] | Configures which resource attributes to add. |         | no       |
+| `resource_attributes` | [`resource_attributes`](#resource-attribute-configuration) | Configures which resource attributes to add. |         | no       |
 
 #### `hetzner` > `resource_attributes`
 
@@ -700,11 +700,11 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`host.id`][res-attr-cfg]                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
-| [`host.name`][res-attr-cfg]               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration) | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.provider`](#resource-attribute-configuration)          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`](#resource-attribute-configuration)            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`host.id`](#resource-attribute-configuration)                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`host.name`](#resource-attribute-configuration)               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
 
 Example values:
 
@@ -768,8 +768,8 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                             | Required |
 | ---------------------------------- | --------------------------------------------------------------------------------------- | -------- |
-| [`k8s.cluster.name`][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`k8s.cluster.uid`][res-attr-cfg]  | Toggles the `k8s.cluster.uid` resource attribute. Sets `enabled` to `true` by default.  | no       |
+| [`k8s.cluster.name`](#resource-attribute-configuration) | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`k8s.cluster.uid`](#resource-attribute-configuration)  | Toggles the `k8s.cluster.uid` resource attribute. Sets `enabled` to `true` by default.  | no       |
 
 ### `kubernetes_node`
 
@@ -813,8 +813,8 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                           | Description                                                                          | Required |
 | ------------------------------- | ------------------------------------------------------------------------------------ | -------- |
-| [`k8s.node.name`][res-attr-cfg] | Toggles the `k8s.node.name` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`k8s.node.uid`][res-attr-cfg]  | Toggles the `k8s.node.uid` resource attribute. Sets `enabled` to `true` by default.  | no       |
+| [`k8s.node.name`](#resource-attribute-configuration) | Toggles the `k8s.node.name` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`k8s.node.uid`](#resource-attribute-configuration)  | Toggles the `k8s.node.uid` resource attribute. Sets `enabled` to `true` by default.  | no       |
 
 ### `lambda`
 
@@ -834,15 +834,15 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                  | Description                                                                                 | Required |
 | -------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
-| [`aws.log.group.names`][res-attr-cfg]  | Toggles the `aws.log.group.names` resource attribute. Sets `enabled` to `true` by default.  | no       |
-| [`aws.log.stream.names`][res-attr-cfg] | Toggles the `aws.log.stream.names` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]       | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.       | no       |
-| [`cloud.provider`][res-attr-cfg]       | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.       | no       |
-| [`cloud.region`][res-attr-cfg]         | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.         | no       |
-| [`faas.instance`][res-attr-cfg]        | Toggles the `faas.instance` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`faas.max_memory`][res-attr-cfg]      | Toggles the `faas.max_memory` resource attribute. Sets `enabled` to `true` by default.      | no       |
-| [`faas.name`][res-attr-cfg]            | Toggles the `faas.name` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`faas.version`][res-attr-cfg]         | Toggles the `faas.version` resource attribute. Sets `enabled` to `true` by default.         | no       |
+| [`aws.log.group.names`](#resource-attribute-configuration)  | Toggles the `aws.log.group.names` resource attribute. Sets `enabled` to `true` by default.  | no       |
+| [`aws.log.stream.names`](#resource-attribute-configuration) | Toggles the `aws.log.stream.names` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)       | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.       | no       |
+| [`cloud.provider`](#resource-attribute-configuration)       | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.       | no       |
+| [`cloud.region`](#resource-attribute-configuration)         | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.         | no       |
+| [`faas.instance`](#resource-attribute-configuration)        | Toggles the `faas.instance` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`faas.max_memory`](#resource-attribute-configuration)      | Toggles the `faas.max_memory` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`faas.name`](#resource-attribute-configuration)            | Toggles the `faas.name` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`faas.version`](#resource-attribute-configuration)         | Toggles the `faas.version` resource attribute. Sets `enabled` to `true` by default.         | no       |
 
 [Cloud semantic conventions][]:
 
@@ -890,13 +890,13 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`host.id`][res-attr-cfg]                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
-| [`host.name`][res-attr-cfg]               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`host.type`][res-attr-cfg]               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration) | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.provider`](#resource-attribute-configuration)          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`](#resource-attribute-configuration)            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`host.id`](#resource-attribute-configuration)                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`host.name`](#resource-attribute-configuration)               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`host.type`](#resource-attribute-configuration)               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
 
 Example values:
 
@@ -919,15 +919,15 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`host.id`][res-attr-cfg]                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
-| [`host.name`][res-attr-cfg]               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`host.type`][res-attr-cfg]               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`k8s.cluster.name`][res-attr-cfg]        | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`oracle_cloud.realm`][res-attr-cfg]      | Toggles the `oracle_cloud.realm` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`cloud.platform`](#resource-attribute-configuration)          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.provider`](#resource-attribute-configuration)          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`](#resource-attribute-configuration)            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration) | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`host.id`](#resource-attribute-configuration)                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`host.name`](#resource-attribute-configuration)               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`host.type`](#resource-attribute-configuration)               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`k8s.cluster.name`](#resource-attribute-configuration)        | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`oracle_cloud.realm`](#resource-attribute-configuration)      | Toggles the `oracle_cloud.realm` resource attribute. Sets `enabled` to `true` by default.      | no       |
 
 Example values:
 
@@ -957,15 +957,15 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.account.id`][res-attr-cfg]        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`host.id`][res-attr-cfg]                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
-| [`host.image.id`][res-attr-cfg]           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
-| [`host.name`][res-attr-cfg]               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`host.type`][res-attr-cfg]               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.account.id`](#resource-attribute-configuration)        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration) | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.provider`](#resource-attribute-configuration)          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`](#resource-attribute-configuration)            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`host.id`](#resource-attribute-configuration)                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`host.image.id`](#resource-attribute-configuration)           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [`host.name`](#resource-attribute-configuration)               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`host.type`](#resource-attribute-configuration)               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
 
 ### `alibaba_ecs`
 
@@ -989,15 +989,15 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.account.id`][res-attr-cfg]        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`host.id`][res-attr-cfg]                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
-| [`host.image.id`][res-attr-cfg]           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
-| [`host.name`][res-attr-cfg]               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`host.type`][res-attr-cfg]               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.account.id`](#resource-attribute-configuration)        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration) | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.provider`](#resource-attribute-configuration)          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`](#resource-attribute-configuration)            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`host.id`](#resource-attribute-configuration)                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`host.image.id`](#resource-attribute-configuration)           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [`host.name`](#resource-attribute-configuration)               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`host.type`](#resource-attribute-configuration)               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
 
 ### `openshift`
 
@@ -1051,10 +1051,10 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                              | Description                                                                             | Required |
 | ---------------------------------- | --------------------------------------------------------------------------------------- | -------- |
-| [`cloud.platform`][res-attr-cfg]   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`cloud.provider`][res-attr-cfg]   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`cloud.region`][res-attr-cfg]     | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.     | no       |
-| [`k8s.cluster.name`][res-attr-cfg] | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)   | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`cloud.provider`](#resource-attribute-configuration)   | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`cloud.region`](#resource-attribute-configuration)     | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.     | no       |
+| [`k8s.cluster.name`](#resource-attribute-configuration) | Toggles the `k8s.cluster.name` resource attribute. Sets `enabled` to `true` by default. | no       |
 
 ### `scaleway`
 
@@ -1064,7 +1064,7 @@ The `scaleway` block supports the following attributes:
 
 | Attribute             | Type                                  | Description                                  | Default | Required |
 | --------------------- | ------------------------------------- | -------------------------------------------- | ------- | -------- |
-| `resource_attributes` | [`resource_attributes`][res-attr-cfg] | Configures which resource attributes to add. |         | no       |
+| `resource_attributes` | [`resource_attributes`](#resource-attribute-configuration) | Configures which resource attributes to add. |         | no       |
 
 #### `scaleway` > `resource_attributes`
 
@@ -1072,16 +1072,16 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                     | Description                                                                                    | Required |
 | ----------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`cloud.account.id`][res-attr-cfg]        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`cloud.availability_zone`][res-attr-cfg] | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.platform`][res-attr-cfg]          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.provider`][res-attr-cfg]          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
-| [`cloud.region`][res-attr-cfg]            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
-| [`host.id`][res-attr-cfg]                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
-| [`host.image.id`][res-attr-cfg]           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
-| [`host.image.name`][res-attr-cfg]         | Toggles the `host.image.name` resource attribute. Sets `enabled` to `true` by default.         | no       |
-| [`host.name`][res-attr-cfg]               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`host.type`][res-attr-cfg]               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`cloud.account.id`](#resource-attribute-configuration)        | Toggles the `cloud.account.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`cloud.availability_zone`](#resource-attribute-configuration) | Toggles the `cloud.availability_zone` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.platform`](#resource-attribute-configuration)          | Toggles the `cloud.platform` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.provider`](#resource-attribute-configuration)          | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default.          | no       |
+| [`cloud.region`](#resource-attribute-configuration)            | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.            | no       |
+| [`host.id`](#resource-attribute-configuration)                 | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`host.image.id`](#resource-attribute-configuration)           | Toggles the `host.image.id` resource attribute. Sets `enabled` to `true` by default.           | no       |
+| [`host.image.name`](#resource-attribute-configuration)         | Toggles the `host.image.name` resource attribute. Sets `enabled` to `true` by default.         | no       |
+| [`host.name`](#resource-attribute-configuration)               | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`host.type`](#resource-attribute-configuration)               | Toggles the `host.type` resource attribute. Sets `enabled` to `true` by default.               | no       |
 
 Example values:
 
@@ -1129,23 +1129,23 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                                    | Description                                                                                    | Required |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------- | -------- |
-| [`host.arch`][res-attr-cfg]              | Toggles the `host.arch` resource attribute. Sets `enabled` to `false` by default.              | no       |
-| [`host.cpu.cache.l2.size`][res-attr-cfg] | Toggles the `host.cpu.cache.l2.size` resource attribute. Sets `enabled` to `false` by default. | no       |
-| [`host.cpu.family`][res-attr-cfg]        | Toggles the `host.cpu.family` resource attribute. Sets `enabled` to `false` by default.        | no       |
-| [`host.cpu.model.id`][res-attr-cfg]      | Toggles the `host.cpu.model.id` resource attribute. Sets `enabled` to `false` by default.      | no       |
-| [`host.cpu.model.name`][res-attr-cfg]    | Toggles the `host.cpu.model.name` resource attribute. Sets `enabled` to `false` by default.    | no       |
-| [`host.cpu.stepping`][res-attr-cfg]      | Toggles the `host.cpu.stepping` resource attribute. Sets `enabled` to `false` by default.      | no       |
-| [`host.cpu.vendor.id`][res-attr-cfg]     | Toggles the `host.cpu.vendor.id` resource attribute. Sets `enabled` to `false` by default.     | no       |
-| [`host.id`][res-attr-cfg]                | Toggles the `host.id` resource attribute. Sets `enabled` to `false` by default.                | no       |
-| [`host.interface`][res-attr-cfg]         | Toggles the `host.interface` resource attribute. Sets `enabled` to `false` by default.         | no       |
-| [`host.ip`][res-attr-cfg]                | Toggles the `host.ip` resource attribute. Sets `enabled` to `false` by default.                | no       |
-| [`host.mac`][res-attr-cfg]               | Toggles the `host.mac` resource attribute. Sets `enabled` to `false` by default.               | no       |
-| [`host.name`][res-attr-cfg]              | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
-| [`os.build.id`][res-attr-cfg]            | Toggles the `os.build.id` resource attribute. Sets `enabled` to `false` by default.            | no       |
-| [`os.description`][res-attr-cfg]         | Toggles the `os.description` resource attribute. Sets `enabled` to `false` by default.         | no       |
-| [`os.name`][res-attr-cfg]                | Toggles the `os.name` resource attribute. Sets `enabled` to `false` by default.                | no       |
-| [`os.type`][res-attr-cfg]                | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.                 | no       |
-| [`os.version`][res-attr-cfg]             | Toggles the `os.version` resource attribute. Sets `enabled` to `false` by default.             | no       |
+| [`host.arch`](#resource-attribute-configuration)              | Toggles the `host.arch` resource attribute. Sets `enabled` to `false` by default.              | no       |
+| [`host.cpu.cache.l2.size`](#resource-attribute-configuration) | Toggles the `host.cpu.cache.l2.size` resource attribute. Sets `enabled` to `false` by default. | no       |
+| [`host.cpu.family`](#resource-attribute-configuration)        | Toggles the `host.cpu.family` resource attribute. Sets `enabled` to `false` by default.        | no       |
+| [`host.cpu.model.id`](#resource-attribute-configuration)      | Toggles the `host.cpu.model.id` resource attribute. Sets `enabled` to `false` by default.      | no       |
+| [`host.cpu.model.name`](#resource-attribute-configuration)    | Toggles the `host.cpu.model.name` resource attribute. Sets `enabled` to `false` by default.    | no       |
+| [`host.cpu.stepping`](#resource-attribute-configuration)      | Toggles the `host.cpu.stepping` resource attribute. Sets `enabled` to `false` by default.      | no       |
+| [`host.cpu.vendor.id`](#resource-attribute-configuration)     | Toggles the `host.cpu.vendor.id` resource attribute. Sets `enabled` to `false` by default.     | no       |
+| [`host.id`](#resource-attribute-configuration)                | Toggles the `host.id` resource attribute. Sets `enabled` to `false` by default.                | no       |
+| [`host.interface`](#resource-attribute-configuration)         | Toggles the `host.interface` resource attribute. Sets `enabled` to `false` by default.         | no       |
+| [`host.ip`](#resource-attribute-configuration)                | Toggles the `host.ip` resource attribute. Sets `enabled` to `false` by default.                | no       |
+| [`host.mac`](#resource-attribute-configuration)               | Toggles the `host.mac` resource attribute. Sets `enabled` to `false` by default.               | no       |
+| [`host.name`](#resource-attribute-configuration)              | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.               | no       |
+| [`os.build.id`](#resource-attribute-configuration)            | Toggles the `os.build.id` resource attribute. Sets `enabled` to `false` by default.            | no       |
+| [`os.description`](#resource-attribute-configuration)         | Toggles the `os.description` resource attribute. Sets `enabled` to `false` by default.         | no       |
+| [`os.name`](#resource-attribute-configuration)                | Toggles the `os.name` resource attribute. Sets `enabled` to `false` by default.                | no       |
+| [`os.type`](#resource-attribute-configuration)                | Toggles the `os.type` resource attribute. Sets `enabled` to `true` by default.                 | no       |
+| [`os.version`](#resource-attribute-configuration)             | Toggles the `os.version` resource attribute. Sets `enabled` to `false` by default.             | no       |
 
 ### `upcloud`
 
@@ -1156,7 +1156,7 @@ The `upcloud` block supports the following attributes:
 | Attribute                  | Type                                  | Description                                                                    | Default | Required |
 | -------------------------- | ------------------------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
 | `fail_on_missing_metadata` | `bool`                                | Whether to fail if metadata cannot be retrieved from the UpCloud metadata API. | `false` | no       |
-| `resource_attributes`      | [`resource_attributes`][res-attr-cfg] | Configures which resource attributes to add.                                   |         | no       |
+| `resource_attributes`      | [`resource_attributes`](#resource-attribute-configuration) | Configures which resource attributes to add.                                   |         | no       |
 
 #### `upcloud` > `resource_attributes`
 
@@ -1164,10 +1164,10 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                            | Description                                                                           | Required |
 | -------------------------------- | ------------------------------------------------------------------------------------- | -------- |
-| [`cloud.provider`][res-attr-cfg] | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.region`][res-attr-cfg]   | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`host.id`][res-attr-cfg]        | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`host.name`][res-attr-cfg]      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`cloud.provider`](#resource-attribute-configuration) | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.region`](#resource-attribute-configuration)   | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`host.id`](#resource-attribute-configuration)        | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`host.name`](#resource-attribute-configuration)      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
 
 Example values:
 
@@ -1182,7 +1182,7 @@ The `vultr` block supports the following attributes:
 | Attribute                  | Type                                  | Description                                                                  | Default | Required |
 | -------------------------- | ------------------------------------- | ---------------------------------------------------------------------------- | ------- | -------- |
 | `fail_on_missing_metadata` | `bool`                                | Whether to fail if metadata cannot be retrieved from the Vultr metadata API. | `false` | no       |
-| `resource_attributes`      | [`resource_attributes`][res-attr-cfg] | Configures which resource attributes to add.                                 |         | no       |
+| `resource_attributes`      | [`resource_attributes`](#resource-attribute-configuration) | Configures which resource attributes to add.                                 |         | no       |
 
 #### `vultr` > `resource_attributes`
 
@@ -1190,10 +1190,10 @@ The `resource_attributes` block supports the following blocks:
 
 | Block                            | Description                                                                           | Required |
 | -------------------------------- | ------------------------------------------------------------------------------------- | -------- |
-| [`cloud.provider`][res-attr-cfg] | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default. | no       |
-| [`cloud.region`][res-attr-cfg]   | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.   | no       |
-| [`host.id`][res-attr-cfg]        | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
-| [`host.name`][res-attr-cfg]      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
+| [`cloud.provider`](#resource-attribute-configuration) | Toggles the `cloud.provider` resource attribute. Sets `enabled` to `true` by default. | no       |
+| [`cloud.region`](#resource-attribute-configuration)   | Toggles the `cloud.region` resource attribute. Sets `enabled` to `true` by default.   | no       |
+| [`host.id`](#resource-attribute-configuration)        | Toggles the `host.id` resource attribute. Sets `enabled` to `true` by default.        | no       |
+| [`host.name`](#resource-attribute-configuration)      | Toggles the `host.name` resource attribute. Sets `enabled` to `true` by default.      | no       |
 
 Example values:
 
@@ -1267,7 +1267,7 @@ otelcol.processor.resourcedetection "default" {
 ### `env` and `ec2`
 
 There is no need to put in an `ec2 {}` block.
-The `ec2` defaults are applied automatically, as specified in [`ec2`][ec2].
+The `ec2` defaults are applied automatically, as specified in [`ec2`](#ec2).
 
 ```alloy
 otelcol.processor.resourcedetection "default" {
@@ -1284,7 +1284,7 @@ otelcol.processor.resourcedetection "default" {
 ### `ec2` with default resource attributes
 
 There is no need to put in a `ec2 {}` block.
-The `ec2` defaults are applied automatically, as specified in [`ec2`][ec2].
+The `ec2` defaults are applied automatically, as specified in [`ec2`](#ec2).
 
 ```alloy
 otelcol.processor.resourcedetection "default" {
@@ -1331,7 +1331,7 @@ otelcol.processor.resourcedetection "default" {
 This example uses the default `node_from_env_var` option of `K8S_NODE_NAME`.
 
 There is no need to put in a `kubernetes_node {}` block.
-The `kubernetes_node` defaults are applied automatically, as specified in [`kubernetes_node`][kubernetes_node].
+The `kubernetes_node` defaults are applied automatically, as specified in [`kubernetes_node`](#kubernetes_node).
 
 ```alloy
 otelcol.processor.resourcedetection "default" {

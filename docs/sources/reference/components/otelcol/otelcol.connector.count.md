@@ -95,8 +95,8 @@ You can specify multiple `spanevents` blocks to define different metrics.
 
 If you don't define any `spanevents` blocks, the connector emits a default metric named `trace.span.event.count`.
 
-This block shares the same configuration structure as [`spans`][spans].
-Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
+This block shares the same configuration structure as [`spans`](#spans).
+Refer to the [`spans`](#spans) block documentation for the complete list of supported arguments and blocks.
 
 ### `metrics`
 
@@ -106,8 +106,8 @@ You can specify multiple `metrics` blocks to define different metrics.
 
 If you don't define any `metrics` blocks, the connector emits a default metric named `metric.count`.
 
-This block shares the same configuration structure as [`spans`][spans].
-Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
+This block shares the same configuration structure as [`spans`](#spans).
+Refer to the [`spans`](#spans) block documentation for the complete list of supported arguments and blocks.
 
 ### `datapoints`
 
@@ -117,8 +117,8 @@ You can specify multiple `datapoints` blocks to define different metrics.
 
 If you don't define any `datapoints` blocks, the connector emits a default metric named `metric.datapoint.count`.
 
-This block shares the same configuration structure as [`spans`][spans].
-Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
+This block shares the same configuration structure as [`spans`](#spans).
+Refer to the [`spans`](#spans) block documentation for the complete list of supported arguments and blocks.
 
 ### `logs`
 
@@ -128,8 +128,8 @@ You can specify multiple `logs` blocks to define different metrics.
 
 If you don't define any `logs` blocks, the connector emits a default metric named `log.record.count`.
 
-This block shares the same configuration structure as [`spans`][spans].
-Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
+This block shares the same configuration structure as [`spans`](#spans).
+Refer to the [`spans`](#spans) block documentation for the complete list of supported arguments and blocks.
 
 ### `attributes`
 
