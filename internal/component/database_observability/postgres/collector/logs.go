@@ -555,56 +555,24 @@ func (l *Logs) emitErrorEntry(p *pendingError) {
 		ts = time.Now()
 	}
 
-	l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+	// Minimal logfmt body for one ERROR + STATEMENT pair: just the fields
+	// needed to compute per-query error rate. The SQL text and error-detail
+	// fields are intentionally omitted (deferred to a follow-up PR); consumers
+	// recover the SQL by joining on query_fingerprint. severity and fp never
+	// need quoting; %q fully escapes datname.
+	body := fmt.Sprintf("severity=%s datname=%q query_fingerprint=%s", p.severity, p.datname, fp)
+
+	// Blocking send by design (backpressure over dropping entries), but guarded
+	// by the collector context so a stalled downstream can't wedge Stop().
+	select {
+	case l.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
 		OP_ERROR_MESSAGE,
-		buildErrorLine(p, fp),
+		body,
 		ts.UnixNano(),
-	)
-}
-
-// buildErrorLine assembles the minimal logfmt body for one ERROR + STATEMENT
-// pair: just the fields needed to compute per-query error rate. The SQL text
-// and error-detail fields are intentionally omitted (deferred to a follow-up
-// PR); consumers recover the SQL by joining on query_fingerprint.
-func buildErrorLine(p *pendingError, fp string) string {
-	type kv struct{ k, v string }
-	fields := []kv{
-		{"severity", p.severity},
-		{"datname", p.datname},
-		{"query_fingerprint", fp},
+	):
+	case <-l.ctx.Done():
 	}
-
-	var b strings.Builder
-	for _, f := range fields {
-		if f.v == "" {
-			continue
-		}
-		if b.Len() > 0 {
-			b.WriteByte(' ')
-		}
-		b.WriteString(f.k)
-		b.WriteByte('=')
-		b.WriteString(logfmtQuote(f.v))
-	}
-	return b.String()
-}
-
-func logfmtQuote(v string) string {
-	if !strings.ContainsAny(v, " =\"\\") {
-		return v
-	}
-	var b strings.Builder
-	b.Grow(len(v) + 2)
-	b.WriteByte('"')
-	for _, r := range v {
-		if r == '"' || r == '\\' {
-			b.WriteByte('\\')
-		}
-		b.WriteRune(r)
-	}
-	b.WriteByte('"')
-	return b.String()
 }
 
 // flushExpiredPending handles a pending error older than pendingErrorTimeout

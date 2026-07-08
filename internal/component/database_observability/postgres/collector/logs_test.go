@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logfmt/logfmt"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -879,59 +880,19 @@ func drainEntries(t *testing.T, ch chan loki.Entry, want int, timeout time.Durat
 	return out
 }
 
-// parseLogfmt is a minimal logfmt parser for tests. Supports bare and
-// double-quoted values with `\"` and `\\` escapes. It does NOT round-trip
-// arbitrary escapes — only what buildErrorLine emits.
+// parseLogfmt decodes a logfmt entry body into a map using the same logfmt
+// library production consumers use, so encoder bugs can't hide behind a
+// matching bespoke test parser.
 func parseLogfmt(t *testing.T, s string) map[string]string {
 	t.Helper()
 	out := map[string]string{}
-	for i := 0; i < len(s); {
-		// Skip whitespace.
-		for i < len(s) && s[i] == ' ' {
-			i++
+	decoder := logfmt.NewDecoder(strings.NewReader(s))
+	for decoder.ScanRecord() {
+		for decoder.ScanKeyval() {
+			out[string(decoder.Key())] = string(decoder.Value())
 		}
-		if i >= len(s) {
-			break
-		}
-		// Read key.
-		ks := i
-		for i < len(s) && s[i] != '=' && s[i] != ' ' {
-			i++
-		}
-		if i >= len(s) || s[i] != '=' {
-			break
-		}
-		key := s[ks:i]
-		i++ // consume '='
-		// Read value.
-		var val string
-		if i < len(s) && s[i] == '"' {
-			i++
-			var b strings.Builder
-			for i < len(s) {
-				c := s[i]
-				if c == '\\' && i+1 < len(s) {
-					b.WriteByte(s[i+1])
-					i += 2
-					continue
-				}
-				if c == '"' {
-					i++
-					break
-				}
-				b.WriteByte(c)
-				i++
-			}
-			val = b.String()
-		} else {
-			vs := i
-			for i < len(s) && s[i] != ' ' {
-				i++
-			}
-			val = s[vs:i]
-		}
-		out[key] = val
 	}
+	require.NoError(t, decoder.Err(), "entry body must be valid logfmt")
 	return out
 }
 
