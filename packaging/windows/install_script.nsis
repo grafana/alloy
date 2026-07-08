@@ -17,6 +17,7 @@ Unicode true
 !define HELPURL     "https://grafana.com/docs/alloy/latest"
 !define UPDATEURL   "https://github.com/grafana/alloy/releases"
 !define ABOUTURL    "https://github.com/grafana/alloy"
+!define EVENTLOGKEY "HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\Alloy"
 
 # Because we modify the registry and install a service that runs as
 # LocalSystem, we require admin permissions.
@@ -252,13 +253,22 @@ FunctionEnd
 # RegisterEventSource pre-creates the Windows Event Log source for Alloy so
 # that a non-admin service account can open the source without needing write
 # access to HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application.
+#
+# These values mirror what eventlog.InstallAsEventCreate writes at runtime
+# (golang.org/x/sys/windows/svc/eventlog). We only write the values when the
+# source key doesn't already exist. This matches eventlog.Install and preserves
+# customizations a user has made.
 Function RegisterEventSource
-  !define EVENTLOGKEY "HKLM\SYSTEM\CurrentControlSet\Services\EventLog\Application\Alloy"
-
-  nsExec::ExecToLog 'Reg.exe add "${EVENTLOGKEY}" /v EventMessageFile /t REG_EXPAND_SZ /d "%SystemRoot%\System32\EventCreate.exe" /f'
+  nsExec::ExecToLog 'Reg.exe query "${EVENTLOGKEY}"'
   Pop $0
-  nsExec::ExecToLog 'Reg.exe add "${EVENTLOGKEY}" /v TypesSupported   /t REG_DWORD     /d 7 /f'
-  Pop $0
+  ${If} $0 == 1
+    nsExec::ExecToLog 'Reg.exe add "${EVENTLOGKEY}" /v CustomSource     /t REG_DWORD     /d 1 /f'
+    Pop $0 # Ignore return result
+    nsExec::ExecToLog 'Reg.exe add "${EVENTLOGKEY}" /v EventMessageFile /t REG_EXPAND_SZ /d "%SystemRoot%\System32\EventCreate.exe" /f'
+    Pop $0 # Ignore return result
+    nsExec::ExecToLog 'Reg.exe add "${EVENTLOGKEY}" /v TypesSupported   /t REG_DWORD     /d 7 /f'
+    Pop $0 # Ignore return result
+  ${EndIf}
 FunctionEnd
 
 Function SetFolderPermissions
@@ -308,6 +318,8 @@ Section "uninstall"
   # service settings are stored in the 64-bit registry (so we use /reg:64),
   # while the uninstaller information is stored in the 32-bit registry.
   nsExec::ExecToLog 'Reg.exe delete "HKLM\SOFTWARE\GrafanaLabs\Alloy"  /reg:64 /f'
+  Pop $0
+  nsExec::ExecToLog 'Reg.exe delete "${EVENTLOGKEY}" /f'
   Pop $0
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}"
 SectionEnd
