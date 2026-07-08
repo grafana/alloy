@@ -12,6 +12,7 @@ import (
 	"github.com/grafana/alloy/syntax/alloytypes"
 	prom_config "github.com/prometheus/prometheus/config"
 	"github.com/prometheus/prometheus/storage/remote/azuread"
+	"github.com/prometheus/prometheus/storage/remote/googleiam"
 	"github.com/prometheus/sigv4"
 )
 
@@ -79,6 +80,8 @@ func getEndpointOptions(remoteWriteConfigs []*prom_config.RemoteWriteConfig) []*
 			WriteRelabelConfigs:  ToAlloyRelabelConfigs(remoteWriteConfig.WriteRelabelConfigs),
 			SigV4:                toSigV4(remoteWriteConfig.SigV4Config),
 			AzureAD:              toAzureAD(remoteWriteConfig.AzureADConfig),
+			GoogleIAM:            toGoogleIAM(remoteWriteConfig.GoogleIAMConfig),
+			RoundRobinDNS:        remoteWriteConfig.RoundRobinDNS,
 		}
 
 		endpoints = append(endpoints, endpoint)
@@ -116,11 +119,25 @@ func toSigV4(sigv4Config *sigv4.SigV4Config) *remotewrite.SigV4Config {
 	}
 
 	return &remotewrite.SigV4Config{
-		Region:    sigv4Config.Region,
-		AccessKey: sigv4Config.AccessKey,
-		SecretKey: alloytypes.Secret(sigv4Config.SecretKey),
-		Profile:   sigv4Config.Profile,
-		RoleARN:   sigv4Config.RoleARN,
+		Region:             sigv4Config.Region,
+		AccessKey:          sigv4Config.AccessKey,
+		SecretKey:          alloytypes.Secret(sigv4Config.SecretKey),
+		Profile:            sigv4Config.Profile,
+		RoleARN:            sigv4Config.RoleARN,
+		ExternalID:         sigv4Config.ExternalID,
+		UseFIPSSTSEndpoint: sigv4Config.UseFIPSSTSEndpoint,
+		ServiceName:        sigv4Config.ServiceName,
+	}
+}
+
+// toGoogleIAM converts a Prometheus Google IAM config to an Alloy Google IAM config.
+func toGoogleIAM(googleIAMConfig *googleiam.Config) *remotewrite.GoogleIAMConfig {
+	if googleIAMConfig == nil {
+		return nil
+	}
+
+	return &remotewrite.GoogleIAMConfig{
+		CredentialsFile: googleIAMConfig.CredentialsFile,
 	}
 }
 
@@ -134,9 +151,19 @@ func toAzureAD(azureADConfig *azuread.AzureADConfig) *remotewrite.AzureADConfig 
 		Cloud: azureADConfig.Cloud,
 	}
 
+	res.Scope = azureADConfig.Scope
+
 	if azureADConfig.ManagedIdentity != nil {
 		res.ManagedIdentity = &remotewrite.ManagedIdentityConfig{
 			ClientID: azureADConfig.ManagedIdentity.ClientID,
+		}
+	}
+
+	if azureADConfig.WorkloadIdentity != nil {
+		res.WorkloadIdentity = &remotewrite.WorkloadIdentityConfig{
+			ClientID:      azureADConfig.WorkloadIdentity.ClientID,
+			TenantID:      azureADConfig.WorkloadIdentity.TenantID,
+			TokenFilePath: azureADConfig.WorkloadIdentity.TokenFilePath,
 		}
 	}
 
