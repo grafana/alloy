@@ -46,11 +46,11 @@ You can use the following arguments with `discovery.marathon`:
 
 * [`auth_token_file`][arguments] argument
 * [`auth_token`][arguments] argument
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
+* [`authorization`](#authorization) block
+* [`basic_auth`](#basic_auth) block
 * [`bearer_token_file`][arguments] argument
 * [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+* [`oauth2`](#oauth2) block
 
 [arguments]: #arguments
 

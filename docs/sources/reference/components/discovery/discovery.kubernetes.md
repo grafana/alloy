@@ -65,11 +65,11 @@ You can use the following arguments with `discovery.kubernetes`:
 
 You can provide at most one of the following:
 
-- [`authorization`][authorization] block
-- [`basic_auth`][basic_auth] block
+- [`authorization`](#authorization) block
+- [`basic_auth`](#basic_auth) block
 - [`bearer_token_file`][arguments] argument
 - [`bearer_token`][arguments] argument
-- [`oauth2`][oauth2] block
+- [`oauth2`](#oauth2) block
 
  [arguments]: #arguments
 
