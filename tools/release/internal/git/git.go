@@ -86,23 +86,6 @@ func Checkout(branch string) error {
 	return nil
 }
 
-// ConfigureUser configures the local repository identity used by git commit operations.
-func ConfigureUser(name, email string) error {
-	if strings.TrimSpace(name) == "" {
-		return fmt.Errorf("git user name must not be empty")
-	}
-	if strings.TrimSpace(email) == "" {
-		return fmt.Errorf("git user email must not be empty")
-	}
-	if _, err := run("git", "config", "user.name", name); err != nil {
-		return fmt.Errorf("configuring git user.name: %w", err)
-	}
-	if _, err := run("git", "config", "user.email", email); err != nil {
-		return fmt.Errorf("configuring git user.email: %w", err)
-	}
-	return nil
-}
-
 // CherryPick cherry-picks a commit. By default it commits with a "(cherry picked from commit ...)"
 // reference. Set shouldCommit to false to stage changes without committing.
 func CherryPick(sha string, shouldCommit bool) error {
@@ -118,6 +101,17 @@ func CherryPick(sha string, shouldCommit bool) error {
 	args = append(args, sha)
 	if _, err := run(args...); err != nil {
 		return fmt.Errorf("cherry-picking commit %s: %w", sha, err)
+	}
+	return nil
+}
+
+// ConfigureUser configures git with the given user identity for commit authorship.
+func ConfigureUser(name, email string) error {
+	if _, err := run("git", "config", "user.name", name); err != nil {
+		return fmt.Errorf("setting user.name: %w", err)
+	}
+	if _, err := run("git", "config", "user.email", email); err != nil {
+		return fmt.Errorf("setting user.email: %w", err)
 	}
 	return nil
 }
