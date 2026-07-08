@@ -213,7 +213,7 @@ Example values:
 
 - `cloud.provider`: `"akamai"`
 
-[res-attr-cfg]: (#resource-attribute-configuration)
+[res-attr-cfg]: #resource-attribute-configuration
 
 ### `aks`
 
