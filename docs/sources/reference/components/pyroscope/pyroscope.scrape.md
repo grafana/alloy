@@ -75,17 +75,22 @@ You can use the following arguments with `pyroscope.scrape`:
 
  At most, one of the following can be provided:
 
-* [`authorization`](#authorization) block
-* [`basic_auth`](#basic_auth) block
-* [`bearer_token_file`](#arguments) argument
-* [`bearer_token`](#arguments) argument
-* [`oauth2`](#oauth2) block
+* [`authorization`][authorization] block
+* [`basic_auth`][basic_auth] block
+* [`bearer_token_file`][arguments] argument
+* [`bearer_token`][arguments] argument
+* [`oauth2`][oauth2] block
 
 Any omitted arguments take on their default values.
 If conflicting arguments are being passed, for example, configuring both `bearer_token` and `bearer_token_file`, then `pyroscope.scrape` will fail to start and will report an error.
 
-
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[clustering]: #clustering
+[oauth2]: #oauth2
+[arguments]: #arguments
 
 ### `job_name`
 
@@ -145,15 +150,17 @@ If `scrape_interval` is long:
   * Lower resource consumption.
 * Disadvantages:
   * More profiles may be lost if the application being scraped crashes.
-  * If the [delta argument](#delta-argument) is set to `true`, the batch size of each remote write to Pyroscope may be bigger.
+  * If the [delta argument][delta-argument] is set to `true`, the batch size of each remote write to Pyroscope may be bigger.
     The Pyroscope database may need to be tuned with higher limits.
-  * If the [delta argument](#delta-argument) is set to `true`, there is a larger risk of reaching the HTTP server timeouts of the application being scraped.
+  * If the [delta argument][delta-argument] is set to `true`, there is a larger risk of reaching the HTTP server timeouts of the application being scraped.
 
 For example, consider this situation:
 
 * `pyroscope.scrape` is configured with a `scrape_interval` of `"60s"`.
 * The application being scraped is running an HTTP server with a timeout of 30 seconds.
-* Any scrape HTTP requests where the [delta argument](#delta-argument) is set to `true` will fail, because they will attempt to run for 59 seconds.
+* Any scrape HTTP requests where the [delta argument][delta-argument] is set to `true` will fail, because they will attempt to run for 59 seconds.
+
+[delta argument]: #delta-argument
 
 ## Blocks
 
@@ -260,7 +267,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                 | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/block"` | no       |
 
-For more information about the `delta` argument, see the [delta argument](#delta-argument) section.
+For more information about the `delta` argument, see the [delta argument][delta-argument] section.
 
 ### `profile.custom`
 
@@ -290,7 +297,7 @@ The `seconds` used will be equal to `scrape_interval - 1`.
 
 ### `profile.fgprof`
 
-The `profile.fgprof` block collects profiles from an [fgprof](https://github.com/felixge/fgprof) endpoint.
+The `profile.fgprof` block collects profiles from an [fgprof][] endpoint.
 
 The following arguments are supported:
 
@@ -300,11 +307,13 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `false`           | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/fgprof"` | no       |
 
-For more information about the `delta` argument, see the [delta argument](#delta-argument) section.
+For more information about the `delta` argument, see the [delta argument][delta-argument] section.
+
+[fgprof]: https://github.com/felixge/fgprof
 
 ### `profile.godeltaprof_block`
 
-The `profile.godeltaprof_block` block collects profiles from [godeltaprof](https://github.com/grafana/pyroscope-go/tree/main/godeltaprof) block endpoint. The delta is computed on the target.
+The `profile.godeltaprof_block` block collects profiles from [godeltaprof][] block endpoint. The delta is computed on the target.
 
 The following arguments are supported:
 
@@ -313,9 +322,11 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `false`                      | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/delta_block"` | no       |
 
+[godeltaprof]: https://github.com/grafana/pyroscope-go/tree/main/godeltaprof
+
 ### `profile.godeltaprof_memory`
 
-The `profile.godeltaprof_memory` block collects profiles from [godeltaprof](https://github.com/grafana/pyroscope-go/tree/main/godeltaprof) memory endpoint. The delta is computed on the target.
+The `profile.godeltaprof_memory` block collects profiles from [godeltaprof][] memory endpoint. The delta is computed on the target.
 
 The following arguments are supported:
 
@@ -326,7 +337,7 @@ The following arguments are supported:
 
 ### `profile.godeltaprof_mutex`
 
-The `profile.godeltaprof_mutex` block collects profiles from [godeltaprof](https://github.com/grafana/pyroscope-go/tree/main/godeltaprof) mutex endpoint.
+The `profile.godeltaprof_mutex` block collects profiles from [godeltaprof][] mutex endpoint.
 The delta is computed on the target.
 
 The following arguments are supported:
@@ -348,7 +359,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                     | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/goroutine"` | no       |
 
-Refer to [delta argument](#delta-argument) for more information about the `delta` argument.
+Refer to [delta argument][delta-argument] for more information about the `delta` argument.
 
 ### `profile.memory`
 
@@ -362,7 +373,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                  | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/allocs"` | no       |
 
-Refer to [delta argument](#delta-argument) for more information about the `delta` argument.
+Refer to [delta argument][delta-argument] for more information about the `delta` argument.
 
 ### `profile.mutex`
 
@@ -376,7 +387,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                 | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/mutex"` | no       |
 
-Refer to [delta argument](#delta-argument) for more information about the `delta` argument.
+Refer to [delta argument][delta-argument] for more information about the `delta` argument.
 
 ### `profile.process_cpu`
 
@@ -390,7 +401,7 @@ The following arguments are supported:
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `true`                   | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/profile"` | no       |
 
-For more information about the `delta` argument, see the [delta argument](#delta-argument) section.
+For more information about the `delta` argument, see the [delta argument][delta-argument] section.
 
 ### `tls_config`
 
@@ -400,11 +411,11 @@ For more information about the `delta` argument, see the [delta argument](#delta
 
 ### `delta` argument
 
-When the `delta` argument is `false`, the [pprof](https://github.com/google/pprof/blob/main/doc/README.md) HTTP query will be instantaneous.
+When the `delta` argument is `false`, the [pprof][] HTTP query will be instantaneous.
 
 When the `delta` argument is `true`:
 
-* The [pprof](https://github.com/google/pprof/blob/main/doc/README.md) HTTP query runs for a certain amount of time.
+* The [pprof][] HTTP query runs for a certain amount of time.
 * A `seconds` parameter is automatically added to the HTTP request.
 * The default value for the `seconds` query parameter is `scrape_interval - 1`.
   If you set `delta_profiling_duration`, then `seconds` is assigned the same value as `delta_profiling_duration`.
@@ -412,6 +423,8 @@ When the `delta` argument is `true`:
   For example, if you set `scrape_interval` to `"15s"`, then `seconds` defaults to `14s`
   If you set `delta_profiling_duration` to `16s`, then `scrape_interval` must be set to at least `17s`.
   If the HTTP endpoint is `/debug/pprof/profile`, then the HTTP query becomes `/debug/pprof/profile?seconds=14`
+
+[pprof]: https://github.com/google/pprof/blob/main/doc/README.md
 
 ## Exported fields
 
