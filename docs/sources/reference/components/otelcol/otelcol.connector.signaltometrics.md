@@ -118,11 +118,18 @@ You can specify multiple `spans` blocks to define different metrics.
 | `description` | `string`       | Description of the generated metric.        | `""`    | no       |
 | `unit`        | `string`       | Unit associated with the generated metric.  | `""`    | no       |
 
-Each `spans` block must contain exactly one of the [`histogram`](#histogram), [`exponential_histogram`](#exponential_histogram), [`sum`](#sum), or [`gauge`](#gauge) blocks, which defines the type of metric to generate.
+Each `spans` block must contain exactly one of the [`histogram`][histogram], [`exponential_histogram`][exponential_histogram], [`sum`][sum], or [`gauge`][gauge] blocks, which defines the type of metric to generate.
 
 The `conditions` argument accepts a list of [OTTL][] conditions that the connector combines with a logical OR.
 The connector processes data into the metric only when at least one condition evaluates to `true`.
 If you don't specify `conditions`, the connector processes all data.
+
+[spans]: #spans
+[attributes]: #attributes
+[exponential_histogram]: #exponential_histogram
+[sum]: #sum
+[gauge]: #gauge
+[histogram]: #histogram
 
 ### `datapoints`
 
@@ -130,8 +137,8 @@ The `datapoints` block configures a metric generated from metric data points.
 
 You can specify multiple `datapoints` blocks to define different metrics.
 
-This block shares the same configuration structure as [`spans`](#spans).
-Refer to the [`spans`](#spans) block documentation for the complete list of supported arguments and blocks.
+This block shares the same configuration structure as [`spans`][spans].
+Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
 
 ### `logs`
 
@@ -139,8 +146,8 @@ The `logs` block configures a metric generated from log records.
 
 You can specify multiple `logs` blocks to define different metrics.
 
-This block shares the same configuration structure as [`spans`](#spans).
-Refer to the [`spans`](#spans) block documentation for the complete list of supported arguments and blocks.
+This block shares the same configuration structure as [`spans`][spans].
+Refer to the [`spans`][spans] block documentation for the complete list of supported arguments and blocks.
 
 ### `attributes`
 
@@ -167,7 +174,7 @@ The `include_resource_attributes` block specifies a resource attribute to includ
 If you don't specify any `include_resource_attributes` blocks, the connector includes all resource attributes.
 If you specify one or more blocks, the connector includes only the listed resource attributes.
 
-This block supports the same arguments as the [`attributes`](#attributes) block.
+This block supports the same arguments as the [`attributes`][attributes] block.
 
 ### `histogram`
 
