@@ -71,9 +71,12 @@ const pgLabelSeparator = ":  "
 
 // pendingError holds an ERROR/FATAL/PANIC line awaiting its STATEMENT
 // continuation. The SQL builder accumulates the STATEMENT keyword line plus any
-// TAB-prefixed continuation lines that follow.
+// TAB-prefixed continuation lines that follow. pid is the backend PID from the
+// error line's prefix; a STATEMENT line only attaches when its PID matches, so
+// interleaved log streams cannot pair one backend's error with another's SQL.
 type pendingError struct {
 	receivedAt time.Time
+	pid        string
 	severity   string
 	datname    string
 	timestamp  time.Time
@@ -124,7 +127,10 @@ type Logs struct {
 	// (parseTextLog and flushExpiredPending both run there), so it needs no lock.
 	// PostgreSQL's logging collector writes each message (the ERROR line, its
 	// STATEMENT, and continuations) atomically and contiguously per backend, so a
-	// single in-flight pending is sufficient — no PID-keyed map is needed.
+	// single in-flight pending is sufficient — no PID-keyed map is needed. The
+	// pending's PID guard covers the residual risk of interleaved streams (e.g.
+	// stderr without the logging collector): a mismatched STATEMENT is dropped
+	// rather than mispaired.
 	pending             *pendingError
 	pendingErrorTimeout time.Duration
 
@@ -388,6 +394,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	pidEndIdx := strings.Index(afterAt, "]")
+	pid := afterAt[pidMarkerIdx+2 : pidEndIdx]
 	afterPid := afterAt[pidEndIdx+1:]
 
 	parts := strings.SplitN(afterPid, ":", 4)
@@ -423,7 +430,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	if label == "STATEMENT" {
 		if l.enableErrorLogs {
 			sqlStart := searchFrom + labelAt + len("STATEMENT:")
-			l.attachStatement(strings.TrimSpace(line[sqlStart:]))
+			l.attachStatement(pid, strings.TrimSpace(line[sqlStart:]))
 		}
 		return nil
 	}
@@ -451,6 +458,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	// pg_errors_total still counted it above.
 	l.pending = &pendingError{
 		receivedAt: time.Now(),
+		pid:        pid,
 		severity:   label,
 		datname:    database,
 		timestamp:  parsedTimestamp,
@@ -495,9 +503,12 @@ func (l *Logs) appendStatement(line string) {
 	l.pending.sql.WriteString(strings.TrimLeft(line, "\t"))
 }
 
-// attachStatement records the STATEMENT keyword line's SQL onto the pending error.
-func (l *Logs) attachStatement(sql string) {
-	if l.pending == nil {
+// attachStatement records the STATEMENT keyword line's SQL onto the pending
+// error, provided the line's backend PID matches the pending's. A mismatched
+// PID means the streams interleaved; the pending is left in place to be
+// displaced by the next error or dropped on timeout.
+func (l *Logs) attachStatement(pid, sql string) {
+	if l.pending == nil || l.pending.pid != pid {
 		return
 	}
 	if l.pending.sql.Len() > 0 {

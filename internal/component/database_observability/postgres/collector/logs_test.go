@@ -1245,3 +1245,21 @@ func TestLogsCollector_AppNameLabelDoesNotShadowSeverity(t *testing.T) {
 	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "books_store", "app-user"))
 	require.Equal(t, float64(1), got, "a label-like application_name must not shadow the real severity")
 }
+
+// TestLogsCollector_StatementFromDifferentPidDoesNotAttach pins the PID guard:
+// a STATEMENT line from another backend must not attach to the pending error,
+// so interleaved streams cannot emit a mispaired op="error_message" entry.
+func TestLogsCollector_StatementFromDifferentPidDoesNotAttach(t *testing.T) {
+	c, receiver, entryCh := startErrorLogs(t, 100*time.Millisecond)
+	ts := logTS(c)
+
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[111]:1:42P01:ERROR:  relation \"missing\" does not exist"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[222]:1:42P02:STATEMENT:  SELECT * FROM other_backend"}}
+	receiver.Chan() <- loki.Entry{Entry: push.Entry{Timestamp: time.Now(),
+		Line: ts + "::user@books_store:[222]:2:00000:LOG:  duration: 0.001 ms"}}
+
+	got := drainEntries(t, entryCh, 1, 500*time.Millisecond)
+	require.Len(t, got, 0, "a STATEMENT from a different PID must not pair with the pending error")
+}
