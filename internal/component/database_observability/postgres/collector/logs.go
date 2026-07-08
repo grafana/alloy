@@ -138,6 +138,12 @@ type Logs struct {
 }
 
 func NewLogs(args LogsArguments) (*Logs, error) {
+	// Fail loudly instead of silently emitting nothing: the error surfaces via
+	// startCollectors into the component's health status.
+	if args.EnableErrorLogs && !fingerprint.Supported() {
+		return nil, fmt.Errorf("logs.enable_error_logs requires a cgo-enabled Alloy build (CGO_ENABLED=1)")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	l := &Logs{

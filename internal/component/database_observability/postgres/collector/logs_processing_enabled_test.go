@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
+	"github.com/grafana/alloy/internal/component/database_observability/postgres/fingerprint"
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
@@ -42,6 +43,9 @@ database_observability_logs_processing_enabled 0
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.enabled && !fingerprint.Supported() {
+				t.Skip("enable_error_logs requires a cgo build; NewLogs rejects it otherwise")
+			}
 			reg := prometheus.NewRegistry()
 			c, err := NewLogs(LogsArguments{
 				Receiver:        loki.NewLogsReceiver(),

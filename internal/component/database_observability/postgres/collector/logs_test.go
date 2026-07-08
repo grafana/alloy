@@ -918,6 +918,9 @@ func requireOnlyFields(t *testing.T, fields map[string]string, allowed ...string
 // startup, so the timeout/race tests must set it here).
 func startErrorLogs(t *testing.T, timeout time.Duration) (*Logs, loki.LogsReceiver, chan loki.Entry) {
 	t.Helper()
+	if !fingerprint.Supported() {
+		t.Skip("op=error emission requires SQL fingerprinting, which needs a cgo build")
+	}
 	receiver := loki.NewLogsReceiver()
 	entryCh := make(chan loki.Entry, 8)
 	c, err := NewLogs(LogsArguments{
