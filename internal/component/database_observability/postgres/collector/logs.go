@@ -317,6 +317,19 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		return nil
 	}
 
+	// Cheap keyword gate before the (expensive) format regex: most lines (e.g.
+	// LOG statements) exit here. The one other line that matters is the boundary
+	// line that flushes a completed ERROR+STATEMENT pair, only possible when
+	// such a pair is actually buffered.
+	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
+		strings.Contains(line, "FATAL:") ||
+		strings.Contains(line, "PANIC:")
+	hasStatementKeyword := l.enableErrorLogs && strings.Contains(line, "STATEMENT:")
+	mayFlush := l.enableErrorLogs && l.pending != nil && l.pending.hasStatement
+	if !hasErrorKeyword && !hasStatementKeyword && !mayFlush {
+		return nil
+	}
+
 	isFormat := logFormatRegex.MatchString(line)
 
 	// A new prefixed line means any in-flight ERROR+STATEMENT pair is complete;
@@ -325,10 +338,6 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		l.flushPending()
 	}
 
-	hasErrorKeyword := strings.Contains(line, "ERROR:") ||
-		strings.Contains(line, "FATAL:") ||
-		strings.Contains(line, "PANIC:")
-	hasStatementKeyword := l.enableErrorLogs && strings.Contains(line, "STATEMENT:")
 	if !hasErrorKeyword && !hasStatementKeyword {
 		return nil
 	}
