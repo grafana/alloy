@@ -88,7 +88,7 @@ The following blocks can be used to configure the `pull` block:
 
 | Name              | Description                                                                   | Required |
 | ----------------- | ----------------------------------------------------------------------------- | -------- |
-| [`limit`][limit]  | Configures Pub/Sub flow-control limits for in-flight message processing.      | no       |
+| [`limit`](#limit)  | Configures Pub/Sub flow-control limits for in-flight message processing.      | no       |
 
 To make use of the `pull` strategy, the GCP project must have been [configured](/docs/loki/next/clients/promtail/gcplog-cloud/) to forward its cloud resource logs onto a Pub/Sub topic for `loki.source.gcplog` to consume.
 
