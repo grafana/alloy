@@ -256,7 +256,7 @@ func TestBuildAlloyConfig_RemoteCfgValidation(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := buildAlloyConfig(tc.cfg)
+			_, _, err := buildAlloyConfig(zap.NewNop(), tc.cfg)
 			if tc.errContains != "" {
 				require.ErrorContains(t, err, tc.errContains)
 			} else {
