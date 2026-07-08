@@ -62,14 +62,9 @@ You can use the following arguments with `loki.rules.kubernetes`:
 
 * [`authorization`](#authorization) block
 * [`basic_auth`](#basic_auth) block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
+* [`bearer_token_file`](#arguments) argument
+* [`bearer_token`](#arguments) argument
 * [`oauth2`](#oauth2) block
-
- [arguments]: #arguments
- [authorization]: #authorization
- [basic_auth]: #basic_auth
- [oauth2]: #oauth2
 
 If no `tenant_id` is provided, the component assumes that the Loki instance at `address` is running in single-tenant mode and no `X-Scope-OrgID` header is sent.
 

@@ -572,10 +572,7 @@ Refer to the linked documentation for more details.
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
-[authorization]: #authorization
 [azuread]: #azuread
-[basic_auth]: #basic_auth
-[oauth2]: #oauth2
 [sigv4]: #sigv4
 [endpoint]: #endpoint
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)

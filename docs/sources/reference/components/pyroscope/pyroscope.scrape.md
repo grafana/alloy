@@ -77,14 +77,13 @@ You can use the following arguments with `pyroscope.scrape`:
 
 * [`authorization`](#authorization) block
 * [`basic_auth`](#basic_auth) block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
+* [`bearer_token_file`](#arguments) argument
+* [`bearer_token`](#arguments) argument
 * [`oauth2`](#oauth2) block
 
 Any omitted arguments take on their default values.
 If conflicting arguments are being passed, for example, configuring both `bearer_token` and `bearer_token_file`, then `pyroscope.scrape` will fail to start and will report an error.
 
-[arguments]: #arguments
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
