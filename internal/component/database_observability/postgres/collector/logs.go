@@ -369,13 +369,13 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 					if ok && !absolute.After(l.startTime) {
 						return nil // Skip historical log
 					}
-					// Record the timestamp for the op="error" entry, preferring the
-					// timezone-resolved instant; fall back to the raw parse when the
-					// log_timezone can't be resolved (same case main declines to skip).
+					// Record the timestamp for the op="error" entry only when the
+					// timezone resolved. time.Parse fabricates a zero-offset instant
+					// for unknown abbreviations, which can be hours wrong (and Loki
+					// rejects future timestamps); unresolved lines fall back to
+					// arrival time at emit instead.
 					if ok {
 						parsedTimestamp = absolute
-					} else {
-						parsedTimestamp = logTimestamp
 					}
 					break
 				}
