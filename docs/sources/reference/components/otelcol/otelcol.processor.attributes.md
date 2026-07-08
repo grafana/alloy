@@ -164,7 +164,7 @@ One of the following is also required:
 * For logs, one of `log_bodies`, `log_severity_texts`, `log_severity`, [attribute][], [resource][], or [library][] must be specified with a non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `metric_names`, and `services` attributes are invalid.
 * For metrics, `metric_names` must be specified with a valid non-empty value for a valid configuration.
-    The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute][], [resource][], and [library][] attributes are invalid.
+  The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute][], [resource][], and [library][] attributes are invalid.
 
 [attribute]: #attribute
 [resource]: #resource
