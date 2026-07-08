@@ -509,7 +509,7 @@ debug metrics.
 
 ## Wrap regular expression strings
 
-Some collector blocks such as [`scheduled_task`][scheduled_task] accept a regular expression as a string argument.
+Some collector blocks such as [`scheduled_task`](#scheduled_task) accept a regular expression as a string argument.
 `prometheus.exporter.windows` prefixes some regular expression string arguments with `^(?:` and suffixes them with `)$`.
 For example, if a user sets an `exclude` argument to `".*"`, Alloy sets it to `"^(?:.*)$"`.
 
@@ -537,42 +537,42 @@ You can enable a subset of collectors to limit the amount of metrics that the `p
 | [`cpu`][cpu]                               | CPU usage                                                      | Yes                |
 | [`cpu_info`][cpu_info]                     | CPU Information                                                |                    |
 | [`container`][container]                   | Container metrics                                              |                    |
-| [`dfsr`][dfsr]                             | DFSR metrics                                                   |                    |
+| [`dfsr`](#dfsr)                             | DFSR metrics                                                   |                    |
 | [`dhcp`][dhcp]                             | DHCP Server                                                    |                    |
-| [`dns`][dns]                               | DNS Server                                                     |                    |
-| [`exchange`][exchange]                     | Exchange metrics                                               |                    |
-| [`filetime`][filetime]                     | File modification time metrics                                 |                    |
+| [`dns`](#dns)                               | DNS Server                                                     |                    |
+| [`exchange`](#exchange)                     | Exchange metrics                                               |                    |
+| [`filetime`](#filetime)                     | File modification time metrics                                 |                    |
 | [`fsrmquota`][fsrmquota]                   | Microsoft File Server Resource Manager (FSRM) Quotas collector |                    |
 | [`gpu`][gpu]                               | GPU usage and memory consumption                               |                    |
 | [`hyperv`][hyperv]                         | Hyper-V hosts                                                  |                    |
-| [`iis`][iis]                               | IIS sites and applications                                     |                    |
-| [`logical_disk`][logical_disk]             | Logical disks, disk I/O                                        | Yes                |
+| [`iis`](#iis)                               | IIS sites and applications                                     |                    |
+| [`logical_disk`](#logical_disk)             | Logical disks, disk I/O                                        | Yes                |
 | [`memory`][memory]                         | Memory usage metrics                                           |                    |
-| [`mscluster`][mscluster]                   | MSCluster metrics                                              |                    |
+| [`mscluster`](#mscluster)                   | MSCluster metrics                                              |                    |
 | [`msmq`][msmq]                             | MSMQ queues                                                    |                    |
-| [`mssql`][mssql]                           | [SQL Server Performance Objects][sql_server] metrics           |                    |
-| [`netframework`][netframework]             | .NET Framework metrics                                         |                    |
-| [`net`][net]                               | Network interface I/O                                          | Yes                |
+| [`mssql`](#mssql)                           | [SQL Server Performance Objects][sql_server] metrics           |                    |
+| [`netframework`](#netframework)             | .NET Framework metrics                                         |                    |
+| [`net`](#net)                               | Network interface I/O                                          | Yes                |
 | [`os`][os]                                 | OS metrics (memory, processes, users)                          | Yes                |
 | [`pagefile`][pagefile]                     | Pagefile metrics                                               |                    |
-| [`performancecounter`][performancecounter] | Performance Counter metrics                                    |                    |
-| [`physical_disk`][physical_disk]           | Physical disks                                                 |                    |
-| [`printer`][printer]                       | Printer metrics                                                |                    |
-| [`process`][process]                       | Per-process metrics                                            |                    |
+| [`performancecounter`](#performancecounter) | Performance Counter metrics                                    |                    |
+| [`physical_disk`](#physical_disk)           | Physical disks                                                 |                    |
+| [`printer`](#printer)                       | Printer metrics                                                |                    |
+| [`process`](#process)                       | Per-process metrics                                            |                    |
 | [`remote_fx`][remote_fx]                   | RemoteFX protocol (RDP) metrics                                |                    |
-| [`scheduled_task`][scheduled_task]         | Scheduled Tasks metrics                                        |                    |
-| [`service`][service]                       | Service state metrics                                          | Yes                |
-| [`smb`][smb]                               | SMB Server shares                                              |                    |
-| [`smb_client`][smb_client]                 | SMB Client shares                                              |                    |
-| [`smtp`][smtp]                             | IIS SMTP Server                                                |                    |
+| [`scheduled_task`](#scheduled_task)         | Scheduled Tasks metrics                                        |                    |
+| [`service`](#service)                       | Service state metrics                                          | Yes                |
+| [`smb`](#smb)                               | SMB Server shares                                              |                    |
+| [`smb_client`](#smb_client)                 | SMB Client shares                                              |                    |
+| [`smtp`](#smtp)                             | IIS SMTP Server                                                |                    |
 | [`system`][system]                         | System calls                                                   | Yes                |
-| [`tcp`][tcp]                               | TCP connections                                                |                    |
-| [`time`][time]                             | Windows Time Service                                           |                    |
+| [`tcp`](#tcp)                               | TCP connections                                                |                    |
+| [`time`](#time)                             | Windows Time Service                                           |                    |
 | [`thermalzone`][thermalzone]               | Thermal information                                            |                    |
 | [`terminal_services`][terminal_services]   | Terminal services (RDS)                                        |                    |
-| [`textfile`][textfile]                     | Read Prometheus metrics from a text file                       |                    |
+| [`textfile`](#textfile)                     | Read Prometheus metrics from a text file                       |                    |
 | [`udp`][udp]                               | UDP connections                                                |                    |
-| [`update`][update]                         | Windows Update service metrics                                 |                    |
+| [`update`](#update)                         | Windows Update service metrics                                 |                    |
 | [`vmware`][vmware]                         | Performance counters installed by the VMware Guest agent       |                    |
 
 [ad]: https://github.com/prometheus-community/windows_exporter/blob/{{< param "PROM_WIN_EXP_VERSION" >}}/docs/collector.ad.md

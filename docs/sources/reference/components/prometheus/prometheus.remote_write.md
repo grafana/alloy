@@ -115,14 +115,14 @@ The following arguments are supported:
 
  At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`azuread`][azuread] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][endpoint] argument
-* [`bearer_token`][endpoint] argument
-* [`google_iam`][google_iam] block
-* [`oauth2`][oauth2] block
-* [`sigv4`][sigv4] block
+* [`authorization`](#authorization) block
+* [`azuread`](#azuread) block
+* [`basic_auth`](#basic_auth) block
+* [`bearer_token_file`](#endpoint) argument
+* [`bearer_token`](#endpoint) argument
+* [`google_iam`](#google_iam) block
+* [`oauth2`](#oauth2) block
+* [`sigv4`](#sigv4) block
 
 When multiple `endpoint` blocks are provided, metrics are concurrently sent to all configured locations.
 Each endpoint has a _queue_ which is used to read metrics from the WAL and queue them for sending.
@@ -144,7 +144,7 @@ If the endpoint doesn't support receiving native histogram samples, pushing metr
 
 {{< docs/shared lookup="reference/components/azuread-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-You must configure exactly one of the [`managed_identity`][managed_identity], [`oauth`][oauth], [`sdk`][sdk], or [`workload_identity`][workload_identity] blocks.
+You must configure exactly one of the [`managed_identity`](#managed_identity), [`oauth`](#oauth), [`sdk`](#sdk), or [`workload_identity`](#workload_identity) blocks.
 
 ### `managed_identity`
 
