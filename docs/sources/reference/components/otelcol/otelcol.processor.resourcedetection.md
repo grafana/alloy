@@ -82,8 +82,8 @@ You can use the following arguments with `otelcol.processor.resourcedetection`:
 {{< /column-list >}}
 
 You can customize most detectors with the relevant block.
-For example, you can customize the `ec2` detector with the [ec2](#ec2) block.
-If you omit the [ec2](#ec2) block, the defaults specified in the [ec2](#ec2) block documentation are used.
+For example, you can customize the `ec2` detector with the [`ec2`][ec2] block.
+If you omit the [`ec2`][ec2] block, the defaults specified in the [`ec2`][ec2] block documentation are used.
 
 If multiple detectors are inserting the same attribute name, the first detector to insert wins.
 For example, if you had `detectors = ["eks", "ec2"]` then `cloud.platform` will be `aws_eks` instead of `ec2`.
@@ -700,7 +700,7 @@ The `hetzner` block supports the following attributes:
 
 | Attribute             | Type                                  | Description                                  | Default | Required |
 | --------------------- | ------------------------------------- | -------------------------------------------- | ------- | -------- |
-| `resource_attributes` | [`resource_attributes`](#resource-attribute-configuration) | Configures which resource attributes to add. |         | no       |
+| `resource_attributes` | [`resource_attributes`][res-attr-cfg] | Configures which resource attributes to add. |         | no       |
 
 #### `hetzner` > `resource_attributes`
 
@@ -1164,7 +1164,7 @@ The `upcloud` block supports the following attributes:
 | Attribute                  | Type                                  | Description                                                                    | Default | Required |
 | -------------------------- | ------------------------------------- | ------------------------------------------------------------------------------ | ------- | -------- |
 | `fail_on_missing_metadata` | `bool`                                | Whether to fail if metadata cannot be retrieved from the UpCloud metadata API. | `false` | no       |
-| `resource_attributes`      | [`resource_attributes`](#resource-attribute-configuration) | Configures which resource attributes to add.                                   |         | no       |
+| `resource_attributes`      | [`resource_attributes`][res-attr-cfg] | Configures which resource attributes to add.                                   |         | no       |
 
 #### `upcloud` > `resource_attributes`
 
@@ -1275,7 +1275,7 @@ otelcol.processor.resourcedetection "default" {
 ### `env` and `ec2`
 
 There is no need to put in an `ec2 {}` block.
-The `ec2` defaults are applied automatically, as specified in [`ec2`](#ec2).
+The `ec2` defaults are applied automatically, as specified in [`ec2`][ec2].
 
 ```alloy
 otelcol.processor.resourcedetection "default" {
@@ -1292,7 +1292,7 @@ otelcol.processor.resourcedetection "default" {
 ### `ec2` with default resource attributes
 
 There is no need to put in a `ec2 {}` block.
-The `ec2` defaults are applied automatically, as specified in [`ec2`](#ec2).
+The `ec2` defaults are applied automatically, as specified in [`ec2`][ec2].
 
 ```alloy
 otelcol.processor.resourcedetection "default" {
