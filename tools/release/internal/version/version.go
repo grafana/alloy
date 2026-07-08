@@ -32,27 +32,6 @@ func MajorMinor(v string) (string, error) {
 	return StripVPrefix(semver.MajorMinor(v)), nil
 }
 
-// NextMinor increments the minor version and returns major.minor (without v prefix).
-// e.g., "v1.14.0" -> "1.15", "1.14.0" -> "1.15"
-func NextMinor(v string) (string, error) {
-	v = EnsureVPrefix(v)
-	if !semver.IsValid(v) {
-		return "", fmt.Errorf("invalid semver: %s", v)
-	}
-
-	// Parse major and minor from MajorMinor result
-	mm := semver.MajorMinor(v) // "v1.14"
-	mm = StripVPrefix(mm)      // "1.14"
-
-	var major, minor int
-	_, err := fmt.Sscanf(mm, "%d.%d", &major, &minor)
-	if err != nil {
-		return "", fmt.Errorf("parsing major.minor from %s: %w", mm, err)
-	}
-
-	return fmt.Sprintf("%d.%d", major, minor+1), nil
-}
-
 // IsPatch returns true if the version has a non-zero patch component (e.g., "v1.29.1").
 func IsPatch(v string) (bool, error) {
 	v = EnsureVPrefix(v)

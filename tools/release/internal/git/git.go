@@ -75,17 +75,6 @@ func BranchExistsOnRemote(branch string) (bool, error) {
 	return out != "", nil
 }
 
-// Checkout checks out an existing branch.
-func Checkout(branch string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if _, err := run("git", "checkout", branch); err != nil {
-		return fmt.Errorf("checking out branch %s: %w", branch, err)
-	}
-	return nil
-}
-
 // CherryPick cherry-picks a commit. By default it commits with a "(cherry picked from commit ...)"
 // reference. Set shouldCommit to false to stage changes without committing.
 func CherryPick(sha string, shouldCommit bool) error {
@@ -143,15 +132,6 @@ func Fetch(branch string) error {
 	return nil
 }
 
-// CurrentBranch returns the name of the currently checked-out branch.
-func CurrentBranch() (string, error) {
-	out, err := run("git", "rev-parse", "--abbrev-ref", "HEAD")
-	if err != nil {
-		return "", fmt.Errorf("getting current branch: %w", err)
-	}
-	return out, nil
-}
-
 // GetHeadCommitMessage returns the full commit message for HEAD.
 func GetHeadCommitMessage() (string, error) {
 	message, err := run("git", "log", "-1", "--format=%B")
@@ -182,38 +162,11 @@ func GetHeadCommitAuthor() (CommitAuthor, error) {
 	return CommitAuthor{Name: name, Email: email}, nil
 }
 
-// AbortCherryPick attempts to abort an in-progress cherry-pick.
-func AbortCherryPick() error {
-	if err := exec.Command("git", "cherry-pick", "--abort").Run(); err != nil {
-		return fmt.Errorf("aborting cherry-pick: %w", err)
-	}
-	return nil
-}
-
 // ResetLastCommit resets HEAD back one commit while keeping that commit's
 // changes in the working tree.
 func ResetLastCommit() error {
 	if _, err := run("git", "reset", "HEAD^"); err != nil {
 		return fmt.Errorf("resetting last commit into working tree: %w", err)
-	}
-	return nil
-}
-
-// ResetHard resets the index and working tree to HEAD, discarding all changes.
-func ResetHard() error {
-	if _, err := run("git", "reset", "--hard"); err != nil {
-		return fmt.Errorf("resetting working copy: %w", err)
-	}
-	return nil
-}
-
-// DeleteLocalBranch force-deletes a local branch.
-func DeleteLocalBranch(branch string) error {
-	if err := validateBranchName(branch); err != nil {
-		return err
-	}
-	if _, err := run("git", "branch", "-D", branch); err != nil {
-		return fmt.Errorf("deleting local branch %s: %w", branch, err)
 	}
 	return nil
 }
