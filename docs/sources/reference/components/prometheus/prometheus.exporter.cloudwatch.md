@@ -264,7 +264,7 @@ static "<LABEL>" {
 
 You can configure the `static` block one or multiple times to scrape metrics with different sets of `dimensions`.
 
-|     Name      |      Type      |                                                                         Description                                                                          | Default | Required |
+| Name          | Type           | Description                                                                                                                                                  | Default | Required |
 | ------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- | -------- |
 | `dimensions`  | `map(string)`  | CloudWatch metric dimensions as a list of name / value pairs. Must uniquely define all metrics in this job.                                                  |         | yes      |
 | `namespace`   | `string`       | CloudWatch metric namespace.                                                                                                                                 |         | yes      |
