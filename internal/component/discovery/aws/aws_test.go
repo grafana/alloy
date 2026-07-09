@@ -195,4 +195,18 @@ func TestAWSValidate(t *testing.T) {
 		args.Clusters = []string{"c1"}
 		require.ErrorContains(t, args.Validate(), "clusters is only supported")
 	})
+
+	t.Run("request_concurrency with ec2 role", func(t *testing.T) {
+		args := base()
+		args.Role = "ec2"
+		args.RequestConcurrency = 5
+		require.ErrorContains(t, args.Validate(), "request_concurrency is only supported")
+	})
+
+	t.Run("request_concurrency with lightsail role", func(t *testing.T) {
+		args := base()
+		args.Role = "lightsail"
+		args.RequestConcurrency = 5
+		require.ErrorContains(t, args.Validate(), "request_concurrency is only supported")
+	})
 }

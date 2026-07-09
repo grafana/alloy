@@ -242,5 +242,11 @@ func (args *AWSArguments) Validate() error {
 		}
 	}
 
+	if args.RequestConcurrency != 0 {
+		if _, ok := clusterRoles[role]; !ok {
+			return fmt.Errorf("request_concurrency is only supported with the ecs, elasticache, msk, and rds roles, not %q", args.Role)
+		}
+	}
+
 	return nil
 }
