@@ -1,6 +1,6 @@
 module github.com/grafana/alloy
 
-go 1.26.4
+go 1.26.5
 
 // This local replace is required for local development and testing of the syntax submodule.
 // It is intentionally local to this module; shared remote replaces are synced from collector/builder-config.yaml.
