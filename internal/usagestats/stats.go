@@ -30,6 +30,9 @@ type Report struct {
 	Os           string         `json:"os"`
 	Arch         string         `json:"arch"`
 	DeployMode   string         `json:"deployMode"`
+	// Engine identifies which Alloy engine is running: "default" for `alloy run`
+	// or "otel" for `alloy otel`.
+	Engine string `json:"engine"`
 }
 
 func sendReport(ctx context.Context, seed *alloyseed.Seed, interval time.Time, metrics map[string]any) error {
@@ -42,6 +45,7 @@ func sendReport(ctx context.Context, seed *alloyseed.Seed, interval time.Time, m
 		Interval:     interval,
 		Metrics:      metrics,
 		DeployMode:   useragent.GetDeployMode(),
+		Engine:       useragent.GetEngineMode(),
 	}
 	out, err := json.MarshalIndent(report, "", " ")
 	if err != nil {

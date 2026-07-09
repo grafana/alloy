@@ -2,6 +2,7 @@ package usagestats
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"math"
 	"time"
@@ -15,6 +16,14 @@ import (
 var (
 	reportCheckInterval = time.Minute
 	reportInterval      = 4 * time.Hour
+
+	// reportCheckIntervalOverride and reportIntervalOverride are empty in
+	// production. They exist only so a build can shorten the reporting cadence via
+	// `-ldflags -X` (which can set string vars, not time.Duration); the e2e
+	// usage-stats test sets them. When non-empty they are parsed in Start and used
+	// instead of the defaults above.
+	reportCheckIntervalOverride = ""
+	reportIntervalOverride      = ""
 
 	reportBackoffConfig = backoff.Config{
 		MinBackoff: time.Second,
@@ -44,21 +53,38 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]an
 	rep.logger.Info("running usage stats reporter")
 	rep.seed = alloyseed.Get()
 
-	// check every minute if we should report.
-	ticker := time.NewTicker(reportCheckInterval)
+	checkInterval := reportCheckInterval
+	if reportCheckIntervalOverride != "" {
+		d, err := time.ParseDuration(reportCheckIntervalOverride)
+		if err != nil {
+			return fmt.Errorf("invalid reportCheckIntervalOverride %q: %w", reportCheckIntervalOverride, err)
+		}
+		checkInterval = d
+	}
+	interval := reportInterval
+	if reportIntervalOverride != "" {
+		d, err := time.ParseDuration(reportIntervalOverride)
+		if err != nil {
+			return fmt.Errorf("invalid reportIntervalOverride %q: %w", reportIntervalOverride, err)
+		}
+		interval = d
+	}
+
+	// check every checkInterval if we should report.
+	ticker := time.NewTicker(checkInterval)
 	defer ticker.Stop()
 
-	// find  when to send the next report.
-	next := nextReport(reportInterval, rep.seed.CreatedAt, time.Now())
+	// find when to send the next report.
+	next := nextReport(interval, rep.seed.CreatedAt, time.Now())
 	if rep.lastReport.IsZero() {
 		// if we never reported assumed it was the last interval.
-		rep.lastReport = next.Add(-reportInterval)
+		rep.lastReport = next.Add(-interval)
 	}
 	for {
 		select {
 		case <-ticker.C:
 			now := time.Now()
-			if !next.Equal(now) && now.Sub(rep.lastReport) < reportInterval {
+			if !next.Equal(now) && now.Sub(rep.lastReport) < interval {
 				continue
 			}
 			rep.logger.Info("reporting Alloy stats", "date", time.Now())
@@ -72,7 +98,7 @@ func (rep *Reporter) Start(ctx context.Context, metricsFunc func() map[string]an
 			// wait a full interval rather than re-attempting on every tick, which
 			// would otherwise hammer the endpoint indefinitely.
 			rep.lastReport = next
-			next = next.Add(reportInterval)
+			next = next.Add(interval)
 		case <-ctx.Done():
 			return ctx.Err()
 		}
