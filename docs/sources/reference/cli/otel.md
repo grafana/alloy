@@ -37,6 +37,10 @@ Replace the following:
   These flags are the same as upstream.
   Run `alloy otel --help` to show the complete list of supported flags.
 
+In addition to the upstream flags, the `otel` command accepts:
+
+- `--disable-reporting`: Disable [anonymous usage statistics reporting](../../../data-collection/) to Grafana.
+
 ## Configuration
 
 The `otel` command accepts standard OpenTelemetry Collector YAML configuration files.

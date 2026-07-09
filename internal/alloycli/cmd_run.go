@@ -46,6 +46,7 @@ import (
 	uiservice "github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
+	"github.com/grafana/alloy/internal/useragent"
 	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
@@ -354,22 +355,20 @@ func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
 	return fr.run(cmd.Context(), cmd.Flags(), rp)
 }
 
-// getEnabledComponentsFunc returns a function that gets the current enabled components
-func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]any {
-	return func() map[string]any {
-		components := component.GetAllComponents(f, component.InfoOptions{})
-		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
-			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
-		}
-		componentNames := map[string]struct{}{}
-		for _, c := range components {
-			if c.Type != component.TypeBuiltin {
-				continue
-			}
-			componentNames[c.ComponentName] = struct{}{}
-		}
-		return map[string]any{"enabled-components": maps.Keys(componentNames)}
+// getEnabledComponents returns the names of the currently enabled builtin components.
+func getEnabledComponents(f *alloy_runtime.Runtime) []string {
+	components := component.GetAllComponents(f, component.InfoOptions{})
+	if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
+		components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
 	}
+	componentNames := map[string]struct{}{}
+	for _, c := range components {
+		if c.Type != component.TypeBuiltin {
+			continue
+		}
+		componentNames[c.ComponentName] = struct{}{}
+	}
+	return maps.Keys(componentNames)
 }
 
 type runParams struct {
@@ -586,14 +585,26 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		f.Run(ctx)
 	})
 
-	// Report usage of enabled components
-	if !fr.disableReporting {
+	// Report usage of enabled components.
+	if useragent.GetEngineMode() == useragent.EngineOTel {
+		// Running embedded in the OTel Collector via the alloyengine extension (the
+		// only way run() executes under `alloy otel`): feed the Default Engine
+		// components to the process-wide tracker instead of starting a second
+		// reporter, so the single `alloy otel` report lists them under
+		// "alloyengine-components".
+		usagestats.GlobalTracker.SetAlloyEngineComponentsFunc(func() []string {
+			return getEnabledComponents(f)
+		})
+	} else if !fr.disableReporting {
+		usagestats.GlobalTracker.SetEnabledComponentsFunc(func() []string {
+			return getEnabledComponents(f)
+		})
 		reporter, err := usagestats.NewReporter(slogger)
 		if err != nil {
 			return fmt.Errorf("failed to create reporter: %w", err)
 		}
 		go func() {
-			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
+			err := reporter.Start(ctx, usagestats.GlobalTracker.Metrics)
 			if err != nil && !errors.Is(err, context.Canceled) {
 				slogger.Error("failed to start reporter", "err", err)
 			}
