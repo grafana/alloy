@@ -431,3 +431,39 @@ func Test_WaitForMetadata(t *testing.T) {
 		require.Equal(t, 14*time.Second, otelObj.WaitForMetadataTimeout)
 	})
 }
+
+func Test_WatchSyncPeriod(t *testing.T) {
+	t.Run("default", func(t *testing.T) {
+		cfg := `
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.Equal(t, 5*time.Minute, otelObj.WatchSyncPeriod)
+	})
+
+	t.Run("non_default", func(t *testing.T) {
+		cfg := `
+		watch_sync_period = "30s"
+
+		output {
+			// no-op: will be overridden by test code.
+		}
+	`
+		var args k8sattributes.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(cfg), &args))
+
+		convertedArgs, err := args.Convert()
+		require.NoError(t, err)
+		otelObj := (convertedArgs).(*k8sattributesprocessor.Config)
+
+		require.Equal(t, 30*time.Second, otelObj.WatchSyncPeriod)
+	})
+}

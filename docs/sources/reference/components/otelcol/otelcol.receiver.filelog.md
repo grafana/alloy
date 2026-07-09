@@ -48,6 +48,7 @@ You can use the following arguments with `otelcol.receiver.filelog`:
 | `encoding`                      | `string`                   | The encoding of the log file.                                                              | `"utf-8"` | no       |
 | `exclude_older_than`            | `duration`                 | Exclude files with a modification time older than the specified duration.                  | `"0s"`    | no       |
 | `exclude`                       | `list(string)`             | A list of glob patterns to exclude files that would be included by the `include` patterns. | `[]`      | no       |
+| `file_cache_advise`             | `bool`                     | Whether to advise the OS to expect sequential reads while tailing the file (Linux only).   | `false`   | no       |
 | `fingerprint_size`              | `units.Base2Bytes`         | The size of the fingerprint used to detect file changes.                                   | `1KiB`    | no       |
 | `force_flush_period`            | `duration`                 | The period after which logs are flushed even if the buffer isn't full.                     | `"500ms"` | no       |
 | `include_file_name_resolved`    | `bool`                     | Whether to include the resolved filename in the log entry.                                 | `false`   | no       |

@@ -312,6 +312,7 @@ The following arguments are supported:
 | Name               | Type     | Description                                                         | Default | Required |
 | ------------------ | -------- | ------------------------------------------------------------------- | ------- | -------- |
 | `spans_per_second` | `number` | Sets the maximum number of spans that can be processed each second. |         | yes      |
+| `burst_capacity`   | `number` | Sets the maximum burst size in spans. If omitted, it defaults to `2 * spans_per_second` in the upstream policy. | `0`     | no       |
 
 ### `bytes_limiting`
 
