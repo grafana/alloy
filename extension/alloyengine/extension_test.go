@@ -14,6 +14,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/grafana/alloy/internal/readyctx"
+	"github.com/grafana/alloy/syntax/parser"
 )
 
 func shutdownExtensionWithTestTimeout(e *alloyEngineExtension) error {
@@ -262,6 +263,51 @@ func TestBuildAlloyConfig_RemoteCfgValidation(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestUsesModulePath(t *testing.T) {
+	tests := []struct {
+		name    string
+		content string
+		want    bool
+	}{
+		{
+			name:    "no module_path reference",
+			content: `logging { level = "debug" }`,
+			want:    false,
+		},
+		{
+			name: "module_path used in import.file filename",
+			content: `import.file "node_collector" {
+				filename = file.path_join(module_path, "modules/node_collector.alloy")
+			}`,
+			want: true,
+		},
+		{
+			name: "module_path used in component attribute",
+			content: `prometheus.exporter.blackbox "federation" {
+				config_file = file.path_join(module_path, "blackbox_federation.yaml")
+			}`,
+			want: true,
+		},
+		{
+			name:    "module_path as a bare attribute value",
+			content: `foo { bar = module_path }`,
+			want:    true,
+		},
+		{
+			name:    "attribute literally named module_path is not a reference",
+			content: `foo { module_path = "x" }`,
+			want:    false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			tree, err := parser.ParseFile("test.alloy", []byte(tc.content))
+			require.NoError(t, err)
+			require.Equal(t, tc.want, usesModulePath(tree))
 		})
 	}
 }
