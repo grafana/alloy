@@ -10,6 +10,7 @@ import {
   SignalKind,
 } from '@grafana/alloy-pipeline-graph';
 
+import { componentDocsUrl } from '../../utils/docs';
 import type { ComponentHealthState, ComponentInfo } from '../component/types';
 
 const INNER_NODE_ID_SEPARATOR = '/';
@@ -29,7 +30,7 @@ function buildComponentNode(component: ComponentInfo, overrides: Partial<Pipelin
     label: component.label ?? null,
     stage: inferPipelineStage(component.name),
     signals: deduplicateSignals(inferSignalsFromComponentName(component.name)),
-    docsUrl: `https://grafana.com/docs/alloy/latest/reference/components/${component.name}`,
+    docsUrl: componentDocsUrl(component.name),
     health: mapHealth(component.health.state),
     meta: {
       moduleID: component.moduleID,

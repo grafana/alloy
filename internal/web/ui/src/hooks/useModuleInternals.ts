@@ -24,21 +24,24 @@ export function useModuleInternals(components: ComponentInfo[], isRemotecfg: boo
     const abortController = new AbortController();
 
     const load = async () => {
-      const result = new Map<string, ComponentInfo[]>();
-      for (const moduleId of moduleIds) {
-        const url = isRemotecfg
-          ? `./api/v0/web/remotecfg/modules/${moduleId}/components`
-          : `./api/v0/web/modules/${moduleId}/components`;
-        const response = await fetch(url, {
-          cache: 'no-cache',
-          credentials: 'same-origin',
-          signal: abortController.signal,
-        });
-        if (response.ok) {
-          result.set(moduleId, (await response.json()) as ComponentInfo[]);
-        }
-      }
-      setInternals(result);
+      const entries = await Promise.all(
+        Array.from(moduleIds, async (moduleId) => {
+          const url = isRemotecfg
+            ? `./api/v0/web/remotecfg/modules/${moduleId}/components`
+            : `./api/v0/web/modules/${moduleId}/components`;
+          const response = await fetch(url, {
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            signal: abortController.signal,
+          });
+          if (!response.ok) {
+            console.error(`Failed to load module ${moduleId}: ${response.status}`);
+            return null;
+          }
+          return [moduleId, (await response.json()) as ComponentInfo[]] as const;
+        })
+      );
+      setInternals(new Map(entries.filter((entry) => entry !== null)));
     };
 
     load().catch((error) => {
