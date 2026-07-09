@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/google/pprof/profile"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/reporter/args"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
@@ -321,12 +322,9 @@ func (p *PPROFReporter) createProfile(resourceKey samples.ResourceKey, origin li
 			metric = discovery.MetricValueOffCPU
 		}
 
-		builder := labels.NewScratchBuilder(ls.Len() + 1)
-		ls.Range(func(l labels.Label) {
-			builder.Add(l.Name, l.Value)
-		})
-		builder.Add(model.MetricNameLabel, metric)
-		builder.Sort()
+		builder := labels.NewBuilder(ls)
+		builder.Set(model.MetricNameLabel, metric)
+		pyroscope.AddScopeLabels(builder, pyroscope.ScopeNameEBPF)
 		res = append(res, PPROF{
 			Raw:    buf.Bytes(),
 			Labels: builder.Labels(),

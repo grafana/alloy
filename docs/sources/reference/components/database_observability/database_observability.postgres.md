@@ -138,7 +138,7 @@ The `gcp` block supplies the identifying information for the GCP Cloud SQL datab
 
 | Name                      | Type       | Description                                                   | Default | Required |
 |---------------------------|------------|---------------------------------------------------------------|---------|----------|
-| `collect_interval`        | `duration` | How frequently to collect information from database.          | `"15s"` | no       |
+| `collect_interval`        | `duration` | How frequently to collect information from database.          | `"10s"` | no       |
 | `disable_query_redaction` | `bool`     | Collect unredacted SQL query text (might include parameters). | `false` | no       |
 | `exclude_current_user`    | `bool`     | Deprecated. Use the top-level `exclude_current_user` argument instead. This setting takes precedence over the top-level setting. | (unset) | no       |
 | `enable_pre_classified_wait_events`   | `boolean`  | When `true`, emits telemetry data with pre-classified wait event information. | `false` | no       |

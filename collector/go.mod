@@ -30,6 +30,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/jaegerremotesampling v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/k8sleaderelector v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/oauth2clientauthextension v0.153.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/extension/opampextension v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/pprofextension v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/sigv4authextension v0.153.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/extension/storage/filestorage v0.153.0
@@ -98,7 +99,6 @@ require (
 	go.opentelemetry.io/collector/receiver v1.59.0
 	go.opentelemetry.io/collector/receiver/otlpreceiver v0.153.0
 	go.opentelemetry.io/collector/service v0.153.0
-	golang.org/x/sys v0.46.0
 )
 
 require (
@@ -675,6 +675,7 @@ require (
 	github.com/mdlayher/wifi v0.1.0 // indirect
 	github.com/metalmatze/signal v0.0.0-20210307161603-1c9aa721a97a // indirect
 	github.com/mholt/archives v0.1.5 // indirect
+	github.com/michel-laterman/proxy-connect-dialer-go v0.1.0 // indirect
 	github.com/microsoft/go-mssqldb v1.9.7 // indirect
 	github.com/miekg/dns v1.1.72 // indirect
 	github.com/mikelolasagasti/xz v1.0.1 // indirect
@@ -832,7 +833,7 @@ require (
 	github.com/prometheus/mysqld_exporter v0.18.0 // indirect
 	github.com/prometheus/node_exporter v1.10.2 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
-	github.com/prometheus/procfs v0.20.1 // indirect
+	github.com/prometheus/procfs v0.21.0 // indirect
 	github.com/prometheus/prometheus v0.312.0 // indirect
 	github.com/prometheus/sigv4 v0.4.1 // indirect
 	github.com/prometheus/snmp_exporter v0.29.0 // indirect
@@ -1064,6 +1065,7 @@ require (
 	golang.org/x/net v0.56.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.21.0 // indirect
+	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/telemetry v0.0.0-20260610154732-fb80ec83bdd9 // indirect
 	golang.org/x/term v0.44.0 // indirect
 	golang.org/x/text v0.38.0 // indirect
