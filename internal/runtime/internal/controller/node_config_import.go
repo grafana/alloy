@@ -206,10 +206,8 @@ func (cn *ImportConfigNode) onContentUpdate(importedContent map[string]string) {
 		return
 	}
 
-	cn.importedContent = make(map[string]string)
-	for k, v := range importedContent {
-		cn.importedContent[k] = v
-	}
+	cn.importedContent = make(map[string]string, len(importedContent))
+	maps.Copy(cn.importedContent, importedContent)
 	cn.importedDeclares = make(map[string]ast.Body)
 	cn.importConfigNodesChildren = make(map[string]*ImportConfigNode)
 
@@ -219,6 +217,11 @@ func (cn *ImportConfigNode) onContentUpdate(importedContent map[string]string) {
 			cn.logger.Error("failed to parse file on update", "file", f, "err", err)
 			cn.setContentHealth(component.HealthTypeUnhealthy, fmt.Sprintf("imported content from %q cannot be parsed: %s", f, err))
 			return
+		}
+
+		// call the config import hook. Used by OTel extension to sanitize imports.
+		if cn.globals.OnImportContent != nil {
+			cn.globals.OnImportContent(f, parsedImportedContent, cn.source)
 		}
 
 		// populate importedDeclares and importConfigNodesChildren

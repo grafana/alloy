@@ -12,9 +12,15 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"go.uber.org/zap/zaptest/observer"
 
+	alloycomponent "github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/nodeconf/importsource"
 	"github.com/grafana/alloy/internal/readyctx"
+	"github.com/grafana/alloy/syntax/ast"
 	"github.com/grafana/alloy/syntax/parser"
+	"github.com/grafana/alloy/syntax/vm"
 )
 
 func shutdownExtensionWithTestTimeout(e *alloyEngineExtension) error {
@@ -55,7 +61,7 @@ func defaultTestConfig() *Config {
 }
 
 // newTestExtension creates an extension with injectable runCommandFactory and a nop logger.
-func newTestExtension(t *testing.T, factory func(modulePath string, configs map[string][]byte) *cobra.Command, config *Config) *alloyEngineExtension {
+func newTestExtension(t *testing.T, factory func(modulePath string, configs map[string][]byte, onImportContent importsource.ImportContentHook) *cobra.Command, config *Config) *alloyEngineExtension {
 	t.Helper()
 	e := newAlloyEngineExtension(config, component.TelemetrySettings{Logger: zap.NewNop()})
 	e.runCommandFactory = factory
@@ -64,7 +70,7 @@ func newTestExtension(t *testing.T, factory func(modulePath string, configs map[
 }
 
 // blockingCommand returns a cobra command that blocks until the context is cancelled, then returns nil.
-func blockingCommand(_ string, _ map[string][]byte) *cobra.Command {
+func blockingCommand(_ string, _ map[string][]byte, _ importsource.ImportContentHook) *cobra.Command {
 	return &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if fn, ok := readyctx.OnReadyFromContext(cmd.Context()); ok && fn != nil {
@@ -77,7 +83,7 @@ func blockingCommand(_ string, _ map[string][]byte) *cobra.Command {
 }
 
 // blockingCommandWithoutReady blocks until context cancellation but never calls the ready callback.
-func blockingCommandWithoutReady(_ string, _ map[string][]byte) *cobra.Command {
+func blockingCommandWithoutReady(_ string, _ map[string][]byte, _ importsource.ImportContentHook) *cobra.Command {
 	return &cobra.Command{
 		RunE: func(cmd *cobra.Command, args []string) error {
 			<-cmd.Context().Done()
@@ -107,12 +113,12 @@ type retryTrackingState struct {
 	err         error
 }
 
-func newRetryTrackingCommand(failCount int, err error) (func(string, map[string][]byte) *cobra.Command, *retryTrackingState) {
+func newRetryTrackingCommand(failCount int, err error) (func(string, map[string][]byte, importsource.ImportContentHook) *cobra.Command, *retryTrackingState) {
 	state := &retryTrackingState{
 		failCount: failCount,
 		err:       err,
 	}
-	factory := func(_ string, _ map[string][]byte) *cobra.Command {
+	factory := func(_ string, _ map[string][]byte, _ importsource.ImportContentHook) *cobra.Command {
 		return &cobra.Command{
 			RunE: func(cmd *cobra.Command, args []string) error {
 				state.attempts++
@@ -144,10 +150,10 @@ func TestLifecycle_StartPassesInlineConfigToFactory(t *testing.T) {
 		gotModulePath string
 		gotConfigs    map[string][]byte
 	)
-	factory := func(modulePath string, configs map[string][]byte) *cobra.Command {
+	factory := func(modulePath string, configs map[string][]byte, v importsource.ImportContentHook) *cobra.Command {
 		gotModulePath = modulePath
 		gotConfigs = configs
-		return blockingCommand(modulePath, configs)
+		return blockingCommand(modulePath, configs, v)
 	}
 	e := newTestExtension(t, factory, &Config{
 		AlloyConfig: AlloyConfig{
@@ -222,7 +228,9 @@ func TestLifecycle_StayInStartingWhenReadyNotCalled(t *testing.T) {
 
 func TestLifecycle_ShutdownWithRunCommandError(t *testing.T) {
 	expected := errors.New("shutdown error")
-	e := newTestExtension(t, func(_ string, _ map[string][]byte) *cobra.Command { return shutdownErrorCommand(expected) }, defaultTestConfig())
+	e := newTestExtension(t, func(_ string, _ map[string][]byte, _ importsource.ImportContentHook) *cobra.Command {
+		return shutdownErrorCommand(expected)
+	}, defaultTestConfig())
 
 	require.NoError(t, e.Start(t.Context(), componenttest.NewNopHost()))
 	require.Eventually(t, func() bool { return e.getState() == stateRunning }, 1*time.Second, 25*time.Millisecond, "extension did not reach stateRunning")
@@ -310,6 +318,53 @@ func TestUsesModulePath(t *testing.T) {
 			require.Equal(t, tc.want, usesModulePath(tree))
 		})
 	}
+}
+
+// fakeImportSource is a minimal importsource.ImportSource for exercising the import hook.
+type fakeImportSource struct {
+	modulePath string
+	inherits   bool
+}
+
+func (f fakeImportSource) Evaluate(*vm.Scope) error             { return nil }
+func (f fakeImportSource) Run(context.Context) error            { return nil }
+func (f fakeImportSource) CurrentHealth() alloycomponent.Health { return alloycomponent.Health{} }
+func (f fakeImportSource) SetEval(*vm.Evaluator)                {}
+func (f fakeImportSource) ModulePath() string                   { return f.modulePath }
+func (f fakeImportSource) InheritsModulePath() bool             { return f.inherits }
+
+func mustParse(t *testing.T, src string) *ast.File {
+	t.Helper()
+	f, err := parser.ParseFile("test.alloy", []byte(src))
+	require.NoError(t, err)
+	return f
+}
+
+func TestNewImportModulePathHook(t *testing.T) {
+	core, logs := observer.New(zapcore.WarnLevel)
+	hook := newImportModulePathHook(zap.New(core), "/cwd")
+
+	usesMP := mustParse(t, `declare "x" { export "v" { value = module_path } }`)
+	noMP := mustParse(t, `declare "x" { export "v" { value = "static" } }`)
+
+	// import.string inheriting the defaulted cwd and using module_path -> one warning.
+	hook("mod", usesMP, fakeImportSource{modulePath: "/cwd", inherits: true})
+	require.Equal(t, 1, logs.Len())
+	rec := logs.All()[0]
+	require.Contains(t, rec.Message, "module_path")
+	require.Equal(t, "mod", rec.ContextMap()["file"])
+
+	// import.file (defines its own module_path) -> no additional warning.
+	hook("mod2", usesMP, fakeImportSource{modulePath: "/cwd", inherits: false})
+	require.Equal(t, 1, logs.Len())
+
+	// import.string whose inherited module_path is not the default -> no additional warning.
+	hook("mod3", usesMP, fakeImportSource{modulePath: "/other", inherits: true})
+	require.Equal(t, 1, logs.Len())
+
+	// import.string inheriting the default but not referencing module_path -> no additional warning.
+	hook("mod4", noMP, fakeImportSource{modulePath: "/cwd", inherits: true})
+	require.Equal(t, 1, logs.Len())
 }
 
 func TestLifecycle_RunSucceedsAfterRetries(t *testing.T) {

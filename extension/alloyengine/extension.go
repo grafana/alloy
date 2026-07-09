@@ -81,7 +81,7 @@ type alloyEngineExtension struct {
 	config            *Config
 	settings          component.TelemetrySettings
 	runExited         chan struct{}
-	runCommandFactory func(modulePath string, configs map[string][]byte) *cobra.Command
+	runCommandFactory func(modulePath string, configs map[string][]byte, onConfigImport importsource.ImportContentHook) *cobra.Command
 
 	stateMutex sync.Mutex
 	state      state
@@ -116,7 +116,15 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		return err
 	}
 
-	runCommand := e.runCommandFactory(modulePath, files)
+	// A hook to check for `module_path` references in imported configs.
+	// Used only if inline config is used and module_path is undefined.
+	var onConfigImport importsource.ImportContentHook
+	cfg := e.config.AlloyConfig
+	if cfg.Inline.Content != "" && cfg.Inline.ModulePath == "" {
+		onConfigImport = newImportModulePathHook(e.settings.Logger, modulePath)
+	}
+
+	runCommand := e.runCommandFactory(modulePath, files, onConfigImport)
 
 	// Prevent cobra from autoloading command-line args from os.Args
 	runCommand.SetArgs([]string{})
@@ -351,6 +359,24 @@ func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnIfMo
 	}
 
 	return nil
+}
+
+// newImportModulePathHook returns a hook that warns when an imported module references
+// module_path while it still resolves to the defaulted (cwd) value of an inline config.
+//
+// initialModulePath is a module_path used in a root Alloy config.
+func newImportModulePathHook(logger *zap.Logger, initialModulePath string) importsource.ImportContentHook {
+	return func(fileName string, content *ast.File, source importsource.ImportSource) {
+		// NOTE: only the `import.string` inherits the parent module_path.
+		if !source.InheritsModulePath() {
+			return
+		}
+
+		if source.ModulePath() == initialModulePath && usesModulePath(content) {
+			logger.Warn("imported module references `module_path` but config.inline.module_path is not set; it defaults to the current working directory",
+				zap.String("file", fileName))
+		}
+	}
 }
 
 // usesModulePath reports whether the AST references the module_path keyword in any expression.
