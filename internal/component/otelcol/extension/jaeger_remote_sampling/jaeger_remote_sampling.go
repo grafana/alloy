@@ -188,6 +188,9 @@ func (args *HTTPServerArguments) SetToDefault() {
 	*args = HTTPServerArguments{
 		Endpoint:              "0.0.0.0:5778",
 		CompressionAlgorithms: append([]string(nil), otelcol.DefaultCompressionAlgorithms...),
+		IdleTimeout:           otelcol.DefaultHTTPServerIdleTimeout,
+		ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
+		WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 	}
 }
 
