@@ -15,7 +15,10 @@ otelcol.extension.jaeger_remote_sampling "default_0" {
 	}
 
 	http {
-		endpoint = "localhost:5778"
+		endpoint            = "localhost:5778"
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
 	}
 
 	source {
@@ -35,8 +38,11 @@ otelcol.receiver.otlp "_0_default" {
 	}
 
 	http {
-		endpoint         = "localhost:4318"
-		include_metadata = true
+		endpoint            = "localhost:4318"
+		include_metadata    = true
+		idle_timeout        = "0s"
+		write_timeout       = "0s"
+		read_header_timeout = "0s"
 	}
 
 	output {

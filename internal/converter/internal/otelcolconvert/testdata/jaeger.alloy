@@ -5,7 +5,10 @@ otelcol.receiver.jaeger "default" {
 		}
 
 		thrift_http {
-			endpoint = "localhost:14268"
+			endpoint            = "localhost:14268"
+			idle_timeout        = "0s"
+			write_timeout       = "0s"
+			read_header_timeout = "0s"
 		}
 
 		thrift_binary {
