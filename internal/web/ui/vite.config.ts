@@ -108,7 +108,8 @@ export default defineConfig(({ mode }) => ({
   ].filter(Boolean),
   // Use relative base path so assets work when served from any path prefix
   // The <base> tag in index.html will be set at runtime by the Go server
-  base: './',build: {
+  base: './',
+  build: {
     chunkSizeWarningLimit: 750,
   },
   test: {
