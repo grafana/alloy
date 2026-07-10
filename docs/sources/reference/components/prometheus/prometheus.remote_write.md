@@ -110,13 +110,13 @@ The following arguments are supported:
 
  At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`azuread`][azuread] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][endpoint] argument
-* [`bearer_token`][endpoint] argument
-* [`oauth2`][oauth2] block
-* [`sigv4`][sigv4] block
+* [`authorization`](#authorization) block
+* [`azuread`](#azuread) block
+* [`basic_auth`](#basic_auth) block
+* [`bearer_token_file`](#endpoint) argument
+* [`bearer_token`](#endpoint) argument
+* [`oauth2`](#oauth2) block
+* [`sigv4`](#sigv4) block
 
 When multiple `endpoint` blocks are provided, metrics are concurrently sent to all configured locations.
 Each endpoint has a _queue_ which is used to read metrics from the WAL and queue them for sending.
@@ -550,10 +550,7 @@ Refer to the linked documentation for more details.
 
 <!-- END GENERATED COMPATIBLE COMPONENTS -->
 
-[authorization]: #authorization
 [azuread]: #azuread
-[basic_auth]: #basic_auth
-[oauth2]: #oauth2
 [sigv4]: #sigv4
 [endpoint]: #endpoint
 [snappy]: https://en.wikipedia.org/wiki/Snappy_(compression)

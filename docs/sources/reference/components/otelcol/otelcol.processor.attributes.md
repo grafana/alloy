@@ -166,6 +166,10 @@ One of the following is also required:
 * For metrics, `metric_names` must be specified with a valid non-empty value for a valid configuration.
   The `span_names`, `span_kinds`, `log_bodies`, `log_severity_texts`, `log_severity`, `services`, [attribute][], [resource][], and [library][] attributes are invalid.
 
+[attribute]: #attribute
+[resource]: #resource
+[library]: #library
+
 If the configuration includes filters which are specific to a particular signal type, it's best to include only that signal type in the component's output.
 For example, adding a `span_names` filter could cause the component to error if logs are configured in the component's outputs.
 

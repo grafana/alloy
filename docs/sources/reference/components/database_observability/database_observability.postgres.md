@@ -101,6 +101,10 @@ You use the `cloud_provider` block to provide information related to the cloud p
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
 
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
+
 ### `aws`
 
 The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) identifier for the database being monitored.
