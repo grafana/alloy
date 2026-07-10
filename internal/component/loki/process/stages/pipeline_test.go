@@ -2,11 +2,12 @@ package stages
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/loki/pkg/push"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
@@ -16,7 +17,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/syntax"
 )
 
@@ -227,16 +227,21 @@ func TestPipeline_Process(t *testing.T) {
 }
 
 var (
-	l           = log.NewNopLogger()
-	infoLogger  = level.NewFilter(l, level.AllowInfo())
-	debugLogger = level.NewFilter(l, level.AllowDebug())
+	infoLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelInfo,
+	}))
+	debugLogger = slog.New(slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelDebug,
+	}))
 )
 
 func BenchmarkPipeline(b *testing.B) {
 	benchmarks := []struct {
 		name   string
 		stgs   []StageConfig
-		logger log.Logger
+		logger *slog.Logger
 		entry  string
 	}{
 		{

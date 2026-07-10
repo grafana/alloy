@@ -2,12 +2,11 @@ package scrape
 
 import (
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/alloy/internal/component/pyroscope"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	config_util "github.com/prometheus/common/config"
 	"github.com/prometheus/prometheus/discovery/targetgroup"
 )
@@ -20,7 +19,7 @@ type Options struct {
 }
 
 type Manager struct {
-	logger log.Logger
+	logger *slog.Logger
 
 	options Options
 
@@ -35,9 +34,9 @@ type Manager struct {
 	triggerReload chan struct{}
 }
 
-func NewManager(o Options, config Arguments, appendable pyroscope.Appendable, logger log.Logger) (*Manager, error) {
+func NewManager(o Options, config Arguments, appendable pyroscope.Appendable, logger *slog.Logger) (*Manager, error) {
 	if logger == nil {
-		logger = log.NewNopLogger()
+		logger = slog.New(slog.DiscardHandler)
 	}
 	sp, err := newScrapePool(
 		o.HTTPClientOptions,
@@ -115,7 +114,7 @@ func (m *Manager) ApplyConfig(cfg Arguments) error {
 
 	err := m.sp.reload(cfg)
 	if err != nil {
-		level.Error(m.logger).Log("msg", "error reloading scrape pool", "err", err)
+		m.logger.Error("error reloading scrape pool", "err", err)
 		failed = true
 	}
 

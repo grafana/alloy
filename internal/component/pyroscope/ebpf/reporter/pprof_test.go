@@ -4,9 +4,11 @@ package reporter
 
 import (
 	"bytes"
+	"log/slog"
 	"testing"
 
 	"github.com/google/pprof/profile"
+	"github.com/grafana/alloy/internal/component/pyroscope"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/discovery"
 	"github.com/grafana/alloy/internal/component/pyroscope/ebpf/symb/irsymcache"
 	"github.com/stretchr/testify/assert"
@@ -38,16 +40,20 @@ func singleFrameTrace(ty libpf.FrameType, mappingFile libpf.FrameMappingFile, li
 }
 
 func newReporter() *PPROFReporter {
-	tp := discovery.NewTargetProducer(discovery.TargetsOptions{
-		Targets: []discovery.DiscoveredTarget{
-			{
-				"__process_pid__": "123",
-				"service_name":    "service_a",
-			},
+	return newReporterWithTargets([]discovery.DiscoveredTarget{
+		{
+			"__process_pid__": "123",
+			"service_name":    "service_a",
 		},
 	})
+}
+
+func newReporterWithTargets(targets []discovery.DiscoveredTarget) *PPROFReporter {
+	tp := discovery.NewTargetProducer(discovery.TargetsOptions{
+		Targets: targets,
+	})
 	return NewPPROF(
-		nil,
+		slog.New(slog.DiscardHandler),
 		&Config{
 			SamplesPerSecond: 97,
 			KernelFrames:     true,
@@ -56,6 +62,34 @@ func newReporter() *PPROFReporter {
 		nil,
 		nil,
 	)
+}
+
+func TestPPROFReporter_DoesNotOverrideScopeLabels(t *testing.T) {
+	rep := newReporterWithTargets([]discovery.DiscoveredTarget{
+		{
+			"__process_pid__":               "123",
+			"service_name":                  "service_a",
+			pyroscope.LabelOtelScopeName:    "user-scope",
+			pyroscope.LabelOtelScopeVersion: "user-version",
+		},
+	})
+
+	events := samples.SampleToEvents{
+		{}: &samples.TraceEvents{
+			Frames: singleFrameTrace(libpf.PythonFrame, libpf.FrameMappingFile{}, 0x30,
+				"myfunc", "/bin/bar", 1234),
+			Timestamps: []uint64{42},
+		},
+	}
+
+	profiles := rep.createProfile(
+		samples.ResourceKey{PID: 123},
+		support.TraceOriginSampling,
+		events,
+	)
+	require.Len(t, profiles, 1)
+	assert.Equal(t, "user-scope", profiles[0].Labels.Get(pyroscope.LabelOtelScopeName))
+	assert.Equal(t, "user-version", profiles[0].Labels.Get(pyroscope.LabelOtelScopeVersion))
 }
 
 func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
@@ -83,6 +117,7 @@ func TestPPROFReporter_StringAndFunctionTablePopulation(t *testing.T) {
 	)
 	require.Len(t, profiles, 1)
 	assert.Equal(t, "service_a", profiles[0].Labels.Get("service_name"))
+	assert.Equal(t, pyroscope.ScopeNameEBPF, profiles[0].Labels.Get(pyroscope.LabelOtelScopeName))
 
 	p, err := profile.Parse(bytes.NewReader(profiles[0].Raw))
 	require.NoError(t, err)

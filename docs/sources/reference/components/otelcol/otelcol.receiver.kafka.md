@@ -59,7 +59,7 @@ You can use the following arguments with `otelcol.receiver.kafka`:
 | `max_partition_fetch_size`                 | `int`          | The default number of message bytes to fetch per partition in a request.                                              | `1048576`          | no       |
 | `min_fetch_size`                           | `int`          | The minimum number of message bytes to fetch in a request.                                                            | `1`                | no       |
 | `rack_id`                                  | `string`       | The rack identifier for this client. Used for rack-aware replica selection when supported by the brokers.             | `""`               | no       |
-| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IPs during startup.                                                     | `false`            | no       |
+| `resolve_canonical_bootstrap_servers_only` | `bool`         | Whether to resolve then reverse-lookup broker IP addresses during startup. Deprecated: now a no-op after the upstream Kafka client migration from `sarama` to `franz-go`. | `false`            | no       |
 | `session_timeout`                          | `duration`     | The request timeout for detecting client failures when using Kafka group management.                                  | `"10s"`            | no       |
 | `use_leader_epoch`                         | `bool`         | Whether to use leader epoch for log truncation detection (KIP-320).                                                   | `true`             | no       |
 
@@ -307,7 +307,7 @@ The following arguments are supported:
 | `include_unsuccessful` | `bool` | Whether failed forwards should be marked as read.                  | `false` | no       |
 
 By default, a Kafka message is marked as read immediately after it's retrieved from the Kafka broker.
-If the `after_execution` argument is true, messages are only read after the telemetry data is forwarded to components specified in [the `output` block][output].
+If the `after_execution` argument is true, messages are only read after the telemetry data is forwarded to components specified in the [`output`](#output) block.
 
 When `after_execution` is true, messages are only marked as read when they're decoded successfully and components where the data was forwarded didn't return an error.
 If the `include_unsuccessful` argument is true, messages are marked as read even if decoding or forwarding failed.

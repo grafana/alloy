@@ -20,6 +20,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/prometheus/common/model"
+	"github.com/prometheus/prometheus/model/labels"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -378,20 +379,22 @@ func TestTailer_Cursor_NotTooOld(t *testing.T) {
 	require.Equal(t, r.config.Cursor, "foobar")
 }
 
-func Test_MakeJournalFields(t *testing.T) {
+func Test_AddJournalFields(t *testing.T) {
+	br := labels.NewBuilder(labels.EmptyLabels())
 	entryFields := map[string]string{
 		"CODE_FILE":   "journaltarget_test.go",
 		"OTHER_FIELD": "foobar",
 		"PRIORITY":    "6",
 	}
-	receivedFields := makeJournalFields(entryFields)
-	expectedFields := map[string]string{
+	addJournalFields(br, entryFields)
+
+	expected := map[string]string{
 		"__journal_code_file":        "journaltarget_test.go",
 		"__journal_other_field":      "foobar",
 		"__journal_priority":         "6",
 		"__journal_priority_keyword": "info",
 	}
-	assert.Equal(t, expectedFields, receivedFields)
+	assert.Equal(t, expected, br.Labels().Map())
 }
 
 func TestTailer_Matches(t *testing.T) {

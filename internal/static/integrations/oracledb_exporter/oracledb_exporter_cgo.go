@@ -7,18 +7,15 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/static/integrations"
 	oe "github.com/oracle/oracle-db-appdev-monitoring/collector"
 	"k8s.io/utils/ptr"
+
+	"github.com/grafana/alloy/internal/static/integrations"
 )
 
 // New creates a new oracledb integration. The integration scrapes metrics
 // from an OracleDB exporter running with the https://github.com/oracle/oracle-db-appdev-monitoring
-func New(logger log.Logger, c *Config) (integrations.Integration, error) {
-	slogLogger := slog.New(logging.NewSlogGoKitHandler(logger))
-
+func New(logger *slog.Logger, c *Config) (integrations.Integration, error) {
 	targets, err := c.normalizedTargets()
 	if err != nil {
 		return nil, err
@@ -44,7 +41,7 @@ func New(logger log.Logger, c *Config) (integrations.Integration, error) {
 
 	// ScrapeInterval must be non-nil: the collector's Collect path dereferences it.
 	scrapeInterval := time.Duration(0)
-	oeExporter := oe.NewExporter(slogLogger, &oe.MetricsConfiguration{
+	oeExporter := oe.NewExporter(logger, &oe.MetricsConfiguration{
 		Databases: databases,
 		Metrics: oe.MetricsFilesConfig{
 			Custom:         c.CustomMetrics,

@@ -16,6 +16,14 @@ For trivial fixes or improvements, pull requests can be opened immediately witho
     Environments][best-practices]
   - The [Uber Go Style Guide][uber-style-guide]
 - Sign our [CLA][], otherwise we're not able to accept contributions.
+- If you use generative AI tools, review our [Generative AI Contribution Policy](./genai.md).
+
+### Signed commits
+
+All Grafana Labs repositories [require signed commits](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches#require-signed-commits).
+To learn how to enable commit verification, refer to [about commit signature verification](https://docs.github.com/en/authentication/managing-commit-signature-verification/about-commit-signature-verification) and refer to this page to learn about [checking your commit signature verification status](https://docs.github.com/en/authentication/troubleshooting-commit-signature-verification/checking-your-commit-and-tag-signature-verification-status).
+
+**NOTE** Unsigned commits and pull requests will be rejected and closed. This includes pull requests that have been authored by Agents.
 
 ## Steps to Contribute
 
@@ -47,6 +55,24 @@ offending line.
 
 All our issues are regularly tagged with labels so that you can also filter down the issues
 involving the components you want to work on.
+
+## Development tools
+
+We use [mise](https://mise.jdx.dev) to manage the versions of the tools used to build, lint, and test
+Alloy. The pinned versions live in the `[tools]` section of [`mise.toml`](../../mise.toml), so a
+single command installs the complete toolchain:
+
+1. [Install mise](https://mise.jdx.dev/installing-mise.html) and [activate it in your
+   shell](https://mise.jdx.dev/installing-mise.html#shells).
+2. From the repository root, run:
+
+   ```bash
+   mise install
+   ```
+
+mise puts the tools on your `PATH` whenever you're inside the repository, so `make lint`, `make test`,
+and the Helm chart targets run with the same versions as CI. See the `[tools]` section of
+[`mise.toml`](../../mise.toml) for the full list, and run `mise ls` to see what's installed.
 
 ## Compiling Alloy
 

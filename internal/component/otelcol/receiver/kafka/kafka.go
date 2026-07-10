@@ -3,16 +3,15 @@ package kafka
 
 import (
 	"fmt"
+	"log/slog"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/otelcol"
 	otelcolCfg "github.com/grafana/alloy/internal/component/otelcol/config"
 	"github.com/grafana/alloy/internal/component/otelcol/receiver"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/kafka/configkafka"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/kafkareceiver"
 	otelcomponent "go.opentelemetry.io/collector/component"
@@ -148,7 +147,7 @@ type KafkaReceiverTopicEncodingConfig struct {
 	ExcludeTopics []string `alloy:"exclude_topics,attr,optional"`
 }
 
-func (args Arguments) logDeprecations(logger log.Logger) {
+func (args Arguments) logDeprecations(logger *slog.Logger) {
 	for _, signal := range []struct {
 		name string
 		cfg  KafkaReceiverTopicEncodingConfig
@@ -158,8 +157,11 @@ func (args Arguments) logDeprecations(logger log.Logger) {
 		{"traces", args.Traces},
 	} {
 		if signal.cfg.Topic != "" {
-			level.Warn(logger).Log("msg", "the topic attribute is deprecated and will be removed in a future release, use topics instead",
-				"signal", signal.name, "topic", signal.cfg.Topic)
+			logger.Warn(
+				"the topic attribute is deprecated and will be removed in a future release, use topics instead",
+				"signal", signal.name,
+				"topic", signal.cfg.Topic,
+			)
 		}
 	}
 }

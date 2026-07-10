@@ -17,28 +17,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Generate token 🔐
-        uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+        uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
         id: app-token
         with:
           github_app: ${{ env.ALLOYBOT_APP_NAME }}
 
       - name: Checkout repository 🛎️
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
+          ref: ${{ github.ref_name }}
           token: ${{ steps.app-token.outputs.token }}
-          persist-credentials: false
+          fetch-depth: 0
+          persist-credentials: true # Required for fetching release-please branches
 
-      - name: Setup Node.js 🏗️
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
+      - name: Setup tools 🛠️ # zizmor: ignore[cache-poisoning] Workflow does not directly create artifacts.
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          node-version-file: build-tools/release-please-runner/.nvmrc
-          package-manager-cache: false
+          version: v2026.5.18
+          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          install_args: go node
 
       - name: Install dependencies 📦
         working-directory: build-tools/release-please-runner
-        run: npm install
+        run: npm ci --no-audit --no-fund
 
       - name: Run release-please 🚀
+        id: release-please
         working-directory: build-tools/release-please-runner
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
@@ -47,3 +51,49 @@ jobs:
           CONFIG_FILE: release-please-config.json
           MANIFEST_FILE: .release-please-manifest.json
         run: node index.js
+      - name: Find root release-please branch 🔎
+        id: root-release-branch
+        env:
+          RELEASE_BRANCH: ${{ steps.release-please.outputs.root_pr_branch }}
+        run: |
+          if [ -z "${RELEASE_BRANCH}" ]; then
+            echo "No root release-please PR; nothing to regenerate."
+            echo "exists=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "name=${RELEASE_BRANCH}" >> "${GITHUB_OUTPUT}"
+          for attempt in 1 2 3; do
+            if git fetch origin "+refs/heads/${RELEASE_BRANCH}:refs/remotes/origin/${RELEASE_BRANCH}"; then
+              echo "exists=true" >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
+
+            echo "Fetch attempt ${attempt} failed for ${RELEASE_BRANCH}; retrying."
+            sleep "$((attempt * 2))"
+          done
+
+          echo "No root release-please branch ${RELEASE_BRANCH}; nothing to regenerate."
+          echo "exists=false" >> "${GITHUB_OUTPUT}"
+
+      - name: Stage root release-please changes 🌿
+        if: steps.root-release-branch.outputs.exists == 'true'
+        env:
+          RELEASE_BRANCH: ${{ steps.root-release-branch.outputs.name }}
+        run: git merge --squash "refs/remotes/origin/${RELEASE_BRANCH}"
+
+      - name: Regenerate collector distro 🏗️
+        if: steps.root-release-branch.outputs.exists == 'true'
+        run: make generate-otel-collector-distro
+
+      - name: Update root release-please pull request 📝
+        if: steps.root-release-branch.outputs.exists == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          sign-commits: true
+          branch: ${{ steps.root-release-branch.outputs.name }}
+          base: ${{ github.ref_name }}
+          commit-message: ${{ steps.release-please.outputs.root_pr_title }}
+          title: ${{ steps.release-please.outputs.root_pr_title }}
+          body-path: ${{ steps.release-please.outputs.root_pr_body_path }}

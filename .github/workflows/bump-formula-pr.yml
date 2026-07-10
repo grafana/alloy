@@ -17,14 +17,14 @@ jobs:
       id-token: write
     steps:
     # TODO: Remove this when we no longer need a forked action in the "Update Homebrew formula" step.
-    - uses: grafana/shared-workflows/actions/create-github-app-token@259ba21cb3ff07724f331e26d926d655d24b317b # create-github-app-token/v0.2.3
+    - uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
       id: app-token
       with:
         github_app: ${{ env.ALLOYBOT_APP_NAME }}
         permission_set: alloy
 
     - name: Checkout code
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       with:
         token: ${{ steps.app-token.outputs.token }}
         persist-credentials: false
@@ -48,7 +48,7 @@ jobs:
         git config --global user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
 
     - name: Get latest release
-      uses: rez0n/actions-github-release@794c12f5e8d629e6ca329cf2e2daeb0f0ce6a3ce # main
+      uses: rez0n/actions-github-release@05fabbd6b2b3ce3383299555ea518faea69b736d # main
       id: latest_release
       with:
         token: ${{ steps.app-token.outputs.token }}
@@ -56,7 +56,10 @@ jobs:
         type: "stable"
 
     - name: Update Homebrew formula
-      if: 'steps.latest_release.outputs.release_id == github.event.release.id'
+      # Only the Alloy binary (vX.Y.Z tags) has a Homebrew formula. The release_id
+      # check alone doesn't exclude component releases (e.g. syntax/v0.2.0):
+      # GitHub's "latest stable" is the component release at publish time.
+      if: steps.latest_release.outputs.release_id == github.event.release.id && startsWith(github.event.release.tag_name, 'v')
       # TODO: Use the upstream once they have this change:
       # https://github.com/dawidd6/action-homebrew-bump-formula/pull/90
       # uses: dawidd6/action-homebrew-bump-formula@v4

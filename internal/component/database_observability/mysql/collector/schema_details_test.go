@@ -3,18 +3,17 @@ package collector
 import (
 	"encoding/base64"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/go-kit/log"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestSchemaDetails(t *testing.T) {
@@ -33,7 +32,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -174,7 +173,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -318,7 +317,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -487,7 +486,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Hour, // unused; extractSchema is invoked manually
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -526,7 +525,7 @@ func TestSchemaDetails(t *testing.T) {
 				AddRow("some_schema.some_table", "CREATE TABLE some_table (id INT)"))
 
 		// Second scrape: only the tables list. The scrape is throttled (still
-		// within EmitInterval) so it must not trigger any create-statement
+		// within emitInterval) so it must not trigger any create-statement
 		// related queries.
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
@@ -538,7 +537,7 @@ func TestSchemaDetails(t *testing.T) {
 			))
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		fakeNow = fakeNow.Add(time.Minute) // well within EmitInterval
+		fakeNow = fakeNow.Add(time.Minute) // well within emitInterval
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		// First scrape emits OP_TABLE_DETECTION + OP_CREATE_STATEMENT; second
@@ -576,7 +575,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -657,7 +656,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -711,7 +710,7 @@ func TestSchemaDetails(t *testing.T) {
 
 		// Second scrape: only table_a remains. table_b should be evicted from
 		// the throttle map by housekeeping. Since table_a was already emitted
-		// less than EmitInterval ago, no further fetch queries are expected.
+		// less than emitInterval ago, no further fetch queries are expected.
 		fakeNow = fakeNow.Add(time.Minute)
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
@@ -741,7 +740,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 
 		require.NoError(t, err)
@@ -872,7 +871,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -974,7 +973,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1019,7 +1018,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Hour,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1050,7 +1049,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1111,7 +1110,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1235,7 +1234,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1329,7 +1328,7 @@ func TestSchemaDetails(t *testing.T) {
 			DB:              db,
 			CollectInterval: time.Millisecond,
 			EntryHandler:    lokiClient,
-			Logger:          log.NewLogfmtLogger(os.Stderr),
+			Logger:          util.TestAlloyLogger(t).Slog(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
@@ -1402,7 +1401,7 @@ func TestSchemaDetailsExcludeSchemas(t *testing.T) {
 		CollectInterval: time.Millisecond,
 		ExcludeSchemas:  []string{"excluded_schema"},
 		EntryHandler:    lokiClient,
-		Logger:          log.NewLogfmtLogger(os.Stderr),
+		Logger:          util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
 

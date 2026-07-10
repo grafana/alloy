@@ -68,13 +68,14 @@ Tags the next RC and creates a draft prerelease from the open release-please
 PR for the given branch. Use `main` for a new minor RC, `release/v1.X` for a
 patch RC. Driven by `release-create-rc.yml` (manual `workflow_dispatch`).
 
-**`release backport --pr=<N> --label=backport/v1.X`**
+**`release prepare-backport --pr=<N> --label=backport/v1.X`**
 
-Cherry-picks the commit from a merged PR onto the `release/v1.X` branch, pushes
-the backport branch, and opens a backport PR. Skips cleanly when the target
-branch doesn't exist yet (release still in RC) or when the backport is already
-merged. On failure it comments on the source PR with manual instructions.
-Driven by `release-backport.yml` after the trigger workflow.
+Prepares a cherry-pick from a merged PR onto the `release/v1.X` branch and emits
+the pull request inputs used by `release-backport.yml`. The workflow signs the
+commit and opens the PR with `peter-evans/create-pull-request`. Skips cleanly
+when the target branch doesn't exist yet (release still in RC) or when the
+backport is already merged. On failure it comments on the source PR with manual
+instructions. Driven by `release-backport.yml` after the trigger workflow.
 
 **`release enrich-release-notes --tag=<v1.X.Y> [--footer=<path>]`**
 
@@ -84,50 +85,40 @@ published release's body, and optionally appends a footer template (with
 with a `/` like `syntax/v0.1.2`) skip the footer. Driven by
 `release-enrich-release-notes.yml` (fires on release publish).
 
-### `generate module-dependencies`
+### `sync-replaces`
 
-Keeps Go module `replace` directives consistent across the repository from a
-single source of truth (`dependency-replacements.yaml` at the repo root).
+Keeps shared Go module `replace` directives consistent from the canonical
+OpenTelemetry Collector Builder config in `collector/builder-config.yaml`.
 
-The tool reads the replacements, renders them through a template, and injects
-the rendered block into each target file between marker comments:
+Shared remote replaces belong in the builder config between these marker
+comments:
 
+```yaml
+# <BEGIN_SHARED_REPLACE_DIRECTIVES>
+# <END_SHARED_REPLACE_DIRECTIVES>
 ```
-BEGIN GENERATED REPLACES - DO NOT EDIT MANUALLY ... END GENERATED REPLACES
-```
 
-**Do not edit anything between the markers** — update
-`dependency-replacements.yaml` instead; the next run overwrites manual changes.
-Local `replace` directives (pointing a dependency at a local path) belong
-outside the markers in the individual `go.mod` files, not in
-`dependency-replacements.yaml`.
+Each shared replace must have a comment explaining why the fork or pin exists.
+Local `replace` directives that point to repository paths stay in the relevant
+`go.mod` file.
 
-Supported `file_type` values in the config:
-
-- `mod` — Go module files (`go.mod`); `go mod tidy` runs after the update.
-- `ocb` — OpenTelemetry Collector Builder config YAML files.
-
-Run via the Make wrapper (preferred):
+Run via the Make wrapper:
 
 ```bash
-make generate-module-dependencies
+make generate-otel-collector-distro
 ```
+
+That target runs `sync-replaces`, which syncs shared replaces into the root
+`go.mod` and runs `go mod tidy` with retry handling, then regenerates the
+collector distro.
 
 Or invoke the CLI directly:
 
 ```bash
-go run -C tools ./cmd generate module-dependencies \
-  --dependency-yaml="$PWD/dependency-replacements.yaml"
+go run -C tools ./cmd sync-replaces \
+  --builder-config ../collector/builder-config.yaml \
+  --go-mod ../go.mod
 ```
-
-`--root` defaults to the git repo root, so it works from any subdirectory; pass
-`--root=<path>` to override. `--dependency-yaml` is resolved relative to the
-binary's working directory — `go run -C tools` runs from `tools/`, so use an
-absolute path or one relative to `tools/`.
-
-CI checks that the generated output matches what's committed. If you change
-`dependency-replacements.yaml`, run the Make target and commit the resulting
-diff.
 
 ### `goversion`
 

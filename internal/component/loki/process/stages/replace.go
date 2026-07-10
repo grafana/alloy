@@ -25,16 +25,22 @@ type ReplaceConfig struct {
 	Replace    string `alloy:"replace,attr,optional"`
 }
 
-func getExpressionRegex(c ReplaceConfig) (*regexp.Regexp, error) {
+func validateReplaceConfig(c ReplaceConfig) (*regexp.Regexp, *template.Template, error) {
 	if c.Expression == "" {
-		return nil, ErrExpressionRequired
+		return nil, nil, ErrExpressionRequired
 	}
 
 	expr, err := regexp.Compile(c.Expression)
 	if err != nil {
-		return nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
+		return nil, nil, fmt.Errorf("%v: %w", ErrCouldNotCompileRegex, err)
 	}
-	return expr, nil
+
+	templ, err := template.New("pipeline_template").Funcs(functionMap).Parse(c.Replace)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to compile template: %w", err)
+	}
+
+	return expr, templ, nil
 }
 
 // replaceStage sets extracted data using regular expressions
@@ -42,11 +48,12 @@ type replaceStage struct {
 	cfg        ReplaceConfig
 	expression *regexp.Regexp
 	logger     *slog.Logger
+	template   *template.Template
 }
 
 // newReplaceStage creates a newReplaceStage
 func newReplaceStage(logger *slog.Logger, config ReplaceConfig) (Stage, error) {
-	expression, err := getExpressionRegex(config)
+	expression, templ, err := validateReplaceConfig(config)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +61,7 @@ func newReplaceStage(logger *slog.Logger, config ReplaceConfig) (Stage, error) {
 	return toStage(&replaceStage{
 		cfg:        config,
 		expression: expression,
+		template:   templ,
 		logger:     logger.With("stage", "replace"),
 	}), nil
 }
@@ -96,14 +104,7 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 	// All extracted values will be available for templating
 	td := r.getTemplateData(extracted)
 
-	// Initialize the template with the "replace" string defined by user
-	templ, err := template.New("pipeline_template").Funcs(functionMap).Parse(r.cfg.Replace)
-	if err != nil {
-		r.logger.Debug("template initialization error", "err", err)
-		return
-	}
-
-	result, capturedMap, err := r.getReplacedEntry(matchAllIndex, *input, td, templ)
+	result, capturedMap, err := r.getReplacedEntry(matchAllIndex, *input, td)
 	if err != nil {
 		r.logger.Debug("failed to execute template on extracted value", "err", err)
 		return
@@ -128,7 +129,7 @@ func (r *replaceStage) Process(labels model.LabelSet, extracted map[string]any, 
 	}
 }
 
-func (r *replaceStage) getReplacedEntry(matchAllIndex [][]int, input string, td map[string]string, templ *template.Template) (string, map[string]string, error) {
+func (r *replaceStage) getReplacedEntry(matchAllIndex [][]int, input string, td map[string]string) (string, map[string]string, error) {
 	var result string
 	previousInputEndIndex := 0
 	capturedMap := make(map[string]string)
@@ -147,7 +148,7 @@ func (r *replaceStage) getReplacedEntry(matchAllIndex [][]int, input string, td 
 			capturedString := input[matchIndex[i]:matchIndex[i+1]]
 			buf := &bytes.Buffer{}
 			td["Value"] = capturedString
-			err := templ.Execute(buf, td)
+			err := r.template.Execute(buf, td)
 			if err != nil {
 				return "", nil, err
 			}

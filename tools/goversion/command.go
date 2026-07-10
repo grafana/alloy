@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -76,14 +76,20 @@ func pr2Command() *cobra.Command {
 
 			version := args[0]
 
+			if err := updateMiseToml(root, version); err != nil {
+				return fmt.Errorf("error updating mise.toml: %w", err)
+			}
+
 			if err := updateGoModFiles(root, version); err != nil {
 				log.Fatalf("failed to update go.mod files: %s", err)
 				return fmt.Errorf("error updating go.mod files: %w", err)
 			}
+
 			if err := updateDockerFiles(root, version); err != nil {
 				log.Fatalf("failed to update Dockerfiles: %s", err)
 				return fmt.Errorf("error updating Dockerfiles: %w", err)
 			}
+
 			if err := bumpBuildImage(root); err != nil {
 				return fmt.Errorf("error updating build image: %w", err)
 			}
@@ -210,43 +216,28 @@ func bumpBuildImage(root string) error {
 
 type buildImageRefs struct {
 	Default    string
-	Boring     string
 	DefaultTag string
 }
 
-// buildImageRefsFromTags assumes 2 tags: one default, one boringcrypto.
+// buildImageRefsFromTags assumes a single tag: the most recent build image.
 func buildImageRefsFromTags(data *dockerTagsResponse) (*buildImageRefs, error) {
-	if len(data.Results) != 2 {
-		return nil, fmt.Errorf("expected 2 tags, got %d", len(data.Results))
+	if len(data.Results) != 1 {
+		return nil, fmt.Errorf("expected 1 tag, got %d", len(data.Results))
 	}
-	var defaultTag, boringTag *dockerTag
-	for i := range data.Results {
-		t := &data.Results[i]
-		if strings.HasSuffix(t.Name, "-boringcrypto") {
-			boringTag = t
-		} else {
-			defaultTag = t
-		}
-	}
-	if defaultTag == nil || boringTag == nil {
-		return nil, fmt.Errorf("expected one default and one boringcrypto tag")
-	}
+	tag := &data.Results[0]
 	return &buildImageRefs{
-		Default:    "grafana/alloy-build-image:" + defaultTag.Name + "@" + defaultTag.Digest,
-		Boring:     "grafana/alloy-build-image:" + boringTag.Name + "@" + boringTag.Digest,
-		DefaultTag: "grafana/alloy-build-image:" + defaultTag.Name,
+		Default:    "grafana/alloy-build-image:" + tag.Name + "@" + tag.Digest,
+		DefaultTag: "grafana/alloy-build-image:" + tag.Name,
 	}, nil
 }
 
 var (
-	buildImageWithDigestRE   = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+@sha256:[a-f0-9]+`)
-	buildImageBoringDigestRE = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+-boringcrypto@sha256:[a-f0-9]+`)
-	buildImageTagOnlyRE      = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+(\s|$)`)
+	buildImageWithDigestRE = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+@sha256:[a-f0-9]+`)
+	buildImageTagOnlyRE    = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+(\s|$)`)
 )
 
 func replaceBuildImageRefs(content []byte, refs *buildImageRefs) []byte {
-	out := buildImageBoringDigestRE.ReplaceAllLiteral(content, []byte(refs.Boring))
-	out = buildImageWithDigestRE.ReplaceAllLiteral(out, []byte(refs.Default))
+	out := buildImageWithDigestRE.ReplaceAllLiteral(content, []byte(refs.Default))
 	out = buildImageTagOnlyRE.ReplaceAll(out, []byte(refs.DefaultTag+"$1"))
 	return out
 }
@@ -295,4 +286,37 @@ func replaceDockerGoVersion(content []byte, version string) ([]byte, error) {
 	}
 	out.Write(content[last:])
 	return out.Bytes(), nil
+}
+
+// miseGoVersionRE matches the go tool line in mise.toml, e.g. `go = "1.26.3"`.
+var miseGoVersionRE = regexp.MustCompile(`(?m)^go\s*=\s*"[^"]*"`)
+
+// updateMiseToml bumps the go version in mise.toml and refreshes the lockfile
+// so the pinned checksums and URLs match the new version.
+func updateMiseToml(root, version string) error {
+	path := filepath.Join(root, "mise.toml")
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
+	}
+
+	if !miseGoVersionRE.Match(content) {
+		return fmt.Errorf("no go version found in %s", path)
+	}
+
+	newContent := miseGoVersionRE.ReplaceAllLiteral(content, []byte(`go = "`+version+`"`))
+	if err := os.WriteFile(path, newContent, 0644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+
+	cmd := exec.Command("mise", "lock", "go")
+	cmd.Dir = root
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("mise lock: %w", err)
+	}
+	return nil
 }

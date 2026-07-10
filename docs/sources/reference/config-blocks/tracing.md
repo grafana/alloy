@@ -36,7 +36,7 @@ The elements in the array can be any `otelcol` component that accept traces, inc
 When `write_to` is set to an empty array `[]`, all traces are dropped.
 
 {{< admonition type="note" >}}
-Any traces generated before the `tracing` block has been evaluated,such as at the early start of the process' lifetime, are dropped.
+Any traces generated before the `tracing` block has been evaluated, such as at the early start of the process' lifetime, are dropped.
 {{< /admonition >}}
 
 The `sampling_fraction` argument controls what percentage of generated traces should be sent to the consumers specified by `write_to`.

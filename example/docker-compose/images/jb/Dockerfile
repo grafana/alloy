@@ -1,3 +1,3 @@
-FROM golang:1.26.3-alpine@sha256:91eda9776261207ea25fd06b5b7fed8d397dd2c0a283e77f2ab6e91bfa71079d
+FROM golang:1.26.5-alpine@sha256:99e12cfb19b753915f9b9fdc5a99f1869a24a69d3a0955832d5702e7fa68f1be
 
 RUN go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@v0.5.1

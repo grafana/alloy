@@ -2,12 +2,12 @@ package squid_exporter
 
 import (
 	"errors"
-	"os"
 	"testing"
 
-	"github.com/go-kit/log"
 	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/yaml"
+
+	"github.com/grafana/alloy/internal/util"
 )
 
 func TestConfigValidate(t *testing.T) {
@@ -140,7 +140,7 @@ func TestConfig_NewIntegration(t *testing.T) {
 			Address: "localhost:3128",
 		}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.NoError(t, err)
 		require.NotNil(t, i)
 	})
@@ -148,7 +148,7 @@ func TestConfig_NewIntegration(t *testing.T) {
 	t.Run("integration with invalid config", func(t *testing.T) {
 		c := Config{}
 
-		i, err := c.NewIntegration(log.NewJSONLogger(os.Stdout))
+		i, err := c.NewIntegration(util.TestAlloyLogger(t).Slog())
 		require.Nil(t, i)
 		require.ErrorContains(t, err, "failed to validate config:")
 	})

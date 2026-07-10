@@ -72,7 +72,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.Equal(t, len(otelArgs.CORS.Get().AllowedOrigins), 2)
 		require.Equal(t, otelArgs.CORS.Get().AllowedOrigins[0], "https://*.test.com")
 		require.Equal(t, otelArgs.CORS.Get().AllowedOrigins[1], "https://test.com")
-		require.Equal(t, otelArgs.ReadTimeout, time.Hour)
+		require.Equal(t, otelArgs.ServerConfig.ReadTimeout, time.Hour)
 	})
 
 	t.Run("trace_id_cache_size", func(t *testing.T) {
@@ -87,6 +87,22 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.NoError(t, err)
 		otelArgs := ext.(*datadogreceiver.Config)
 		require.Equal(t, 500, otelArgs.TraceIDCacheSize)
+	})
+
+	t.Run("idle_series", func(t *testing.T) {
+		in := `
+		idle_series_timeout = "10m"
+		idle_series_cleanup_interval = "1m"
+
+		output { /* no-op */ }
+		`
+		var args datadog.Arguments
+		require.NoError(t, syntax.Unmarshal([]byte(in), &args))
+		ext, err := args.Convert()
+		require.NoError(t, err)
+		otelArgs := ext.(*datadogreceiver.Config)
+		require.Equal(t, 10*time.Minute, otelArgs.IdleSeriesTimeout)
+		require.Equal(t, time.Minute, otelArgs.IdleSeriesCleanupInterval)
 	})
 
 	t.Run("intake_proxy", func(t *testing.T) {

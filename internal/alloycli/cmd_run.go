@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -18,7 +19,6 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit/advertise"
 	"github.com/grafana/ckit/peer"
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,8 +26,6 @@ import (
 	"github.com/spf13/pflag"
 	"go.opentelemetry.io/otel"
 	"golang.org/x/exp/maps"
-
-	"github.com/grafana/alloy/internal/util"
 
 	"github.com/grafana/alloy/internal/alloyseed"
 	"github.com/grafana/alloy/internal/boringcrypto"
@@ -38,7 +36,6 @@ import (
 	"github.com/grafana/alloy/internal/readyctx"
 	alloy_runtime "github.com/grafana/alloy/internal/runtime"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/runtime/tracing"
 	"github.com/grafana/alloy/internal/service"
 	httpservice "github.com/grafana/alloy/internal/service/http"
@@ -49,6 +46,7 @@ import (
 	uiservice "github.com/grafana/alloy/internal/service/ui"
 	"github.com/grafana/alloy/internal/static/config/instrumentation"
 	"github.com/grafana/alloy/internal/usagestats"
+	"github.com/grafana/alloy/internal/util"
 	"github.com/grafana/alloy/internal/util/windowspriority"
 	"github.com/grafana/alloy/syntax/diag"
 
@@ -56,8 +54,8 @@ import (
 	_ "github.com/grafana/alloy/internal/component/all"
 )
 
-func RunCommand() *cobra.Command {
-	r := &alloyRun{
+func newAlloyRun() *alloyRun {
+	return &alloyRun{
 		inMemoryAddr:          "alloy.internal:12345",
 		httpListenAddr:        "127.0.0.1:12345",
 		storagePath:           "data-alloy/",
@@ -73,6 +71,10 @@ func RunCommand() *cobra.Command {
 		windowsPriority:       windowspriority.PriorityNormal,
 		taskShutdownDeadline:  10 * time.Minute,
 	}
+}
+
+func RunCommand() *cobra.Command {
+	r := newAlloyRun()
 
 	cmd := &cobra.Command{
 		Use:   "run [flags] path",
@@ -108,77 +110,139 @@ depending on the nature of the reload error.
 		SilenceUsage: true,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return r.Run(cmd, args[0])
+			return r.runCommand(cmd, args[0])
 		},
 	}
 
+	mountRunFlags(r, cmd.Flags())
+	return cmd
+}
+
+type ExtensionModeParams struct {
+	// ConfigContents is a set of config file names and contents.
+	Configs map[string][]byte
+
+	// ModulePath is a value that will be used as "module_path" keyword value in Alloy config.
+	ModulePath string
+}
+
+// NewRunAsExtensionCommand returns a standalone cobra command to run Alloy inside OTel collector as an extension.
+//
+// In extension mode:
+//   - Certain features like remote config are disabled.
+//   - Config reload on NOHUP signal is disabled.
+//   - Alloy config contents passed directly, instead of file path cli argument.
+func NewRunAsExtensionCommand(params ExtensionModeParams) *cobra.Command {
+	r := newAlloyRun()
+
+	cmd := &cobra.Command{
+		SilenceUsage: true,
+		Args:         cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			rp := runParams{
+				newReloadSignal: func() chan os.Signal {
+					// SIGHUP is reserved by otel collector. Thus, use nop.
+					return nil
+				},
+				newRemoteConfigService: func(_ *logging.Logger, reg prometheus.Registerer) (service.Service, error) {
+					// Otel uses OpAMP, thus remote config management is disabled.
+					return remotecfgservice.NewStub(reg), nil
+				},
+				reloadConfig: func(*alloy_runtime.Runtime, *httpservice.Service) error {
+					return errors.New("config reload is not supported when Alloy is running in extension mode")
+				},
+				getConfig: func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
+					alloySource, err := alloy_runtime.ParseSources(params.Configs)
+					defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(params.Configs), r.clusterName)
+					if err != nil {
+						return params.Configs, fmt.Errorf("failed to parse config: %w", err)
+					}
+
+					httpSvc.SetSources(alloySource.SourceFiles())
+
+					if err := rt.LoadSource(alloySource, nil, params.ModulePath); err != nil {
+						return params.Configs, fmt.Errorf("error during the initial load: %w", err)
+					}
+
+					return params.Configs, nil
+				},
+			}
+
+			return r.run(cmd.Context(), cmd.Flags(), rp)
+		},
+	}
+
+	mountRunFlags(r, cmd.Flags())
+	return cmd
+}
+
+func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	// Server flags
-	cmd.Flags().
+	fset.
 		StringVar(&r.httpListenAddr, "server.http.listen-addr", r.httpListenAddr, "Address to listen for HTTP traffic on")
-	cmd.Flags().StringVar(&r.inMemoryAddr, "server.http.memory-addr", r.inMemoryAddr, "Address to listen for in-memory HTTP traffic on. Change if it collides with a real address")
-	cmd.Flags().StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to serve the HTTP UI at")
-	cmd.Flags().
+	fset.StringVar(&r.inMemoryAddr, "server.http.memory-addr", r.inMemoryAddr, "Address to listen for in-memory HTTP traffic on. Change if it collides with a real address")
+	fset.StringVar(&r.uiPrefix, "server.http.ui-path-prefix", r.uiPrefix, "Prefix to serve the HTTP UI at")
+	fset.
 		BoolVar(&r.enablePprof, "server.http.enable-pprof", r.enablePprof, "Enable /debug/pprof profiling endpoints.")
-	cmd.Flags().
+	fset.
 		BoolVar(&r.disableSupportBundle, "server.http.disable-support-bundle", r.disableSupportBundle, "Disable /-/support support bundle retrieval.")
+	fset.BoolVar(&r.enableGraphQL, "server.http.enable-graphql", r.enableGraphQL, "Enable the GraphQL API")
+	fset.BoolVar(&r.enableGraphQLPlayground, "server.http.enable-graphql-playground", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
 
 	// Cluster flags
-	cmd.Flags().
+	fset.
 		BoolVar(&r.clusterEnabled, "cluster.enabled", r.clusterEnabled, "Start in clustered mode")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterNodeName, "cluster.node-name", r.clusterNodeName, "The name to use for this node")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterAdvAddr, "cluster.advertise-address", r.clusterAdvAddr, "Address to advertise to the cluster")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterJoinAddr, "cluster.join-addresses", r.clusterJoinAddr, "Comma-separated list of addresses to join the cluster at")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterDiscoverPeers, "cluster.discover-peers", r.clusterDiscoverPeers, "List of key-value tuples for discovering peers")
-	cmd.Flags().
+	fset.
 		StringSliceVar(&r.clusterAdvInterfaces, "cluster.advertise-interfaces", r.clusterAdvInterfaces, "List of interfaces used to infer an address to advertise")
-	cmd.Flags().
+	fset.
 		DurationVar(&r.clusterRejoinInterval, "cluster.rejoin-interval", r.clusterRejoinInterval, "How often to rejoin the list of peers")
-	cmd.Flags().
+	fset.
 		IntVar(&r.clusterMaxJoinPeers, "cluster.max-join-peers", r.clusterMaxJoinPeers, "Number of peers to join from the discovered set")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterName, "cluster.name", r.clusterName, "The name of the cluster to join")
-	cmd.Flags().
+	fset.
 		BoolVar(&r.clusterEnableTLS, "cluster.enable-tls", r.clusterEnableTLS, "Specifies whether TLS should be used for communication between peers")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterTLSCAPath, "cluster.tls-ca-path", r.clusterTLSCAPath, "Path to the CA certificate file")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterTLSCertPath, "cluster.tls-cert-path", r.clusterTLSCertPath, "Path to the certificate file")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterTLSKeyPath, "cluster.tls-key-path", r.clusterTLSKeyPath, "Path to the key file")
-	cmd.Flags().
+	fset.
 		StringVar(&r.clusterTLSServerName, "cluster.tls-server-name", r.clusterTLSServerName, "Server name to use for TLS communication")
-	cmd.Flags().
+	fset.
 		IntVar(&r.clusterWaitForSize, "cluster.wait-for-size", r.clusterWaitForSize, "Wait for the cluster to reach the specified number of instances before allowing components that use clustering to begin processing. Zero means disabled")
-	cmd.Flags().
+	fset.
 		DurationVar(&r.clusterWaitTimeout, "cluster.wait-timeout", 0, "Maximum duration to wait for minimum cluster size before proceeding with available nodes. Zero means wait forever, no timeout")
 
 	// Config flags
-	cmd.Flags().StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
-	cmd.Flags().BoolVar(&r.configBypassConversionErrors, "config.bypass-conversion-errors", r.configBypassConversionErrors, "Enable bypassing errors when converting")
-	cmd.Flags().StringVar(&r.configExtraArgs, "config.extra-args", r.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
+	fset.StringVar(&r.configFormat, "config.format", r.configFormat, fmt.Sprintf("The format of the source file. Supported formats: %s.", supportedFormatsList()))
+	fset.BoolVar(&r.configBypassConversionErrors, "config.bypass-conversion-errors", r.configBypassConversionErrors, "Enable bypassing errors when converting")
+	fset.StringVar(&r.configExtraArgs, "config.extra-args", r.configExtraArgs, "Extra arguments from the original format used by the converter. Multiple arguments can be passed by separating them with a space.")
 
 	// Misc flags
-	cmd.Flags().
+	fset.
 		BoolVar(&r.disableReporting, "disable-reporting", r.disableReporting, "Disable reporting of enabled components to Grafana.")
-	cmd.Flags().StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
-	cmd.Flags().Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
+	fset.StringVar(&r.storagePath, "storage.path", r.storagePath, "Base directory where components can store data")
+	fset.Var(&r.minStability, "stability.level", fmt.Sprintf("Minimum stability level of features to enable. Supported values: %s", strings.Join(featuregate.AllowedValues(), ", ")))
 	if runtime.GOOS == "windows" {
-		cmd.Flags().StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
+		fset.StringVar(&r.windowsPriority, "windows.priority", r.windowsPriority, fmt.Sprintf("Process priority to use when running on windows. This flag is currently in public preview. Supported values: %s", strings.Join(slices.Collect(windowspriority.PriorityValues()), ", ")))
 	}
 
 	// Feature flags
-	cmd.Flags().BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
-	cmd.Flags().DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
-	cmd.Flags().BoolVar(&r.enableGraphQL, "feature.graphql.enabled", r.enableGraphQL, "Enable the GraphQL API")
-	cmd.Flags().BoolVar(&r.enableGraphQLPlayground, "feature.graphql-playground.enabled", r.enableGraphQLPlayground, "Enable the GraphQL playground UI (/graphql/playground)")
-	cmd.Flags().BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
+	fset.BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
+	fset.DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
+	fset.BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
 
-	addDeprecatedFlags(cmd)
-	return cmd
+	addDeprecatedFlags(fset)
 }
 
 type alloyRun struct {
@@ -230,26 +294,104 @@ func (fr *alloyRun) checkExperimentalFlags() error {
 	}
 
 	if fr.enableGraphQL {
-		return fmt.Errorf("'--feature.graphql.enabled' %s", errMsg)
+		return fmt.Errorf("'--server.http.enable-graphql' %s", errMsg)
 	}
 
 	if fr.enableGraphQLPlayground {
-		return fmt.Errorf("'--feature.graphql-playground.enabled' %s", errMsg)
+		return fmt.Errorf("'--server.http.enable-graphql-playground' %s", errMsg)
 	}
 
 	return nil
 }
 
-func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
-	var wg sync.WaitGroup
-	defer wg.Wait()
-
-	ctx, cancel := interruptContext(cmd.Context())
-	defer cancel()
-
+func (fr *alloyRun) runCommand(cmd *cobra.Command, configPath string) error {
 	if configPath == "" {
 		return fmt.Errorf("path argument not provided")
 	}
+
+	loadConfig := func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error) {
+		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
+		if err != nil {
+			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
+			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
+		}
+
+		alloySource, err := alloy_runtime.ParseSources(sources)
+		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
+		if err != nil {
+			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
+		}
+
+		httpSvc.SetSources(alloySource.SourceFiles())
+		if err := rt.LoadSource(alloySource, nil, configPath); err != nil {
+			return sources, fmt.Errorf("error during the initial load: %w", err)
+		}
+
+		return sources, nil
+	}
+
+	rp := runParams{
+		newReloadSignal: func() chan os.Signal {
+			reloadSignal := make(chan os.Signal, 1)
+			signal.Notify(reloadSignal, syscall.SIGHUP)
+			return reloadSignal
+		},
+		newRemoteConfigService: func(l *logging.Logger, reg prometheus.Registerer) (service.Service, error) {
+			return remotecfgservice.New(remotecfgservice.Options{
+				Logger:      l.Slog().With("service", "remotecfg"),
+				ConfigPath:  configPath,
+				StoragePath: fr.storagePath,
+				Metrics:     reg,
+			})
+		},
+		getConfig: loadConfig,
+		reloadConfig: func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) error {
+			_, err := loadConfig(rt, httpSvc)
+			return err
+		},
+	}
+
+	return fr.run(cmd.Context(), cmd.Flags(), rp)
+}
+
+// getEnabledComponentsFunc returns a function that gets the current enabled components
+func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]any {
+	return func() map[string]any {
+		components := component.GetAllComponents(f, component.InfoOptions{})
+		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
+			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
+		}
+		componentNames := map[string]struct{}{}
+		for _, c := range components {
+			if c.Type != component.TypeBuiltin {
+				continue
+			}
+			componentNames[c.ComponentName] = struct{}{}
+		}
+		return map[string]any{"enabled-components": maps.Keys(componentNames)}
+	}
+}
+
+type runParams struct {
+	// newReloadSignal constructs and returns a new load signal channel.
+	newReloadSignal func() chan os.Signal
+
+	// newRemoteConfigService constructs remote configuration service.
+	newRemoteConfigService func(l *logging.Logger, regs prometheus.Registerer) (service.Service, error)
+
+	// reloadConfig is callback called on config reload.
+	reloadConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) error
+
+	// getConfig callback provides initial alloy config.
+	getConfig func(rt *alloy_runtime.Runtime, httpSvc *httpservice.Service) (map[string][]byte, error)
+}
+
+func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runParams) error {
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
 	if err := fr.checkExperimentalFlags(); err != nil {
 		return err
@@ -261,7 +403,8 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("building logger: %w", err)
 	}
 
-	level.Info(l).Log("msg", `Alloy is starting`)
+	slogger := l.Slog()
+	slogger.Info("Alloy is starting")
 
 	t, err := tracing.New(tracing.DefaultOptions)
 	if err != nil {
@@ -281,7 +424,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		if err := windowspriority.SetPriority(fr.windowsPriority); err != nil {
 			return fmt.Errorf("setting process priority: %w", err)
 		} else {
-			level.Info(l).Log("msg", "set process priority", "priority", fr.windowsPriority)
+			slogger.Info("set process priority", "priority", fr.windowsPriority)
 		}
 	}
 
@@ -290,23 +433,23 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// injected.
 	otel.SetTracerProvider(t)
 
-	level.Info(l).Log("boringcrypto enabled", boringcrypto.Enabled)
+	slogger.Info("boringcrypto enabled", "enabled", boringcrypto.Enabled)
 
 	// Set the memory limit, this will honor GOMEMLIMIT if set
 	// If there is a cgroup on linux it will use that
 	err = applyAutoMemLimit(l)
 	if err != nil {
-		level.Error(l).Log("msg", "failed to apply memory limit", "err", err)
+		slogger.Error("failed to apply memory limit", "err", err)
 	}
 
 	// Enable the profiling.
-	setMutexBlockProfiling(l)
+	setMutexBlockProfiling(slogger)
 
 	// Immediately start the tracer.
 	go func() {
 		err := t.Run(ctx)
 		if err != nil {
-			level.Error(l).Log("msg", "running tracer returned an error", "err", err)
+			slogger.Error("running tracer returned an error", "err", err)
 		}
 	}()
 
@@ -318,7 +461,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// registry that we want to keep can be given a custom registry so desired
 	// metrics are still exposed.
 	reg := prometheus.DefaultRegisterer
-	_ = util.MustRegisterOrGet(reg, newResourcesCollector(l))
+	_ = util.MustRegisterOrGet(reg, newResourcesCollector(slogger))
 
 	// There's a cyclic dependency between the definition of the Alloy controller,
 	// the reload/ready functions, and the HTTP service.
@@ -326,12 +469,12 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	// To work around this, we lazily create variables for the functions the HTTP
 	// service needs and set them after the Alloy controller exists.
 	var (
-		reload func() (map[string][]byte, error)
+		reload func() error
 		ready  func() bool
 	)
 
 	clusterService, err := buildClusterService(ClusterOptions{
-		Log:     log.With(l, "service", "cluster"),
+		Log:     slogger.With("service", "cluster"),
 		Tracer:  t,
 		Metrics: reg,
 
@@ -359,7 +502,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 	runtimeFlags := []string{}
 	if !fr.disableSupportBundle {
-		cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		fset.VisitAll(func(f *pflag.Flag) {
 			runtimeFlags = append(runtimeFlags, fmt.Sprintf("%s=%s", f.Name, f.Value.String()))
 		})
 	}
@@ -371,8 +514,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 
 		ReadyFunc: func() bool { return ready() },
 		ReloadFunc: func() error {
-			_, err := reload()
-			return err
+			return reload()
 		},
 
 		HTTPListenAddr:   fr.httpListenAddr,
@@ -385,12 +527,7 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		},
 	})
 
-	remoteCfgService, err := remotecfgservice.New(remotecfgservice.Options{
-		Logger:      log.With(l, "service", "remotecfg"),
-		ConfigPath:  configPath,
-		StoragePath: fr.storagePath,
-		Metrics:     reg,
-	})
+	remoteCfgService, err := params.newRemoteConfigService(l, reg)
 	if err != nil {
 		return fmt.Errorf("failed to create the remotecfg service: %w", err)
 	}
@@ -400,22 +537,22 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	uiService := uiservice.New(uiservice.Options{
 		UIPrefix:                fr.uiPrefix,
 		CallbackManager:         liveDebuggingService.Data().(livedebugging.CallbackManager),
-		Logger:                  log.With(l, "service", "ui"),
+		Logger:                  slogger.With("service", "ui"),
 		EnableGraphQL:           fr.enableGraphQL,
 		EnableGraphQLPlayground: fr.enableGraphQLPlayground,
 	})
 
-	otelService := otel_service.New(l)
+	otelService := otel_service.New(slogger.With("service", "otel"))
 	if otelService == nil {
 		return fmt.Errorf("failed to create otel service")
 	}
 
 	if fr.enableDirectFanout {
-		level.Info(l).Log("msg", "global label store is disabled")
+		slogger.Info("global label store is disabled")
 	}
 
-	labelService := labelstore.New(l, reg, !fr.enableDirectFanout)
-	alloyseed.Init(fr.storagePath, l)
+	labelService := labelstore.New(slogger, reg, !fr.enableDirectFanout)
+	alloyseed.Init(fr.storagePath, slogger)
 
 	f, err := alloy_runtime.New(alloy_runtime.Options{
 		Logger:               l,
@@ -440,56 +577,35 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 	}
 
 	ready = f.Ready
-	reload = func() (map[string][]byte, error) {
-		sources, err := loadSourceFiles(configPath, fr.configFormat, fr.configBypassConversionErrors, fr.configExtraArgs)
-		if err != nil {
-			instrumentation.InstrumentConfig(false, [32]byte{}, fr.clusterName)
-			return nil, fmt.Errorf("reading config path %q: %w", configPath, err)
-		}
-
-		alloySource, err := alloy_runtime.ParseSources(sources)
-		defer instrumentation.InstrumentConfig(err == nil, hashSourceFiles(sources), fr.clusterName)
-		if err != nil {
-			return sources, fmt.Errorf("reading config path %q: %w", configPath, err)
-		}
-
-		httpService.SetSources(alloySource.SourceFiles())
-		if err := f.LoadSource(alloySource, nil, configPath); err != nil {
-			return sources, fmt.Errorf("error during the initial load: %w", err)
-		}
-
-		return sources, nil
+	reload = func() error {
+		return params.reloadConfig(f, httpService)
 	}
 
 	// Alloy controller
-	{
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			f.Run(ctx)
-		}()
-	}
+	wg.Go(func() {
+		f.Run(ctx)
+	})
 
 	// Report usage of enabled components
 	if !fr.disableReporting {
-		reporter, err := usagestats.NewReporter(l)
+		reporter, err := usagestats.NewReporter(slogger)
 		if err != nil {
 			return fmt.Errorf("failed to create reporter: %w", err)
 		}
 		go func() {
 			err := reporter.Start(ctx, getEnabledComponentsFunc(f))
 			if err != nil && !errors.Is(err, context.Canceled) {
-				level.Error(l).Log("msg", "failed to start reporter", "err", err)
+				slogger.Error("failed to start reporter", "err", err)
 			}
 		}()
 	}
 
-	// Perform the initial reload. This is done after starting the HTTP server so
+	// Perform the initial load. This is done after starting the HTTP server so
 	// that /metric and pprof endpoints are available while the Alloy controller
 	// is loading.
-	if source, err := reload(); err != nil {
-		var diags diag.Diagnostics
-		if errors.As(err, &diags) {
+	if source, err := params.getConfig(f, httpService); err != nil {
+		// TODO: map diagnostics positions to actual positions in YAML config of otel collector.
+		if diags, ok := errors.AsType[diag.Diagnostics](err); ok {
 			p := diag.NewPrinter(diag.PrinterConfig{
 				Color:              !color.NoColor,
 				ContextLinesBefore: 1,
@@ -521,41 +637,24 @@ func (fr *alloyRun) Run(cmd *cobra.Command, configPath string) error {
 		return fmt.Errorf("failed to set clusterer state to Participant after initial load")
 	}
 
-	level.Info(l).Log("msg", `{^_^} Alloy is running`)
+	slogger.Info("{^_^} Alloy is running")
 
-	reloadSignal := make(chan os.Signal, 1)
-	signal.Notify(reloadSignal, syscall.SIGHUP)
-	defer signal.Stop(reloadSignal)
+	reloadSignal := params.newReloadSignal()
+	if reloadSignal != nil {
+		defer signal.Stop(reloadSignal)
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-reloadSignal:
-			if _, err := reload(); err != nil {
-				level.Error(l).Log("msg", "failed to reload config", "err", err)
+			if err := reload(); err != nil {
+				slogger.Error("failed to reload config", "err", err)
 			} else {
-				level.Info(l).Log("msg", "config reloaded")
+				slogger.Info("config reloaded")
 			}
 		}
-	}
-}
-
-// getEnabledComponentsFunc returns a function that gets the current enabled components
-func getEnabledComponentsFunc(f *alloy_runtime.Runtime) func() map[string]any {
-	return func() map[string]any {
-		components := component.GetAllComponents(f, component.InfoOptions{})
-		if remoteCfgHost, err := remotecfgservice.GetHost(f); err == nil {
-			components = append(components, component.GetAllComponents(remoteCfgHost, component.InfoOptions{})...)
-		}
-		componentNames := map[string]struct{}{}
-		for _, c := range components {
-			if c.Type != component.TypeBuiltin {
-				continue
-			}
-			componentNames[c.ComponentName] = struct{}{}
-		}
-		return map[string]any{"enabled-components": maps.Keys(componentNames)}
 	}
 }
 
@@ -617,6 +716,10 @@ func loadSourceFiles(path string, converterSourceFormat string, converterBypassE
 }
 
 func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
+	if len(sources) == 0 {
+		return [sha256.Size]byte{}
+	}
+
 	// Combined hash of all the sources.
 	hash := sha256.New()
 
@@ -631,36 +734,17 @@ func hashSourceFiles(sources map[string][]byte) [sha256.Size]byte {
 }
 
 // addDeprecatedFlags adds flags that are deprecated, have no effect, but we keep them for backwards compatibility.
-func addDeprecatedFlags(cmd *cobra.Command) {
-	deprecateFlagByName := func(cmd *cobra.Command, name string) {
+func addDeprecatedFlags(fset *pflag.FlagSet) {
+	deprecateFlagByName := func(fset *pflag.FlagSet, name string) {
 		msg := "This flag is deprecated and has no effect."
-		_ = cmd.Flags().Bool(name, false, msg)
-		err := cmd.Flags().MarkDeprecated(name, msg)
+		_ = fset.Bool(name, false, msg)
+		err := fset.MarkDeprecated(name, msg)
 		if err != nil { // this should never fail
 			panic(err)
 		}
 	}
-	deprecateFlagByName(cmd, "cluster.use-discovery-v1")
-	deprecateFlagByName(cmd, "feature.prometheus.metric-validation-scheme")
-}
-
-func interruptContext(parent context.Context) (context.Context, context.CancelFunc) {
-	ctx, cancel := context.WithCancel(parent)
-
-	go func() {
-		defer cancel()
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
-		select {
-		case <-sig:
-		case <-ctx.Done():
-		}
-		signal.Stop(sig)
-
-		fmt.Fprintln(os.Stderr, "interrupt received")
-	}()
-
-	return ctx, cancel
+	deprecateFlagByName(fset, "cluster.use-discovery-v1")
+	deprecateFlagByName(fset, "feature.prometheus.metric-validation-scheme")
 }
 
 func splitPeers(s, sep string) []string {
@@ -670,7 +754,7 @@ func splitPeers(s, sep string) []string {
 	return strings.Split(s, sep)
 }
 
-func setMutexBlockProfiling(l log.Logger) {
+func setMutexBlockProfiling(l *slog.Logger) {
 	mutexPercent := os.Getenv("PPROF_MUTEX_PROFILING_PERCENT")
 	if mutexPercent != "" {
 		rate, err := strconv.Atoi(mutexPercent)
@@ -678,7 +762,7 @@ func setMutexBlockProfiling(l log.Logger) {
 			// The 100/rate is because the value is interpreted as 1/rate. So 50 would be 100/50 = 2 and become 1/2 or 50%.
 			runtime.SetMutexProfileFraction(100 / rate)
 		} else {
-			level.Error(l).Log("msg", "error setting PPROF_MUTEX_PROFILING_PERCENT", "err", err, "value", mutexPercent)
+			l.Error("error setting PPROF_MUTEX_PROFILING_PERCENT", "err", err, "value", mutexPercent)
 			runtime.SetMutexProfileFraction(1000)
 		}
 	} else {
@@ -691,7 +775,7 @@ func setMutexBlockProfiling(l log.Logger) {
 		if err == nil && rate > 0 {
 			runtime.SetBlockProfileRate(rate)
 		} else {
-			level.Error(l).Log("msg", "error setting PPROF_BLOCK_PROFILING_RATE", "err", err, "value", blockRate)
+			l.Error("error setting PPROF_BLOCK_PROFILING_RATE", "err", err, "value", blockRate)
 			runtime.SetBlockProfileRate(10_000)
 		}
 	} else {

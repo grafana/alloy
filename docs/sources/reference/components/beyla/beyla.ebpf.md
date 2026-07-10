@@ -86,8 +86,15 @@ You can use the following blocks with `beyla.ebpf`:
 | `discovery` > `survey` > [`kubernetes`][kubernetes services]           | Configures the Kubernetes surveying mechanism for the component.                                   | no       |
 | [`ebpf`][ebpf]                                                         | Configures eBPF-specific settings.                                                                 | no       |
 | `ebpf` > [`payload_extraction`][payload extraction]                    | Configures HTTP payload extraction for protocol-aware parsing.                                     | no       |
-| `ebpf` > `payload_extraction` > `http` > [`openai`][openai payload extraction] | Configures OpenAI payload extraction.                                                      | no       |
-| `ebpf` > `payload_extraction` > `http` > [`anthropic`][anthropic payload extraction] | Configures Anthropic payload extraction.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`openai`][openai payload extraction] | Configures **OpenAI** payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`anthropic`][anthropic payload extraction] | Configures **Anthropic** payload extraction.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`gemini`][gemini payload extraction] | Configures **Gemini** payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`qwen`][qwen payload extraction] | Configures **Qwen** payload extraction.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`bedrock`][bedrock payload extraction] | Configures **AWS Bedrock** payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`mcp`][mcp payload extraction] | Configures **Model Context Protocol** (MCP) payload extraction and parsing.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`embedding`][embedding payload extraction] | Configures generic **embedding** provider (**Voyage AI**, **Cohere**, **Jina AI**) payload extraction and parsing.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`rerank`][rerank payload extraction] | Configures **Rerank** (**Cohere**, **Jina AI**, **Voyage AI**, etc.) payload extraction and parsing.                                             | no       |
+| `ebpf` > `payload_extraction` > `http` > `genai` > [`retrieval`][retrieval payload extraction] | Configures vector **retrieval** (**Pinecone**, **Qdrant**, **Milvus**, **Chroma**, **Weaviate**, etc.) payload extraction and parsing.                                             | no       |
 | `ebpf` > [`maps_config`][maps config]                                  | Configures eBPF map sizing.                                                                        | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
 | `filters` > [`application`][application filters]                       | Configures filtering of application attributes.                                                    | no       |
@@ -99,8 +106,9 @@ You can use the following blocks with `beyla.ebpf`:
 | [`routes`][routes]                                                     | Configures the routes to match HTTP paths into user-provided HTTP routes.                          | no       |
 | [`injector`][injector]                                                 | Configures the SDK injection feature for automatic instrumentation without eBPF.                   | no       |
 | `injector` > [`instrument`][services]                                  | Configures the services to instrument with SDK injection.                                          | no       |
+| `injector` > [`exclude_instrument`][services]                          | Configures the services to exclude from SDK injection.                                             | no       |
 | `injector` > [`webhook`][injector webhook]                             | Configures the webhook for SDK injection.                                                          | no       |
-| `injector` > [`export`][injector export]                               | Configures which telemetry signals the injected SDK exports.                                       | no       |
+| `injector` > [`otel_exported_signals`][injector export]                | Configures which telemetry signals the injected SDK exports.                                       | no       |
 | `injector` > [`resources`][injector resources]                         | Configures resource attributes for the injected SDK.                                               | no       |
 | `injector` > [`sampler`][sampler]                                      | Configures default trace sampling for injected SDKs.                                               | no       |
 | [`stats`][stats]                                                       | Configures stats observability options for Beyla.                                                  | no       |
@@ -118,8 +126,15 @@ You can use the following blocks with `beyla.ebpf`:
 [ebpf]: #ebpf
 [payload extraction]: #payload_extraction
 [openai payload extraction]: #openai
-[maps config]: #maps_config
 [anthropic payload extraction]: #anthropic
+[gemini payload extraction]: #gemini
+[qwen payload extraction]: #qwen
+[bedrock payload extraction]: #bedrock
+[mcp payload extraction]: #mcp
+[embedding payload extraction]: #embedding
+[rerank payload extraction]: #rerank
+[retrieval payload extraction]: #retrieval
+[maps config]: #maps_config
 [filters]: #filters
 [application filters]: #application
 [metrics]: #metrics
@@ -128,7 +143,7 @@ You can use the following blocks with `beyla.ebpf`:
 [output]: #output
 [injector]: #injector
 [injector webhook]: #webhook
-[injector export]: #export
+[injector export]: #otel_exported_signals
 [injector resources]: #resources
 [stats]: #stats
 
@@ -365,6 +380,8 @@ The `traces` block configures trace collection and sampling options for the beyl
 {{< admonition type="note" >}}
 To export traces, you must also configure the [`output`][output] block with a `traces` destination.
 Without an output configuration, traces are collected but not exported.
+
+[output]: #output
 {{< /admonition >}}
 
 | Name              | Type           | Description                                                      | Default | Required |
@@ -504,23 +521,79 @@ The deprecated value `ip` is still accepted by upstream Beyla for compatibility,
 
 The `payload_extraction` block configures protocol-aware HTTP payload parsing.
 
-##### `http`
+##### `genai`
 
 ###### `openai`
 
 | Name      | Type   | Description                               | Default | Required |
 |-----------|--------|-------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable OpenAI payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **OpenAI** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported OpenAI HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **OpenAI** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `anthropic`
 
 | Name      | Type   | Description                                  | Default | Required |
 |-----------|--------|----------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable Anthropic payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable **Anthropic** payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported Anthropic HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported **Anthropic** HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `gemini`
+
+| Name      | Type   | Description                               | Default | Required |
+|-----------|--------|-------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable **Gemini** payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported **Gemini** HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `qwen`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable **Qwen** payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported **Qwen** HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `bedrock`
+
+| Name      | Type   | Description                               | Default | Required |
+|-----------|--------|-------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable **AWS Bedrock** payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported **AWS Bedrock** HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `mcp`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable **MCP** payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported **MCP** HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `embedding`
+
+| Name      | Type   | Description                               | Default | Required |
+|-----------|--------|-------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable **Embedding** payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported **Embedding** HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `rerank`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable **Rerank** payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported **Rerank** HTTP payloads and can enrich traces with GenAI-related attributes.
+
+###### `retrieval`
+
+| Name      | Type   | Description                                  | Default | Required |
+|-----------|--------|----------------------------------------------|---------|----------|
+| `enabled` | `bool` | Enable **Retrieval** payload extraction parsing. | `false` | no       |
+
+When enabled, Beyla parses supported **Retrieval** HTTP payloads and can enrich traces with GenAI-related attributes.
 
 #### `maps_config`
 
@@ -749,46 +822,46 @@ The matcher tags can be in the `:name` or `{name}` format.
 
 ### `injector`
 
-The `injector` block configures Beyla's SDK injection feature, which automatically instruments services by injecting OpenTelemetry SDKs without requiring eBPF.
+The `injector` block configures Beyla SDK injection feature used with the Beyla `k8s-injection-controller`.
 
-| Name                  | Type           | Description                                                                    | Default | Required |
-|-----------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
-| `debug`               | `bool`         | Enable debug mode for the SDK injector.                                        | `false` | no       |
-| `disable_auto_restart`| `bool`         | Disable automatic restart of instrumented services after SDK injection.        | `false` | no       |
-| `enabled_sdks`        | `list(string)` | List of SDK languages to enable for injection (e.g. `["java", "dotnet"]`).     | `[]`    | no       |
-| `host_mount_path`     | `string`       | Path where the host filesystem is mounted inside the injector container.       | `""`    | no       |
-| `host_path_volume`    | `string`       | Path on the host where SDK packages are stored.                                | `""`    | no       |
-| `image_volume_path`   | `string`       | OCI image volume mount path for SDK injection. Requires Kubernetes 1.31+. Mutually exclusive with `host_mount_path` and `sdk_package_version`. | `""`    | no       |
-| `manage_sdk_versions` | `bool`         | Automatically manage and update SDK versions.                                  | `false` | no       |
-| `otel_endpoint`       | `string`       | OTLP endpoint URL used by injected SDKs to export telemetry.                   | `""`    | no       |
-| `propagators`         | `list(string)` | List of context propagation formats (e.g. `["tracecontext", "baggage"]`).      | `[]`    | no       |
-| `sdk_package_version` | `string`       | Version of the SDK package to inject.                                          | `""`    | no       |
+| Name                     | Type           | Description                                                                    | Default | Required |
+|--------------------------|----------------|--------------------------------------------------------------------------------|---------|----------|
+| `enabled_sdks`           | `list(string)` | List of SDK languages to enable for injection (for example, `["java", "dotnet"]`).     | `[]`    | no       |
+| `image_version`          | `string`       | OCI image version for the composite SDK distribution.                          | `""`    | no       |
+| `exporter_otlp_endpoint` | `string`       | OTLP endpoint URL used by injected SDKs to export telemetry.                   | `""`    | no       |
+| `exporter_otlp_protocol` | `string`       | OTLP endpoint protocol used by injected SDKs to export telemetry.              | `""`    | no       |
+| `propagators`            | `list(string)` | List of context propagation formats (for example, `["tracecontext", "baggage"]`).      | `[]`    | no       |
 
-`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`, `ruby`, `php`.
+`enabled_sdks` accepts the following values: `java`, `dotnet`, `nodejs`, `python`.
 
-`otel_endpoint` configures the OTLP endpoint that injected SDKs use to export telemetry. When set, it overrides the global OTLP endpoint for SDK-injected services.
+`exporter_otlp_endpoint` configures the OTLP endpoint that injected SDKs use to export telemetry. When set, it overrides the global OTLP endpoint for SDK-injected services.
+`exporter_otlp_protocol` configures the OTLP protocol that injected SDKs use to export telemetry. When set, it overrides the global OTLP protocol for SDK-injected services.
 
 It contains the following blocks:
 
 #### `webhook`
 
-The `webhook` block configures the Kubernetes admission webhook used to inject SDKs into Pods at creation time.
+The `webhook` block configures the settings related to communicating with the Kubernetes SDK injection controller.
 
-| Name        | Type       | Description                                               | Default | Required |
-|-------------|------------|-----------------------------------------------------------|---------|----------|
-| `cert_path` | `string`   | Path to the TLS certificate file for the webhook server.  | `""`    | no       |
-| `enable`    | `bool`     | Enable the admission webhook server.                      | `false` | no       |
-| `key_path`  | `string`   | Path to the TLS private key file for the webhook server.  | `""`    | no       |
-| `port`      | `number`   | Port on which the webhook server listens.                 | `8443`  | no       |
-| `timeout`   | `duration` | Timeout for webhook requests.                             | `"10s"` | no       |
+| Name                       | Type       | Description                                                                 | Default | Required |
+|----------------------------|------------|-----------------------------------------------------------------------------|---------|----------|
+| `external_deployment_name` | `string`   | The namespace/deployment name pair of the Kubernetes injection controller.  | `""`    | no       |
 
-#### `export`
+Beyla communicates with the injection controller via specially designed `configmaps` and it needs to watch for the controller restart to
+know if the local process information should be updated. For example, if the Kubernetes SDK injection controller was deployed in the
+`beyla-k8s-injector` namespace and the deployment name of the controller is `beyla-k8s-injector-controller-manager`, then set:
 
-The `export` block configures which telemetry signals the injected SDK exports.
+```
+  external_deployment_name: beyla-k8s-injector/beyla-k8s-injector-controller-manager
+```
 
-| Name      | Type   | Description                            | Default | Required |
-|-----------|--------|----------------------------------------|---------|----------|
-| `logs`    | `bool` | Enable log export from injected SDKs.  | `false` | no       |
+#### `otel_exported_signals`
+
+The `otel_exported_signals` block configures which telemetry signals the injected SDK exports.
+
+| Name      | Type   | Description                             | Default | Required |
+|-----------|--------|-----------------------------------------|---------|----------|
+| `logs`    | `bool` | Enable log export from injected SDKs.   | `false` | no       |
 | `metrics` | `bool` | Enable metric export from injected SDKs.| `false` | no       |
 | `traces`  | `bool` | Enable trace export from injected SDKs. | `true`  | no       |
 
@@ -796,11 +869,12 @@ The `export` block configures which telemetry signals the injected SDK exports.
 
 The `resources` block configures resource attributes attached to telemetry emitted by injected SDKs.
 
-| Name                | Type               | Description                                                                        | Default | Required |
-|---------------------|--------------------|------------------------------------------------------------------------------------|---------|----------|
-| `add_k8s_attributes`| `bool`             | Add Kubernetes UID attributes (e.g. `k8s.deployment.uid`) to the resource.         | `false` | no       |
-| `attributes`        | `map(string)`      | Map of additional resource attributes to add (e.g. `{environment = "production"}`). | `{}`    | no       |
-| `use_labels`        | `bool`             | Use common Kubernetes labels as resource attributes (e.g. `app.kubernetes.io/name` as `service.name`). | `false` | no       |
+| Name                    | Type               | Description                                                                                            | Default | Required |
+|-------------------------|--------------------|--------------------------------------------------------------------------------------------------------|---------|----------|
+| `add_k8s_uid_attributes`| `bool`             | Add Kubernetes UID attributes (for example, `k8s.deployment.uid`) to the resource.                             | `false` | no       |
+| `add_k8s_ip_attribute`  | `bool`             | Defines whether the `k8s.pod.ip` resource attribute should be set to the resource.                       | `false` | no       |
+| `attributes`            | `map(string)`      | Map of additional resource attributes to add (for example, `{environment = "production"}`).                    | `{}`    | no       |
+| `use_k8s_labels_for_resource_attributes`            | `bool`             | Use common Kubernetes labels as resource attributes (for example, `app.kubernetes.io/name` as `service.name`). | `false` | no       |
 
 ### `stats`
 
