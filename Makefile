@@ -351,6 +351,8 @@ ifeq ($(USE_CONTAINER),1)
 else
 	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
 	GOOS= GOARCH= go run -C tools ./cmd sync-replaces --builder-config ../collector/builder-config.yaml --go-mod ../go.mod
+	# This tidy propagates any root module changes to the collector module
+	cd ./collector && GOOS= GOARCH= go mod tidy
 	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
