@@ -12,7 +12,7 @@ import (
 	"github.com/grafana/alloy/internal/runtime/logging"
 )
 
-// Without cgo there is no SQL fingerprinting, so enable_error_logs must fail
+// Without cgo there is no SQL fingerprinting, so enable_error_logs_processing must fail
 // collector creation loudly (the error reaches the component health status)
 // instead of silently emitting nothing.
 func TestNewLogs_ErrorLogsRequireCgo(t *testing.T) {
@@ -23,5 +23,5 @@ func TestNewLogs_ErrorLogsRequireCgo(t *testing.T) {
 		Registry:        prometheus.NewRegistry(),
 		EnableErrorLogs: true,
 	})
-	require.ErrorContains(t, err, "enable_error_logs requires a cgo-enabled Alloy build")
+	require.ErrorContains(t, err, "enable_error_logs_processing requires a cgo-enabled Alloy build")
 }

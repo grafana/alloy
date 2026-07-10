@@ -123,7 +123,7 @@ type Logs struct {
 	validLogsThisMinute   int
 	invalidLogsThisMinute int
 
-	// op="error" pairing state, owned exclusively by the run goroutine
+	// op="error_message" pairing state, owned exclusively by the run goroutine
 	// (parseTextLog and flushExpiredPending both run there), so it needs no lock.
 	// PostgreSQL's logging collector writes each message (the ERROR line, its
 	// STATEMENT, and continuations) atomically and contiguously per backend, so a
@@ -141,7 +141,7 @@ func NewLogs(args LogsArguments) (*Logs, error) {
 	// Fail loudly instead of silently emitting nothing: the error surfaces via
 	// startCollectors into the component's health status.
 	if args.EnableErrorLogs && !fingerprint.Supported() {
-		return nil, fmt.Errorf("logs.enable_error_logs requires a cgo-enabled Alloy build (CGO_ENABLED=1)")
+		return nil, fmt.Errorf("logs.enable_error_logs_processing requires a cgo-enabled Alloy build (CGO_ENABLED=1)")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -185,8 +185,8 @@ func (l *Logs) initMetrics() {
 		},
 	)
 
-	// Report whether logs processing (op="error" emission) is enabled for this
-	// instance so consumers can detect which servers produce op="error" entries.
+	// Report whether logs processing (op="error_message" emission) is enabled for this
+	// instance so consumers can detect which servers produce op="error_message" entries.
 	l.logsProcessingEnabled = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Namespace: "database_observability",
@@ -375,7 +375,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 					if ok && !absolute.After(l.startTime) {
 						return nil // Skip historical log
 					}
-					// Record the timestamp for the op="error" entry only when the
+					// Record the timestamp for the op="error_message" entry only when the
 					// timezone resolved. time.Parse fabricates a zero-offset instant
 					// for unknown abbreviations, which can be hours wrong (and Loki
 					// rejects future timestamps); unresolved lines fall back to
@@ -469,7 +469,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 	}
 
 	// Start a new pending error awaiting its STATEMENT. Any prior un-flushed
-	// pending is displaced here (no STATEMENT captured → no op="error" entry);
+	// pending is displaced here (no STATEMENT captured → no op="error_message" entry);
 	// pg_errors_total still counted it above.
 	l.pending = &pendingError{
 		receivedAt: time.Now(),

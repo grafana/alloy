@@ -83,7 +83,7 @@ type Arguments struct {
 }
 
 type LogsArguments struct {
-	EnableErrorLogs bool `alloy:"enable_error_logs,attr,optional"`
+	EnableErrorLogsProcessing bool `alloy:"enable_error_logs_processing,attr,optional"`
 }
 
 type CloudProvider struct {
@@ -730,7 +730,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
 		ExcludeUsers:     effectiveExcludeUsers,
-		EnableErrorLogs:  c.args.Logs.EnableErrorLogs,
+		EnableErrorLogs:  c.args.Logs.EnableErrorLogsProcessing,
 		DB:               c.dbConnection,
 	})
 	if err != nil {

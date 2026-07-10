@@ -44,7 +44,7 @@ database_observability_logs_processing_enabled 0
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			if tc.enabled && !fingerprint.Supported() {
-				t.Skip("enable_error_logs requires a cgo build; NewLogs rejects it otherwise")
+				t.Skip("enable_error_logs_processing requires a cgo build; NewLogs rejects it otherwise")
 			}
 			reg := prometheus.NewRegistry()
 			c, err := NewLogs(LogsArguments{
