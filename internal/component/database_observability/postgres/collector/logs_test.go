@@ -897,7 +897,7 @@ func parseLogfmt(t *testing.T, s string) map[string]string {
 }
 
 // requireOnlyFields asserts the parsed logfmt entry contains exactly the given
-// keys and no others — pinning the minimal v1 op="error" field set so any
+// keys and no others — pinning the minimal v1 op="error_message" field set so any
 // re-added error-detail field fails the test until its own PR lands.
 func requireOnlyFields(t *testing.T, fields map[string]string, allowed ...string) {
 	t.Helper()
@@ -908,18 +908,18 @@ func requireOnlyFields(t *testing.T, fields map[string]string, allowed ...string
 	}
 	for k := range fields {
 		_, ok := allow[k]
-		require.Truef(t, ok, "unexpected field %q in minimal op=error entry", k)
+		require.Truef(t, ok, "unexpected field %q in minimal op=error_message entry", k)
 	}
 }
 
-// startErrorLogs builds and starts a logs collector with op="error" emission
+// startErrorLogs builds and starts a logs collector with op="error_message" emission
 // enabled, returning it with its receiver and entry channel. A non-zero timeout
 // overrides pendingErrorTimeout before Start (the run loop reads it once at
 // startup, so the timeout/race tests must set it here).
 func startErrorLogs(t *testing.T, timeout time.Duration) (*Logs, loki.LogsReceiver, chan loki.Entry) {
 	t.Helper()
 	if !fingerprint.Supported() {
-		t.Skip("op=error emission requires SQL fingerprinting, which needs a cgo build")
+		t.Skip("op=error_message emission requires SQL fingerprinting, which needs a cgo build")
 	}
 	receiver := loki.NewLogsReceiver()
 	entryCh := make(chan loki.Entry, 8)
@@ -1078,7 +1078,7 @@ func TestLogsCollector_StatementSurvivesTimeoutFlush_EmitsEntry(t *testing.T) {
 
 // TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled confirms that
 // with EnableErrorLogs explicitly false the component still increments
-// pg_errors_total but never forwards an op="error" Loki entry.
+// pg_errors_total but never forwards an op="error_message" Loki entry.
 func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T) {
 	receiver := loki.NewLogsReceiver()
 	entryCh := make(chan loki.Entry, 8)
@@ -1112,7 +1112,7 @@ func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T
 	// No Loki entries should have flowed.
 	select {
 	case e := <-entryCh:
-		t.Fatalf("expected no op=error entry; got one: %s", e.Line)
+		t.Fatalf("expected no op=error_message entry; got one: %s", e.Line)
 	case <-time.After(300 * time.Millisecond):
 		// good — silence
 	}
@@ -1120,7 +1120,7 @@ func TestLogsCollector_DoesNotEmitErrorEntryWhenFingerprintDisabled(t *testing.T
 
 // TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled pins that omitting
 // EnableErrorLogs from LogsArguments yields the disabled behavior:
-// pg_errors_total still increments, but no op="error" Loki entry appears.
+// pg_errors_total still increments, but no op="error_message" Loki entry appears.
 func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 	receiver := loki.NewLogsReceiver()
 	entryCh := make(chan loki.Entry, 8)
@@ -1149,7 +1149,7 @@ func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 	// And no Loki entry should appear.
 	select {
 	case e := <-entryCh:
-		t.Fatalf("expected no op=error entry; got one: %s", e.Line)
+		t.Fatalf("expected no op=error_message entry; got one: %s", e.Line)
 	case <-time.After(300 * time.Millisecond):
 		// good
 	}
@@ -1157,11 +1157,11 @@ func TestLogsCollector_EmitsErrorEntry_DefaultsToDisabled(t *testing.T) {
 
 // TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword pins that an
 // ERROR line whose message text contains a STATEMENT keyword is still counted
-// in pg_errors_total when enable_error_logs is on: the line is classified by
+// in pg_errors_total when enable_error_logs_processing is on: the line is classified by
 // its leftmost real label (ERROR), not diverted to the statement-attach path.
 func TestLogsCollector_CountsErrorWithEmbeddedStatementKeyword(t *testing.T) {
 	if !fingerprint.Supported() {
-		t.Skip("enable_error_logs requires a cgo build")
+		t.Skip("enable_error_logs_processing requires a cgo build")
 	}
 	registry := prometheus.NewRegistry()
 	c, err := NewLogs(LogsArguments{
