@@ -72,7 +72,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 		require.Equal(t, len(otelArgs.CORS.Get().AllowedOrigins), 2)
 		require.Equal(t, otelArgs.CORS.Get().AllowedOrigins[0], "https://*.test.com")
 		require.Equal(t, otelArgs.CORS.Get().AllowedOrigins[1], "https://test.com")
-		require.Equal(t, otelArgs.ReadTimeout, time.Hour)
+		require.Equal(t, otelArgs.ServerConfig.ReadTimeout, time.Hour)
 	})
 
 	t.Run("trace_id_cache_size", func(t *testing.T) {

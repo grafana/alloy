@@ -81,7 +81,7 @@ You can use the following argument with `otelcol.processor.filter`:
 
 | Name         | Type     | Description                                                        | Default       | Required |
 |--------------|----------|--------------------------------------------------------------------|---------------|----------|
-| `error_mode` | `string` | How to react to errors if they occur while processing a statement. | `"propagate"` | no       |
+| `error_mode` | `string` | How to react to errors if they occur while processing a statement. | `"ignore"`    | no       |
 
 The supported values for `error_mode` are:
 

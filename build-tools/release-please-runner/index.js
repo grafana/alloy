@@ -7,10 +7,16 @@
 
 import { GitHub, Manifest, VERSION } from 'release-please';
 import { registerVersioningStrategy } from 'release-please/build/src/factories/versioning-strategy-factory.js';
+import { registerPlugin } from 'release-please/build/src/factories/plugin-factory.js';
 import { MinorBreakingVersioningStrategy } from './minor-breaking-versioning.js';
+import { RootReleasePrOutputPlugin } from './root-release-pr-output-plugin.js';
+import { fileURLToPath } from 'node:url';
 
 // Register the custom versioning strategy
 registerVersioningStrategy('minor-breaking', (options) => new MinorBreakingVersioningStrategy(options));
+registerPlugin('root-release-pr-output', (options) => {
+  return new RootReleasePrOutputPlugin(options.github, options.targetBranch, options.repositoryConfig);
+});
 
 const DEFAULT_CONFIG_FILE = 'release-please-config.json';
 const DEFAULT_MANIFEST_FILE = '.release-please-manifest.json';
@@ -63,7 +69,7 @@ async function main() {
     console.log('Creating pull requests');
 
     const prs = await manifest.createPullRequests();
-    outputPullRequests(prs);
+    logPullRequests(prs);
   }
 }
 
@@ -97,7 +103,7 @@ function outputReleases(releases) {
   console.log(`paths_released=${JSON.stringify(pathsReleased)}`);
 }
 
-function outputPullRequests(prs) {
+function logPullRequests(prs) {
   prs = prs.filter(pr => pr !== undefined);
   console.log(`prs_created=${prs.length > 0}`);
   if (prs.length) {
@@ -107,7 +113,9 @@ function outputPullRequests(prs) {
   }
 }
 
-main().catch(err => {
-  console.error(`release-please failed: ${err.message}`);
-  process.exit(1);
-});
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch(err => {
+    console.error(`release-please failed: ${err.message}`);
+    process.exit(1);
+  });
+}

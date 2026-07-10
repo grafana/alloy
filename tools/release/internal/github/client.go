@@ -50,15 +50,6 @@ type CreateTagParams struct {
 	Message string
 }
 
-// CreatePRParams holds parameters for CreatePR.
-type CreatePRParams struct {
-	Title string
-	Head  string
-	Base  string
-	Body  string
-	Draft bool
-}
-
 // FindCherryPickedCommitParams holds parameters for FindCherryPickedCommit.
 type FindCherryPickedCommitParams struct {
 	Branch      string
@@ -239,30 +230,6 @@ func (c *Client) CreateTag(ctx context.Context, p CreateTagParams) error {
 	return nil
 }
 
-// ReadManifest reads the release-please manifest from the repository.
-func (c *Client) ReadManifest(ctx context.Context, ref string) (map[string]string, error) {
-	fileContent, _, _, err := c.api.Repositories.GetContents(
-		ctx, c.owner, c.repo,
-		".release-please-manifest.json",
-		&github.RepositoryContentGetOptions{Ref: ref},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("getting manifest file: %w", err)
-	}
-
-	content, err := fileContent.GetContent()
-	if err != nil {
-		return nil, fmt.Errorf("decoding manifest content: %w", err)
-	}
-
-	var manifest map[string]string
-	if err := json.Unmarshal([]byte(content), &manifest); err != nil {
-		return nil, fmt.Errorf("parsing manifest JSON: %w", err)
-	}
-
-	return manifest, nil
-}
-
 // GetAppIdentity returns the GitHub App's identity for use in git commits.
 // It checks for APP_SLUG environment variable and fetches the bot user ID from the API.
 // The bot user ID is required for GitHub to properly attribute commits.
@@ -312,24 +279,6 @@ func (c *Client) GetPR(ctx context.Context, number int) (*github.PullRequest, er
 	return pr, nil
 }
 
-// CreatePR creates a new pull request.
-func (c *Client) CreatePR(ctx context.Context, p CreatePRParams) (*github.PullRequest, error) {
-	newPR := &github.NewPullRequest{
-		Title: github.String(p.Title),
-		Head:  github.String(p.Head),
-		Base:  github.String(p.Base),
-		Body:  github.String(p.Body),
-		Draft: github.Bool(p.Draft),
-	}
-
-	pr, _, err := c.api.PullRequests.Create(ctx, c.owner, c.repo, newPR)
-	if err != nil {
-		return nil, fmt.Errorf("creating pull request: %w", err)
-	}
-
-	return pr, nil
-}
-
 // FindCherryPickedCommit searches the commit history of a branch for a commit
 // message containing the original commit SHA. It returns nil when no matching
 // commit is found.
@@ -364,19 +313,6 @@ func (c *Client) FindCherryPickedCommit(ctx context.Context, p FindCherryPickedC
 	}
 
 	return nil, nil
-}
-
-// IsBranchMergedInto checks if the source branch is fully merged into the target branch.
-// Returns true if target contains all commits from source (i.e., source is behind or equal to target).
-func (c *Client) IsBranchMergedInto(ctx context.Context, source, target string) (bool, error) {
-	comparison, _, err := c.api.Repositories.CompareCommits(ctx, c.owner, c.repo, target, source, nil)
-	if err != nil {
-		return false, fmt.Errorf("comparing branches: %w", err)
-	}
-
-	// If source is "behind" or "identical" to target, it means target already has all of source's commits
-	status := comparison.GetStatus()
-	return status == "behind" || status == "identical", nil
 }
 
 // EnsureLabel creates a label if it doesn't already exist.
@@ -421,16 +357,6 @@ func (c *Client) UpdateReleaseBody(ctx context.Context, releaseID int64, body st
 	})
 	if err != nil {
 		return fmt.Errorf("updating release %d body: %w", releaseID, err)
-	}
-	return nil
-}
-
-// DeleteBranch deletes the branch ref on the remote.
-func (c *Client) DeleteBranch(ctx context.Context, branch string) error {
-	ref := "refs/heads/" + branch
-	_, err := c.api.Git.DeleteRef(ctx, c.owner, c.repo, ref)
-	if err != nil {
-		return fmt.Errorf("deleting branch %s: %w", branch, err)
 	}
 	return nil
 }
@@ -483,12 +409,31 @@ func (c *Client) GraphQL(ctx context.Context, query string, variables map[string
 	}
 	defer resp.Body.Close()
 
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("reading graphql response: %w", err)
+	}
+
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("graphql request failed with status %d: %s", resp.StatusCode, string(respBody))
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(result); err != nil {
+	var payload struct {
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(respBody, &payload); err != nil {
+		return fmt.Errorf("decoding graphql response: %w", err)
+	}
+	if len(payload.Errors) > 0 {
+		messages := make([]string, 0, len(payload.Errors))
+		for _, graphQLError := range payload.Errors {
+			messages = append(messages, graphQLError.Message)
+		}
+		return fmt.Errorf("graphql errors: %s", strings.Join(messages, "; "))
+	}
+	if err := json.Unmarshal(respBody, result); err != nil {
 		return fmt.Errorf("decoding graphql response: %w", err)
 	}
 
