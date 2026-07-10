@@ -6,10 +6,6 @@ discovery.azure "prometheus1" {
 		tenant_id     = "tenant"
 		client_secret = "secret"
 	}
-
-	managed_identity {
-		client_id = "client"
-	}
 }
 
 discovery.azure "prometheus2" {
@@ -20,12 +16,30 @@ discovery.azure "prometheus2" {
 		tenant_id     = "tenant"
 		client_secret = "secret"
 	}
+	proxy_url        = "proxy"
+	follow_redirects = false
+}
+
+discovery.azure "managed_identity" {
+	subscription_id = "subscription"
 
 	managed_identity {
 		client_id = "client"
 	}
-	proxy_url        = "proxy"
-	follow_redirects = false
+}
+
+discovery.azure "sdk" {
+	subscription_id = "subscription"
+
+	sdk_auth {
+		tenant_id = "tenant"
+	}
+}
+
+discovery.azure "workload_identity" {
+	subscription_id = "subscription"
+
+	workload_identity { }
 }
 
 prometheus.scrape "prometheus1" {
@@ -43,6 +57,24 @@ prometheus.scrape "prometheus2" {
 	targets    = discovery.azure.prometheus2.targets
 	forward_to = [prometheus.remote_write.default.receiver]
 	job_name   = "prometheus2"
+}
+
+prometheus.scrape "managed_identity" {
+	targets    = discovery.azure.managed_identity.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "managed_identity"
+}
+
+prometheus.scrape "sdk" {
+	targets    = discovery.azure.sdk.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "sdk"
+}
+
+prometheus.scrape "workload_identity" {
+	targets    = discovery.azure.workload_identity.targets
+	forward_to = [prometheus.remote_write.default.receiver]
+	job_name   = "workload_identity"
 }
 
 prometheus.remote_write "default" {
