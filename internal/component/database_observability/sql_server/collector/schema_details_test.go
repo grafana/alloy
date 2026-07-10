@@ -37,6 +37,9 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
+
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -140,6 +143,9 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
+
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -225,6 +231,9 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
+
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
 				sqlmock.NewRows([]string{
@@ -299,6 +308,9 @@ func TestSchemaDetails(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
+
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
 
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(
@@ -383,6 +395,9 @@ func TestSchemaDetails(t *testing.T) {
 		collector.now = func() time.Time { return fakeNow }
 
 		// First scrape: tables list + metadata queries.
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
+
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
 				"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
@@ -408,6 +423,9 @@ func TestSchemaDetails(t *testing.T) {
 
 		// Second scrape: only the tables list. The scrape is throttled (still
 		// within emitInterval) so it must not trigger any metadata queries.
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
+
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
 				"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
@@ -454,6 +472,9 @@ func TestSchemaDetails(t *testing.T) {
 
 		// Two scrapes' worth of expectations.
 		for i := 0; i < 2; i++ {
+			expectListDatabases(mock, "some_db")
+			expectUseDatabase(mock, "some_db")
+
 			mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 				WillReturnRows(sqlmock.NewRows([]string{
 					"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
@@ -517,6 +538,9 @@ func TestSchemaDetails(t *testing.T) {
 		collector.now = func() time.Time { return fakeNow }
 
 		// First scrape: two tables in the same schema.
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
+
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
 				"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
@@ -545,13 +569,16 @@ func TestSchemaDetails(t *testing.T) {
 			}))
 
 		require.NoError(t, collector.extractSchema(t.Context()))
-		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("dbo", "table_a"))
-		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("dbo", "table_b"))
+		require.Contains(t, collector.lastEmittedAt, "some_db")
+		require.Contains(t, collector.lastEmittedAt["some_db"], schemaTableKey("dbo", "table_a"))
+		require.Contains(t, collector.lastEmittedAt["some_db"], schemaTableKey("dbo", "table_b"))
 
 		// Second scrape: only table_a remains. table_b should be evicted from
 		// the throttle map. Since table_a is still within emitInterval, no
 		// metadata queries are expected.
 		fakeNow = fakeNow.Add(time.Minute)
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
 				"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
@@ -560,8 +587,9 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, collector.extractSchema(t.Context()))
 
 		require.NoError(t, mock.ExpectationsWereMet())
-		require.Contains(t, collector.lastEmittedAt, fullyQualifiedName("dbo", "table_a"))
-		require.NotContains(t, collector.lastEmittedAt, fullyQualifiedName("dbo", "table_b"))
+		require.Contains(t, collector.lastEmittedAt, "some_db")
+		require.Contains(t, collector.lastEmittedAt["some_db"], schemaTableKey("dbo", "table_a"))
+		require.NotContains(t, collector.lastEmittedAt["some_db"], schemaTableKey("dbo", "table_b"))
 	})
 
 	t.Run("bulk metadata returns no rows for a table", func(t *testing.T) {
@@ -581,6 +609,9 @@ func TestSchemaDetails(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
+
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
 
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
@@ -641,7 +672,10 @@ func TestSchemaDetails(t *testing.T) {
 
 		// Pre-populate the throttle map to simulate a table that was emitted
 		// in a previous scrape but no longer exists in INFORMATION_SCHEMA.TABLES.
-		collector.lastEmittedAt[fullyQualifiedName("dbo", "stale_table")] = time.Now()
+		collector.lastEmittedAt["some_db"] = map[string]time.Time{schemaTableKey("dbo", "stale_table"): time.Now()}
+
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
 
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
 			WillReturnRows(sqlmock.NewRows([]string{
@@ -670,6 +704,9 @@ func TestSchemaDetails(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
+
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
 
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
@@ -714,6 +751,9 @@ func TestSchemaDetails(t *testing.T) {
 		})
 		require.NoError(t, err)
 		require.NotNil(t, collector)
+
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
 
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
@@ -771,8 +811,14 @@ func TestSchemaDetails(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, collector)
 
+		// First scrape: discovery + USE + tables query fails. The collector
+		// logs the failure and continues; the second scrape succeeds.
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnError(fmt.Errorf("connection error"))
 
+		expectListDatabases(mock, "some_db")
+		expectUseDatabase(mock, "some_db")
 		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().WillReturnRows(
 			sqlmock.NewRows([]string{
 				"TABLE_CATALOG",
@@ -848,6 +894,9 @@ func TestSchemaDetailsExcludeSchemas(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	expectListDatabases(mock, "some_db")
+	expectUseDatabase(mock, "some_db")
+
 	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause([]string{"excluded_schema"}))).
 		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{
 		"TABLE_CATALOG",
@@ -858,4 +907,324 @@ func TestSchemaDetailsExcludeSchemas(t *testing.T) {
 
 	require.NoError(t, c.extractSchema(t.Context()))
 	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestSchemaDetailsExcludeDatabases(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:               db,
+		CollectInterval:  time.Millisecond,
+		ExcludeDatabases: []string{"excluded_db"},
+		EntryHandler:     lokiClient,
+		Logger:           util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	// The user-supplied exclude_db is merged with the hardcoded system DBs.
+	// Discovery returns no databases; extractSchema returns cleanly and no
+	// USE / tables queries follow.
+	mock.ExpectQuery(fmt.Sprintf(selectDatabasesTemplate, buildExcludedDatabasesClause([]string{"excluded_db"}))).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(sqlmock.NewRows([]string{"name", "quoted_name"}))
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+}
+
+// TestSchemaDetailsMultiDatabase exercises the full multi-database iteration
+// path: one discovery, N USE statements, and per-database bulk metadata.
+func TestSchemaDetailsMultiDatabase(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	fakeNow := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Hour,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+	c.now = func() time.Time { return fakeNow }
+
+	// Discovery returns two databases; loop USEs each in turn and runs the
+	// tables + per-schema bulk queries against the pinned session. USE is
+	// interleaved with each database's queries because the collector switches
+	// context and immediately queries before moving to the next database.
+	expectListDatabases(mock, "db_a", "db_b")
+
+	for _, dbName := range []string{"db_a", "db_b"} {
+		expectUseDatabase(mock, dbName)
+		tableName := "t_" + dbName
+		mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
+			}).AddRow(dbName, "dbo", tableName, "BASE TABLE"))
+
+		mock.ExpectQuery(fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause([]string{tableName}))).WithArgs("dbo").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "column_name", "column_type", "is_nullable",
+				"is_identity", "default_value", "is_primary_key",
+			}).AddRow(tableName, "id", "int", false, true, nil, true))
+
+		mock.ExpectQuery(fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause([]string{tableName}))).WithArgs("dbo").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "index_name", "seq_in_index", "column_name",
+				"index_type", "is_unique", "is_nullable",
+			}))
+
+		mock.ExpectQuery(fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause([]string{tableName}))).WithArgs("dbo").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "constraint_name", "column_name",
+				"referenced_table_name", "referenced_column_name",
+			}))
+	}
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	// Each database contributes an OP_TABLE_DETECTION + OP_CREATE_STATEMENT.
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 4
+	}, 5*time.Second, 10*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `database="db_a"`)
+	require.Contains(t, entries[0].Line, `table="t_db_a"`)
+	require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+	require.Contains(t, entries[1].Line, `database="db_a"`)
+	require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
+	require.Contains(t, entries[2].Line, `database="db_b"`)
+	require.Contains(t, entries[2].Line, `table="t_db_b"`)
+	require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[3].Labels)
+	require.Contains(t, entries[3].Line, `database="db_b"`)
+
+	// Throttle keys are qualified with the database, so same-named tables in
+	// different databases would coexist.
+	require.Contains(t, c.lastEmittedAt, "db_a")
+	require.Contains(t, c.lastEmittedAt["db_a"], schemaTableKey("dbo", "t_db_a"))
+	require.Contains(t, c.lastEmittedAt, "db_b")
+	require.Contains(t, c.lastEmittedAt["db_b"], schemaTableKey("dbo", "t_db_b"))
+}
+
+// TestSchemaDetailsMultiDatabase_UseFailureContinues verifies that a USE
+// failure for one database does not abort the whole cycle.
+func TestSchemaDetailsMultiDatabase_UseFailureContinues(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Hour,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	mock.ExpectQuery(fmt.Sprintf(selectDatabasesTemplate, databasesExclusionClause)).
+		WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{"name", "quoted_name"}).
+			AddRow("bad_db", "[bad_db]").
+			AddRow("good_db", "[good_db]"))
+
+	// First USE fails; the second one succeeds and the loop continues.
+	mock.ExpectExec("USE [bad_db]").WillReturnError(fmt.Errorf("cannot open database"))
+	mock.ExpectExec("USE [good_db]").WillReturnResult(sqlmock.NewResult(0, 0))
+
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{
+			"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
+		}).AddRow("good_db", "dbo", "ok_table", "BASE TABLE"))
+
+	mock.ExpectQuery(fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause([]string{"ok_table"}))).WithArgs("dbo").RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{
+			"table_name", "column_name", "column_type", "is_nullable",
+			"is_identity", "default_value", "is_primary_key",
+		}).AddRow("ok_table", "id", "int", false, true, nil, true))
+
+	mock.ExpectQuery(fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause([]string{"ok_table"}))).WithArgs("dbo").RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{
+			"table_name", "index_name", "seq_in_index", "column_name",
+			"index_type", "is_unique", "is_nullable",
+		}))
+
+	mock.ExpectQuery(fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause([]string{"ok_table"}))).WithArgs("dbo").RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{
+			"table_name", "constraint_name", "column_name",
+			"referenced_table_name", "referenced_column_name",
+		}))
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 2
+	}, 5*time.Second, 10*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Contains(t, entries[0].Line, `database="good_db"`)
+	require.Contains(t, entries[1].Line, `database="good_db"`)
+}
+
+// TestSchemaDetailsUseFailurePreservesThrottle verifies that a USE failure
+// for one database does not evict its throttle entries. Without this
+// guarantee a flapping database would re-emit OP_CREATE_STATEMENT on every
+// recovery, defeating emitInterval.
+func TestSchemaDetailsUseFailurePreservesThrottle(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Hour,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	// Seed db_b with a recent throttle entry as if a previous cycle had
+	// already emitted for it. The USE failure this cycle must not evict it.
+	seededAt := time.Now()
+	c.lastEmittedAt["db_b"] = map[string]time.Time{
+		schemaTableKey("dbo", "existing_table"): seededAt,
+	}
+
+	expectListDatabases(mock, "db_a", "db_b")
+
+	// db_a: USE succeeds; tables query returns no rows (nothing to do).
+	expectUseDatabase(mock, "db_a")
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{
+			"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
+		}))
+
+	// db_b: USE fails. No tables query should follow.
+	mock.ExpectExec("USE [db_b]").WillReturnError(fmt.Errorf("cannot open database"))
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	require.Contains(t, c.lastEmittedAt, "db_b")
+	require.Equal(t, seededAt, c.lastEmittedAt["db_b"][schemaTableKey("dbo", "existing_table")])
+}
+
+// TestSchemaDetailsMidScanBreakPreservesThrottle verifies that a scan error
+// on a tables-result row (partial view) does not prune the database's
+// throttle map.
+func TestSchemaDetailsMidScanBreakPreservesThrottle(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Hour,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	seededAt := time.Now()
+	c.lastEmittedAt["some_db"] = map[string]time.Time{
+		schemaTableKey("dbo", "existing_table"): seededAt,
+	}
+
+	expectListDatabases(mock, "some_db")
+	expectUseDatabase(mock, "some_db")
+
+	// A NULL TABLE_NAME triggers a scan error when scanning into a plain
+	// string, which the collector treats as an incomplete scan and skips
+	// pruning for this cycle.
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{
+			"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
+		}).AddRow("some_db", "dbo", nil, "BASE TABLE"))
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	require.Contains(t, c.lastEmittedAt, "some_db")
+	require.Equal(t, seededAt, c.lastEmittedAt["some_db"][schemaTableKey("dbo", "existing_table")])
+}
+
+// TestSchemaDetailsUndiscoveredDatabaseEvicted verifies that a database no
+// longer returned by discovery has its throttle entries dropped, so we do
+// not leak state for dropped or newly-excluded databases.
+func TestSchemaDetailsUndiscoveredDatabaseEvicted(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer db.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              db,
+		CollectInterval: time.Hour,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+	})
+	require.NoError(t, err)
+
+	c.lastEmittedAt["gone_db"] = map[string]time.Time{
+		schemaTableKey("dbo", "old_table"): time.Now(),
+	}
+
+	expectListDatabases(mock, "some_db")
+	expectUseDatabase(mock, "some_db")
+	mock.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+		WillReturnRows(sqlmock.NewRows([]string{
+			"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
+		}))
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, mock.ExpectationsWereMet())
+
+	require.NotContains(t, c.lastEmittedAt, "gone_db")
+}
+
+func expectListDatabases(mock sqlmock.Sqlmock, databases ...string) {
+	rows := sqlmock.NewRows([]string{"name", "quoted_name"})
+	for _, db := range databases {
+		rows.AddRow(db, "["+db+"]")
+	}
+	mock.ExpectQuery(fmt.Sprintf(selectDatabasesTemplate, databasesExclusionClause)).
+		WithoutArgs().RowsWillBeClosed().WillReturnRows(rows)
+}
+
+func expectUseDatabase(mock sqlmock.Sqlmock, dbName string) {
+	mock.ExpectExec(fmt.Sprintf("USE [%s]", dbName)).WillReturnResult(sqlmock.NewResult(0, 0))
 }
