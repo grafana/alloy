@@ -193,6 +193,7 @@ body:
       - prometheus.relabel
       - prometheus.remote_write
       - prometheus.scrape
+      - prometheus.static
       - prometheus.write.queue
       - pyroscope.ebpf
       - pyroscope.enrich
