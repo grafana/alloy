@@ -45,3 +45,4 @@ collector/otel_engine.exe
 # AI
 CLAUDE.local.md
 .codex/
+.cursor/plans/

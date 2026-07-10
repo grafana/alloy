@@ -109,9 +109,6 @@ export default defineConfig(({ mode }) => ({
   // Use relative base path so assets work when served from any path prefix
   // The <base> tag in index.html will be set at runtime by the Go server
   base: './',
-  build: {
-    chunkSizeWarningLimit: 750,
-  },
   test: {
     environment: 'jsdom',
     setupFiles: ['src/test/setup.ts'],

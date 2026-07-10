@@ -53,10 +53,7 @@ function Graph() {
 
   const liveGraph: PipelineGraphData = useMemo(() => overlayLiveMetrics(baseGraph, debugData), [baseGraph, debugData]);
 
-  // Give each node an `href` to its component page. The graph renders these as
-  // real anchors, so clicks follow native browser semantics: a plain click
-  // opens in the same tab, while ⌘/ctrl/middle-click open a new tab and the
-  // browser's "open in new tab" / "copy link address" context menu works.
+  // Give each node an `href` to its component page; the graph renders these as anchors.
   const graph: PipelineGraphData = useMemo(() => {
     const baseUrl = globalThis.window.location.origin + pathPrefix;
     const nodes = liveGraph.nodes.map((node: PipelineNode) => {
