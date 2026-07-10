@@ -131,6 +131,8 @@ You can use the following blocks with `otelcol.processor.filter`:
 
 {{< admonition type="note" >}}
 The `logs` block is deprecated. Use [`log_conditions`][log_conditions] instead.
+
+[log_conditions]: #log_conditions
 {{< /admonition >}}
 
 The `logs` block specifies statements that filter log telemetry signals.
@@ -150,6 +152,8 @@ Only one of the statements inside the list of statements has to be satisfied.
 
 {{< admonition type="note" >}}
 The `metrics` block is deprecated. Use [`metric_conditions`][metric_conditions] instead.
+
+[metric_conditions]: #metric_conditions
 {{< /admonition >}}
 
 The `metrics` block specifies statements that filter metric telemetry signals.
@@ -179,6 +183,8 @@ If all datapoints for a metric are dropped, the metric will also be dropped.
 
 {{< admonition type="note" >}}
 The `traces` block is deprecated. Use [`trace_conditions`][trace_conditions] instead.
+
+[trace_conditions]: #trace_conditions
 {{< /admonition >}}
 
 The `traces` block specifies statements that filter trace telemetry signals.

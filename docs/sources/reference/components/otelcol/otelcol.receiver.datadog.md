@@ -138,7 +138,7 @@ The `proxy` block configures how the `/intake` proxy operates.
 It's only used when `behavior` is set to `"proxy"`.
 If `behavior` isn't `"proxy"`, this block is ignored.
 
-This block has no arguments and is configured with the nested [`api`][api] block.
+This block has no arguments and is configured with the nested [`api`](#api) block.
 
 ### `api`
 

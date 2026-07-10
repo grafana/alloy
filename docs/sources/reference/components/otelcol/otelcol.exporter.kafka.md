@@ -58,6 +58,10 @@ You can use the following arguments with `otelcol.exporter.kafka`:
 
 {{< admonition type="warning" >}}
 The `topic` and `encoding` arguments are deprecated in favor of the [`logs`][logs], [`metrics`][metrics], and [`traces`][traces] blocks.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 {{< /admonition >}}
 
 When `topic_from_metadata_key` is set in a signal-specific block, it will take precedence over `topic_from_attribute` and `topic` arguments.
@@ -68,6 +72,10 @@ When `topic_from_attribute` is set, it will take precedence over the `topic` arg
 `partition_logs_by_resource_attributes` and `partition_logs_by_trace_id` are mutually exclusive and can't both be `true`.
 
 `include_metadata_keys` specifies metadata keys to propagate as Kafka message headers. If one or more keys aren't found in the metadata, they are ignored. The keys also partition the data before export if `sending_queue.batch` is defined.
+
+[logs]: #logs
+[metrics]: #metrics
+[traces]: #traces
 
 ## Blocks
 

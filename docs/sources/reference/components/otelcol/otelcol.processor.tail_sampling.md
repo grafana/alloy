@@ -479,7 +479,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Example
 
-This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlphttp][] for further processing.
+This example batches trace data from {{< param "PRODUCT_NAME" >}} before sending it to [otelcol.exporter.otlphttp](../otelcol.exporter.otlphttp/) for further processing.
 This example shows an impractical number of policies for the purpose of demonstrating how to set up each type.
 
 ```alloy
