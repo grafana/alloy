@@ -219,6 +219,7 @@ The following components, grouped by namespace, _consume_ Prometheus `MetricsRec
 - [prometheus.receive_http](../components/prometheus/prometheus.receive_http)
 - [prometheus.relabel](../components/prometheus/prometheus.relabel)
 - [prometheus.scrape](../components/prometheus/prometheus.scrape)
+- [prometheus.static](../components/prometheus/prometheus.static)
 {{< /collapse >}}
 
 <!-- END GENERATED SECTION: CONSUMERS OF Prometheus `MetricsReceiver` -->
