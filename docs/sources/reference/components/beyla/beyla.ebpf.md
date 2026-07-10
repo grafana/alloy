@@ -380,6 +380,8 @@ The `traces` block configures trace collection and sampling options for the beyl
 {{< admonition type="note" >}}
 To export traces, you must also configure the [`output`][output] block with a `traces` destination.
 Without an output configuration, traces are collected but not exported.
+
+[output]: #output
 {{< /admonition >}}
 
 | Name              | Type           | Description                                                      | Default | Required |
