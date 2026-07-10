@@ -164,6 +164,7 @@ The following arguments are supported:
 | `service_name`  | `string`   | The name of the service which was specified when registering the instance.         |             | yes      |
 | `health_status` | `string`   | Ports to use with the IP addresses resolved from `service`.                        | `"HEALTHY"` | no       |
 | `interval`      | `duration` | Resolver interval.                                                                 | `"30s"`     | no       |
+| `owner_account` | `string`   | The AWS account that owns the CloudMap namespace, for cross-account service discovery. | `""`    | no       |
 | `port`          | `number`   | Port to be used for exporting the traces to the addresses resolved from `service`. | `null`      | no       |
 | `timeout`       | `duration` | Resolver timeout.                                                                  | `"5s"`      | no       |
 

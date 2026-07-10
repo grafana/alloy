@@ -74,6 +74,10 @@ type Arguments struct {
 	// Default value (0) means that the metrics will never expire.
 	MetricsExpiration time.Duration `alloy:"metrics_expiration,attr,optional"`
 
+	// SeriesExpiration is the time period after which individual metric series are considered stale and are no longer exported.
+	// Default value (0) means that series will never expire.
+	SeriesExpiration time.Duration `alloy:"series_expiration,attr,optional"`
+
 	// TimestampCacheSize controls the size of the cache used to keep track of delta metrics' TimestampUnixNano the last time it was flushed
 	TimestampCacheSize int `alloy:"metric_timestamp_cache_size,attr,optional"`
 
@@ -117,6 +121,7 @@ var DefaultArguments = Arguments{
 	AggregationTemporality:   AggregationTemporalityCumulative,
 	MetricsFlushInterval:     60 * time.Second,
 	MetricsExpiration:        0,
+	SeriesExpiration:         0,
 	ResourceMetricsCacheSize: 1000,
 	TimestampCacheSize:       1000,
 	Namespace:                "traces.span.metrics",
@@ -226,6 +231,7 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 		Histogram:                    *histogram,
 		MetricsFlushInterval:         args.MetricsFlushInterval,
 		MetricsExpiration:            args.MetricsExpiration,
+		SeriesExpiration:             args.SeriesExpiration,
 		Namespace:                    args.Namespace,
 		Exemplars:                    *args.Exemplars.Convert(),
 		Events:                       args.Events.Convert(),

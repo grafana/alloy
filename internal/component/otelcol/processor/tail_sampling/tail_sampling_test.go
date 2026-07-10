@@ -171,6 +171,7 @@ func TestBigConfig(t *testing.T) {
       type = "rate_limiting"
       rate_limiting {
         spans_per_second = 35
+        burst_capacity = 70
       }
     }
     policy {

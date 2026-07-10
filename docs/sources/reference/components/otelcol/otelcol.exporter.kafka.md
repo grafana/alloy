@@ -130,6 +130,7 @@ The `logs` block configures how to send logs to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default        | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
 | `encoding`                | `string` | The encoding for logs. Refer to [Supported encodings](#supported-encodings).                                                                       | `"otlp_proto"` | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_logs_by_resource_attributes` and `partition_logs_by_trace_id`. | `""`           | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which logs will be exported.                                                                                        | `"otlp_logs"`  | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 
@@ -140,6 +141,7 @@ The `metrics` block configures how to send metrics to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default          | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `encoding`                | `string` | The encoding for metrics. Refer to [Supported encodings](#supported-encodings).                                                                   | `"otlp_proto"`   | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_metrics_by_resource_attributes`. | `""`             | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which metrics will be exported.                                                                                     | `"otlp_metrics"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`             | no       |
 
@@ -150,6 +152,7 @@ The `traces` block configures how to send traces to Kafka brokers.
 | Name                      | Type     | Description                                                                                                                                        | Default        | Required |
 | ------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | -------- |
 | `encoding`                | `string` | The encoding for traces. Refer to [Supported encodings](#supported-encodings).                                                                     | `"otlp_proto"` | no       |
+| `message_key_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's key. Mutually exclusive with `partition_traces_by_id`. | `""`           | no       |
 | `topic`                   | `string` | The name of the Kafka topic to which traces will be exported.                                                                                      | `"otlp_spans"` | no       |
 | `topic_from_metadata_key` | `string` | The name of the metadata key whose value should be used as the message's topic. Takes precedence over `topic_from_attribute` and `topic` settings. | `""`           | no       |
 

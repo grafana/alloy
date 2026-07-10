@@ -76,6 +76,7 @@ You can use the following arguments with `otelcol.connector.spanmetrics`:
 | `namespace`                       | `string`       | Metric namespace.                                                                                     | `"traces.span.metrics"` | no       |
 | `resource_metrics_cache_size`     | `number`       | The size of the cache holding metrics for a service.                                                  | `1000`                  | no       |
 | `resource_metrics_key_attributes` | `list(string)` | Limits the resource attributes used to create the metrics.                                            | `[]`                    | no       |
+| `series_expiration`               | `duration`     | Time period after which individual metric series are considered stale and are no longer exported.    | `"0s"`                  | no       |
 | `aggregation_cardinality_limit`   | `number`       | The maximum number of unique combinations of dimensions that will be tracked for metrics aggregation. | `0`                     | no       |
 | `include_instrumentation_scope`   | `list(string)` | A list of instrumentation scope names to include from the traces.                                     | `[]`                    | no       |
 | `include_collector_instance_id`   | `bool`         | Add a `collector.instance.id` dimension for [Single Writer Principle][single-writer-principle] compliance. | `false`                 | no       |
@@ -88,6 +89,8 @@ The supported values for `aggregation_temporality` are:
 If `namespace` is set, the generated metric name will be added a `namespace.` prefix.
 
 Setting `metrics_expiration` to `"0s"` means that the metrics will never expire.
+
+Setting `series_expiration` to `"0s"` means that series will never expire.
 
 `resource_metrics_cache_size` is mostly relevant for cumulative temporality. It helps avoid issues with increasing memory and with incorrect metric timestamp resets.
 
