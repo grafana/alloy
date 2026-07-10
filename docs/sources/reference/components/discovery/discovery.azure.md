@@ -49,19 +49,23 @@ You can use the following blocks with `discovery.azure`:
 
 {{< docs/alloy-config >}}
 
-| Block                                  | Description                                      | Required |
-| -------------------------------------- | ------------------------------------------------ | -------- |
-| [`managed_identity`][managed_identity] | Managed Identity configuration for Azure API.    | no       |
-| [`oauth`][oauth]                       | OAuth 2.0 configuration for Azure API.           | no       |
-| [`tls_config`][tls_config]             | TLS configuration for requests to the Azure API. | no       |
+| Block                                    | Description                                        | Required |
+| ---------------------------------------- | -------------------------------------------------- | -------- |
+| [`managed_identity`][managed_identity]   | Managed Identity configuration for Azure API.      | no       |
+| [`oauth`][oauth]                         | OAuth 2.0 configuration for Azure API.             | no       |
+| [`sdk_auth`][sdk_auth]                   | Azure SDK configuration for Azure API.             | no       |
+| [`tls_config`][tls_config]               | TLS configuration for requests to the Azure API.   | no       |
+| [`workload_identity`][workload_identity] | Workload Identity configuration for Azure API.     | no       |
 
 [managed_identity]: #managed_identity
 [oauth]: #oauth
+[sdk_auth]: #sdk_auth
 [tls_config]: #tls_config
+[workload_identity]: #workload_identity
 
 {{< /docs/alloy-config >}}
 
-You must specify exactly one of the `oauth` or `managed_identity` blocks.
+You must specify exactly one of the `oauth`, `managed_identity`, `sdk_auth`, or `workload_identity` blocks.
 
 ### `managed_identity`
 
@@ -81,11 +85,34 @@ The `oauth` block configures OAuth 2.0 authentication for the Azure API.
 | `client_secret` | `string` | OAuth 2.0 client secret. |         | yes      |
 | `tenant_id`     | `string` | OAuth 2.0 tenant ID.     |         | yes      |
 
+### `sdk_auth`
+
+The `sdk_auth` block configures authentication using the [Azure SDK's `DefaultAzureCredential`][default-azure-credential] chain.
+The chain reads credentials from the environment and tries several sources in order, including environment variables, Microsoft Entra Workload Identity, and managed identities.
+Use `sdk_auth` when you want the SDK to pick the appropriate credential automatically, or [`workload_identity`](#workload_identity) when you want to use Workload Identity explicitly.
+
+| Name        | Type     | Description                                                | Default | Required |
+| ----------- | -------- | ---------------------------------------------------------- | ------- | -------- |
+| `tenant_id` | `string` | Tenant ID used to authenticate with the Azure CLI and Workload Identity credentials in the chain. |         | no       |
+
+[default-azure-credential]: https://learn.microsoft.com/en-us/azure/developer/go/azure-sdk-authentication
+
 ### `tls_config`
 
 The `tls_config` block configures TLS settings for requests to the Azure API.
 
 {{< docs/shared lookup="reference/components/tls-config-block.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+### `workload_identity`
+
+The `workload_identity` block configures [Microsoft Entra Workload Identity][entra-workload-identity] authentication for the Azure API.
+This is the recommended authentication method when you run {{< param "PRODUCT_NAME" >}} in an Azure Kubernetes Service (AKS) cluster with Workload Identity enabled.
+
+The block takes no arguments.
+The credentials are read from the environment variables that the Azure Workload Identity webhook injects into the {{< param "PRODUCT_NAME" >}} Pod: `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, and `AZURE_FEDERATED_TOKEN_FILE`.
+Make sure the Pod is labeled with `azure.workload.identity/use: "true"` and uses a `ServiceAccount` annotated with the client ID of the federated managed identity or application.
+
+[entra-workload-identity]: https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview
 
 ## Exported fields
 
