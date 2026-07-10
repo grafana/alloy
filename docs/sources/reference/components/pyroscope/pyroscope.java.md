@@ -111,6 +111,16 @@ If it's not specified, `pyroscope.scrape` will attempt to infer it from either o
 
 If `service_name` isn't specified and couldn't be inferred, then it's set to `unspecified`.
 
+The following labels are automatically injected into the collected profiles if you haven't defined them:
+
+| Label                | Description                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| `otel.scope.name`    | The instrumentation scope name, set to `com.grafana.alloy/pyroscope.java`. |
+| `otel.scope.version` | The {{< param "PRODUCT_NAME" >}} version that produced the profile.        |
+
+{{< param "PRODUCT_NAME" >}} only sets `otel.scope.name` and `otel.scope.version` if they aren't already present on the profile.
+`otel.scope.version` is only set when `otel.scope.name` matches the default value.
+
 ## Blocks
 
 You can use the following block with `pyroscope.java`:
