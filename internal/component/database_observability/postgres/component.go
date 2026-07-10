@@ -622,7 +622,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 			ExcludeUsers:     effectiveExcludeUsers,
 			EntryHandler:     entryHandler,
 			TableRegistry:    tableRegistry,
-			EnableErrorLogs:  c.args.Logs.EnableErrorLogs,
+			EnableErrorLogs:  c.args.Logs.EnableErrorLogsProcessing,
 			Logger:           c.opts.Logger,
 		})
 		if err != nil {

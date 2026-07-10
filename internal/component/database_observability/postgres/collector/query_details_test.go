@@ -1003,7 +1003,7 @@ func TestQueryDetails_ExcludeUsers(t *testing.T) {
 }
 
 // TestQueryDetails_QueryAssociationV2_OnEmitsFingerprint pins three behaviors
-// when enable_error_logs = true:
+// when enable_error_logs_processing = true:
 //  1. the op label is "query_association_v2" (not the legacy "query_association")
 //  2. the body carries the query_fingerprint field between queryid and querytext
 //  3. the fingerprint matches what fingerprint.Fingerprint returns for the raw text
@@ -1071,7 +1071,7 @@ func TestQueryDetails_QueryAssociationV2_OnEmitsFingerprint(t *testing.T) {
 }
 
 // TestQueryDetails_QueryAssociationV2_OffPreservesLegacyOp confirms that with
-// enable_error_logs = false (default) the collector emits the
+// enable_error_logs_processing = false (default) the collector emits the
 // pre-fingerprint shape unchanged: op="query_association", no
 // query_fingerprint field in the body.
 func TestQueryDetails_QueryAssociationV2_OffPreservesLegacyOp(t *testing.T) {
