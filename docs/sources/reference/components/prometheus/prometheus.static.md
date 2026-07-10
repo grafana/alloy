@@ -45,7 +45,7 @@ For example, a `prefix` of `"self_report"` and a metric `name` of `"build_info"`
 
 `prometheus.static` doesn't scrape any target.
 The `scrape_interval` argument is the interval at which the configured metrics are emitted to the `forward_to` receivers.
-The metrics are re-emitted on each interval so they remain fresh in downstream storage and don't go stale.
+The metrics are re-emitted on each interval so they remain fresh in downstream storage.
 
 ## Blocks
 
@@ -68,7 +68,7 @@ The `metric` block defines a single metric to emit. You can define multiple `met
 | Name    | Type     | Description                                     | Default     | Required |
 |---------|----------|-------------------------------------------------|-------------|----------|
 | `name`  | `string` | The metric name, before `prefix` is applied.    |             | yes      |
-| `value` | `number` | The sample value emitted for the metric.        | `1`         | no       |
+| `value` | `number` | The value emitted for the metric.               | `1`         | no       |
 | `type`  | `string` | The metric type reported as metadata.           | `"unknown"` | no       |
 | `help`  | `string` | A description reported as metadata.             | `""`        | no       |
 
@@ -89,7 +89,7 @@ Unlike most blocks, the attribute names inside a `labels` block are the label na
 
 ```alloy
 labels {
-  region = "us-east-1"
+  version = "1.2.3"
   color  = "green"
 }
 ```
