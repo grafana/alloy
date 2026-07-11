@@ -261,7 +261,7 @@ stage.drop {
 
 ### `stage.eventlogmessage`
 
-Deprecated in favor of the [`stage.windowsevent`][stage.windowsevent] block.
+Deprecated in favor of the [`stage.windowsevent`](#stagewindowsevent) block.
 
 The `eventlogmessage` stage extracts data from the Message string that appears in the Windows Event Log.
 
@@ -591,7 +591,7 @@ stage.label_keep {
 
 The `stage.labels` inner block configures a labels processing stage that can read data from the extracted values map or structured metadata and set new labels on incoming log entries.
 
-For labels that are static, refer to [`stage.static_labels`][stage.static_labels]
+For labels that are static, refer to [`stage.static_labels`](#stagestatic_labels)
 
 The following arguments are supported:
 
@@ -1513,7 +1513,7 @@ stage.sampling {
 
 The `stage.static_labels` inner block configures a `static_labels` processing stage that adds a static set of labels to incoming log entries.
 
-For labels that are dynamic, refer to [`stage.labels`][stage.labels]
+For labels that are dynamic, refer to [`stage.labels`](#stagelabels)
 
 The following arguments are supported:
 
@@ -2088,10 +2088,10 @@ The following fields are exported and can be referenced by other components:
 ## Debug metrics
 
 * `loki_process_dropped_lines_total` (counter): Number of lines dropped as part of a processing stage.
-* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit][].
+* `loki_process_dropped_lines_by_label_total` (counter):  Number of lines dropped when `by_label_name` is non-empty in [stage.limit](#stagelimit).
 * `loki_process_truncated_fields_total` (counter): Number of lines, label values, extracted field values, and structured metadata values truncated as part of a `truncate` stage.
-* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri][].
-* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri][].
+* `loki_process_cri_partial_lines_flushed_total` (counter): Number of partial lines flushed prematurely due to `max_partial_lines` limit being exceeded in [stage.cri](#stagecri).
+* `loki_process_cri_lines_truncated_total` (counter): Number of lines truncated due to `max_partial_line_size` limit in [stage.cri](#stagecri).
 
 ## Example
 

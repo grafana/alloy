@@ -1,4 +1,8 @@
 otelcol.receiver.influxdb "default" {
+	idle_timeout        = "0s"
+	write_timeout       = "0s"
+	read_header_timeout = "0s"
+
 	output {
 		metrics = [otelcol.exporter.otlp.default.input]
 	}

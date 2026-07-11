@@ -63,6 +63,7 @@ You can use the following arguments with `otelcol.receiver.vcenter`:
 | `password`            | `string`   | Password to use for authentication.                                       |         | yes      |
 | `collection_interval` | `duration` | Defines how often to collect metrics.                                     | `"1m"`  | no       |
 | `initial_delay`       | `duration` | Defines how long this receiver waits before starting.                     | `"1s"`  | no       |
+| `max_query_metrics`   | `int`      | Caps the number of metrics requested per vSphere `QueryPerf` call.        | `256`   | no       |
 | `timeout`             | `duration` | Defines the timeout for the underlying HTTP client.                       | `"0s"`  | no       |
 
 `endpoint` has the format `<protocol>://<hostname>`. For example, `https://vcsa.hostname.localnet`.
