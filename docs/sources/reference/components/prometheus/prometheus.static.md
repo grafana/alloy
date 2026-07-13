@@ -85,6 +85,7 @@ Types that require multiple values, such as `histogram` and `summary`, aren't su
 The `metric` block supports a nested [`labels`](#labels) block for labels that apply only to that metric.
 When a metric-level label and a component-level label share the same name, the metric-level label takes precedence.
 
+[labels]: #labels
 ### `labels`
 
 The `labels` block is a set of key-value pairs attached to metrics.
