@@ -47,7 +47,8 @@ func init() {
 type Component struct {
 	opts component.Options
 
-	argsUpdate chan Arguments
+	argsUpdate     chan Arguments
+	subprocessExit chan error
 
 	// owned by Run() (no synchronisation)
 	args             Arguments
@@ -68,11 +69,12 @@ var _ component.HealthComponent = (*Component)(nil)
 
 func New(opts component.Options, args Arguments) (*Component, error) {
 	c := &Component{
-		opts:       opts,
-		args:       args,
-		argsUpdate: make(chan Arguments, 1),
-		subprocess: subprocess.New(),
-		health:     health.New(),
+		opts:           opts,
+		args:           args,
+		argsUpdate:     make(chan Arguments, 1),
+		subprocessExit: make(chan error),
+		subprocess:     subprocess.New(),
+		health:         health.New(),
 	}
 
 	if err := c.registerMetrics(opts.Registerer); err != nil {
@@ -104,6 +106,9 @@ func (c *Component) Run(ctx context.Context) error {
 
 		case newArgs := <-c.argsUpdate:
 			c.handleArgsUpdate(newArgs)
+
+		case err := <-c.subprocessExit:
+			c.handleSubprocessExit(err)
 
 		case <-c.restartTimer.C:
 			c.handleSubprocessStart(ctx)
@@ -325,23 +330,33 @@ func (c *Component) handleSubprocessStart(ctx context.Context) {
 	g.Go(func() error { return c.runSubprocess(launchCtx) })
 	g.Go(func() error { return c.watchdogLoop(launchCtx) })
 
-	go c.monitorSubprocess(ctx, g)
+	go c.monitorSubprocess(newCtx, g)
 
 	c.subprocessCancel = cancelFunc
 	c.subprocessGroup = g
 }
 
-// monitorSubprocess waits for the subprocess goroutines to exit and schedules a
-// restart if they failed for a reason other than the parent context being cancelled
-// (i.e. a crash, not an intentional stop).
+// monitorSubprocess waits for the subprocess goroutines to exit and, on a crash
+// (as opposed to an intentional stop or shutdown), reports the error to the Run
+// loop, which owns restart scheduling. The ctx here is the subprocess's own
+// cancelable context, so an intentional stop cancels it and is not seen as a crash.
 func (c *Component) monitorSubprocess(ctx context.Context, g *errgroup.Group) {
 	err := g.Wait()
 
-	if ctx.Err() == nil && err != nil {
-		c.opts.Logger.Error("Beyla subprocess crashed, scheduling restart", "err", err)
-		c.health.SetUnhealthy(err)
-		c.scheduleRestart()
+	if ctx.Err() != nil || err == nil {
+		return
 	}
+
+	select {
+	case c.subprocessExit <- err:
+	case <-ctx.Done():
+	}
+}
+
+func (c *Component) handleSubprocessExit(err error) {
+	c.opts.Logger.Error("Beyla subprocess crashed, scheduling restart", "err", err)
+	c.health.SetUnhealthy(err)
+	c.scheduleRestart()
 }
 
 func (c *Component) setupSubprocess() error {
