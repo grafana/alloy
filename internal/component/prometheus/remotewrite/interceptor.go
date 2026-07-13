@@ -136,14 +136,16 @@ func NewInterceptor(componentID string, exited *atomic.Bool, debugDataPublisher 
 				finalRef, err = next.UpdateMetadata(ref, l, m)
 			}
 
-			debugDataPublisher.PublishIfActive(livedebugging.NewData(
-				liveDebuggingComponentID,
-				livedebugging.PrometheusMetric,
-				1,
-				func() string {
-					return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
-				},
-			))
+			if debugDataPublisher.IsActive(liveDebuggingComponentID) {
+				debugDataPublisher.PublishIfActive(livedebugging.NewData(
+					liveDebuggingComponentID,
+					livedebugging.PrometheusMetric,
+					1,
+					func() string {
+						return fmt.Sprintf("metadata: labels=%s, type=%q, unit=%q, help=%q", l, m.Type, m.Unit, m.Help)
+					},
+				))
+			}
 			return finalRef, err
 		}),
 		prometheus.WithExemplarHook(func(ref storage.SeriesRef, l labels.Labels, e exemplar.Exemplar, next storage.Appender) (storage.SeriesRef, error) {
