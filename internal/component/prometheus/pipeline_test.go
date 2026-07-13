@@ -480,4 +480,6 @@ func sendMetric(t testing.TB, appender storage.Appender, labels labels.Labels, t
 // noopDebugDataPublisher is a no-op implementation of livedebugging.DebugDataPublisher for testing.
 type noopDebugDataPublisher struct{}
 
+func (n noopDebugDataPublisher) IsActive(livedebugging.ComponentID) bool { return false }
+
 func (n noopDebugDataPublisher) PublishIfActive(livedebugging.Data) {}
