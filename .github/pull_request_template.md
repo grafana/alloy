@@ -18,7 +18,7 @@
 
 ### Pull Request Details
 
-<!-- Detailed descripion of the Pull Request, if needed. -->
+<!-- Detailed description of the Pull Request, if needed. -->
 
 
 ### Issue(s) fixed by this Pull Request
