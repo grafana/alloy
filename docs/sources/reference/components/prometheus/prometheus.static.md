@@ -12,8 +12,8 @@ title: prometheus.static
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-The `prometheus.static` component emits a fixed set of user-defined metrics to downstream Prometheus-compatible components.
-It's useful for reporting static information such as build metadata, environment details, or feature flags as metrics.
+The `prometheus.static` component sends a fixed set of user-defined metrics to downstream Prometheus-compatible components.
+Use it to report static information such as build metadata, environment details, or feature flags as metrics.
 
 Each metric defined in a `metric` block is emitted with the value you configure and the labels you attach.
 The metrics are re-emitted on a regular interval so they remain fresh in downstream storage.
