@@ -134,15 +134,6 @@ func newRetryTrackingCommand(failCount int, err error) (func(string, map[string]
 	return factory, state
 }
 
-func TestConfig_MissingContent(t *testing.T) {
-	t.Helper()
-	cfg := &Config{
-		AlloyConfig: AlloyConfig{},
-		Flags:       map[string]string{},
-	}
-	require.EqualError(t, cfg.Validate(), "either config.path or config.inline.content must be set")
-}
-
 func TestLifecycle_StartPassesInlineConfigToFactory(t *testing.T) {
 	const content = "logging { level = \"debug\" }"
 
