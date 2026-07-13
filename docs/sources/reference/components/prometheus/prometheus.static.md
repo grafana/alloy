@@ -139,7 +139,7 @@ This produces the following series:
 heartbeat 1
 ```
 
-### Emit multiple metrics with a prefix and shared labels
+### Send multiple metrics with a prefix and shared labels
 
 The following example uses a `prefix`, defines two metrics with their own labels, and attaches a `region` label to every metric:
 
