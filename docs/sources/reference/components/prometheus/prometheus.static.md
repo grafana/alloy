@@ -63,6 +63,7 @@ You must define at least one `metric` block.
 [metric]: #metric
 [labels]: #labels
 
+{{< /docs/alloy-config >}}
 ### `metric`
 
 The `metric` block defines a single metric to emit. You can define multiple `metric` blocks.
