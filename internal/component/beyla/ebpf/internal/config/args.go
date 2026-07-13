@@ -166,6 +166,8 @@ type Network struct {
 	ListenInterfaces   string        `alloy:"listen_interfaces,attr,optional"`
 	ListenPollPeriod   time.Duration `alloy:"listen_poll_period,attr,optional"`
 	PrintFlows         bool          `alloy:"print_flows,attr,optional"`
+	GeoIp              GeoIP         `alloy:"geo_ip,block,optional"`
+	ReverseDns         ReverseDNS    `alloy:"reverse_dns,block,optional"`
 }
 
 type InternalMetrics struct {

@@ -540,12 +540,28 @@ beyla.ebpf "example" {
 			enable = false
 			exclude_interfaces = []
 			exclude_protocols = []
+			geo_ip {
+				cache_expiry = "0s"
+				cache_len = 0
+				ipinfo {
+					path = ""
+				}
+				maxmind {
+					asn_path = ""
+					country_path = ""
+				}
+			}
 			guess_ports = ""
 			interfaces = []
 			listen_interfaces = ""
 			listen_poll_period = "0s"
 			print_flows = false
 			protocols = []
+			reverse_dns {
+				cache_expiry = "0s"
+				cache_len = 0
+				type = ""
+			}
 			sampling = 0
 			source = ""
 		}

@@ -148,6 +148,14 @@ func TestYAMLGeneration_NetworkFlows(t *testing.T) {
 				CIDRs:       []string{"10.0.0.0/8"},
 				Direction:   "ingress",
 				AgentIPType: "ipv4",
+				GeoIp: GeoIP{
+					CacheLen: 1024,
+					Maxmind:  MaxMindConfig{CountryPath: "/etc/geoip/country.mmdb"},
+				},
+				ReverseDns: ReverseDNS{
+					Type:     "local",
+					CacheLen: 256,
+				},
 			},
 		},
 	}
@@ -165,6 +173,14 @@ func TestYAMLGeneration_NetworkFlows(t *testing.T) {
 	require.Equal(t, []any{"10.0.0.0/8"}, networkFlows["cidrs"])
 	require.Equal(t, "ingress", networkFlows["direction"])
 	require.Equal(t, "ipv4", networkFlows["agent_ip_type"])
+
+	// geo_ip/reverse_dns must survive under network (backward compat with released beyla.ebpf).
+	geoIP := networkFlows["geo_ip"].(map[string]any)
+	require.Equal(t, 1024, geoIP["cache_len"])
+	require.Equal(t, "/etc/geoip/country.mmdb", geoIP["maxmind"].(map[string]any)["country_path"])
+	reverseDNS := networkFlows["reverse_dns"].(map[string]any)
+	require.Equal(t, "local", reverseDNS["type"])
+	require.Equal(t, 256, reverseDNS["cache_len"])
 }
 
 func TestYAMLGeneration_InjectorEnabledSDKs(t *testing.T) {

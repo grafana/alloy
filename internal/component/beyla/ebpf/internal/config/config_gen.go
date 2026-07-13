@@ -756,6 +756,39 @@ func (b *builder) fillNetworkConfig(m map[string]interface{}) {
 	if v := b.args.Metrics.Network.ExcludeProtocols; len(v) > 0 {
 		m["exclude_protocols"] = v
 	}
+	{
+		m1 := make(map[string]interface{})
+		if v := b.args.Metrics.Network.GeoIp.CacheExpiry; v != 0 {
+			m1["cache_expiry"] = v.String()
+		}
+		if v := b.args.Metrics.Network.GeoIp.CacheLen; v != 0 {
+			m1["cache_len"] = v
+		}
+		{
+			m2 := make(map[string]interface{})
+			if v := b.args.Metrics.Network.GeoIp.Ipinfo.Path; v != "" {
+				m2["path"] = v
+			}
+			if len(m2) > 0 {
+				m1["ipinfo"] = m2
+			}
+		}
+		{
+			m2 := make(map[string]interface{})
+			if v := b.args.Metrics.Network.GeoIp.Maxmind.AsnPath; v != "" {
+				m2["asn_path"] = v
+			}
+			if v := b.args.Metrics.Network.GeoIp.Maxmind.CountryPath; v != "" {
+				m2["country_path"] = v
+			}
+			if len(m2) > 0 {
+				m1["maxmind"] = m2
+			}
+		}
+		if len(m1) > 0 {
+			m["geo_ip"] = m1
+		}
+	}
 	if v := b.args.Metrics.Network.GuessPorts; v != "" {
 		m["guess_ports"] = v
 	}
@@ -773,6 +806,21 @@ func (b *builder) fillNetworkConfig(m map[string]interface{}) {
 	}
 	if v := b.args.Metrics.Network.Protocols; len(v) > 0 {
 		m["protocols"] = v
+	}
+	{
+		m1 := make(map[string]interface{})
+		if v := b.args.Metrics.Network.ReverseDns.CacheExpiry; v != 0 {
+			m1["cache_expiry"] = v.String()
+		}
+		if v := b.args.Metrics.Network.ReverseDns.CacheLen; v != 0 {
+			m1["cache_len"] = v
+		}
+		if v := b.args.Metrics.Network.ReverseDns.Type; v != "" {
+			m1["type"] = v
+		}
+		if len(m1) > 0 {
+			m["reverse_dns"] = m1
+		}
 	}
 	if v := b.args.Metrics.Network.Sampling; v != 0 {
 		m["sampling"] = v

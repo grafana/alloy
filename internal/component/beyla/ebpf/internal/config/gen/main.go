@@ -1156,7 +1156,13 @@ func generateConfigGen(sc *schemaDoc, skipSet map[string]bool, iwIdx map[string]
 
 	// Generate fill helpers for multi_section entries.
 	for _, ms := range mappings.MultiSection {
-		genFillHelper(&sb, ms, mappings.Aliases)
+		var msProps map[string]*schemaProp
+		if p, ok := sc.Properties[ms.YamlSection]; ok {
+			if r := resolveRef(sc.Defs, p); r != nil {
+				msProps = resolveProps(sc.Defs, r)
+			}
+		}
+		genFillHelper(&sb, ms, mappings.Aliases, sc.Defs, msProps, skipSet, iwIdx)
 	}
 
 	// Generate map_keyed_by helpers.
@@ -1195,7 +1201,7 @@ func genFunc(sb *strings.Builder, sec section, fields map[string]fieldDef, defs 
 // genFillHelper generates a fill<YamlSection>Config helper for a multi_section entry.
 // The helper populates an already-created map from the Alloy struct at alloy_path.
 // Hand-written skeletons call this helper after handling lock/runtime-state/conditions.
-func genFillHelper(sb *strings.Builder, ms MultiSectionEntry, aliases map[string]AliasEntry) {
+func genFillHelper(sb *strings.Builder, ms MultiSectionEntry, aliases map[string]AliasEntry, defs map[string]*schemaProp, props map[string]*schemaProp, skipSet map[string]bool, iwIdx map[string]*InjectWrapper) {
 	argsExpr, structName := alloyPathToExpr(ms.AlloyPath)
 	if structName == "" {
 		fmt.Fprintf(sb, "// TODO: fill helper for %q: alloy_path %q not resolvable\n\n", ms.YamlSection, ms.AlloyPath)
@@ -1236,8 +1242,11 @@ func genFillHelper(sb *strings.Builder, ms MultiSectionEntry, aliases map[string
 		if alias, ok := aliasYamlKey[alloyField]; ok {
 			yamlKey = alias
 		}
-		expr := argsExpr + "." + fd.GoName
-		emitLeaf(sb, "\t", "m", yamlKey, expr, fd.TypeStr)
+		var prop *schemaProp
+		if props != nil {
+			prop = props[yamlKey]
+		}
+		genField(sb, "\t", "m", argsExpr, yamlKey, fd, defs, prop, 0, ms.YamlSection+"."+yamlKey, skipSet, iwIdx)
 	}
 
 	fmt.Fprintln(sb, "}")
