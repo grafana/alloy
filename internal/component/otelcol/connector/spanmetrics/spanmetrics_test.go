@@ -149,6 +149,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 			}
 			metrics_flush_interval = "33s"
 			metrics_expiration = "44s"
+			series_expiration = "55s"
 			namespace = "test.namespace"
 			exemplars {
 				enabled = true
@@ -191,6 +192,7 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				},
 				MetricsFlushInterval: 33 * time.Second,
 				MetricsExpiration:    44 * time.Second,
+				SeriesExpiration:     55 * time.Second,
 				Namespace:            "test.namespace",
 				Exemplars: spanmetricsconnector.ExemplarsConfig{
 					Enabled:         true,

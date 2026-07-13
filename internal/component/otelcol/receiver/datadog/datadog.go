@@ -37,6 +37,11 @@ type Arguments struct {
 
 	TraceIDCacheSize int `alloy:"trace_id_cache_size,attr,optional"`
 
+	// IdleSeriesTimeout is the duration after which a series is considered stale and evicted. 0 disables eviction.
+	IdleSeriesTimeout time.Duration `alloy:"idle_series_timeout,attr,optional"`
+	// IdleSeriesCleanupInterval defines how frequently the receiver checks for stale series.
+	IdleSeriesCleanupInterval time.Duration `alloy:"idle_series_cleanup_interval,attr,optional"`
+
 	Intake *IntakeArguments `alloy:"intake,block,optional"`
 
 	// DebugMetrics configures component internal metrics. Optional.
@@ -105,6 +110,7 @@ func (args *Arguments) SetToDefault() {
 			ReadHeaderTimeout:     otelcol.DefaultHTTPServerReadHeaderTimeout,
 			WriteTimeout:          otelcol.DefaultHTTPServerWriteTimeout,
 		},
+		IdleSeriesCleanupInterval: 5 * time.Minute,
 	}
 	args.DebugMetrics.SetToDefault()
 }
@@ -117,8 +123,10 @@ func (args Arguments) Convert() (otelcomponent.Config, error) {
 	}
 
 	cfg := &datadogreceiver.Config{
-		ServerConfig:     *convertedHttpServer,
-		TraceIDCacheSize: args.TraceIDCacheSize,
+		ServerConfig:              *convertedHttpServer,
+		TraceIDCacheSize:          args.TraceIDCacheSize,
+		IdleSeriesTimeout:         args.IdleSeriesTimeout,
+		IdleSeriesCleanupInterval: args.IdleSeriesCleanupInterval,
 	}
 
 	if args.Intake != nil {

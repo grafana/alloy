@@ -66,7 +66,7 @@ For example,
 Set `config_merge_strategy` to `merge` to add additional configuration to the embedded SNMP configuration.
 For example, if you need to add a few custom `auth` settings without regenerating the whole configuration.
 
-The `targets` argument is an alternative to the [target][] block. This is useful when SNMP targets are supplied by another component.
+The `targets` argument is an alternative to the [target](#target) block. This is useful when SNMP targets are supplied by another component.
 The following labels can be set to a target:
 
 * `name`: The name of the target (required).
