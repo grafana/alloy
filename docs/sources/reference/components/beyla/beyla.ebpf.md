@@ -186,8 +186,8 @@ You can use the following blocks with `beyla.ebpf`:
 | `ebpf` > `payload_extraction` > `http` > [`bedrock`][bedrock payload extraction] | Configures AWS Bedrock payload extraction.                                               | no       |
 | `ebpf` > `payload_extraction` > `http` > [`embedding`][embedding payload extraction] | Configures embedding payload extraction.                                             | no       |
 | `ebpf` > `payload_extraction` > `http` > [`mcp`][mcp payload extraction] | Configures Model Context Protocol payload extraction.                                                          | no       |
-| `ebpf` > `payload_extraction` > `http` > [`qwen`][qwen payload extraction] | Configures Qwen payload extraction.                                                              | no       |
-| `ebpf` > `payload_extraction` > `http` > [`rerank`][rerank payload extraction] | Configures rerank payload extraction.                                                      | no       |
+| `ebpf` > `payload_extraction` > `http` > [`qwen`][qwen payload extraction] | Configures `Qwen` payload extraction.                                                              | no       |
+| `ebpf` > `payload_extraction` > `http` > [`rerank`][rerank payload extraction] | Configures `rerank` payload extraction.                                                      | no       |
 | `ebpf` > `payload_extraction` > `http` > [`retrieval`][retrieval payload extraction] | Configures retrieval payload extraction.                                             | no       |
 | `ebpf` > [`maps_config`][maps config]                                  | Configures eBPF map sizing.                                                                        | no       |
 | [`filters`][filters]                                                   | Configures filtering of attributes.                                                                | no       |
@@ -671,17 +671,17 @@ When enabled, Beyla parses supported Model Context Protocol HTTP payloads and ca
 
 | Name      | Type   | Description                             | Default | Required |
 |-----------|--------|-----------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable Qwen payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable `Qwen` payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported Qwen HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported `Qwen` HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `rerank`
 
 | Name      | Type   | Description                               | Default | Required |
 |-----------|--------|-------------------------------------------|---------|----------|
-| `enabled` | `bool` | Enable rerank payload extraction parsing. | `false` | no       |
+| `enabled` | `bool` | Enable `rerank` payload extraction parsing. | `false` | no       |
 
-When enabled, Beyla parses supported rerank HTTP payloads and can enrich traces with GenAI-related attributes.
+When enabled, Beyla parses supported `rerank` HTTP payloads and can enrich traces with GenAI-related attributes.
 
 ###### `retrieval`
 
