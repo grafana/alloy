@@ -47,26 +47,10 @@ var supportedSeverities = map[string]struct{}{
 	"PANIC": {},
 }
 
-// pgLogLabels are the leading labels PostgreSQL writes at the start of a log
-// message: message severities plus the detail/continuation labels. PostgreSQL
-// appends the real label (with the ":  " separator) at the very end of the
-// log-line prefix, so a line's genuine label is the last token in the run of
-// adjacent "<label>:  " tokens (see the classification in parseTextLog). We
-// scan the full set (not just supportedSeverities) so a "LOG"/"STATEMENT"/...
-// token can shadow a severity keyword that appears elsewhere, and vice versa.
-//
-// A match requires the ":  " (colon, two spaces) separator PostgreSQL emits.
-// The client-controlled application_name (%a) sits immediately before the real
-// label and can be set to a forged "<label>:  " (pg_clean_ascii preserves
-// spaces and colons, so an app named "LOG:  " is possible); walking to the last
-// token of the run steps past any such forgery. The one residual is a
-// STATEMENT/QUERY continuation line whose logged SQL text itself begins with
-// "<label>:  ": the walk then overshoots into the SQL, so the statement fails
-// to attach to its pending error and, if the SQL's leading token is a severity,
-// a spurious count is recorded (and the pending error displaced) under the
-// abuser's own datname/user. This is reachable only by a client deliberately
-// sending such SQL and is self-scoped; a normal statement (INSERT/SELECT/...)
-// never begins with a label, so real error/statement pairs are unaffected.
+// pgLogLabels are the labels PostgreSQL can write at the start of a log message:
+// the severities plus the detail/continuation labels. Classification scans the
+// full set (not just supportedSeverities) so a non-severity label can shadow a
+// severity keyword that appears later in the message text or in logged SQL.
 var pgLogLabels = []string{
 	"DEBUG5", "DEBUG4", "DEBUG3", "DEBUG2", "DEBUG1", "DEBUG",
 	"PANIC", "FATAL", "ERROR", "WARNING", "NOTICE", "INFO", "LOG",
@@ -438,18 +422,17 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
-	// Classify the message by its real label. PostgreSQL appends the label (with
-	// its ":  " separator) at the very end of the log-line prefix, so the
-	// genuine label is the last token in the run of adjacent "<label>:  "
-	// tokens that begins at the SQLSTATE anchor. The client-controlled
-	// application_name (%a) sits immediately before the real label and can be
-	// set to a forged "<label>:  ", but any such forgery necessarily precedes
-	// the label PostgreSQL emits, so we walk to the last token of the run.
+	// Classify by the line's real label. PostgreSQL appends the label (with the
+	// ":  " separator) at the end of the log-line prefix, right after the
+	// client-controlled application_name (%a) — which can hold a forged
+	// "<label>:  ". Anchor past the SQLSTATE (so a db/user named "LOG" can't
+	// match), then take the last token in the run of adjacent "<label>:  "
+	// tokens: a forgery in %a always precedes the label PostgreSQL emits last.
 	//
-	// Anchoring past the SQLSTATE keeps a database or user literally named after
-	// a label (e.g. "LOG") from matching; taking the last token shadows both a
-	// forged label in %a and a severity/STATEMENT keyword appearing later in the
-	// message text or a logged SQL statement.
+	// Residual: a STATEMENT/QUERY line whose logged SQL begins with "<label>:  "
+	// makes the walk overshoot into the SQL. Only reachable by deliberate abuse,
+	// self-scoped, and such SQL is unparseable anyway; normal SQL never starts
+	// with a label, so real error/statement pairs are unaffected.
 	searchFrom := 0
 	if sqlstateCode != "" {
 		if idx := strings.Index(line, ":"+sqlstateCode+":"); idx != -1 {
@@ -467,9 +450,7 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 			label = candidate
 		}
 	}
-	// Walk the run of adjacent "<label>:  " tokens to the last one: a label
-	// forged in %a always precedes the label PostgreSQL appends, so the final
-	// token before the message body is the genuine severity.
+	// Advance through any forged "<label>:  " tokens in %a to the real (last) label.
 	for label != "" {
 		next := labelAt + len(label) + len(pgLabelSeparator)
 		nextLabel := leadingLogLabel(rest[next:])
