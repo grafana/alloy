@@ -55,8 +55,8 @@ You can use the following blocks with `prometheus.static`:
 
 | Block                | Description                                     | Required |
 |----------------------|-------------------------------------------------|----------|
-| [`metric`][metric]   | Defines a single metric to emit.                | yes      |
-| [`labels`][labels]   | Labels attached to every emitted metric.        | no       |
+| [`metric`][metric]   | Defines one metric to send.                | yes      |
+| [`labels`][labels]   | Adds labels to each metric sent.        | no       |
 
 You must define at least one `metric` block.
 
