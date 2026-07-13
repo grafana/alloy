@@ -40,7 +40,7 @@ You can use the following arguments with `prometheus.static`:
 | `prefix`          | `string`                | Prefix added to every metric name, joined with an underscore.  | `""`    | no       |
 | `scrape_interval` | `duration`              | The interval at which metrics are sent to `forward_to`.      | `"1m"`  | no       |
 
-When `prefix` is set, the emitted metric name is `<prefix>_<name>`.
+When `prefix` is set, the metric name becomes `<prefix>_<name>`.
 For example, a `prefix` of `"self_report"` and a metric `name` of `"build_info"` produces the metric `self_report_build_info`.
 
 `prometheus.static` doesn't scrape any target.
