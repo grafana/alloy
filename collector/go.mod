@@ -546,7 +546,6 @@ require (
 	github.com/grafana/jfr-parser v0.9.3 // indirect
 	github.com/grafana/jfr-parser/pprof v0.0.4 // indirect
 	github.com/grafana/jsonparser v0.0.0-20250909130937-5f438463be34 // indirect
-	github.com/grafana/jvmtools v0.0.5 // indirect
 	github.com/grafana/kafka_exporter v0.0.0-20240409084445-5e3488ad9f9a // indirect
 	github.com/grafana/loki/pkg/push v0.0.0-20251125172520-2f85998f1adf // indirect
 	github.com/grafana/loki/v3 v3.7.1 // indirect
