@@ -37,7 +37,7 @@ You can use the following arguments with `prometheus.static`:
 | Name              | Type                    | Description                                                          | Default | Required |
 |-------------------|-------------------------|---------------------------------------------------------------------|---------|----------|
 | `forward_to`      | `list(MetricsReceiver)` | Where the metrics are forwarded to.                                 |         | yes      |
-| `prefix`          | `string`                | Prefix prepended to every metric name, joined with an underscore.   | `""`    | no       |
+| `prefix`          | `string`                | Prefix added to every metric name, joined with an underscore.  | `""`    | no       |
 | `scrape_interval` | `duration`              | The interval at which the metrics are emitted to `forward_to`.      | `"1m"`  | no       |
 
 When `prefix` is set, the emitted metric name is `<prefix>_<name>`.
