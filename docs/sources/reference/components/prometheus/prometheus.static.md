@@ -51,6 +51,8 @@ The metrics are re-emitted on each interval so they remain fresh in downstream s
 
 You can use the following blocks with `prometheus.static`:
 
+{{< docs/alloy-config >}}
+
 | Block                | Description                                     | Required |
 |----------------------|-------------------------------------------------|----------|
 | [`metric`][metric]   | Defines a single metric to emit.                | yes      |
