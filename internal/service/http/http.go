@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	_ "net/http/pprof" // Register pprof handlers
@@ -18,17 +19,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/gorilla/mux"
-	"github.com/grafana/alloy/internal/component"
-	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
-	"github.com/grafana/alloy/internal/service"
-	"github.com/grafana/alloy/internal/service/remotecfg"
-	"github.com/grafana/alloy/internal/static/server"
-	"github.com/grafana/alloy/syntax/ast"
-	"github.com/grafana/alloy/syntax/printer"
 	"github.com/grafana/ckit/memconn"
 	_ "github.com/grafana/pyroscope-go/godeltaprof/http/pprof" // Register godeltaprof handler
 	"github.com/prometheus/client_golang/prometheus"
@@ -36,6 +27,17 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
 	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/trace/noop"
+
+	"github.com/grafana/alloy/internal/component"
+	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/runtime/logging"
+	"github.com/grafana/alloy/internal/service"
+	"github.com/grafana/alloy/internal/service/remotecfg"
+	"github.com/grafana/alloy/internal/slogadapter"
+	"github.com/grafana/alloy/internal/static/server"
+	"github.com/grafana/alloy/internal/util/syncbuffer"
+	"github.com/grafana/alloy/syntax/ast"
+	"github.com/grafana/alloy/syntax/printer"
 )
 
 // ServiceName defines the name used for the HTTP service.
@@ -66,9 +68,9 @@ type Arguments struct {
 
 type Service struct {
 	// globalLogger allows us to leverage the logging struct for setting a temporary
-	// logger for support bundle usage and still leverage log.With for logging in the service
+	// logger for support bundle usage.
 	globalLogger *logging.Logger
-	log          log.Logger
+	log          *slog.Logger
 	tracer       trace.TracerProvider
 	gatherer     prometheus.Gatherer
 	opts         Options
@@ -134,7 +136,7 @@ func New(opts Options) *Service {
 
 	return &Service{
 		globalLogger: l,
-		log:          log.With(l, "service", "http"),
+		log:          l.Slog().With("service", "http"),
 		tracer:       t,
 		gatherer:     r,
 		opts:         opts,
@@ -143,7 +145,7 @@ func New(opts Options) *Service {
 
 		publicLis: publicLis,
 		tcpLis:    tcpLis,
-		memLis:    memconn.NewListener(l),
+		memLis:    memconn.NewListener(slogadapter.GoKit(l.Handler())),
 
 		componentHttpPathPrefix:          "/api/v0/component/",
 		componentHttpPathPrefixRemotecfg: "/api/v0/component/remotecfg",
@@ -179,7 +181,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	netLis, err := net.Listen("tcp", s.opts.HTTPListenAddr)
 	if err != nil {
 		// There is no recovering from failing to listen on the port.
-		level.Error(s.log).Log("msg", fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
+		s.log.Error(fmt.Sprintf("failed to listen on %s", s.opts.HTTPListenAddr), "err", err)
 		os.Exit(1)
 	}
 	if err := s.tcpLis.SetInner(netLis); err != nil {
@@ -200,7 +202,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			err := s.authenticator(w, r)
 			s.authenticatorMut.RUnlock()
 			if err != nil {
-				level.Info(s.log).Log("msg", "failed to authenticate request", "path", r.URL.Path, "err", err)
+				s.log.Info("failed to authenticate request", "path", r.URL.Path, "err", err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
 			}
@@ -263,15 +265,15 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 
 	if s.opts.ReloadFunc != nil {
 		r.HandleFunc("/-/reload", func(w http.ResponseWriter, _ *http.Request) {
-			level.Info(s.log).Log("msg", "reload requested via /-/reload endpoint")
+			s.log.Info("reload requested via /-/reload endpoint")
 
 			if err := s.opts.ReloadFunc(); err != nil {
-				level.Error(s.log).Log("msg", "failed to reload config", "err", err.Error())
+				s.log.Error("failed to reload config", "err", err.Error())
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			level.Info(s.log).Log("msg", "config reloaded")
+			s.log.Info("config reloaded")
 			_, _ = fmt.Fprintln(w, "config reloaded")
 		}).Methods(http.MethodGet, http.MethodPost)
 	}
@@ -297,7 +299,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	protos.SetUnencryptedHTTP2(true)
 	srv := &http.Server{Handler: r, Protocols: protos}
 
-	level.Info(s.log).Log("msg", "now listening for http traffic", "addr", s.opts.HTTPListenAddr)
+	s.log.Info("now listening for http traffic", "addr", s.opts.HTTPListenAddr)
 
 	listeners := []net.Listener{s.publicLis, s.memLis}
 	for _, lis := range listeners {
@@ -307,7 +309,7 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 			defer cancel()
 
 			if err := srv.Serve(lis); err != nil {
-				level.Info(s.log).Log("msg", "http server closed", "addr", lis.Addr(), "err", err)
+				s.log.Info("http server closed", "addr", lis.Addr(), "err", err)
 			}
 		}(lis)
 	}
@@ -358,29 +360,27 @@ func (s *Service) generateSupportBundleHandler(host service.Host) func(rw http.R
 		ctx, cancel := context.WithTimeout(context.Background(), duration)
 		defer cancel()
 
-		var logsBuffer bytes.Buffer
-		syncBuff := log.NewSyncWriter(&logsBuffer)
-		s.globalLogger.SetTemporaryWriter(syncBuff)
-		defer func() {
-			s.globalLogger.RemoveTemporaryWriter()
-		}()
+		var logsBuffer syncbuffer.Buffer
+		s.globalLogger.SetTemporaryWriter(&logsBuffer)
 
 		// Get and redact the cached remote config.
 		cachedConfig, err := remoteCfgRedactedCachedConfig(host)
 		if err != nil {
-			level.Debug(s.log).Log("msg", "failed to get cached remote config", "err", err)
+			s.log.Debug("failed to get cached remote config", "err", err)
 		}
 
 		// Ensure the sources are written using the printer as it will handle
 		// secret redaction.
 		sources := redactedSources(s.sources)
-
 		bundle, err := ExportSupportBundle(ctx, s.opts.BundleContext.RuntimeFlags, s.opts.HTTPListenAddr, sources, cachedConfig, s.Data().(Data).DialFunc)
 		if err != nil {
+			s.globalLogger.RemoveTemporaryWriter()
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if err := ServeSupportBundle(rw, bundle, &logsBuffer); err != nil {
+
+		s.globalLogger.RemoveTemporaryWriter()
+		if err := ServeSupportBundle(rw, bundle, logsBuffer.Bytes()); err != nil {
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -483,7 +483,9 @@ func (s *Service) Update(newConfig any) error {
 		var tlsConfig *tls.Config
 		var err error
 		if newArgs.TLS.WindowsFilter != nil {
+			//nolint:staticcheck // updateWindowsCertificateFilter always errors on non-Windows build.
 			err = s.updateWindowsCertificateFilter(newArgs.TLS)
+			//nolint:staticcheck // updateWindowsCertificateFilter always errors on non-Windows build.
 			if err != nil {
 				return err
 			}
@@ -496,14 +498,14 @@ func (s *Service) Update(newConfig any) error {
 		}
 
 		newTLSListener := tls.NewListener(s.tcpLis, tlsConfig)
-		level.Info(s.log).Log("msg", "applying TLS config to HTTP server")
+		s.log.Info("applying TLS config to HTTP server")
 		if err := s.publicLis.SetInner(newTLSListener); err != nil {
 			return err
 		}
 	} else {
 		// Ensure that the outer lazy listener is sending requests directly to the
 		// network, instead of any previous instance of a TLS listener.
-		level.Info(s.log).Log("msg", "applying non-TLS config to HTTP server")
+		s.log.Info("applying non-TLS config to HTTP server")
 		if err := s.publicLis.SetInner(s.tcpLis); err != nil {
 			return err
 		}
@@ -694,7 +696,11 @@ func remoteCfgRedactedCachedConfig(host service.Host) ([]byte, error) {
 		return nil, fmt.Errorf("failed to get the remotecfg service")
 	}
 
-	return printFileRedacted(svc.(*remotecfg.Service).GetCachedAstFile())
+	rsvc, ok := svc.(remotecfg.RemoteConfigService)
+	if !ok {
+		return nil, fmt.Errorf("remotecfg service does not support config access")
+	}
+	return printFileRedacted(rsvc.GetCachedAstFile())
 }
 
 func printFileRedacted(f *ast.File) ([]byte, error) {

@@ -1,24 +1,37 @@
 name: Check generate-otel-collector-distro
 permissions:
   contents: read
-on: pull_request
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Debounce release-please PR updates
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-please--branches--')
+        # Debounce this check on release PRs while the generated-files update is pushed.
+        run: sleep 30
+
       - name: Checkout
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+      - name: Set up tools 🛠️
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4.1.0
         with:
-          go-version-file: go.mod
-          cache: false
+          version: v2026.5.18
+          sha256: cfac593469d028d7ae5fe36e37bd7c59118b5238e92d8a876209578464f24a84
+          install_args: go
 
       - name: Run generate-otel-collector-distro
         run: |
@@ -26,12 +39,11 @@ jobs:
 
       - name: Check for generated file changes
         run: |
-          # List changed files in the collector directory (excluding generator source files)
-          if [ -n "$(git status --porcelain -- collector/)" ]; then
+          # The OTel collector generation also syncs builder-config shared replaces into the root module.
+          if [ -n "$(git status --porcelain)" ]; then
             echo "Error: generated collector files are out of sync with generate-otel-collector-distro."
-            echo "  Run: make generate-otel-collector-distro and commit the generated files"
-            git status -- collector/
-            git diff -- collector/
+            echo "  Run: make generate-otel-collector-distro and commit the generated files and module updates"
+            git status
+            git diff
             exit 1
           fi
-

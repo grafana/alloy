@@ -124,6 +124,7 @@ func TestUnmarshal(t *testing.T) {
 	include_file_record_number = true
 	compression                = "gzip"
 	acquire_fs_lock            = true
+	file_cache_advise          = true
 
 	header {
 		pattern = "^HEADER .*$"

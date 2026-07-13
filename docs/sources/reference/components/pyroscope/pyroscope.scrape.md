@@ -84,9 +84,13 @@ You can use the following arguments with `pyroscope.scrape`:
 Any omitted arguments take on their default values.
 If conflicting arguments are being passed, for example, configuring both `bearer_token` and `bearer_token_file`, then `pyroscope.scrape` will fail to start and will report an error.
 
-[arguments]: #arguments
-
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
+
+[authorization]: #authorization
+[basic_auth]: #basic_auth
+[clustering]: #clustering
+[oauth2]: #oauth2
+[arguments]: #arguments
 
 ### `job_name`
 
@@ -120,11 +124,16 @@ If `service_name` isn't specified and couldn't be inferred, then it's set to `un
 
 The following labels are automatically injected to the scraped profiles so that they can be linked to a scrape target:
 
-| Label            | Description                                                      |
-| ---------------- | ---------------------------------------------------------------- |
-| `"job"`          | The `job_name` that the target belongs to.                       |
-| `"instance"`     | The `__address__` or `<host>:<port>` of the scrape target's URL. |
-| `"service_name"` | The inferred Pyroscope service name.                             |
+| Label                  | Description                                                                  |
+| ---------------------- | ----------------------------------------------------------------------------- |
+| `"job"`                | The `job_name` that the target belongs to.                                   |
+| `"instance"`           | The `__address__` or `<host>:<port>` of the scrape target's URL.             |
+| `"service_name"`       | The inferred Pyroscope service name.                                         |
+| `"otel.scope.name"`    | The instrumentation scope name, set to `com.grafana.alloy/pyroscope.scrape`. |
+| `"otel.scope.version"` | The {{< param "PRODUCT_NAME" >}} version that produced the profile.          |
+
+{{< param "PRODUCT_NAME" >}} only sets `otel.scope.name` and `otel.scope.version` if they aren't already present on the scraped profile.
+`otel.scope.version` is only set when `otel.scope.name` matches the default value.
 
 #### `scrape_interval`
 
@@ -155,6 +164,8 @@ For example, consider this situation:
 * `pyroscope.scrape` is configured with a `scrape_interval` of `"60s"`.
 * The application being scraped is running an HTTP server with a timeout of 30 seconds.
 * Any scrape HTTP requests where the [delta argument][] is set to `true` will fail, because they will attempt to run for 59 seconds.
+
+[delta argument]: #delta-argument
 
 ## Blocks
 
@@ -209,6 +220,8 @@ You can use the following blocks with `pyroscope.scrape`:
 
 Any omitted blocks take on their default values.
 For example, if `profile.mutex` isn't specified in the configuration, the defaults documented in [profile.mutex][] are used.
+
+[profile.mutex]: #profilemutex
 
 ### `authorization`
 
@@ -303,6 +316,8 @@ The following arguments are supported:
 
 For more information about the `delta` argument, see the [delta argument][] section.
 
+[fgprof]: https://github.com/felixge/fgprof
+
 ### `profile.godeltaprof_block`
 
 The `profile.godeltaprof_block` block collects profiles from [godeltaprof][] block endpoint. The delta is computed on the target.
@@ -313,6 +328,8 @@ The following arguments are supported:
 | --------- | --------- | ------------------------------------------- | ---------------------------- | -------- |
 | `enabled` | `boolean` | Enable this profile type to be scraped.     | `false`                      | no       |
 | `path`    | `string`  | The path to the profile type on the target. | `"/debug/pprof/delta_block"` | no       |
+
+[godeltaprof]: https://github.com/grafana/pyroscope-go/tree/main/godeltaprof
 
 ### `profile.godeltaprof_memory`
 
@@ -413,6 +430,8 @@ When the `delta` argument is `true`:
   For example, if you set `scrape_interval` to `"15s"`, then `seconds` defaults to `14s`
   If you set `delta_profiling_duration` to `16s`, then `scrape_interval` must be set to at least `17s`.
   If the HTTP endpoint is `/debug/pprof/profile`, then the HTTP query becomes `/debug/pprof/profile?seconds=14`
+
+[pprof]: https://github.com/google/pprof/blob/main/doc/README.md
 
 ## Exported fields
 

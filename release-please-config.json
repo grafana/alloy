@@ -19,6 +19,7 @@
   "force-tag-creation": true,
   "draft-pull-request": true,
   "separate-pull-requests": true,
+  "plugins": ["release-pr-output"],
   "pull-request-title-pattern": "chore${scope}: Release${component} ${version}",
   "packages": {
     ".": {

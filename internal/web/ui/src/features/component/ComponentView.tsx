@@ -4,6 +4,7 @@ import { type FC, Fragment, type ReactElement } from 'react';
 import { Link } from 'react-router';
 import { useLocation } from 'react-router';
 
+import { componentDocsUrl } from '../../utils/docs';
 import { partitionBody } from '../../utils/partition';
 import ComponentBody from './ComponentBody';
 import ComponentList from './ComponentList';
@@ -114,7 +115,7 @@ export const ComponentView: FC<ComponentViewProps> = (props) => {
         </h1>
 
         <div className={styles.docsLink}>
-          <a href={`https://grafana.com/docs/alloy/latest/reference/components/${props.component.name}`}>
+          <a href={componentDocsUrl(props.component.name)}>
             <FontAwesomeIcon icon={faLink} /> Documentation
           </a>
         </div>

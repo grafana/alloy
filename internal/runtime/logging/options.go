@@ -12,23 +12,63 @@ import (
 
 // Options is a set of options used to construct and configure a Logger.
 type Options struct {
-	Level  Level  `alloy:"level,attr,optional"`
-	Format Format `alloy:"format,attr,optional"`
+	Level       Level          `alloy:"level,attr,optional"`
+	Format      Format         `alloy:"format,attr,optional"`
+	Destination LogDestination `alloy:"destination,attr,optional"`
 
 	WriteTo []loki.LogsReceiver `alloy:"write_to,attr,optional"`
 }
 
-// DefaultOptions holds defaults for creating a Logger.
-var DefaultOptions = Options{
-	Level:  LevelDefault,
-	Format: FormatDefault,
+// LogDestination is where to send the primary log output.
+type LogDestination string
+
+// TODO: Add a "none" destination to disable primary output.
+const (
+	LogDestinationStderr          LogDestination = "stderr"
+	LogDestinationWindowsEventLog LogDestination = "windows_event_log"
+)
+
+var _ encoding.TextUnmarshaler = (*LogDestination)(nil)
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (d *LogDestination) UnmarshalText(text []byte) error {
+	switch LogDestination(text) {
+	case LogDestinationStderr, LogDestinationWindowsEventLog:
+		*d = LogDestination(text)
+		return nil
+	default:
+		return fmt.Errorf("unrecognized log destination %q", string(text))
+	}
 }
+
+// defaultDestination returns the platform-appropriate default log destination.
+func defaultDestination() LogDestination {
+	if isWindowsService() {
+		return LogDestinationWindowsEventLog
+	}
+	return LogDestinationStderr
+}
+
+// defaultOptions builds a fresh set of Logger defaults, evaluating the
+// platform-appropriate destination at call time.
+func defaultOptions() Options {
+	return Options{
+		Level:       LevelDefault,
+		Format:      FormatDefault,
+		Destination: defaultDestination(),
+	}
+}
+
+// DefaultOptions holds defaults for creating a Logger.
+var DefaultOptions = defaultOptions()
 
 var _ syntax.Defaulter = (*Options)(nil)
 
-// SetToDefault implements syntax.Defaulter.
+// SetToDefault implements syntax.Defaulter. It re-evaluates the defaults at
+// call time (rather than reusing DefaultOptions) so that tests which stub
+// isWindowsService after package init still observe the expected destination.
 func (o *Options) SetToDefault() {
-	*o = DefaultOptions
+	*o = defaultOptions()
 }
 
 // Level represents how verbose logging should be.

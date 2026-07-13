@@ -47,9 +47,11 @@ The following components, grouped by namespace, _export_ Targets.
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
+- [database_observability.sql_server](../components/database_observability/database_observability.sql_server)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
+- [discovery.aws](../components/discovery/discovery.aws)
 - [discovery.azure](../components/discovery/discovery.azure)
 - [discovery.consul](../components/discovery/discovery.consul)
 - [discovery.consulagent](../components/discovery/discovery.consulagent)
@@ -131,6 +133,7 @@ The following components, grouped by namespace, _consume_ Targets.
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
+- [database_observability.sql_server](../components/database_observability/database_observability.sql_server)
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
@@ -263,6 +266,7 @@ The following components, grouped by namespace, _consume_ Loki `LogsReceiver`.
 {{< collapse title="database_observability" >}}
 - [database_observability.mysql](../components/database_observability/database_observability.mysql)
 - [database_observability.postgres](../components/database_observability/database_observability.postgres)
+- [database_observability.sql_server](../components/database_observability/database_observability.sql_server)
 {{< /collapse >}}
 
 {{< collapse title="faro" >}}
@@ -318,6 +322,7 @@ The following components, grouped by namespace, _export_ OpenTelemetry `otelcol.
 - [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
+- [otelcol.connector.signaltometrics](../components/otelcol/otelcol.connector.signaltometrics)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
 - [otelcol.connector.spanmetrics](../components/otelcol/otelcol.connector.spanmetrics)
 - [otelcol.exporter.awss3](../components/otelcol/otelcol.exporter.awss3)
@@ -375,6 +380,7 @@ The following components, grouped by namespace, _consume_ OpenTelemetry `otelcol
 - [otelcol.connector.count](../components/otelcol/otelcol.connector.count)
 - [otelcol.connector.host_info](../components/otelcol/otelcol.connector.host_info)
 - [otelcol.connector.servicegraph](../components/otelcol/otelcol.connector.servicegraph)
+- [otelcol.connector.signaltometrics](../components/otelcol/otelcol.connector.signaltometrics)
 - [otelcol.connector.spanlogs](../components/otelcol/otelcol.connector.spanlogs)
 - [otelcol.connector.spanmetrics](../components/otelcol/otelcol.connector.spanmetrics)
 - [otelcol.processor.attributes](../components/otelcol/otelcol.processor.attributes)

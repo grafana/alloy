@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"net"
 	"net/http"
@@ -16,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/grafana/ckit"
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
@@ -29,11 +29,11 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	"github.com/grafana/alloy/internal/service"
 	"github.com/grafana/alloy/internal/service/cluster/discovery"
 	httpservice "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/remotecfg"
+	"github.com/grafana/alloy/internal/slogadapter"
 	"github.com/grafana/alloy/internal/util"
 )
 
@@ -67,7 +67,7 @@ const (
 // Options are used to configure the cluster service. Options are constant for
 // the lifetime of the cluster service.
 type Options struct {
-	Log     log.Logger            // Where to send logs to.
+	Log     *slog.Logger          // Where to send logs to.
 	Metrics prometheus.Registerer // Where to send metrics to.
 	Tracer  trace.TracerProvider  // Where to send traces.
 
@@ -96,7 +96,7 @@ type Options struct {
 
 // Service is the cluster service.
 type Service struct {
-	log    log.Logger
+	log    *slog.Logger
 	tracer trace.TracerProvider
 	opts   Options
 
@@ -141,7 +141,7 @@ func New(opts Options) (*Service, error) {
 		t = opts.Tracer
 	)
 	if l == nil {
-		l = log.NewNopLogger()
+		l = slog.New(slog.DiscardHandler)
 	}
 	if t == nil {
 		t = noop.NewTracerProvider()
@@ -150,7 +150,7 @@ func New(opts Options) (*Service, error) {
 	ckitConfig := ckit.Config{
 		Name:          opts.NodeName,
 		AdvertiseAddr: opts.AdvertiseAddress,
-		Log:           l,
+		Log:           slogadapter.GoKit(l.Handler()),
 		Sharder:       shard.Ring(tokensPerNode),
 		Label:         opts.ClusterName,
 		EnableTLS:     opts.EnableTLS,
@@ -168,8 +168,8 @@ func New(opts Options) (*Service, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to load TLS config from file: %w", err)
 		}
-		level.Debug(l).Log(
-			"msg", "loaded TLS config for cluster http transport",
+		l.Debug(
+			"loaded TLS config for cluster http transport",
 			"TLSCAPath", opts.TLSCAPath,
 			"TLSCertPath", opts.TLSCertPath,
 			"TLSKeyPath", opts.TLSKeyPath,
@@ -313,13 +313,13 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	if err != nil {
 		// Warn when failed to get peers on startup as it can result in a split brain. We do not fail hard here
 		// because it would complicate the process of bootstrapping a new cluster.
-		level.Warn(s.log).Log("msg", "failed to get peers to join at startup; will create a new cluster", "err", err)
+		s.log.Warn("failed to get peers to join at startup; will create a new cluster", "err", err)
 	}
 
 	// We log on info level including all the peers (without any abbreviation), as it's happening only on startup and
 	// won't spam too much in most cases. In other cases we should either abbreviate the list or log on debug level.
-	level.Info(s.log).Log(
-		"msg", "starting cluster node",
+	s.log.Info(
+		"starting cluster node",
 		"peers_count", len(peers),
 		"peers", strings.Join(peers, ","),
 		"advertise_addr", s.opts.AdvertiseAddress,
@@ -328,13 +328,13 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 	)
 
 	if err := s.node.Start(peers); err != nil {
-		level.Warn(s.log).Log("msg", "failed to connect to peers; bootstrapping a new cluster", "err", err)
+		s.log.Warn("failed to connect to peers; bootstrapping a new cluster", "err", err)
 
 		err := s.node.Start(nil)
 		if err != nil {
 			// Fatal failure on startup if we can't start a new cluster.
 			// NOTE: currently returning error from `Run` will not be handled correctly: https://github.com/grafana/alloy/issues/843
-			level.Error(s.log).Log("msg", "failed to bootstrap a fresh cluster with no peers", "err", err)
+			s.log.Error("failed to bootstrap a fresh cluster with no peers", "err", err)
 			os.Exit(1)
 		}
 	}
@@ -370,13 +370,13 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 				case <-t.C:
 					peers, err := s.getRandomPeers()
 					if err != nil {
-						level.Warn(s.log).Log("msg", "failed to refresh list of peers", "err", err)
+						s.log.Warn("failed to refresh list of peers", "err", err)
 						continue
 					}
 					s.logPeers("rejoining peers", peers)
 
 					if err := s.node.Start(peers); err != nil {
-						level.Error(s.log).Log("msg", "failed to rejoin list of peers", "err", err)
+						s.log.Error("failed to rejoin list of peers", "err", err)
 						continue
 					}
 				}
@@ -404,7 +404,7 @@ func (s *Service) notifyComponentsOfClusterChanges(ctx context.Context, limiter 
 	if err := limiter.Wait(ctx); err != nil {
 		if !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
 			// This should never happen, but it should be safe to just ignore it and continue.
-			level.Warn(s.log).Log("msg", "failed to wait for rate limiter on peers update", "err", err)
+			s.log.Warn("failed to wait for rate limiter on peers update", "err", err)
 		}
 		spanWait.RecordError(err)
 	}
@@ -462,8 +462,8 @@ func (s *Service) getRandomPeers() ([]string, error) {
 	}
 
 	// Debug level log all the peers for troubleshooting.
-	level.Debug(s.log).Log(
-		"msg", "discovered peers",
+	s.log.Debug(
+		"discovered peers",
 		"peers_count", len(peers),
 		"peers", strings.Join(peers, ","),
 	)
@@ -492,11 +492,11 @@ func (s *Service) stop() {
 	// TODO(rfratto): should we enter terminating state earlier to allow for
 	// some kind of hand-off between components?
 	if err := s.node.ChangeState(ctx, peer.StateTerminating); err != nil {
-		level.Error(s.log).Log("msg", "failed to change state to Terminating", "err", err)
+		s.log.Error("failed to change state to Terminating", "err", err)
 	}
 
 	if err := s.node.Stop(); err != nil {
-		level.Error(s.log).Log("msg", "failed to gracefully stop node", "err", err)
+		s.log.Error("failed to gracefully stop node", "err", err)
 	}
 }
 
@@ -513,8 +513,8 @@ func (s *Service) Data() any {
 
 func (s *Service) logPeers(msg string, peers []string) {
 	// Truncate peers list on info level.
-	level.Info(s.log).Log(
-		"msg", msg,
+	s.log.Info(
+		msg,
 		"peers_count", len(peers),
 		"min_cluster_size", s.opts.MinimumClusterSize,
 		"peers", util.JoinWithTruncation(peers, ",", maxPeersToLog, "..."),

@@ -92,12 +92,13 @@ func toremotewriteexporterConfig(cfg *remotewriteexporter.Config, forwardTo []st
 	defaultArgs.SetToDefault()
 
 	return &prometheus.Arguments{
-		IncludeTargetInfo:             defaultArgs.IncludeTargetInfo,
-		IncludeScopeInfo:              defaultArgs.IncludeScopeInfo,
-		IncludeScopeLabels:            defaultArgs.IncludeScopeLabels,
-		GCFrequency:                   cfg.StaleTime,
-		ForwardTo:                     forwardTo,
-		AddMetricSuffixes:             defaultArgs.AddMetricSuffixes,
-		ResourceToTelemetryConversion: defaultArgs.ResourceToTelemetryConversion,
+		IncludeTargetInfo:                 defaultArgs.IncludeTargetInfo,
+		IncludeScopeInfo:                  defaultArgs.IncludeScopeInfo,
+		IncludeScopeLabels:                defaultArgs.IncludeScopeLabels,
+		GCFrequency:                       cfg.StaleTime,
+		ForwardTo:                         forwardTo,
+		AddMetricSuffixes:                 defaultArgs.AddMetricSuffixes,
+		ResourceToTelemetryConversion:     defaultArgs.ResourceToTelemetryConversion,
+		KeepIdentifyingResourceAttributes: defaultArgs.KeepIdentifyingResourceAttributes,
 	}
 }

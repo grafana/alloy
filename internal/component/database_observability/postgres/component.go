@@ -5,7 +5,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"path"
 	"slices"
@@ -29,8 +28,6 @@ import (
 	"github.com/grafana/alloy/internal/component/discovery"
 	exporter_postgres "github.com/grafana/alloy/internal/component/prometheus/exporter/postgres"
 	"github.com/grafana/alloy/internal/featuregate"
-	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 	http_service "github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/alloytypes"
@@ -121,9 +118,11 @@ type QueryDetailsArguments struct {
 
 type SchemaDetailsArguments struct {
 	CollectInterval time.Duration `alloy:"collect_interval,attr,optional"`
-	CacheEnabled    bool          `alloy:"cache_enabled,attr,optional"`
-	CacheSize       int           `alloy:"cache_size,attr,optional"`
-	CacheTTL        time.Duration `alloy:"cache_ttl,attr,optional"`
+
+	// Deprecated settings
+	CacheEnabled *bool          `alloy:"cache_enabled,attr,optional"`
+	CacheSize    *int           `alloy:"cache_size,attr,optional"`
+	CacheTTL     *time.Duration `alloy:"cache_ttl,attr,optional"`
 }
 
 func defaultArguments() Arguments {
@@ -132,7 +131,7 @@ func defaultArguments() Arguments {
 		ExcludeUsers:       database_observability.DefaultExcludedUsers(),
 		ExcludeCurrentUser: true,
 		QuerySampleArguments: QuerySampleArguments{
-			CollectInterval:       15 * time.Second,
+			CollectInterval:       10 * time.Second,
 			DisableQueryRedaction: false,
 		},
 		QueryDetailsArguments: QueryDetailsArguments{
@@ -141,9 +140,6 @@ func defaultArguments() Arguments {
 		},
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
-			CacheEnabled:    true,
-			CacheSize:       256,
-			CacheTTL:        10 * time.Minute,
 		},
 		ExplainPlansArguments: ExplainPlansArguments{
 			CollectInterval: 1 * time.Minute,
@@ -290,7 +286,7 @@ func new(opts component.Options, args Arguments, openFn func(driverName, dataSou
 
 func (c *Component) Run(ctx context.Context) error {
 	defer func() {
-		level.Info(c.opts.Logger).Log("msg", name+" component shutting down, stopping collectors")
+		c.opts.Logger.Info(name + " component shutting down, stopping collectors")
 
 		loki.Drain(c.handler, c.fanout, loki.DefaultDrainTimeout, func() {
 			c.mut.Lock()
@@ -329,9 +325,9 @@ func (c *Component) Run(ctx context.Context) error {
 				c.mut.RUnlock()
 
 				if !hasCollectors {
-					level.Debug(c.opts.Logger).Log("msg", "attempting to reconnect to database")
+					c.opts.Logger.Debug("attempting to reconnect to database")
 					if err := c.tryReconnect(ctx); err != nil {
-						level.Error(c.opts.Logger).Log("msg", "reconnection attempt failed", "err", err)
+						c.opts.Logger.Error("reconnection attempt failed", "err", err)
 					}
 				}
 			}
@@ -360,7 +356,7 @@ func (c *Component) getBaseTarget() (discovery.Target, error) {
 }
 
 func (c *Component) reportError(errorMsg string, err error) {
-	level.Error(c.opts.Logger).Log("msg", fmt.Sprintf("%s: %+v", errorMsg, err))
+	c.opts.Logger.Error(fmt.Sprintf("%s: %+v", errorMsg, err))
 	c.healthErr.Store(fmt.Sprintf("%s: %+v", errorMsg, err))
 }
 
@@ -458,12 +454,11 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 			c.args.PrometheusExporter = &d
 		}
 		exporterArgs := exporter_postgres.Arguments(*c.args.PrometheusExporter)
-		slogLogger := slog.New(logging.NewSlogGoKitHandler(c.opts.Logger))
 		dsn := string(c.args.DataSourceName)
 
 		e := pg_exporter.NewExporter(
 			[]string{dsn},
-			slogLogger,
+			c.opts.Logger,
 			pg_exporter.DisableDefaultMetrics(exporterArgs.DisableDefaultMetrics),
 			pg_exporter.WithUserQueriesPath(exporterArgs.CustomQueriesConfigPath),
 			pg_exporter.DisableSettingsMetrics(exporterArgs.DisableSettingsMetrics),
@@ -488,7 +483,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 				}))
 			}
 			col, err := pg_collector.NewPostgresCollector(
-				slogLogger,
+				c.opts.Logger,
 				c.args.ExcludeDatabases,
 				dsn,
 				exporterArgs.EnabledCollectors,
@@ -575,7 +570,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	logStartError := func(collectorName, action string, err error) {
 		errorString := fmt.Sprintf("failed to %s %s collector: %+v", action, collectorName, err)
-		level.Error(c.opts.Logger).Log("msg", errorString)
+		c.opts.Logger.Error(errorString)
 		startErrors = append(startErrors, errorString)
 	}
 
@@ -585,14 +580,21 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.SchemaDetailsCollector] {
+		if c.args.SchemaDetailsArguments.CacheEnabled != nil {
+			c.opts.Logger.Warn("schema_details.cache_enabled is set, but the cache is deprecated and will be removed in a future version")
+		}
+		if c.args.SchemaDetailsArguments.CacheSize != nil {
+			c.opts.Logger.Warn("schema_details.cache_size is set, but the cache is deprecated and will be removed in a future version")
+		}
+		if c.args.SchemaDetailsArguments.CacheTTL != nil {
+			c.opts.Logger.Warn("schema_details.cache_ttl is set, but the cache is deprecated and will be removed in a future version")
+		}
+
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:               c.dbConnection,
 			DSN:              string(c.args.DataSourceName),
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
 			ExcludeDatabases: c.args.ExcludeDatabases,
-			CacheEnabled:     c.args.SchemaDetailsArguments.CacheEnabled,
-			CacheSize:        c.args.SchemaDetailsArguments.CacheSize,
-			CacheTTL:         c.args.SchemaDetailsArguments.CacheTTL,
 			EntryHandler:     entryHandler,
 			Logger:           c.opts.Logger,
 		})
@@ -633,7 +635,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		qsExcludeUsers := effectiveExcludeUsers
 		qsExcludeCurrentUser := false
 		if localExcludeCurrentUser := c.args.QuerySampleArguments.ExcludeCurrentUser; localExcludeCurrentUser != nil {
-			level.Warn(c.opts.Logger).Log("msg", "query_samples.exclude_current_user is deprecated; use the top-level exclude_current_user setting instead")
+			c.opts.Logger.Warn("query_samples.exclude_current_user is deprecated; use the top-level exclude_current_user setting instead")
 			qsExcludeUsers = c.args.ExcludeUsers
 			qsExcludeCurrentUser = *localExcludeCurrentUser
 		}
@@ -722,6 +724,7 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 		Registry:         c.registry,
 		ExcludeDatabases: c.args.ExcludeDatabases,
 		ExcludeUsers:     effectiveExcludeUsers,
+		DB:               c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)

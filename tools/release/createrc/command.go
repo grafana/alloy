@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/google/go-github/v57/github"
 	"github.com/spf13/cobra"
@@ -18,6 +19,11 @@ const (
 	mainBranch          = "main"
 	releaseBranchPrefix = "release/v"
 	backportLabelPrefix = "backport/v"
+
+	// release-please names PR head branches "release-please--branches--<branch>",
+	// appending "--components--<name>" for component modules.
+	releasePleaseBranchPrefix = "release-please--branches--"
+	releasePleaseComponentSep = "--components--"
 )
 
 type flags struct {
@@ -53,7 +59,9 @@ func Command() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "create-rc",
-		Short: "Create a release candidate tag and draft prerelease from the open release-please PR",
+		Short: "Create a release candidate tag and draft prerelease for the main Alloy module",
+		Long: "Creates the RC from the main Alloy module's release-please PR. Component modules such as " +
+			"syntax are released directly by release-please and are ignored.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(cmd.Context(), flags)
 		},
@@ -224,28 +232,36 @@ func findReleasePleasePR(ctx context.Context, client *gh.Client, baseBranch stri
 	}
 
 	fmt.Printf("Found %d open PRs targeting %s\n", len(prs), baseBranch)
-
-	// Look for PR with "autorelease: pending" label (handle both with/without space after colon)
 	for _, pr := range prs {
 		fmt.Printf("  PR #%d: %q has %d labels\n", pr.GetNumber(), pr.GetTitle(), len(pr.Labels))
 		for _, label := range pr.Labels {
+			fmt.Printf("    - label: %q\n", label.GetName())
+		}
+	}
+
+	return selectMainModuleReleasePR(prs, baseBranch)
+}
+
+// selectMainModuleReleasePR picks the main Alloy module's release-please PR, not
+// a component module's (e.g. syntax). It keys off release-please's own head
+// branch naming rather than the PR title (which our config can freely rewrite):
+// the main module's head branch has no "--components--" segment. prs are already
+// filtered to baseBranch by the caller.
+func selectMainModuleReleasePR(prs []*github.PullRequest, baseBranch string) (*github.PullRequest, error) {
+	for _, pr := range prs {
+		head := pr.GetHead().GetRef()
+		if !strings.HasPrefix(head, releasePleaseBranchPrefix) || strings.Contains(head, releasePleaseComponentSep) {
+			continue
+		}
+		for _, label := range pr.Labels {
 			labelName := label.GetName()
-			fmt.Printf("    - label: %q\n", labelName)
 			if labelName == "autorelease: pending" || labelName == "autorelease:pending" {
 				return pr, nil
 			}
 		}
 	}
 
-	// Fallback: look for PR with release-please title pattern
-	titlePattern := regexp.MustCompile(fmt.Sprintf(`^chore\(%s\): Release`, regexp.QuoteMeta(baseBranch)))
-	for _, pr := range prs {
-		if titlePattern.MatchString(pr.GetTitle()) {
-			return pr, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no release-please PR found for branch %s (looked for 'autorelease: pending' or 'autorelease:pending' label or release-please title pattern)", baseBranch)
+	return nil, fmt.Errorf("no main-module release-please PR found for branch %s (looked for a %q head branch with an 'autorelease: pending' label)", baseBranch, releasePleaseBranchPrefix+baseBranch)
 }
 
 func extractVersionFromTitle(title string) (string, error) {

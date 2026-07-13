@@ -324,3 +324,39 @@ func TestHistogramBuckets(t *testing.T) {
 	// Verify total count matches our observations
 	assert.Equal(t, uint64(len(observations)), histogram.GetSampleCount())
 }
+
+func TestNativeHistogramsEnabled(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	m := registerMetrics(reg)
+
+	// Observe some values to populate the histogram with data
+	for _, obs := range []float64{0.001, 0.01, 0.1, 0.5, 1.0} {
+		m.getConfigTime.Observe(obs)
+	}
+
+	// Gather metrics from the registry
+	mfs, err := reg.Gather()
+	require.NoError(t, err)
+
+	// Find the remotecfg_request_duration_seconds histogram
+	var h *dto.Histogram
+	for _, mf := range mfs {
+		if mf.GetName() == "remotecfg_request_duration_seconds" {
+			h = mf.GetMetric()[0].GetHistogram()
+			break
+		}
+	}
+	require.NotNil(t, h, "remotecfg_request_duration_seconds metric should be found")
+
+	// Verify classic buckets are still present.
+	// This confirms the histogram is in "both" mode — not native-only.
+	// Scrapers that don't support native histograms still get classic buckets.
+	assert.NotEmpty(t, h.GetBucket(),
+		"classic histogram buckets must be present for backward compatibility")
+
+	// Verify native histogram schema is set.
+	// Schema is populated by the client when NativeHistogramBucketFactor > 0.
+	// A nil schema means native histograms are NOT configured.
+	assert.NotNil(t, h.Schema,
+		"native histogram schema must be set — NativeHistogramBucketFactor should be configured")
+}

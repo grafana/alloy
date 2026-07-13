@@ -45,13 +45,12 @@ You can use the following arguments with `discovery.nomad`:
 
  At most, one of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
-* [`bearer_token_file`][arguments] argument
-* [`bearer_token`][arguments] argument
-* [`oauth2`][oauth2] block
+* [`authorization`](#authorization) block
+* [`basic_auth`](#basic_auth) block
+* [`bearer_token_file`](#arguments) argument
+* [`bearer_token`](#arguments) argument
+* [`oauth2`](#oauth2) block
 
-[arguments]: #arguments
 
 {{< docs/shared lookup="reference/components/http-client-proxy-config-description.md" source="alloy" version="<ALLOY_VERSION>" >}}
 

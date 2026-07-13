@@ -12,9 +12,34 @@ Unreleased
 
 ### Enhancements
 
-- Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (#6399)
+- Add `alloy.command` to override the entrypoint command for the Alloy container. This makes it possible to launch the Alloy binary from its image path when running as a HostProcess container on Windows nodes. (@petewall)
+
+- Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (@younsl)
+
+1.10.1 (2026-06-29)
+----------
+
+### Enhancements
+
+- Update to Grafana Alloy v1.17.1 (@x1unix)
+
+1.10.0 (2026-06-12)
+----------
+
+### Enhancements
+
+- Allow configuring of the alloy service externalTrafficPolicy (@at-blacknight)
+
+- Update to Grafana Alloy v1.17.0 (@kgeckhart)
+
+1.9.0 (2026-06-08)
+----------
+
+### Enhancements
 
 - Add `controller.autoscaling.horizontal.externalHPA` to support externally-managed HPAs (e.g. KEDA `ScaledObject`s). When set to `true`, the chart omits `spec.replicas` from the workload and does not render its own HorizontalPodAutoscaler. Mutually exclusive with `horizontal.enabled`. (#6311)
+
+- Update to Grafana Alloy v1.16.3 (@kgeckhart)
 
 ### Bug fixes
 

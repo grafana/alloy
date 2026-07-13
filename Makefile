@@ -52,7 +52,7 @@
 ##   generate-graphql          Generate the GraphQL assets.
 ##   generate-winmanifest      Generate the Windows application manifest.
 ##   generate-snmp             Generate SNMP modules from prometheus/snmp_exporter for prometheus.exporter.snmp and bumps SNMP version in _index.md.t.
-##   generate-module-dependencies  Generate replace directives from dependency-replacements.yaml and inject them into go.mod and builder-config.yaml.
+##   generate-source-code      Wrapper for collector distro codegen (skips when CI=true or SKIP_CODE_GENERATION=1).
 ##   generate-rendered-mixin   Generate rendered mixin (dashboards and alerts).
 ##
 ## Other targets:
@@ -83,6 +83,7 @@
 ##   DOCKER_PLATFORM      Overrides platform to build Docker images for (defaults to host platform).
 ##   GOEXPERIMENT         Used to enable Go features behind feature flags.
 ##   SKIP_UI_BUILD        Set to 1 to skip the UI build (assumes UI assets already exist).
+##   SKIP_CODE_GENERATION Set to 1 to skip code generation before building the alloy binary
 
 include build-tools/make/*.mk
 
@@ -126,6 +127,7 @@ PROPAGATE_VARS := \
     BUILD_IMAGE GOOS GOARCH GOARM CGO_ENABLED RELEASE_BUILD \
     ALLOY_BINARY \
     VERSION GO_TAGS GOEXPERIMENT GOLANGCI_LINT_BINARY \
+    SKIP_CODE_GENERATION \
 
 #
 # Constants for targets
@@ -148,15 +150,20 @@ BEYLA_VERSION := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f2)
 BEYLA_PKG     := $(shell echo $(BEYLA_MODULE) | cut -d' ' -f1)/pkg/buildinfo
 VPREFIX      := github.com/grafana/alloy/internal/build
 VPREFIXSYNTAX := github.com/grafana/alloy/syntax/internal/stdlib
+# Allow the Go build cache to be used except when doing a release build or when
+# an epoch is explicitly set. BuildDate otherwise changes on every invocation,
+# which busts the cache and forces a relink on every local build.
 ifdef SOURCE_DATE_EPOCH
-    DATE_STAMP = -d@$(SOURCE_DATE_EPOCH)
+    BUILD_DATE = $(shell date -u -d@$(SOURCE_DATE_EPOCH) +"%Y-%m-%dT%H:%M:%SZ")
+else ifeq ($(RELEASE_BUILD),1)
+    BUILD_DATE = $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 endif
 GO_LDFLAGS   := -X $(VPREFIX).Branch=$(GIT_BRANCH)                        \
                 -X $(VPREFIX).Version=$(VERSION)                          \
 		-X $(VPREFIXSYNTAX).Version=$(VERSION)                    \
                 -X $(VPREFIX).Revision=$(GIT_REVISION)                    \
                 -X $(VPREFIX).BuildUser=$(BUILDER_USER)@$(BUILDER_HOST) \
-                -X $(VPREFIX).BuildDate=$(shell date -u $(DATE_STAMP) +"%Y-%m-%dT%H:%M:%SZ") \
+                -X $(VPREFIX).BuildDate=$(BUILD_DATE) \
                 -X $(BEYLA_PKG).Version=$(BEYLA_VERSION)
 
 DEFAULT_FLAGS    := $(GO_FLAGS)
@@ -174,15 +181,15 @@ lint: lint-go run-alloylint lint-shell
 
 .PHONY: lint-go
 lint-go:
-	go run -C tools ./cmd lint go --binary=$(GOLANGCI_LINT_BINARY)
+	mise exec -- task lint:go
 
 .PHONY: lint-shell
 lint-shell:
-	go run -C tools ./cmd lint shell
+	mise exec -- task lint:shellcheck
 
 .PHONY: run-alloylint
 run-alloylint: alloylint
-	GOFLAGS="-tags=$(GO_TAGS)" $(ALLOYLINT_BINARY) ./...
+	mise exec -- task lint:alloylint
 
 #
 # Targets for running tests
@@ -250,7 +257,7 @@ test-pyroscope:
 .PHONY: binaries alloy
 binaries: alloy
 
-alloy: generate-ui
+alloy: generate-ui generate-source-code
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
@@ -305,8 +312,8 @@ alloy-image-windows:
 # Targets for generating assets
 #
 
-.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
-generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-module-dependencies generate-otel-collector-distro generate-graphql
+.PHONY: generate generate-helm-docs generate-helm-tests generate-ui generate-winmanifest generate-snmp generate-rendered-mixin generate-source-code generate-otel-collector-distro generate-graphql
+generate: generate-helm-docs generate-helm-tests generate-ui generate-docs generate-winmanifest generate-snmp generate-rendered-mixin generate-otel-collector-distro generate-graphql
 
 generate-graphql:
 ifeq ($(USE_CONTAINER),1)
@@ -329,21 +336,23 @@ else
 	bash ./operations/helm/scripts/rebuild-tests.sh
 endif
 
-generate-module-dependencies:
+generate-source-code:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
+else ifeq ($(SKIP_CODE_GENERATION),1)
+	@echo "Skipping code generation (SKIP_CODE_GENERATION=1)"
 else
-	$(GO_ENV) go run -C tools ./cmd generate module-dependencies --dependency-yaml=$(CURDIR)/dependency-replacements.yaml
+	@$(MAKE) generate-otel-collector-distro
 endif
 
 generate-otel-collector-distro:
 ifeq ($(USE_CONTAINER),1)
 	$(RERUN_IN_CONTAINER)
 else
-	@if [ -f ./collector/go.mod ]; then \
-		cd ./collector && go mod tidy; \
-	fi
 	# Here we clear the GOOS and GOARCH env variables so we're not accidentally cross compiling the builder tool within generate
+	GOOS= GOARCH= go run -C tools ./cmd sync-replaces --builder-config ../collector/builder-config.yaml --go-mod ../go.mod
+	# This tidy propagates any root module changes to the collector module
+	cd ./collector && GOOS= GOARCH= go mod tidy
 	cd ./collector && GOOS= GOARCH= BUILDER_VERSION=$(BUILDER_VERSION) go generate
 endif
 
@@ -353,7 +362,7 @@ ifeq ($(USE_CONTAINER),1)
 else ifeq ($(SKIP_UI_BUILD),1)
 	@echo "Skipping UI build (SKIP_UI_BUILD=1)"
 else
-	cd ./internal/web/ui && npm install && npm run build
+	cd ./internal/web/ui && npm ci --no-audit --no-fund && npm run build
 endif
 
 generate-docs:

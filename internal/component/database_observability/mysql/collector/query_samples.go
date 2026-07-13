@@ -4,19 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/blang/semver/v4"
-	"github.com/go-kit/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -54,6 +54,9 @@ SELECT
 	statements.ROWS_SENT,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
+	statements.MYSQL_ERRNO,
+	statements.RETURNED_SQLSTATE,
+	statements.MESSAGE_TEXT,
 	waits.event_id as WAIT_EVENT_ID,
 	waits.end_event_id as WAIT_END_EVENT_ID,
 	waits.event_name as WAIT_EVENT_NAME,
@@ -111,7 +114,7 @@ type QuerySamplesArguments struct {
 	WaitEventMinDuration          time.Duration
 	EnablePreClassifiedWaitEvents bool
 
-	Logger log.Logger
+	Logger *slog.Logger
 }
 
 type QuerySamples struct {
@@ -129,7 +132,7 @@ type QuerySamples struct {
 	waitEventCounter              *prometheus.CounterVec
 	enablePreClassifiedWaitEvents bool
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -152,7 +155,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		sampleMinDuration:             args.SampleMinDuration,
 		waitEventMinDuration:          args.WaitEventMinDuration,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
-		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		logger:                        args.Logger.With("collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 	}
 
@@ -175,9 +178,9 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+		c.logger.Warn("collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
+		c.logger.Debug("collector started")
 	}
 
 	c.running.Store(true)
@@ -202,7 +205,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySamples(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -237,7 +240,7 @@ func (c *QuerySamples) runSetupConsumersCheck() {
 
 	for {
 		if err := c.updateSetupConsumersSettings(c.ctx); err != nil {
-			level.Error(c.logger).Log("msg", "error with performance_schema.setup_consumers check", "err", err)
+			c.logger.Error("error with performance_schema.setup_consumers check", "err", err)
 		}
 
 		select {
@@ -335,6 +338,11 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			RowsAffected uint64
 			Errors       uint64
 
+			// sample error info
+			MysqlErrno       sql.NullInt64
+			ReturnedSQLState sql.NullString
+			MessageText      sql.NullString
+
 			// sample memory info
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
@@ -373,6 +381,9 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			&row.RowsSent,
 			&row.RowsAffected,
 			&row.Errors,
+			&row.MysqlErrno,
+			&row.ReturnedSQLState,
+			&row.MessageText,
 			&row.WaitEventID,
 			&row.WaitEndEventID,
 			&row.WaitEventName,
@@ -399,12 +410,12 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 
 		err := rs.Scan(scanArgs...)
 		if err != nil {
-			level.Error(c.logger).Log("msg", "failed to scan history table samples", "err", err)
+			c.logger.Error("failed to scan history table samples", "err", err)
 			continue
 		}
 
 		if !row.TimerEndPicoseconds.Valid {
-			level.Debug(c.logger).Log("msg", "skipping query with invalid timer end timestamp", "schema", row.Schema.String, "digest", row.Digest.String, "timer_end", row.TimerEndPicoseconds.Float64)
+			c.logger.Debug("skipping query with invalid timer end timestamp", "schema", row.Schema.String, "digest", row.Digest.String, "timer_end", row.TimerEndPicoseconds.Float64)
 			continue
 		}
 
@@ -413,10 +424,10 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		elapsedTime := picosecondsToMilliseconds(row.ElapsedTimePicoseconds.Float64)
 		row.TimestampMilliseconds = endMilliseconds - elapsedTime
 		cpuTime := picosecondsToMilliseconds(row.CPUTime)
-		traceParent := tryExtractTraceParent(row.SQLText.String)
+		traceParent := database_observability.TryExtractTraceParent(row.SQLText.String)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" mysql_errno="%d" returned_sqlstate="%s" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 			row.Schema.String, row.User.String, row.Host.String, row.ThreadID.String,
 			row.StatementEventID.String, row.StatementEndEventID.String,
 			row.Digest.String,
@@ -424,6 +435,8 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			row.RowsSent,
 			row.RowsAffected,
 			row.Errors,
+			row.MysqlErrno.Int64,
+			row.ReturnedSQLState.String,
 			row.MaxControlledMemory,
 			row.MaxTotalMemory,
 			cpuTime,
@@ -431,10 +444,15 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			elapsedTime,
 		)
 		if traceParent != "" {
-			logMessage += fmt.Sprintf(` traceparent="%s"`, traceParent)
+			logMessage += fmt.Sprintf(` traceparent=%s`, strconv.Quote(traceParent))
 		}
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+		}
+		// message_text can embed literal values (e.g. a duplicate key value), so
+		// it is only emitted when query redaction is disabled, like sql_text.
+		if c.disableQueryRedaction && row.MessageText.Valid {
+			logMessage += fmt.Sprintf(` message_text="%s"`, row.MessageText.String)
 		}
 
 		if lastThreadIDLogged != row.ThreadID.String || lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {
@@ -543,7 +561,7 @@ func (c *QuerySamples) updateSetupConsumersSettings(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get rows affected from performance_schema.setup_consumers: %w", err)
 	}
-	level.Debug(c.logger).Log("msg", "updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
+	c.logger.Debug("updated performance_schema.setup_consumers", "rows_affected", rowsAffected)
 
 	return nil
 }
@@ -619,55 +637,4 @@ func classifyMySQLWaitEventType(waitEventName string) string {
 		return "Engine Wait"
 	}
 	return "Other Wait"
-}
-
-// tryExtractTraceParent attempts to extract a W3C traceparent value added at the end of SQL text as a trailing
-// block comment, e.g. "/*traceparent='00-<traceid>-<spanid>-<flags>'*/".
-// It returns the traceparent string when matched, otherwise an empty string.
-func tryExtractTraceParent(sqlText string) string {
-	if strings.HasSuffix(sqlText, "...") {
-		return ""
-	}
-
-	// Find the last comment: strip out /* and */
-	start := strings.LastIndex(sqlText, "/*")
-	if start < 0 {
-		return ""
-	}
-	body := sqlText[start+2:]
-	end := strings.Index(body, "*/")
-	if end < 0 {
-		return ""
-	}
-
-	body = body[:end]
-	body = strings.TrimSpace(body)
-	if body == "" {
-		return ""
-	}
-
-	// Split the comment by comma into key value pairs
-	pairs := strings.Split(body, ",")
-	for _, pair := range pairs {
-		pair = strings.TrimSpace(pair)
-		key, val, ok := strings.Cut(pair, "=")
-		if !ok {
-			continue
-		}
-
-		if !strings.EqualFold(strings.TrimSpace(key), "traceparent") {
-			continue
-		}
-
-		// SQL unescape: trim ' or " at beginning and end of value
-		if strings.HasPrefix(val, "'") || strings.HasPrefix(val, `"`) {
-			quote := string(val[0])
-			val = strings.TrimPrefix(val, quote)
-			val = strings.TrimSuffix(val, quote)
-		}
-
-		return strings.TrimSpace(val)
-	}
-
-	return ""
 }

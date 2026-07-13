@@ -60,7 +60,7 @@ module Homebrew
 
   # Avoid using the GitHub API whenever possible.
   # This helps users who use application tokens instead of personal access tokens.
-  # Application tokens don't work with GitHub API's `/user` endpoit.
+  # Application tokens don't work with GitHub API's `/user` endpoint.
   if user_name.blank? && user_email.blank?
     # Get user details
     user = GitHub::API.open_rest "#{GitHub::API_URL}/user"
@@ -169,12 +169,12 @@ module Homebrew
              *("--force" unless force.false?),
              formula
       rescue ErrorDuringExecution => e
-        # Continue execution on error, but save the exeception
+        # Continue execution on error, but save the exception
         err = e
       end
     end
 
-    # Die if error occured
+    # Die if error occurred
     odie err if err
   end
 end

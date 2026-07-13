@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -217,43 +216,28 @@ func bumpBuildImage(root string) error {
 
 type buildImageRefs struct {
 	Default    string
-	Boring     string
 	DefaultTag string
 }
 
-// buildImageRefsFromTags assumes 2 tags: one default, one boringcrypto.
+// buildImageRefsFromTags assumes a single tag: the most recent build image.
 func buildImageRefsFromTags(data *dockerTagsResponse) (*buildImageRefs, error) {
-	if len(data.Results) != 2 {
-		return nil, fmt.Errorf("expected 2 tags, got %d", len(data.Results))
+	if len(data.Results) != 1 {
+		return nil, fmt.Errorf("expected 1 tag, got %d", len(data.Results))
 	}
-	var defaultTag, boringTag *dockerTag
-	for i := range data.Results {
-		t := &data.Results[i]
-		if strings.HasSuffix(t.Name, "-boringcrypto") {
-			boringTag = t
-		} else {
-			defaultTag = t
-		}
-	}
-	if defaultTag == nil || boringTag == nil {
-		return nil, fmt.Errorf("expected one default and one boringcrypto tag")
-	}
+	tag := &data.Results[0]
 	return &buildImageRefs{
-		Default:    "grafana/alloy-build-image:" + defaultTag.Name + "@" + defaultTag.Digest,
-		Boring:     "grafana/alloy-build-image:" + boringTag.Name + "@" + boringTag.Digest,
-		DefaultTag: "grafana/alloy-build-image:" + defaultTag.Name,
+		Default:    "grafana/alloy-build-image:" + tag.Name + "@" + tag.Digest,
+		DefaultTag: "grafana/alloy-build-image:" + tag.Name,
 	}, nil
 }
 
 var (
-	buildImageWithDigestRE   = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+@sha256:[a-f0-9]+`)
-	buildImageBoringDigestRE = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+-boringcrypto@sha256:[a-f0-9]+`)
-	buildImageTagOnlyRE      = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+(\s|$)`)
+	buildImageWithDigestRE = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+@sha256:[a-f0-9]+`)
+	buildImageTagOnlyRE    = regexp.MustCompile(`grafana/alloy-build-image:v\d+\.\d+\.\d+(\s|$)`)
 )
 
 func replaceBuildImageRefs(content []byte, refs *buildImageRefs) []byte {
-	out := buildImageBoringDigestRE.ReplaceAllLiteral(content, []byte(refs.Boring))
-	out = buildImageWithDigestRE.ReplaceAllLiteral(out, []byte(refs.Default))
+	out := buildImageWithDigestRE.ReplaceAllLiteral(content, []byte(refs.Default))
 	out = buildImageTagOnlyRE.ReplaceAll(out, []byte(refs.DefaultTag+"$1"))
 	return out
 }

@@ -29,6 +29,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 12 * time.Second,
 				},
+				FlowControlConfig: googlecloudpubsubreceiver.FlowControlConfig{
+					TriggerAckBatchDuration: 10 * time.Second,
+					StreamAckDeadline:       60 * time.Second,
+				},
 			},
 		},
 		{
@@ -59,6 +63,10 @@ func TestArguments_UnmarshalAlloy(t *testing.T) {
 				ClientID:            "123",
 				TimeoutSettings: exporterhelper.TimeoutConfig{
 					Timeout: 15 * time.Second,
+				},
+				FlowControlConfig: googlecloudpubsubreceiver.FlowControlConfig{
+					TriggerAckBatchDuration: 10 * time.Second,
+					StreamAckDeadline:       60 * time.Second,
 				},
 			},
 		},

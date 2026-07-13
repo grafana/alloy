@@ -4,8 +4,6 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/go-kit/log"
-	"github.com/go-kit/log/level"
 	"gopkg.in/yaml.v2"
 
 	"github.com/grafana/alloy/internal/loki/promtail/client"
@@ -16,7 +14,6 @@ import (
 	"github.com/grafana/alloy/internal/loki/promtail/server"
 	"github.com/grafana/alloy/internal/loki/promtail/tracing"
 	"github.com/grafana/alloy/internal/loki/promtail/wal"
-	"github.com/grafana/alloy/internal/loki/util/flagext"
 )
 
 // Options contains cross-cutting promtail configurations
@@ -83,35 +80,6 @@ func (c Config) String() string {
 		return fmt.Sprintf("<error creating config string: %s>", err)
 	}
 	return string(b)
-}
-
-func (c *Config) Setup(l log.Logger) {
-	if c.ClientConfig.URL.URL != nil {
-		level.Warn(l).Log("msg", "use of CLI client.* and config file Client block are both deprecated in favour of the config file Clients block and will be removed in a future release")
-		// if a single client config is used we add it to the multiple client config for backward compatibility
-		c.ClientConfigs = append(c.ClientConfigs, c.ClientConfig)
-	}
-
-	// This is a bit crude but if the Loki Push API target is specified,
-	// force the log level to match the promtail log level
-	for i := range c.ScrapeConfig {
-		if c.ScrapeConfig[i].PushConfig != nil {
-			c.ScrapeConfig[i].PushConfig.Server.LogLevel = c.ServerConfig.LogLevel
-			c.ScrapeConfig[i].PushConfig.Server.LogFormat = c.ServerConfig.LogFormat
-		}
-	}
-
-	// Merge the provided external labels from the single client config/command line with each client config from
-	// `clients`. This is done to allow --client.external-labels=key=value passed at command line to apply to all clients
-	// The order here is specified to allow the yaml to override the command line flag if there are any labels
-	// which exist in both the command line arguments as well as the yaml, and while this is
-	// not typically the order of precedence, the assumption here is someone providing a specific config in
-	// yaml is doing so explicitly to make a key specific to a client.
-	if len(c.ClientConfig.ExternalLabels.LabelSet) > 0 {
-		for i := range c.ClientConfigs {
-			c.ClientConfigs[i].ExternalLabels = flagext.LabelSet{LabelSet: c.ClientConfig.ExternalLabels.LabelSet.Merge(c.ClientConfigs[i].ExternalLabels.LabelSet)}
-		}
-	}
 }
 
 // GlobalConfig holds configuration settings which apply to all targets.

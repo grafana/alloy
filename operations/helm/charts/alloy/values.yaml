@@ -93,6 +93,13 @@ alloy:
   # -- Maps all the keys on a ConfigMap or Secret as environment variables. https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.24/#envfromsource-v1-core
   envFrom: []
 
+  # -- Override the entrypoint command for the Alloy container. When set, this
+  # replaces the image's default entrypoint (the chart-provided `args` are still
+  # passed). Useful on Windows where the binary lives at a different path, for
+  # example `["C:\\Program Files\\GrafanaLabs\\Alloy\\alloy.exe"]`. Leave empty
+  # to use the image's default entrypoint.
+  command: []
+
   # -- Extra args to pass to `alloy run`: https://grafana.com/docs/alloy/latest/reference/cli/run/
   extraArgs: []
 
@@ -503,6 +510,8 @@ service:
   clusterIP: ''
   # -- Value for internal traffic policy. 'Cluster' or 'Local'
   internalTrafficPolicy: Cluster
+  # -- Value for external traffic policy. 'Cluster' or 'Local'
+  externalTrafficPolicy: Cluster
   annotations: {}
     # cloud.google.com/load-balancer-type: Internal
 

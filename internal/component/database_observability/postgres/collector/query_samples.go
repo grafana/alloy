@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/go-kit/log"
 	"github.com/hashicorp/golang-lru/v2/expirable"
 	"github.com/lib/pq"
 	"go.uber.org/atomic"
@@ -17,7 +18,6 @@ import (
 	"github.com/grafana/alloy/internal/component/common/loki"
 	"github.com/grafana/alloy/internal/component/database_observability"
 	"github.com/grafana/alloy/internal/runtime/logging"
-	"github.com/grafana/alloy/internal/runtime/logging/level"
 )
 
 const (
@@ -28,11 +28,9 @@ const (
 )
 
 const (
-	queryTextClause     = ", s.query"
 	stateActive         = "active"
 	stateIdle           = "idle"
 	stateIdleTxnAborted = "idle in transaction (aborted)"
-	stateIdleTxn        = "idle in transaction"
 )
 
 const selectPgStatActivity = `
@@ -56,8 +54,8 @@ const selectPgStatActivity = `
 		s.wait_event,
 		pg_blocking_pids(s.pid) as blocked_by_pids,
 		s.query_start,
-		s.query_id
-		%s
+		s.query_id,
+		s.query
 	FROM pg_stat_activity s
 		JOIN pg_database d ON s.datid = d.oid AND NOT d.datistemplate AND d.datallowconn
 	WHERE
@@ -108,7 +106,7 @@ type QuerySamplesArguments struct {
 	ExcludeDatabases              []string
 	ExcludeUsers                  []string
 	EntryHandler                  loki.EntryHandler
-	Logger                        log.Logger
+	Logger                        *slog.Logger
 	DisableQueryRedaction         bool
 	ExcludeCurrentUser            bool
 	EnablePreClassifiedWaitEvents bool
@@ -124,7 +122,7 @@ type QuerySamples struct {
 	excludeCurrentUser            bool
 	enablePreClassifiedWaitEvents bool
 
-	logger  log.Logger
+	logger  *slog.Logger
 	running *atomic.Bool
 	ctx     context.Context
 	cancel  context.CancelFunc
@@ -152,15 +150,16 @@ func newSampleKey(pid int, queryID int64, queryStart sql.NullTime) SampleKey {
 	return key
 }
 
-// SampleState buffers state across scrapes and is emitted once the query
-// turns idle or disappears, avoiding partial/duplicate emissions.
+// SampleState buffers per-sample state across scrapes and is emitted once the
+// query turns idle or disappears, avoiding partial/duplicate emissions.
 type SampleState struct {
 	LastRow     QuerySamplesInfo
 	LastSeenAt  time.Time
 	LastCpuTime string // last cpu_time observed under CPU condition
 	tracker     WaitEventTracker
 	// EndAt is the time we determined the sample ended (idle transition
-	// or when it was only observed idle), used to compute durations/timestamps.
+	// or when it was only observed idle), used to compute the xact_time
+	// and query_time durations on the emitted query_sample entry.
 	EndAt sql.NullTime
 }
 
@@ -196,14 +195,19 @@ func (t *WaitEventTracker) CloseOpen()                        { t.openIdx = -1 }
 func (t *WaitEventTracker) WaitEvents() []WaitEventOccurrence { return t.waitEvents }
 
 // WaitEventOccurrence tracks a continuous occurrence of the same wait event
-// with the same blocked_by_pids set.
+// with the same blocked_by_pids set. wait_time at emit time is
+// LastTimestamp - waitStartedAt; waitStartedAt is anchored on state_change
+// but offset to priorLastSeen when a prior wait identity ended before this
+// one began (PG's state_change is stable across wait_event changes, so
+// without the offset every secondary occurrence would re-credit the full
+// state duration).
 type WaitEventOccurrence struct {
 	WaitEventType string
 	WaitEvent     string
 	BlockedByPIDs []int64 // normalized set (sorted, unique)
-	LastWaitTime  string  // last stateDuration seen for this wait event
 	LastState     string
 	LastTimestamp time.Time
+	waitStartedAt time.Time
 }
 
 // WaitEventIdentity defines the identity of a wait-event occurrence (type, event, blocked_by set)
@@ -233,7 +237,7 @@ func NewQuerySamples(args QuerySamplesArguments) (*QuerySamples, error) {
 		disableQueryRedaction:         args.DisableQueryRedaction,
 		excludeCurrentUser:            args.ExcludeCurrentUser,
 		enablePreClassifiedWaitEvents: args.EnablePreClassifiedWaitEvents,
-		logger:                        log.With(args.Logger, "collector", QuerySamplesCollector),
+		logger:                        args.Logger.With("collector", QuerySamplesCollector),
 		running:                       &atomic.Bool{},
 		samples:                       map[SampleKey]*SampleState{},
 		idleEmitted:                   expirable.NewLRU[SampleKey, struct{}](emittedCacheSize, nil, emittedCacheTTL),
@@ -246,9 +250,9 @@ func (c *QuerySamples) Name() string {
 
 func (c *QuerySamples) Start(ctx context.Context) error {
 	if c.disableQueryRedaction {
-		level.Warn(c.logger).Log("msg", "collector started with query redaction disabled. SQL text in query samples may include query parameters.")
+		c.logger.Warn("collector started with query redaction disabled. SQL text in query samples may include query parameters.")
 	} else {
-		level.Debug(c.logger).Log("msg", "collector started")
+		c.logger.Debug("collector started")
 	}
 
 	c.running.Store(true)
@@ -264,7 +268,7 @@ func (c *QuerySamples) Start(ctx context.Context) error {
 
 		for {
 			if err := c.fetchQuerySample(c.ctx); err != nil {
-				level.Error(c.logger).Log("msg", "collector error", "err", err)
+				c.logger.Error("collector error", "err", err)
 			}
 
 			select {
@@ -291,11 +295,6 @@ func (c *QuerySamples) Stop() {
 }
 
 func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
-	queryTextField := ""
-	if c.disableQueryRedaction {
-		queryTextField = queryTextClause
-	}
-
 	excludeCurrentUserClauseField := ""
 	if c.excludeCurrentUser {
 		excludeCurrentUserClauseField = excludeCurrentUserClause
@@ -303,7 +302,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 
 	excludedDatabasesClause := buildExcludedDatabasesClause(c.excludeDatabases)
 	excludedUsersClause := buildExcludedUsersClause(c.excludeUsers, "s.usename")
-	query := fmt.Sprintf(selectPgStatActivity, queryTextField, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
+	query := fmt.Sprintf(selectPgStatActivity, excludedDatabasesClause, excludeCurrentUserClauseField, excludedUsersClause)
 	rows, err := c.dbConnection.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query pg_stat_activity: %w", err)
@@ -316,13 +315,13 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	for rows.Next() {
 		sample, scanErr := c.scanRow(rows)
 		if scanErr != nil {
-			level.Error(c.logger).Log("msg", "failed to scan pg_stat_activity", "err", scanErr)
+			c.logger.Error("failed to scan pg_stat_activity", "err", scanErr)
 			continue
 		}
 
 		key, procErr := c.processRow(sample)
 		if procErr != nil {
-			level.Debug(c.logger).Log("msg", "invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
+			c.logger.Debug("invalid pg_stat_activity set", "queryid", sample.QueryID.Int64, "err", procErr)
 			continue
 		}
 
@@ -350,7 +349,7 @@ func (c *QuerySamples) fetchQuerySample(ctx context.Context) error {
 	}
 
 	if err := rows.Err(); err != nil {
-		level.Error(c.logger).Log("msg", "failed to iterate pg_stat_activity rows", "err", err)
+		c.logger.Error("failed to iterate pg_stat_activity rows", "err", err)
 		return err
 	}
 
@@ -387,9 +386,7 @@ func (c *QuerySamples) scanRow(rows *sql.Rows) (QuerySamplesInfo, error) {
 		&sample.BlockedByPIDs,
 		&sample.QueryStart,
 		&sample.QueryID,
-	}
-	if c.disableQueryRedaction {
-		scanArgs = append(scanArgs, &sample.Query)
+		&sample.Query,
 	}
 	err := rows.Scan(scanArgs...)
 	return sample, err
@@ -404,10 +401,8 @@ func (c *QuerySamples) processRow(sample QuerySamplesInfo) (SampleKey, error) {
 }
 
 func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
-	if c.disableQueryRedaction {
-		if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
-			return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
-		}
+	if sample.Query.Valid && sample.Query.String == "<insufficient privilege>" {
+		return fmt.Errorf("insufficient privilege to access query sample set: %+v", sample)
 	}
 
 	if !sample.DatabaseName.Valid {
@@ -418,19 +413,25 @@ func (c *QuerySamples) validateQuerySample(sample QuerySamplesInfo) error {
 }
 
 func (c *QuerySamples) upsertActiveSample(key SampleKey, sample QuerySamplesInfo) {
-	state, ok := c.samples[key]
-	if !ok {
+	state, existed := c.samples[key]
+	if !existed {
 		state = &SampleState{tracker: newWaitEventTracker()}
 		c.samples[key] = state
 	}
+
+	var priorLastSeen time.Time
+	if existed {
+		priorLastSeen = state.LastSeenAt
+	}
+
 	state.LastRow = sample
 	state.LastSeenAt = sample.Now
 	state.updateCpuTime(sample)
 	state.LastRow.State = sample.State
-	state.tracker.upsertWaitEvent(sample, sample.Now)
+	state.tracker.upsertWaitEvent(sample, sample.Now, priorLastSeen)
 }
 
-func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Time) {
+func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Time, priorLastSeen time.Time) {
 	if sample.WaitEventType.Valid && sample.WaitEvent.Valid {
 		current := WaitEventIdentity{
 			eventType: sample.WaitEventType.String,
@@ -441,7 +442,6 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			we := t.waitEvents[t.openIdx]
 			existing := WaitEventIdentity{eventType: we.WaitEventType, event: we.WaitEvent, blockedBy: we.BlockedByPIDs}
 			if existing.Equal(current) {
-				we.LastWaitTime = calculateDuration(sample.StateChange, now)
 				we.LastState = sample.State.String
 				we.LastTimestamp = now
 				t.waitEvents[t.openIdx] = we
@@ -450,13 +450,24 @@ func (t *WaitEventTracker) upsertWaitEvent(sample QuerySamplesInfo, now time.Tim
 			t.openIdx = -1
 		}
 
+		waitStartedAt := time.Time{}
+		if sample.StateChange.Valid {
+			waitStartedAt = sample.StateChange.Time
+		}
+		if !priorLastSeen.IsZero() && priorLastSeen.After(waitStartedAt) {
+			waitStartedAt = priorLastSeen
+		}
+		if waitStartedAt.IsZero() {
+			waitStartedAt = now
+		}
+
 		newOcc := WaitEventOccurrence{
 			WaitEventType: current.eventType,
 			WaitEvent:     current.event,
 			BlockedByPIDs: current.blockedBy,
-			LastWaitTime:  calculateDuration(sample.StateChange, now),
 			LastState:     sample.State.String,
 			LastTimestamp: now,
+			waitStartedAt: waitStartedAt,
 		}
 		t.waitEvents = append(t.waitEvents, newOcc)
 		t.openIdx = len(t.waitEvents) - 1
@@ -475,8 +486,8 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 	}
 	sampleLabels := c.buildQuerySampleLabelsWithEnd(state, state.EndAt)
 	ts := state.LastSeenAt.UnixNano()
-	if state.EndAt.Valid {
-		ts = state.EndAt.Time.UnixNano()
+	if state.LastRow.QueryStart.Valid {
+		ts = state.LastRow.QueryStart.Time.UnixNano()
 	}
 	c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
 		logging.LevelInfo,
@@ -489,21 +500,27 @@ func (c *QuerySamples) emitAndDeleteSample(key SampleKey) {
 		if we.WaitEventType == "" || we.WaitEvent == "" {
 			continue
 		}
-		if c.enablePreClassifiedWaitEvents {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT_V2,
-				c.buildWaitEventV2Labels(state, we),
-				we.LastTimestamp.UnixNano(),
-			)
-		} else {
-			c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
-				logging.LevelInfo,
-				OP_WAIT_EVENT,
-				c.buildWaitEventLabels(state, we),
-				we.LastTimestamp.UnixNano(),
-			)
+		waitTime := we.LastTimestamp.Sub(we.waitStartedAt)
+		if waitTime < 0 {
+			waitTime = 0
 		}
+		waitTimeStr := waitTime.String()
+
+		var op, labels string
+		if c.enablePreClassifiedWaitEvents {
+			op = OP_WAIT_EVENT_V2
+			labels = c.buildWaitEventV2Labels(state, we, waitTimeStr)
+		} else {
+			op = OP_WAIT_EVENT
+			labels = c.buildWaitEventLabels(state, we, waitTimeStr)
+		}
+
+		c.entryHandler.Chan() <- database_observability.BuildLokiEntryWithTimestamp(
+			logging.LevelInfo,
+			op,
+			labels,
+			ts,
+		)
 	}
 
 	delete(c.samples, key)
@@ -552,10 +569,18 @@ func (c *QuerySamples) buildQuerySampleLabelsWithEnd(state *SampleState, endAt s
 	if c.disableQueryRedaction && state.LastRow.Query.Valid {
 		labels = fmt.Sprintf(`%s query="%s"`, labels, state.LastRow.Query.String)
 	}
+
+	if state.LastRow.Query.Valid {
+		traceparent := database_observability.TryExtractTraceParent(state.LastRow.Query.String)
+		if traceparent != "" {
+			labels = fmt.Sprintf(`%s traceparent=%s`, labels, strconv.Quote(traceparent))
+		}
+	}
+
 	return labels
 }
 
-func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence) string {
+func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccurrence, waitTime string) string {
 	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
@@ -571,7 +596,7 @@ func (c *QuerySamples) buildWaitEventLabels(state *SampleState, we WaitEventOccu
 		we.LastState,
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
-		we.LastWaitTime,
+		waitTime,
 		we.WaitEventType,
 		we.WaitEvent,
 		waitEventFullName,
@@ -620,7 +645,7 @@ func isIdleState(state string) bool {
 	return false
 }
 
-func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOccurrence) string {
+func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOccurrence, waitTime string) string {
 	waitEventFullName := fmt.Sprintf("%s:%s", we.WaitEventType, we.WaitEvent)
 	leaderPID := ""
 	if state.LastRow.LeaderPID.Valid {
@@ -636,7 +661,7 @@ func (c *QuerySamples) buildWaitEventV2Labels(state *SampleState, we WaitEventOc
 		we.LastState,
 		state.LastRow.BackendXID.Int64,
 		state.LastRow.BackendXmin.Int64,
-		we.LastWaitTime,
+		waitTime,
 		classifyPostgresWaitEventType(we.WaitEventType, we.WaitEvent),
 		we.WaitEvent,
 		waitEventFullName,

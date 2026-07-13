@@ -37,11 +37,11 @@ This topic describes how to:
 * Have a set of OpenTelemetry applications ready to push telemetry data to {{< param "PRODUCT_NAME" >}}.
 * Identify where {{< param "PRODUCT_NAME" >}} writes received telemetry data.
 * Be familiar with the concept of [Components][] in {{< param "PRODUCT_NAME" >}}.
-* Complete the [Collect open telemetry data][] task.
+* Complete the [Collect OpenTelemetry data][] task.
 
 ## The pipeline
 
-You can start with the {{< param "PRODUCT_NAME" >}} configuration you created in the [Collect open telemetry data][] task.
+You can start with the {{< param "PRODUCT_NAME" >}} configuration you created in the [Collect OpenTelemetry data][] task.
 
 ```alloy
 otelcol.receiver.otlp "example" {
@@ -347,7 +347,7 @@ You can check the pipeline graphically by visiting <http://localhost:12345/graph
 [Grafana Cloud Portal]: https://grafana.com/docs/grafana-cloud/account-management/cloud-portal#your-grafana-cloud-stack
 [Prometheus Remote Write]: https://prometheus.io/docs/operating/integrations/#remote-endpoints-and-storage
 [Grafana Mimir]: https://grafana.com/oss/mimir/
-[Collect open telemetry data]: ../opentelemetry-data/
+[Collect OpenTelemetry data]: ../opentelemetry-data/
 [Components]: ../../get-started/components/
 [loki.write]: ../../reference/components/loki/loki.write/
 [otelcol.auth.basic]: ../../reference/components/otelcol/otelcol.auth.basic/
