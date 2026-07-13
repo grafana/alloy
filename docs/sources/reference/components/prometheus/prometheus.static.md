@@ -66,7 +66,7 @@ You must define at least one `metric` block.
 {{< /docs/alloy-config >}}
 ### `metric`
 
-The `metric` block defines a single metric to emit. You can define multiple `metric` blocks.
+The `metric` block defines a single metric to send. You can define multiple `metric` blocks.
 
 | Name    | Type     | Description                                     | Default     | Required |
 |---------|----------|-------------------------------------------------|-------------|----------|
