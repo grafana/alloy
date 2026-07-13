@@ -107,7 +107,7 @@ When you place a `labels` block inside a `metric` block, those labels apply only
 
 ## Debug metrics
 
-* `alloy_prometheus_static_metrics_emitted_total` (counter): Total number of static metrics emitted to downstream components.
+* `alloy_prometheus_static_metrics_emitted_total` (counter): Total number of static metrics sent to downstream components.
 * `prometheus_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
 * `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
 
