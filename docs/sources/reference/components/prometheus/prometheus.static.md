@@ -71,7 +71,7 @@ The `metric` block defines a single metric to send. You can define multiple `met
 | Name    | Type     | Description                                     | Default     | Required |
 |---------|----------|-------------------------------------------------|-------------|----------|
 | `name`  | `string` | The metric name, before `prefix` is applied.    |             | yes      |
-| `value` | `number` | The value emitted for the metric.               | `1`         | no       |
+| `value` | `number` | The value to send for the metric.               | `1`         | no       |
 | `type`  | `string` | The metric type reported as metadata.           | `"unknown"` | no       |
 | `help`  | `string` | A description reported as metadata.             | `""`        | no       |
 
