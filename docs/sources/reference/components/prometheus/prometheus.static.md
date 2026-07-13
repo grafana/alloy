@@ -75,7 +75,7 @@ The `metric` block defines a single metric to emit. You can define multiple `met
 The default `value` of `1` matches the convention for info-style metrics such as `build_info`.
 
 The `type` attribute controls the metric type metadata (`# TYPE`) forwarded to downstream components such as `prometheus.remote_write`.
-It doesn't change the emitted sample value.
+It doesn't change the sample value.
 The supported types are `gauge`, `counter`, `info`, and `unknown`.
 Types that require multiple values, such as `histogram` and `summary`, aren't supported.
 
