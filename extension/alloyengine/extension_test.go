@@ -331,31 +331,74 @@ func mustParse(t *testing.T, src string) *ast.File {
 	return f
 }
 
-func TestNewImportModulePathHook(t *testing.T) {
-	core, logs := observer.New(zapcore.WarnLevel)
-	hook := newImportModulePathHook(zap.New(core), "/cwd")
+func TestNewImportContentHook(t *testing.T) {
+	usesMP := `declare "x" { export "v" { value = module_path } }`
+	noMP := `declare "x" { export "v" { value = "static" } }`
 
-	usesMP := mustParse(t, `declare "x" { export "v" { value = module_path } }`)
-	noMP := mustParse(t, `declare "x" { export "v" { value = "static" } }`)
+	tests := []struct {
+		name        string
+		content     string
+		source      fakeImportSource
+		wantWarns   int
+		errContains string
+	}{
+		{
+			name:      "import.string inheriting defaulted cwd and using module_path warns",
+			content:   usesMP,
+			source:    fakeImportSource{modulePath: "/cwd", inherits: true},
+			wantWarns: 1,
+		},
+		{
+			name:      "import.file defines its own module_path, no warning",
+			content:   usesMP,
+			source:    fakeImportSource{modulePath: "/cwd", inherits: false},
+			wantWarns: 0,
+		},
+		{
+			name:      "inherited module_path not the default, no warning",
+			content:   usesMP,
+			source:    fakeImportSource{modulePath: "/other", inherits: true},
+			wantWarns: 0,
+		},
+		{
+			name:      "inherits default but does not reference module_path, no warning",
+			content:   noMP,
+			source:    fakeImportSource{modulePath: "/cwd", inherits: true},
+			wantWarns: 0,
+		},
+		{
+			name:        "remotecfg block is rejected",
+			content:     `remotecfg { }`,
+			source:      fakeImportSource{modulePath: "/cwd", inherits: true},
+			errContains: "remotecfg",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			core, logs := observer.New(zapcore.WarnLevel)
+			hook := newImportContentHook(zap.New(core), true, "/cwd")
 
-	// import.string inheriting the defaulted cwd and using module_path -> one warning.
-	hook("mod", usesMP, fakeImportSource{modulePath: "/cwd", inherits: true})
-	require.Equal(t, 1, logs.Len())
-	rec := logs.All()[0]
-	require.Contains(t, rec.Message, "module_path")
-	require.Equal(t, "mod", rec.ContextMap()["file"])
+			err := hook("mod", mustParse(t, tc.content), tc.source)
 
-	// import.file (defines its own module_path) -> no additional warning.
-	hook("mod2", usesMP, fakeImportSource{modulePath: "/cwd", inherits: false})
-	require.Equal(t, 1, logs.Len())
+			if tc.errContains != "" {
+				require.ErrorContains(t, err, tc.errContains)
+			} else {
+				require.NoError(t, err)
+			}
+			require.Equal(t, tc.wantWarns, logs.Len())
+			if tc.wantWarns > 0 {
+				rec := logs.All()[0]
+				require.Contains(t, rec.Message, "module_path")
+				require.Equal(t, "mod", rec.ContextMap()["file"])
+			}
+		})
+	}
+}
 
-	// import.string whose inherited module_path is not the default -> no additional warning.
-	hook("mod3", usesMP, fakeImportSource{modulePath: "/other", inherits: true})
-	require.Equal(t, 1, logs.Len())
-
-	// import.string inheriting the default but not referencing module_path -> no additional warning.
-	hook("mod4", noMP, fakeImportSource{modulePath: "/cwd", inherits: true})
-	require.Equal(t, 1, logs.Len())
+func TestCheckUnsupportedBlocks(t *testing.T) {
+	require.NoError(t, checkUnsupportedBlocks(mustParse(t, `logging { level = "debug" }`)))
+	require.NoError(t, checkUnsupportedBlocks(mustParse(t, `import.string "x" { content = "" }`)))
+	require.ErrorContains(t, checkUnsupportedBlocks(mustParse(t, `remotecfg { }`)), "remotecfg")
 }
 
 func TestLifecycle_RunSucceedsAfterRetries(t *testing.T) {

@@ -116,13 +116,11 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		return err
 	}
 
-	// A hook to check for `module_path` references in imported configs.
-	// Used only if inline config is used and module_path is undefined.
-	var onConfigImport importsource.ImportContentHook
+	// A hook to validate imported configs (rejecting unsupported blocks). It also warns about
+	// `module_path` references only when inline config is used and module_path is undefined.
 	cfg := e.config.AlloyConfig
-	if cfg.Inline.Content != "" && cfg.Inline.ModulePath == "" {
-		onConfigImport = newImportModulePathHook(e.settings.Logger, modulePath)
-	}
+	warnModulePathDefault := cfg.Inline.Content != "" && cfg.Inline.ModulePath == ""
+	onConfigImport := newImportContentHook(e.settings.Logger, warnModulePathDefault, modulePath)
 
 	runCommand := e.runCommandFactory(modulePath, files, onConfigImport)
 
@@ -341,16 +339,8 @@ func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnIfMo
 		return fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	for _, stmt := range tree.Body {
-		block, ok := stmt.(*ast.BlockStmt)
-		if !ok {
-			continue
-		}
-
-		blockName := block.GetBlockName()
-		if blockName == remotecfg.ServiceName {
-			return fmt.Errorf("block %q is not supported in Alloy extension", blockName)
-		}
+	if err := checkUnsupportedBlocks(tree); err != nil {
+		return err
 	}
 
 	if warnIfModulePathUsed && usesModulePath(tree) {
@@ -361,21 +351,42 @@ func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnIfMo
 	return nil
 }
 
-// newImportModulePathHook returns a hook that warns when an imported module references
-// module_path while it still resolves to the defaulted (cwd) value of an inline config.
-//
-// initialModulePath is a module_path used in a root Alloy config.
-func newImportModulePathHook(logger *zap.Logger, initialModulePath string) importsource.ImportContentHook {
-	return func(fileName string, content *ast.File, source importsource.ImportSource) {
-		// NOTE: only the `import.string` inherits the parent module_path.
-		if !source.InheritsModulePath() {
-			return
+// checkUnsupportedBlocks returns an error if the config uses a top-level block that is unsupported
+// in extension mode.
+func checkUnsupportedBlocks(tree *ast.File) error {
+	for _, stmt := range tree.Body {
+		block, ok := stmt.(*ast.BlockStmt)
+		if !ok {
+			continue
 		}
 
-		if source.ModulePath() == initialModulePath && usesModulePath(content) {
+		if name := block.GetBlockName(); name == remotecfg.ServiceName {
+			return fmt.Errorf("block %q is not supported in Alloy extension", name)
+		}
+	}
+	return nil
+}
+
+// newImportContentHook returns a hook that validates imported module content for extension mode.
+// It rejects unsupported blocks (e.g. remotecfg). When warnModulePathDefault is set, it also warns
+// if an imported module references module_path while it still resolves to the defaulted (cwd)
+// value of an inline config.
+//
+// initialModulePath is the module_path used in the root Alloy config.
+func newImportContentHook(logger *zap.Logger, warnModulePathDefault bool, initialModulePath string) importsource.ImportContentHook {
+	return func(fileName string, content *ast.File, source importsource.ImportSource) error {
+		// The caller (ImportConfigNode.onContentUpdate) logs the file name, so it isn't wrapped here.
+		if err := checkUnsupportedBlocks(content); err != nil {
+			return err
+		}
+
+		// NOTE: only the `import.string` inherits the parent module_path.
+		if warnModulePathDefault && source.InheritsModulePath() &&
+			source.ModulePath() == initialModulePath && usesModulePath(content) {
 			logger.Warn("imported module references `module_path` but config.inline.module_path is not set; it defaults to the current working directory",
 				zap.String("file", fileName))
 		}
+		return nil
 	}
 }
 

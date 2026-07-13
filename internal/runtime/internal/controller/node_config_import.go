@@ -221,7 +221,11 @@ func (cn *ImportConfigNode) onContentUpdate(importedContent map[string]string) {
 
 		// call the config import hook. Used by OTel extension to sanitize imports.
 		if cn.globals.OnImportContent != nil {
-			cn.globals.OnImportContent(f, parsedImportedContent, cn.source)
+			if err := cn.globals.OnImportContent(f, parsedImportedContent, cn.source); err != nil {
+				cn.logger.Error("imported content rejected", "file", f, "err", err)
+				cn.setContentHealth(component.HealthTypeUnhealthy, fmt.Sprintf("imported content from %q rejected: %s", f, err))
+				return
+			}
 		}
 
 		// populate importedDeclares and importConfigNodesChildren
