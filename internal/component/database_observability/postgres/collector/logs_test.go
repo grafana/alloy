@@ -1210,6 +1210,80 @@ func TestLogsCollector_AppNameLabelDoesNotShadowSeverity(t *testing.T) {
 	require.Equal(t, float64(1), got, "a label-like application_name must not shadow the real severity")
 }
 
+// newLogsForClassify builds a Logs collector for severity-classification tests
+// and returns it alongside the recent-line timestamp fields.
+func newLogsForClassify(t *testing.T) (*Logs, *prometheus.Registry, string, string) {
+	t.Helper()
+	registry := prometheus.NewRegistry()
+	c, err := NewLogs(LogsArguments{
+		Receiver:     loki.NewLogsReceiver(),
+		EntryHandler: loki.NewEntryHandler(make(chan loki.Entry, 1), func() {}),
+		Logger:       logging.NewSlogNop(),
+		Registry:     registry,
+	})
+	require.NoError(t, err)
+
+	tsBase := c.startTime.Add(10 * time.Second).UTC()
+	ts1 := tsBase.Format("2006-01-02 15:04:05.000 MST")
+	ts2 := tsBase.Add(-1 * time.Second).Format("2006-01-02 15:04:05 MST")
+	return c, registry, ts1, ts2
+}
+
+// TestLogsCollector_ForgedAppNameDoesNotHideError pins the hide direction: a
+// client that sets application_name to exactly "LOG:  " (PostgreSQL's own
+// separator, which pg_clean_ascii preserves) forges a benign label before the
+// real ERROR. Walking to the last label in the run recovers the real severity,
+// so the error is still counted rather than silently dropped.
+func TestLogsCollector_ForgedAppNameDoesNotHideError(t *testing.T) {
+	c, _, ts1, ts2 := newLogsForClassify(t)
+
+	// application_name = "LOG:  " sits before the real ERROR label.
+	line := ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:57014:" + ts2 +
+		":25/112:0:693c34cb.2398::LOG:  ERROR:  canceling statement"
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("ERROR", "57014", "57", "books_store", "app-user"))
+	require.Equal(t, float64(1), got, `a forged "LOG:  " application_name must not hide the real ERROR`)
+}
+
+// TestLogsCollector_ForgedAppNameDoesNotInflateError pins the inflate direction:
+// a client that sets application_name to exactly "ERROR:  " forges an error
+// label before the real LOG label on a benign statement line (SQLSTATE 00000).
+// Walking to the last label recovers LOG, so nothing is counted.
+func TestLogsCollector_ForgedAppNameDoesNotInflateError(t *testing.T) {
+	c, registry, ts1, ts2 := newLogsForClassify(t)
+
+	// application_name = "ERROR:  " sits before the real LOG label.
+	line := ts1 + ":10.0.1.5(12345):app-user@books_store:[9112]:4:00000:" + ts2 +
+		":25/112:0:693c34cb.2398::ERROR:  LOG:  statement: SELECT 1"
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	mfs, _ := registry.Gather()
+	for _, mf := range mfs {
+		if mf.GetName() == "database_observability_pg_errors_total" {
+			require.Equal(t, 0, len(mf.GetMetric()), `a forged "ERROR:  " application_name must not inflate the error count`)
+		}
+	}
+}
+
+// TestLogsCollector_MultipleForgedAppNameLabels pins that a run of several
+// forged labels in application_name is fully consumed: the walk advances past
+// every "<label>:  " token to the real severity PostgreSQL appends last.
+func TestLogsCollector_MultipleForgedAppNameLabels(t *testing.T) {
+	c, _, ts1, ts2 := newLogsForClassify(t)
+
+	// application_name = "ERROR:  LOG:  " precedes the real FATAL label.
+	line := ts1 + ":[local]:conn_user@testdb:[9449]:4:53300:" + ts2 +
+		":91/57:0:693c34db.24e9::ERROR:  LOG:  FATAL:  too many connections"
+
+	require.NoError(t, c.parseTextLog(loki.Entry{Entry: push.Entry{Line: line}}))
+
+	got := testutil.ToFloat64(c.errorsBySQLState.WithLabelValues("FATAL", "53300", "53", "testdb", "conn_user"))
+	require.Equal(t, float64(1), got, "multiple forged application_name labels must all be skipped to the real FATAL")
+}
+
 // TestLogsCollector_StatementFromDifferentPidDoesNotAttach pins the PID guard:
 // a STATEMENT line from another backend must not attach to the pending error,
 // so interleaved streams cannot emit a mispaired op="error_message" entry.

@@ -48,17 +48,25 @@ var supportedSeverities = map[string]struct{}{
 }
 
 // pgLogLabels are the leading labels PostgreSQL writes at the start of a log
-// message: message severities plus the detail/continuation labels. We scan the
-// full set (not just supportedSeverities) to find a line's real leading label
-// so an "ERROR:"/"FATAL:"/"PANIC:" substring appearing later in the message or
-// in a logged SQL statement (e.g. on a LOG or STATEMENT line) is shadowed by
-// that line's actual label and not miscounted as an error.
+// message: message severities plus the detail/continuation labels. PostgreSQL
+// appends the real label (with the ":  " separator) at the very end of the
+// log-line prefix, so a line's genuine label is the last token in the run of
+// adjacent "<label>:  " tokens (see the classification in parseTextLog). We
+// scan the full set (not just supportedSeverities) so a "LOG"/"STATEMENT"/...
+// token can shadow a severity keyword that appears elsewhere, and vice versa.
 //
-// A match requires the label be followed by ":  " (colon, two spaces) — the
-// exact separator PostgreSQL emits — so a label-like substring in the
-// client-controlled application_name (%a, which sits between the SQLSTATE
-// anchor and the real label, e.g. an app named "etl-LOG:worker") does not
-// shadow the message's actual label.
+// A match requires the ":  " (colon, two spaces) separator PostgreSQL emits.
+// The client-controlled application_name (%a) sits immediately before the real
+// label and can be set to a forged "<label>:  " (pg_clean_ascii preserves
+// spaces and colons, so an app named "LOG:  " is possible); walking to the last
+// token of the run steps past any such forgery. The one residual is a
+// STATEMENT/QUERY continuation line whose logged SQL text itself begins with
+// "<label>:  ": the walk then overshoots into the SQL, so the statement fails
+// to attach to its pending error and, if the SQL's leading token is a severity,
+// a spurious count is recorded (and the pending error displaced) under the
+// abuser's own datname/user. This is reachable only by a client deliberately
+// sending such SQL and is self-scoped; a normal statement (INSERT/SELECT/...)
+// never begins with a label, so real error/statement pairs are unaffected.
 var pgLogLabels = []string{
 	"DEBUG5", "DEBUG4", "DEBUG3", "DEBUG2", "DEBUG1", "DEBUG",
 	"PANIC", "FATAL", "ERROR", "WARNING", "NOTICE", "INFO", "LOG",
@@ -68,6 +76,17 @@ var pgLogLabels = []string{
 // pgLabelSeparator is what PostgreSQL writes between a log label and the
 // message text.
 const pgLabelSeparator = ":  "
+
+// leadingLogLabel returns the PostgreSQL log label that s begins with (i.e. s
+// starts with "<label>:  "), or "" if s does not start with a known label.
+func leadingLogLabel(s string) string {
+	for _, candidate := range pgLogLabels {
+		if strings.HasPrefix(s, candidate+pgLabelSeparator) {
+			return candidate
+		}
+	}
+	return ""
+}
 
 // pendingError holds an ERROR/FATAL/PANIC line awaiting its STATEMENT
 // continuation. The SQL builder accumulates the STATEMENT keyword line plus any
@@ -419,12 +438,18 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
-	// Classify the message once by its real label: the leftmost PostgreSQL log
-	// label (with PostgreSQL's ":  " separator) after the SQLSTATE field.
-	// Anchoring past the SQLSTATE keeps a database or user literally named
-	// after a label (e.g. "LOG") from matching, and scanning the full label set
-	// shadows a severity or STATEMENT keyword that appears inside the message
-	// text or a logged SQL statement.
+	// Classify the message by its real label. PostgreSQL appends the label (with
+	// its ":  " separator) at the very end of the log-line prefix, so the
+	// genuine label is the last token in the run of adjacent "<label>:  "
+	// tokens that begins at the SQLSTATE anchor. The client-controlled
+	// application_name (%a) sits immediately before the real label and can be
+	// set to a forged "<label>:  ", but any such forgery necessarily precedes
+	// the label PostgreSQL emits, so we walk to the last token of the run.
+	//
+	// Anchoring past the SQLSTATE keeps a database or user literally named after
+	// a label (e.g. "LOG") from matching; taking the last token shadows both a
+	// forged label in %a and a severity/STATEMENT keyword appearing later in the
+	// message text or a logged SQL statement.
 	searchFrom := 0
 	if sqlstateCode != "" {
 		if idx := strings.Index(line, ":"+sqlstateCode+":"); idx != -1 {
@@ -432,14 +457,26 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		}
 	}
 
+	rest := line[searchFrom:]
 	label := ""
 	labelAt := -1
 	for _, candidate := range pgLogLabels {
-		idx := strings.Index(line[searchFrom:], candidate+pgLabelSeparator)
+		idx := strings.Index(rest, candidate+pgLabelSeparator)
 		if idx != -1 && (labelAt == -1 || idx < labelAt) {
 			labelAt = idx
 			label = candidate
 		}
+	}
+	// Walk the run of adjacent "<label>:  " tokens to the last one: a label
+	// forged in %a always precedes the label PostgreSQL appends, so the final
+	// token before the message body is the genuine severity.
+	for label != "" {
+		next := labelAt + len(label) + len(pgLabelSeparator)
+		nextLabel := leadingLogLabel(rest[next:])
+		if nextLabel == "" {
+			break
+		}
+		label, labelAt = nextLabel, next
 	}
 
 	if label == "STATEMENT" {
