@@ -9,13 +9,13 @@ import { GitHub, Manifest, VERSION } from 'release-please';
 import { registerVersioningStrategy } from 'release-please/build/src/factories/versioning-strategy-factory.js';
 import { registerPlugin } from 'release-please/build/src/factories/plugin-factory.js';
 import { MinorBreakingVersioningStrategy } from './minor-breaking-versioning.js';
-import { RootReleasePrOutputPlugin } from './root-release-pr-output-plugin.js';
+import { ReleasePrOutputPlugin } from './release-pr-output-plugin.js';
 import { fileURLToPath } from 'node:url';
 
 // Register the custom versioning strategy
 registerVersioningStrategy('minor-breaking', (options) => new MinorBreakingVersioningStrategy(options));
-registerPlugin('root-release-pr-output', (options) => {
-  return new RootReleasePrOutputPlugin(options.github, options.targetBranch, options.repositoryConfig);
+registerPlugin('release-pr-output', (options) => {
+  return new ReleasePrOutputPlugin(options.github, options.targetBranch, options.repositoryConfig);
 });
 
 const DEFAULT_CONFIG_FILE = 'release-please-config.json';
