@@ -1,6 +1,6 @@
 ---
 canonical: https://grafana.com/docs/alloy/latest/reference/components/prometheus/prometheus.static/
-description: The prometheus.static component emits a fixed set of user-defined metrics
+description: The prometheus.static component sends a fixed set of user-defined metrics
 labels:
   stage: experimental
   products:
