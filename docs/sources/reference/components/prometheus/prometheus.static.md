@@ -44,8 +44,8 @@ When `prefix` is set, the metric name becomes `<prefix>_<name>`.
 For example, a `prefix` of `"self_report"` and a metric `name` of `"build_info"` produces the metric `self_report_build_info`.
 
 `prometheus.static` doesn't scrape any target.
-The `scrape_interval` argument is the interval at which the configured metrics are emitted to the `forward_to` receivers.
-The metrics are re-emitted on each interval so they remain fresh in downstream storage.
+The `scrape_interval` argument is the interval at which configured metrics are sent to the `forward_to` receivers.
+The component sends metrics again on each interval so they remain fresh in downstream storage.
 
 ## Blocks
 
