@@ -17,19 +17,19 @@ The extension accepts the following configuration fields:
 
 ### Config Object
 
-The `config` object specifies the Alloy configuration source. Either `path` or `inline` must be set, but not both.
+The `config` object specifies the Alloy configuration source. Exactly one of `path` or `inline.content` must be set.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `path` | string | No | - | Path to an Alloy config file or a directory containing `.alloy` files. |
-| `inline` | object | No | - | Inline Alloy configuration. See [Inline Object](#inline-object) for details. |
+| `path` | string | Required unless `inline.content` is set | - | Path to an Alloy config file or a directory containing `.alloy` files. Mutually exclusive with `inline.content`. |
+| `inline` | object | Required unless `path` is set | - | Inline Alloy configuration. See [Inline Object](#inline-object) for details. |
 
 ### Inline Object
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `content` | string | Yes | - | The inline Alloy configuration to run. |
-| `module_path` | string | No | current working directory | Value resolved for the `module_path` Alloy config keyword. Has no effect when `config.path` is set. |
+| `module_path` | string | No | current working directory | Value resolved for the `module_path` Alloy config keyword. |
 
 ### Example Configuration
 
@@ -115,6 +115,10 @@ The extension manages the lifecycle of the embedded default engine:
 Only one alloyengine instance can be active per process. The embedded Default Engine uses process-global state (Prometheus registry, controller ID, storage path and so forth), so running multiple instances will cause conflicts. If you configure multiple alloyengine extensions, only the first to start will succeed; subsequent instances will fail at startup with a clear error.
 
 Please note that if extensions fail to start, the collector will also fail to start. This means that the errors described above will ultimately mean you cannot start the collector without ensuring that you specify which of the alloyengine extensions you wish to run.
+
+If `config.inline.module_path` isn't defined, `config.inline` resolves the `module_path` Alloy config keyword to the current working directory of the OpenTelemetry Collector process.
+
+The `remotecfg` Alloy configuration block can't be used with the alloyengine extension. Use OpenTelemetry OpAMP for Collector configuration management instead.
 
 ## Stability
 
