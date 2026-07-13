@@ -20,6 +20,7 @@ Available commands:
 * [`run`][run]: Start {{< param "PRODUCT_NAME" >}} with the Default Engine, given an Alloy syntax configuration file.
 * [`otel`][otel]: Start {{< param "PRODUCT_NAME" >}} with the experimental OTel Engine, given an OpenTelemetry Collector YAML configuration file.
 * [`tools`][tools]: Read the WAL and provide statistical information.
+* [`validate`][validate]: Validate an {{< param "PRODUCT_NAME" >}} configuration file or directory path.
 * `completion`: Generate shell completion for the `alloy` CLI.
 * `help`: Print help for supported commands.
 
@@ -29,3 +30,4 @@ Available commands:
 [convert]: ./convert/
 [otel]: ./otel/
 [tools]: ./tools/
+[validate]: ./validate/
