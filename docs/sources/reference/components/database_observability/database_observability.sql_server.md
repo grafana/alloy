@@ -12,7 +12,7 @@ labels:
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`database_observability.sql_server` connects to a Microsoft SQL Server database and collects observability data.
+`database_observability.sql_server` connects to a Microsoft SQL Server instance and collects observability data across every accessible user database on that instance.
 The component forwards this data as log entries to Loki receivers and exports targets for Prometheus scraping.
 
 ## Usage
@@ -36,6 +36,7 @@ You can use the following arguments with `database_observability.sql_server`:
 | `disable_collectors`| `list(string)`       | A list of collectors to disable from the default set.                    |         | no       |
 | `enable_collectors` | `list(string)`       | A list of collectors to enable on top of the default set.                |         | no       |
 | `exclude_schemas`   | `list(string)`       | A list of schemas to exclude from monitoring, on top of the always-excluded system schemas `sys` and `information_schema`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
+| `exclude_databases` | `list(string)`       | A list of databases to exclude from monitoring, on top of the always-excluded system databases `master`, `model`, `msdb`, and `tempdb`. | `["alloydbadmin", "alloydbmetadata", "azure_maintenance", "azure_sys", "cloudsqladmin", "rdsadmin"]` | no       |
 
 The following collectors are configurable:
 
@@ -62,6 +63,8 @@ You can use the following blocks with `database_observability.sql_server`:
 | Name               | Type       | Description                                          | Default | Required |
 |--------------------|------------|------------------------------------------------------|---------|----------|
 | `collect_interval` | `duration` | How frequently to collect information from database. | `"1m"`  | no       |
+
+The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
 
 ## Example
 

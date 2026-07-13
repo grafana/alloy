@@ -66,6 +66,7 @@ type Arguments struct {
 	EnableCollectors  []string            `alloy:"enable_collectors,attr,optional"`
 	DisableCollectors []string            `alloy:"disable_collectors,attr,optional"`
 	ExcludeSchemas    []string            `alloy:"exclude_schemas,attr,optional"`
+	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
 }
@@ -76,7 +77,8 @@ type SchemaDetailsArguments struct {
 
 func defaultArguments() Arguments {
 	return Arguments{
-		ExcludeSchemas: database_observability.DefaultExcludedSchemas(),
+		ExcludeSchemas:   database_observability.DefaultExcludedSchemas(),
+		ExcludeDatabases: database_observability.DefaultExcludedDatabases(),
 
 		SchemaDetailsArguments: SchemaDetailsArguments{
 			CollectInterval: 1 * time.Minute,
@@ -359,11 +361,12 @@ func (c *Component) startCollectors(serverID string, engineVersion string) error
 
 	if collectors[collector.SchemaDetailsCollector] {
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
-			DB:              c.dbConnection,
-			CollectInterval: c.args.SchemaDetailsArguments.CollectInterval,
-			ExcludeSchemas:  c.args.ExcludeSchemas,
-			EntryHandler:    entryHandler,
-			Logger:          c.opts.Logger,
+			DB:               c.dbConnection,
+			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
+			ExcludeSchemas:   c.args.ExcludeSchemas,
+			ExcludeDatabases: c.args.ExcludeDatabases,
+			EntryHandler:     entryHandler,
+			Logger:           c.opts.Logger,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)

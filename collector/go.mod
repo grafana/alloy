@@ -533,7 +533,7 @@ require (
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
 	github.com/gosnmp/gosnmp v1.43.2 // indirect
 	github.com/grafana/alloy-remote-config v0.0.12 // indirect
-	github.com/grafana/alloy/syntax v0.1.0 // indirect
+	github.com/grafana/alloy/syntax v0.1.1 // indirect
 	github.com/grafana/beyla/v3 v3.22.2 // indirect
 	github.com/grafana/catchpoint-prometheus-exporter v0.0.0-20260428133123-50478b16a666 // indirect
 	github.com/grafana/ckit v0.0.0-20260226120531-bbed30d6364e // indirect
