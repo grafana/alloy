@@ -233,6 +233,7 @@ func (args Selections) Convert() attributes.Selection {
 	return s
 }
 
+//nolint:staticcheck // Service properties are deprecated in OBI/Beyla but we still need to support them to avoid breaking changes
 func (args Discovery) Convert() (beylaSvc.BeylaDiscoveryConfig, error) {
 	d := beyla.DefaultConfig().Discovery
 
