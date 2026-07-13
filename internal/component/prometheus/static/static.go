@@ -123,7 +123,7 @@ func (args *Arguments) Validate() error {
 			return fmt.Errorf("metric[%d]: name must not be empty", i)
 		}
 		fullName := metricName(args.Prefix, m.Name)
-		if !model.IsValidMetricName(model.LabelValue(fullName)) {
+		if !model.UTF8Validation.IsValidMetricName(fullName) {
 			return fmt.Errorf("metric[%d]: %q is not a valid metric name", i, fullName)
 		}
 		if _, ok := seen[fullName]; ok {
