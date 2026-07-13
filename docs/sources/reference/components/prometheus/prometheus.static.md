@@ -82,7 +82,7 @@ It doesn't change the sample value.
 The supported types are `gauge`, `counter`, `info`, and `unknown`.
 Types that require multiple values, such as `histogram` and `summary`, aren't supported.
 
-The `metric` block supports a nested [`labels`](#labels) block for labels that apply only to that metric.
+The `metric` block supports a nested [`labels`][labels] block for labels that apply only to that metric.
 When a metric-level label and a component-level label share the same name, the metric-level label takes precedence.
 
 [labels]: #labels
