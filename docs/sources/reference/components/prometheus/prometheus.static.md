@@ -113,7 +113,7 @@ When you place a `labels` block inside a `metric` block, those labels apply only
 
 ## Examples
 
-### Emit a single metric
+### Send a single metric
 
 The following example emits a single `heartbeat` metric with a value of `1` and forwards it to `prometheus.remote_write`:
 
