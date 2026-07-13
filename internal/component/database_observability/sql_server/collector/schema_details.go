@@ -29,6 +29,14 @@ const (
 const emitInterval = 30 * time.Minute
 
 const (
+	selectDatabasesTemplate = `
+		SELECT name, QUOTENAME(name)
+		FROM sys.databases
+		WHERE state_desc = 'ONLINE'
+			AND HAS_DBACCESS(name) = 1
+			AND name NOT IN %s
+		ORDER BY name`
+
 	selectTablesTemplate = `
 		SELECT
 			table_catalog,
@@ -105,24 +113,27 @@ const (
 )
 
 type SchemaDetailsArguments struct {
-	DB              *sql.DB
-	CollectInterval time.Duration
-	ExcludeSchemas  []string
-	EntryHandler    loki.EntryHandler
+	DB               *sql.DB
+	CollectInterval  time.Duration
+	ExcludeSchemas   []string
+	ExcludeDatabases []string
+	EntryHandler     loki.EntryHandler
 
 	Logger *slog.Logger
 }
 
 type SchemaDetails struct {
-	dbConnection    *sql.DB
-	collectInterval time.Duration
-	excludeSchemas  []string
-	entryHandler    loki.EntryHandler
+	dbConnection     *sql.DB
+	collectInterval  time.Duration
+	excludeSchemas   []string
+	excludeDatabases []string
+	entryHandler     loki.EntryHandler
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
-	// was last emitted for a "schema.table" key. Used to throttle logging
-	// to at most one per emitInterval per table.
-	lastEmittedAt map[string]time.Time
+	// was last emitted for a table. The outer key is the database name and
+	// the inner key is "schema.table". Used to throttle logging to at most
+	// one per emitInterval per table.
+	lastEmittedAt map[string]map[string]time.Time
 
 	// now allows overriding time.Now() in tests
 	now func() time.Time
@@ -175,14 +186,15 @@ type foreignKey struct {
 
 func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 	c := &SchemaDetails{
-		dbConnection:    args.DB,
-		collectInterval: args.CollectInterval,
-		excludeSchemas:  args.ExcludeSchemas,
-		entryHandler:    args.EntryHandler,
-		lastEmittedAt:   map[string]time.Time{},
-		now:             time.Now,
-		logger:          args.Logger.With("collector", SchemaDetailsCollector),
-		running:         &atomic.Bool{},
+		dbConnection:     args.DB,
+		collectInterval:  args.CollectInterval,
+		excludeSchemas:   args.ExcludeSchemas,
+		excludeDatabases: args.ExcludeDatabases,
+		entryHandler:     args.EntryHandler,
+		lastEmittedAt:    map[string]map[string]time.Time{},
+		now:              time.Now,
+		logger:           args.Logger.With("collector", SchemaDetailsCollector),
+		running:          &atomic.Bool{},
 	}
 
 	return c, nil
@@ -234,22 +246,107 @@ func (c *SchemaDetails) Stop() {
 	c.wg.Wait()
 }
 
+// databaseName holds the raw name plus its server-quoted identifier form,
+// which is safe to splice directly into a USE statement
+type databaseName struct {
+	name   string
+	quoted string
+}
+
 func (c *SchemaDetails) extractSchema(ctx context.Context) error {
-	query := fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause(c.excludeSchemas))
+	databases, err := c.listDatabases(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list databases: %w", err)
+	}
+
+	now := c.now()
+	discovered := make(map[string]struct{}, len(databases))
+
+	if len(databases) == 0 {
+		c.logger.Info("no databases detected")
+	} else {
+		// Pin one connection for the whole cycle as USE mutates session state
+		conn, err := c.dbConnection.Conn(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to acquire database connection: %w", err)
+		}
+		defer conn.Close()
+
+		for _, db := range databases {
+			discovered[db.name] = struct{}{}
+			if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE %s", db.quoted)); err != nil {
+				c.logger.Error("failed to switch database context, skipping", "database", db.name, "err", err)
+				continue
+			}
+			if err := c.extractSchemaForDatabase(ctx, conn, db.name, now); err != nil {
+				c.logger.Error("failed to extract schema for database", "database", db.name, "err", err)
+				continue
+			}
+		}
+	}
+
+	// Drop throttle entries only for databases that discovery no longer
+	// returns (dropped, access revoked, newly excluded). Per-table cleanup
+	// within a still-present database is handled by extractSchemaForDatabase
+	// and is gated on a clean scan so a transient failure does not evict
+	// state that would defeat emitInterval on the next successful cycle.
+	for db := range c.lastEmittedAt {
+		if _, ok := discovered[db]; !ok {
+			delete(c.lastEmittedAt, db)
+		}
+	}
+
+	return nil
+}
+
+func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, error) {
+	query := fmt.Sprintf(selectDatabasesTemplate, buildExcludedDatabasesClause(c.excludeDatabases))
 	rs, err := c.dbConnection.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Close()
+
+	var databases []databaseName
+	for rs.Next() {
+		var name, quoted string
+		if err := rs.Scan(&name, &quoted); err != nil {
+			return nil, fmt.Errorf("failed to scan database row: %w", err)
+		}
+		databases = append(databases, databaseName{name: name, quoted: quoted})
+	}
+	if err := rs.Err(); err != nil {
+		return nil, fmt.Errorf("failed to iterate over databases result set: %w", err)
+	}
+	return databases, nil
+}
+
+// extractSchemaForDatabase runs the tables discovery + per-schema bulk
+// metadata queries scoped to the caller's current database context.
+// This function is responsible for pruning stale throttle entries for
+// dbName, but only when the tables scan completed cleanly: a mid-iteration
+// scan failure yields a partial view and pruning is skipped so we never
+// evict entries for tables we simply did not observe this cycle.
+func (c *SchemaDetails) extractSchemaForDatabase(ctx context.Context, conn *sql.Conn, dbName string, now time.Time) error {
+	query := fmt.Sprintf(selectTablesTemplate, buildExcludedSchemasClause(c.excludeSchemas))
+	rs, err := conn.QueryContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query tables: %w", err)
 	}
 	defer rs.Close()
 
-	now := c.now()
 	tables := []*tableInfo{}
-	seenTables := map[string]struct{}{}
+	// scanComplete tracks whether we iterated the tables result set without
+	// bailing out early. If false we have a partial view and must skip the
+	// per-database throttle prune to avoid evicting entries for tables we
+	// did not get to scan this round.
+	scanComplete := true
 
 	for rs.Next() {
 		var database, schema, tableName, tableType string
 		if err := rs.Scan(&database, &schema, &tableName, &tableType); err != nil {
-			c.logger.Error("failed to scan tables", "err", err)
+			c.logger.Error("failed to scan tables", "database", dbName, "err", err)
+			scanComplete = false
 			break
 		}
 		tables = append(tables, &tableInfo{
@@ -258,7 +355,6 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			tableName: tableName,
 			tableType: tableType,
 		})
-		seenTables[fullyQualifiedName(schema, tableName)] = struct{}{}
 
 		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 			logging.LevelInfo,
@@ -271,17 +367,11 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 		return fmt.Errorf("failed to iterate over tables result set: %w", err)
 	}
 
-	// Cleanup: drop throttle entries for tables that no longer exist (e.g.
-	// tables dropped or renamed). Done before the empty-tables early return so
-	// the map is also pruned when every monitored table disappears.
-	for k := range c.lastEmittedAt {
-		if _, ok := seenTables[k]; !ok {
-			delete(c.lastEmittedAt, k)
-		}
-	}
-
 	if len(tables) == 0 {
-		c.logger.Info("no tables detected from information_schema.tables")
+		c.logger.Info("no tables detected from information_schema.tables", "database", dbName)
+		if scanComplete {
+			c.pruneDatabaseThrottle(dbName, nil)
+		}
 		return nil
 	}
 
@@ -291,9 +381,10 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	dueBySchema := map[string][]*tableInfo{}
 	dueSchemas := []string{}
 	for _, t := range tables {
-		k := fullyQualifiedName(t.schema, t.tableName)
-		if last, ok := c.lastEmittedAt[k]; ok && now.Sub(last) < emitInterval {
-			continue
+		if inner := c.lastEmittedAt[dbName]; inner != nil {
+			if last, ok := inner[schemaTableKey(t.schema, t.tableName)]; ok && now.Sub(last) < emitInterval {
+				continue
+			}
 		}
 		if _, exists := dueBySchema[t.schema]; !exists {
 			dueSchemas = append(dueSchemas, t.schema)
@@ -302,6 +393,9 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	}
 
 	if len(dueSchemas) == 0 {
+		if scanComplete {
+			c.pruneDatabaseThrottle(dbName, tables)
+		}
 		return nil
 	}
 
@@ -312,9 +406,9 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			tableNames = append(tableNames, t.tableName)
 		}
 
-		specs, err := c.fetchSchemaSpecs(ctx, schema, tableNames)
+		specs, err := c.fetchSchemaSpecs(ctx, conn, schema, tableNames)
 		if err != nil {
-			c.logger.Error("failed to fetch schema specs", "schema", schema, "err", err)
+			c.logger.Error("failed to fetch schema specs", "database", dbName, "schema", schema, "err", err)
 			continue
 		}
 
@@ -322,13 +416,13 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 			spec, ok := specs[table.tableName]
 			if !ok {
 				// This might happen if a table is dropped between the tables query and the metadata queries.
-				c.logger.Warn("no bulk metadata rows for table", "schema", table.schema, "table", table.tableName)
+				c.logger.Warn("no bulk metadata rows for table", "database", table.database, "schema", table.schema, "table", table.tableName)
 				continue
 			}
 
 			b64Spec, err := encodeTableSpec(spec)
 			if err != nil {
-				c.logger.Error("failed to marshal table spec", "schema", table.schema, "table", table.tableName, "err", err)
+				c.logger.Error("failed to marshal table spec", "database", table.database, "schema", table.schema, "table", table.tableName, "err", err)
 				continue
 			}
 			table.b64TableSpec = b64Spec
@@ -341,11 +435,41 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 					table.database, table.schema, table.tableName, table.b64TableSpec,
 				),
 			)
-			c.lastEmittedAt[fullyQualifiedName(table.schema, table.tableName)] = now
+			if c.lastEmittedAt[dbName] == nil {
+				c.lastEmittedAt[dbName] = map[string]time.Time{}
+			}
+			c.lastEmittedAt[dbName][schemaTableKey(table.schema, table.tableName)] = now
 		}
 	}
 
+	if scanComplete {
+		c.pruneDatabaseThrottle(dbName, tables)
+	}
+
 	return nil
+}
+
+// pruneDatabaseThrottle removes entries in c.lastEmittedAt[dbName] whose
+// schema.table key is not present in the given tables. If the resulting
+// inner map is empty, the outer entry is also deleted. Must only be called
+// after a complete scan of the database's tables.
+func (c *SchemaDetails) pruneDatabaseThrottle(dbName string, tables []*tableInfo) {
+	if _, ok := c.lastEmittedAt[dbName]; !ok {
+		return
+	}
+
+	currentKeys := make(map[string]struct{}, len(tables))
+	for _, t := range tables {
+		currentKeys[schemaTableKey(t.schema, t.tableName)] = struct{}{}
+	}
+	for k := range c.lastEmittedAt[dbName] {
+		if _, ok := currentKeys[k]; !ok {
+			delete(c.lastEmittedAt[dbName], k)
+		}
+	}
+	if len(c.lastEmittedAt[dbName]) == 0 {
+		delete(c.lastEmittedAt, dbName)
+	}
 }
 
 // encodeTableSpec serializes a tableSpec to base64-encoded JSON.
@@ -360,8 +484,9 @@ func encodeTableSpec(spec *tableSpec) (string, error) {
 // fetchSchemaSpecs runs three queries scoped to (schema, tableNames) to fetch
 // columns, indexes and foreign keys for the given tables in bulk and groups
 // the rows by table name. The returned map is keyed by table name; tables
-// with no rows in any of the three result sets are absent.
-func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tableNames []string) (map[string]*tableSpec, error) {
+// with no rows in any of the three result sets are absent. conn must be the
+// pinned connection whose current database contains the target schema.
+func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, conn *sql.Conn, schema string, tableNames []string) (map[string]*tableSpec, error) {
 	specs := map[string]*tableSpec{}
 	if len(tableNames) == 0 {
 		return specs, nil
@@ -376,7 +501,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 		return s
 	}
 
-	colRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+	colRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
 		c.logger.Error("failed to query schema columns", "schema", schema, "err", err)
 		return nil, err
@@ -413,7 +538,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 		return nil, err
 	}
 
-	idxRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+	idxRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
 		c.logger.Error("failed to query schema indexes", "schema", schema, "err", err)
 		return nil, err
@@ -465,7 +590,7 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 		return nil, err
 	}
 
-	fkRS, err := c.dbConnection.QueryContext(ctx, fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
+	fkRS, err := conn.QueryContext(ctx, fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause(tableNames)), schema)
 	if err != nil {
 		c.logger.Error("failed to query schema foreign keys", "schema", schema, "err", err)
 		return nil, err
@@ -496,6 +621,6 @@ func (c *SchemaDetails) fetchSchemaSpecs(ctx context.Context, schema string, tab
 	return specs, nil
 }
 
-func fullyQualifiedName(schema, table string) string {
+func schemaTableKey(schema, table string) string {
 	return fmt.Sprintf("[%s].[%s]", schema, table)
 }
