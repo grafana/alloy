@@ -381,8 +381,9 @@ func newImportContentHook(logger *zap.Logger, warnModulePathDefault bool, initia
 		}
 
 		// NOTE: only the `import.string` inherits the parent module_path.
-		if warnModulePathDefault && source.InheritsModulePath() &&
-			source.ModulePath() == initialModulePath && usesModulePath(content) {
+		usesDefaultedModulePath := warnModulePathDefault && source.InheritsModulePath() &&
+			source.ModulePath() == initialModulePath && usesModulePath(content)
+		if usesDefaultedModulePath {
 			logger.Warn("imported module references `module_path` but config.inline.module_path is not set; it defaults to the current working directory",
 				zap.String("file", fileName))
 		}

@@ -272,7 +272,7 @@ In the meantime, use the CLI or Helm options for testing.
 1. **Server ports**: The {{< param "DEFAULT_ENGINE" >}} exposes its HTTP server on port `12345`.
    The {{< param "OTEL_ENGINE" >}} exposes its HTTP server on port `8888`.
    The {{< param "OTEL_ENGINE" >}} HTTP server doesn't expose a UI, support bundles, or reload endpoint functionality like the {{< param "DEFAULT_ENGINE" >}} does.
-1. **Inline configuration module path**: If `config.inline.module_path` isn't defined, the `module_path` Alloy config keyword resolves to the process current working directory.
+1. **Inline configuration module path**: If `config.inline.module_path` isn't defined, the `module_path` Alloy configuration keyword resolves to the process current working directory.
 1. **Fleet management**: [Grafana Fleet Management](https://grafana.com/blog/opentelemetry-and-grafana-labs-whats-new-and-whats-next-in-2026/#fleet-management) doesn't support the {{< param "OTEL_ENGINE" >}} yet.
    You must define and manage the input configuration manually.
 
