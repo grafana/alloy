@@ -54,6 +54,9 @@ SELECT
 	statements.ROWS_SENT,
 	statements.ROWS_AFFECTED,
 	statements.ERRORS,
+	statements.MYSQL_ERRNO,
+	statements.RETURNED_SQLSTATE,
+	statements.MESSAGE_TEXT,
 	waits.event_id as WAIT_EVENT_ID,
 	waits.end_event_id as WAIT_END_EVENT_ID,
 	waits.event_name as WAIT_EVENT_NAME,
@@ -335,6 +338,11 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			RowsAffected uint64
 			Errors       uint64
 
+			// sample error info
+			MysqlErrno       sql.NullInt64
+			ReturnedSQLState sql.NullString
+			MessageText      sql.NullString
+
 			// sample memory info
 			MaxControlledMemory uint64
 			MaxTotalMemory      uint64
@@ -373,6 +381,9 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			&row.RowsSent,
 			&row.RowsAffected,
 			&row.Errors,
+			&row.MysqlErrno,
+			&row.ReturnedSQLState,
+			&row.MessageText,
 			&row.WaitEventID,
 			&row.WaitEndEventID,
 			&row.WaitEventName,
@@ -416,7 +427,7 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		traceParent := database_observability.TryExtractTraceParent(row.SQLText.String)
 
 		logMessage := fmt.Sprintf(
-			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
+			`schema="%s" user="%s" client_host="%s" thread_id="%s" event_id="%s" end_event_id="%s" digest="%s" rows_examined="%d" rows_sent="%d" rows_affected="%d" errors="%d" mysql_errno="%d" returned_sqlstate="%s" max_controlled_memory="%db" max_total_memory="%db" cpu_time="%fms" elapsed_time="%fms" elapsed_time_ms="%fms"`,
 			row.Schema.String, row.User.String, row.Host.String, row.ThreadID.String,
 			row.StatementEventID.String, row.StatementEndEventID.String,
 			row.Digest.String,
@@ -424,6 +435,8 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 			row.RowsSent,
 			row.RowsAffected,
 			row.Errors,
+			row.MysqlErrno.Int64,
+			row.ReturnedSQLState.String,
 			row.MaxControlledMemory,
 			row.MaxTotalMemory,
 			cpuTime,
@@ -435,6 +448,11 @@ func (c *QuerySamples) fetchQuerySamples(ctx context.Context) error {
 		}
 		if c.disableQueryRedaction && row.SQLText.Valid {
 			logMessage += fmt.Sprintf(` sql_text="%s"`, row.SQLText.String)
+		}
+		// message_text can embed literal values (e.g. a duplicate key value), so
+		// it is only emitted when query redaction is disabled, like sql_text.
+		if c.disableQueryRedaction && row.MessageText.Valid {
+			logMessage += fmt.Sprintf(` message_text="%s"`, row.MessageText.String)
 		}
 
 		if lastThreadIDLogged != row.ThreadID.String || lastDigestLogged != row.Digest.String || lastEventIDLogged != row.StatementEventID.String {

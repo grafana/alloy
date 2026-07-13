@@ -63,6 +63,9 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -73,7 +76,7 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -103,6 +106,9 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -113,7 +119,7 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" traceparent=\"00-00bd5199fe2a4c8506368b55ef212cf1-d49c5e2fb232379b-01\"",
 			},
 		},
 		{
@@ -143,6 +149,9 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -153,7 +162,7 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -183,6 +192,9 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -193,7 +205,7 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 		{
@@ -211,6 +223,9 @@ func TestQuerySamples(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -253,6 +268,9 @@ func TestQuerySamples(t *testing.T) {
 				nil,
 				nil,
 				nil,
+				nil,
+				nil,
+				nil,
 				"some_user",
 				"some_host",
 				"10000000",
@@ -264,8 +282,51 @@ func TestQuerySamples(t *testing.T) {
 				{"op": OP_QUERY_SAMPLE},
 			},
 			logsLines: []string{
-				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
-				"level=\"info\" schema=\"some_other_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+				"level=\"info\" schema=\"some_other_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"891\" event_id=\"124\" end_event_id=\"235\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
+			},
+		},
+		{
+			name: "query with error code and sqlstate",
+			rows: [][]driver.Value{{
+				"some_schema",
+				"890",
+				"123",
+				"234",
+				"some_digest",
+				"insert into users (email) values (?)",
+				"70000000",
+				"20000000",
+				"5",
+				"5",
+				"0",
+				"1",     // errors
+				"1062",  // mysql_errno
+				"23000", // returned_sqlstate
+				nil,     // message_text (redaction gating is covered in TestQuerySamples_DisableQueryRedaction)
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				nil,
+				"some_user",
+				"some_host",
+				"10000000",
+				"456",
+				"457",
+			}},
+			logsLabels: []model.LabelSet{
+				{"op": OP_QUERY_SAMPLE},
+			},
+			logsLines: []string{
+				"level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"1\" mysql_errno=\"1062\" returned_sqlstate=\"23000\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"",
 			},
 		},
 	}
@@ -333,6 +394,9 @@ func TestQuerySamples(t *testing.T) {
 						"statements.ROWS_SENT",
 						"statements.ROWS_AFFECTED",
 						"statements.ERRORS",
+						"statements.MYSQL_ERRNO",
+						"statements.RETURNED_SQLSTATE",
+						"statements.MESSAGE_TEXT",
 						"waits.event_id",
 						"waits.end_event_id",
 						"waits.event_name",
@@ -426,6 +490,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -457,6 +524,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						"124",
 						"124",
 						"wait/io/file/innodb/innodb_data_file",
@@ -497,7 +567,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"124\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
 	})
@@ -539,6 +609,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -570,6 +643,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						"124",
 						"124",
 						"wait/io/file/innodb/innodb_data_file",
@@ -612,7 +688,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 		lokiEntries := lokiClient.Received()
 		require.Len(t, lokiEntries, 1)
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("query sample and multiple wait events are collected", func(t *testing.T) {
@@ -652,6 +728,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -683,6 +762,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						"124",
 						"125",
 						"wait/lock/table/sql/handler",
@@ -714,6 +796,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						"126",
 						"126",
 						"wait/lock/table/sql/handler",
@@ -745,6 +830,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						"127",
 						"127",
 						"wait/io/table/sql/handler",
@@ -776,6 +864,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						"128",
 						"128",
 						"wait/io/table/sql/handler",
@@ -816,7 +907,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[2].Labels)
@@ -864,6 +955,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -895,6 +989,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						"124",
 						"125",
 						"wait/lock/table/sql/handler",
@@ -938,6 +1035,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						nil,
 						nil,
 						nil,
+						nil,
+						nil,
+						nil,
 						"some_user",
 						"some_host",
 						"10000000",
@@ -966,11 +1066,11 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/lock/table/sql/handler\" wait_object_name=\"books\" wait_object_type=\"TABLE\" wait_time=\"0.000150ms\"", lokiEntries[1].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[2].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[2].Line)
+		assert.Equal(t, "level=\"info\" schema=\"books_store\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"126\" end_event_id=\"234\" digest=\"another_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[2].Line)
 	})
 
 	t.Run("wait event with disabled sql redaction", func(t *testing.T) {
@@ -1027,6 +1127,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1057,6 +1160,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
 					"124",
 					"125",
 					"wait/io/file/innodb/innodb_data_file",
@@ -1096,7 +1202,7 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		assert.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 		assert.Equal(t, model.LabelSet{"op": OP_WAIT_EVENT}, lokiEntries[1].Labels)
 		assert.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" digest=\"some_digest\" event_id=\"123\" wait_event_id=\"124\" wait_end_event_id=\"125\" wait_event_name=\"wait/io/file/innodb/innodb_data_file\" wait_object_name=\"wait_object_name\" wait_object_type=\"wait_object_type\" wait_time=\"0.100000ms\"", lokiEntries[1].Line)
 	})
@@ -1139,6 +1245,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1170,6 +1279,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						nil, // no wait joined (filtered by SQL)
 						nil,
 						nil,
@@ -1251,6 +1363,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1282,6 +1397,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 						"5",
 						"0",
 						"0",
+						nil,
+						nil,
+						nil,
 						"124",
 						"124",
 						"wait/io/file/innodb/innodb_data_file",
@@ -1365,6 +1483,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1395,6 +1516,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
 					"200",                                  // WAIT_EVENT_ID (outer table handler)
 					"201",                                  // WAIT_END_EVENT_ID
 					"wait/io/table/sql/handler",            // WAIT_EVENT_NAME (the handler wrapper)
@@ -1476,6 +1600,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1506,6 +1633,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
 					"200",                                  // WAIT_EVENT_ID (outer table handler)
 					"201",                                  // WAIT_END_EVENT_ID
 					"wait/io/table/sql/handler",            // WAIT_EVENT_NAME (the handler wrapper)
@@ -1594,6 +1724,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1624,6 +1757,9 @@ func TestQuerySamples_WaitEvents(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
 					"200",                       // WAIT_EVENT_ID (outer table handler)
 					"201",                       // WAIT_END_EVENT_ID
 					"wait/io/table/sql/handler", // WAIT_EVENT_NAME (the handler wrapper)
@@ -1707,6 +1843,9 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1784,6 +1923,9 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1814,6 +1956,9 @@ func TestQuerySamples_SampleMinDuration(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -1911,6 +2056,9 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -1953,6 +2101,9 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
@@ -1980,7 +2131,7 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"select * from some_table where id = 1\"", lokiEntries[0].Line)
 	})
 
 	t.Run("does not collect sql text when disabled", func(t *testing.T) {
@@ -2035,6 +2186,9 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -2077,6 +2231,9 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
@@ -2104,7 +2261,178 @@ func TestQuerySamples_DisableQueryRedaction(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+	})
+
+	// erroredRow represents a statement that failed with a duplicate-key error,
+	// used to verify that the error message text is only emitted when query
+	// redaction is disabled.
+	erroredRow := []driver.Value{
+		"some_schema",
+		"890",
+		"123",
+		"234",
+		"some_digest",
+		"insert into users (email) values ('jdoe@example.com')",
+		"70000000",
+		"20000000",
+		"5",
+		"5",
+		"0",
+		"1",     // errors
+		"1062",  // mysql_errno
+		"23000", // returned_sqlstate
+		"Duplicate entry 'jdoe@example.com' for key 'users.email'", // message_text
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		"some_user",
+		"some_host",
+		"10000000",
+		"456",
+		"457",
+	}
+
+	querySampleColumns := []string{
+		"statements.CURRENT_SCHEMA",
+		"statements.THREAD_ID",
+		"statements.EVENT_ID",
+		"statements.END_EVENT_ID",
+		"statements.DIGEST",
+		"statements.SQL_TEXT",
+		"statements.TIMER_END",
+		"statements.TIMER_WAIT",
+		"statements.ROWS_EXAMINED",
+		"statements.ROWS_SENT",
+		"statements.ROWS_AFFECTED",
+		"statements.ERRORS",
+		"statements.MYSQL_ERRNO",
+		"statements.RETURNED_SQLSTATE",
+		"statements.MESSAGE_TEXT",
+		"waits.event_id",
+		"waits.end_event_id",
+		"waits.event_name",
+		"waits.object_name",
+		"waits.object_type",
+		"waits.timer_wait",
+		"nested_waits.event_id",
+		"nested_waits.end_event_id",
+		"nested_waits.event_name",
+		"nested_waits.object_name",
+		"nested_waits.object_type",
+		"nested_waits.timer_wait",
+		"threads.PROCESSLIST_USER",
+		"threads.PROCESSLIST_HOST",
+		"statements.CPU_TIME",
+		"statements.MAX_CONTROLLED_MEMORY",
+		"statements.MAX_TOTAL_MEMORY",
+	}
+
+	t.Run("redacts error message text by default", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                    db,
+			EngineVersion:         latestCompatibleVersion,
+			CollectInterval:       time.Second,
+			EntryHandler:          lokiClient,
+			Logger:                util.TestAlloyLogger(t).Slog(),
+			DisableQueryRedaction: false,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().
+			WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(querySampleColumns).AddRow(erroredRow...))
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"1\" mysql_errno=\"1062\" returned_sqlstate=\"23000\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		// message_text can leak literal values, so it must not appear when redaction is enabled.
+		assert.NotContains(t, lokiEntries[0].Line, "message_text=")
+	})
+
+	t.Run("emits error message text when query redaction is disabled", func(t *testing.T) {
+		t.Parallel()
+
+		db, mock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		defer db.Close()
+
+		lokiClient := loki.NewCollectingHandler()
+
+		collector, err := NewQuerySamples(QuerySamplesArguments{
+			DB:                    db,
+			EngineVersion:         latestCompatibleVersion,
+			CollectInterval:       time.Second,
+			EntryHandler:          lokiClient,
+			Logger:                util.TestAlloyLogger(t).Slog(),
+			DisableQueryRedaction: true,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, collector)
+
+		mock.ExpectQuery(selectUptime).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{"uptime"}).AddRow("1"))
+		mock.ExpectQuery(selectNowAndUptime).WithoutArgs().
+			WillReturnRows(sqlmock.NewRows([]string{"now", "uptime"}).AddRow(5, 1))
+		mock.ExpectQuery(fmt.Sprintf(selectQuerySamples, cpuTimeField+maxControlledMemoryField+maxTotalMemoryField, "", "", exclusionClause, "", endOfTimeline)).WithArgs(1e12, 1e12).RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows(querySampleColumns).AddRow(erroredRow...))
+
+		err = collector.Start(t.Context())
+		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return len(lokiClient.Received()) == 1
+		}, 5*time.Second, 100*time.Millisecond)
+
+		collector.Stop()
+		lokiClient.Stop()
+
+		require.Eventually(t, func() bool {
+			return collector.Stopped()
+		}, 5*time.Second, 100*time.Millisecond)
+
+		require.NoError(t, mock.ExpectationsWereMet())
+
+		lokiEntries := lokiClient.Received()
+		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"1\" mysql_errno=\"1062\" returned_sqlstate=\"23000\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\" sql_text=\"insert into users (email) values ('jdoe@example.com')\" message_text=\"Duplicate entry 'jdoe@example.com' for key 'users.email'\"", lokiEntries[0].Line)
 	})
 }
 
@@ -2136,6 +2464,9 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"statements.ROWS_SENT",
 				"statements.ROWS_AFFECTED",
 				"statements.ERRORS",
+				"statements.MYSQL_ERRNO",
+				"statements.RETURNED_SQLSTATE",
+				"statements.MESSAGE_TEXT",
 				"waits.event_id",
 				"waits.end_event_id",
 				"waits.event_name",
@@ -2151,7 +2482,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"threads.PROCESSLIST_USER",
 				"threads.PROCESSLIST_HOST",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.000000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" mysql_errno="0" returned_sqlstate="" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.000000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -2165,6 +2496,9 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -2198,6 +2532,9 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"statements.ROWS_SENT",
 				"statements.ROWS_AFFECTED",
 				"statements.ERRORS",
+				"statements.MYSQL_ERRNO",
+				"statements.RETURNED_SQLSTATE",
+				"statements.MESSAGE_TEXT",
 				"waits.event_id",
 				"waits.end_event_id",
 				"waits.event_name",
@@ -2214,7 +2551,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"threads.PROCESSLIST_HOST",
 				"statements.CPU_TIME",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" mysql_errno="0" returned_sqlstate="" max_controlled_memory="0b" max_total_memory="0b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -2228,6 +2565,9 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -2262,6 +2602,9 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"statements.ROWS_SENT",
 				"statements.ROWS_AFFECTED",
 				"statements.ERRORS",
+				"statements.MYSQL_ERRNO",
+				"statements.RETURNED_SQLSTATE",
+				"statements.MESSAGE_TEXT",
 				"waits.event_id",
 				"waits.end_event_id",
 				"waits.event_name",
@@ -2280,7 +2623,7 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"statements.MAX_CONTROLLED_MEMORY",
 				"statements.MAX_TOTAL_MEMORY",
 			},
-			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" max_controlled_memory="1024b" max_total_memory="2048b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
+			expectedLogOutput: `level="info" schema="test_schema" user="some_user" client_host="some_host" thread_id="890" event_id="123" end_event_id="234" digest="some_digest" rows_examined="5" rows_sent="5" rows_affected="0" errors="0" mysql_errno="0" returned_sqlstate="" max_controlled_memory="1024b" max_total_memory="2048b" cpu_time="0.010000ms" elapsed_time="0.020000ms" elapsed_time_ms="0.020000ms"`,
 			scanValues: []driver.Value{
 				"test_schema",
 				"890",
@@ -2294,6 +2637,9 @@ func TestQuerySamplesMySQLVersions(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
 				nil,
 				nil,
 				nil,
@@ -2459,6 +2805,9 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -2501,6 +2850,9 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
@@ -2528,7 +2880,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("result set iteration error", func(t *testing.T) {
@@ -2582,6 +2934,9 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -2624,6 +2979,9 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
@@ -2642,6 +3000,9 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -2681,7 +3042,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 
 	t.Run("connection error recovery", func(t *testing.T) {
@@ -2752,6 +3113,9 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -2794,6 +3158,9 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 					nil,
 					nil,
 					nil,
+					nil,
+					nil,
+					nil,
 					"some_user",
 					"some_host",
 					"10000000",
@@ -2821,7 +3188,7 @@ func TestQuerySamples_SQLDriverErrors(t *testing.T) {
 
 		lokiEntries := lokiClient.Received()
 		require.Equal(t, model.LabelSet{"op": OP_QUERY_SAMPLE}, lokiEntries[0].Labels)
-		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
+		require.Equal(t, "level=\"info\" schema=\"some_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some_digest\" rows_examined=\"5\" rows_sent=\"5\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"456b\" max_total_memory=\"457b\" cpu_time=\"0.010000ms\" elapsed_time=\"0.020000ms\" elapsed_time_ms=\"0.020000ms\"", lokiEntries[0].Line)
 	})
 }
 
@@ -2896,6 +3263,9 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 			"statements.ROWS_SENT",
 			"statements.ROWS_AFFECTED",
 			"statements.ERRORS",
+			"statements.MYSQL_ERRNO",
+			"statements.RETURNED_SQLSTATE",
+			"statements.MESSAGE_TEXT",
 			"waits.event_id",
 			"waits.end_event_id",
 			"waits.event_name",
@@ -2927,6 +3297,9 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 				100,
 				0,
 				0,
+				nil,
+				nil,
+				nil,
 				"124",
 				"125",
 				"wait/io/file/innodb/innodb_data_file",
@@ -3001,6 +3374,9 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 			"statements.ROWS_SENT",
 			"statements.ROWS_AFFECTED",
 			"statements.ERRORS",
+			"statements.MYSQL_ERRNO",
+			"statements.RETURNED_SQLSTATE",
+			"statements.MESSAGE_TEXT",
 			"waits.event_id",
 			"waits.end_event_id",
 			"waits.event_name",
@@ -3032,6 +3408,9 @@ func TestQuerySamples_logs_query_start_as_timestamp(t *testing.T) {
 				"5",
 				"0",
 				"0",
+				nil,
+				nil,
+				nil,
 				"100",
 				"101",
 				"wait/io/file/x",
@@ -3103,6 +3482,9 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 			"statements.ROWS_SENT",
 			"statements.ROWS_AFFECTED",
 			"statements.ERRORS",
+			"statements.MYSQL_ERRNO",
+			"statements.RETURNED_SQLSTATE",
+			"statements.MESSAGE_TEXT",
 			"waits.event_id",
 			"waits.end_event_id",
 			"waits.event_name",
@@ -3134,6 +3516,9 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 				100,           // rows_sent
 				0,             // rows_affected
 				0,             // errors
+				nil,           // mysql_errno
+				nil,           // returned_sqlstate
+				nil,           // message_text
 				nil,           // WAIT_EVENT_ID
 				nil,           // WAIT_END_EVENT_ID
 				nil,           // WAIT_EVENT_NAME
@@ -3178,7 +3563,7 @@ func TestQuerySamples_handles_timer_overflows(t *testing.T) {
 		assert.Equal(t, model.LabelSet{
 			"op": OP_QUERY_SAMPLE,
 		}, lokiClient.Received()[0].Labels)
-		assert.Equal(t, "level=\"info\" schema=\"test_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
+		assert.Equal(t, "level=\"info\" schema=\"test_schema\" user=\"some_user\" client_host=\"some_host\" thread_id=\"890\" event_id=\"123\" end_event_id=\"234\" digest=\"some digest\" rows_examined=\"1000\" rows_sent=\"100\" rows_affected=\"0\" errors=\"0\" mysql_errno=\"0\" returned_sqlstate=\"\" max_controlled_memory=\"1048576b\" max_total_memory=\"2097152b\" cpu_time=\"0.000556ms\" elapsed_time=\"2000.000000ms\" elapsed_time_ms=\"2000.000000ms\"", lokiClient.Received()[0].Line)
 	})
 
 	t.Run("asserts that expected query text is used in the constants", func(t *testing.T) {
@@ -3742,6 +4127,9 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"statements.ROWS_SENT",
 					"statements.ROWS_AFFECTED",
 					"statements.ERRORS",
+					"statements.MYSQL_ERRNO",
+					"statements.RETURNED_SQLSTATE",
+					"statements.MESSAGE_TEXT",
 					"waits.event_id",
 					"waits.end_event_id",
 					"waits.event_name",
@@ -3772,6 +4160,9 @@ func TestQuerySamples_AutoEnableSetupConsumers(t *testing.T) {
 					"5",
 					"0",
 					"0",
+					nil,
+					nil,
+					nil,
 					nil,
 					nil,
 					nil,
@@ -3928,28 +4319,28 @@ func TestQuerySamples_WaitEventCounter_MatchesLogLines(t *testing.T) {
 
 		rows := [][]driver.Value{
 			// (digest_A, schema_X): two rows, 0.1ms + 0.2ms = 0.3ms
-			{"schema_X", "1", "10", "11", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "100", "101", "wait/io/file/x", "obj", "typ", "100000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
-			{"schema_X", "1", "20", "21", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "200", "201", "wait/io/file/y", "obj", "typ", "200000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "10", "11", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, "100", "101", "wait/io/file/x", "obj", "typ", "100000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "20", "21", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, "200", "201", "wait/io/file/y", "obj", "typ", "200000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 			// (digest_B, schema_X): 0.05ms
-			{"schema_X", "1", "30", "31", "digest_B", "sql2", "70000000", "20000000", "5", "5", "0", "0", "300", "301", "wait/lock/metadata", "obj", "typ", "50000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "30", "31", "digest_B", "sql2", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, "300", "301", "wait/lock/metadata", "obj", "typ", "50000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 			// (digest_A, schema_Y): 0.075ms — same digest, different schema
-			{"schema_Y", "1", "40", "41", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", "400", "401", "wait/synch/mutex", "obj", "typ", "75000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			{"schema_Y", "1", "40", "41", "digest_A", "sql1", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, "400", "401", "wait/synch/mutex", "obj", "typ", "75000000", nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 			// (digest_D, schema_X): wait/io/table/sql/handler molecule with two
 			// nested atoms (same outer event_id, two rows from the JOIN). Pre-fix,
 			// the counter added outer 5ms twice (over-count by N). Post-fix, each
 			// row contributes its own nested timer, matching the log line.
 			// Expected counter contribution: 0.4ms + 0.6ms = 1.0ms total.
-			{"schema_X", "1", "60", "61", "digest_D", "sql4", "70000000", "20000000", "5", "5", "0", "0", "500", "501", "wait/io/table/sql/handler", "books", "TABLE", "5000000000", "510", "511", "wait/io/file/innodb/innodb_data_file", "ibdata1", "FILE", "400000000", "u", "h", "1000", "1", "1"},
-			{"schema_X", "1", "60", "61", "digest_D", "sql4", "70000000", "20000000", "5", "5", "0", "0", "500", "501", "wait/io/table/sql/handler", "books", "TABLE", "5000000000", "520", "521", "wait/io/file/innodb/innodb_data_file", "ibdata1", "FILE", "600000000", "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "60", "61", "digest_D", "sql4", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, "500", "501", "wait/io/table/sql/handler", "books", "TABLE", "5000000000", "510", "511", "wait/io/file/innodb/innodb_data_file", "ibdata1", "FILE", "400000000", "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "60", "61", "digest_D", "sql4", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, "500", "501", "wait/io/table/sql/handler", "books", "TABLE", "5000000000", "520", "521", "wait/io/file/innodb/innodb_data_file", "ibdata1", "FILE", "600000000", "u", "h", "1000", "1", "1"},
 			// digest_C: no wait event (nil wait fields) — must not increment any counter
-			{"schema_X", "1", "50", "51", "digest_C", "sql3", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
+			{"schema_X", "1", "50", "51", "digest_C", "sql3", "70000000", "20000000", "5", "5", "0", "0", nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, "u", "h", "1000", "1", "1"},
 		}
 
 		mockRows := sqlmock.NewRows([]string{
 			"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
 			"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
 			"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
-			"statements.ROWS_AFFECTED", "statements.ERRORS",
+			"statements.ROWS_AFFECTED", "statements.ERRORS", "statements.MYSQL_ERRNO", "statements.RETURNED_SQLSTATE", "statements.MESSAGE_TEXT",
 			"waits.event_id", "waits.end_event_id", "waits.event_name",
 			"waits.object_name", "waits.object_type", "waits.timer_wait",
 			"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
@@ -4046,7 +4437,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 				"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
 				"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
 				"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
-				"statements.ROWS_AFFECTED", "statements.ERRORS",
+				"statements.ROWS_AFFECTED", "statements.ERRORS", "statements.MYSQL_ERRNO", "statements.RETURNED_SQLSTATE", "statements.MESSAGE_TEXT",
 				"waits.event_id", "waits.end_event_id", "waits.event_name",
 				"waits.object_name", "waits.object_type", "waits.timer_wait",
 				"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
@@ -4056,6 +4447,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 			}).AddRow(
 				"some_schema", "890", "123", "234", "some_digest", "some_sql_text",
 				"70000000", "20000000", "5", "5", "0", "0",
+				nil, nil, nil,
 				"124", "124", "wait/io/file/innodb/innodb_data_file",
 				"wait_object_name", "wait_object_type", "100000000",
 				nil, nil, nil, nil, nil, nil,
@@ -4113,7 +4505,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 				"statements.CURRENT_SCHEMA", "statements.THREAD_ID", "statements.EVENT_ID",
 				"statements.END_EVENT_ID", "statements.DIGEST", "statements.SQL_TEXT", "statements.TIMER_END",
 				"statements.TIMER_WAIT", "statements.ROWS_EXAMINED", "statements.ROWS_SENT",
-				"statements.ROWS_AFFECTED", "statements.ERRORS",
+				"statements.ROWS_AFFECTED", "statements.ERRORS", "statements.MYSQL_ERRNO", "statements.RETURNED_SQLSTATE", "statements.MESSAGE_TEXT",
 				"waits.event_id", "waits.end_event_id", "waits.event_name",
 				"waits.object_name", "waits.object_type", "waits.timer_wait",
 				"nested_waits.event_id", "nested_waits.end_event_id", "nested_waits.event_name",
@@ -4123,6 +4515,7 @@ func TestQuerySamples_WaitEvents_PreClassified(t *testing.T) {
 			}).AddRow(
 				"some_schema", "890", "123", "234", "some_digest", "some_sql_text",
 				"70000000", "20000000", "5", "5", "0", "0",
+				nil, nil, nil,
 				"124", "124", "wait/io/file/innodb/innodb_data_file",
 				"wait_object_name", "wait_object_type", "100000000",
 				nil, nil, nil, nil, nil, nil,
