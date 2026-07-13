@@ -268,7 +268,12 @@ test-pyroscope:
 binaries: alloy
 
 .PHONY: beyla
-beyla: download-beyla download-beyla-schema $(BEYLA_CONFIG_GEN)
+beyla: download-beyla download-beyla-schema $(BEYLA_CONFIG_GEN) sync-beyla-docs-version
+
+.PHONY: sync-beyla-docs-version
+sync-beyla-docs-version:
+	@sed -i.bak "s/BEYLA_VERSION: .*/BEYLA_VERSION: $(BEYLA_VERSION)/" docs/sources/_index.md.t
+	@rm -f docs/sources/_index.md.t.bak
 
 .PHONY: download-beyla
 download-beyla:
