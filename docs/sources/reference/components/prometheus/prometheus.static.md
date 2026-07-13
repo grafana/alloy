@@ -94,8 +94,8 @@ labels {
 }
 ```
 
-When placed at the top level of `prometheus.static`, the labels apply to every emitted metric.
-When placed inside a `metric` block, the labels apply only to that metric.
+When you place a `labels` block at the top level of `prometheus.static`, those labels apply to every metric.
+When you place a `labels` block inside a `metric` block, those labels apply only to that metric.
 
 ## Exports
 
