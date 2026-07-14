@@ -12,23 +12,17 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointMa
 # Go Build Dependencies
 #
 # golang - building go code
-# 7zip - unzipping stuff during TDM GCC install
-# TDM GCC - gcc compiler in windows
+# mingw  - gcc compiler (mingw-w64) for compiling C dependencies (CGO)
 # make - building with a Makefile
 # docker - building images
 # git - bash for windows
 
-RUN choco install 7zip --version 22.1 -y
-
-# TDM GCC doesn't currently have a way to silently install
-ADD https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe C:\\Windows\\temp\\TDM-GCC-64.exe
-RUN mkdir C:\\TDM-GCC-64; \
-    Start-Process 7z -ArgumentList 'e C:\\Windows\\temp\\TDM-GCC-64.exe -oC:\\TDM-GCC-64 -y' -Wait; \
-    Start-Process 7z -ArgumentList 'e C:\\TDM-GCC-64\\*.tar.xz -oC:\\TDM-GCC-64 -y' -Wait; \
-    Start-Process 7z -ArgumentList 'x C:\\TDM-GCC-64\\*.tar -oC:\\TDM-GCC-64 -y' -Wait; \
-    Remove-Item "C:\\TDM-GCC-64\\*" -Include *.tar.xz, *.tar -Force; \
-    setx /M PATH $('C:\TDM-GCC-64\bin;' + $Env:PATH); \
-    Remove-Item -Path C:\\Windows\\temp\\TDM-GCC-64.exe -Force
+# mingw-w64 (packaged from the WinLibs build) provides a modern gcc that links
+# CGO dependencies such as pganalyze/pg_query_go correctly. We previously used
+# TDM-GCC 10.3.0, but its runtime does not ship libssp, so linking any C
+# compiled with -fstack-protector failed with undefined references to
+# __stack_chk_fail / __stack_chk_guard.
+RUN choco install mingw --version 14.2.0 -y
 
 RUN choco install make --version 4.3 -y
 RUN choco install docker-cli --version 20.10.22 -y
