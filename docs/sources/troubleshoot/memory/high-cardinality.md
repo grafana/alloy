@@ -9,13 +9,15 @@ weight: 250
 # High cardinality memory issues
 
 High cardinality occurs when metrics or logs contain a very large number of unique label or attribute combinations.
-Each unique combination creates a separate time series or log stream inside {{< param "PRODUCT_NAME" >}}, which increases memory usage.
+Each unique combination creates a separate time series or log stream inside {{< param "PRODUCT_NAME" >}}.
+This increases in-memory series metadata, WAL churn, and ingestion work.
 
-In environments with unbounded labels, memory usage may grow steadily as additional series or streams appear.
+In many environments, high cardinality first appears as higher series count, higher WAL growth, and higher CPU usage.
+Memory usage can also rise as additional series or streams appear.
 
 ## Symptoms
 
-High cardinality memory issues often appear as:
+High cardinality issues often appear as:
 
 - Memory that grows steadily during normal operation
 - Large numbers of active series or log streams
@@ -88,6 +90,8 @@ High cardinality can also cause secondary symptoms:
 - Increased WAL size
 - Back pressure on remote write pipelines
 - Higher CPU usage during ingestion
+
+If active series count and WAL size increase while endpoint latency stays stable, high cardinality is likely the primary issue.
 
 If these symptoms appear alongside growing series counts, cardinality is likely the root cause.
 

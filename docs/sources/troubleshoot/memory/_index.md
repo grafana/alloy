@@ -8,7 +8,8 @@ weight: 100
 
 # Troubleshoot memory issues
 
-Most memory issues in {{< param "PRODUCT_NAME" >}} stem from misconfigured resource limits, WAL replay during startup, or back pressure when remote endpoints can't accept data fast enough.
+Most memory issues in {{< param "PRODUCT_NAME" >}} stem from misconfigured resource limits, WAL replay during startup, high cardinality, or retention settings that keep buffered data longer.
+Back pressure can also increase memory when remote endpoints are slow or unavailable.
 
 Common symptoms include:
 
@@ -26,7 +27,7 @@ Before investigating memory issues in detail, identify the pattern that matches 
 | ------------------------------------------------ | ---------------------------------------------------------------------- |
 | Container restarts with `OOMKilled`              | [Kubernetes memory limits][kubernetes] or [WAL replay][prometheus-wal] |
 | Memory spikes immediately after restart          | [WAL replay][prometheus-wal]                                           |
-| Memory grows steadily during back pressure       | [Back pressure][loki-backpressure] from slow or failing remote systems |
+| Memory grows steadily with rising pending queues | [Back pressure][loki-backpressure] from slow or failing remote systems |
 | Memory grows steadily and series count increases | [High cardinality][high-cardinality]                                   |
 | Memory remains high after traffic drops          | [Go runtime retaining memory][prometheus-high-memory] for reuse        |
 
@@ -50,15 +51,16 @@ Start by identifying which category matches your symptoms:
 
 - **`OOMKilled` or startup crashes**: Refer to [Kubernetes memory issues][kubernetes] for resource configuration and persistent storage guidance.
 - **Memory spikes after restart or WAL issues**: Refer to [Prometheus component memory issues][prometheus] for WAL replay and retention configuration.
-- **Back pressure from HTTP ingestion sources**: Refer to [Loki component memory issues][loki] for [`loki.source.api`][loki-source-api] and [`loki.source.awsfirehose`][loki-source-awsfirehose] troubleshooting.
 - **Memory grows steadily and series count increases**: Refer to [High cardinality memory issues][high-cardinality] for guidance on identifying and reducing high-cardinality labels.
-- **Gradual memory growth during normal operation**: This usually indicates queue buildup caused by slow or failing remote systems.
-  Review endpoint latency and internal queue metrics.
-  If your configuration includes Prometheus or other metrics ingestion pipelines, refer to [Prometheus component memory issues][prometheus] for remote write queues, WAL replay behavior, and cardinality-related memory usage.
+- **Back pressure from HTTP ingestion sources**: If you use HTTP log ingestion components, refer to [Loki component memory issues][loki] for [`loki.source.api`][loki-source-api] and [`loki.source.awsfirehose`][loki-source-awsfirehose] troubleshooting.
+- **Gradual memory growth during normal operation**: This can indicate queue buildup when remote endpoints are slow or failing.
+  It can also indicate high cardinality or WAL retention settings that keep more data in memory.
+  Confirm queue growth and retry behavior with queue metrics before you treat queue buildup as the primary cause.
+  If your configuration includes Prometheus or other metrics ingestion pipelines, refer to [Prometheus component memory issues][prometheus] for remote write queues, WAL replay behavior, truncation settings, and cardinality-related memory usage.
 
-## Diagnose back pressure and queue buildup
+## Diagnose back pressure and queue buildup when you suspect it
 
-In many environments, gradual memory growth occurs because {{< param "PRODUCT_NAME" >}} receives telemetry faster than it can forward it to remote endpoints.
+In some environments, gradual memory growth occurs because {{< param "PRODUCT_NAME" >}} receives telemetry faster than it can forward it to remote endpoints.
 
 When this happens, components buffer telemetry in memory until remote systems catch up.
 This behavior can resemble a memory leak, but it usually indicates **back pressure** rather than a defect.
