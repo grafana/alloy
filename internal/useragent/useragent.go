@@ -16,7 +16,7 @@ import (
 const (
 	ProductName = "Alloy"
 	// ExtensionProductName is the product name reported when Alloy runs as an OTel
-	// Collector extension (the OTel engine), distinguishing it from native Alloy.
+	// Collector extension, distinguishing it from native Alloy.
 	ExtensionProductName = ProductName + " OTel Extension"
 
 	deployModeEnv = "ALLOY_DEPLOY_MODE"
