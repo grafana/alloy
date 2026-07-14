@@ -116,11 +116,12 @@ func (e *alloyEngineExtension) Start(_ context.Context, host component.Host) err
 		return err
 	}
 
-	// A hook to validate imported configs (rejecting unsupported blocks). It also warns about
-	// `module_path` references only when inline config is used and module_path is undefined.
-	cfg := e.config.AlloyConfig
-	warnModulePathDefault := cfg.Inline.Content != "" && cfg.Inline.ModulePath == ""
-	onConfigImport := newImportContentHook(e.settings.Logger, warnModulePathDefault, modulePath)
+	// Optional hook to check imported configs whether they contain `module_path`.
+	// Has effect only for inline configs with `config.inline.module_path` is unset.
+	var onConfigImport importsource.ImportContentHook
+	if e.config.AlloyConfig.isModulePathUnset() {
+		onConfigImport = newImportContentHook(e.settings.Logger, modulePath)
+	}
 
 	runCommand := e.runCommandFactory(modulePath, files, onConfigImport)
 
@@ -333,7 +334,7 @@ func buildAlloyConfig(logger *zap.Logger, cfg AlloyConfig) (modulePath string, f
 }
 
 // validateAlloyConfig checks whether Alloy config contains statements unsupported in extension mode.
-func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnIfModulePathUsed bool) error {
+func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnModulePathDefault bool) error {
 	tree, err := parser.ParseFile(fname, data)
 	if err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
@@ -343,7 +344,7 @@ func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnIfMo
 		return err
 	}
 
-	if warnIfModulePathUsed && usesModulePath(tree) {
+	if warnModulePathDefault && usesModulePath(tree) {
 		logger.Warn("inline Alloy config references `module_path` but config.inline.module_path is not set; it defaults to the current working directory",
 			zap.String("file", fname))
 	}
@@ -351,8 +352,7 @@ func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnIfMo
 	return nil
 }
 
-// checkUnsupportedBlocks returns an error if the config uses a top-level block that is unsupported
-// in extension mode.
+// checkUnsupportedBlocks checks whether Alloy config AST contains blocks that aren't allowed in the extension mode.
 func checkUnsupportedBlocks(tree *ast.File) error {
 	for _, stmt := range tree.Body {
 		block, ok := stmt.(*ast.BlockStmt)
@@ -367,27 +367,21 @@ func checkUnsupportedBlocks(tree *ast.File) error {
 	return nil
 }
 
-// newImportContentHook returns a hook that validates imported module content for extension mode.
-// It rejects unsupported blocks (e.g. remotecfg). When warnModulePathDefault is set, it also warns
-// if an imported module references module_path while it still resolves to the defaulted (cwd)
-// value of an inline config.
+// newImportContentHook returns a hook to check Alloy configs loaded via `import.*` blocks.
 //
-// initialModulePath is the module_path used in the root Alloy config.
-func newImportContentHook(logger *zap.Logger, warnModulePathDefault bool, initialModulePath string) importsource.ImportContentHook {
-	return func(fileName string, content *ast.File, source importsource.ImportSource) error {
-		// The caller (ImportConfigNode.onContentUpdate) logs the file name, so it isn't wrapped here.
-		if err := checkUnsupportedBlocks(content); err != nil {
-			return err
+// Hook throws warning if imported config uses `module_path` that was inherited from global Alloy config.
+func newImportContentHook(logger *zap.Logger, rootModulePath string) importsource.ImportContentHook {
+	return func(fileName string, content *ast.File, source importsource.ImportSource) {
+		if !source.InheritsModulePath() {
+			// only the `import.string` inherits the parent module_path.
+			return
 		}
 
-		// NOTE: only the `import.string` inherits the parent module_path.
-		usesDefaultedModulePath := warnModulePathDefault && source.InheritsModulePath() &&
-			source.ModulePath() == initialModulePath && usesModulePath(content)
-		if usesDefaultedModulePath {
+		shouldWarn := source.ModulePath() == rootModulePath && usesModulePath(content)
+		if shouldWarn {
 			logger.Warn("imported module references `module_path` but config.inline.module_path is not set; it defaults to the current working directory",
 				zap.String("file", fileName))
 		}
-		return nil
 	}
 }
 

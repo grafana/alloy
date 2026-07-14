@@ -336,11 +336,10 @@ func TestNewImportContentHook(t *testing.T) {
 	noMP := `declare "x" { export "v" { value = "static" } }`
 
 	tests := []struct {
-		name        string
-		content     string
-		source      fakeImportSource
-		wantWarns   int
-		errContains string
+		name      string
+		content   string
+		source    fakeImportSource
+		wantWarns int
 	}{
 		{
 			name:      "import.string inheriting defaulted cwd and using module_path warns",
@@ -366,25 +365,13 @@ func TestNewImportContentHook(t *testing.T) {
 			source:    fakeImportSource{modulePath: "/cwd", inherits: true},
 			wantWarns: 0,
 		},
-		{
-			name:        "remotecfg block is rejected",
-			content:     `remotecfg { }`,
-			source:      fakeImportSource{modulePath: "/cwd", inherits: true},
-			errContains: "remotecfg",
-		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			core, logs := observer.New(zapcore.WarnLevel)
-			hook := newImportContentHook(zap.New(core), true, "/cwd")
+			hook := newImportContentHook(zap.New(core), "/cwd")
 
-			err := hook("mod", mustParse(t, tc.content), tc.source)
-
-			if tc.errContains != "" {
-				require.ErrorContains(t, err, tc.errContains)
-			} else {
-				require.NoError(t, err)
-			}
+			hook("mod", mustParse(t, tc.content), tc.source)
 			require.Equal(t, tc.wantWarns, logs.Len())
 			if tc.wantWarns > 0 {
 				rec := logs.All()[0]

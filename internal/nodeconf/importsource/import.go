@@ -28,8 +28,7 @@ const (
 const ModulePath = "module_path"
 
 // ImportContentHook is a hook that is invoked with the parsed content of an imported config.
-// A non-nil error rejects that content.
-type ImportContentHook func(fileName string, content *ast.File, source ImportSource) error
+type ImportContentHook func(fileName string, content *ast.File, source ImportSource)
 
 // ImportSource retrieves a module from a source.
 type ImportSource interface {
