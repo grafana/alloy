@@ -273,7 +273,7 @@ func buildAlloyConfig(logger *zap.Logger, cfg AlloyConfig) (modulePath string, f
 		}
 
 		data := []byte(cfg.Inline.Content)
-		if err := validateAlloyConfig(logger, "config.alloy", data, isModulePathUndefined); err != nil {
+		if err := validateAlloyConfig(logger, "config.alloy", data, !isModulePathUndefined); err != nil {
 			return "", nil, fmt.Errorf("invalid inline Alloy config: %w", err)
 		}
 
@@ -293,7 +293,7 @@ func buildAlloyConfig(logger *zap.Logger, cfg AlloyConfig) (modulePath string, f
 			return "", nil, fmt.Errorf("failed to read alloy config file %q: %w", effectivePath, err)
 		}
 
-		if err := validateAlloyConfig(logger, effectivePath, data, false); err != nil {
+		if err := validateAlloyConfig(logger, effectivePath, data, true); err != nil {
 			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", effectivePath, err)
 		}
 
@@ -323,7 +323,7 @@ func buildAlloyConfig(logger *zap.Logger, cfg AlloyConfig) (modulePath string, f
 			return "", nil, err
 		}
 
-		if err := validateAlloyConfig(logger, fpath, data, false); err != nil {
+		if err := validateAlloyConfig(logger, fpath, data, true); err != nil {
 			return "", nil, fmt.Errorf("error in Alloy config file %q: %w", fpath, err)
 		}
 
@@ -334,7 +334,7 @@ func buildAlloyConfig(logger *zap.Logger, cfg AlloyConfig) (modulePath string, f
 }
 
 // validateAlloyConfig checks whether Alloy config contains statements unsupported in extension mode.
-func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnModulePathDefault bool) error {
+func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, isModulePathSet bool) error {
 	tree, err := parser.ParseFile(fname, data)
 	if err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
@@ -344,7 +344,7 @@ func validateAlloyConfig(logger *zap.Logger, fname string, data []byte, warnModu
 		return err
 	}
 
-	if warnModulePathDefault && usesModulePath(tree) {
+	if !isModulePathSet && usesModulePath(tree) {
 		logger.Warn("inline Alloy config references `module_path` but config.inline.module_path is not set; it defaults to the current working directory",
 			zap.String("file", fname))
 	}
