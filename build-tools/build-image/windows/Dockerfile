@@ -18,10 +18,7 @@ RUN Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointMa
 # git - bash for windows
 
 # mingw-w64 (packaged from the WinLibs build) provides a modern gcc that links
-# CGO dependencies such as pganalyze/pg_query_go correctly. We previously used
-# TDM-GCC 10.3.0, but its runtime does not ship libssp, so linking any C
-# compiled with -fstack-protector failed with undefined references to
-# __stack_chk_fail / __stack_chk_guard.
+# CGO dependencies compiled with -fstack-protector correctly
 RUN choco install mingw --version 14.2.0 -y
 
 RUN choco install make --version 4.3 -y
