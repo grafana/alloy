@@ -1849,6 +1849,7 @@ func TestEBPF_Convert_MapsConfig(t *testing.T) {
 	require.Equal(t, 0, cfg.MapsConfig.GlobalScaleFactor)
 }
 
+//nolint:staticcheck // Service properties are deprecated in OBI/Beyla but we still need to support them to avoid breaking changes
 func TestSurveyDisabled(t *testing.T) {
 	comp := &Component{
 		args: Arguments{
@@ -1864,6 +1865,7 @@ func TestSurveyDisabled(t *testing.T) {
 	require.NotEqual(t, beylaSvc.DefaultExcludeInstrumentWithSurvey, cfg.Discovery.DefaultExcludeInstrument)
 }
 
+//nolint:staticcheck // Service properties are deprecated in OBI/Beyla but we still need to support them to avoid breaking changes
 func TestSurveyEnabled(t *testing.T) {
 	comp := &Component{
 		args: Arguments{
