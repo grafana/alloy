@@ -50,13 +50,57 @@ You can use the following blocks with `database_observability.sql_server`:
 
 {{< docs/alloy-config >}}
 
-| Block                              | Description                                       | Required |
-|------------------------------------|---------------------------------------------------|----------|
-| [`schema_details`][schema_details] | Configure the schema and table details collector. | no       |
+| Block                                | Description                                       | Required |
+|--------------------------------------|---------------------------------------------------|----------|
+| [`cloud_provider`][cloud_provider]   | Provide Cloud Provider information.               | no       |
+| `cloud_provider` > [`aws`][aws]      | Provide AWS database host information.            | no       |
+| `cloud_provider` > [`azure`][azure]  | Provide Azure database host information.          | no       |
+| `cloud_provider` > [`gcp`][gcp]      | Provide GCP database host information.            | no       |
+| [`schema_details`][schema_details]   | Configure the schema and table details collector. | no       |
 
+[cloud_provider]: #cloud_provider
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
 [schema_details]: #schema_details
 
 {{< /docs/alloy-config >}}
+
+### `cloud_provider`
+
+The `cloud_provider` block has no attributes.
+It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
+You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
+This information is appended as labels to the collected metrics.
+The labels make it easier for you to filter and group your metrics.
+
+When you don't configure a `cloud_provider` block, {{< param "PRODUCT_NAME" >}} attempts to detect AWS RDS and Azure SQL hosts from the `data_source_name`.
+
+### `aws`
+
+The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) identifier for the database being monitored.
+
+| Name  | Type     | Description                                             | Default | Required |
+|-------|----------|---------------------------------------------------------|---------|----------|
+| `arn` | `string` | The ARN associated with the database under observation. |         | yes      |
+
+### `azure`
+
+The `azure` block supplies the identifying information for the database being monitored.
+
+| Name              | Type     | Description                                          | Default | Required |
+|-------------------|----------|------------------------------------------------------|---------|----------|
+| `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
+| `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
+| `server_name`     | `string` | The database server name.                            |         | no       |
+
+### `gcp`
+
+The `gcp` block supplies the identifying information for the GCP Cloud SQL database being monitored.
+
+| Name              | Type     | Description                                                                                                                 | Default | Required |
+|-------------------|----------|-----------------------------------------------------------------------------------------------------------------------------|---------|----------|
+| `connection_name` | `string` | The Cloud SQL instance connection name in the format `project:region:instance`, for example `my-project:us-central1:my-db`. |         | yes      |
 
 ### `schema_details`
 
