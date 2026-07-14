@@ -695,6 +695,7 @@ func TestSchemaDetails(t *testing.T) {
 		defer db.Close()
 
 		lokiClient := loki.NewCollectingHandler()
+		defer lokiClient.Stop()
 
 		collector, err := NewSchemaDetails(SchemaDetailsArguments{
 			DB:              db,
@@ -717,20 +718,8 @@ func TestSchemaDetails(t *testing.T) {
 			}),
 		)
 
-		err = collector.Start(t.Context())
-		require.NoError(t, err)
-
-		require.Eventually(t, func() bool {
-			return mock.ExpectationsWereMet() == nil
-		}, 5*time.Second, 100*time.Millisecond)
-
-		collector.Stop()
-		lokiClient.Stop()
-
-		require.Eventually(t, func() bool {
-			return collector.Stopped()
-		}, 5*time.Second, 100*time.Millisecond)
-
+		require.NoError(t, collector.extractSchema(t.Context()))
+		require.NoError(t, mock.ExpectationsWereMet())
 		require.Empty(t, lokiClient.Received())
 	})
 
