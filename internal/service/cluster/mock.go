@@ -35,6 +35,16 @@ func (mockCluster) Ready() bool {
 	return true
 }
 
+func (mockCluster) AllocatorEnabled() bool { return false }
+
+func (mockCluster) IsAllocatorLeader() bool { return false }
+
+func (mockCluster) RegisterDiscoveredTargets(string, []TargetEntry) {}
+
+func (mockCluster) AssignedTargets(string) ([]TargetEntry, error) { return nil, nil }
+
+func (mockCluster) ReportWeights(map[uint64]uint64) {}
+
 func (mockCluster) Observe(ckit.Observer) {
 	// no-op
 }

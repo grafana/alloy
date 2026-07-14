@@ -238,6 +238,7 @@ You can use the following blocks with `discovery.kubernetes`:
 | [`attach_metadata`][attach_metadata]  | Optional metadata to attach to discovered targets.         | no       |
 | [`authorization`][authorization]      | Configure generic authorization to the endpoint.           | no       |
 | [`basic_auth`][basic_auth]            | Configure `basic_auth` for authenticating to the endpoint. | no       |
+| [`clustering`][clustering]            | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
 | [`namespaces`][namespaces]            | Information about which Kubernetes namespaces to search.   | no       |
 | [`oauth2`][oauth2]                    | Configure OAuth 2.0 for authenticating to the endpoint.    | no       |
 | `oauth2` > [`tls_config`][tls_config] | Configure TLS settings for connecting to the endpoint.     | no       |
@@ -247,12 +248,37 @@ You can use the following blocks with `discovery.kubernetes`:
 [attach_metadata]: #attach_metadata
 [authorization]: #authorization
 [basic_auth]: #basic_auth
+[clustering]: #clustering
 [namespaces]: #namespaces
 [oauth2]: #oauth2
 [selectors]: #selectors
 [tls_config]: #tls_config
 
 {{< /docs/alloy-config >}}
+
+### `clustering`
+
+| Name      | Type   | Description                                  | Default | Required |
+| --------- | ------ | -------------------------------------------- | ------- | -------- |
+| `enabled` | `bool` | Run Kubernetes discovery on one node only.   | `false` | yes      |
+
+{{< admonition type="caution" >}}
+This is an experimental feature.
+It requires the `--feature.prometheus.clustering.target-allocator.enabled` command line flag to take effect, and its behavior may change in future releases.
+{{< /admonition >}}
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to `true`, only a single elected leader node runs Kubernetes discovery for this component.
+The leader computes how to distribute the discovered targets across the cluster and serves each node its own slice.
+Every other node pulls its assigned targets from the leader instead of querying the Kubernetes API server itself.
+
+This reduces load on the Kubernetes API server, because discovery runs once per cluster instead of once per node, and guarantees that each target is owned by exactly one node, so no target is scraped twice or dropped.
+
+When you enable `clustering` on the `discovery.kubernetes` component, leave clustering disabled on the downstream `prometheus.scrape` component, because target distribution has already happened during discovery.
+Each node scrapes exactly the targets that this component exports to it.
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, or the feature flag isn't set, then the block is a no-op and every node runs discovery and exports the full target set.
+
+[using clustering]: ../../../../get-started/clustering/
 
 ### `attach_metadata`
 

@@ -1,0 +1,5 @@
+# Compiled binary
+/clustering-debug
+
+# Collected per-instance / per-pod dumps
+*.json

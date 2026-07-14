@@ -1,11 +1,65 @@
 package discovery
 
 import (
+	"strconv"
+
 	"github.com/grafana/ckit/peer"
 	"github.com/grafana/ckit/shard"
 
 	"github.com/grafana/alloy/internal/service/cluster"
 )
+
+// ClusteringKeyMetaLabel carries a target's clustering key (its
+// NonMetaLabelsHash) as a per-target meta-label. In allocator mode the scrape
+// component stamps it onto the targets it scrapes so the scrape-time series
+// counter can attribute scraped series back to the exact distribution key the
+// allocator uses — recomputing the hash from Prometheus' discovered labels would
+// not match, since Prometheus adds synthetic non-meta labels (__scheme__,
+// __scrape_interval__, …). As a __meta_ label it is excluded from
+// NonMetaLabelsHash and dropped from stored series, so it has no cardinality
+// impact and doesn't change the key it carries.
+const ClusteringKeyMetaLabel = "__meta_alloy_clustering_key__"
+
+// StampClusteringKeys returns copies of targets, each stamped with
+// ClusteringKeyMetaLabel set to that target's clustering key.
+func StampClusteringKeys(targets []Target) []Target {
+	out := make([]Target, len(targets))
+	for i, t := range targets {
+		key := strconv.FormatUint(t.NonMetaLabelsHash(), 10)
+		out[i] = t.withOwnLabel(ClusteringKeyMetaLabel, key)
+	}
+	return out
+}
+
+// targetsToEntries converts discovered targets into the neutral, JSON-friendly
+// TargetEntry form the cluster allocator stores and serves. The key is the
+// target's clustering key (NonMetaLabelsHash) and Labels is the full label set
+// (including __meta_* labels, which downstream relabeling needs). Duplicate keys
+// collapse to one entry, matching how DistributedTargets de-duplicates.
+func targetsToEntries(targets []Target) []cluster.TargetEntry {
+	seen := make(map[uint64]struct{}, len(targets))
+	out := make([]cluster.TargetEntry, 0, len(targets))
+	for _, t := range targets {
+		key := t.NonMetaLabelsHash()
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, cluster.TargetEntry{Key: key, Labels: t.AsMap()})
+	}
+	return out
+}
+
+// entriesToTargets reconstructs scrape-able targets from allocator entries. The
+// reconstructed target's NonMetaLabelsHash equals the original key because the
+// full label set is preserved and the hash is deterministic over it.
+func entriesToTargets(entries []cluster.TargetEntry) []Target {
+	out := make([]Target, 0, len(entries))
+	for _, e := range entries {
+		out = append(out, NewTargetFromMap(e.Labels))
+	}
+	return out
+}
 
 // DistributedTargets uses the node's Lookup method to distribute discovery
 // targets when a component runs in a cluster.
@@ -60,11 +114,11 @@ func NewDistributedTargetsWithCustomLabels(clusteringEnabled bool, cluster clust
 		}
 		unique[targetKey] = struct{}{}
 
-		// Determine if target belongs locally. Make sure it doesn't if cluster not ready.
+		// Determine if target belongs locally using the count-based hash ring.
+		// Don't take traffic if the cluster is not ready.
 		belongsToLocal := false
 		if cluster.Ready() {
-			peers, err := cluster.Lookup(targetKey, 1, shard.OpReadWrite)
-			belongsToLocal = err != nil || len(peers) == 0 || peers[0].Self
+			belongsToLocal = ownedByCountBasedLookup(cluster, targetKey)
 		}
 
 		if belongsToLocal {
@@ -109,6 +163,17 @@ func (dt *DistributedTargets) MovedToRemoteInstance(prev *DistributedTargets) []
 	return movedAwayTargets
 }
 
+// ownedByCountBasedLookup reports whether the local node owns the key under the
+// default count-based hash ring. Ownership only applies once the cluster is
+// ready; before that the node takes no traffic.
+func ownedByCountBasedLookup(cluster cluster.Cluster, key shard.Key) bool {
+	if !cluster.Ready() {
+		return false
+	}
+	peers, err := cluster.Lookup(key, 1, shard.OpReadWrite)
+	return err != nil || len(peers) == 0 || peers[0].Self
+}
+
 func keyFor(tgt Target) shard.Key {
 	return shard.Key(tgt.NonMetaLabelsHash())
 }
@@ -132,3 +197,13 @@ func (l disabledCluster) Peers() []peer.Peer {
 func (l disabledCluster) Ready() bool {
 	return true
 }
+
+func (l disabledCluster) AllocatorEnabled() bool { return false }
+
+func (l disabledCluster) IsAllocatorLeader() bool { return false }
+
+func (l disabledCluster) RegisterDiscoveredTargets(_ string, _ []cluster.TargetEntry) {}
+
+func (l disabledCluster) AssignedTargets(_ string) ([]cluster.TargetEntry, error) { return nil, nil }
+
+func (l disabledCluster) ReportWeights(_ map[uint64]uint64) {}

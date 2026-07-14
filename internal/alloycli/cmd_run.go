@@ -241,6 +241,7 @@ func mountRunFlags(r *alloyRun, fset *pflag.FlagSet) {
 	fset.BoolVar(&r.enableCommunityComps, "feature.community-components.enabled", r.enableCommunityComps, "Enable community components.")
 	fset.DurationVar(&r.taskShutdownDeadline, "feature.component-shutdown-deadline", r.taskShutdownDeadline, "Maximum duration to wait for a component to shut down before giving up and logging an error")
 	fset.BoolVar(&r.enableDirectFanout, "feature.prometheus.direct-fanout.enabled", r.enableDirectFanout, "Enable experimental direct fanout for metric forwarding without a global label store")
+	fset.BoolVar(&r.enableTargetAllocator, "feature.prometheus.clustering.target-allocator.enabled", r.enableTargetAllocator, "Enable experimental allocator-mode clustering: a single elected leader runs service discovery for clustering-enabled discovery.* components and serves each node its slice of targets")
 
 	addDeprecatedFlags(fset)
 }
@@ -280,6 +281,7 @@ type alloyRun struct {
 	enableDirectFanout      bool
 	enableGraphQL           bool
 	enableGraphQLPlayground bool
+	enableTargetAllocator   bool
 }
 
 func (fr *alloyRun) checkExperimentalFlags() error {
@@ -495,6 +497,7 @@ func (fr *alloyRun) run(ctx context.Context, fset *pflag.FlagSet, params runPara
 		TLSServerName:          fr.clusterTLSServerName,
 		MinimumClusterSize:     fr.clusterWaitForSize,
 		MinimumSizeWaitTimeout: fr.clusterWaitTimeout,
+		EnableTargetAllocator:  fr.enableTargetAllocator,
 	})
 	if err != nil {
 		return err

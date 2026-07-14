@@ -89,6 +89,13 @@ type Options struct {
 	MinimumClusterSize     int           // Minimum cluster size before admitting traffic to components that use clustering.
 	MinimumSizeWaitTimeout time.Duration // Maximum duration to wait for minimum cluster size before proceeding; 0 means no timeout.
 
+	// EnableTargetAllocator turns on allocator-mode clustering: a single elected
+	// leader runs service discovery for clustering-enabled discovery.* components,
+	// computes the cluster-wide assignment, and serves each node its slice (so
+	// discovery runs once, not once per node, and ownership can't diverge). Off by
+	// default; gated behind a run feature flag.
+	EnableTargetAllocator bool
+
 	// Function to discover peers to join. If this function is nil or returns an
 	// empty slice, no peers will be joined.
 	DiscoverPeers discovery.DiscoverFn
@@ -103,6 +110,12 @@ type Service struct {
 	sharder shard.Sharder
 	node    *ckit.Node
 	randGen *rand.Rand
+
+	// allocator is the leader-side target allocator, shared with alloyCluster.
+	allocator *targetAllocator
+	// allocatorMetrics exposes allocator state for diagnostics; nil if allocator
+	// mode is off or no metrics registerer was provided.
+	allocatorMetrics *allocatorMetrics
 
 	// alloyCluster is given to components via calls to Data() and implements Cluster.
 	alloyCluster *alloyCluster
@@ -121,6 +134,22 @@ type Component interface {
 	// to not utilize clustering.
 	NotifyClusterChange()
 }
+
+const (
+	// seriesProbeOwners is how many ranked ring candidates a target is allowed to
+	// land on during weighted assignment. A target can only move among these, so
+	// weight changes stay local (preserving consistent-hashing stability).
+	seriesProbeOwners = 3
+
+	// seriesImbalanceEpsilon is the minimum peak-to-mean improvement required
+	// before a freshly computed assignment replaces the current one (hysteresis).
+	seriesImbalanceEpsilon = 0.10
+
+	// allocatorRecomputeInterval is how often the leader recomputes the weighted
+	// assignment to pick up series weights reported by peers, in addition to the
+	// inline recomputes on target/membership changes.
+	allocatorRecomputeInterval = 15 * time.Second
+)
 
 // ComponentBlock holds common arguments for clustering settings within a
 // component. ComponentBlock is intended to be exposed as a block called
@@ -194,6 +223,13 @@ func New(opts Options) (*Service, error) {
 		}
 	}
 
+	allocator := newTargetAllocator()
+
+	// The allocator HTTP endpoint lives under the ckit base route (peers reach it
+	// via the same advertise address + transport).
+	ckitBase, _ := node.Handler()
+	allocatorPath := ckitBase + "targets"
+
 	s := &Service{
 		log:    l,
 		tracer: t,
@@ -201,10 +237,18 @@ func New(opts Options) (*Service, error) {
 
 		sharder:             ckitConfig.Sharder,
 		node:                node,
+		allocator:           allocator,
 		randGen:             rand.New(rand.NewSource(time.Now().UnixNano())),
 		notifyClusterChange: make(chan struct{}, 1),
 	}
-	s.alloyCluster = newAlloyCluster(ckitConfig.Sharder, s.triggerClusterChangeNotification, opts, l)
+	s.alloyCluster = newAlloyCluster(ckitConfig.Sharder, s.triggerClusterChangeNotification, opts, l, allocator, httpClient, allocatorPath, opts.EnableTLS)
+
+	if opts.EnableTargetAllocator && opts.Metrics != nil {
+		s.allocatorMetrics = newAllocatorMetrics(opts.ClusterName)
+		if err := s.allocatorMetrics.register(opts.Metrics); err != nil {
+			return nil, fmt.Errorf("failed to register target-allocator metrics: %w", err)
+		}
+	}
 
 	return s, nil
 }
@@ -267,15 +311,21 @@ func (s *Service) Definition() service.Definition {
 // ServiceHandler returns the service handler for the clustering service. The
 // resulting handler always returns 404 when clustering is disabled.
 func (s *Service) ServiceHandler(_ service.Host) (base string, handler http.Handler) {
-	base, handler = s.node.Handler()
+	base, ckitHandler := s.node.Handler()
 
 	if !s.opts.EnableClustering {
-		handler = http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		return base, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			http.Error(w, "clustering is disabled", http.StatusNotFound)
 		})
 	}
 
-	return base, handler
+	// Serve the target-allocator endpoint alongside ckit's transport under the
+	// same base. The more specific "<base>targets" pattern wins for that path;
+	// everything else under base goes to ckit.
+	mux := http.NewServeMux()
+	mux.Handle(base+"targets", http.HandlerFunc(s.serveAllocatorTargets))
+	mux.Handle(base, ckitHandler)
+	return base, mux
 }
 
 // ChangeState changes the state of the service. If clustering is enabled,
@@ -353,6 +403,30 @@ func (s *Service) Run(ctx context.Context, host service.Host) error {
 		}
 	}()
 
+	// When allocator mode is on, periodically recompute the weighted assignment so
+	// the leader picks up series weights reported by peers since the last compute
+	// (target/membership changes already recompute inline). Recompute is
+	// leader-only; on followers it is a no-op. Components re-export / re-pull their
+	// slices on their own refresh interval, so no explicit notification is needed.
+	if s.opts.EnableTargetAllocator {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			t := time.NewTicker(allocatorRecomputeInterval)
+			defer t.Stop()
+			s.refreshAllocatorMetrics()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-t.C:
+					s.refreshAllocatorMetrics()
+					s.recomputeAllocator()
+				}
+			}
+		}()
+	}
+
 	if s.opts.EnableClustering && s.opts.RejoinInterval > 0 {
 		wg.Add(1)
 
@@ -414,6 +488,10 @@ func (s *Service) notifyComponentsOfClusterChanges(ctx context.Context, limiter 
 	s.logPeers("peers changed", toStringSlice(peers))
 	span.SetAttributes(attribute.Int("peers_count", len(peers)))
 	span.SetAttributes(attribute.Int("minimum_cluster_size", s.opts.MinimumClusterSize))
+
+	// Recompute the target-allocator assignment (leader only) so components
+	// observe up-to-date ownership when they re-distribute their targets.
+	s.recomputeAllocator()
 
 	// Notify all components about the clustering change.
 	components := component.GetAllComponents(host, component.InfoOptions{})

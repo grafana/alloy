@@ -38,6 +38,7 @@ type ClusterOptions struct {
 	TLSCertPath            string
 	TLSKeyPath             string
 	TLSServerName          string
+	EnableTargetAllocator  bool
 }
 
 func buildClusterService(opts ClusterOptions) (*cluster.Service, error) {
@@ -69,6 +70,7 @@ func NewClusterService(
 		TLSCertPath:            opts.TLSCertPath,
 		TLSKeyPath:             opts.TLSKeyPath,
 		TLSServerName:          opts.TLSServerName,
+		EnableTargetAllocator:  opts.EnableTargetAllocator,
 	}
 
 	if config.NodeName == "" {

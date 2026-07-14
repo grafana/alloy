@@ -1,0 +1,119 @@
+logging {
+  level = "info"
+}
+
+// ---- workload: prom-gen, distributed across the cluster via series-balancing ----
+
+discovery.kubernetes "promgen" {
+  role = "pod"
+  namespaces {
+    names = [sys.env("POD_NAMESPACE")]
+  }
+}
+
+discovery.relabel "promgen" {
+  targets = discovery.kubernetes.promgen.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    regex         = "prom-gen-cluster"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_port_number"]
+    regex         = "9001"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "instance"
+  }
+}
+
+prometheus.scrape "promgen" {
+  targets         = discovery.relabel.promgen.output
+  forward_to      = [prometheus.relabel.promgen.receiver]
+  scrape_interval = "5s"
+  scrape_timeout  = "2s"
+
+  clustering {
+    enabled = true
+  }
+}
+
+prometheus.relabel "promgen" {
+  forward_to = [prometheus.remote_write.workload.receiver]
+  rule {
+    action       = "replace"
+    target_label = "alloy_test_name"
+    replacement  = "workload"
+  }
+}
+
+prometheus.remote_write "workload" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+  // Truncate the WAL aggressively so active-series settles to the true value
+  // within a minute or two of a scale change, instead of the 2h default.
+  wal {
+    truncate_frequency = "1m"
+    min_keepalive_time = "1m"
+    max_keepalive_time = "2m"
+  }
+}
+
+// ---- selfmon: scrape every Alloy pod's own active-series gauge ----
+// NOT clustered on purpose: every pod scrapes every Alloy pod, so each pod's
+// prometheus_remote_write_wal_storage_active_series reliably reaches Mimir
+// regardless of how the workload scrape is distributed (so the measurement is
+// decoupled from the behaviour under test). Mimir dedups the identical series.
+
+discovery.kubernetes "alloy_self" {
+  role = "pod"
+  namespaces {
+    names = [sys.env("POD_NAMESPACE")]
+  }
+}
+
+discovery.relabel "alloy_self" {
+  targets = discovery.kubernetes.alloy_self.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    regex         = "alloy"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_port_number"]
+    regex         = "12345"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "instance"
+  }
+}
+
+prometheus.scrape "alloy_self" {
+  targets         = discovery.relabel.alloy_self.output
+  forward_to      = [prometheus.relabel.alloy_self.receiver]
+  scrape_interval = "5s"
+  scrape_timeout  = "2s"
+}
+
+prometheus.relabel "alloy_self" {
+  forward_to = [prometheus.remote_write.selfmon.receiver]
+  // Keep only the metric we assert on, to keep Mimir small.
+  rule {
+    source_labels = ["__name__"]
+    regex         = "prometheus_remote_write_wal_storage_active_series"
+    action        = "keep"
+  }
+}
+
+prometheus.remote_write "selfmon" {
+  endpoint {
+    url = "http://mimir:9009/api/v1/push"
+  }
+}

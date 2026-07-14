@@ -322,6 +322,188 @@
          ],
          "title": "Number of peers seen by each instance",
          "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Active series held in the WAL by each instance. In a well-balanced\ncluster these lines track closely. A persistent outlier means one node\nowns disproportionately many series — usually a single high-cardinality\n(\"whale\") target, which cannot be split across nodes.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 30
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (${groupby}) (prometheus_remote_write_wal_storage_active_series{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Active series per node",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Rate of samples ingested by each instance's remote_write. A second view\nof per-node load balance, alongside active series.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "cps"
+            }
+         },
+         "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 30
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (${groupby}) (rate(prometheus_remote_storage_samples_in_total{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}[$__rate_interval]))\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Samples ingested / s per node",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "The elected target-allocator leader runs service discovery for\nclustering-enabled discovery.* components and computes the cluster-wide\ntarget assignment. Exactly one node should report as leader.\n",
+         "fieldConfig": {
+            "defaults": {
+               "mappings": [
+                  {
+                     "options": {
+                        "1": {
+                           "color": "green",
+                           "index": 0,
+                           "text": "Leader"
+                        }
+                     },
+                     "type": "value"
+                  },
+                  {
+                     "options": {
+                        "0": {
+                           "color": "text",
+                           "index": 1,
+                           "text": "follower"
+                        }
+                     },
+                     "type": "value"
+                  }
+               ]
+            }
+         },
+         "gridPos": {
+            "h": 9,
+            "w": 8,
+            "x": 0,
+            "y": 39
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "cluster_target_allocator_is_leader{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"}\n",
+               "format": "table",
+               "instant": true,
+               "legendFormat": "__auto",
+               "range": false
+            }
+         ],
+         "title": "Target allocator leader",
+         "transformations": [
+            {
+               "id": "organize",
+               "options": {
+                  "excludeByName": {
+                     "Time": true,
+                     "__name__": true,
+                     "cluster": true,
+                     "cluster_name": true,
+                     "component_path": true,
+                     "container": true,
+                     "instance": true,
+                     "job": true,
+                     "namespace": true
+                  },
+                  "indexByName": { },
+                  "renameByName": {
+                     "Value": "Is leader",
+                     "pod": "Pod"
+                  }
+               }
+            }
+         ],
+         "type": "table"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "On the leader: how many targets the allocator has registered from\ndiscovery, and how many of those carry a measured series weight.\n\n* If registered stays at 0 while clustering is on, discovery.* is not\n  feeding the allocator — its `clustering` block is not enabled.\n* If weighted lags registered, series weights are not yet flowing from\n  the scrape components.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 9,
+            "w": 8,
+            "x": 8,
+            "y": 39
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "max(cluster_target_allocator_registered_targets{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+               "instant": false,
+               "legendFormat": "Registered",
+               "range": true
+            },
+            {
+               "datasource": "${datasource}",
+               "expr": "max(cluster_target_allocator_weighted_targets{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+               "instant": false,
+               "legendFormat": "Weighted",
+               "range": true
+            }
+         ],
+         "title": "Allocator targets: registered vs weighted",
+         "type": "timeseries"
+      },
+      {
+         "datasource": "${datasource}",
+         "description": "Series each node has measured and reported to the allocator for\nweighting. The allocator uses these to give a whale target's owner\nfewer other targets, evening out series across the cluster.\n",
+         "fieldConfig": {
+            "defaults": {
+               "unit": "short"
+            }
+         },
+         "gridPos": {
+            "h": 9,
+            "w": 8,
+            "x": 16,
+            "y": 39
+         },
+         "targets": [
+            {
+               "datasource": "${datasource}",
+               "expr": "sum by (${groupby}) (cluster_target_allocator_local_series{cluster=~\"$cluster\", namespace=~\"$namespace\", job=~\"$job\"})\n",
+               "instant": false,
+               "legendFormat": "__auto",
+               "range": true
+            }
+         ],
+         "title": "Measured series per node (allocator)",
+         "type": "timeseries"
       }
    ],
    "refresh": "30s",

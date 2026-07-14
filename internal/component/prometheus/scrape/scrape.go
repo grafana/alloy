@@ -26,6 +26,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
 	"github.com/grafana/alloy/internal/service/cluster"
+
 	"github.com/grafana/alloy/internal/service/http"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
@@ -51,6 +52,10 @@ var (
 	defaultScrapeProtocols                = convertScrapeProtocols(config.DefaultScrapeProtocols)
 	defaultNativeHistogramScrapeProtocols = convertScrapeProtocols(config.DefaultProtoFirstScrapeProtocols)
 )
+
+// weightReportInterval is how often, in allocator mode, the component reports its
+// measured per-target series counts to the cluster. A var so tests can shorten it.
+var weightReportInterval = 15 * time.Second
 
 // Arguments holds values which are used to configure the prometheus.scrape
 // component.
@@ -266,6 +271,10 @@ type Component struct {
 	appendable      *prometheus.Fanout
 	firstUpdateDone bool
 
+	// seriesCounter measures per-target series counts for series-aware clustering
+	// in allocator mode. nil when allocator mode is off.
+	seriesCounter *seriesCounter
+
 	dtMutex            sync.Mutex
 	distributedTargets *discovery.DistributedTargets
 
@@ -275,6 +284,7 @@ type Component struct {
 var (
 	_ component.Component     = (*Component)(nil)
 	_ component.LiveDebugging = (*Component)(nil)
+	_ cluster.Component       = (*Component)(nil)
 )
 
 // New creates a new prometheus.scrape component.
@@ -355,11 +365,20 @@ func New(o component.Options, args Arguments) (*Component, error) {
 
 	interceptor := NewInterceptor(livedebugging.ComponentID(o.ID), c.debugDataPublisher, alloyAppendable)
 
+	// In allocator mode, wrap the appendable so we can measure per-target series
+	// counts and report them to the target-allocator leader for weighted
+	// distribution. Otherwise this stays the plain interceptor.
+	var scrapeAppendable storage.Appendable = interceptor
+	if clusterData.AllocatorEnabled() {
+		c.seriesCounter = newSeriesCounter(interceptor)
+		scrapeAppendable = c.seriesCounter
+	}
+
 	scraper, err := scrape.NewManager(
 		scrapeOptions,
 		c.opts.Logger,
 		func(s string) (*promlogging.JSONFileLogger, error) { return promlogging.NewJSONFileLogger(s) },
-		interceptor,
+		scrapeAppendable,
 		nil,
 		unregisterer)
 	if err != nil {
@@ -395,10 +414,21 @@ func (c *Component) Run(ctx context.Context) error {
 		}
 	}()
 
+	// In allocator mode, periodically report measured per-target series counts to
+	// the cluster so the target-allocator leader can weight the assignment.
+	var reportC <-chan time.Time
+	if c.seriesCounter != nil {
+		ticker := time.NewTicker(weightReportInterval)
+		defer ticker.Stop()
+		reportC = ticker.C
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-reportC:
+			c.cluster.ReportWeights(c.seriesCounter.Weights())
 		case <-c.reloadTargets:
 			c.mut.RLock()
 			var (
@@ -441,6 +471,13 @@ func (c *Component) distributeTargets(targets []discovery.Target, jobName string
 
 	newLocalTargets := newDistTargets.LocalTargets()
 	c.targetsGauge.Set(float64(len(newLocalTargets)))
+
+	// In allocator mode, stamp each target with its clustering key so the series
+	// counter can attribute scraped series back to the exact distribution key.
+	if c.seriesCounter != nil {
+		newLocalTargets = discovery.StampClusteringKeys(newLocalTargets)
+	}
+
 	promNewTargets := discovery.ComponentTargetsToPromTargetGroups(jobName, newLocalTargets)
 
 	movedTargets := newDistTargets.MovedToRemoteInstance(oldDistributedTargets)

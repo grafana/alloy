@@ -1,0 +1,19 @@
+# A 3-replica Alloy cluster with series-aware (weighted) target distribution
+# enabled via the run feature flag.
+controller:
+  type: statefulset
+  replicas: 3
+
+alloy:
+  stabilityLevel: experimental
+  clustering:
+    enabled: true
+  extraArgs:
+    - --feature.prometheus.clustering.series-balancing.enabled=true
+  # POD_NAMESPACE is consumed by config.alloy via sys.env so the test namespace
+  # name lives in exactly one place: the Go test (deps.NewNamespace).
+  extraEnv:
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace

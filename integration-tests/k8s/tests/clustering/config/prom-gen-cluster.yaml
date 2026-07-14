@@ -1,0 +1,23 @@
+# Several prom-gen replicas so there are multiple scrape targets to distribute
+# across the Alloy cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prom-gen-cluster
+spec:
+  replicas: 12
+  selector:
+    matchLabels:
+      app: prom-gen-cluster
+  template:
+    metadata:
+      labels:
+        app: prom-gen-cluster
+    spec:
+      containers:
+        - name: prom-gen
+          image: prom-gen:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 9001
+              name: metrics

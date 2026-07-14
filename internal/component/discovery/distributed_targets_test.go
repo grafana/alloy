@@ -318,3 +318,9 @@ func (f *fakeCluster) Peers() []peer.Peer {
 func (f *fakeCluster) Ready() bool {
 	return true
 }
+
+func (f *fakeCluster) AllocatorEnabled() bool                                  { return false }
+func (f *fakeCluster) IsAllocatorLeader() bool                                 { return false }
+func (f *fakeCluster) RegisterDiscoveredTargets(string, []cluster.TargetEntry) {}
+func (f *fakeCluster) AssignedTargets(string) ([]cluster.TargetEntry, error)   { return nil, nil }
+func (f *fakeCluster) ReportWeights(map[uint64]uint64)                         {}

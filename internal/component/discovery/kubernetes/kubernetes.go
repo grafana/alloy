@@ -8,6 +8,7 @@ import (
 	"github.com/grafana/alloy/internal/component/common/config"
 	"github.com/grafana/alloy/internal/component/discovery"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/cluster"
 )
 
 func init() {
@@ -32,6 +33,17 @@ type Arguments struct {
 	NamespaceDiscovery NamespaceDiscovery      `alloy:"namespaces,block,optional"`
 	Selectors          []SelectorConfig        `alloy:"selectors,block,optional"`
 	AttachMetadata     AttachMetadataConfig    `alloy:"attach_metadata,block,optional"`
+
+	// Clustering opts this component into allocator-mode clustering: when enabled
+	// (and the target-allocator feature flag is on), only the elected leader runs
+	// Kubernetes discovery and each node scrapes the slice assigned to it, instead
+	// of every node discovering the full set independently.
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
+}
+
+// ClusteringEnabled implements discovery.ClusteredConfig.
+func (args Arguments) ClusteringEnabled() bool {
+	return args.Clustering.Enabled
 }
 
 // DefaultConfig holds defaults for SDConfig.

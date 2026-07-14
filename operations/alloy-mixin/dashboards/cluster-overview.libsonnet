@@ -287,8 +287,142 @@ local cluster_node_filename = 'alloy-cluster-node.json';
             ||| % $._config,
             legendFormat='Minimum cluster size',
           )
-        ]) + 
+        ]) +
         panel.withOverridesByName('Minimum cluster size', minClusterSizeLineStyle)
+      ),
+
+      // ============================ Workload distribution ============================
+      // Active series per node
+      (
+        panel.new(title='Active series per node', type='timeseries') +
+        panel.withUnit('short') +
+        panel.withDescription(|||
+          Active series held in the WAL by each instance. In a well-balanced
+          cluster these lines track closely. A persistent outlier means one node
+          owns disproportionately many series — usually a single high-cardinality
+          ("whale") target, which cannot be split across nodes.
+        |||) +
+        panel.withPosition({ h: 9, w: 12, x: 0, y: 30 }) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (${groupby}) (prometheus_remote_write_wal_storage_active_series{%(groupSelector)s})
+            ||| % $._config,
+            legendFormat='__auto',
+          ),
+        ])
+      ),
+      // Samples ingested per node
+      (
+        panel.new(title='Samples ingested / s per node', type='timeseries') +
+        panel.withUnit('cps') +
+        panel.withDescription(|||
+          Rate of samples ingested by each instance's remote_write. A second view
+          of per-node load balance, alongside active series.
+        |||) +
+        panel.withPosition({ h: 9, w: 12, x: 12, y: 30 }) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (${groupby}) (rate(prometheus_remote_storage_samples_in_total{%(groupSelector)s}[$__rate_interval]))
+            ||| % $._config,
+            legendFormat='__auto',
+          ),
+        ])
+      ),
+
+      // ============================ Target allocator ============================
+      // (Experimental: requires --feature.prometheus.clustering.target-allocator.enabled
+      //  and a `clustering` block on the discovery.* component. Panels are empty otherwise.)
+      // Leader
+      (
+        panel.new(title='Target allocator leader', type='table') +
+        panel.withDescription(|||
+          The elected target-allocator leader runs service discovery for
+          clustering-enabled discovery.* components and computes the cluster-wide
+          target assignment. Exactly one node should report as leader.
+        |||) +
+        panel.withPosition({ h: 9, w: 8, x: 0, y: 39 }) +
+        panel.withQueries([
+          panel.newInstantQuery(
+            expr= |||
+              cluster_target_allocator_is_leader{%(groupSelector)s}
+            ||| % $._config,
+            format='table',
+          ),
+        ]) +
+        panel.withTransformations([
+          {
+            id: 'organize',
+            options: {
+              excludeByName: {
+                Time: true,
+                __name__: true,
+                cluster: true,
+                cluster_name: true,
+                namespace: true,
+                job: true,
+                container: true,
+                component_path: true,
+                instance: true,
+              },
+              indexByName: {},
+              renameByName: { Value: 'Is leader', pod: 'Pod' },
+            },
+          },
+        ]) +
+        panel.withMappings([
+          { options: { '1': { color: 'green', index: 0, text: 'Leader' } }, type: 'value' },
+          { options: { '0': { color: 'text', index: 1, text: 'follower' } }, type: 'value' },
+        ])
+      ),
+      // Registered vs weighted targets
+      (
+        panel.new(title='Allocator targets: registered vs weighted', type='timeseries') +
+        panel.withUnit('short') +
+        panel.withDescription(|||
+          On the leader: how many targets the allocator has registered from
+          discovery, and how many of those carry a measured series weight.
+
+          * If registered stays at 0 while clustering is on, discovery.* is not
+            feeding the allocator — its `clustering` block is not enabled.
+          * If weighted lags registered, series weights are not yet flowing from
+            the scrape components.
+        |||) +
+        panel.withPosition({ h: 9, w: 8, x: 8, y: 39 }) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              max(cluster_target_allocator_registered_targets{%(groupSelector)s})
+            ||| % $._config,
+            legendFormat='Registered',
+          ),
+          panel.newQuery(
+            expr= |||
+              max(cluster_target_allocator_weighted_targets{%(groupSelector)s})
+            ||| % $._config,
+            legendFormat='Weighted',
+          ),
+        ])
+      ),
+      // Measured series per node (allocator view)
+      (
+        panel.new(title='Measured series per node (allocator)', type='timeseries') +
+        panel.withUnit('short') +
+        panel.withDescription(|||
+          Series each node has measured and reported to the allocator for
+          weighting. The allocator uses these to give a whale target's owner
+          fewer other targets, evening out series across the cluster.
+        |||) +
+        panel.withPosition({ h: 9, w: 8, x: 16, y: 39 }) +
+        panel.withQueries([
+          panel.newQuery(
+            expr= |||
+              sum by (${groupby}) (cluster_target_allocator_local_series{%(groupSelector)s})
+            ||| % $._config,
+            legendFormat='__auto',
+          ),
+        ])
       ),
     ]),
 }

@@ -305,11 +305,13 @@ func buildPeers(count int) []peer.Peer {
 func newTestService(t *testing.T, opts Options, peers []peer.Peer, callback func()) *Service {
 	logger := util.TestAlloyLogger(t).Slog()
 	sharder := &mockSharder{peers: peers}
-	ac := newAlloyCluster(sharder, callback, opts, logger.With("subcomponent", "alloy_cluster"))
+	allocator := newTargetAllocator()
+	ac := newAlloyCluster(sharder, callback, opts, logger.With("subcomponent", "alloy_cluster"), allocator, nil, "/api/v1/ckit/transport/targets", false)
 	return &Service{
 		log:          logger,
 		opts:         opts,
 		alloyCluster: ac,
 		sharder:      sharder,
+		allocator:    allocator,
 	}
 }

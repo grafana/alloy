@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/runtime/equality"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/syntax"
 	"github.com/grafana/alloy/syntax/parser"
 	"github.com/grafana/alloy/syntax/token/builder"
@@ -1079,6 +1080,12 @@ func (f *randomCluster) Peers() []peer.Peer {
 func (f *randomCluster) Ready() bool {
 	return true
 }
+
+func (f *randomCluster) AllocatorEnabled() bool                                  { return false }
+func (f *randomCluster) IsAllocatorLeader() bool                                 { return false }
+func (f *randomCluster) RegisterDiscoveredTargets(string, []cluster.TargetEntry) {}
+func (f *randomCluster) AssignedTargets(string) ([]cluster.TargetEntry, error)   { return nil, nil }
+func (f *randomCluster) ReportWeights(map[uint64]uint64)                         {}
 
 func mapToLabelSet(m map[string]string) model.LabelSet {
 	r := make(model.LabelSet, len(m))

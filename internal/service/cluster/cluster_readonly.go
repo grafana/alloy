@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"log/slog"
+	"net/http"
 	"sync"
 	"time"
 
@@ -50,6 +51,33 @@ type Cluster interface {
 	// - there is a minimum size requirement and the cluster size is >= that size
 	// - there is a minimum size requirement and cluster size is too small, but the configured wait deadline has passed.
 	Ready() bool
+
+	// AllocatorEnabled reports whether allocator-mode clustering is turned on for
+	// this Alloy process (the --feature.prometheus.clustering.target-allocator
+	// feature flag). When false, clustering-enabled discovery.* components run the
+	// discoverer on every node as before; when true, only the leader discovers and
+	// followers pull their slice.
+	AllocatorEnabled() bool
+
+	// IsAllocatorLeader reports whether the local node is the elected target
+	// allocator leader (the single node that runs discovery, computes the
+	// assignment, and serves each node its slice).
+	IsAllocatorLeader() bool
+
+	// RegisterDiscoveredTargets publishes the full set of targets a discovery
+	// component discovered. Only meaningful on the leader (the only node that
+	// runs the discoverer); the allocator uses it to compute the assignment.
+	RegisterDiscoveredTargets(componentID string, targets []TargetEntry)
+
+	// AssignedTargets returns the targets this node should scrape for a discovery
+	// component. On the leader it reads the locally-computed slice; on a follower
+	// it fetches the slice from the leader over HTTP.
+	AssignedTargets(componentID string) ([]TargetEntry, error)
+
+	// ReportWeights records this node's measured series count per target key
+	// (global across this node's scrape components). It is sent to the leader on
+	// the next allocator pull so the leader can weight the assignment.
+	ReportWeights(weights map[uint64]uint64)
 }
 
 // alloyCluster implements the Cluster interface and manages the admission control logic.
@@ -64,16 +92,31 @@ type alloyCluster struct {
 	rwMutex       sync.RWMutex
 	deadlineTimer *time.Timer
 	clusterState  clusterState
+
+	// Target-allocator state. allocator is shared with the Service (the leader
+	// computes into it; followers read their slice from the leader over HTTP).
+	allocator     *targetAllocator
+	httpClient    *http.Client
+	allocatorPath string // HTTP path peers serve the allocator on (ckit base + "targets")
+	useTLS        bool
+
+	localWeightsMut sync.Mutex
+	localWeights    map[uint64]uint64 // this node's measured series count per target key (global)
 }
 
 var _ Cluster = (*alloyCluster)(nil)
 
-func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts Options, log *slog.Logger) *alloyCluster {
+func newAlloyCluster(sharder shard.Sharder, clusterChangeCallback func(), opts Options, log *slog.Logger, allocator *targetAllocator, httpClient *http.Client, allocatorPath string, useTLS bool) *alloyCluster {
 	c := &alloyCluster{
 		log:                   log,
 		sharder:               sharder,
 		opts:                  opts,
 		clusterChangeCallback: clusterChangeCallback,
+		allocator:             allocator,
+		httpClient:            httpClient,
+		allocatorPath:         allocatorPath,
+		useTLS:                useTLS,
+		localWeights:          make(map[uint64]uint64),
 	}
 
 	c.clusterReadyGauge = prometheus.NewGauge(prometheus.GaugeOpts{

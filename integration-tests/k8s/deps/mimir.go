@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -173,6 +175,115 @@ func (m *Mimir) QueryMetadata(t *testing.T, expected map[string]ExpectedMetadata
 		require.Emptyf(c, missing, "missing metadata for metrics: %v", missing)
 		require.Emptyf(c, mismatched, "metadata mismatches: %v", mismatched)
 	}, timeout, retryInterval)
+}
+
+// QueryEquals runs an instant PromQL query and asserts (with retries) that the
+// single scalar/vector result equals want. Handy for clustering assertions like
+// count(up{...}) == number of expected targets.
+func (m *Mimir) QueryEquals(t *testing.T, query string, want float64) {
+	t.Helper()
+	endpoint := m.endpoint("/prometheus/api/v1/query")
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		queryURL, err := url.Parse(endpoint)
+		require.NoError(c, err)
+		values := queryURL.Query()
+		values.Add("query", query)
+		queryURL.RawQuery = values.Encode()
+		resp := curl(c, queryURL.String(), nil)
+
+		var parsed queryResponse
+		err = json.Unmarshal([]byte(resp), &parsed)
+		require.NoError(c, err, "failed to parse mimir query response: %s", resp)
+		require.Equal(c, "success", parsed.Status, "mimir query failed: %s", resp)
+		require.NotEmptyf(c, parsed.Data.Result, "query %q returned no data", query)
+
+		raw, ok := parsed.Data.Result[0].Value[1].(string)
+		require.Truef(c, ok, "unexpected value shape in %s", resp)
+		got, err := strconv.ParseFloat(raw, 64)
+		require.NoError(c, err)
+		require.Equalf(c, want, got, "query %q: want %v got %v", query, want, got)
+	}, timeout, retryInterval)
+}
+
+// QueryAtLeast runs an instant PromQL query and asserts (with retries) that the
+// single scalar/vector result is >= min. Useful for throughput checks like
+// sum(scrape_samples_scraped{...}) >= N where the exact value isn't fixed.
+func (m *Mimir) QueryAtLeast(t *testing.T, query string, min float64) {
+	t.Helper()
+	endpoint := m.endpoint("/prometheus/api/v1/query")
+
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		queryURL, err := url.Parse(endpoint)
+		require.NoError(c, err)
+		values := queryURL.Query()
+		values.Add("query", query)
+		queryURL.RawQuery = values.Encode()
+		resp := curl(c, queryURL.String(), nil)
+
+		var parsed queryResponse
+		err = json.Unmarshal([]byte(resp), &parsed)
+		require.NoError(c, err, "failed to parse mimir query response: %s", resp)
+		require.Equal(c, "success", parsed.Status, "mimir query failed: %s", resp)
+		require.NotEmptyf(c, parsed.Data.Result, "query %q returned no data", query)
+
+		raw, ok := parsed.Data.Result[0].Value[1].(string)
+		require.Truef(c, ok, "unexpected value shape in %s", resp)
+		got, err := strconv.ParseFloat(raw, 64)
+		require.NoError(c, err)
+		require.GreaterOrEqualf(c, got, min, "query %q: want >= %v got %v", query, min, got)
+	}, timeout, retryInterval)
+}
+
+// QueryEqualsQuery polls until two instant PromQL queries return the same
+// (non-zero) scalar, or fails after within. Used to assert an Alloy-reported
+// total equals the ground truth, e.g.
+// sum(prometheus_remote_write_wal_storage_active_series{...}) == count(real series).
+func (m *Mimir) QueryEqualsQuery(t *testing.T, lhs, rhs string, within time.Duration, msg string) {
+	t.Helper()
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		l, okL := m.queryScalar(c, lhs)
+		r, okR := m.queryScalar(c, rhs)
+		require.True(c, okL, "no data for %q", lhs)
+		require.True(c, okR, "no data for %q", rhs)
+		require.NotZero(c, r, "ground-truth query %q returned 0", rhs)
+		require.Equalf(c, r, l, "%s: %q=%v but %q=%v", msg, lhs, l, rhs, r)
+	}, within, 5*time.Second)
+}
+
+// queryScalar runs an instant query and returns the first result's value.
+func (m *Mimir) queryScalar(c *assert.CollectT, query string) (float64, bool) {
+	queryURL, err := url.Parse(m.endpoint("/prometheus/api/v1/query"))
+	require.NoError(c, err)
+	values := queryURL.Query()
+	values.Add("query", query)
+	queryURL.RawQuery = values.Encode()
+	resp := curl(c, queryURL.String(), nil)
+
+	var parsed queryResponse
+	if err := json.Unmarshal([]byte(resp), &parsed); err != nil || parsed.Status != "success" || len(parsed.Data.Result) == 0 {
+		return 0, false
+	}
+	raw, ok := parsed.Data.Result[0].Value[1].(string)
+	if !ok {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
+}
+
+type queryResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string `json:"resultType"`
+		Result     []struct {
+			Metric map[string]string `json:"metric"`
+			Value  []any             `json:"value"` // [ <ts>, "<value>" ]
+		} `json:"result"`
+	} `json:"data"`
 }
 
 func (m *Mimir) CheckAlertsConfig(t *testing.T, expectedFile string) {

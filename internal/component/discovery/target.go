@@ -74,6 +74,17 @@ func NewTargetFromSpecificAndBaseLabelSet(own, group commonlabels.LabelSet) Targ
 	return ret
 }
 
+// withOwnLabel returns a copy of the target with an extra own-label set. Used to
+// stamp a target with its clustering key (see StampClusteringKeys).
+func (t Target) withOwnLabel(name, value string) Target {
+	own := maps.Clone(t.own)
+	if own == nil {
+		own = commonlabels.LabelSet{}
+	}
+	own[commonlabels.LabelName(name)] = commonlabels.LabelValue(value)
+	return NewTargetFromSpecificAndBaseLabelSet(own, t.group)
+}
+
 // NewTargetFromModelLabels creates a target from model Labels.
 // NOTE: this is not optimised and should be avoided on a hot path.
 func NewTargetFromModelLabels(labels modellabels.Labels) Target {
