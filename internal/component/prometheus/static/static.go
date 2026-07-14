@@ -257,7 +257,7 @@ func (c *Component) Run(ctx context.Context) error {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	// Emit immediately on startup so downstream sees the metrics without waiting
+	// Send immediately on startup so downstream sees the metrics without waiting
 	// for the first tick.
 	c.send(ctx)
 

@@ -92,17 +92,17 @@ When a metric-level label and a component-level label share the same name, the m
 
 | Name      | Type   | Description                                          | Default | Required |
 |-----------|--------|------------------------------------------------------|---------|----------|
-| `enabled` | `bool` | Emit the metrics from only a single node in the cluster. | `false` | yes      |
+| `enabled` | `bool` | Send the metrics from only a single node in the cluster. | `false` | yes      |
 
-When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then exactly one node in the cluster emits the configured metrics.
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then exactly one node in the cluster sends the configured metrics.
 This prevents duplicate metrics when the same configuration runs on multiple replicas, for example, a {{< param "PRODUCT_NAME" >}} `StatefulSet` in Kubernetes.
 
 Clustering assumes that all cluster nodes are running with the same configuration file.
-All nodes use a consistent hashing algorithm over the component's ID to agree on which single node owns emission.
-When a node joins or leaves the cluster, ownership is recalculated and the new owner begins emitting.
-While the cluster is still forming and not yet ready, no node emits to avoid duplicates, so there might be a brief gap in the metrics until the cluster stabilizes.
+All nodes use a consistent hashing algorithm over the component's ID to agree on which single node is responsible for sending.
+When a node joins or leaves the cluster, ownership is recalculated and the new owner begins sending.
+While the cluster is still forming and not yet ready, no node sends to avoid duplicates, so there might be a brief gap in the metrics until the cluster stabilizes.
 
-If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and every instance emits the metrics.
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and every instance sends the metrics.
 
 [using clustering]: ../../../../get-started/clustering/
 ### `labels`
@@ -130,7 +130,7 @@ When you place a `labels` block inside a `metric` block, those labels apply only
 
 ## Debug metrics
 
-* `alloy_prometheus_static_metrics_emitted_total` (counter): Total number of static metrics sent to downstream components.
+* `alloy_prometheus_static_metrics_sent_total` (counter): Total number of static metrics sent to downstream components.
 * `prometheus_fanout_latency` (histogram): Write latency for sending to direct and indirect components.
 * `prometheus_forwarded_samples_total` (counter): Total number of samples sent to downstream components.
 
