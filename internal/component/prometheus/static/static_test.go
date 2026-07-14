@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/grafana/ckit/peer"
+	"github.com/grafana/ckit/shard"
 	prom "github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/model"
@@ -17,6 +19,7 @@ import (
 
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 	"github.com/grafana/alloy/internal/util"
@@ -249,6 +252,74 @@ func TestUpdateCoalescesInterval(t *testing.T) {
 	require.Equal(t, 10*time.Second, got)
 }
 
+func TestShouldEmit(t *testing.T) {
+	tests := []struct {
+		name       string
+		clustering bool
+		cluster    cluster.Cluster
+		want       bool
+	}{
+		{
+			name:       "clustering disabled always emits",
+			clustering: false,
+			cluster:    fakeCluster{ready: true, self: false},
+			want:       true,
+		},
+		{
+			name:       "clustering enabled and this node is the owner",
+			clustering: true,
+			cluster:    fakeCluster{ready: true, self: true},
+			want:       true,
+		},
+		{
+			name:       "clustering enabled and another node is the owner",
+			clustering: true,
+			cluster:    fakeCluster{ready: true, self: false},
+			want:       false,
+		},
+		{
+			name:       "clustering enabled but cluster not ready",
+			clustering: true,
+			cluster:    fakeCluster{ready: false, self: true},
+			want:       false,
+		},
+		{
+			name:       "clustering enabled but lookup errors, bias to emit",
+			clustering: true,
+			cluster:    fakeCluster{ready: true, err: fmt.Errorf("boom")},
+			want:       true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			c := newTestComponent(t, Arguments{
+				ScrapeInterval: time.Minute,
+				Clustering:     cluster.ComponentBlock{Enabled: tc.clustering},
+				Metrics:        []MetricConfig{{Name: "up", Value: 1}},
+			})
+			c.cluster = tc.cluster
+			require.Equal(t, tc.want, c.shouldEmit())
+		})
+	}
+}
+
+func TestClusteringNonOwnerDoesNotEmit(t *testing.T) {
+	sink := newCaptureSink()
+	c := newTestComponent(t, Arguments{
+		ScrapeInterval: time.Minute,
+		Clustering:     cluster.ComponentBlock{Enabled: true},
+		Metrics:        []MetricConfig{{Name: "up", Value: 1}},
+		ForwardTo:      []storage.Appendable{sink.appendable},
+	})
+	c.cluster = fakeCluster{ready: true, self: false}
+
+	c.emit(context.Background())
+
+	require.Empty(t, sink.byName())
+	require.Equal(t, 0.0, counterValue(t, c.metricsEmitted))
+}
+
 func TestSyntaxDecode(t *testing.T) {
 	cfg := `
 		prefix = "self_report"
@@ -305,6 +376,8 @@ func getServiceData(name string) (any, error) {
 		return labelstore.New(nil, prom.NewRegistry()), nil
 	case livedebugging.ServiceName:
 		return livedebugging.NewLiveDebugging(), nil
+	case cluster.ServiceName:
+		return cluster.Mock(), nil
 	default:
 		return nil, fmt.Errorf("service not found %s", name)
 	}
@@ -316,6 +389,27 @@ func counterValue(t *testing.T, c prom.Counter) float64 {
 	require.NoError(t, c.Write(&m))
 	return m.GetCounter().GetValue()
 }
+
+// fakeCluster is a cluster.Cluster whose ownership and readiness are fixed, for
+// exercising the clustering ownership logic.
+type fakeCluster struct {
+	ready bool
+	self  bool
+	err   error
+}
+
+func (f fakeCluster) Lookup(shard.Key, int, shard.Op) ([]peer.Peer, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return []peer.Peer{{Name: "peer", Self: f.self, State: peer.StateParticipant}}, nil
+}
+
+func (f fakeCluster) Peers() []peer.Peer {
+	return []peer.Peer{{Name: "peer", Self: f.self, State: peer.StateParticipant}}
+}
+
+func (f fakeCluster) Ready() bool { return f.ready }
 
 // capturedSample records a single appended sample and its metadata.
 type capturedSample struct {

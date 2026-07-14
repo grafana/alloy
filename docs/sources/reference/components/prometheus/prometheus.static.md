@@ -53,14 +53,16 @@ You can use the following blocks with `prometheus.static`:
 
 {{< docs/alloy-config >}}
 
-| Block                | Description                                     | Required |
-|----------------------|-------------------------------------------------|----------|
-| [`metric`][metric]   | Defines one metric to send.                | yes      |
-| [`labels`][labels]   | Adds labels to each metric sent.        | no       |
+| Block                      | Description                                                                                 | Required |
+|----------------------------|---------------------------------------------------------------------------------------------|----------|
+| [`metric`][metric]         | Defines one metric to send.                                                                 | yes      |
+| [`clustering`][clustering] | Configure the component for when {{< param "PRODUCT_NAME" >}} is running in clustered mode. | no       |
+| [`labels`][labels]         | Adds labels to each metric sent.                                                            | no       |
 
 You must define at least one `metric` block.
 
 [metric]: #metric
+[clustering]: #clustering
 [labels]: #labels
 
 {{< /docs/alloy-config >}}
@@ -86,6 +88,23 @@ The `metric` block supports a nested [`labels`][labels] block for labels that ap
 When a metric-level label and a component-level label share the same name, the metric-level label takes precedence.
 
 [labels]: #labels
+### `clustering`
+
+| Name      | Type   | Description                                          | Default | Required |
+|-----------|--------|------------------------------------------------------|---------|----------|
+| `enabled` | `bool` | Emit the metrics from only a single node in the cluster. | `false` | yes      |
+
+When {{< param "PRODUCT_NAME" >}} is [using clustering][], and `enabled` is set to true, then exactly one node in the cluster emits the configured metrics.
+This prevents duplicate metrics when the same configuration runs on multiple replicas, for example, a {{< param "PRODUCT_NAME" >}} `StatefulSet` in Kubernetes.
+
+Clustering assumes that all cluster nodes are running with the same configuration file.
+All nodes use a consistent hashing algorithm over the component's ID to agree on which single node owns emission.
+When a node joins or leaves the cluster, ownership is recalculated and the new owner begins emitting.
+While the cluster is still forming and not yet ready, no node emits to avoid duplicates, so there might be a brief gap in the metrics until the cluster stabilizes.
+
+If {{< param "PRODUCT_NAME" >}} is _not_ running in clustered mode, then the block is a no-op and every instance emits the metrics.
+
+[using clustering]: ../../../../get-started/clustering/
 ### `labels`
 
 The `labels` block is a set of key-value pairs attached to metrics.

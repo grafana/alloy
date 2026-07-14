@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/grafana/ckit/shard"
 	prometheus_client "github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/model"
 	"github.com/prometheus/prometheus/model/labels"
@@ -19,6 +20,7 @@ import (
 	"github.com/grafana/alloy/internal/component"
 	"github.com/grafana/alloy/internal/component/prometheus"
 	"github.com/grafana/alloy/internal/featuregate"
+	"github.com/grafana/alloy/internal/service/cluster"
 	"github.com/grafana/alloy/internal/service/labelstore"
 	"github.com/grafana/alloy/internal/service/livedebugging"
 )
@@ -52,6 +54,10 @@ type Arguments struct {
 	// ScrapeInterval controls how often the metrics are emitted to the
 	// forward_to receivers so that they remain fresh in downstream storage.
 	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
+
+	// Clustering, when enabled, makes only a single node in the cluster emit the
+	// metrics, preventing duplicates across replicas.
+	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 
 	// ForwardTo is the list of receivers the metrics are forwarded to.
 	ForwardTo []storage.Appendable `alloy:"forward_to,attr"`
@@ -165,20 +171,26 @@ func validateLabels(lbls map[string]string) error {
 var (
 	_ component.Component     = (*Component)(nil)
 	_ component.LiveDebugging = (*Component)(nil)
+	_ cluster.Component       = (*Component)(nil)
 )
 
 // Component implements the prometheus.static component.
 type Component struct {
-	opts   component.Options
-	fanout *prometheus.Fanout
+	opts    component.Options
+	fanout  *prometheus.Fanout
+	cluster cluster.Cluster
 
-	mut      sync.RWMutex
-	series   []staticSeries
-	interval time.Duration
+	mut               sync.RWMutex
+	series            []staticSeries
+	interval          time.Duration
+	clusteringEnabled bool
 	// reload signals Run that the config changed. It carries no value: Run reads
 	// the current interval from c.interval under the mutex, so a coalesced
 	// (dropped) signal never leaves Run ticking at a stale interval.
 	reload chan struct{}
+	// clusterChanged signals Run that cluster membership changed so it can
+	// re-evaluate ownership and emit promptly, without resetting the ticker.
+	clusterChanged chan struct{}
 
 	metricsEmitted prometheus_client.Counter
 
@@ -205,10 +217,17 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	}
 	ls := data.(labelstore.LabelStore)
 
+	clusterData, err := o.GetServiceData(cluster.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Component{
 		opts:               o,
 		fanout:             prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls),
+		cluster:            clusterData.(cluster.Cluster),
 		reload:             make(chan struct{}, 1),
+		clusterChanged:     make(chan struct{}, 1),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -256,6 +275,11 @@ func (c *Component) Run(ctx context.Context) error {
 			c.mut.RUnlock()
 			ticker.Reset(interval)
 			c.emit(ctx)
+		case <-c.clusterChanged:
+			// Cluster membership changed: re-evaluate ownership and emit promptly
+			// so a newly-elected owner doesn't wait a full interval. The ticker is
+			// left untouched to keep the regular cadence.
+			c.emit(ctx)
 		}
 	}
 }
@@ -269,6 +293,7 @@ func (c *Component) Update(args component.Arguments) error {
 	c.mut.Lock()
 	c.series = series
 	c.interval = newArgs.ScrapeInterval
+	c.clusteringEnabled = newArgs.Clustering.Enabled
 	c.mut.Unlock()
 
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
@@ -286,10 +311,57 @@ func (c *Component) Update(args component.Arguments) error {
 	return nil
 }
 
+// NotifyClusterChange implements cluster.Component. It wakes Run so ownership is
+// re-evaluated promptly after cluster membership changes.
+func (c *Component) NotifyClusterChange() {
+	c.mut.RLock()
+	enabled := c.clusteringEnabled
+	c.mut.RUnlock()
+	if !enabled {
+		return
+	}
+
+	select {
+	case c.clusterChanged <- struct{}{}:
+	default:
+	}
+}
+
+// shouldEmit reports whether this node is responsible for emitting the metrics.
+// When clustering is enabled, exactly one node in the cluster owns the
+// component's key, so only that node emits and duplicates are avoided.
+func (c *Component) shouldEmit() bool {
+	c.mut.RLock()
+	enabled := c.clusteringEnabled
+	c.mut.RUnlock()
+	if !enabled {
+		return true
+	}
+
+	if !c.cluster.Ready() {
+		// Avoid emitting from every node while the cluster is forming.
+		// NotifyClusterChange re-triggers an emit once the cluster is ready.
+		return false
+	}
+
+	peers, err := c.cluster.Lookup(shard.StringKey(c.opts.ID), 1, shard.OpReadWrite)
+	if err != nil {
+		// On lookup failure, bias toward availability and emit rather than risk a
+		// gap in the metrics.
+		c.opts.Logger.Warn("failed to determine cluster ownership, emitting anyway", "err", err)
+		return true
+	}
+	return len(peers) > 0 && peers[0].Self
+}
+
 // emit appends the configured series to the fanout with the current timestamp.
 // The context is threaded from Run so an in-flight emit is canceled on shutdown
 // or config reload rather than blocking on a stalled downstream appender.
 func (c *Component) emit(ctx context.Context) {
+	if !c.shouldEmit() {
+		return
+	}
+
 	c.mut.RLock()
 	series := c.series
 	c.mut.RUnlock()
