@@ -51,6 +51,7 @@ The following components, grouped by namespace, _export_ Targets.
 {{< /collapse >}}
 
 {{< collapse title="discovery" >}}
+- [discovery.aws](../components/discovery/discovery.aws)
 - [discovery.azure](../components/discovery/discovery.azure)
 - [discovery.consul](../components/discovery/discovery.consul)
 - [discovery.consulagent](../components/discovery/discovery.consulagent)

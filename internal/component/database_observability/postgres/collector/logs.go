@@ -47,18 +47,10 @@ var supportedSeverities = map[string]struct{}{
 	"PANIC": {},
 }
 
-// pgLogLabels are the leading labels PostgreSQL writes at the start of a log
-// message: message severities plus the detail/continuation labels. We scan the
-// full set (not just supportedSeverities) to find a line's real leading label
-// so an "ERROR:"/"FATAL:"/"PANIC:" substring appearing later in the message or
-// in a logged SQL statement (e.g. on a LOG or STATEMENT line) is shadowed by
-// that line's actual label and not miscounted as an error.
-//
-// A match requires the label be followed by ":  " (colon, two spaces) — the
-// exact separator PostgreSQL emits — so a label-like substring in the
-// client-controlled application_name (%a, which sits between the SQLSTATE
-// anchor and the real label, e.g. an app named "etl-LOG:worker") does not
-// shadow the message's actual label.
+// pgLogLabels are the labels PostgreSQL can write at the start of a log message:
+// the severities plus the detail/continuation labels. Classification scans the
+// full set (not just supportedSeverities) so a non-severity label can shadow a
+// severity keyword that appears later in the message text or in logged SQL.
 var pgLogLabels = []string{
 	"DEBUG5", "DEBUG4", "DEBUG3", "DEBUG2", "DEBUG1", "DEBUG",
 	"PANIC", "FATAL", "ERROR", "WARNING", "NOTICE", "INFO", "LOG",
@@ -68,6 +60,17 @@ var pgLogLabels = []string{
 // pgLabelSeparator is what PostgreSQL writes between a log label and the
 // message text.
 const pgLabelSeparator = ":  "
+
+// leadingLogLabel returns the PostgreSQL log label that s begins with (i.e. s
+// starts with "<label>:  "), or "" if s does not start with a known label.
+func leadingLogLabel(s string) string {
+	for _, candidate := range pgLogLabels {
+		if strings.HasPrefix(s, candidate+pgLabelSeparator) {
+			return candidate
+		}
+	}
+	return ""
+}
 
 // pendingError holds an ERROR/FATAL/PANIC line awaiting its STATEMENT
 // continuation. The SQL builder accumulates the STATEMENT keyword line plus any
@@ -419,12 +422,17 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		sqlstateClass = sqlstateCode[:2]
 	}
 
-	// Classify the message once by its real label: the leftmost PostgreSQL log
-	// label (with PostgreSQL's ":  " separator) after the SQLSTATE field.
-	// Anchoring past the SQLSTATE keeps a database or user literally named
-	// after a label (e.g. "LOG") from matching, and scanning the full label set
-	// shadows a severity or STATEMENT keyword that appears inside the message
-	// text or a logged SQL statement.
+	// Classify by the line's real label. PostgreSQL appends the label (with the
+	// ":  " separator) at the end of the log-line prefix, right after the
+	// client-controlled application_name (%a) — which can hold a forged
+	// "<label>:  ". Anchor past the SQLSTATE (so a db/user named "LOG" can't
+	// match), then take the last token in the run of adjacent "<label>:  "
+	// tokens: a forgery in %a always precedes the label PostgreSQL emits last.
+	//
+	// Residual: a STATEMENT/QUERY line whose logged SQL begins with "<label>:  "
+	// makes the walk overshoot into the SQL. Only reachable by deliberate abuse,
+	// self-scoped, and such SQL is unparseable anyway; normal SQL never starts
+	// with a label, so real error/statement pairs are unaffected.
 	searchFrom := 0
 	if sqlstateCode != "" {
 		if idx := strings.Index(line, ":"+sqlstateCode+":"); idx != -1 {
@@ -432,14 +440,24 @@ func (l *Logs) parseTextLog(entry loki.Entry) error {
 		}
 	}
 
+	rest := line[searchFrom:]
 	label := ""
 	labelAt := -1
 	for _, candidate := range pgLogLabels {
-		idx := strings.Index(line[searchFrom:], candidate+pgLabelSeparator)
+		idx := strings.Index(rest, candidate+pgLabelSeparator)
 		if idx != -1 && (labelAt == -1 || idx < labelAt) {
 			labelAt = idx
 			label = candidate
 		}
+	}
+	// Advance through any forged "<label>:  " tokens in %a to the real (last) label.
+	for label != "" {
+		next := labelAt + len(label) + len(pgLabelSeparator)
+		nextLabel := leadingLogLabel(rest[next:])
+		if nextLabel == "" {
+			break
+		}
+		label, labelAt = nextLabel, next
 	}
 
 	if label == "STATEMENT" {

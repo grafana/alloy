@@ -82,7 +82,7 @@ The following requests are supported:
 Every span which can be paired up to form a request is kept in an in-memory store:
 
 * If the TTL of the span expires before it can be paired, it's deleted from the store.
-  TTL is configured in the [store][] block.
+  TTL is configured in the [store](#store) block.
 * If the span is paired prior to its expiration, a metric is recorded and the span is deleted from the store.
 
 The following metrics are emitted by the processor:

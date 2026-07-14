@@ -35,11 +35,11 @@ The scrape job name defaults to the component's unique identifier.
 
 One of the following can be provided:
 
-* [`authorization`][authorization] block
-* [`basic_auth`][basic_auth] block
+* [`authorization`](#authorization) block
+* [`basic_auth`](#basic_auth) block
 * [`bearer_token_file`](#arguments) argument
 * [`bearer_token`](#arguments) argument
-* [`oauth2`][oauth2] block
+* [`oauth2`](#oauth2) block
 
 If conflicting attributes are passed, for example, defining both a `bearer_token` and `bearer_token_file` or configuring both `basic_auth` and `oauth2` at the same time, the component reports an error.
 
