@@ -67,7 +67,7 @@ type MetricConfig struct {
 	Value float64 `alloy:"value,attr,optional"`
 
 	// Type is the metric type reported as metadata to downstream components.
-	// Defaults to "gauge".
+	// Defaults to "unknown".
 	Type string `alloy:"type,attr,optional"`
 
 	// Help is an optional description reported as metadata to downstream
