@@ -135,7 +135,7 @@ You can use the following blocks with `otelcol.connector.spanmetrics`:
 
 {{< /docs/alloy-config >}}
 
-You must specify either an [`exponential`][exponential] or an [`explicit`][explicit] block.
+You must specify either an [`exponential`](#exponential) or an [`explicit`](#explicit) block.
 You can't specify both blocks in the same configuration.
 
 ### `histogram`
@@ -196,7 +196,7 @@ If the attribute is missing in both the span and resource attributes:
 
 ### `calls_dimension`
 
-The attributes and behavior of the `calls_dimension` block match the [`dimension`][dimension] block.
+The attributes and behavior of the `calls_dimension` block match the [`dimension`](#dimension) block.
 
 ### `events`
 
