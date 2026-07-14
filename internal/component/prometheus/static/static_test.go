@@ -151,7 +151,7 @@ func TestMetricName(t *testing.T) {
 	require.Equal(t, "self_report_build_info", metricName("self_report", "build_info"))
 }
 
-func TestEmit(t *testing.T) {
+func TestSend(t *testing.T) {
 	sink := newCaptureSink()
 
 	c := newTestComponent(t, Arguments{
@@ -165,7 +165,7 @@ func TestEmit(t *testing.T) {
 		ForwardTo: []storage.Appendable{sink.appendable},
 	})
 
-	c.emit(context.Background())
+	c.send(context.Background())
 
 	byName := sink.byName()
 	require.Len(t, byName, 2)
@@ -182,10 +182,10 @@ func TestEmit(t *testing.T) {
 	require.Equal(t, 7.0, uptime.value)
 	require.Equal(t, model.MetricTypeGauge, uptime.metadata.Type)
 
-	require.Equal(t, 2.0, counterValue(t, c.metricsEmitted))
+	require.Equal(t, 2.0, counterValue(t, c.metricsSent))
 }
 
-func TestRunEmitsOnStartAndUpdate(t *testing.T) {
+func TestRunSendsOnStartAndUpdate(t *testing.T) {
 	sink := newCaptureSink()
 
 	c := newTestComponent(t, Arguments{
@@ -198,13 +198,13 @@ func TestRunEmitsOnStartAndUpdate(t *testing.T) {
 	defer cancel()
 	go func() { _ = c.Run(ctx) }()
 
-	// The initial emit on startup should reach the sink quickly.
+	// The initial send on startup should reach the sink quickly.
 	require.Eventually(t, func() bool {
 		_, ok := sink.byName()["up"]
 		return ok
 	}, 2*time.Second, 10*time.Millisecond)
 
-	// An Update should trigger a re-emit with the new configuration.
+	// An Update should trigger a re-send with the new configuration.
 	require.NoError(t, c.Update(Arguments{
 		ScrapeInterval: time.Minute,
 		Metrics:        []MetricConfig{{Name: "up", Value: 1}, {Name: "down", Value: 0}},
@@ -252,7 +252,7 @@ func TestUpdateCoalescesInterval(t *testing.T) {
 	require.Equal(t, 10*time.Second, got)
 }
 
-func TestShouldEmit(t *testing.T) {
+func TestShouldSend(t *testing.T) {
 	tests := []struct {
 		name       string
 		clustering bool
@@ -260,7 +260,7 @@ func TestShouldEmit(t *testing.T) {
 		want       bool
 	}{
 		{
-			name:       "clustering disabled always emits",
+			name:       "clustering disabled always sends",
 			clustering: false,
 			cluster:    fakeCluster{ready: true, self: false},
 			want:       true,
@@ -284,7 +284,7 @@ func TestShouldEmit(t *testing.T) {
 			want:       false,
 		},
 		{
-			name:       "clustering enabled but lookup errors, bias to emit",
+			name:       "clustering enabled but lookup errors, bias to send",
 			clustering: true,
 			cluster:    fakeCluster{ready: true, err: fmt.Errorf("boom")},
 			want:       true,
@@ -299,12 +299,12 @@ func TestShouldEmit(t *testing.T) {
 				Metrics:        []MetricConfig{{Name: "up", Value: 1}},
 			})
 			c.cluster = tc.cluster
-			require.Equal(t, tc.want, c.shouldEmit())
+			require.Equal(t, tc.want, c.shouldSend())
 		})
 	}
 }
 
-func TestClusteringNonOwnerDoesNotEmit(t *testing.T) {
+func TestClusteringNonOwnerDoesNotSend(t *testing.T) {
 	sink := newCaptureSink()
 	c := newTestComponent(t, Arguments{
 		ScrapeInterval: time.Minute,
@@ -314,10 +314,10 @@ func TestClusteringNonOwnerDoesNotEmit(t *testing.T) {
 	})
 	c.cluster = fakeCluster{ready: true, self: false}
 
-	c.emit(context.Background())
+	c.send(context.Background())
 
 	require.Empty(t, sink.byName())
-	require.Equal(t, 0.0, counterValue(t, c.metricsEmitted))
+	require.Equal(t, 0.0, counterValue(t, c.metricsSent))
 }
 
 func TestSyntaxDecode(t *testing.T) {

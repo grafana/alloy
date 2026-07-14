@@ -1,4 +1,4 @@
-// Package static implements the prometheus.static component, which emits a
+// Package static implements the prometheus.static component, which sends a
 // fixed set of user-defined metrics to downstream Prometheus-compatible
 // components.
 package static
@@ -44,18 +44,18 @@ type Arguments struct {
 	// Prefix is prepended to every metric name, joined with an underscore.
 	Prefix string `alloy:"prefix,attr,optional"`
 
-	// Metrics is the set of static metrics to emit.
+	// Metrics is the set of static metrics to send.
 	Metrics []MetricConfig `alloy:"metric,block"`
 
-	// Labels are attached to every emitted metric. A metric's own labels take
+	// Labels are attached to every sent metric. A metric's own labels take
 	// precedence when the two overlap.
 	Labels map[string]string `alloy:"labels,block,optional"`
 
-	// ScrapeInterval controls how often the metrics are emitted to the
+	// ScrapeInterval controls how often the metrics are sent to the
 	// forward_to receivers so that they remain fresh in downstream storage.
 	ScrapeInterval time.Duration `alloy:"scrape_interval,attr,optional"`
 
-	// Clustering, when enabled, makes only a single node in the cluster emit the
+	// Clustering, when enabled, makes only a single node in the cluster send the
 	// metrics, preventing duplicates across replicas.
 	Clustering cluster.ComponentBlock `alloy:"clustering,block,optional"`
 
@@ -68,7 +68,7 @@ type MetricConfig struct {
 	// Name is the metric name, before the component prefix is applied.
 	Name string `alloy:"name,attr"`
 
-	// Value is the sample value emitted for the metric. Defaults to 1, which is
+	// Value is the sample value sent for the metric. Defaults to 1, which is
 	// the convention for info-style metrics.
 	Value float64 `alloy:"value,attr,optional"`
 
@@ -155,7 +155,7 @@ func (args *Arguments) Validate() error {
 
 // validateLabels rejects label sets with invalid or reserved label names so
 // that misconfigurations fail fast at load time instead of erroring on every
-// emit.
+// send.
 func validateLabels(lbls map[string]string) error {
 	for k := range lbls {
 		if k == model.MetricNameLabel {
@@ -189,10 +189,10 @@ type Component struct {
 	// (dropped) signal never leaves Run ticking at a stale interval.
 	reload chan struct{}
 	// clusterChanged signals Run that cluster membership changed so it can
-	// re-evaluate ownership and emit promptly, without resetting the ticker.
+	// re-evaluate ownership and send promptly, without resetting the ticker.
 	clusterChanged chan struct{}
 
-	metricsEmitted prometheus_client.Counter
+	metricsSent prometheus_client.Counter
 
 	debugDataPublisher livedebugging.DebugDataPublisher
 }
@@ -231,11 +231,11 @@ func New(o component.Options, args Arguments) (*Component, error) {
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
-	c.metricsEmitted = prometheus_client.NewCounter(prometheus_client.CounterOpts{
-		Name: "alloy_prometheus_static_metrics_emitted_total",
-		Help: "Total number of static metrics emitted to downstream components",
+	c.metricsSent = prometheus_client.NewCounter(prometheus_client.CounterOpts{
+		Name: "alloy_prometheus_static_metrics_sent_total",
+		Help: "Total number of static metrics sent to downstream components",
 	})
-	if err := o.Registerer.Register(c.metricsEmitted); err != nil {
+	if err := o.Registerer.Register(c.metricsSent); err != nil {
 		return nil, err
 	}
 
@@ -259,14 +259,14 @@ func (c *Component) Run(ctx context.Context) error {
 
 	// Emit immediately on startup so downstream sees the metrics without waiting
 	// for the first tick.
-	c.emit(ctx)
+	c.send(ctx)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			c.emit(ctx)
+			c.send(ctx)
 		case <-c.reload:
 			// Read the latest interval from shared state rather than the channel,
 			// so a coalesced signal still applies the newest config.
@@ -274,12 +274,12 @@ func (c *Component) Run(ctx context.Context) error {
 			interval = c.interval
 			c.mut.RUnlock()
 			ticker.Reset(interval)
-			c.emit(ctx)
+			c.send(ctx)
 		case <-c.clusterChanged:
-			// Cluster membership changed: re-evaluate ownership and emit promptly
+			// Cluster membership changed: re-evaluate ownership and send promptly
 			// so a newly-elected owner doesn't wait a full interval. The ticker is
 			// left untouched to keep the regular cadence.
-			c.emit(ctx)
+			c.send(ctx)
 		}
 	}
 }
@@ -298,9 +298,9 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
-	// Notify Run that the config changed so it can reset its ticker and re-emit.
+	// Notify Run that the config changed so it can reset its ticker and re-send.
 	// The buffered channel with a non-blocking send keeps this safe when Run has
-	// not started yet (first Update from New) or is mid-emit. A dropped signal is
+	// not started yet (first Update from New) or is mid-send. A dropped signal is
 	// harmless: Run reads the latest interval from c.interval, and any pending
 	// signal already guarantees a reset.
 	select {
@@ -327,10 +327,10 @@ func (c *Component) NotifyClusterChange() {
 	}
 }
 
-// shouldEmit reports whether this node is responsible for emitting the metrics.
+// shouldSend reports whether this node is responsible for sending the metrics.
 // When clustering is enabled, exactly one node in the cluster owns the
-// component's key, so only that node emits and duplicates are avoided.
-func (c *Component) shouldEmit() bool {
+// component's key, so only that node sends and duplicates are avoided.
+func (c *Component) shouldSend() bool {
 	c.mut.RLock()
 	enabled := c.clusteringEnabled
 	c.mut.RUnlock()
@@ -339,26 +339,26 @@ func (c *Component) shouldEmit() bool {
 	}
 
 	if !c.cluster.Ready() {
-		// Avoid emitting from every node while the cluster is forming.
-		// NotifyClusterChange re-triggers an emit once the cluster is ready.
+		// Avoid sending from every node while the cluster is forming.
+		// NotifyClusterChange re-triggers a send once the cluster is ready.
 		return false
 	}
 
 	peers, err := c.cluster.Lookup(shard.StringKey(c.opts.ID), 1, shard.OpReadWrite)
 	if err != nil {
-		// On lookup failure, bias toward availability and emit rather than risk a
+		// On lookup failure, bias toward availability and send rather than risk a
 		// gap in the metrics.
-		c.opts.Logger.Warn("failed to determine cluster ownership, emitting anyway", "err", err)
+		c.opts.Logger.Warn("failed to determine cluster ownership, sending anyway", "err", err)
 		return true
 	}
 	return len(peers) > 0 && peers[0].Self
 }
 
-// emit appends the configured series to the fanout with the current timestamp.
-// The context is threaded from Run so an in-flight emit is canceled on shutdown
+// send appends the configured series to the fanout with the current timestamp.
+// The context is threaded from Run so an in-flight send is canceled on shutdown
 // or config reload rather than blocking on a stalled downstream appender.
-func (c *Component) emit(ctx context.Context) {
-	if !c.shouldEmit() {
+func (c *Component) send(ctx context.Context) {
+	if !c.shouldSend() {
 		return
 	}
 
@@ -390,7 +390,7 @@ func (c *Component) emit(ctx context.Context) {
 		return
 	}
 
-	c.metricsEmitted.Add(float64(len(series)))
+	c.metricsSent.Add(float64(len(series)))
 
 	componentID := livedebugging.ComponentID(c.opts.ID)
 	c.debugDataPublisher.PublishIfActive(livedebugging.NewData(
