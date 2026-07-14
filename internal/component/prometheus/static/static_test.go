@@ -68,6 +68,26 @@ func TestValidate(t *testing.T) {
 			args:    Arguments{ScrapeInterval: 0, Metrics: []MetricConfig{{Name: "a"}}},
 			wantErr: "scrape_interval must be greater than 0",
 		},
+		{
+			name:    "invalid component label name",
+			args:    Arguments{ScrapeInterval: time.Minute, Labels: map[string]string{"": "x"}, Metrics: []MetricConfig{{Name: "a", Type: "gauge"}}},
+			wantErr: "is not a valid label name",
+		},
+		{
+			name:    "invalid metric label name",
+			args:    Arguments{ScrapeInterval: time.Minute, Metrics: []MetricConfig{{Name: "a", Type: "gauge", Labels: map[string]string{"\xff": "x"}}}},
+			wantErr: `metric[0]: "\xff" is not a valid label name`,
+		},
+		{
+			name:    "reserved component label name",
+			args:    Arguments{ScrapeInterval: time.Minute, Labels: map[string]string{"__name__": "x"}, Metrics: []MetricConfig{{Name: "a", Type: "gauge"}}},
+			wantErr: `label "__name__" is reserved`,
+		},
+		{
+			name:    "reserved metric label name",
+			args:    Arguments{ScrapeInterval: time.Minute, Metrics: []MetricConfig{{Name: "a", Type: "gauge", Labels: map[string]string{"__name__": "x"}}}},
+			wantErr: `metric[0]: label "__name__" is reserved`,
+		},
 	}
 
 	for _, tc := range tests {
@@ -142,7 +162,7 @@ func TestEmit(t *testing.T) {
 		ForwardTo: []storage.Appendable{sink.appendable},
 	})
 
-	c.emit()
+	c.emit(context.Background())
 
 	byName := sink.byName()
 	require.Len(t, byName, 2)
@@ -194,6 +214,39 @@ func TestRunEmitsOnStartAndUpdate(t *testing.T) {
 		_, hasDown := names["down"]
 		return hasUp && hasDown
 	}, 2*time.Second, 10*time.Millisecond)
+}
+
+// TestUpdateCoalescesInterval verifies that when multiple Updates land before
+// Run consumes the reload signal, the newest interval is still applied: the
+// signal is coalesced (buffer holds at most one) but the latest interval lives
+// in shared state, which Run reads on wake-up.
+func TestUpdateCoalescesInterval(t *testing.T) {
+	sink := newCaptureSink()
+
+	// New calls Update once, leaving one signal buffered. Run is intentionally
+	// not started, so no signal is consumed.
+	c := newTestComponent(t, Arguments{
+		ScrapeInterval: time.Minute,
+		Metrics:        []MetricConfig{{Name: "up", Value: 1}},
+		ForwardTo:      []storage.Appendable{sink.appendable},
+	})
+
+	for _, d := range []time.Duration{30 * time.Second, 10 * time.Second} {
+		require.NoError(t, c.Update(Arguments{
+			ScrapeInterval: d,
+			Metrics:        []MetricConfig{{Name: "up", Value: 1}},
+			ForwardTo:      []storage.Appendable{sink.appendable},
+		}))
+	}
+
+	// The reload signal is coalesced to a single pending item...
+	require.Len(t, c.reload, 1)
+
+	// ...but the latest interval is what Run will read.
+	c.mut.RLock()
+	got := c.interval
+	c.mut.RUnlock()
+	require.Equal(t, 10*time.Second, got)
 }
 
 func TestSyntaxDecode(t *testing.T) {

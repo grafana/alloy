@@ -117,6 +117,10 @@ func (args *Arguments) Validate() error {
 		return fmt.Errorf("at least one metric block must be defined")
 	}
 
+	if err := validateLabels(args.Labels); err != nil {
+		return fmt.Errorf("labels: %w", err)
+	}
+
 	seen := make(map[string]struct{}, len(args.Metrics))
 	for i, m := range args.Metrics {
 		if m.Name == "" {
@@ -134,8 +138,27 @@ func (args *Arguments) Validate() error {
 		if _, ok := supportedMetricTypes[m.Type]; !ok {
 			return fmt.Errorf("metric[%d]: unsupported type %q; must be one of gauge, counter, info, unknown", i, m.Type)
 		}
+
+		if err := validateLabels(m.Labels); err != nil {
+			return fmt.Errorf("metric[%d]: %w", i, err)
+		}
 	}
 
+	return nil
+}
+
+// validateLabels rejects label sets with invalid or reserved label names so
+// that misconfigurations fail fast at load time instead of erroring on every
+// emit.
+func validateLabels(lbls map[string]string) error {
+	for k := range lbls {
+		if k == model.MetricNameLabel {
+			return fmt.Errorf("label %q is reserved and can't be set; use the metric's name and prefix instead", model.MetricNameLabel)
+		}
+		if !model.UTF8Validation.IsValidLabelName(k) {
+			return fmt.Errorf("%q is not a valid label name", k)
+		}
+	}
 	return nil
 }
 
@@ -152,7 +175,10 @@ type Component struct {
 	mut      sync.RWMutex
 	series   []staticSeries
 	interval time.Duration
-	reload   chan time.Duration
+	// reload signals Run that the config changed. It carries no value: Run reads
+	// the current interval from c.interval under the mutex, so a coalesced
+	// (dropped) signal never leaves Run ticking at a stale interval.
+	reload chan struct{}
 
 	metricsEmitted prometheus_client.Counter
 
@@ -182,7 +208,7 @@ func New(o component.Options, args Arguments) (*Component, error) {
 	c := &Component{
 		opts:               o,
 		fanout:             prometheus.NewFanout(args.ForwardTo, o.ID, o.Registerer, ls),
-		reload:             make(chan time.Duration, 1),
+		reload:             make(chan struct{}, 1),
 		debugDataPublisher: debugDataPublisher.(livedebugging.DebugDataPublisher),
 	}
 
@@ -214,17 +240,22 @@ func (c *Component) Run(ctx context.Context) error {
 
 	// Emit immediately on startup so downstream sees the metrics without waiting
 	// for the first tick.
-	c.emit()
+	c.emit(ctx)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			c.emit()
-		case newInterval := <-c.reload:
-			ticker.Reset(newInterval)
-			c.emit()
+			c.emit(ctx)
+		case <-c.reload:
+			// Read the latest interval from shared state rather than the channel,
+			// so a coalesced signal still applies the newest config.
+			c.mut.RLock()
+			interval = c.interval
+			c.mut.RUnlock()
+			ticker.Reset(interval)
+			c.emit(ctx)
 		}
 	}
 }
@@ -242,11 +273,13 @@ func (c *Component) Update(args component.Arguments) error {
 
 	c.fanout.UpdateChildren(newArgs.ForwardTo)
 
-	// Notify Run of the new interval so it can reset its ticker and re-emit. The
-	// buffered channel with a non-blocking send keeps this safe when Run has not
-	// started yet (first Update from New) or is mid-emit.
+	// Notify Run that the config changed so it can reset its ticker and re-emit.
+	// The buffered channel with a non-blocking send keeps this safe when Run has
+	// not started yet (first Update from New) or is mid-emit. A dropped signal is
+	// harmless: Run reads the latest interval from c.interval, and any pending
+	// signal already guarantees a reset.
 	select {
-	case c.reload <- newArgs.ScrapeInterval:
+	case c.reload <- struct{}{}:
 	default:
 	}
 
@@ -254,7 +287,9 @@ func (c *Component) Update(args component.Arguments) error {
 }
 
 // emit appends the configured series to the fanout with the current timestamp.
-func (c *Component) emit() {
+// The context is threaded from Run so an in-flight emit is canceled on shutdown
+// or config reload rather than blocking on a stalled downstream appender.
+func (c *Component) emit(ctx context.Context) {
 	c.mut.RLock()
 	series := c.series
 	c.mut.RUnlock()
@@ -263,7 +298,7 @@ func (c *Component) emit() {
 		return
 	}
 
-	app := c.fanout.Appender(context.Background())
+	app := c.fanout.Appender(ctx)
 	ts := time.Now().UnixMilli()
 	for _, s := range series {
 		ref, err := app.Append(0, s.labels, ts, s.value)
