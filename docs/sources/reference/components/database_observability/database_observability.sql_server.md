@@ -69,7 +69,7 @@ You can use the following blocks with `database_observability.sql_server`:
 ### `cloud_provider`
 
 The `cloud_provider` block has no attributes.
-It contains zero or more [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
+It contains zero or one of the [`aws`][aws], [`azure`][azure], or [`gcp`][gcp] blocks.
 You use the `cloud_provider` block to provide information related to the cloud provider that hosts the database under observation.
 This information is appended as labels to the collected metrics.
 The labels make it easier for you to filter and group your metrics.
@@ -92,7 +92,7 @@ The `azure` block supplies the identifying information for the database being mo
 |-------------------|----------|------------------------------------------------------|---------|----------|
 | `subscription_id` | `string` | The Subscription ID for your Azure account.          |         | yes      |
 | `resource_group`  | `string` | The Resource Group that holds the database resource. |         | yes      |
-| `server_name`     | `string` | The database server name.                            |         | no       |
+| `server_name`     | `string` | The database server name, for example `orders-db` for the host `orders-db.database.windows.net`. |         | no       |
 
 ### `gcp`
 
