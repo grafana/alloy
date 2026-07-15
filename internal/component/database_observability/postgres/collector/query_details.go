@@ -60,15 +60,15 @@ type QueryDetailsArguments struct {
 }
 
 type QueryDetails struct {
-	dbConnection     *sql.DB
-	collectInterval  time.Duration
-	statementsLimit  int
-	excludeDatabases []string
-	excludeUsers     []string
-	entryHandler     loki.EntryHandler
-	tableRegistry    *TableRegistry
-	enableErrorLogs  bool
-	normalizer       *sqllexer.Normalizer
+	dbConnection              *sql.DB
+	collectInterval           time.Duration
+	statementsLimit           int
+	excludeDatabases          []string
+	excludeUsers              []string
+	entryHandler              loki.EntryHandler
+	tableRegistry             *TableRegistry
+	enableErrorLogsProcessing bool
+	normalizer                *sqllexer.Normalizer
 
 	logger  *slog.Logger
 	running *atomic.Bool
@@ -79,17 +79,17 @@ type QueryDetails struct {
 
 func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 	return &QueryDetails{
-		dbConnection:     args.DB,
-		collectInterval:  args.CollectInterval,
-		statementsLimit:  args.StatementsLimit,
-		excludeDatabases: args.ExcludeDatabases,
-		excludeUsers:     args.ExcludeUsers,
-		entryHandler:     args.EntryHandler,
-		tableRegistry:    args.TableRegistry,
-		enableErrorLogs:  args.EnableErrorLogsProcessing,
-		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
-		logger:           args.Logger.With("collector", QueryDetailsCollector),
-		running:          &atomic.Bool{},
+		dbConnection:              args.DB,
+		collectInterval:           args.CollectInterval,
+		statementsLimit:           args.StatementsLimit,
+		excludeDatabases:          args.ExcludeDatabases,
+		excludeUsers:              args.ExcludeUsers,
+		entryHandler:              args.EntryHandler,
+		tableRegistry:             args.TableRegistry,
+		enableErrorLogsProcessing: args.EnableErrorLogsProcessing,
+		normalizer:                sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
+		logger:                    args.Logger.With("collector", QueryDetailsCollector),
+		running:                   &atomic.Bool{},
 	}, nil
 }
 
@@ -159,7 +159,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		}
 
 		var fp string
-		if c.enableErrorLogs {
+		if c.enableErrorLogsProcessing {
 			// Fingerprint the raw text BEFORE comment stripping; pg_query
 			// canonicalizes literals at the AST level so the value is stable
 			// across comment-only differences and matches the fingerprint
@@ -178,7 +178,7 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 
 		op := OP_QUERY_ASSOCIATION
 		body := fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName)
-		if c.enableErrorLogs {
+		if c.enableErrorLogsProcessing {
 			op = OP_QUERY_ASSOCIATION_V2
 			body = fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName)
 		}
