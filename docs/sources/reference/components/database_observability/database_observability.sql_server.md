@@ -76,6 +76,9 @@ The labels make it easier for you to filter and group your metrics.
 
 When you don't configure a `cloud_provider` block, {{< param "PRODUCT_NAME" >}} attempts to detect AWS RDS and Azure SQL hosts from the `data_source_name`.
 
+[aws]: #aws
+[azure]: #azure
+[gcp]: #gcp
 ### `aws`
 
 The `aws` block supplies the [ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) identifier for the database being monitored.
