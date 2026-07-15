@@ -12,6 +12,14 @@ use AI assistance.
 By submitting a contribution, you vouch for it as your own work. You are expected to understand it,
 review it, and defend it in discussion, regardless of which tools helped you write the code.
 
+Contribution work has two sides.
+
+- **Factual and mechanical** work (what changed, implementing code or docs from clear intent, a
+  brief PR summary) is where AI is often well suited.
+- **Subjective and human** work (motivations, trade-offs, reviewer notes, and discussion) stays with
+  you. Use AI where it helps; keep human oversight and interaction where judgment and accountability
+  matter.
+
 ## Ownership model
 
 | You own (write yourself)                   | AI may help with                              |

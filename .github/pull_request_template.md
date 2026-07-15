@@ -12,6 +12,9 @@
 
   **HUMANS**
   - Read and understand docs/developer/genai.md
+  - Brief description / Issue(s) fixed: factual summary of the change (AI may
+    help). Details, Notes, and Checklist: your motivations, trade-offs, and
+    judgment — keep those human-owned.
 
   **AI AGENTS**
   - MANDATORY: Read, understand, and apply AGENTS.md
@@ -28,12 +31,12 @@
 
 ### Brief description of Pull Request
 
-<!-- Human-readable description of the PR used as squash commit body. -->
+<!-- Factual, human-readable summary of what changed (squash commit body). -->
 
 
 ### Pull Request Details
 
-<!-- HUMAN ONLY: Detailed description of the Pull Request, if needed. -->
+<!-- HUMAN ONLY: Motivations, trade-offs, and decisions. Write in your own words. -->
 
 
 ### Issue(s) fixed by this Pull Request
@@ -43,7 +46,7 @@
 
 ### Notes to the Reviewer
 
-<!-- HUMAN ONLY: Relevant notes for reviewers/testers. -->
+<!-- HUMAN ONLY: Context for reviewers/testers. Write in your own words. -->
 
 
 ### PR Checklist
