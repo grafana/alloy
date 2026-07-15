@@ -724,14 +724,14 @@ func (c *Component) startCollectors(systemID string, engineVersion string, cloud
 
 	// Logs collector is always enabled
 	logsCollector, err := collector.NewLogs(collector.LogsArguments{
-		Receiver:         c.logsReceiver,
-		EntryHandler:     entryHandler,
-		Logger:           c.opts.Logger,
-		Registry:         c.registry,
-		ExcludeDatabases: c.args.ExcludeDatabases,
-		ExcludeUsers:     effectiveExcludeUsers,
-		EnableErrorLogs:  c.args.Logs.EnableErrorLogsProcessing,
-		DB:               c.dbConnection,
+		Receiver:                  c.logsReceiver,
+		EntryHandler:              entryHandler,
+		Logger:                    c.opts.Logger,
+		Registry:                  c.registry,
+		ExcludeDatabases:          c.args.ExcludeDatabases,
+		ExcludeUsers:              effectiveExcludeUsers,
+		EnableErrorLogsProcessing: c.args.Logs.EnableErrorLogsProcessing,
+		DB:                        c.dbConnection,
 	})
 	if err != nil {
 		logStartError(collector.LogsCollector, "create", err)
