@@ -17,7 +17,7 @@ The extension accepts the following configuration fields:
 
 ### Config Object
 
-The `config` object specifies the Alloy configuration source. Exactly one of `path` or `inline.content` must be set.
+The `config` object specifies the Alloy configuration source. Exactly one of `path` (or the deprecated `file`) or `inline.content` must be set.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
