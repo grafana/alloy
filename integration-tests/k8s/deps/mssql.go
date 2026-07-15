@@ -16,6 +16,8 @@ const (
 	mssqlSelector = "app=mssql"
 )
 
+var _ harness.Dependency = (*MSSQL)(nil)
+
 // MSSQL installs a Microsoft SQL Server instance as a scrape target for the
 // prometheus.exporter.mssql component. The image is linux/amd64 only and runs
 // under emulation on arm64 hosts.
