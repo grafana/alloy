@@ -12,8 +12,9 @@ title: otelcol.processor.redaction
 
 {{< docs/shared lookup="stability/experimental.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
-`otelcol.processor.redaction` deletes span, log, and metric attributes that don't match a list of allowed attributes.
-It also masks attribute values that match a blocked value list, and can sanitize high-cardinality URLs and database queries into stable, low-cardinality forms.
+`otelcol.processor.redaction` removes span, log, and metric attributes that don't match an allowlist.
+It masks attribute values that match blocklist expressions and sanitizes high-cardinality URLs and database queries into stable, low-cardinality forms.
+It also removes disallowed keys from map-shaped log bodies and masks or sanitizes values in log bodies.
 
 {{< admonition type="note" >}}
 `otelcol.processor.redaction` is a wrapper over the upstream OpenTelemetry Collector [`redaction`][] processor.
@@ -43,29 +44,35 @@ otelcol.processor.redaction "<LABEL>" {
 
 You can use the following arguments with `otelcol.processor.redaction`:
 
-| Name                   | Type           | Description                                                                          | Default | Required |
-| ---------------------- | -------------- | ------------------------------------------------------------------------------------ | ------- | -------- |
-| `allow_all_keys`       | `bool`         | Allow all attribute keys. Disables the `allowed_keys` list.                          | `false` | no       |
-| `allowed_keys`         | `list(string)` | Allowed attribute keys. Keys not on the list are removed.                            | `[]`    | no       |
-| `ignored_keys`         | `list(string)` | Attribute keys that pass through unchanged.                                          | `[]`    | no       |
-| `blocked_key_patterns` | `list(string)` | Regular expressions for attribute keys whose values are masked.                      | `[]`    | no       |
-| `ignored_key_patterns` | `list(string)` | Regular expressions for attribute keys that pass through unchanged.                  | `[]`    | no       |
-| `allowed_values`       | `list(string)` | Regular expressions for values of blocked keys that are not masked.                  | `[]`    | no       |
-| `blocked_values`       | `list(string)` | Regular expressions for values of allowed keys that are masked.                      | `[]`    | no       |
-| `hash_function`        | `string`       | Function used to hash redacted values instead of masking them with a fixed string.   | `""`    | no       |
-| `hmac_key`             | `secret`       | Secret key used for HMAC hashing when `hash_function` is an HMAC variant.            | `""`    | no       |
-| `redact_all_types`     | `bool`         | Redact non-string attributes as well, by converting them to a string representation. | `false` | no       |
-| `summary`              | `string`       | Verbosity of the diagnostic attributes the processor adds. One of `debug`, `info`, `silent`. | `""` | no       |
+| Name                   | Type           | Description                                                                                                                                        | Default | Required |
+| ---------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| `allow_all_keys`       | `bool`         | Allow all attribute keys. Disables the `allowed_keys` list.                                                                                        | `false` | no       |
+| `allowed_keys`         | `list(string)` | Allowed attribute keys. Keys not on the list are removed.                                                                                          | `[]`    | no       |
+| `allowed_values`       | `list(string)` | Regular expressions for values that the processor leaves unchanged, even when they also match blocked value patterns.                              | `[]`    | no       |
+| `blocked_key_patterns` | `list(string)` | Regular expressions for attribute keys whose values are masked.                                                                                    | `[]`    | no       |
+| `blocked_values`       | `list(string)` | Regular expressions for value substrings that the processor masks after key filtering.                                                             | `[]`    | no       |
+| `hash_function`        | `string`       | Function used to hash redacted values instead of masking them with a fixed string.                                                                 | `""`    | no       |
+| `hmac_key`             | `secret`       | Secret key used for HMAC hashing when `hash_function` is an HMAC variant.                                                                          | `""`    | no       |
+| `ignored_key_patterns` | `list(string)` | Regular expressions for attribute keys that pass through unchanged.                                                                                | `[]`    | no       |
+| `ignored_keys`         | `list(string)` | Attribute keys that pass through unchanged.                                                                                                        | `[]`    | no       |
+| `redact_all_types`     | `bool`         | Redact non-string attributes as well, by converting them to a string representation.                                                               | `false` | no       |
+| `summary`              | `string`       | Controls diagnostic attributes that describe redaction activity. Use `debug` or `info` to send diagnostics. Use `silent` or `""` to suppress them. | `""`    | no       |
 
 If `allow_all_keys` is `false`, only attributes whose keys appear in `allowed_keys` are kept.
 The `allowed_keys` list fails closed: if it's empty and `allow_all_keys` is `false`, all attributes are removed.
 
-`hash_function` accepts one of `sha1`, `sha3`, `md5`, `hmac-sha256`, or `hmac-sha512`.
-When `hash_function` is `hmac-sha256`, `hmac_key` is required and must be at least 32 bytes long.
-When `hash_function` is `hmac-sha512`, `hmac_key` is required and must be at least 64 bytes long.
+The processor removes disallowed keys before it checks remaining values against `blocked_values`.
+To mask values without removing keys, set `allow_all_keys = true` or include the keys in `allowed_keys`.
 
-Each `blocked_values` entry is a regular expression that's matched against attribute values.
-Only the substring that matches the expression is replaced, with `****` by default or with a hash of the matched text when `hash_function` is set.
+`hash_function` accepts one of `sha1`, `sha3`, `md5`, `hmac-sha256`, or `hmac-sha512`.
+{{< param "PRODUCT_NAME" >}} validates `hash_function` during configuration parsing.
+When you set `hash_function` to `hmac-sha256`, you must also set `hmac_key` to at least 32 bytes.
+When you set `hash_function` to `hmac-sha512`, you must also set `hmac_key` to at least 64 bytes.
+
+The processor matches each `blocked_values` expression against attribute values.
+It replaces only the substring that matches the expression.
+By default, the processor replaces matching text with `****`.
+When you set `hash_function`, the processor replaces matching text with a hash of the matched substring.
 Regular expressions use the [RE2][] syntax, which doesn't support lookarounds or backreferences.
 
 [RE2]: https://github.com/google/re2/wiki/Syntax
@@ -73,6 +80,8 @@ Regular expressions use the [RE2][] syntax, which doesn't support lookarounds or
 ## Blocks
 
 You can use the following blocks with `otelcol.processor.redaction`:
+
+{{< docs/alloy-config >}}
 
 | Block                                    | Description                                                                | Required |
 | ---------------------------------------- | -------------------------------------------------------------------------- | -------- |
@@ -97,6 +106,8 @@ For example, `db_sanitizer` > `sql` refers to a `sql` block defined inside a `db
 [debug_metrics]: #debug_metrics
 [url_sanitizer]: #url_sanitizer
 
+{{< /docs/alloy-config >}}
+
 ### `output`
 
 {{< badge text="Required" >}}
@@ -105,8 +116,9 @@ For example, `db_sanitizer` > `sql` refers to a `sql` block defined inside a `db
 
 ### `url_sanitizer`
 
-The `url_sanitizer` block collapses high-cardinality URLs, such as routes with embedded IDs or query strings, into stable low-cardinality forms.
+The `url_sanitizer` block sanitizes high-cardinality URLs, such as routes with embedded IDs or query strings, into stable low-cardinality forms.
 This helps prevent span-metrics cardinality explosions.
+By default, it also sanitizes matching client and server span names.
 
 | Name                 | Type           | Description                                              | Default | Required |
 | -------------------- | -------------- | -------------------------------------------------------- | ------- | -------- |
@@ -116,7 +128,8 @@ This helps prevent span-metrics cardinality explosions.
 
 ### `db_sanitizer`
 
-The `db_sanitizer` block enables sanitization of database queries.
+The `db_sanitizer` block sanitizes database queries and commands.
+By default, it also sanitizes matching client, server, and internal span names.
 
 | Name                 | Type   | Description                             | Default | Required |
 | -------------------- | ------ | --------------------------------------- | ------- | -------- |
@@ -162,7 +175,7 @@ The following fields are exported and can be referenced by other components:
 
 ## Examples
 
-### Redact all keys and mask credit card numbers
+### Keep selected keys and mask credit card numbers
 
 This example keeps only an explicit set of attribute keys and masks any value that looks like a credit card number.
 
@@ -240,11 +253,11 @@ otelcol.processor.redaction "default" {
 
 {{< admonition type="note" >}}
 The processor replaces the entire matched substring, and RE2 doesn't support lookarounds, so you can't keep only the domain part and produce `****@example.com`.
-If you only want to hide the local part and keep the domain, match the local part together with the `@`, for example `` `[a-zA-Z0-9._%+\-]+@` ``.
-This turns `john.doe@example.com` into `****example.com` because the `@` is part of the match and is replaced as well.
+If you want to hide the local part and keep the domain, match the local part together with `@`, for example `` `[a-zA-Z0-9._%+\-]+@` ``.
+That pattern turns `john.doe@example.com` into `****example.com` because the match includes `@`.
 {{< /admonition >}}
 
-### Hash values instead of masking
+### Hash matched values
 
 Setting `hash_function` replaces each matched value with a hash instead of a fixed `****` string.
 Identical inputs produce identical hashes, so you can still correlate telemetry by a value, such as a client IP, without exposing it.
