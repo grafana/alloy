@@ -23,6 +23,10 @@ const (
 	OP_CREATE_STATEMENT    = "create_statement"
 )
 
+// engineEditionAzureSQLDatabase has a value of 5 in Azure SQL Database,
+// where we use a different strategy for database switching.
+const engineEditionAzureSQLDatabase = 5
+
 // emitInterval is the minimum amount of time that must elapse between
 // successive OP_CREATE_STATEMENT emissions for the same table, regardless of
 // the configured collect_interval.
@@ -118,6 +122,8 @@ type SchemaDetailsArguments struct {
 	ExcludeSchemas   []string
 	ExcludeDatabases []string
 	EntryHandler     loki.EntryHandler
+	EngineEdition    int
+	NewDBForDatabase func(database string) (*sql.DB, error)
 
 	Logger *slog.Logger
 }
@@ -128,6 +134,8 @@ type SchemaDetails struct {
 	excludeSchemas   []string
 	excludeDatabases []string
 	entryHandler     loki.EntryHandler
+	engineEdition    int
+	newDBForDatabase func(database string) (*sql.DB, error)
 
 	// lastEmittedAt records the wall-clock time at which OP_CREATE_STATEMENT
 	// was last emitted for a table. The outer key is the database name and
@@ -191,6 +199,8 @@ func NewSchemaDetails(args SchemaDetailsArguments) (*SchemaDetails, error) {
 		excludeSchemas:   args.ExcludeSchemas,
 		excludeDatabases: args.ExcludeDatabases,
 		entryHandler:     args.EntryHandler,
+		engineEdition:    args.EngineEdition,
+		newDBForDatabase: args.NewDBForDatabase,
 		lastEmittedAt:    map[string]map[string]time.Time{},
 		now:              time.Now,
 		logger:           args.Logger.With("collector", SchemaDetailsCollector),
@@ -264,25 +274,8 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 
 	if len(databases) == 0 {
 		c.logger.Info("no databases detected")
-	} else {
-		// Pin one connection for the whole cycle as USE mutates session state
-		conn, err := c.dbConnection.Conn(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to acquire database connection: %w", err)
-		}
-		defer conn.Close()
-
-		for _, db := range databases {
-			discovered[db.name] = struct{}{}
-			if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE %s", db.quoted)); err != nil {
-				c.logger.Error("failed to switch database context, skipping", "database", db.name, "err", err)
-				continue
-			}
-			if err := c.extractSchemaForDatabase(ctx, conn, db.name, now); err != nil {
-				c.logger.Error("failed to extract schema for database", "database", db.name, "err", err)
-				continue
-			}
-		}
+	} else if err := c.extractSchemaWithStrategy(ctx, databases, discovered, now); err != nil {
+		return err
 	}
 
 	// Drop throttle entries only for databases that discovery no longer
@@ -297,6 +290,78 @@ func (c *SchemaDetails) extractSchema(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// extractSchemaWithStrategy dispatches to the extraction strategy appropriate
+// for the server's engine edition. Azure SQL Database binds each connection to
+// a single database and rejects cross-database USE, so it opens a fresh
+// connection per database; every other edition switches context with USE on a
+// single pinned connection.
+func (c *SchemaDetails) extractSchemaWithStrategy(ctx context.Context, databases []databaseName, discovered map[string]struct{}, now time.Time) error {
+	if c.engineEdition == engineEditionAzureSQLDatabase {
+		return c.extractSchemaPerDatabaseConn(ctx, databases, discovered, now)
+	}
+	return c.extractSchemaWithUSE(ctx, databases, discovered, now)
+}
+
+// extractSchemaWithUSE iterates the databases on a single pinned connection,
+// switching context with USE.
+func (c *SchemaDetails) extractSchemaWithUSE(ctx context.Context, databases []databaseName, discovered map[string]struct{}, now time.Time) error {
+	// Pin one connection for the whole cycle as USE mutates session state
+	conn, err := c.dbConnection.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to acquire database connection: %w", err)
+	}
+	defer conn.Close()
+
+	for _, db := range databases {
+		discovered[db.name] = struct{}{}
+		if _, err := conn.ExecContext(ctx, fmt.Sprintf("USE %s", db.quoted)); err != nil {
+			c.logger.Error("failed to switch database context, skipping", "database", db.name, "err", err)
+			continue
+		}
+		if err := c.extractSchemaForDatabase(ctx, conn, db.name, now); err != nil {
+			c.logger.Error("failed to extract schema for database", "database", db.name, "err", err)
+			continue
+		}
+	}
+	return nil
+}
+
+// extractSchemaPerDatabaseConn iterates the databases opening a fresh
+// connection scoped to each one, derived from the base DSN.
+func (c *SchemaDetails) extractSchemaPerDatabaseConn(ctx context.Context, databases []databaseName, discovered map[string]struct{}, now time.Time) error {
+	if c.newDBForDatabase == nil {
+		return fmt.Errorf("no per-database connection factory configured")
+	}
+
+	for _, db := range databases {
+		discovered[db.name] = struct{}{}
+		if err := c.extractSchemaForDatabaseConn(ctx, db.name, now); err != nil {
+			c.logger.Error("failed to extract schema for database", "database", db.name, "err", err)
+			continue
+		}
+	}
+	return nil
+}
+
+// extractSchemaForDatabaseConn opens a per-database connection pool, pins a
+// single connection from it, and extracts the schema. The pool and connection
+// are always closed before returning.
+func (c *SchemaDetails) extractSchemaForDatabaseConn(ctx context.Context, dbName string, now time.Time) error {
+	db, err := c.newDBForDatabase(dbName)
+	if err != nil {
+		return fmt.Errorf("failed to open connection for database: %w", err)
+	}
+	defer db.Close()
+
+	conn, err := db.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to acquire connection for database: %w", err)
+	}
+	defer conn.Close()
+
+	return c.extractSchemaForDatabase(ctx, conn, dbName, now)
 }
 
 func (c *SchemaDetails) listDatabases(ctx context.Context) ([]databaseName, error) {
