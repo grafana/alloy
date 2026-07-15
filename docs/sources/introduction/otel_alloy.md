@@ -11,8 +11,8 @@ weight: 230
 # OpenTelemetry in {{% param "PRODUCT_NAME" %}}
 
 {{< param "FULL_PRODUCT_NAME" >}} combines the Prometheus-native, production-grade collection features of {{< param "PRODUCT_NAME" >}} with the broad ecosystem and standards of OpenTelemetry.
-The {{< param "FULL_OTEL_ENGINE" >}} is a bundled OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}}.
-It lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collector while retaining access to all {{< param "PRODUCT_NAME" >}} features and integrations.
+The {{< param "FULL_OTEL_ENGINE" >}} is an OpenTelemetry Collector distribution embedded within {{< param "PRODUCT_NAME" >}}.
+It lets you run {{< param "PRODUCT_NAME" >}} with the OpenTelemetry Collector while retaining access to all {{< param "PRODUCT_NAME" >}} features and integrations.
 
 {{< docs/shared lookup="stability/experimental_otel.md" source="alloy" version="<ALLOY_VERSION>" >}}
 
@@ -20,24 +20,23 @@ It lets you run {{< param "PRODUCT_NAME" >}} as a fully compatible OTel Collecto
 
 {{< param "PRODUCT_NAME" >}} supports two runtime engines and an extension:
 
-- **{{< param "DEFAULT_ENGINE" >}}**: The default {{< param "PRODUCT_NAME" >}} runtime and [configuration syntax](../get-started/syntax/).
 - **{{< param "DEFAULT_ENGINE" >}}**: The default {{< param "PRODUCT_NAME" >}} runtime and [configuration syntax](../../get-started/syntax/).
 This remains the default, stable experience with [backward compatibility](../backward-compatibility/) guarantees for {{< param "PRODUCT_NAME" >}} users.
 
 - **{{< param "OTEL_ENGINE" >}}**: The standard OpenTelemetry Collector runtime embedded within {{< param "PRODUCT_NAME" >}}.
   It uses [upstream collector YAML configuration](https://opentelemetry.io/docs/collector/configuration/) for pipelines and components.
 
-- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that lets you run both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}} in parallel.
+- **{{< param "PRODUCT_NAME" >}} Engine extension**: An OpenTelemetry Collector extension that lets you run both the {{< param "DEFAULT_ENGINE" >}} and the {{< param "OTEL_ENGINE" >}} at the same time.
 
 ## Included components
 
-The {{< param "OTEL_ENGINE" >}} bundle includes:
+The {{< param "OTEL_ENGINE" >}} includes:
 
-- Standard components from the OpenTelemetry Collector core
-- A curated selection of components from contributor repositories
+- Standard components from the OpenTelemetry Collector Core repository
+- Selected components from the OpenTelemetry Collector Contrib repositories
 - The `alloyengine` extension
 
-{{< param "PRODUCT_NAME" >}} {{< param ALLOY_RELEASE >}} bundles versions {{< param "OTEL_VERSION" >}} of OpenTelemetry Collector components.
+{{< param "PRODUCT_NAME" >}} {{< param ALLOY_RELEASE >}} bundles OpenTelemetry Collector components from version {{< param "OTEL_VERSION" >}}.
 You can find more information about the bundled version in both the [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector/tree/{{< param "OTEL_VERSION" >}}) and [OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/{{< param "OTEL_VERSION" >}}) repositories.
 
 The following sections list all included components:
@@ -215,4 +214,4 @@ If you don't set the image repository and image name, the build defaults to `gra
 ## Next steps
 
 - Refer to [The {{< param "OTEL_ENGINE" >}}](../../set-up/otel_engine/) for information about how to run the {{< param "OTEL_ENGINE" >}}.
-- Refer to the [OTel CLI reference](../../reference/cli/otel/) for more information about the OTel CLI.
+- Refer to the [OpenTelemetry CLI reference](../../reference/cli/otel/) for more information about the OpenTelemetry CLI.
