@@ -1,0 +1,17 @@
+# pyroscope.ebpf needs the host PID namespace (see component docs). Tetragon
+# records which capabilities the kernel checks via cap_capable(); cap_drop/cap_add
+# below keep the effective set minimal so CI and local runs surface the real
+# requirements in the test log (Tetragon capability events + Capabilities subtest).
+alloy_container:
+  pid_mode: "host"
+  cap_drop: [ALL]
+  cap_add:
+    - CAP_BPF
+    - CAP_PERFMON
+    - CAP_SYS_PTRACE
+    - CAP_SYS_RESOURCE
+    - CAP_IPC_LOCK
+tetragon_container:
+  # TODO: When the fix is upstreamed, use an official image instead:
+  # image: quay.io/cilium/tetragon:v1.6.0
+  image: ptodev/tetragon:latest
