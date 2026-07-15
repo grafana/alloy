@@ -87,7 +87,7 @@ The `oauth` block configures OAuth 2.0 authentication for the Azure API.
 
 ### `sdk_auth`
 
-The `sdk_auth` block configures authentication using the [Azure SDK's `DefaultAzureCredential`][default-azure-credential] chain.
+The `sdk_auth` block configures authentication with the [`DefaultAzureCredential`][default-azure-credential] chain from the Azure SDK.
 The chain reads credentials from the environment and tries several sources in order, including environment variables, Microsoft Entra Workload Identity, and managed identities.
 Use `sdk_auth` when you want the SDK to pick the appropriate credential automatically, or [`workload_identity`](#workload_identity) when you want to use Workload Identity explicitly.
 
