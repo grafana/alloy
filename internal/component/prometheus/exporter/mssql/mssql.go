@@ -43,12 +43,13 @@ var DefaultArguments = Arguments{
 
 // Arguments controls the mssql exporter.
 type Arguments struct {
-	ConnectionString   alloytypes.Secret         `alloy:"connection_string,attr"`
-	ConnectionName     string                    `alloy:"connection_name,attr,optional"`
-	MaxIdleConnections int                       `alloy:"max_idle_connections,attr,optional"`
-	MaxOpenConnections int                       `alloy:"max_open_connections,attr,optional"`
-	Timeout            time.Duration             `alloy:"timeout,attr,optional"`
-	QueryConfig        alloytypes.OptionalSecret `alloy:"query_config,attr,optional"`
+	ConnectionString      alloytypes.Secret         `alloy:"connection_string,attr"`
+	ConnectionName        string                    `alloy:"connection_name,attr,optional"`
+	MaxIdleConnections    int                       `alloy:"max_idle_connections,attr,optional"`
+	MaxOpenConnections    int                       `alloy:"max_open_connections,attr,optional"`
+	MaxConnectionLifetime time.Duration             `alloy:"max_connection_lifetime,attr,optional"`
+	Timeout               time.Duration             `alloy:"timeout,attr,optional"`
+	QueryConfig           alloytypes.OptionalSecret `alloy:"query_config,attr,optional"`
 }
 
 // SetToDefault implements syntax.Defaulter.
@@ -70,6 +71,10 @@ func (a *Arguments) Validate() error {
 		return errors.New("timeout must be positive")
 	}
 
+	if a.MaxConnectionLifetime < 0 {
+		return errors.New("max_connection_lifetime must not be negative")
+	}
+
 	var collectorConfig config.CollectorConfig
 	err := yaml.UnmarshalStrict([]byte(a.QueryConfig.Value), &collectorConfig)
 	if err != nil {
@@ -81,10 +86,11 @@ func (a *Arguments) Validate() error {
 
 func (a *Arguments) Convert() *mssql.Config {
 	return &mssql.Config{
-		ConnectionString:   config_util.Secret(a.ConnectionString),
-		MaxIdleConnections: a.MaxIdleConnections,
-		MaxOpenConnections: a.MaxOpenConnections,
-		Timeout:            a.Timeout,
-		QueryConfig:        util.RawYAML(a.QueryConfig.Value),
+		ConnectionString:      config_util.Secret(a.ConnectionString),
+		MaxIdleConnections:    a.MaxIdleConnections,
+		MaxOpenConnections:    a.MaxOpenConnections,
+		MaxConnectionLifetime: a.MaxConnectionLifetime,
+		Timeout:               a.Timeout,
+		QueryConfig:           util.RawYAML(a.QueryConfig.Value),
 	}
 }
