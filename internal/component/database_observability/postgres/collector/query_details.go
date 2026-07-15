@@ -47,14 +47,14 @@ var selectQueriesFromActivity = `
 `
 
 type QueryDetailsArguments struct {
-	DB               *sql.DB
-	CollectInterval  time.Duration
-	StatementsLimit  int
-	ExcludeDatabases []string
-	ExcludeUsers     []string
-	EntryHandler     loki.EntryHandler
-	TableRegistry    *TableRegistry
-	EnableErrorLogs  bool
+	DB                        *sql.DB
+	CollectInterval           time.Duration
+	StatementsLimit           int
+	ExcludeDatabases          []string
+	ExcludeUsers              []string
+	EntryHandler              loki.EntryHandler
+	TableRegistry             *TableRegistry
+	EnableErrorLogsProcessing bool
 
 	Logger *slog.Logger
 }
@@ -86,7 +86,7 @@ func NewQueryDetails(args QueryDetailsArguments) (*QueryDetails, error) {
 		excludeUsers:     args.ExcludeUsers,
 		entryHandler:     args.EntryHandler,
 		tableRegistry:    args.TableRegistry,
-		enableErrorLogs:  args.EnableErrorLogs,
+		enableErrorLogs:  args.EnableErrorLogsProcessing,
 		normalizer:       sqllexer.NewNormalizer(sqllexer.WithCollectTables(true), sqllexer.WithCollectComments(true), sqllexer.WithKeepIdentifierQuotation(true)),
 		logger:           args.Logger.With("collector", QueryDetailsCollector),
 		running:          &atomic.Bool{},

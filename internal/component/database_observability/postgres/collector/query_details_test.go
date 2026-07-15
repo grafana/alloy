@@ -1020,12 +1020,12 @@ func TestQueryDetails_QueryAssociationV2_OnEmitsFingerprint(t *testing.T) {
 	lokiClient := loki.NewCollectingHandler()
 
 	c, err := NewQueryDetails(QueryDetailsArguments{
-		DB:              db,
-		CollectInterval: 200 * time.Millisecond,
-		StatementsLimit: 100,
-		EntryHandler:    lokiClient,
-		EnableErrorLogs: true,
-		Logger:          util.TestAlloyLogger(t).Slog(),
+		DB:                        db,
+		CollectInterval:           200 * time.Millisecond,
+		StatementsLimit:           100,
+		EntryHandler:              lokiClient,
+		EnableErrorLogsProcessing: true,
+		Logger:                    util.TestAlloyLogger(t).Slog(),
 	})
 	require.NoError(t, err)
 
@@ -1089,7 +1089,7 @@ func TestQueryDetails_QueryAssociationV2_OffPreservesLegacyOp(t *testing.T) {
 		StatementsLimit: 100,
 		EntryHandler:    lokiClient,
 		Logger:          util.TestAlloyLogger(t).Slog(),
-		// EnableErrorLogs intentionally omitted — defaults to false
+		// EnableErrorLogsProcessing intentionally omitted — defaults to false
 	})
 	require.NoError(t, err)
 
