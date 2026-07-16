@@ -60,8 +60,8 @@ func Command() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create-rc",
 		Short: "Create a release candidate tag and draft prerelease for the main Alloy module",
-		Long: "Creates the RC from the main Alloy module's release-please PR. Component modules such as " +
-			"syntax are released directly by release-please and are ignored.",
+		Long: "Creates the RC from the root Alloy module's release-please PR. Component packages " +
+			"such as syntax may share that PR but are tagged separately and ignored for RCs.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return run(cmd.Context(), flags)
 		},
@@ -240,11 +240,10 @@ func findReleasePleasePR(ctx context.Context, client *gh.Client, baseBranch stri
 	return selectMainModuleReleasePR(prs, baseBranch)
 }
 
-// selectMainModuleReleasePR picks the main Alloy module's release-please PR, not
-// a component module's (e.g. syntax). It keys off release-please's own head
-// branch naming rather than the PR title (which our config can freely rewrite):
-// the main module's head branch has no "--components--" segment. prs are already
-// filtered to baseBranch by the caller.
+// selectMainModuleReleasePR picks the main Alloy release-please PR. With a single
+// combined release PR, the head branch has no "--components--" segment. We still
+// skip any leftover component-only branches. prs are already filtered to
+// baseBranch by the caller.
 func selectMainModuleReleasePR(prs []*github.PullRequest, baseBranch string) (*github.PullRequest, error) {
 	for _, pr := range prs {
 		head := pr.GetHead().GetRef()

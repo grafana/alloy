@@ -7,16 +7,17 @@
 
 import { GitHub, Manifest, VERSION } from 'release-please';
 import { registerVersioningStrategy } from 'release-please/build/src/factories/versioning-strategy-factory.js';
-import { registerPlugin } from 'release-please/build/src/factories/plugin-factory.js';
 import { MinorBreakingVersioningStrategy } from './minor-breaking-versioning.js';
-import { ReleasePrOutputPlugin } from './release-pr-output-plugin.js';
+import { outputReleasePullRequests } from './release-pr-output.js';
+import {
+  installTagOnlyReleaseHandler,
+  prepareTagOnlyPackages,
+  getTagOnlyPathsFromConfig,
+} from './tag-only-releases.js';
 import { fileURLToPath } from 'node:url';
 
 // Register the custom versioning strategy
 registerVersioningStrategy('minor-breaking', (options) => new MinorBreakingVersioningStrategy(options));
-registerPlugin('release-pr-output', (options) => {
-  return new ReleasePrOutputPlugin(options.github, options.targetBranch, options.repositoryConfig);
-});
 
 const DEFAULT_CONFIG_FILE = 'release-please-config.json';
 const DEFAULT_MANIFEST_FILE = '.release-please-manifest.json';
@@ -93,6 +94,16 @@ async function main() {
 
   if (!inputs.skipGitHubRelease) {
     const manifest = await loadManifest(github, inputs);
+    const tagOnlyPaths = getTagOnlyPathsFromConfig(manifest.repositoryConfig);
+    console.log(
+      `Tag-only packages (git tag, no GitHub Release): ${
+        tagOnlyPaths.size > 0 ? [...tagOnlyPaths].join(', ') : '(none)'
+      }`
+    );
+
+    prepareTagOnlyPackages(manifest, tagOnlyPaths);
+    installTagOnlyReleaseHandler(github, tagOnlyPaths);
+
     console.log('Creating releases');
     outputReleases(await manifest.createReleases());
   }
@@ -102,7 +113,8 @@ async function main() {
     console.log('Creating pull requests');
 
     const prs = await manifest.createPullRequests();
-    logPullRequests(prs);
+    // Emit after createPullRequests so outputs can reflect a post-Merge combined PR, if used
+    outputReleasePullRequests(prs);
   }
 }
 
@@ -134,16 +146,6 @@ function outputReleases(releases) {
     }
   }
   console.log(`paths_released=${JSON.stringify(pathsReleased)}`);
-}
-
-function logPullRequests(prs) {
-  prs = prs.filter(pr => pr !== undefined);
-  console.log(`prs_created=${prs.length > 0}`);
-  if (prs.length) {
-    for (const pr of prs) {
-      console.log(`Created/updated PR #${pr.number}: ${pr.title}`);
-    }
-  }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
