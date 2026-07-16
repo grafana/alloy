@@ -20,8 +20,31 @@ registerPlugin('release-pr-output', (options) => {
 
 const DEFAULT_CONFIG_FILE = 'release-please-config.json';
 const DEFAULT_MANIFEST_FILE = '.release-please-manifest.json';
+const ROOT_PACKAGE_PATH = '.';
 
-function parseInputs() {
+/**
+ * Parse CLI flags from argv (process.argv.slice(2) by default).
+ * Unknown flags are rejected.
+ */
+export function parseArgs(argv = process.argv.slice(2)) {
+  const args = {
+    rootOnly: false,
+  };
+
+  for (const arg of argv) {
+    switch (arg) {
+      case '--root-only':
+        args.rootOnly = true;
+        break;
+      default:
+        throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+
+  return args;
+}
+
+function parseInputs(argv = process.argv.slice(2)) {
   const token = process.env.GITHUB_TOKEN;
   if (!token) {
     throw new Error('GITHUB_TOKEN environment variable is required');
@@ -32,6 +55,8 @@ function parseInputs() {
     throw new Error('REPO_URL or GITHUB_REPOSITORY environment variable is required');
   }
 
+  const cliArgs = parseArgs(argv);
+
   return {
     token,
     repoUrl,
@@ -40,16 +65,24 @@ function parseInputs() {
     manifestFile: process.env.MANIFEST_FILE || DEFAULT_MANIFEST_FILE,
     skipGitHubRelease: process.env.SKIP_GITHUB_RELEASE === 'true',
     skipGitHubPullRequest: process.env.SKIP_GITHUB_PULL_REQUEST === 'true',
+    rootOnly: cliArgs.rootOnly,
   };
 }
 
 function loadManifest(github, inputs) {
-  console.log('Loading manifest from config file');
+  const onlyPath = inputs.rootOnly ? ROOT_PACKAGE_PATH : undefined;
+  if (onlyPath) {
+    console.log(`Loading manifest from config file (root-only: path=${onlyPath})`);
+  } else {
+    console.log('Loading manifest from config file');
+  }
   return Manifest.fromManifest(
     github,
     inputs.targetBranch || github.repository.defaultBranch,
     inputs.configFile,
-    inputs.manifestFile
+    inputs.manifestFile,
+    {},
+    onlyPath
   );
 }
 

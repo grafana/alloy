@@ -167,13 +167,11 @@ func printRCDryRun(info rcInfo) {
 }
 
 func createRCRelease(ctx context.Context, client *gh.Client, info rcInfo) error {
-	// Draft releases don't create tags until published. Tag creation is what triggers artifacts to
-	// build and get attached to releases. So we create a tag here like how release-please does with
-	// force-tag-creation.
+	// Draft releases don't create tags until published. Create a lightweight tag (same as
+	// release-please force-tag-creation) so artifact workflows run and can attach to the draft.
 	if err := client.CreateTag(ctx, gh.CreateTagParams{
-		Tag:     info.RCTag,
-		SHA:     info.BranchSHA,
-		Message: fmt.Sprintf("Release candidate %s", info.RCTag),
+		Tag: info.RCTag,
+		SHA: info.BranchSHA,
 	}); err != nil {
 		return fmt.Errorf("creating tag: %w", err)
 	}
