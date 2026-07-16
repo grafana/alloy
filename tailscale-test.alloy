@@ -1,0 +1,42 @@
+prometheus.exporter.tailscale "default" {
+  tailnet  = "-"
+  peer_scrape_timeout = "10s"
+
+  // OAuth auth (recommended) — one client covers the API and the node join.
+  // The OAuth client needs scopes devices:core:read + auth_keys and must own
+  // the advertise_tags below (tagOwners in your tailnet policy).
+  oauth {
+    client_id      = env("TS_OAUTH_CLIENT_ID")
+    client_secret  = env("TS_OAUTH_CLIENT_SECRET")
+    advertise_tags = ["tag:ts-alloy"]
+  }
+
+  // API-key auth (alternative) — replaces the oauth block above:
+  // auth_key = env("TS_AUTHKEY")
+  // api_key  = env("TS_API_KEY")
+
+  // Kubernetes operator proxies and ingresses expose tailscaled metrics on 9002.
+  target {
+    match_tags = ["tag:*-proxy", "tag:*-ingress", "tag:k8s-operator"]
+    port       = 9002
+  }
+
+  // Everything else (clients, exit nodes, subnet routers) on 5252.
+  target {
+    match_tags = []
+    port       = 5252
+  }
+}
+
+prometheus.scrape "tailscale" {
+  targets         = prometheus.exporter.tailscale.default.targets
+  scrape_interval = "15s"
+  forward_to      = [prometheus.remote_write.local.receiver]
+}
+
+// Sink — write to a local Prometheus or just log
+prometheus.remote_write "local" {
+  endpoint {
+    url = "http://localhost:9090/api/v1/remote_write"
+  }
+}

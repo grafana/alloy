@@ -183,6 +183,7 @@ body:
       - prometheus.exporter.squid
       - prometheus.exporter.static
       - prometheus.exporter.statsd
+      - prometheus.exporter.tailscale
       - prometheus.exporter.unix
       - prometheus.exporter.windows
       - prometheus.operator.podmonitors

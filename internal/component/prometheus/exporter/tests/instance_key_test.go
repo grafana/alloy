@@ -40,6 +40,7 @@ import (
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/squid"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/static"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/statsd"
+	"github.com/grafana/alloy/internal/component/prometheus/exporter/tailscale"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/unix"
 	"github.com/grafana/alloy/internal/component/prometheus/exporter/windows"
 	httpservice "github.com/grafana/alloy/internal/service/http"
@@ -405,6 +406,17 @@ func TestInstanceKey(t *testing.T) {
 			temporaryHostname: "test-agent",
 			// StatsD exporter can receive data from network, so the best default we have is
 			expectedInstanceLabel: "prometheus.exporter.statsd.test_comp_id",
+		},
+		{
+			testName:      "tailscale",
+			componentName: "prometheus.exporter.tailscale",
+			args: tailscale.Arguments{
+				Tailnet: "example.com",
+				APIKey:  alloytypes.Secret("tskey-api-xxxx"),
+				AuthKey: alloytypes.Secret("tskey-auth-xxxx"),
+			},
+			// The tailnet name is used as the instance key.
+			expectedInstanceLabel: "example.com",
 		},
 		{
 			testName:      "unix",
