@@ -104,7 +104,7 @@ A dropped line can't be recovered, whereas an unredacted line containing a secre
 Use this option only when dropping lines is preferable to forwarding potentially unredacted data.
 {{< /admonition >}}
 
-[embedded-config]: https://github.com/grafana/alloy/blob/{{< param "ALLOY_RELEASE" >}}/internal/component/loki/secretfilter/gitleaks.toml
+[embedded-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
 ## Blocks
 
@@ -134,6 +134,98 @@ The following fields are exported and can be referenced by other components:
 | `loki_secretfilter_processing_duration_seconds`    | Summary | Time taken to process and redact logs, in seconds.                                             |
 | `loki_secretfilter_secrets_redacted_total`         | Counter | Total number of secrets redacted.                                                              |
 | `loki_secretfilter_secrets_redacted_by_category_total` | Counter | Number of secrets redacted, partitioned by rule name and origin label value. The `origin` label is empty when `origin_label` is not set or the label is absent on the entry. |
+
+## Use a custom Gitleaks configuration
+
+By default, the component detects secrets using the upstream [Gitleaks default ruleset][gitleaks-config], which is compiled into {{< param "PRODUCT_NAME" >}}.
+To change which secrets are detected, set the `gitleaks_config` argument to the path of a custom Gitleaks TOML file.
+
+The recommended way to write a custom configuration is to _extend_ the default rules rather than replace them.
+Add an `[extend]` block with `useDefault = true` so your file starts from the complete set of built-in rules, then layer your own changes on top.
+
+```toml
+title = "Extended Gitleaks config"
+
+[extend]
+useDefault = true
+
+# Add your own rule in addition to the built-in ones!
+[[rules]]
+id = "secret-internal-token"
+description = "Secret internal service token"
+regex = '''secret_tok_[0-9a-zA-Z]{32}'''
+keywords = ["secret_tok_"]
+```
+
+Point the component at this file:
+
+```alloy
+loki.secretfilter "secret_filter" {
+    forward_to      = [loki.write.local_loki.receiver]
+    gitleaks_config = "/etc/alloy/gitleaks.toml"
+}
+```
+
+When `useDefault = true`, redefining a `[[rules]]` block with the same `id` as a built-in rule merges your changes into that rule instead of replacing it.
+This is what makes it possible to adjust a built-in rule, for example, to add allowlists to it, without losing its detection logic.
+Refer to the [Gitleaks configuration structure][gitleaks-config] for the full set of supported fields.
+
+{{< admonition type="note" >}}
+Setting `useDefault = false`, or omitting the `[extend]` block, means only the rules you define yourself are used.
+The built-in rules are not loaded, so most secrets go undetected unless you redefine them.
+{{< /admonition >}}
+
+## Handle false positives
+
+Because detection is regular expression-based, `loki.secretfilter` sometimes redacts values that aren't secrets, such as identifiers, UUIDs, or hashes that happen to look like an API key.
+When this happens, identify which rule is firing, then add an _allowlist_ to that rule so the matching values are ignored.
+
+To find the responsible rule, inspect the `rule` label on the `loki_secretfilter_secrets_redacted_by_category_total` metric.
+The built-in `generic-api-key` rule is the most common source of false positives because it matches high-entropy strings broadly. You may benefit from just raising the default entropy value!
+
+Allowlist the false positives by extending the same configuration from the previous section.
+Redefine the offending rule by `id` and add one or more `[[rules.allowlists]]` blocks.
+Each allowlist uses `regexTarget` to choose what its `regexes` are tested against:
+
+- `regexTarget = "match"` tests against the surrounding matched text, which is useful for allowlisting by field name, such as ignoring anything that looks like `token_id=...`.
+- `regexTarget = "secret"` tests against the captured secret value itself, which is useful for allowlisting by value shape, such as ignoring UUIDs. This is the default when `regexTarget` is omitted.
+
+A finding is ignored when it matches any allowlist on the rule.
+
+```toml
+title = "Extended Gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "secret-internal-token"
+description = "Secret internal service token"
+regex = '''secret_tok_[0-9a-zA-Z]{32}'''
+keywords = ["secret_tok_"]
+
+# Reduce false positives from the built-in generic-api-key rule!
+[[rules]]
+id = "generic-api-key"
+
+  # Allowlist by matched text: ignore findings around known non-secret fields.
+  [[rules.allowlists]]
+  description = "Ignore token identifiers"
+  regexTarget = "match"
+  regexes = [
+    "(?i)token_?id",
+  ]
+
+  # Allowlist by secret value: ignore when the captured value is a UUID.
+  [[rules.allowlists]]
+  description = "Ignore UUID values"
+  regexTarget = "secret"
+  regexes = [
+    '''^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$''',
+  ]
+```
+
+With this configuration, `generic-api-key` keeps detecting real secrets, but no longer redacts log lines such as `token_id=a1B2c3D4e5F6g7H8i9J0` or values shaped like the UUID `8f14e45f-ceea-167a-9c2b-1f0a3e4d5c6b`.
 
 ## Example
 
