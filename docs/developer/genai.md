@@ -2,8 +2,8 @@
 
 This page is intended to be read by **human contributors**.
 
-Generative AI tools can help you contribute to Grafana Alloy. It explains what we expect when you
-use AI assistance.
+Generative AI tools can help you contribute to Grafana Alloy. This page explains what we expect when
+you use AI assistance.
 
 ## Core principle
 
@@ -37,7 +37,7 @@ trade-offs of what you're proposing.
 
 ## Acceptable
 
-- Use AI to implement or refactor code and docs you then review and refine.
+- Use AI to implement or refactor code and docs that you then review and refine.
 - Use AI to draft the PR **Brief description** and **Issue(s) fixed** from the actual change.
 - Use AI to learn the codebase before contributing or reviewing.
 - Use AI privately to clarify your own thinking, then post discussion **in your own words**.
@@ -60,14 +60,15 @@ When AI generates the **bulk of the implementation**, check **"This pull request
 generated with AI assistance"** in the PR template. Minor autocomplete or small edits do not need
 disclosure.
 
-An AI-written Brief description and Issue(s) fixed line are fine. Disclosure does not excuse
+An AI-written Brief description and Issue(s) fixed lines are fine. Disclosure does not excuse
 AI-written pull request details or discussion — those must still be yours.
 
 ## Licensing and provenance
 
 Alloy is [Apache 2.0][license]. Contributions require a signed [CLA][cla]. The same obligations
-apply to AI-assisted work: you warrant you have the right to contribute it, it is
-license-compatible, and any new dependencies follow the [dependency guidance][contributing-deps].
+apply to AI-assisted work: you warrant that you have the right to contribute it, that it is
+license-compatible, and that any new dependencies follow the [dependency
+guidance][contributing-deps].
 
 If you are unsure whether generated code is original or license-compatible, do not submit it.
 

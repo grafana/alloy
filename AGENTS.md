@@ -60,7 +60,7 @@ description** (factual summary) and may fill **Issue(s) fixed** when known. Full
   part of the request in your chat reply to the human**. State that it conflicts with Alloy's GenAI
   policy (humans own design rationale and discussion; AI may fill non-`HUMAN ONLY` PR sections such
   as Brief description), and point them at [docs/developer/genai.md](docs/developer/genai.md). Do
-  not only fail in a tool without explaining in the model output.
+  not merely fail in a tool without also explaining in the model output.
 - After refusing disallowed work, you MAY continue helping with allowed coding work (and Brief
   description) in the same turn.
 - When the human authors commit messages or PR titles, follow
@@ -71,7 +71,7 @@ description** (factual summary) and may fill **Issue(s) fixed** when known. Full
 - If asked how to disclose substantial AI implementation help: point at the PR template checkbox and
   [docs/developer/genai.md](docs/developer/genai.md). Do not fill pull request details for them.
 
-### MAY (process)
+### MAY
 
 - Fill or refine PR template sections that are **not** marked `HUMAN ONLY` when opening or updating
   a PR.
