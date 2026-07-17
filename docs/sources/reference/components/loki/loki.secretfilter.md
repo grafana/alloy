@@ -182,7 +182,7 @@ title = "Extended Gitleaks config"
 [extend]
 useDefault = true
 
-# Add your own rule in addition to the built-in ones!
+# Add your own rule in addition to the built-in ones.
 [[rules]]
 id = "secret-internal-token"
 description = "Secret internal service token"
@@ -223,7 +223,7 @@ When this happens, identify which rule is firing, then add an _allowlist_ to tha
 To find the responsible rule, inspect the `rule` label on the `loki_secretfilter_secrets_redacted_by_category_total` metric.
 
 For example, the built-in `generic-api-key` rule is the most common source of false positives because it matches high-entropy strings broadly.
-You may benefit from just raising the default entropy value!
+You may benefit from just raising the default entropy value.
 
 For more precise control, keep the rule enabled and allowlist only the specific values that cause false positives.
 
@@ -248,7 +248,7 @@ description = "Secret internal service token"
 regex = '''secret_tok_[0-9a-zA-Z]{32}'''
 keywords = ["secret_tok_"]
 
-# Reduce false positives from the built-in generic-api-key rule!
+# Reduce false positives from the built-in generic-api-key rule.
 [[rules]]
 id = "generic-api-key"
 # Raise the generic-api-key entropy threshold above its default of 3.5.
