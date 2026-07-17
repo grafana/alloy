@@ -16,10 +16,10 @@ import (
 	"github.com/grafana/alloy/syntax"
 )
 
-// TestGeneratedSectionsEmitted asserts every generated section (injector,
-// javaagent, nodejs, …) reaches the emitted Beyla YAML, and that a *bool
-// default-true field can be explicitly disabled.
-func TestGeneratedSectionsEmitted(t *testing.T) {
+// TestSectionsEmitted asserts every config section (injector, javaagent,
+// nodejs, …) reaches the emitted Beyla YAML, and that a *bool default-true
+// field can be explicitly disabled.
+func TestSectionsEmitted(t *testing.T) {
 	cfg := `
 		injector {
 			instrument {
@@ -60,7 +60,7 @@ func TestGeneratedSectionsEmitted(t *testing.T) {
 	var config map[string]any
 	require.NoError(t, yaml.Unmarshal(data, &config))
 
-	// All generated sections must reach the emitted YAML.
+	// All config sections must reach the emitted YAML.
 	require.Contains(t, config, "injector")
 	require.Contains(t, config, "javaagent")
 	require.Contains(t, config, "nodejs")

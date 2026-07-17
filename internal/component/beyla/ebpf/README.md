@@ -30,7 +30,7 @@ While the subprocess runs, the component (`beyla_linux.go`):
 
 | file | role |
 |---|---|
-| `args.go` | `Arguments` (an alias to `config.Arguments`) + `Exports`. The config types, translation, and generator live in [`internal/config`](./internal/config/gen/README.md). |
+| `args.go` | `Arguments` (an alias to `config.Arguments`) + `Exports`. The config types and translation live in [`internal/config`](./internal/config/gen/README.md). |
 | `config.go` | `writeConfigFile`: `config.Build(args, runtime)` → YAML → an in-memory fd (memfd) handed to Beyla. |
 
 ### Subprocess
@@ -52,7 +52,7 @@ While the subprocess runs, the component (`beyla_linux.go`):
 
 | dir | role |
 |---|---|
-| `internal/config` | Beyla config types, Args→YAML translation, and the schema-driven generator. See its [README](./internal/config/gen/README.md). |
+| `internal/config` | Beyla config types and the hand-written Args→YAML translation. See its [README](./internal/config/gen/README.md). |
 | `internal/subprocess` | `Handle`: thread-safe subprocess state (pid, ports, restart bookkeeping). |
 | `internal/health` | `Reporter`: thread-safe component health. |
 
@@ -60,7 +60,7 @@ While the subprocess runs, the component (`beyla_linux.go`):
 
 | file | role |
 |---|---|
-| `generated_sections_test.go` | End-to-end: every generated section reaches the emitted Beyla YAML. |
+| `sections_test.go` | End-to-end: every config section reaches the emitted Beyla YAML. |
 | `beyla_linux_test.go` | Deprecation-warning behavior. |
 
 Also present: `binaries/{amd64,arm64}/beyla` — the downloaded Beyla binaries (gitignored,

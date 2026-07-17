@@ -37,17 +37,6 @@ typo'd or misplaced key, which Beyla would otherwise silently ignore.
 
 A small `allowlist` in that test covers real Beyla keys the schema doesn't export.
 
-## Bumping Beyla
+## Upgrading Beyla
 
-```
-edit BEYLA_VERSION in the Makefile
-make update-beyla-checksums          # record the new release's checksums; review the diff
-make download-beyla download-beyla-schema
-```
-
-Then update the hand-written types/translation for any new or changed options. The
-schema-validation test flags emitted keys that don't match the new schema.
-
-> Follow-up (not yet implemented): a schema-**coverage** report that diffs the
-> Arguments surface against `schema.json` to flag Beyla options not yet exposed —
-> the drift detector that replaces the old generator's coverage gate.
+See [docs/developer/updating-beyla.md](../../../../../../../docs/developer/updating-beyla.md).
