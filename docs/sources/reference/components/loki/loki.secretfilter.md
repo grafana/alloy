@@ -96,7 +96,6 @@ When `drop_on_timeout = true`, entries that exceed the timeout are dropped and t
 Set `label_timed_out = true` to add `secretfilter="timed-out"` to any entry that {{< param "PRODUCT_NAME" >}} forwards after a timeout.
 You can then query timed-out lines in Loki, for example, with `{secretfilter="timed-out"}`.
 {{< param "PRODUCT_NAME" >}} applies this label only to forwarded entries.
-It doesn't label dropped entries when `drop_on_timeout = true`.
 
 {{< admonition type="caution" >}}
 Setting `drop_on_timeout = true` means log lines can be silently dropped.
@@ -169,6 +168,9 @@ loki.secretfilter "secret_filter" {
 When `useDefault = true`, redefining a `[[rules]]` block with the same `id` as a built-in rule merges your changes into that rule instead of replacing it.
 This is what makes it possible to adjust a built-in rule, for example, to add allowlists to it, without losing its detection logic.
 
+To turn off a built-in rule entirely rather than adjust it, list its `id` in `disabledRules`.
+Disabling a rule stops it from detecting anything, so to keep a rule but ignore specific values, use an allowlist instead.
+
 Adjusting a built-in rule with allowlists is the most common way to reduce false positives, as the [following section](#handle-false-positives) demonstrates.
 For the full set of configuration options, such as global allowlists, the `condition` field, `stopwords`, and path-based matching, refer to the [Gitleaks configuration documentation][gitleaks-configuration].
 
@@ -185,7 +187,11 @@ Because detection is regular expression-based, `loki.secretfilter` sometimes red
 When this happens, identify which rule is firing, then add an _allowlist_ to that rule so the matching values are ignored.
 
 To find the responsible rule, inspect the `rule` label on the `loki_secretfilter_secrets_redacted_by_category_total` metric.
-The built-in `generic-api-key` rule is the most common source of false positives because it matches high-entropy strings broadly. You may benefit from just raising the default entropy value!
+
+For example, the built-in `generic-api-key` rule is the most common source of false positives because it matches high-entropy strings broadly.
+You may benefit from just raising the default entropy value!
+
+For more precise control, keep the rule enabled and allowlist only the specific values that cause false positives.
 
 Allowlist the false positives by extending the same configuration from the previous section.
 Redefine the offending rule by `id` and add one or more `[[rules.allowlists]]` blocks.
@@ -211,6 +217,8 @@ keywords = ["secret_tok_"]
 # Reduce false positives from the built-in generic-api-key rule!
 [[rules]]
 id = "generic-api-key"
+# Raise the generic-api-key entropy threshold above its default of 3.5.
+entropy = 4.0
 
   # Allowlist by matched text: ignore findings around known non-secret fields.
   [[rules.allowlists]]
