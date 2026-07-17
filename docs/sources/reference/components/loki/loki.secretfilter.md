@@ -34,13 +34,47 @@ Place `loki.secretfilter` after components that reduce log volume so it processe
 
 [gitleaks-config]: https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 
-## Usage
+## Example usage
+
+This example uses `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`.
+
+Optional arguments are supported, several of which are listed below:
+
+- Omit `redact_with` to use percentage-based redaction, which defaults to 80% redacted.
+- Set `redact_percent` to `100` for full redaction.
+- Set `gitleaks_config` to point to a custom Gitleaks TOML configuration file.
+- Set `rate` to a value below `1.0` to sample entries and reduce CPU usage; entries not selected are forwarded unchanged.
+
+For a full list of arguments, refer to [Arguments](#arguments).
 
 ```alloy
-loki.secretfilter "<LABEL>" {
-    forward_to = <RECEIVER_LIST>
+local.file_match "local_logs" {
+    path_targets = "<PATH_TARGETS>"
+}
+
+loki.source.file "local_logs" {
+    targets    = local.file_match.local_logs.targets
+    forward_to = [loki.secretfilter.secret_filter.receiver]
+}
+
+loki.secretfilter "secret_filter" {
+    forward_to  = [loki.write.local_loki.receiver]
+    redact_with = "<ALLOY-REDACTED-SECRET:$SECRET_NAME:$SECRET_HASH>"
+    // optional: gitleaks_config = "/etc/alloy/gitleaks.toml"
+    // optional: redact_percent = 100  // use when redact_with is not set
+}
+
+loki.write "local_loki" {
+    endpoint {
+        url = "<LOKI_ENDPOINT>"
+    }
 }
 ```
+
+Replace the following:
+
+* _`<PATH_TARGETS>`_: The paths to the log files to monitor.
+* _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
 
 ## Arguments
 
@@ -239,45 +273,28 @@ entropy = 4.0
 
 With this configuration, `generic-api-key` keeps detecting real secrets, but no longer redacts log lines such as `token_id=a1B2c3D4e5F6g7H8i9J0` or values shaped like the UUID `8f14e45f-ceea-167a-9c2b-1f0a3e4d5c6b`.
 
-## Example
+## Manage performance
 
-This example uses `loki.secretfilter` to redact secrets from log lines before forwarding them to a Loki receiver. It uses a custom redaction template with `$SECRET_NAME` and `$SECRET_HASH`.
+Secret detection runs a set of regular expressions against every log line, so its cost scales with both your log volume and the number of active rules.
+The following options help you control that cost.
 
-Alternatively, you can:
+**Reduce the number of lines processed.**
+Place `loki.secretfilter` after components that filter or drop logs, such as `loki.process`, so it only scans the lines you care about.
+Fewer lines in means less work for the component.
 
-- Omit `redact_with` to use percentage-based redaction, which defaults to 80% redacted.
-- Set `redact_percent` to `100` for full redaction.
-- Set `gitleaks_config` to point to a custom Gitleaks TOML configuration file.
-- Set `rate` to a value below `1.0` to sample entries and reduce CPU usage; entries not selected are forwarded unchanged.
+**Sample high-volume streams with `rate`.**
+Set `rate` to a value below `1.0` to process only a fraction of entries, for example, `0.1` to scan 10% of lines.
+Entries that {{< param "PRODUCT_NAME" >}} doesn't select are forwarded unchanged, so this reduces CPU usage at the cost of leaving some lines unscanned.
+Monitor `loki_secretfilter_entries_bypassed_total` to see how many entries were skipped.
 
-```alloy
-local.file_match "local_logs" {
-    path_targets = "<PATH_TARGETS>"
-}
+**Bound per-line work with `processing_timeout`.**
+Large lines can be expensive to scan, so set `processing_timeout` to cap how long the component spends on any single entry.
+By default, a timed-out line is forwarded unredacted so no data is lost, or you can set `drop_on_timeout = true` to drop it instead.
+Monitor `loki_secretfilter_lines_timed_out_total` and `loki_secretfilter_lines_dropped_total`, and use `loki_secretfilter_processing_duration_seconds` to track overall processing time.
 
-loki.source.file "local_logs" {
-    targets    = local.file_match.local_logs.targets
-    forward_to = [loki.secretfilter.secret_filter.receiver]
-}
-
-loki.secretfilter "secret_filter" {
-    forward_to  = [loki.write.local_loki.receiver]
-    redact_with = "<ALLOY-REDACTED-SECRET:$SECRET_NAME:$SECRET_HASH>"
-    // optional: gitleaks_config = "/etc/alloy/gitleaks.toml"
-    // optional: redact_percent = 100  // use when redact_with is not set
-}
-
-loki.write "local_loki" {
-    endpoint {
-        url = "<LOKI_ENDPOINT>"
-    }
-}
-```
-
-Replace the following:
-
-* _`<PATH_TARGETS>`_: The paths to the log files to monitor.
-* _`<LOKI_ENDPOINT>`_: The URL of the Loki instance to send logs to.
+**Detect fewer secrets.**
+Every rule adds regular expression work, so removing rules you don't need, or raising a noisy rule's `entropy` threshold, also lowers CPU usage.
+Refer to [Use a custom Gitleaks configuration](#use-a-custom-gitleaks-configuration) to disable or tune rules.
 
 <!-- START GENERATED COMPATIBLE COMPONENTS -->
 
