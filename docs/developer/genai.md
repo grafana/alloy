@@ -85,7 +85,9 @@ you draft; you own the argument in public discussion.
 
 Maintainers may close or request changes on contributions where pull request details or discussion
 look unowned or low-effort AI-generated, using the same [issue triage][issue-triage] process as
-other contributions. Repeated abuse may lead to stricter review or blocked contributions.
+other contributions. When they do, they will explain why and, where appropriate, offer guidance on
+how to improve the contribution. Repeated abuse may lead to stricter review or blocked
+contributions.
 
 [alloy-docs]: https://grafana.com/docs/alloy/latest/
 [issue-triage]: ./issue-triage.md
