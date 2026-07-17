@@ -8,13 +8,13 @@ import (
 	"log/slog"
 	"net"
 	"os"
-	"os/exec"
 	"runtime"
 	"strings"
-	"syscall"
 
 	"go.uber.org/atomic"
 	"golang.org/x/sys/unix"
+
+	"github.com/grafana/alloy/internal/component/beyla/ebpf/internal/subprocess"
 )
 
 var socketCounter atomic.Uint64
@@ -102,29 +102,6 @@ func embeddedBeylaBinary() ([]byte, error) {
 	return beylaBinaryFS.ReadFile("binaries/" + runtime.GOARCH + "/beyla")
 }
 
-func (c *Component) extractBeylaExecutable() (string, func(), error) {
-	binary, err := embeddedBeylaBinary()
-	if err != nil {
-		return "", nil, fmt.Errorf("embedded Beyla binary unavailable (run `make download-beyla`): %w", err)
-	}
-
-	fd, err := createExecMemfd("beyla")
-
-	if err != nil {
-		return "", nil, fmt.Errorf("failed to create in-memory file: %w", err)
-	}
-
-	if err := writeData(fd, binary); err != nil {
-		unix.Close(fd)
-		return "", nil, fmt.Errorf("failed to write binary: %w", err)
-	}
-
-	binPath := fmt.Sprintf("/proc/self/fd/%d", fd)
-	c.opts.Logger.Debug("loaded Beyla binary into memory", "size", len(binary))
-
-	return binPath, func() { unix.Close(fd) }, nil
-}
-
 func findFreePort() (int, error) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -135,63 +112,36 @@ func findFreePort() (int, error) {
 }
 
 func (c *Component) runSubprocess(ctx context.Context) error {
-	exePath, configPath, port, profilePort := c.subprocess.Launch()
-
-	if exePath == "" {
-		return fmt.Errorf("beyla executable path not set")
-	}
-	if configPath == "" {
-		return fmt.Errorf("config path not set")
-	}
-
-	cmd := exec.CommandContext(ctx, exePath, "-config", configPath)
-
-	// Ensure Beyla subprocess gets killed when Alloy dies (even with SIGKILL).
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-
-	cmd.Env = os.Environ()
-	if profilePort != 0 {
-		cmd.Env = append(cmd.Env, fmt.Sprintf("BEYLA_PROFILE_PORT=%d", profilePort))
-	}
-
-	cmd.Stdout = &logWriter{logger: c.opts.Logger, level: "info"}
-	cmd.Stderr = &logWriter{logger: c.opts.Logger, level: "error"}
-
-	c.subprocess.SetCmd(cmd)
-
-	c.opts.Logger.Info("starting Beyla subprocess", "binary", exePath, "port", port, "config", configPath)
-
-	// Pin this goroutine to its OS thread so that the cap modifications below
-	// are visible to the fork() that cmd.Start() performs on this same thread.
-	runtime.LockOSThread()
-	cleanupCaps, err := raiseSubprocessCaps()
+	binary, err := embeddedBeylaBinary()
 	if err != nil {
-		runtime.UnlockOSThread()
-		c.opts.Logger.Error("failed to prepare subprocess capabilities", "err", err)
+		err = fmt.Errorf("embedded Beyla binary unavailable (run `make download-beyla`): %w", err)
+		c.opts.Logger.Error("failed to load Beyla binary", "err", err)
 		c.health.SetUnhealthy(err)
-		return fmt.Errorf("failed to prepare subprocess capabilities: %w", err)
+		return err
 	}
 
-	startErr := cmd.Start()
+	c.opts.Logger.Info("starting Beyla subprocess", "port", c.subprocess.Port(), "config", c.subprocess.ConfigPath())
 
-	// Restore parent's cap sets and release the thread lock before blocking on Wait.
-	cleanupCaps()
-	runtime.UnlockOSThread()
-
-	if startErr != nil {
-		c.opts.Logger.Error("failed to start Beyla subprocess", "err", startErr)
-		c.health.SetUnhealthy(startErr)
-		return fmt.Errorf("failed to start subprocess: %w", startErr)
+	proc, err := subprocess.Start(ctx, subprocess.Spec{
+		Name:    "beyla",
+		Binary:  binary,
+		Args:    []string{"-config", c.subprocess.ConfigPath()},
+		Env:     profileEnv(c.subprocess.ProfilePort()),
+		PreExec: raiseSubprocessCaps,
+		Stdout:  &logWriter{logger: c.opts.Logger, level: "info"},
+		Stderr:  &logWriter{logger: c.opts.Logger, level: "error"},
+	})
+	if err != nil {
+		c.opts.Logger.Error("failed to start Beyla subprocess", "err", err)
+		c.health.SetUnhealthy(err)
+		return err
 	}
 
-	// Child has exec'd and holds its own reference to the memfd inode; close ours now.
-	c.subprocess.CloseBinary()
+	pid, _ := proc.Pid()
+	c.subprocess.SetPid(pid)
+	c.opts.Logger.Info("Beyla subprocess started", "pid", pid)
 
-	c.opts.Logger.Info("Beyla subprocess started", "pid", cmd.Process.Pid)
-
-	err = cmd.Wait()
+	err = proc.Wait()
 	if err != nil && ctx.Err() == nil {
 		// Subprocess exited unexpectedly (not due to context cancellation).
 		c.opts.Logger.Error("Beyla subprocess exited unexpectedly", "err", err)
@@ -201,6 +151,13 @@ func (c *Component) runSubprocess(ctx context.Context) error {
 
 	c.opts.Logger.Info("Beyla subprocess stopped")
 	return nil
+}
+
+func profileEnv(profilePort int) []string {
+	if profilePort == 0 {
+		return nil
+	}
+	return []string{fmt.Sprintf("BEYLA_PROFILE_PORT=%d", profilePort)}
 }
 
 type logWriter struct {

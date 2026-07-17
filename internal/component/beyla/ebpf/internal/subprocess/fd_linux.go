@@ -1,6 +1,6 @@
 //go:build (linux && arm64) || (linux && amd64)
 
-package beyla
+package subprocess
 
 import (
 	"errors"
@@ -8,7 +8,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func writeData(fd int, data []byte) error {
+// WriteAll writes all of data to fd, retrying on EINTR.
+func WriteAll(fd int, data []byte) error {
 	for len(data) > 0 {
 		n, err := unix.Write(fd, data)
 

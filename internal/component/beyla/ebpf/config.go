@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/grafana/alloy/internal/component/beyla/ebpf/internal/config"
+	"github.com/grafana/alloy/internal/component/beyla/ebpf/internal/subprocess"
 )
 
 func (c *Component) writeConfigFile() (string, func(), error) {
@@ -32,7 +33,7 @@ func (c *Component) writeConfigFile() (string, func(), error) {
 		return "", nil, fmt.Errorf("failed to create in-memory config file: %w", err)
 	}
 
-	if err := writeData(fd, configData); err != nil {
+	if err := subprocess.WriteAll(fd, configData); err != nil {
 		unix.Close(fd)
 		return "", nil, fmt.Errorf("failed to write config: %w", err)
 	}

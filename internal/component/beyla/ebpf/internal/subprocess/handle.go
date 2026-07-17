@@ -1,7 +1,6 @@
 package subprocess
 
 import (
-	"os/exec"
 	"sync"
 	"time"
 )
@@ -11,15 +10,13 @@ const MaxRestarts = 10
 type Handle struct {
 	mu sync.Mutex
 
-	exePath     string
-	exeClose    func()
 	configPath  string
 	configClose func()
 	port        int
 	addr        string
 	profilePort int
 	healthAddr  string
-	cmd         *exec.Cmd
+	pid         int
 	ready       bool
 
 	restartCount int
@@ -28,13 +25,6 @@ type Handle struct {
 
 func New() *Handle {
 	return &Handle{backoff: time.Second}
-}
-
-func (h *Handle) SetBinary(path string, closeFn func()) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.exePath = path
-	h.exeClose = closeFn
 }
 
 func (h *Handle) SetListen(port int, addr string) {
@@ -63,39 +53,33 @@ func (h *Handle) SetConfig(path string, closeFn func()) {
 	h.configClose = closeFn
 }
 
-func (h *Handle) Launch() (exePath, configPath string, port, profilePort int) {
+func (h *Handle) SetPid(pid int) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	return h.exePath, h.configPath, h.port, h.profilePort
+	h.pid = pid
 }
 
-func (h *Handle) SetCmd(cmd *exec.Cmd) {
+func (h *Handle) ConfigPath() string {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.cmd = cmd
+	return h.configPath
 }
 
-func (h *Handle) CloseBinary() {
+func (h *Handle) ProfilePort() int {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-
-	if h.exeClose == nil {
-		return
-	}
-
-	h.exeClose()
-	h.exeClose = nil
+	return h.profilePort
 }
 
 func (h *Handle) Pid() (int, bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.cmd == nil || h.cmd.Process == nil {
+	if h.pid == 0 {
 		return 0, false
 	}
 
-	return h.cmd.Process.Pid, true
+	return h.pid, true
 }
 
 func (h *Handle) Port() int {
@@ -130,20 +114,15 @@ func (h *Handle) Reset() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if h.exeClose != nil {
-		h.exeClose()
-		h.exeClose = nil
-	}
-
 	if h.configClose != nil {
 		h.configClose()
 		h.configClose = nil
 	}
 
-	h.exePath = ""
 	h.configPath = ""
 	h.profilePort = 0
 	h.healthAddr = ""
+	h.pid = 0
 	h.ready = false
 }
 

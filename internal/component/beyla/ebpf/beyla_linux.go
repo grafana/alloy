@@ -360,17 +360,6 @@ func (c *Component) handleSubprocessExit(err error) {
 }
 
 func (c *Component) setupSubprocess() error {
-	exePath, cleanupBinary, err := c.extractBeylaExecutable()
-
-	if err != nil {
-		c.opts.Logger.Error("failed to extract Beyla binary", "err", err)
-		c.health.SetUnhealthy(err)
-		c.scheduleRestart()
-		return err
-	}
-
-	c.subprocess.SetBinary(exePath, cleanupBinary)
-
 	if err := c.startOTLPReceiver(); err != nil {
 		c.opts.Logger.Error("failed to start OTLP receiver", "err", err)
 		c.health.SetUnhealthy(err)
