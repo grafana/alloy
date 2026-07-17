@@ -16,26 +16,32 @@ permissions:
 jobs:
   check:
     name: No patch releases on main
+    if: >-
+      github.event.pull_request.base.ref == 'main' &&
+      github.event.pull_request.head.ref == 'release-please--branches--main'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Check for patch release on main 🔎
         env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          # Only check root module release-please PRs.
-          if ! echo "$PR_TITLE" | grep -qE '^chore\(main\): Release [0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "✅ Not a root module release-please PR. Skipping."
+          MANIFEST=".release-please-manifest.json"
+          BASE_VERSION=$(git show "${BASE_SHA}:${MANIFEST}" | jq -er '.["."]')
+          VERSION=$(git show "${HEAD_SHA}:${MANIFEST}" | jq -er '.["."]')
+
+          if [[ "$BASE_VERSION" == "$VERSION" ]]; then
+            echo "✅ Release PR does not update the root package. Skipping."
             exit 0
           fi
 
-          # Extract version from title (e.g., "chore(main): Release 1.29.1" -> "1.29.1")
-          VERSION=$(echo "$PR_TITLE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          if [ -z "$VERSION" ]; then
-            echo "⚠️ Could not extract version from PR title: $PR_TITLE"
-            exit 1
-          fi
-
-          echo "Detected release version: $VERSION"
+          echo "Detected root release version: $VERSION"
 
           # Check if it's a patch release (doesn't end in .0)
           if echo "$VERSION" | grep -qE '\.[1-9][0-9]*$'; then

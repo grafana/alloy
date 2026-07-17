@@ -2,6 +2,7 @@ package createrc
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -24,6 +25,7 @@ const (
 	// appending "--components--<name>" for component modules.
 	releasePleaseBranchPrefix = "release-please--branches--"
 	releasePleaseComponentSep = "--components--"
+	releasePleaseManifestPath = ".release-please-manifest.json"
 )
 
 type flags struct {
@@ -118,9 +120,17 @@ func resolveRCInfo(ctx context.Context, client *gh.Client, branch string) (rcInf
 	fmt.Printf("Base branch: %s\n", pr.GetBase().GetRef())
 	fmt.Printf("Head branch: %s\n", pr.GetHead().GetRef())
 
-	ver, err := extractVersionFromTitle(pr.GetTitle())
+	baseManifest, err := getReleasePleaseManifest(ctx, client, pr.GetBase().GetSHA())
 	if err != nil {
-		return rcInfo{}, fmt.Errorf("extracting version from PR title: %w", err)
+		return rcInfo{}, fmt.Errorf("reading release-please manifest from base: %w", err)
+	}
+	headManifest, err := getReleasePleaseManifest(ctx, client, pr.GetHead().GetSHA())
+	if err != nil {
+		return rcInfo{}, fmt.Errorf("reading release-please manifest from head: %w", err)
+	}
+	ver, err := findRootReleaseVersion(baseManifest, headManifest)
+	if err != nil {
+		return rcInfo{}, fmt.Errorf("determining root release version: %w", err)
 	}
 	fmt.Printf("Target version: %s\n", ver)
 
@@ -261,13 +271,48 @@ func selectMainModuleReleasePR(prs []*github.PullRequest, baseBranch string) (*g
 	return nil, fmt.Errorf("no main-module release-please PR found for branch %s (looked for a %q head branch with an 'autorelease: pending' label)", baseBranch, releasePleaseBranchPrefix+baseBranch)
 }
 
-func extractVersionFromTitle(title string) (string, error) {
-	pattern := regexp.MustCompile(`Release\s+(\d+\.\d+\.\d+)`)
-	matches := pattern.FindStringSubmatch(title)
-	if len(matches) < 2 {
-		return "", fmt.Errorf("could not extract version from title: %s", title)
+func getReleasePleaseManifest(ctx context.Context, client *gh.Client, ref string) ([]byte, error) {
+	file, _, _, err := client.API().Repositories.GetContents(
+		ctx,
+		client.Owner(),
+		client.Repo(),
+		releasePleaseManifestPath,
+		&github.RepositoryContentGetOptions{Ref: ref},
+	)
+	if err != nil {
+		return nil, err
 	}
-	return matches[1], nil
+	if file == nil {
+		return nil, fmt.Errorf("%s is not a file", releasePleaseManifestPath)
+	}
+	content, err := file.GetContent()
+	if err != nil {
+		return nil, err
+	}
+	return []byte(content), nil
+}
+
+func findRootReleaseVersion(baseManifest, headManifest []byte) (string, error) {
+	var baseVersions, headVersions map[string]string
+	if err := json.Unmarshal(baseManifest, &baseVersions); err != nil {
+		return "", fmt.Errorf("parsing base manifest: %w", err)
+	}
+	if err := json.Unmarshal(headManifest, &headVersions); err != nil {
+		return "", fmt.Errorf("parsing head manifest: %w", err)
+	}
+
+	baseVersion, ok := baseVersions["."]
+	if !ok || baseVersion == "" {
+		return "", fmt.Errorf("base manifest has no root package version")
+	}
+	headVersion, ok := headVersions["."]
+	if !ok || headVersion == "" {
+		return "", fmt.Errorf("head manifest has no root package version")
+	}
+	if baseVersion == headVersion {
+		return "", fmt.Errorf("release PR does not update the root package")
+	}
+	return headVersion, nil
 }
 
 func findNextRCNumber(ctx context.Context, client *gh.Client, ver string) (int, error) {
