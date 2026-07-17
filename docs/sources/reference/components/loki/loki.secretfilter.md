@@ -168,7 +168,11 @@ loki.secretfilter "secret_filter" {
 
 When `useDefault = true`, redefining a `[[rules]]` block with the same `id` as a built-in rule merges your changes into that rule instead of replacing it.
 This is what makes it possible to adjust a built-in rule, for example, to add allowlists to it, without losing its detection logic.
-Refer to the [Gitleaks configuration structure][gitleaks-config] for the full set of supported fields.
+
+Adjusting a built-in rule with allowlists is the most common way to reduce false positives, as the [following section](#handle-false-positives) demonstrates.
+For the full set of configuration options, such as global allowlists, the `condition` field, `stopwords`, and path-based matching, refer to the [Gitleaks configuration documentation][gitleaks-configuration].
+
+[gitleaks-configuration]: https://github.com/gitleaks/gitleaks#configuration
 
 {{< admonition type="note" >}}
 Setting `useDefault = false`, or omitting the `[extend]` block, means only the rules you define yourself are used.
