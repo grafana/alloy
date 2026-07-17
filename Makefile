@@ -272,8 +272,10 @@ beyla: download-beyla download-beyla-schema sync-beyla-docs-version
 
 .PHONY: sync-beyla-docs-version
 sync-beyla-docs-version:
-	@sed -i.bak "s/BEYLA_VERSION: .*/BEYLA_VERSION: $(BEYLA_VERSION)/" docs/sources/_index.md.t
-	@rm -f docs/sources/_index.md.t.bak
+	@for f in docs/sources/_index.md.t docs/sources/_index.md; do \
+	    sed -i.bak "s/BEYLA_VERSION: .*/BEYLA_VERSION: $(BEYLA_VERSION)/" $$f; \
+	    rm -f $$f.bak; \
+	done
 
 .PHONY: download-beyla
 download-beyla:
