@@ -17,11 +17,15 @@ mirror of Beyla's YAML — e.g. `metrics` splits into `prometheus_export`+`netwo
 ## `gen/`
 
 ```
- schema.json    Beyla's published config schema (docs/config-schema.json),
-                pinned to BEYLA_VERSION. Downloaded by `make download-beyla-schema`.
-                NOT used for code generation — it's the reference the
-                schema-validation test checks the emitted YAML against.
- download.go    downloads + embeds the Beyla binary (`make download-beyla`).
+ schema.json           Beyla's published config schema (docs/config-schema.json),
+                       pinned to BEYLA_VERSION. Downloaded by `make download-beyla-schema`.
+                       NOT used for code generation — it's the reference the
+                       schema-validation test checks the emitted YAML against.
+ beyla-checksums.txt   committed sha256 of each release tarball, pinned to
+                       BEYLA_VERSION. `make download-beyla` verifies against it, so a
+                       compromised upstream can't swap in a binary we didn't review.
+ download.go           downloads + embeds the Beyla binary (`make download-beyla`);
+                       `--update-checksums` records beyla-checksums.txt.
 ```
 
 ## Safety net
@@ -36,7 +40,9 @@ A small `allowlist` in that test covers real Beyla keys the schema doesn't expor
 ## Bumping Beyla
 
 ```
-edit BEYLA_VERSION in the Makefile → make download-beyla download-beyla-schema
+edit BEYLA_VERSION in the Makefile
+make update-beyla-checksums          # record the new release's checksums; review the diff
+make download-beyla download-beyla-schema
 ```
 
 Then update the hand-written types/translation for any new or changed options. The

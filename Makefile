@@ -120,6 +120,7 @@ BEYLA_BINARY_STAMP   := $(BEYLA_BINARY_DIR)/.beyla-binary-version
 BEYLA_SCHEMA_DIR     := $(BEYLA_CONFIG_DIR)/gen
 BEYLA_SCHEMA         := $(BEYLA_SCHEMA_DIR)/schema.json
 BEYLA_SCHEMA_STAMP   := $(BEYLA_SCHEMA_DIR)/.schema-version
+BEYLA_CHECKSUMS      := $(BEYLA_SCHEMA_DIR)/beyla-checksums.txt
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -280,7 +281,15 @@ download-beyla:
 	    $(BEYLA_VERSION) \
 	    $(BEYLA_BINARY_AMD64) \
 	    $(BEYLA_BINARY_ARM64) \
-	    $(BEYLA_BINARY_STAMP)
+	    $(BEYLA_BINARY_STAMP) \
+	    $(BEYLA_CHECKSUMS)
+
+.PHONY: update-beyla-checksums
+update-beyla-checksums:
+	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_SCHEMA_DIR)/download.go \
+	    --update-checksums \
+	    $(BEYLA_VERSION) \
+	    $(BEYLA_CHECKSUMS)
 
 .PHONY: download-beyla-schema
 download-beyla-schema:
