@@ -66,6 +66,7 @@ ebpf/log_enricher/services/service/k8s_job_name
 ebpf/log_enricher/services/service/metrics
 ebpf/log_enricher/services/service/routes
 ebpf/log_enricher/services/service/target_pids
+ebpf/payload_extraction/http/enrichment/rules/match/response_status_code
 executable_name
 filter/stats
 grafana
