@@ -1,4 +1,4 @@
-name: bump-formula-pr
+name: Bump Homebrew formula
 on:
   release:
     types: [released]
@@ -38,8 +38,15 @@ jobs:
       # Report whether the triggering release is the latest stable release.
       - name: Compare with latest release
         id: compare
+        env:
+          LATEST_ID: ${{ steps.latest_release.outputs.release_id }}
+          CURRENT_ID: ${{ github.event.release.id }}
         run: |
-          echo "is_latest=${{ steps.latest_release.outputs.release_id == github.event.release.id }}" >> "${GITHUB_OUTPUT}"
+          if [ -z "$LATEST_ID" ]; then
+            echo "::error::latest release lookup returned empty release_id" >&2
+            exit 1
+          fi
+          echo "is_latest=$([ "$LATEST_ID" = "$CURRENT_ID" ] && echo true || echo false)" >> "${GITHUB_OUTPUT}"
 
   homebrew-grafana:
     name: homebrew-grafana
