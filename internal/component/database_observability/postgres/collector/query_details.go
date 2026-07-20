@@ -159,15 +159,13 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 		}
 
 		var fp string
+		var fpErr error
 		if c.enableErrorLogsProcessing {
 			// Fingerprint the raw text BEFORE comment stripping; pg_query
 			// canonicalizes literals at the AST level so the value is stable
 			// across comment-only differences and matches the fingerprint
 			// computed elsewhere from pg_stat_activity / server logs.
-			fp, err = fingerprint.Fingerprint(queryText)
-			if err != nil {
-				c.logger.Debug("skip fingerprint", "queryid", queryID, "err", err)
-			}
+			fp, fpErr = fingerprint.Fingerprint(queryText)
 		}
 
 		queryText, err = removeComments(c.normalizer, queryText)
@@ -176,17 +174,25 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
-		op := OP_QUERY_ASSOCIATION
-		body := fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName)
-		if c.enableErrorLogsProcessing {
-			op = OP_QUERY_ASSOCIATION_V2
-			body = fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName)
+		switch {
+		case !c.enableErrorLogsProcessing:
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION,
+				fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
+			)
+		case fp != "":
+			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
+				logging.LevelInfo,
+				OP_QUERY_ASSOCIATION_V2,
+				fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
+			)
+		default:
+			// enable_error_logs_processing is on but fingerprinting failed
+			// (empty fp): warn with the queryid and skip the association rather
+			// than emit an empty query_fingerprint or a misleading v1 entry.
+			c.logger.Warn("skipping query_association_v2: could not compute query fingerprint", "queryid", queryID, "err", fpErr)
 		}
-		c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
-			logging.LevelInfo,
-			op,
-			body,
-		)
 
 		tables, err := tokenizeTableNames(c.normalizer, queryText)
 		if err != nil {
