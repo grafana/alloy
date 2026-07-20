@@ -174,20 +174,19 @@ func (c *QueryDetails) fetchAndAssociate(ctx context.Context) error {
 			continue
 		}
 
-		switch {
-		case !c.enableErrorLogsProcessing:
+		if !c.enableErrorLogsProcessing {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_ASSOCIATION,
 				fmt.Sprintf(`queryid="%s" querytext=%q datname="%s"`, queryID, queryText, databaseName),
 			)
-		case fp != "":
+		} else if fp != "" {
 			c.entryHandler.Chan() <- database_observability.BuildLokiEntry(
 				logging.LevelInfo,
 				OP_QUERY_ASSOCIATION_V2,
 				fmt.Sprintf(`queryid="%s" query_fingerprint="%s" querytext=%q datname="%s"`, queryID, fp, queryText, databaseName),
 			)
-		default:
+		} else {
 			// enable_error_logs_processing is on but fingerprinting failed
 			// (empty fp): warn with the queryid and skip the association rather
 			// than emit an empty query_fingerprint or a misleading v1 entry.
