@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/require"
 
 	"github.com/grafana/alloy/internal/component"
@@ -93,4 +94,50 @@ func TestComponentDuplicateTargets(t *testing.T) {
 		ss := s.(*tailer)
 		require.Equal(t, "{__meta_docker_container_id=\"foo\", __meta_docker_port_private=\"8080\"}", ss.labelsStr)
 	}
+}
+
+func TestComponentUpdatesLabelsOfRunningTailer(t *testing.T) {
+	// Same container ID throughout: the component must apply label changes to
+	// the tailer it is already running instead of ignoring them until restart.
+	cfg := func(env, service string) Arguments {
+		var args Arguments
+		err := syntax.Unmarshal([]byte(`
+			host       = "tcp://127.0.0.1:9381"
+			targets    = [
+				{__meta_docker_container_id = "abc123", service = "`+service+`"},
+			]
+			labels     = {"env" = "`+env+`"}
+			forward_to = []
+		`), &args)
+		require.NoError(t, err)
+		return args
+	}
+
+	cmp, err := New(component.Options{
+		ID:         "loki.source.docker.test",
+		Logger:     logging.NewSlogNop(),
+		Registerer: prometheus.NewRegistry(),
+		DataPath:   t.TempDir(),
+	}, cfg("staging", "api"))
+	require.NoError(t, err)
+
+	streamLabelsOf := func() model.LabelSet {
+		for s := range cmp.scheduler.Sources() {
+			return s.(*tailer).curStreamLabels.Load().stdout
+		}
+		return nil
+	}
+
+	require.Equal(t, model.LabelValue("staging"), streamLabelsOf()["env"])
+	require.Equal(t, model.LabelValue("api"), streamLabelsOf()["service"])
+
+	// Change both the component's own `labels` argument and a target label
+	// arriving from discovery. Neither changes the container ID.
+	require.NoError(t, cmp.Update(cfg("production", "gateway")))
+
+	require.Equal(t, 1, cmp.scheduler.Len(), "the tailer must not be restarted")
+	require.Equal(t, model.LabelValue("production"), streamLabelsOf()["env"],
+		"a change to the `labels` argument must reach the running tailer")
+	require.Equal(t, model.LabelValue("gateway"), streamLabelsOf()["service"],
+		"a changed target label must reach the running tailer")
 }

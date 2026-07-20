@@ -214,6 +214,18 @@ func (c *Component) Update(args component.Arguments) error {
 		return promTargets[i].fingerPrint < promTargets[j].fingerPrint
 	})
 
+	// Retain the winning target for each container ID so the labels of tailers
+	// which are already running can be refreshed below. Reconcile applies the
+	// same first-one-wins rule over the sorted slice.
+	targetsByID := make(map[string]promTarget, len(promTargets))
+	for _, target := range promTargets {
+		containerID := string(target.labels[dockerLabelContainerID])
+		if _, seen := targetsByID[containerID]; containerID == "" || seen {
+			continue
+		}
+		targetsByID[containerID] = target
+	}
+
 	source.Reconcile(
 		c.opts.Logger,
 		c.scheduler,
@@ -239,6 +251,18 @@ func (c *Component) Update(args component.Arguments) error {
 			)
 		},
 	)
+
+	// Reconcile only builds sources for container IDs that are not running yet,
+	// so a tailer which is already running would otherwise keep the labels it
+	// was created with forever. Push the newly computed labels and relabel
+	// rules to them instead of restarting them, which would reset their read
+	// offset and re-ship the container's log.
+	for s := range c.scheduler.Sources() {
+		t := s.(*tailer)
+		if target, ok := targetsByID[t.containerID]; ok {
+			t.updateLabels(target.labels.Merge(defaultLabels), c.rcs)
+		}
+	}
 
 	c.args = newArgs
 	return nil
