@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/microsoft/go-mssqldb"
+	mssql "github.com/microsoft/go-mssqldb"
 	"github.com/microsoft/go-mssqldb/msdsn"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -39,7 +39,8 @@ const selectServerInfo = `
 SELECT
     CONVERT(NVARCHAR(128), SERVERPROPERTY('ServerName')) AS server_name,
     CONVERT(NVARCHAR(128), SERVERPROPERTY('MachineName')) AS machine_name,
-    CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version`
+    CONVERT(NVARCHAR(128), SERVERPROPERTY('ProductVersion')) AS product_version,
+    CONVERT(INT, SERVERPROPERTY('EngineEdition')) AS engine_edition`
 
 func init() {
 	component.Register(component.Registration{
@@ -296,8 +297,9 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 
 	var serverName, machineName, engineVersion sql.NullString
-	if err := rs.Scan(&serverName, &machineName, &engineVersion); err != nil {
-		return fmt.Errorf("failed to scan engine version: %w", err)
+	var engineEdition sql.NullInt64
+	if err := rs.Scan(&serverName, &machineName, &engineVersion, &engineEdition); err != nil {
+		return fmt.Errorf("failed to scan server info: %w", err)
 	}
 
 	generatedServerID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s", serverName.String, machineName.String))))
@@ -320,7 +322,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedServerID, engineVersion.String); err != nil {
+	if err := c.startCollectors(generatedServerID, engineVersion.String, int(engineEdition.Int64)); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -347,7 +349,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported.
-func (c *Component) startCollectors(serverID string, engineVersion string) error {
+func (c *Component) startCollectors(serverID string, engineVersion string, engineEdition int) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -360,6 +362,18 @@ func (c *Component) startCollectors(serverID string, engineVersion string) error
 	collectors := enableOrDisableCollectors(c.args)
 
 	if collectors[collector.SchemaDetailsCollector] {
+		// newDBForDatabase derives a fresh connection pool scoped to a specific
+		// database from the base DSN.
+		dsn := string(c.args.DataSourceName)
+		newDBForDatabase := func(database string) (*sql.DB, error) {
+			cfg, err := msdsn.Parse(dsn)
+			if err != nil {
+				return nil, err
+			}
+			cfg.Database = database
+			return sql.OpenDB(mssql.NewConnectorConfig(cfg)), nil
+		}
+
 		stCollector, err := collector.NewSchemaDetails(collector.SchemaDetailsArguments{
 			DB:               c.dbConnection,
 			CollectInterval:  c.args.SchemaDetailsArguments.CollectInterval,
@@ -367,6 +381,8 @@ func (c *Component) startCollectors(serverID string, engineVersion string) error
 			ExcludeDatabases: c.args.ExcludeDatabases,
 			EntryHandler:     entryHandler,
 			Logger:           c.opts.Logger,
+			EngineEdition:    engineEdition,
+			NewDBForDatabase: newDBForDatabase,
 		})
 		if err != nil {
 			logStartError(collector.SchemaDetailsCollector, "create", err)

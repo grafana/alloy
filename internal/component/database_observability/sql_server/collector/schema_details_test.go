@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"strings"
@@ -1227,6 +1228,110 @@ func TestSchemaDetailsUndiscoveredDatabaseEvicted(t *testing.T) {
 	require.NoError(t, mock.ExpectationsWereMet())
 
 	require.NotContains(t, c.lastEmittedAt, "gone_db")
+}
+
+// TestSchemaDetailsAzureSQLDatabase exercises the Azure SQL Database path:
+// discovery runs on the base connection, and each database is scanned through a
+// fresh per-database connection obtained from the injected factory. No USE
+// statement is ever issued (none is expected on any mock).
+func TestSchemaDetailsAzureSQLDatabase(t *testing.T) {
+	defer goleak.VerifyNone(t)
+
+	baseDB, baseMock, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+	require.NoError(t, err)
+	defer baseDB.Close()
+
+	lokiClient := loki.NewCollectingHandler()
+	defer lokiClient.Stop()
+
+	dbNames := []string{"db_a", "db_b"}
+
+	// One sqlmock per database, keyed by name and returned by the factory.
+	type perDBMock struct {
+		db   *sql.DB
+		mock sqlmock.Sqlmock
+	}
+	perDB := map[string]*perDBMock{}
+	for _, name := range dbNames {
+		d, m, err := sqlmock.New(sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual))
+		require.NoError(t, err)
+		perDB[name] = &perDBMock{db: d, mock: m}
+		defer d.Close()
+	}
+
+	fakeNow := time.Date(2026, 7, 1, 12, 0, 0, 0, time.UTC)
+	c, err := NewSchemaDetails(SchemaDetailsArguments{
+		DB:              baseDB,
+		CollectInterval: time.Hour,
+		EntryHandler:    lokiClient,
+		Logger:          util.TestAlloyLogger(t).Slog(),
+		EngineEdition:   engineEditionAzureSQLDatabase,
+		NewDBForDatabase: func(database string) (*sql.DB, error) {
+			m, ok := perDB[database]
+			require.True(t, ok, "unexpected database %q", database)
+			return m.db, nil
+		},
+	})
+	require.NoError(t, err)
+	c.now = func() time.Time { return fakeNow }
+
+	// Discovery is the only query on the base connection; no USE follows.
+	expectListDatabases(baseMock, dbNames...)
+
+	for _, dbName := range dbNames {
+		m := perDB[dbName].mock
+		tableName := "t_" + dbName
+		m.ExpectQuery(fmt.Sprintf(selectTablesTemplate, exclusionClause)).WithoutArgs().RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"TABLE_CATALOG", "TABLE_SCHEMA", "TABLE_NAME", "TABLE_TYPE",
+			}).AddRow(dbName, "dbo", tableName, "BASE TABLE"))
+
+		m.ExpectQuery(fmt.Sprintf(selectColumnsTemplate, database_observability.BuildExclusionClause([]string{tableName}))).WithArgs("dbo").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "column_name", "column_type", "is_nullable",
+				"is_identity", "default_value", "is_primary_key",
+			}).AddRow(tableName, "id", "int", false, true, nil, true))
+
+		m.ExpectQuery(fmt.Sprintf(selectIndexesTemplate, database_observability.BuildExclusionClause([]string{tableName}))).WithArgs("dbo").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "index_name", "seq_in_index", "column_name",
+				"index_type", "is_unique", "is_nullable",
+			}))
+
+		m.ExpectQuery(fmt.Sprintf(selectForeignKeysTemplate, database_observability.BuildExclusionClause([]string{tableName}))).WithArgs("dbo").RowsWillBeClosed().
+			WillReturnRows(sqlmock.NewRows([]string{
+				"table_name", "constraint_name", "column_name",
+				"referenced_table_name", "referenced_column_name",
+			}))
+	}
+
+	require.NoError(t, c.extractSchema(t.Context()))
+	require.NoError(t, baseMock.ExpectationsWereMet())
+	for _, dbName := range dbNames {
+		require.NoError(t, perDB[dbName].mock.ExpectationsWereMet())
+	}
+
+	// Each database contributes an OP_TABLE_DETECTION + OP_CREATE_STATEMENT.
+	require.Eventually(t, func() bool {
+		return len(lokiClient.Received()) == 4
+	}, 5*time.Second, 10*time.Millisecond)
+
+	entries := lokiClient.Received()
+	require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[0].Labels)
+	require.Contains(t, entries[0].Line, `database="db_a"`)
+	require.Contains(t, entries[0].Line, `table="t_db_a"`)
+	require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[1].Labels)
+	require.Contains(t, entries[1].Line, `database="db_a"`)
+	require.Equal(t, model.LabelSet{"op": OP_TABLE_DETECTION}, entries[2].Labels)
+	require.Contains(t, entries[2].Line, `database="db_b"`)
+	require.Contains(t, entries[2].Line, `table="t_db_b"`)
+	require.Equal(t, model.LabelSet{"op": OP_CREATE_STATEMENT}, entries[3].Labels)
+	require.Contains(t, entries[3].Line, `database="db_b"`)
+
+	require.Contains(t, c.lastEmittedAt, "db_a")
+	require.Contains(t, c.lastEmittedAt["db_a"], schemaTableKey("dbo", "t_db_a"))
+	require.Contains(t, c.lastEmittedAt, "db_b")
+	require.Contains(t, c.lastEmittedAt["db_b"], schemaTableKey("dbo", "t_db_b"))
 }
 
 func expectListDatabases(mock sqlmock.Sqlmock, databases ...string) {

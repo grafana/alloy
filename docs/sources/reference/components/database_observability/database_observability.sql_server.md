@@ -66,6 +66,12 @@ You can use the following blocks with `database_observability.sql_server`:
 
 The collector scans every database that the login can access on the instance and collects schema details from each. Only databases where the login has `CONNECT` access to catalog views are collected.
 
+{{< admonition type="note" >}}
+On Azure SQL Database, set the `data_source_name` to connect to the `master` database, for example with `database=master`, to collect more than one database.
+The connecting login needs a user in each database you want to monitor, with `VIEW DEFINITION` granted so the component can read catalog metadata.
+If the connection targets a single user database, the component collects only that database.
+{{< /admonition >}}
+
 ## Example
 
 ```alloy
