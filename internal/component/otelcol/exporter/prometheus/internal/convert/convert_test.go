@@ -1925,6 +1925,57 @@ func TestConverterStartTimestampZeroIngestion(t *testing.T) {
 	}
 }
 
+// TestConverterStartTimestampZeroIngestionDedup verifies that when a single
+// batch contains multiple data points for the same series, all carrying the
+// same start timestamp, only one zero sample is injected.
+func TestConverterStartTimestampZeroIngestionDedup(t *testing.T) {
+	// Two data points, same series (no attributes), same start timestamp (50s),
+	// different sample timestamps (100s, 200s).
+	input := `{
+		"resource_metrics": [{
+			"scope_metrics": [{
+				"metrics": [{
+					"name": "test_metric_seconds_total",
+					"sum": {
+						"aggregation_temporality": 2,
+						"is_monotonic": true,
+						"data_points": [
+							{ "start_time_unix_nano": 50000000000, "time_unix_nano": 100000000000, "as_double": 15 },
+							{ "start_time_unix_nano": 50000000000, "time_unix_nano": 200000000000, "as_double": 20 }
+						]
+					}
+				}]
+			}]
+		}]
+	}`
+
+	payload, err := (&pmetric.JSONUnmarshaler{}).UnmarshalMetrics([]byte(input))
+	require.NoError(t, err)
+
+	app := &recordingAppender{}
+	l := util.TestAlloyLogger(t)
+	conv := convert.New(l.Slog(), appenderAppendable{Inner: app}, convert.Options{
+		EnableStartTimestampZeroIngestion: true,
+	})
+	require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
+
+	var zeroSamples, realSamples []recordedSample
+	for _, s := range app.samples {
+		switch s.method {
+		case "append_st_zero":
+			zeroSamples = append(zeroSamples, s)
+		case "append":
+			realSamples = append(realSamples, s)
+		}
+	}
+
+	// Exactly one zero sample despite two data points sharing the start timestamp.
+	require.Len(t, zeroSamples, 1)
+	require.Equal(t, int64(50000), zeroSamples[0].st)
+	// Both real samples are still written.
+	require.Len(t, realSamples, 2)
+}
+
 type recordedSample struct {
 	method string
 	labels string

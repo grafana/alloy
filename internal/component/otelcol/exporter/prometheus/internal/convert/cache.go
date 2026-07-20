@@ -29,6 +29,8 @@ type memorySeries struct {
 	timestamp time.Time // Timestamp used for out-of-order detection.
 	lastSeen  time.Time // Timestamp used for garbage collection.
 
+	lastZeroST int64 // Start timestamp of the last injected zero sample; injects it at most once per start timestamp.
+
 	exemplarTimestamp time.Time // Timestamp used for exemplars out-of-order detection.
 
 	value float64 // Value used for writing.
@@ -151,6 +153,12 @@ func (series *memorySeries) WriteSTZeroSampleTo(app storage.Appender, t, st int6
 	series.Lock()
 	defer series.Unlock()
 
+	// Inject the zero sample at most once per start timestamp, so multiple data
+	// points of the same series in one batch don't each emit a duplicate zero.
+	if st <= series.lastZeroST {
+		return nil
+	}
+
 	newID, err := app.AppendSTZeroSample(series.id, series.labels, t, st)
 	if err != nil {
 		return err
@@ -159,6 +167,7 @@ func (series *memorySeries) WriteSTZeroSampleTo(app storage.Appender, t, st int6
 	if newID != series.id {
 		series.id = newID
 	}
+	series.lastZeroST = st
 
 	return nil
 }
@@ -169,6 +178,12 @@ func (series *memorySeries) WriteHistogramSTZeroSampleTo(app storage.Appender, t
 	series.Lock()
 	defer series.Unlock()
 
+	// Inject the zero sample at most once per start timestamp, so multiple data
+	// points of the same series in one batch don't each emit a duplicate zero.
+	if st <= series.lastZeroST {
+		return nil
+	}
+
 	newID, err := app.AppendHistogramSTZeroSample(series.id, series.labels, t, st, h, fh)
 	if err != nil {
 		return err
@@ -177,6 +192,7 @@ func (series *memorySeries) WriteHistogramSTZeroSampleTo(app storage.Appender, t
 	if newID != series.id {
 		series.id = newID
 	}
+	series.lastZeroST = st
 
 	return nil
 }
