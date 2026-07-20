@@ -68,7 +68,28 @@ type Arguments struct {
 	ExcludeSchemas    []string            `alloy:"exclude_schemas,attr,optional"`
 	ExcludeDatabases  []string            `alloy:"exclude_databases,attr,optional"`
 
+	CloudProvider          *CloudProvider         `alloy:"cloud_provider,block,optional"`
 	SchemaDetailsArguments SchemaDetailsArguments `alloy:"schema_details,block,optional"`
+}
+
+type CloudProvider struct {
+	AWS   *AWSCloudProviderInfo   `alloy:"aws,block,optional"`
+	Azure *AzureCloudProviderInfo `alloy:"azure,block,optional"`
+	GCP   *GCPCloudProviderInfo   `alloy:"gcp,block,optional"`
+}
+
+type AWSCloudProviderInfo struct {
+	ARN string `alloy:"arn,attr"`
+}
+
+type AzureCloudProviderInfo struct {
+	SubscriptionID string `alloy:"subscription_id,attr"`
+	ResourceGroup  string `alloy:"resource_group,attr"`
+	ServerName     string `alloy:"server_name,attr,optional"`
+}
+
+type GCPCloudProviderInfo struct {
+	ConnectionName string `alloy:"connection_name,attr"`
 }
 
 type SchemaDetailsArguments struct {
@@ -94,6 +115,21 @@ func (a *Arguments) Validate() error {
 	_, err := msdsn.Parse(string(a.DataSourceName))
 	if err != nil {
 		return err
+	}
+	if a.CloudProvider != nil {
+		count := 0
+		if a.CloudProvider.AWS != nil {
+			count++
+		}
+		if a.CloudProvider.Azure != nil {
+			count++
+		}
+		if a.CloudProvider.GCP != nil {
+			count++
+		}
+		if count > 1 {
+			return fmt.Errorf("cloud_provider: at most one of aws, azure, or gcp must be specified")
+		}
 	}
 	return nil
 }
@@ -302,11 +338,26 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 
 	generatedServerID := fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprintf("%s:%s", serverName.String, machineName.String))))
 
+	var cp *database_observability.CloudProvider
+	if c.args.CloudProvider != nil {
+		cloudProvider, err := populateCloudProviderFromConfig(c.args.CloudProvider)
+		if err != nil {
+			return fmt.Errorf("failed to collect cloud provider information from config: %w", err)
+		}
+		cp = cloudProvider
+	} else {
+		cloudProvider, err := populateCloudProviderFromDSN(string(c.args.DataSourceName))
+		if err != nil {
+			return fmt.Errorf("failed to collect cloud provider information from DSN: %w", err)
+		}
+		cp = cloudProvider
+	}
+
 	c.args.Targets = append([]discovery.Target{c.baseTarget}, c.args.Targets...)
 	targets := make([]discovery.Target, 0, len(c.args.Targets)+1)
 	for _, t := range c.args.Targets {
 		builder := discovery.NewTargetBuilderFrom(t)
-		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, nil)...) {
+		if relabel.ProcessBuilder(builder, database_observability.GetRelabelingRules(generatedServerID, cp)...) {
 			targets = append(targets, builder.Target())
 		}
 	}
@@ -320,7 +371,7 @@ func (c *Component) connectAndStartCollectors(ctx context.Context) error {
 	}
 	c.collectors = nil
 
-	if err := c.startCollectors(generatedServerID, engineVersion.String); err != nil {
+	if err := c.startCollectors(generatedServerID, engineVersion.String, cp); err != nil {
 		return fmt.Errorf("failed to start collectors: %w", err)
 	}
 
@@ -347,7 +398,7 @@ func enableOrDisableCollectors(a Arguments) map[string]bool {
 }
 
 // startCollectors attempts to start all of the enabled collectors. If one or more collectors fail to start, their errors are reported.
-func (c *Component) startCollectors(serverID string, engineVersion string) error {
+func (c *Component) startCollectors(serverID string, engineVersion string, cloudProviderInfo *database_observability.CloudProvider) error {
 	var startErrors []string
 
 	logStartError := func(collectorName, action string, err error) {
@@ -383,6 +434,7 @@ func (c *Component) startCollectors(serverID string, engineVersion string) error
 		DSN:           string(c.args.DataSourceName),
 		Registry:      c.registry,
 		EngineVersion: engineVersion,
+		CloudProvider: cloudProviderInfo,
 		DB:            c.dbConnection,
 	})
 	if err != nil {

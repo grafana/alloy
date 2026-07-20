@@ -1,12 +1,13 @@
-package postgres
+package sql_server
 
 import (
 	"fmt"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	"github.com/microsoft/go-mssqldb/msdsn"
+
 	"github.com/grafana/alloy/internal/component/database_observability"
-	"github.com/grafana/alloy/internal/component/database_observability/postgres/collector"
 )
 
 func populateCloudProviderFromConfig(config *CloudProvider) (*database_observability.CloudProvider, error) {
@@ -44,12 +45,13 @@ func populateCloudProviderFromConfig(config *CloudProvider) (*database_observabi
 func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProvider, error) {
 	var cloudProvider database_observability.CloudProvider
 
-	parts, err := collector.ParseURL(dsn)
+	cfg, err := msdsn.Parse(dsn)
 	if err != nil {
 		return nil, err
 	}
 
-	if host, ok := parts["host"]; ok {
+	host := cfg.Host
+	if host != "" {
 		if strings.HasSuffix(host, "rds.amazonaws.com") {
 			if matches := database_observability.RdsRegex.FindStringSubmatch(host); len(matches) >= 4 {
 				cloudProvider.AWS = &database_observability.AWSCloudProviderInfo{
@@ -60,9 +62,8 @@ func populateCloudProviderFromDSN(dsn string) (*database_observability.CloudProv
 					},
 				}
 			}
-		} else if strings.HasSuffix(host, "postgres.database.azure.com") {
-			matches := database_observability.AzurePostgreSQLRegex.FindStringSubmatch(host)
-			if len(matches) > 1 {
+		} else if strings.HasSuffix(host, "database.windows.net") {
+			if matches := database_observability.AzureSQLServerRegex.FindStringSubmatch(host); len(matches) >= 2 {
 				cloudProvider.Azure = &database_observability.AzureCloudProviderInfo{
 					ServerName: matches[1],
 				}
