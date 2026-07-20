@@ -113,13 +113,14 @@ GOEXPERIMENT         		?= $(shell go env GOEXPERIMENT)
 # Beyla embedding configuration
 BEYLA_BINARY_DIR     := internal/component/beyla/ebpf
 BEYLA_CONFIG_DIR     := $(BEYLA_BINARY_DIR)/internal/config
-BEYLA_GEN_DIR     := $(BEYLA_CONFIG_DIR)/gen
-BEYLA_ARTIFACTS_DIR  := $(BEYLA_GEN_DIR)/beyla
+BEYLA_SCHEMA_DIR     := $(BEYLA_CONFIG_DIR)/gen
+BEYLA_ARTIFACTS_DIR  := $(BEYLA_SCHEMA_DIR)/beyla
 BEYLA_VERSION_FILE   := $(BEYLA_ARTIFACTS_DIR)/beyla_version.yaml
 BEYLA_VERSION        := $(shell awk '$$1=="version:"{print $$2}' $(BEYLA_VERSION_FILE) 2>/dev/null)
 BEYLA_BINARY_AMD64   := $(BEYLA_BINARY_DIR)/binaries/amd64/beyla
 BEYLA_BINARY_ARM64   := $(BEYLA_BINARY_DIR)/binaries/arm64/beyla
 BEYLA_BINARY_STAMP   := $(BEYLA_BINARY_DIR)/.beyla-binary-version
+BEYLA_SCHEMA         := $(BEYLA_ARTIFACTS_DIR)/schema.json
 
 # Determine the golangci-lint binary path using Make functions where possible.
 # Priority: GOBIN, GOPATH/bin, PATH (via shell), Fallback Name.
@@ -267,7 +268,7 @@ test-pyroscope:
 binaries: alloy
 
 .PHONY: beyla
-beyla: download-beyla sync-beyla-docs-version
+beyla: download-beyla download-beyla-schema sync-beyla-docs-version
 
 .PHONY: sync-beyla-docs-version
 sync-beyla-docs-version:
@@ -278,7 +279,7 @@ sync-beyla-docs-version:
 
 .PHONY: download-beyla
 download-beyla:
-	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_GEN_DIR)/download.go \
+	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_SCHEMA_DIR)/download.go \
 	    $(BEYLA_BINARY_AMD64) \
 	    $(BEYLA_BINARY_ARM64) \
 	    $(BEYLA_BINARY_STAMP) \
@@ -287,16 +288,25 @@ download-beyla:
 .PHONY: update-beyla
 update-beyla:
 	@[ -n "$(TAG)" ] || { echo "usage: make update-beyla TAG=<beyla-version>  (e.g. TAG=v3.29.0)"; exit 1; }
-	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_GEN_DIR)/download.go \
+	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_SCHEMA_DIR)/download.go \
 	    --update-checksums $(TAG) $(BEYLA_VERSION_FILE)
 	@$(MAKE) beyla
 
-.PHONY: validate-beyla-config
-validate-beyla-config:
-	@go -C tools/beyla-config-validator run . testdata/beyla-config.yaml
+.PHONY: download-beyla-schema
+download-beyla-schema:
+	@echo "  Downloading schema for Beyla $(BEYLA_VERSION)..."
+	@mkdir -p $(BEYLA_ARTIFACTS_DIR)
+	@curl -fsSL -o $(BEYLA_SCHEMA) \
+	  "https://raw.githubusercontent.com/grafana/beyla/$(BEYLA_VERSION)/docs/config-schema.json"
+	@echo "  ✓ Done"
 
 $(BEYLA_BINARY_AMD64) $(BEYLA_BINARY_ARM64):
 	@$(MAKE) download-beyla
+
+$(BEYLA_SCHEMA):
+	@mkdir -p $(BEYLA_ARTIFACTS_DIR)
+	curl -fsSL -o $@ \
+	  "https://raw.githubusercontent.com/grafana/beyla/$(BEYLA_VERSION)/docs/config-schema.json"
 
 alloy: generate-ui generate-source-code beyla
 ifeq ($(USE_CONTAINER),1)

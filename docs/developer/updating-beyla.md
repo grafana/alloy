@@ -22,6 +22,7 @@ This one command:
   `internal/component/beyla/ebpf/internal/config/gen/beyla/beyla_version.yaml` (the
   pinned manifest),
 - downloads and verifies the binaries against those checksums,
+- downloads the matching config schema,
 - syncs the version into `docs/sources/_index.md.t` and `docs/sources/_index.md`.
 
 Review the `beyla_version.yaml` diff before committing — the committed checksum is the
@@ -35,7 +36,7 @@ options. Two checks guard this:
 - **`golden_test.go`** locks the full emitted YAML byte-for-byte (regenerate with
   `UPDATE_GOLDEN=1` when a translation change is intended).
 
-- **`make validate-beyla-config`** strict-unmarshals a generated config into the
-  upstream `beyla.Config` struct (`tools/beyla-config-validator`), catching keys or
-  values Beyla wouldn't accept. On a Beyla bump, bump that module's `beyla` version
-  and OBI `replace` too (see its README).
+- **`schema_validation_test.go`** emits the same config and asserts every key exists
+  in Beyla's published `schema.json` (validated with `gojsonschema`, with
+  `additionalProperties` forced to false). A typo'd or misplaced key — which Beyla
+  silently ignores — fails.
