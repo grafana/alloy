@@ -1124,7 +1124,7 @@ replace github.com/hashicorp/memberlist => github.com/grafana/memberlist v0.3.1-
 
 replace github.com/prometheus-operator/prometheus-operator => github.com/kgeckhart/prometheus-operator v0.90.2-0.20260511184813-5b1d6bf02253
 
-replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.3.0
+replace github.com/influxdata/go-syslog/v3 => github.com/leodido/go-syslog/v4 v4.6.0
 
 replace github.com/thanos-io/objstore => github.com/grafana/objstore v0.0.0-20250210100727-533688b5600d
 
