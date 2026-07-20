@@ -268,7 +268,7 @@ test-pyroscope:
 binaries: alloy
 
 .PHONY: beyla
-beyla: download-beyla download-beyla-schema sync-beyla-docs-version
+beyla: download-beyla
 
 .PHONY: sync-beyla-docs-version
 sync-beyla-docs-version:
@@ -290,7 +290,7 @@ update-beyla:
 	@[ -n "$(TAG)" ] || { echo "usage: make update-beyla TAG=<beyla-version>  (e.g. TAG=v3.29.0)"; exit 1; }
 	@env -u GOOS -u GOARCH -u GOARM go run ./$(BEYLA_SCHEMA_DIR)/download.go \
 	    --update-checksums $(TAG) $(BEYLA_VERSION_FILE)
-	@$(MAKE) beyla
+	@$(MAKE) download-beyla download-beyla-schema sync-beyla-docs-version
 
 .PHONY: download-beyla-schema
 download-beyla-schema:
