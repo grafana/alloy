@@ -22,19 +22,17 @@ mirror of Beyla's YAML — e.g. `metrics` splits into `prometheus_export`+`netwo
  beyla/beyla_version.yaml  pinned Beyla version + each release tarball's sha256.
                            `make download-beyla` verifies downloads against it, so a
                            compromised upstream can't swap in a binary we didn't review.
- beyla/schema.json         Beyla's published config schema (docs/config-schema.json),
-                           pinned to that version. NOT used for code generation — it's
-                           the reference the schema-validation test checks against.
 ```
 
 ## Safety net
 
-`schema_validation_test.go` fully populates an `Arguments`, emits the YAML, and
-asserts every emitted key exists in `schema.json` (a strict walk — an unknown key
-is a failure, since the schema doesn't set `additionalProperties`). This catches a
-typo'd or misplaced key, which Beyla would otherwise silently ignore.
+`golden_test.go` locks the full emitted YAML for a maximally-populated config
+(byte-identical; regenerate with `UPDATE_GOLDEN=1`), guarding mechanical refactors
+of the translation.
 
-A small `allowlist` in that test covers real Beyla keys the schema doesn't export.
+`tools/beyla-config-validator` strict-unmarshals a generated config into the
+upstream `beyla.Config` struct (`make validate-beyla-config`), catching keys or
+values Beyla wouldn't accept.
 
 ## Upgrading Beyla
 
