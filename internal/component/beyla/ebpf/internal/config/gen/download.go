@@ -35,51 +35,48 @@ func assetName(arch, version string) string {
 func main() {
 	if len(os.Args) >= 2 && os.Args[1] == "--update-checksums" {
 		if len(os.Args) != 4 {
-			fmt.Fprintf(os.Stderr, "usage: download.go --update-checksums <version> <checksums-path>\n")
+			fmt.Fprintf(os.Stderr, "usage: download.go --update-checksums <version> <version-file>\n")
 			os.Exit(1)
 		}
-		if err := updateChecksums(os.Args[2], os.Args[3]); err != nil {
-			fmt.Fprintf(os.Stderr, "error updating checksums: %v\n", err)
+		if err := updateVersionFile(os.Args[2], os.Args[3]); err != nil {
+			fmt.Fprintf(os.Stderr, "error updating version file: %v\n", err)
 			os.Exit(1)
 		}
 		return
 	}
 
-	if len(os.Args) != 6 {
-		fmt.Fprintf(os.Stderr, "usage: download.go <version> <amd64-path> <arm64-path> <stamp-path> <checksums-path>\n")
+	if len(os.Args) != 5 {
+		fmt.Fprintf(os.Stderr, "usage: download.go <amd64-path> <arm64-path> <stamp-path> <version-file>\n")
 		os.Exit(1)
 	}
 
-	version := os.Args[1]
 	paths := map[string]string{
-		"amd64": os.Args[2],
-		"arm64": os.Args[3],
+		"amd64": os.Args[1],
+		"arm64": os.Args[2],
 	}
-	stampPath := os.Args[4]
-	checksumsPath := os.Args[5]
+	stampPath := os.Args[3]
+	versionFile := os.Args[4]
+
+	version, checksums, err := readVersionFile(versionFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error reading %s: %v\n", versionFile, err)
+		os.Exit(1)
+	}
 
 	if upToDate(version, stampPath, paths) {
 		fmt.Printf("  Beyla %s binaries already up to date\n", version)
 		return
 	}
 
-	checksums, err := readChecksums(checksumsPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error reading %s: %v\n", checksumsPath, err)
-		fmt.Fprintf(os.Stderr, "run `make update-beyla-checksums` after bumping BEYLA_VERSION\n")
-		os.Exit(1)
-	}
-
 	fmt.Printf("Downloading Beyla %s binaries...\n", version)
 
 	for _, arch := range []string{"amd64", "arm64"} {
-		asset := assetName(arch, version)
-		want, ok := checksums[asset]
+		want, ok := checksums[arch]
 		if !ok {
-			fmt.Fprintf(os.Stderr, "no committed checksum for %s; run `make update-beyla-checksums`\n", asset)
+			fmt.Fprintf(os.Stderr, "no committed checksum for %s in %s; run `make update-beyla`\n", arch, versionFile)
 			os.Exit(1)
 		}
-		url := fmt.Sprintf("https://github.com/grafana/beyla/releases/download/%s/%s", version, asset)
+		url := fmt.Sprintf("https://github.com/grafana/beyla/releases/download/%s/%s", version, assetName(arch, version))
 		if err := downloadBinary(url, paths[arch], want); err != nil {
 			fmt.Fprintf(os.Stderr, "error downloading %s: %v\n", arch, err)
 			os.Exit(1)
@@ -115,56 +112,69 @@ func upToDate(version, stampPath string, paths map[string]string) bool {
 	return true
 }
 
-// readChecksums parses a sha256sum-format file ("<hex>  <asset>" per line) into a
-// map keyed by asset name. These pinned, in-repo checksums are the trust anchor:
+// readVersionFile parses beyla_version.yaml: the pinned Beyla version and each
+// arch's release-tarball sha256. These committed values are the trust anchor —
 // downloads are verified against them, so a compromised upstream can't swap the
 // binary for one we didn't review.
-func readChecksums(path string) (map[string]string, error) {
+func readVersionFile(path string) (version string, checksums map[string]string, err error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	defer f.Close()
 
-	sums := make(map[string]string)
+	checksums = make(map[string]string)
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		line := strings.TrimSpace(sc.Text())
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		fields := strings.Fields(line)
-		if len(fields) != 2 {
-			return nil, fmt.Errorf("malformed checksum line: %q", line)
+		key, val, ok := strings.Cut(line, ":")
+		if !ok {
+			continue
 		}
-		sums[fields[1]] = fields[0]
+		key, val = strings.TrimSpace(key), strings.TrimSpace(val)
+		switch key {
+		case "version":
+			version = val
+		case "amd64", "arm64":
+			checksums[key] = val
+		}
 	}
-	return sums, sc.Err()
+	if err := sc.Err(); err != nil {
+		return "", nil, err
+	}
+	if version == "" {
+		return "", nil, fmt.Errorf("no version in %s", path)
+	}
+	return version, checksums, nil
 }
 
-// updateChecksums records the release's published sha256 for each tarball into the
-// committed checksums file. The recorded values are trusted on first use, at PR
-// review time; thereafter downloads verify against them.
-func updateChecksums(version, path string) error {
+// updateVersionFile records the release's version and each tarball's sha256 into
+// beyla_version.yaml. The recorded values are trusted on first use, at PR review
+// time; thereafter downloads verify against them.
+func updateVersionFile(version, path string) error {
 	digests, err := fetchAssetDigests(version)
 	if err != nil {
 		return err
 	}
 
-	var lines []string
+	checksums := make(map[string]string, 2)
 	for _, arch := range []string{"amd64", "arm64"} {
-		asset := assetName(arch, version)
-		digest, ok := digests[asset]
+		digest, ok := digests[assetName(arch, version)]
 		if !ok {
-			return fmt.Errorf("no published digest for %s", asset)
+			return fmt.Errorf("no published digest for %s", assetName(arch, version))
 		}
-		lines = append(lines, fmt.Sprintf("%s  %s", strings.TrimPrefix(digest, "sha256:"), asset))
+		checksums[arch] = strings.TrimPrefix(digest, "sha256:")
 	}
 
-	if err := os.WriteFile(path, []byte(strings.Join(lines, "\n")+"\n"), 0644); err != nil {
+	out := fmt.Sprintf("# Beyla release pinned by Alloy. Regenerate with: make update-beyla TAG=<beyla-version>\n"+
+		"version: %s\nchecksums:\n  amd64: %s\n  arm64: %s\n", version, checksums["amd64"], checksums["arm64"])
+	if err := os.WriteFile(path, []byte(out), 0644); err != nil {
 		return err
 	}
-	fmt.Printf("  ✓ recorded %d checksums for Beyla %s in %s\n", len(lines), version, path)
+	fmt.Printf("  ✓ recorded Beyla %s in %s\n", version, path)
 	return nil
 }
 

@@ -26,7 +26,7 @@ func TestSchemaCoverage(t *testing.T) {
 	}
 	emitted := buildYAML(t, args, Runtime{Port: 12345, HealthAddr: "@beyla-health", OTLPAddr: "@beyla-otlp"})
 
-	data, err := os.ReadFile("gen/schema.json")
+	data, err := os.ReadFile("gen/beyla/schema.json")
 	require.NoError(t, err)
 	var doc schemaDoc
 	require.NoError(t, json.Unmarshal(data, &doc))

@@ -1,2 +1,0 @@
-ea4c1dac9fe8fd2261f021efe37adbed41307bfb5da0e48f5ee80d6d9b6e620e  beyla-linux-amd64-v3.28.0.tar.gz
-227cd13304c264c5c00df720df6afc70b396ee3471df8e1140b8903cc87787e9  beyla-linux-arm64-v3.28.0.tar.gz

@@ -3,37 +3,30 @@
 ## Overview
 
 `beyla.ebpf` embeds a downloaded [Beyla](https://github.com/grafana/beyla) binary and
-runs it as a subprocess. The version is pinned by `BEYLA_VERSION` in the `Makefile`.
-Alloy translates the component config to Beyla's YAML with hand-written Go in
+runs it as a subprocess. The version and release-tarball checksums are pinned in
+`internal/component/beyla/ebpf/internal/config/gen/beyla/beyla_version.yaml` (read by
+the `Makefile`). Alloy translates the component config to Beyla's YAML with hand-written Go in
 `internal/component/beyla/ebpf/internal/config`
 ([README](../../internal/component/beyla/ebpf/internal/config/gen/README.md)); the
 config surface is intentionally not a 1:1 mirror of Beyla's YAML.
 
 ## Bumping the version
 
-1. Edit `BEYLA_VERSION` in the `Makefile`.
+```
+make update-beyla TAG=<beyla-version>    # e.g. TAG=v3.29.0
+```
 
-2. Record the new release's tarball checksums, and review the diff:
+This one command:
 
-   ```
-   make update-beyla-checksums
-   ```
+- records the version and each release tarball's sha256 in
+  `internal/component/beyla/ebpf/internal/config/gen/beyla/beyla_version.yaml` (the
+  pinned manifest),
+- downloads and verifies the binaries against those checksums,
+- downloads the matching config schema,
+- syncs the version into `docs/sources/_index.md.t` and `docs/sources/_index.md`.
 
-   This writes `internal/component/beyla/ebpf/internal/config/gen/beyla-checksums.txt`
-   (committed, sha256sum format). `make download-beyla` verifies downloads against it,
-   so a compromised upstream can't swap in a binary we didn't review — the committed
-   checksum is the trust anchor, like `go.sum`.
-
-3. Download the binaries and schema, and sync the docs version:
-
-   ```
-   make beyla
-   ```
-
-   This runs `download-beyla`, `download-beyla-schema`, and
-   `sync-beyla-docs-version` — the last updates `BEYLA_VERSION` in both
-   `docs/sources/_index.md.t` and `docs/sources/_index.md` so the rendered docs
-   match.
+Review the `beyla_version.yaml` diff before committing — the committed checksum is the
+trust anchor, like `go.sum`.
 
 ## Updating the config translation
 

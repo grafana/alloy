@@ -16,7 +16,7 @@ import (
 // TestEmittedYAMLMatchesSchema is the correctness net for the hand-written
 // Args->Beyla-YAML translation: it fully populates an Arguments, emits the YAML,
 // and asserts every emitted key exists at the right place in Beyla's published
-// schema (gen/schema.json). A typo'd or misplaced key -- which Beyla would
+// schema (gen/beyla/schema.json). A typo'd or misplaced key -- which Beyla would
 // silently ignore at runtime -- fails the test here instead.
 //
 // The walk is deliberately stricter than JSON-Schema semantics: the schema sets
@@ -24,7 +24,7 @@ import (
 // We treat a key that is neither a declared property nor covered by an explicit
 // additionalProperties schema (a genuine dynamic map) as a failure.
 func TestEmittedYAMLMatchesSchema(t *testing.T) {
-	data, err := os.ReadFile("gen/schema.json")
+	data, err := os.ReadFile("gen/beyla/schema.json")
 	require.NoError(t, err)
 
 	var doc schemaDoc
