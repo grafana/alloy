@@ -14,6 +14,8 @@ Unreleased
 
 - Add `alloy.command` to override the entrypoint command for the Alloy container. This makes it possible to launch the Alloy binary from its image path when running as a HostProcess container on Windows nodes. (@petewall)
 
+- Add `controller.dnsConfig` to configure the pod's DNS settings (`nameservers`, `searches`, `options`). (@younsl)
+
 1.10.1 (2026-06-29)
 ----------
 
