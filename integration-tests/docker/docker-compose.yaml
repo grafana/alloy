@@ -1,7 +1,7 @@
 name: alloy-integration-tests
 services:
   mimir:
-    image: grafana/mimir:3.1.1@sha256:2b49dca9ee4a121cc39bfb1e6f661c1e975cf52a7d14cc6b90de2e5e29caa92e
+    image: grafana/mimir:3.1.3@sha256:c906a6fc334ba401b901230b34f660cb1bb1818ef1b169d90e7e4033b97c4f59
     volumes:
       - ./configs/mimir:/etc/mimir-config
     entrypoint:
@@ -34,7 +34,7 @@ services:
       - integration-tests
 
   kafka:
-    image: apache/kafka:latest@sha256:9516fb7634bad307d17c33b589fde9023003b0cb761374f500002b980a3149b9
+    image: apache/kafka:latest@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837
     container_name: kafka
     ports:
       - "9092:9092"
@@ -79,7 +79,7 @@ services:
       - integration-tests
 
   loki:
-    image: grafana/loki:3.7.2@sha256:191d4fdfb7264f16989f0a57f320872620a5a7c2ceeec6229212c4190ec49b86
+    image: grafana/loki:3.7.3@sha256:70b9f699fc9bb868b62f1cfd4f787dfa50242f1fd92e6089787d5d7daea75fe8
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
@@ -129,7 +129,7 @@ services:
       - integration-tests
 
   mysql:
-    image: mysql:8.4@sha256:563602a18ffd5be220968e8508d84c9dcd80fbffe69e28af51572db29e3285b2
+    image: mysql:8.4@sha256:c592c15aaf4a1961e15d82eb31ea5987dda862d1c4b1e93424438c0e91dc1f8d
     container_name: mysql
     ports:
       - "3306:3306"
@@ -142,7 +142,7 @@ services:
       - integration-tests
 
   postgres:
-    image: postgres:16@sha256:081f1bc7bd5e143dbb6e487b710bbc27712cdcfaced4c071b8e47349aa1b4171
+    image: postgres:16@sha256:33f923b05f64ca54ac4401c01126a6b92afe839a0aa0a52bc5aeb5cc958e5f20
     container_name: postgres
     ports:
       - "5432:5432"
@@ -155,7 +155,7 @@ services:
       - integration-tests
 
   postgres-init:
-    image: postgres:16@sha256:081f1bc7bd5e143dbb6e487b710bbc27712cdcfaced4c071b8e47349aa1b4171
+    image: postgres:16@sha256:33f923b05f64ca54ac4401c01126a6b92afe839a0aa0a52bc5aeb5cc958e5f20
     depends_on:
       - postgres
     volumes:
