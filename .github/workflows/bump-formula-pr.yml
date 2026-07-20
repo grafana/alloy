@@ -11,13 +11,41 @@ env:
   TAP_CHECKOUT_DIR: homebrew-grafana
 
 jobs:
+  # Gate prevents homebrew job execution for unreleased or component-level releases (e.g helm-chart or syntax).
+  gate:
+    name: gate
+    runs-on: ubuntu-latest
+    if: startsWith(github.event.release.tag_name, 'v')
+    permissions:
+      id-token: write
+    outputs:
+      is_latest: ${{ steps.compare.outputs.is_latest }}
+    steps:
+      - uses: grafana/shared-workflows/actions/create-github-app-token@46f48da11e78ebdba7a8747ae456b11062fac83e # create-github-app-token/v0.3.1
+        id: app-token
+        with:
+          github_app: ${{ env.ALLOYBOT_APP_NAME }}
+          permission_set: alloy
+
+      - name: Get latest release
+        uses: rez0n/actions-github-release@05fabbd6b2b3ce3383299555ea518faea69b736d # main
+        id: latest_release
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          repository: "${{ github.repository }}"
+          type: "stable"
+
+      # Report whether the triggering release is the latest stable release.
+      - name: Compare with latest release
+        id: compare
+        run: |
+          echo "is_latest=${{ steps.latest_release.outputs.release_id == github.event.release.id }}" >> "${GITHUB_OUTPUT}"
+
   homebrew-grafana:
     name: homebrew-grafana
+    needs: gate
+    if: needs.gate.outputs.is_latest == 'true'
     runs-on: ubuntu-latest
-    # Only normal Alloy releases use semver `vX.Y.Z` tags and have a Homebrew formula.
-    # Component releases (e.g. `syntax/v0.2.0`, `helm-chart/1.2.3`) also fire this event - skip them.
-    # The "is this the latest stable release?" check additionally gates the steps below (it needs the latest_release step).
-    if: startsWith(github.event.release.tag_name, 'v')
     permissions:
       id-token: write
     steps:
@@ -33,38 +61,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
-      - name: Get GitHub App
-        env:
-          APP_SLUG: ${{ env.ALLOYBOT_APP_NAME }}
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        id: get-app
-        run: |
-          APP_ID="$(gh api "/apps/${APP_SLUG}" --jq .id)" || exit 1
-          echo "app-id=${APP_ID}" >> "${GITHUB_OUTPUT}"
-          echo "app-login=${APP_SLUG}[bot]" >> "${GITHUB_OUTPUT}"
-
-      - name: Configure Git
-        env:
-          APP_ID: ${{ steps.get-app.outputs.app-id }}
-          APP_LOGIN: ${{ steps.get-app.outputs.app-login }}
-        run: |
-          git config --global user.name "${APP_LOGIN}"
-          git config --global user.email "${APP_ID}+${APP_LOGIN}@users.noreply.github.com"
-
-      - name: Get latest release
-        uses: rez0n/actions-github-release@05fabbd6b2b3ce3383299555ea518faea69b736d # main
-        id: latest_release
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          repository: "${{ github.repository }}"
-          type: "stable"
-
-      # Only bump the formula for the current latest stable release. `github.com`'s
-      # "latest stable" is the component release at publish time, so a `v`-tagged
-      # release that isn't the newest (e.g. a patch to an old minor) is skipped.
-      # This condition gates every step below.
       - name: Checkout Grafana Homebrew Tap
-        if: steps.latest_release.outputs.release_id == github.event.release.id
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           repository: ${{ env.BREW_TAP_REPO }}
@@ -74,18 +71,13 @@ jobs:
           path: ${{ env.TAP_CHECKOUT_DIR }}
 
       - name: Set up Go
-        if: steps.latest_release.outputs.release_id == github.event.release.id
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version-file: packaging/homebrew/formula-gen/go.mod
           cache: false
 
-      # Renders packaging/homebrew/alloy.rb.tpl into the tap's alloy.rb. The
-      # generator reads GITHUB_SERVER_URL and GITHUB_REPOSITORY (set by the
-      # runner) to build the release download URLs, and fetches the checksums
-      # from the release's SHA256SUMS asset.
+      # Render formula from a template. Checksums are fetched from release's SHA256SUMS asset.
       - name: Generate Formula
-        if: steps.latest_release.outputs.release_id == github.event.release.id
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
@@ -94,7 +86,6 @@ jobs:
             -out "$GITHUB_WORKSPACE/$TAP_CHECKOUT_DIR/alloy.rb"
 
       - name: Create Pull Request
-        if: steps.latest_release.outputs.release_id == github.event.release.id
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         with:
           token: ${{ steps.app-token.outputs.token }}
