@@ -60,10 +60,7 @@ jobs:
       # check alone doesn't exclude component releases (e.g. syntax/v0.2.0):
       # GitHub's "latest stable" is the component release at publish time.
       if: steps.latest_release.outputs.release_id == github.event.release.id && startsWith(github.event.release.tag_name, 'v')
-      # TODO: Use the upstream once they have this change:
-      # https://github.com/dawidd6/action-homebrew-bump-formula/pull/90
-      # uses: dawidd6/action-homebrew-bump-formula@v4
-      uses: ./.github/actions/homebrew-bump-formula
+      uses: dawidd6/action-homebrew-bump-formula@a0e064e08103c01870c6d1b05168d1b726aab119 # dawidd6/action-homebrew-bump-formula@v8
       with:
         # Required, custom GitHub access token with the 'public_repo' and 'workflow' scopes
         token: ${{ steps.app-token.outputs.token }}
