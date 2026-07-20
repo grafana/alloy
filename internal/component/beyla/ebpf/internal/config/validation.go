@@ -42,22 +42,25 @@ func (args SamplerConfig) Validate() error {
 	return nil
 }
 
-// hasNetworkFeature checks if network feature is enabled in metrics
+// hasNetworkFeature checks if network feature is enabled in metrics. "*" and "all"
+// enable every feature family, network included.
 func (args Metrics) hasNetworkFeature() bool {
 	for _, feature := range args.Features {
-		if feature == "network" {
+		switch feature {
+		case "network", "*", "all":
 			return true
 		}
 	}
 	return false
 }
 
-// hasAppFeature checks if any application feature is enabled in metrics
+// hasAppFeature checks if any application feature is enabled in metrics. "*" and
+// "all" enable every feature family, application included.
 func (args Metrics) hasAppFeature() bool {
 	for _, feature := range args.Features {
 		switch feature {
 		case "application", "application_host", "application_span", "application_service_graph",
-			"application_process", "application_span_otel", "application_span_sizes":
+			"application_process", "application_span_otel", "application_span_sizes", "*", "all":
 			return true
 		}
 	}
@@ -93,8 +96,8 @@ func (args Services) Validate() error {
 			svc.Kubernetes.OwnerName != "" ||
 			len(svc.Kubernetes.PodLabels) > 0
 
-		if svc.OpenPorts == "" && svc.Path == "" && !hasKubernetes {
-			return fmt.Errorf("discovery.services[%d] must define at least one of: open_ports, exe_path, or kubernetes configuration", i)
+		if svc.OpenPorts == "" && svc.Path == "" && svc.CmdArgs == "" && !hasKubernetes {
+			return fmt.Errorf("discovery.services[%d] must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration", i)
 		}
 	}
 	return nil

@@ -261,13 +261,21 @@ func TestServices_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "valid service with cmd_args",
+			args: Services{
+				{
+					CmdArgs: "--serve*",
+				},
+			},
+		},
+		{
 			name: "invalid service - no criteria",
 			args: Services{
 				{
 					Name: "test",
 				},
 			},
-			wantErr: "discovery.services[0] must define at least one of: open_ports, exe_path, or kubernetes configuration",
+			wantErr: "discovery.services[0] must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration",
 		},
 		{
 			name: "multiple valid services",
@@ -343,6 +351,18 @@ func TestMetrics_Validate(t *testing.T) {
 	}
 }
 
+func TestMetrics_FeatureWildcards(t *testing.T) {
+	for _, f := range []string{"*", "all"} {
+		m := Metrics{Features: []string{f}}
+		require.True(t, m.hasAppFeature(), "%q should enable application features", f)
+		require.True(t, m.hasNetworkFeature(), "%q should enable network features", f)
+	}
+	require.True(t, Metrics{Features: []string{"application"}}.hasAppFeature())
+	require.False(t, Metrics{Features: []string{"application"}}.hasNetworkFeature())
+	require.True(t, Metrics{Features: []string{"network"}}.hasNetworkFeature())
+	require.False(t, Metrics{Features: []string{"network"}}.hasAppFeature())
+}
+
 func TestArguments_Validate(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -390,6 +410,31 @@ func TestArguments_Validate(t *testing.T) {
 			},
 		},
 		{
+			name: "wildcard '*' feature requires discovery",
+			args: Arguments{
+				Metrics: Metrics{Features: []string{"*"}},
+			},
+			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+		},
+		{
+			name: "'all' feature requires discovery",
+			args: Arguments{
+				Metrics: Metrics{Features: []string{"all"}},
+			},
+			wantErr: "discovery.services, discovery.instrument, or discovery.survey is required when application features are enabled",
+		},
+		{
+			name: "cmd_args-only instrument with application feature",
+			args: Arguments{
+				Discovery: Discovery{
+					Instrument: Services{
+						{CmdArgs: "--serve*"},
+					},
+				},
+				Metrics: Metrics{Features: []string{"application"}},
+			},
+		},
+		{
 			name: "invalid service configuration with application feature",
 			args: Arguments{
 				Discovery: Discovery{
@@ -401,7 +446,7 @@ func TestArguments_Validate(t *testing.T) {
 					Features: []string{"application"},
 				},
 			},
-			wantErr: "must define at least one of: open_ports, exe_path, or kubernetes configuration",
+			wantErr: "must define at least one of: open_ports, exe_path, cmd_args, or kubernetes configuration",
 		},
 		{
 			name: "invalid metrics configuration",
