@@ -1,5 +1,10 @@
 # Updating Beyla
 
+> **Maintainers only.** Bumping Beyla records new binary checksums in
+> `beyla_version.yaml` — the trust anchor for verifying the download. Run
+> `make update-beyla` and review the checksum diff only as a maintainer, to guard
+> against supply-chain tampering.
+
 ## Overview
 
 `beyla.ebpf` embeds a downloaded [Beyla](https://github.com/grafana/beyla) binary and
