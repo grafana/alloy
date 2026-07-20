@@ -113,3 +113,8 @@ func (im *ImportHTTP) ModulePath() string {
 	dir, _ := path.Split(im.arguments.URL)
 	return dir
 }
+
+// InheritsModulePath reports that import.http defines its own module_path (the URL's dir).
+func (im *ImportHTTP) InheritsModulePath() bool {
+	return false
+}
