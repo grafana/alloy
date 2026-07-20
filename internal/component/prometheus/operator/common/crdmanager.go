@@ -185,10 +185,10 @@ func (c *crdManager) Run(ctx context.Context) error {
 		AppendMetadata:          c.args.Scrape.HonorMetadata,
 		PassMetadataInContext:   c.args.Scrape.HonorMetadata,
 		EnableTypeAndUnitLabels: c.args.Scrape.EnableTypeAndUnitLabels,
-		// ParseST extracts the created timestamp from the scrape formats;
+		// ParseST extracts the start timestamp from the scrape formats;
 		// EnableStartTimestampZeroIngestion injects it as a synthetic zero sample.
-		ParseST:                           c.args.Scrape.CreatedTimestampZeroIngestion,
-		EnableStartTimestampZeroIngestion: c.args.Scrape.CreatedTimestampZeroIngestion,
+		ParseST:                           c.args.Scrape.StartTimestampZeroIngestion,
+		EnableStartTimestampZeroIngestion: c.args.Scrape.StartTimestampZeroIngestion,
 	}
 	c.scrapeManager, err = scrape.NewManager(scrapeOpts, c.logger, nil, alloyAppendable, nil, unregisterer)
 	if err != nil {

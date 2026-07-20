@@ -1813,10 +1813,10 @@ func (a *strictMetadataAppender) AppendHistogramSTZeroSample(ref storage.SeriesR
 
 func (a *strictMetadataAppender) SetOptions(o *storage.AppendOptions) {}
 
-// TestConverterCreatedTimestampZeroIngestion verifies that a zero sample is
+// TestConverterStartTimestampZeroIngestion verifies that a zero sample is
 // injected at the start timestamp of cumulative series when the feature is
 // enabled, and only then.
-func TestConverterCreatedTimestampZeroIngestion(t *testing.T) {
+func TestConverterStartTimestampZeroIngestion(t *testing.T) {
 	// start_time_unix_nano = 50s, time_unix_nano = 100s.
 	counter := `{
 		"resource_metrics": [{
@@ -1897,7 +1897,7 @@ func TestConverterCreatedTimestampZeroIngestion(t *testing.T) {
 			app := &recordingAppender{}
 			l := util.TestAlloyLogger(t)
 			conv := convert.New(l.Slog(), appenderAppendable{Inner: app}, convert.Options{
-				EnableCreatedTimestampZeroIngestion: tc.enable,
+				EnableStartTimestampZeroIngestion: tc.enable,
 			})
 			require.NoError(t, conv.ConsumeMetrics(t.Context(), payload))
 
@@ -1933,7 +1933,7 @@ type recordedSample struct {
 }
 
 // recordingAppender records the order and arguments of append calls so tests
-// can assert created-timestamp zero-sample injection.
+// can assert start-timestamp zero-sample injection.
 type recordingAppender struct {
 	samples []recordedSample
 }

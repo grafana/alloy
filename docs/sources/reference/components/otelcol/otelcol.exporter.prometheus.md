@@ -41,7 +41,7 @@ You can use the following arguments with `otelcol.exporter.prometheus`:
 | `forward_to`                           | `list(MetricsReceiver)` | Where to forward converted Prometheus metrics.                                                             |         | yes      |
 | `add_metric_suffixes`                  | `bool`                  | Whether to add type and unit suffixes to metric names.                                                     | `true`  | no       |
 | `convert_classic_histograms_to_nhcb`   | `bool`                  | (Experimental) Convert OTel explicit-bucket histograms to NHCB.                                            | `false` | no       |
-| `created_timestamp_zero_ingestion`     | `bool`                  | (Experimental) Inject a zero sample at the OTLP start timestamp for cumulative metrics.                    | `false` | no       |
+| `start_timestamp_zero_ingestion`       | `bool`                  | (Experimental) Inject a zero sample at the OTLP start timestamp for cumulative metrics.                    | `false` | no       |
 | `gc_frequency`                         | `duration`              | How often to clean up stale metrics from memory.                                                           | `"5m"`  | no       |
 | `honor_metadata`                       | `bool`                  | (Experimental) Whether to send metric metadata to downstream components.                                   | `false` | no       |
 | `include_scope_info`                   | `bool`                  | Whether to include `otel_scope_info` metrics.                                                              | `false` | no       |
@@ -80,9 +80,9 @@ To enable and use an experimental feature, you must set the `stability.level` [f
 {{< /admonition >}}
 
 {{< admonition type="warning" >}}
-**EXPERIMENTAL**: The `created_timestamp_zero_ingestion` argument is an [experimental][] feature.
+**EXPERIMENTAL**: The `start_timestamp_zero_ingestion` argument is an [experimental][] feature.
 
-When the `created_timestamp_zero_ingestion` argument is enabled, a zero sample is injected at the OTLP start timestamp for cumulative metrics, marking a counter reset so `rate` accounts for the initial value.
+When the `start_timestamp_zero_ingestion` argument is enabled, a zero sample is injected at the OTLP start timestamp for cumulative metrics, marking a counter reset so `rate` accounts for the initial value.
 
 To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.
 

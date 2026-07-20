@@ -53,7 +53,7 @@ You can use the following arguments with `prometheus.scrape`:
 | `bearer_token`                       | `secret`                | Bearer token to authenticate with.                                                                                       |                                                                                                  | no       |
 | `body_size_limit`                    | `int`                   | An uncompressed response body larger than this many bytes causes the scrape to fail. 0 means no limit.                   |                                                                                                  | no       |
 | `convert_classic_histograms_to_nhcb` | `bool`                  | Whether to convert classic histograms to native histograms with custom buckets (NHCB).                                   | `false`                                                                                          | no       |
-| `created_timestamp_zero_ingestion`   | `bool`                  | (Experimental) Parse the created timestamp and inject a zero sample at it for cumulative metrics.                        | `false`                                                                                          | no       |
+| `start_timestamp_zero_ingestion`     | `bool`                  | (Experimental) Parse the start timestamp and inject a zero sample at it for cumulative metrics.                          | `false`                                                                                          | no       |
 | `enable_compression`                 | `bool`                  | Whether compression is enabled for the scrape.                                                                           | `true`                                                                                           | no       |
 | `enable_http2`                       | `bool`                  | Whether HTTP2 is supported for requests.                                                                                 | `true`                                                                                           | no       |
 | `enable_protobuf_negotiation`        | `bool`                  | Deprecated: use `scrape_protocols` instead.                                                                              | `false`                                                                                          | no       |
@@ -104,8 +104,8 @@ You can use the following arguments with `prometheus.scrape`:
 > This provides additional schema information about metrics directly in the label set.
 > This feature doesn't require downstream components to support Remote Write v2.
 >
-> **EXPERIMENTAL**: The `created_timestamp_zero_ingestion` argument is an [experimental][] feature.
-> When the `created_timestamp_zero_ingestion` argument is enabled, the created timestamp is parsed from the scraped metrics and a zero sample is injected at that timestamp for cumulative metrics, marking a counter reset so `rate` accounts for the initial value.
+> **EXPERIMENTAL**: The `start_timestamp_zero_ingestion` argument is an [experimental][] feature.
+> When the `start_timestamp_zero_ingestion` argument is enabled, the start timestamp is parsed from the scraped metrics and a zero sample is injected at that timestamp for cumulative metrics, marking a counter reset so `rate` accounts for the initial value.
 >
 > Experimental features are subject to frequent breaking changes, and may be removed with no equivalent replacement.
 > To enable and use an experimental feature, you must set the `stability.level` [flag][] to `experimental`.

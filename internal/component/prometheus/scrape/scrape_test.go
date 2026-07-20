@@ -831,11 +831,11 @@ func testScrapingAllMetricTypes(t *testing.T, enableTypeAndUnitLabels bool) {
 	t.Logf("Successfully scraped %d samples with %d metadata entries and %d histograms", len(actualSamples), len(actualMetadata), len(actualHistograms))
 }
 
-// TestScrapingCreatedTimestampZeroIngestion verifies that, with
-// created_timestamp_zero_ingestion enabled, scraping a counter that exposes a
+// TestScrapingStartTimestampZeroIngestion verifies that, with
+// start_timestamp_zero_ingestion enabled, scraping a counter that exposes a
 // created timestamp injects a synthetic zero sample at that timestamp ahead of
 // the real sample.
-func TestScrapingCreatedTimestampZeroIngestion(t *testing.T) {
+func TestScrapingStartTimestampZeroIngestion(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
@@ -852,7 +852,7 @@ func TestScrapingCreatedTimestampZeroIngestion(t *testing.T) {
 
 	var args Arguments
 	args.SetToDefault()
-	args.CreatedTimestampZeroIngestion = true
+	args.StartTimestampZeroIngestion = true
 	args.Targets = []discovery.Target{
 		discovery.NewTargetFromLabelSet(model.LabelSet{"__address__": model.LabelValue(serverAddr)}),
 	}
@@ -884,7 +884,7 @@ func TestScrapingCreatedTimestampZeroIngestion(t *testing.T) {
 
 	require.EventuallyWithT(t, func(collectT *assert.CollectT) {
 		zero := sampleFor(appender.CollectedSTZeroSamples(), "test_counter_total")
-		require.NotNil(collectT, zero, "expected a created-timestamp zero sample for test_counter_total")
+		require.NotNil(collectT, zero, "expected a start-timestamp zero sample for test_counter_total")
 		require.Equal(collectT, 0.0, zero.Value, "the injected sample value must be zero")
 
 		real := sampleFor(appender.CollectedSamples(), "test_counter_total")
@@ -892,7 +892,7 @@ func TestScrapingCreatedTimestampZeroIngestion(t *testing.T) {
 		require.Equal(collectT, 42.5, real.Value)
 		// The zero sample sits at the created timestamp, strictly before the real sample.
 		require.Less(collectT, zero.Timestamp, real.Timestamp, "zero sample must precede the real sample")
-	}, 10*time.Second, 100*time.Millisecond, "Should have injected a created-timestamp zero sample")
+	}, 10*time.Second, 100*time.Millisecond, "Should have injected a start-timestamp zero sample")
 }
 
 // --- Helpers for TestRuntimeUpdate ---

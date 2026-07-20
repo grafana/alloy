@@ -129,8 +129,8 @@ func (c *Component) Update(args component.Arguments) error {
 		return fmt.Errorf("enable_type_and_unit_labels is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
-	if cfg.Scrape.CreatedTimestampZeroIngestion && !c.opts.MinStability.Permits(featuregate.StabilityExperimental) {
-		return fmt.Errorf("created_timestamp_zero_ingestion is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
+	if cfg.Scrape.StartTimestampZeroIngestion && !c.opts.MinStability.Permits(featuregate.StabilityExperimental) {
+		return fmt.Errorf("start_timestamp_zero_ingestion is an experimental feature, and must be enabled by setting the stability.level flag to experimental")
 	}
 
 	select {

@@ -142,10 +142,10 @@ func TestExperimentalFeatures(t *testing.T) {
 			},
 		},
 		{
-			featureName:  "created_timestamp_zero_ingestion",
+			featureName:  "start_timestamp_zero_ingestion",
 			minStability: featuregate.StabilityExperimental,
 			setConfig: func(args *operator.Arguments) {
-				args.Scrape.CreatedTimestampZeroIngestion = true
+				args.Scrape.StartTimestampZeroIngestion = true
 			},
 		},
 	}
