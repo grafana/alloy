@@ -385,8 +385,8 @@ func (conv *Converter) writeStartTimestampZeroSample(app storage.Appender, serie
 
 	t := timestamp.FromTime(dp.Timestamp().AsTime())
 	st := timestamp.FromTime(dp.StartTimestamp().AsTime())
-	if err := series.WriteSTZeroSampleTo(app, t, st); err != nil &&
-		!errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
+	err := series.WriteSTZeroSampleTo(app, t, st)
+	if err != nil && !errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
 		conv.log.Debug("failed to inject start-timestamp zero sample", "series", series.labels.String(), "err", err)
 	}
 }
@@ -401,8 +401,8 @@ func (conv *Converter) writeStartTimestampZeroHistogram(app storage.Appender, se
 
 	t := timestamp.FromTime(dp.Timestamp().AsTime())
 	st := timestamp.FromTime(dp.StartTimestamp().AsTime())
-	if err := series.WriteHistogramSTZeroSampleTo(app, t, st, h, fh); err != nil &&
-		!errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
+	err := series.WriteHistogramSTZeroSampleTo(app, t, st, h, fh)
+	if err != nil && !errors.Is(err, storage.ErrOutOfOrderST) && !errors.Is(err, storage.ErrSTNewerThanSample) {
 		conv.log.Debug("failed to inject start-timestamp zero histogram", "series", series.labels.String(), "err", err)
 	}
 }
