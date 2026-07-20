@@ -2,11 +2,11 @@ dist:
   module: github.com/grafana/alloy/otel_engine
   name: alloy
   description: Alloy OTel Collector distribution.
-  version: v1.17.0 # x-release-please-version
+  version: v1.18.0 # x-release-please-version
   output_path: .
 
 extensions:
-  - gomod: github.com/grafana/alloy v1.17.0 # x-release-please-version
+  - gomod: github.com/grafana/alloy v1.18.0 # x-release-please-version
     import: github.com/grafana/alloy/extension/alloyengine
     name: alloyengine
   - gomod: github.com/open-telemetry/opentelemetry-collector-contrib/extension/basicauthextension v0.153.0
